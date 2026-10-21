@@ -16,6 +16,8 @@ namespace Client.GStreamer.Audio;
 /// <para>The threshold changes from the settings while the level messages arrive on the bus watcher,
 /// so both run under one lock: otherwise turning the gate off could open the valve just before a
 /// level message closes it again.</para>
+/// <para>The valve opens and closes over one buffer, see <see cref="VoiceGateFade"/>: opened at once,
+/// the voice would start with a click.</para>
 /// </remarks>
 internal sealed class VoiceGate
 {
@@ -34,7 +36,7 @@ internal sealed class VoiceGate
     private const string PeakField = "peak";
 
     private readonly Element _level;
-    private readonly Element _valve;
+    private readonly VoiceGateFade _valve;
     private readonly Lock _lock = new();
     private double? _thresholdDb;
     private long _lastLoudTimestamp;
@@ -46,7 +48,7 @@ internal sealed class VoiceGate
     {
         OutboundId = outboundId;
         _level = level;
-        _valve = valve;
+        _valve = new VoiceGateFade(valve);
         SetThreshold(thresholdDb);
     }
 
@@ -70,7 +72,7 @@ internal sealed class VoiceGate
             _level.SetProperty("post-messages", thresholdDb != null);
 
             if (thresholdDb == null)
-                SetOpen(true);
+                SetOpen(true, fade: false);
         }
     }
 
@@ -98,22 +100,22 @@ internal sealed class VoiceGate
                 if (IsOpen)
                     return false;
 
-                SetOpen(true);
+                SetOpen(true, fade: true);
                 return true;
             }
 
             if (!IsOpen || Stopwatch.GetElapsedTime(_lastLoudTimestamp, now) < HoldTime)
                 return false;
 
-            SetOpen(false);
+            SetOpen(false, fade: true);
             return true;
         }
     }
 
-    private void SetOpen(bool isOpen)
+    private void SetOpen(bool isOpen, bool fade)
     {
         IsOpen = isOpen;
-        _valve.SetProperty("mute", !isOpen);
+        _valve.Set(isOpen, fade);
     }
 
     /// <summary>

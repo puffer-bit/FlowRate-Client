@@ -15,6 +15,7 @@ This has two purposes:
 |------|------|
 | `WebRTC/OutgoingAudioBranch.cs` | Builds the capture branch, with the `level` element and the gate valve in it |
 | `Audio/VoiceGate.cs` | Decides from the measured loudness whether the valve is open |
+| `Audio/VoiceGateFade.cs` | Opens and closes the valve over one buffer, so the voice starts without a click |
 | `WebRTC/OutgoingTracks.cs` | Owns the gates and passes the level messages of the pipeline bus to them |
 | `Interop/GstBusWatcher.cs` | Takes bus messages on a managed thread of its own |
 | `Loader/GstElementCheck.cs` | Reports at startup whether the runtime has `level` |
@@ -179,6 +180,25 @@ it opens one `LevelInterval` late plus the bus delay. The very beginning of a wo
 is not sent. Measured on the real branch: the gate opens 5–30 ms after the sound starts.
 
 After the last word, 300 ms of quiet audio are still sent (the hold time), then nothing.
+
+## Fading at the edges
+
+The gate opens when the voice is already loud, so a valve switched at once makes the sound jump
+from silence to the middle of a wave, and the listeners hear a click at the start of every
+sentence. `VoiceGateFade` switches the valve over one buffer (10 ms) instead:
+
+- Opening unmutes the valve at once and adds a one-shot probe on its src pad. The probe skips the
+  buffers the valve still marked as a gap (muted before it opened) and fades in the first one it
+  let through.
+- Closing fades out the next buffer in the same kind of probe and mutes the valve right there, on
+  the streaming thread, so the buffer after it is already silent.
+- The probe is gone after one buffer, so managed code touches two buffers per sentence.
+- Only S16LE and F32LE buffers that are writable are faded. Anything else is switched at once, the
+  way it was before.
+- Turning the gate off opens the valve at once; a probe still waiting then finds nothing to do.
+
+Measured with a sine of half the full scale: the largest step between two samples at the edges was
+15847 switched at once, and 943 faded, which is the slope of the sine itself.
 
 Measured on the real branch with a 48 kHz sine switched every second between loud and almost
 silent:

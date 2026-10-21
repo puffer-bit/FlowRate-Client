@@ -39,6 +39,15 @@ internal static class GstNative
     [DllImport(NativeLibraries.GObject)]
     private static extern IntPtr g_value_get_boxed(IntPtr value);
 
+    [DllImport(NativeLibraries.GStreamer)]
+    private static extern int gst_mini_object_is_writable(IntPtr miniObject);
+
+    [DllImport(NativeLibraries.GStreamer)]
+    private static extern int gst_buffer_map(IntPtr buffer, out Gst.MapInfo info, Gst.MapFlags flags);
+
+    [DllImport(NativeLibraries.GStreamer)]
+    private static extern void gst_buffer_unmap(IntPtr buffer, ref Gst.MapInfo info);
+
     // G_TYPE_DOUBLE, and the size of a GValue: { GType g_type; 16 bytes of data }
     private const nint DoubleType = 15 << 2;
     private const int ValueSize = 24;
@@ -124,6 +133,21 @@ internal static class GstNative
     /// </summary>
     public static IntPtr GetMessageSource(Gst.Message message) =>
         Marshal.ReadIntPtr(message.Handle, MessageSourceOffset);
+
+    /// <summary>
+    /// Maps a buffer for writing in place, without a wrapper: a wrapper holds a reference of its own,
+    /// and a buffer with two references is not writable.
+    /// </summary>
+    /// <returns>False when the buffer is shared, and so must not be changed.</returns>
+    public static bool TryMapWritable(IntPtr buffer, out Gst.MapInfo info)
+    {
+        info = default;
+
+        return gst_mini_object_is_writable(buffer) != 0 &&
+               gst_buffer_map(buffer, out info, Gst.MapFlags.Read | Gst.MapFlags.Write) != 0;
+    }
+
+    public static void Unmap(IntPtr buffer, ref Gst.MapInfo info) => gst_buffer_unmap(buffer, ref info);
 
     public static void Release(IntPtr instance)
     {
