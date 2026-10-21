@@ -163,16 +163,6 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
         branch.SyncStateWithParent();
 
-        // A voice that is heard unmutes the output a deafen may have muted
-        if (isPlayed && (mline == null || _resolveVolume(mline.Value) > 0))
-        {
-            lock (_outputLock)
-            {
-                if (_output != null)
-                    VoicePlaybackSink.SetMuted(_output, false);
-            }
-        }
-
         SpeechActivityMeter? meter = null;
 
         if (isOpus)
@@ -460,18 +450,6 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             element.SetProperty("volume", volume);
             LogVolumeChanged(_sessionId, mline, volume);
         }
-
-        // Deafened, every voice is at 0: the sound server mutes the output too, which also
-        // silences what it has buffered already and takes effect at once
-        var isAllSilent = _branches.Values
-            .Where(branch => branch.MixerPad != null)
-            .All(branch => branch.Mline is { } section && (section == mline ? volume : _resolveVolume(section)) <= 0);
-
-        lock (_outputLock)
-        {
-            if (_output != null)
-                VoicePlaybackSink.SetMuted(_output, isAllSilent);
-        }
     }
 
     /// <summary>
@@ -593,7 +571,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
             output.SetName($"voices_{_sessionId}");
 
-            // The sound server may restore a mute it remembers for the client name
+            // The sound server may restore a mute an earlier version left for the client name
             VoicePlaybackSink.SetMuted(output, false);
 
             _pipeline.Add(output);

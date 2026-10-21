@@ -4,10 +4,9 @@ namespace Client.GStreamer.Audio;
 
 /// <summary>
 /// The output the voices of a session are played on. Under PulseAudio or PipeWire it is a
-/// pulsesink of its own client name, so silencing the voices can mute the stream on the sound
-/// server, which also silences what is already buffered there and takes effect at once. The
-/// session manager remembers that mute per client name, so a name of their own keeps it away from
-/// the other sounds of the app; each voice stream sets it explicitly when it starts.
+/// pulsesink of its own client name. The voices are silenced by their volume alone: a mute of the
+/// stream, which the session manager remembers per client name, outlived the voices it was meant
+/// for and silenced the next ones. Each voice stream clears it explicitly when it starts.
 /// </summary>
 internal static class VoicePlaybackSink
 {
