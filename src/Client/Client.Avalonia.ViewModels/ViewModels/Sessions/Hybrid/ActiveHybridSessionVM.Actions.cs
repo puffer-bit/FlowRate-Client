@@ -171,6 +171,10 @@ public partial class ActiveHybridSessionVM
 
         ParticipantsListVM.UpdateScreenShare(userId, isSharing);
 
+        // Our own share sounds where it is started and stopped; a repeated report changes nothing
+        if (userId != _coordinatorSession.GetCurrentUser().Id && _screenStreamsByUser.ContainsKey(userId) != isSharing)
+            _sounds.Play(isSharing ? SoundEvent.ScreenShareStart : SoundEvent.ScreenShareStop);
+
         if (isSharing)
             AddScreenStream(userId);
         else
