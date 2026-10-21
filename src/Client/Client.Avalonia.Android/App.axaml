@@ -1,0 +1,42 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Client.Droid.App">
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Button.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/SecondaryButtonStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/BorderlessButtonStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/PrimaryButtonStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/ChoiceCardStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/ListBox/ListBoxItemStyles.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/ListBox/SessionsListBoxStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBlocks/TextBlockStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageViewStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/EmptyStates/EmptyState.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Avatars/UserAvatar.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Menus/MenuItemButton.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/LoadingIndicators/ProgressRing.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
+        <StyleInclude Source="/Views/BottomSheet.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsPage.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsCard.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsRow.axaml"/>
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollBarTheme.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollViewerTheme.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxTheme.axaml"/>
+                <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ComboBoxes/ComboBoxTheme.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

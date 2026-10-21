@@ -1,0 +1,589 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
+             x:Class="Client.Droid.Views.ChatView"
+             x:DataType="chatVm:ActiveChatSessionVM"
+             Background="{DynamicResource GeneralBrush}"
+             anim:Presence.Appear="Fade"
+             anim:Presence.Duration="Medium">
+
+    <UserControl.Styles>
+        <!-- Round buttons of the header and of the list, sized for a finger -->
+        <Style Selector="Button.chat-round">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Floating "scroll to latest" button over the bottom right corner of the list -->
+        <Style Selector="Panel.chat-scroll-down">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.chat-scroll-down.visible">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+        <Style Selector="Button.chat-scroll-down-button /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Border.chat-unread-badge">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="MinWidth" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Margin" Value="0,-8,0,0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.chat-unread-badge > TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- ====== Mention list ====== -->
+        <Style Selector="Border.mention-list">
+            <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+        <!-- Not focusable: a tap on it would take the focus from the input and fold the keyboard -->
+        <Style Selector="Button.mention-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style Selector="Button.mention-item.selected, Button.mention-item:pressed">
+            <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        </Style>
+        <Style Selector="Button.mention-item TextBlock.mention-hint">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <!-- ====== Composer ====== -->
+        <Style Selector="Border.composer-box">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.composer-box:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        </Style>
+        <!-- A notice colors the frame, focused or not -->
+        <Style Selector="Border.composer-box.warning, Border.composer-box.warning:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.composer-box.error, Border.composer-box.error:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <Style Selector="Grid.composer-notice TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.warning TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.error TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <!-- The box draws the frame, so the input itself has none in any state -->
+        <Style Selector="TextBox.composer-input">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MaxHeight" Value="140"/>
+            <Setter Property="Padding" Value="12,8,6,8"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+        <Style Selector="TextBox.composer-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Send: an accent circle while there is something to send, a faint plane otherwise -->
+        <Style Selector="Button.composer-send">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.composer-send /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.composer-send:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <!-- The circle stays while the message is on its way -->
+        <Style Selector="Button.composer-send.sending:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+
+        <Style Selector="Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.75"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+            <Setter Property="Stretch" Value="None"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *, Auto">
+
+        <!-- Header: the menu with the sessions, then the chat with its status under the name -->
+        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+            <Button Grid.Column="0" Classes="borderless chat-round" Click="OnMenuClick">
+                <Path Classes="burger"/>
+            </Button>
+
+            <Image Grid.Column="1" Width="32" Height="32" VerticalAlignment="Center" Source="{StaticResource HashIcon}"/>
+
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding StatusBar.Name}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap"/>
+
+                <!-- A grid, not a horizontal stack panel, so a long description is trimmed -->
+                <Grid ColumnDefinitions="Auto, *">
+                    <loadingIndicators:ProgressRing Grid.Column="0"
+                                                    Margin="0,0,6,0"
+                                                    Width="12" Height="12" MinWidth="0" MinHeight="0"
+                                                    VerticalAlignment="Center"
+                                                    IsIndeterminate="True"
+                                                    BorderThickness="2"
+                                                    IsVisible="{Binding StatusBar.IsLoading}"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding StatusBar.StatusText}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                </Grid>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- An ItemsControl rather than a ListBox: messages are not selectable items -->
+        <ItemsControl Grid.Row="2"
+                      x:Name="MessagesList"
+                      IsVisible="{Binding HasMessages}"
+                      ItemsSource="{Binding Messages}"
+                      Margin="4,0">
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <panels:MessageListPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.DataTemplates>
+                <DataTemplate DataType="{x:Type chatVm:ChatMessageVM}">
+                    <views:ChatMessageView/>
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type chatVm:ChatDateSeparatorVM}">
+                    <TextBlock Text="{Binding DateText}"
+                               Margin="0,10"
+                               HorizontalAlignment="Center"
+                               FontSize="12"
+                               FontWeight="Medium"/>
+                </DataTemplate>
+            </ItemsControl.DataTemplates>
+
+            <ItemsControl.Styles>
+                <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
+                    <Setter Property="Margin" Value="0,2"/>
+                </Style>
+            </ItemsControl.Styles>
+        </ItemsControl>
+
+        <!-- Shown while the chat has no messages -->
+        <emptyStates:EmptyState Grid.Row="2"
+                                anim:Presence.Appear="Rise"
+                                IsVisible="{Binding !HasMessages}"
+                                Icon="{StaticResource EmptyChat}"
+                                Title="{l:Text chat.empty.title}"
+                                Text="{l:Text chat.empty.text}"/>
+
+        <Panel Grid.Row="2"
+               Classes="chat-scroll-down"
+               Classes.visible="{Binding IsScrolledUp}"
+               HorizontalAlignment="Right"
+               VerticalAlignment="Bottom"
+               Margin="0,0,12,12">
+            <Border CornerRadius="22" BoxShadow="{DynamicResource FloatingButtonShadow}">
+                <Button Classes="chat-round chat-scroll-down-button" Command="{Binding ScrollToEndCommand}">
+                    <Image Width="20" Height="20" Source="{StaticResource DownArrowIcon}"/>
+                </Button>
+            </Border>
+            <Border Classes="chat-unread-badge" IsVisible="{Binding HasUnreadBelow}">
+                <TextBlock Text="{Binding UnreadBelowCount}"/>
+            </Border>
+        </Panel>
+
+        <!-- Composer: the input and the send button in one rounded box. Enter starts a new line, as
+             the keyboard of a phone has no other key for it; the button sends -->
+        <StackPanel Grid.Row="3" Margin="10,6,10,10" Spacing="6" IsVisible="{Binding !IsInitialLoading}">
+            <!-- Users to mention while a name after "@" is typed; a tap writes the name into the input -->
+            <Border Classes="mention-list" IsVisible="{Binding Composer.MentionPicker.IsOpen}">
+                <ScrollViewer MaxHeight="220">
+                    <ItemsControl ItemsSource="{Binding Composer.MentionPicker.Suggestions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                                <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                        Click="OnMentionClick">
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
+                                        <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
+                                                            IsVisible="{Binding !IsGroup}"
+                                                            UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}"
+                                                            Status="{Binding Status}"/>
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="15"
+                                                   Text="{Binding Name, StringFormat=@\{0\}}"/>
+                                        <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                                   IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <Border Classes="composer-box"
+                    Classes.warning="{Binding Composer.IsComposerWarning}"
+                    Classes.error="{Binding Composer.IsComposerError}">
+                <StackPanel>
+                <!-- The reply bar unfolds when a reply is attached and folds back when it is
+                     detached; the part that is folded is cut off, not drawn over the input -->
+                <Grid Classes="reply-bar"
+                      anim:Presence.Appear="Unfold"
+                      anim:Presence.Leave="Fold"
+                      anim:Presence.IsLeaving="{Binding Composer.IsReplyBarLeaving}"
+                      IsVisible="{Binding Composer.ReplyBarPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      ColumnDefinitions="Auto, *, Auto"
+                      Margin="14,8,6,0">
+                    <Grid.Styles>
+                        <!-- A style and not a value of the element: the end of a fold clears
+                             the value the element has -->
+                        <Style Selector="Grid.reply-bar">
+                            <Setter Property="ClipToBounds" Value="True"/>
+                        </Style>
+                    </Grid.Styles>
+                    <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding !Composer.ReplyBarPreview.IsEdit, FallbackValue=False}"
+                           Source="{StaticResource ReplyIcon}"/>
+                    <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding Composer.ReplyBarPreview.IsEdit, FallbackValue=False}"
+                           Source="{StaticResource PencilIcon}"/>
+
+                    <!-- A tap goes to the message being answered -->
+                    <Button Grid.Column="1"
+                            Classes="msg-reply"
+                            Margin="0"
+                            MaxWidth="Infinity"
+                            HorizontalAlignment="Stretch"
+                            Focusable="False"
+                            Command="{Binding Composer.JumpToReplyTargetCommand}">
+                        <Border Classes="msg-reply-body">
+                            <StackPanel>
+                                <TextBlock Classes="msg-reply-username"
+                                           Text="{Binding Composer.ReplyBarPreview.ReplyTitle}"/>
+                                <TextBlock FontSize="13"
+                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                           Text="{Binding Composer.ReplyBarPreview.Text}"
+                                           MaxLines="1"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Border>
+                    </Button>
+
+                    <Button Grid.Column="2"
+                            Classes="borderless"
+                            Width="36" Height="36" Padding="0"
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Focusable="False"
+                            Command="{Binding Composer.ResetReplyMessageCommand}">
+                        <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                    </Button>
+                </Grid>
+
+                <!-- The images of the message being typed, each showing how far it got and why it did not go -->
+                <ScrollViewer IsVisible="{Binding Composer.HasAttachments}" Margin="10,8,10,0"
+                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Composer.Attachments}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatAttachmentVM">
+                                <Border Classes="chat-attachment" Classes.error="{Binding HasError}">
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                        <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
+                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
+                                            <TextBlock Classes="chat-attachment-size" Text="{Binding SizeText}"
+                                                       IsVisible="{Binding !HasError}"/>
+                                            <TextBlock Classes="chat-attachment-error" Text="{Binding Error}"
+                                                       IsVisible="{Binding HasError}"/>
+                                            <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsUploading}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2"
+                                                Classes="borderless"
+                                                Width="32" Height="32" Padding="0"
+                                                VerticalAlignment="Center"
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                Focusable="False"
+                                                Command="{Binding $parent[ItemsControl].((chatVm:ActiveChatSessionVM)DataContext).Composer.RemoveAttachmentCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- The buttons stay on the last line while the input grows -->
+                <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="4">
+                    <!-- Not focusable, like the send button: the keyboard stays as it was -->
+                    <Button Grid.Column="0"
+                            Classes="borderless"
+                            Width="40" Height="40" Padding="0"
+                            VerticalAlignment="Bottom"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Focusable="False"
+                            IsVisible="{Binding Composer.IsAttachmentsAllowed}"
+                            Command="{Binding Composer.AttachFilesCommand}">
+                        <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
+                    </Button>
+
+                    <TextBox Grid.Column="1"
+                             x:Name="MessageInput"
+                             Classes="composer-input"
+                             PlaceholderText="{Binding Composer.InputWatermark}"
+                             Text="{Binding Composer.InputtedText}"
+                             MaxLength="{Binding Composer.MaxMessageLength}"
+                             IsReadOnly="{Binding Composer.IsMessageSending}"/>
+
+                    <!-- Characters left; appears only near the limit -->
+                    <TextBlock Grid.Column="2"
+                               VerticalAlignment="Bottom"
+                               Margin="6,0,6,10"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               IsVisible="{Binding Composer.IsLengthCounterVisible}"
+                               Text="{Binding Composer.RemainingCharacters}"/>
+
+                    <!-- Not focusable: a tap on it would take the focus from the input and fold the keyboard -->
+                    <Button Grid.Column="3"
+                            Classes="composer-send"
+                            Classes.sending="{Binding Composer.IsMessageSending}"
+                            VerticalAlignment="Bottom"
+                            Focusable="False"
+                            Command="{Binding Composer.SendMessageCommand}">
+                        <Panel>
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"
+                                                            IsVisible="{Binding Composer.IsMessageSending}"/>
+                            <!-- Paper plane pointing right, drawn on an 18 px grid -->
+                            <Path Classes="composer-send-plane"
+                                  IsVisible="{Binding !Composer.IsMessageSending}"
+                                  Width="18" Height="18"
+                                  Data="M3,3 L16.5,9 L3,15 L5.25,9 Z M5.25,9 H10.5"/>
+                        </Panel>
+                    </Button>
+                </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- What keeps the message from going out, in the color of the frame above -->
+            <Grid Classes="composer-notice"
+                  Classes.warning="{Binding Composer.IsComposerWarning}"
+                  Classes.error="{Binding Composer.IsComposerError}"
+                  IsVisible="{Binding Composer.HasComposerNotice}"
+                  ColumnDefinitions="Auto, *" ColumnSpacing="6"
+                  Margin="12,0">
+                <Panel Grid.Column="0" Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0">
+                    <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding Composer.IsComposerWarning}"/>
+                    <Image Source="{StaticResource CrossInCircleIcon}" IsVisible="{Binding Composer.IsComposerError}"/>
+                </Panel>
+                <TextBlock Grid.Column="1" Text="{Binding Composer.ComposerNotice}"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- An image of a message opened over the whole chat; a tap beside it or back closes it -->
+        <ContentControl Grid.Row="0" Grid.RowSpan="4"
+                        IsVisible="{Binding IsImageViewerOpen}"
+                        Content="{Binding ImageViewer}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="chatVm:ChatImageViewerVM">
+                    <Grid Classes="image-viewer" RowDefinitions="Auto, *" anim:Presence.Appear="Fade">
+                        <Button Grid.Row="0" Grid.RowSpan="2" Classes="image-viewer-backdrop"
+                                Focusable="False"
+                                Command="{Binding CloseCommand}"/>
+
+                        <Image Grid.Row="1" Margin="8"
+                               Source="{Binding Picture}"
+                               Stretch="Uniform" StretchDirection="DownOnly"
+                               IsHitTestVisible="False"/>
+
+                        <Border Grid.Row="0" Classes="image-viewer-bar">
+                            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Classes="image-viewer-error" Text="{Binding Error}"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding HasError}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="borderless chat-round" Focusable="False"
+                                        Command="{Binding SaveCommand}">
+                                    <Image Width="20" Height="20" Source="{StaticResource DownloadIcon}"/>
+                                </Button>
+                                <Button Grid.Column="2" Classes="borderless chat-round" Focusable="False"
+                                        Command="{Binding CloseCommand}">
+                                    <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                                </Button>
+                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,6,6,0"
+                                             Value="{Binding Progress}" IsVisible="{Binding IsLoading}"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!-- Menu of the message that was pressed and held. It is written here, next to what it acts on,
+             but the root view shows it: a sheet covers the status bar, which is outside the chat.
+             The data context is the message and is never inherited from where the sheet ends up -->
+        <views:BottomSheet Grid.Row="0" Grid.RowSpan="4"
+                           x:Name="MessageMenu"
+                           DataContext="{x:Null}"
+                           x:DataType="chatVm:ChatMessageVM">
+            <StackPanel Spacing="2">
+                <!-- The message the menu is about, so it is clear what the items act on -->
+                <Border Margin="12,4,12,8" Padding="10,0,0,0"
+                        BorderThickness="2,0,0,0"
+                        BorderBrush="{DynamicResource ButtonMainBrush}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="msg-reply-username" Text="{Binding SenderName}"
+                                   Classes.deleted-user="{Binding IsSenderDeleted}"/>
+                        <TextBlock FontSize="13"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding Message.TextContent.Text}"
+                                   MaxLines="2"
+                                   TextWrapping="Wrap"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
+                                      Command="{Binding StartReply}"/>
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
+                                      IsVisible="{Binding CanEdit}"
+                                      Command="{Binding StartEdit}"/>
+                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
+                                      IsEnabled="{Binding HasCopyText}"
+                                      Command="{Binding Copy}"/>
+                <!-- The profile is also where a user is renamed -->
+                <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
+                                      IsEnabled="{Binding !IsSenderDeleted}"
+                                      Command="{Binding ViewProfile}"/>
+
+                <Separator IsVisible="{Binding CanDelete}"/>
+
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                      IsVisible="{Binding CanDelete}"
+                                      Command="{Binding Delete}"/>
+            </StackPanel>
+        </views:BottomSheet>
+    </Grid>
+</UserControl>

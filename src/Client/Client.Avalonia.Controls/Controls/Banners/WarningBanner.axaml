@@ -1,0 +1,42 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners">
+    <Design.PreviewWith>
+        <banners:WarningBanner Header="Warning" Message="Something needs your attention." Width="400"/>
+    </Design.PreviewWith>
+
+    <Style Selector="banners|WarningBanner">
+        <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBannerBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="CornerRadius" Value="8" />
+
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <Grid ColumnDefinitions="Auto, *">
+                        <Image Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Top"
+                               Source="{DynamicResource WarningIcon}" />
+
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="{TemplateBinding Header}"
+                                       IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontWeight="SemiBold"
+                                       FontSize="14"
+                                       Foreground="{DynamicResource WarningBrush}" />
+                            <TextBlock Text="{TemplateBinding Message}"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

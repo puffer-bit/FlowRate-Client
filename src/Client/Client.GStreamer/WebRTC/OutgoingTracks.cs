@@ -1,0 +1,664 @@
+using System.Collections.Concurrent;
+using Client.Application.Ports;
+using Client.Core.Media;
+using Client.Core.Sessions.Hybrid;
+using Client.Core.Settings;
+using Client.GStreamer.Audio;
+using Client.GStreamer.Interop;
+using Client.GStreamer.Video;
+using Gst;
+using Microsoft.Extensions.Logging;
+using Shared.Models.Media;
+using Task = System.Threading.Tasks.Task;
+
+namespace Client.GStreamer.WebRTC;
+
+/// <summary>
+/// The tracks we send: their capture branches, the sections and pads of webrtcbin they go out
+/// through, and what belongs to a branch while it runs (voice gate, speech meter, preview pump).
+/// </summary>
+internal sealed partial class OutgoingTracks
+{
+    private readonly TransportCore _core;
+    private readonly MediaSections _sections;
+    private readonly GstAudioDeviceProvider? _devices;
+    private readonly Func<bool> _negotiate;
+    private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
+    private readonly ILogger _logger;
+
+    // The level and valve elements of the gates, see Release
+    private readonly WrapperScope _heldWrappers = new();
+
+    private readonly ConcurrentDictionary<string, OutboundTrack> _outbounds = new();
+    private readonly ConcurrentDictionary<string, Bin> _pendingOutgoing = new();
+    private readonly ConcurrentDictionary<string, OutgoingStream> _outgoing = new();
+
+    // The sink pads of webrtcbin by the mline index of their sending section. A pad is requested
+    // once and kept for the next track of the section: webrtcbin does not rebuild the sending
+    // chain of a section whose pad was released and requested again, and nothing leaves through it.
+    private readonly ConcurrentDictionary<int, Pad> _sendPads = new();
+
+    // The voice gates of the outgoing tracks. A level message tells only which element posted it, so
+    // each gate is found by the native handle of its level element: the handle stays the same, while
+    // the binding may hand out a new wrapper object for the element every time.
+    private readonly ConcurrentDictionary<IntPtr, VoiceGate> _gates = new();
+
+    // What the outgoing video tracks hold besides their branch, keyed by the outbound id
+    private readonly ConcurrentDictionary<string, OutgoingVideo> _outgoingVideo = new();
+
+    // What feeds the capture element of an outgoing audio track from a thread of its own, keyed by the outbound id
+    private readonly ConcurrentDictionary<string, IDisposable> _audioResources = new();
+
+    // Where the RTP sequence of a stopped video track goes on when it is started again, keyed by the outbound id
+    private readonly ConcurrentDictionary<string, int> _videoSequenceNumbers = new();
+
+    // More packets than a video branch sends between being told to stop and having stopped
+    private const int SequenceNumberMargin = 128;
+
+    // One capture part is replaced at a time, and not while its branch is being released
+    private readonly Lock _captureLock = new();
+
+    // Speech of our own outbound tracks, keyed by the outbound id
+    private readonly ConcurrentDictionary<string, OutgoingMeter> _outgoingMeters = new();
+
+    // Three frames of silence reach the encoder before the valve closes
+    private static readonly TimeSpan MuteValveDelay = TimeSpan.FromMilliseconds(60);
+    private static readonly TimeSpan UnmuteFadeDelay = TimeSpan.FromMilliseconds(20);
+    private readonly ConcurrentDictionary<string, int> _muteGenerations = new();
+
+    /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
+    /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
+    /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
+    public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
+        Func<bool> negotiate, Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
+    {
+        _core = core;
+        _sections = sections;
+        _devices = devices;
+        _negotiate = negotiate;
+        _onVideoFrame = onVideoFrame;
+        _logger = logger;
+    }
+
+    public OutboundTrack? Find(string outboundId) => _outbounds.GetValueOrDefault(outboundId);
+
+    /// <summary>
+    /// Adds the users whose outgoing tracks carry speech at the moment.
+    /// </summary>
+    public void CollectSpeaking(long now, HashSet<int> speaking)
+    {
+        foreach (var outgoing in _outgoingMeters.Values)
+        {
+            if (outgoing.Meter.IsSpeaking(now))
+                speaking.Add(outgoing.UserId);
+        }
+    }
+
+    /// <summary>
+    /// The first step of a teardown, before the pipeline stops: the pumps and the capture threads
+    /// work on elements of the pipeline, so they stop before it does.
+    /// </summary>
+    public void StopCapture()
+    {
+        var outgoingVideo = _outgoingVideo.Values.ToArray();
+        _outgoingVideo.Clear();
+
+        foreach (var video in outgoingVideo)
+        {
+            video.Pump.Dispose();
+            video.Resource?.Dispose();
+        }
+
+        foreach (var outboundId in _audioResources.Keys)
+        {
+            if (_audioResources.TryRemove(outboundId, out var resource))
+                resource.Dispose();
+        }
+
+        foreach (var pending in _pendingOutgoing.Values)
+            pending.Dispose();
+
+        _pendingOutgoing.Clear();
+        _gates.Clear();
+    }
+
+    /// <summary>
+    /// The last step of a teardown, once the pipeline has stopped: the wrappers of pads with a
+    /// probe have to outlive the streaming threads.
+    /// </summary>
+    public void Release(Element? webrtc)
+    {
+        foreach (var meter in _outgoingMeters.Values)
+            meter.Pad.Dispose();
+
+        _outgoingMeters.Clear();
+
+        foreach (var outgoing in _outgoing.Values)
+            outgoing.Branch.Dispose();
+
+        _outgoing.Clear();
+
+        foreach (var pad in _sendPads.Values)
+        {
+            webrtc?.ReleaseRequestPad(pad);
+            pad.Dispose();
+        }
+
+        _sendPads.Clear();
+
+        _heldWrappers.Release();
+    }
+
+    /// <summary>
+    /// Starts sending an audio track from any input: a capture device, a looped file or a tone. A
+    /// device chosen in the settings may be unplugged by now, so the default one is used instead
+    /// of sending silence.
+    /// </summary>
+    public bool Start(OutboundTrack outbound, AudioInput input, double volume, double? voiceGateThresholdDb,
+        NoiseSuppressionLevel noiseSuppression)
+    {
+        if (_outbounds.ContainsKey(outbound.Id))
+            return true;
+
+        var source = CreateSource(input);
+
+        if (source == null)
+        {
+            LogAudioSourceCreateFailed(_core.SessionId, input);
+            return false;
+        }
+
+        // Only a microphone is processed and gated: a file or a tone is meant to be heard as it is
+        if (!Start(outbound, source.Element, volume, input is DeviceAudioInput, voiceGateThresholdDb, noiseSuppression))
+        {
+            source.Resource?.Dispose();
+            return false;
+        }
+
+        if (source.Resource != null)
+            _audioResources[outbound.Id] = source.Resource;
+
+        return true;
+    }
+
+    private AudioSource? CreateSource(AudioInput input)
+    {
+        switch (input)
+        {
+            case DeviceAudioInput device when _devices != null:
+                return AudioSource.Of(_devices.CreateInputElement(device.DeviceId) ?? _devices.CreateInputElement(null));
+            case DeviceAudioInput:
+                return null;
+            case ProcessLoopbackAudioInput loopback:
+                return AudioSource.Of(ProcessLoopbackSource.Create(loopback));
+            case PipeWireAppAudioInput app:
+                var pipeWire = PipeWireAppAudioSource.Create(app,
+                    exception => LogAudioAppStreamsFailed(exception, _core.SessionId));
+                return pipeWire == null ? null : new AudioSource(pipeWire.Element, pipeWire);
+            default:
+                return AudioSource.Of(FileAudioSource.CreateElement(input));
+        }
+    }
+
+    /// <summary>
+    /// Starts sending a track the SFU created a producer for. The section is added on the next
+    /// negotiation round, which also links <paramref name="source"/> to webrtcbin.
+    /// </summary>
+    /// <param name="source">Capture element; the transport takes ownership of it.</param>
+    /// <param name="volume">Gain applied before encoding.</param>
+    /// <param name="isMicrophone">
+    /// Whether the track gets the microphone processing and a voice gate. The gate can be turned on
+    /// and off later, but not added.
+    /// </param>
+    /// <param name="voiceGateThresholdDb">
+    /// Peak level in dBFS from which a gated track is sent, or null to send it all the time.
+    /// </param>
+    /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
+    public bool Start(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
+        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression)
+    {
+        var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone, noiseSuppression);
+
+        if (branch == null)
+        {
+            LogCaptureBranchBuildFailed(_core.SessionId);
+            return false;
+        }
+
+        if (!_outbounds.TryAdd(outbound.Id, outbound))
+        {
+            branch.Dispose();
+            return true;
+        }
+
+        if (branch.GetByName(OutgoingAudioBranch.GateLevelName) is { } level &&
+            branch.GetByName(OutgoingAudioBranch.GateValveName) is { } valve)
+            _gates[level.Handle] = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), voiceGateThresholdDb);
+
+        // Watches what really leaves: nothing while muted or gated. The sound of a screen is not
+        // speech, and would show us speaking for as long as a film plays.
+        if (outbound.SourceType != MediaSourceType.Screen)
+        {
+            var meter = new SpeechActivityMeter();
+
+            // The wrapper stays with the meter: the probe is called with a wrapper of the pad, so
+            // this one has to outlive the streaming threads
+            var output = branch.GetStaticPad("src")!;
+            meter.Attach(output);
+            _outgoingMeters[outbound.Id] = new OutgoingMeter(outbound.UserId, meter, output);
+        }
+
+        return RegisterOutgoing(outbound, branch);
+    }
+
+    // Off until it works: pipewiresrc 1.2.7 fails on the DMA_DRM format KWin picks ("unhandled format"),
+    // and BGRx memory straight into vapostproc comes out black
+    private static readonly bool IsDmaBufCaptureEnabled = false;
+
+    /// <summary>
+    /// Starts sending a video track captured from <paramref name="input"/> to a producer the SFU
+    /// created for it. The frames that are sent also come back through the frame handler given to the constructor.
+    /// </summary>
+    /// <param name="settings">The size and the frame rate the picture is sent with.</param>
+    public bool Start(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings)
+    {
+        if (_outbounds.ContainsKey(outbound.Id))
+            return true;
+
+        // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
+        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf();
+        var source = VideoSourceFactory.Create(input, settings.Framerate,
+            exception => LogCaptureFailed(exception, _core.SessionId),
+            (rate, caps) => LogCaptureRate(_core.SessionId, rate, settings.Framerate, caps), isDmaBuf);
+
+        if (source == null)
+        {
+            LogVideoSourceCreateFailed(_core.SessionId, input);
+            return false;
+        }
+
+        // The screen capture of Windows hands out Direct3D 11 textures
+        var video = OutgoingVideoBranch.Build(outbound, source.Element, settings,
+            _videoSequenceNumbers.GetValueOrDefault(outbound.Id, -1),
+            isD3D11Source: OperatingSystem.IsWindows() && input is MonitorVideoInput or WindowVideoInput,
+            isDmaBufSource: isDmaBuf);
+
+        if (video == null)
+        {
+            source.Resource?.Dispose();
+            LogCaptureBranchBuildFailed(_core.SessionId);
+            return false;
+        }
+
+        if (!_outbounds.TryAdd(outbound.Id, outbound))
+        {
+            video.Bin.Dispose();
+            source.Resource?.Dispose();
+            return true;
+        }
+
+        LogVideoEncoder(_core.SessionId, video.Encoder.ToLaunchString(), video.Scaler);
+
+        var pump = new VideoFramePump(video.Preview, VideoOutputKind.Memory, $"preview_{_core.SessionId}",
+            frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame),
+            exception => LogVideoFrameFailed(exception, _core.SessionId));
+
+        _outgoingVideo[outbound.Id] = new OutgoingVideo(pump, source.Resource);
+
+        return RegisterOutgoing(outbound, video.Bin);
+    }
+
+    /// <summary>
+    /// Gives a capture branch a sending section and negotiates it. The branch is linked to webrtcbin
+    /// during that round.
+    /// </summary>
+    private bool RegisterOutgoing(OutboundTrack outbound, Bin branch)
+    {
+        _pendingOutgoing[outbound.Id] = branch;
+
+        using (_sections.Enter())
+        {
+            _sections.ClaimSending(outbound.MediaType).OutboundId = outbound.Id;
+        }
+
+        LogOutboundRegistered(_core.SessionId, outbound.MediaType, outbound.SSRC);
+
+        return _negotiate();
+    }
+
+    /// <summary>
+    /// Stops sending a track. Its section stays as inactive, like the one of a departed inbound.
+    /// </summary>
+    public void Stop(string outboundId)
+    {
+        if (!_outbounds.TryRemove(outboundId, out _))
+            return;
+
+        _outgoingVideo.TryRemove(outboundId, out var video);
+
+        // Stopped before the branch: it adds and removes elements of it from a thread of its own
+        if (_audioResources.TryRemove(outboundId, out var audioResource))
+            audioResource.Dispose();
+
+        // Only an estimate: the branch keeps sending until it is shut down, off this thread. A
+        // number that was already sent is refused by the SRTP replay check, which fails the first
+        // packet of the next branch and stops it for good, hence the margin. The exact number
+        // replaces it once the branch has stopped.
+        if (video != null && FindOutgoingBranch(outboundId) is { } videoBranch &&
+            OutgoingVideoBranch.ReadNextSequenceNumber(videoBranch) is { } nextSequenceNumber)
+            _videoSequenceNumbers[outboundId] = (nextSequenceNumber + SequenceNumberMargin) & 0xFFFF;
+
+        _muteGenerations.TryRemove(outboundId, out _);
+        _outgoingMeters.TryRemove(outboundId, out var meter);
+
+        if (_pendingOutgoing.TryRemove(outboundId, out var pending))
+        {
+            video?.Pump.Dispose();
+            video?.Resource?.Dispose();
+            meter?.Pad.Dispose();
+            pending.Dispose();
+        }
+
+        foreach (var gate in _gates.Where(item => item.Value.OutboundId == outboundId))
+            _gates.TryRemove(gate.Key, out _);
+
+        using (_sections.Enter())
+        {
+            var slot = _sections.Slots.FirstOrDefault(item => item.OutboundId == outboundId);
+
+            if (slot != null)
+                slot.OutboundId = null;
+        }
+
+        if (_outgoing.TryRemove(outboundId, out var outgoing))
+            Task.Run(() => ReleaseOutgoing(outboundId, outgoing, video, meter));
+
+        LogOutboundStopped(_core.SessionId);
+
+        _negotiate();
+    }
+
+    /// <summary>
+    /// Stops or resumes sending an outbound track without touching its section or its producer.
+    /// The sound goes silent at once; the valve follows a few frames later, so the encoder ends on
+    /// silence. On resume the valve opens while still silent and the sound returns a frame later.
+    /// </summary>
+    public bool SetMuted(string outboundId, bool isMuted)
+    {
+        var branch = FindOutgoingBranch(outboundId);
+        using var valve = branch?.GetByName(OutgoingAudioBranch.MuteValveName);
+
+        if (branch == null || valve == null)
+        {
+            LogNoCaptureBranchToMute(_core.SessionId, isMuted);
+            return false;
+        }
+
+        var generation = _muteGenerations.AddOrUpdate(outboundId, 1, (_, current) => current + 1);
+
+        using (var fade = branch.GetByName(OutgoingAudioBranch.MuteFadeName))
+        {
+            if (fade == null)
+                valve.SetProperty("mute", isMuted);
+            else if (isMuted)
+                fade.SetProperty("mute", true);
+            else
+                valve.SetProperty("mute", false);
+
+            if (fade != null)
+                _ = FinishMuteChangeAsync(outboundId, isMuted, generation);
+        }
+
+        LogOutboundMuteChanged(_core.SessionId, isMuted);
+
+        return true;
+    }
+
+    // The second half of SetMuted, skipped when another change came in meanwhile
+    private async System.Threading.Tasks.Task FinishMuteChangeAsync(string outboundId, bool isMuted, int generation)
+    {
+        await System.Threading.Tasks.Task.Delay(isMuted ? MuteValveDelay : UnmuteFadeDelay).ConfigureAwait(false);
+
+        if (!_muteGenerations.TryGetValue(outboundId, out var current) || current != generation)
+            return;
+
+        var branch = FindOutgoingBranch(outboundId);
+
+        if (isMuted)
+        {
+            using var valve = branch?.GetByName(OutgoingAudioBranch.MuteValveName);
+            valve?.SetProperty("mute", true);
+        }
+        else
+        {
+            using var fade = branch?.GetByName(OutgoingAudioBranch.MuteFadeName);
+            fade?.SetProperty("mute", false);
+        }
+    }
+
+    public void SetVolume(string outboundId, double volume)
+    {
+        using var element = FindOutgoingBranch(outboundId)?.GetByName(OutgoingAudioBranch.InputVolumeName);
+
+        if (element == null)
+            return;
+
+        element.SetProperty("volume", volume);
+        LogOutboundVolumeChanged(_core.SessionId, volume);
+    }
+
+    public void SetVoiceGateThreshold(string outboundId, double? thresholdDb)
+    {
+        foreach (var gate in _gates.Values.Where(gate => gate.OutboundId == outboundId))
+        {
+            gate.SetThreshold(thresholdDb);
+            LogVoiceGateThresholdChanged(_core.SessionId, thresholdDb);
+        }
+    }
+
+    /// <summary>
+    /// Makes a running audio track capture from another input, or with another noise suppression,
+    /// while its section, its producer and its RTP stream stay. Done off the calling thread: stopping
+    /// a capture device may take a while.
+    /// </summary>
+    public void SetInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression)
+    {
+        Task.Run(() =>
+        {
+            try
+            {
+                lock (_captureLock)
+                {
+                    // Stopped meanwhile, then its branch is gone or about to be
+                    if (!_outbounds.TryGetValue(outboundId, out var outbound) ||
+                        FindOutgoingBranch(outboundId) is not { } branch)
+                        return;
+
+                    var isScreen = outbound.SourceType == MediaSourceType.Screen;
+
+                    var source = CreateSource(input);
+
+                    if (source == null)
+                    {
+                        LogAudioSourceCreateFailed(_core.SessionId, input);
+                        return;
+                    }
+
+                    // The previous source stops feeding its element before the element is replaced
+                    if (_audioResources.TryRemove(outboundId, out var previous))
+                        previous.Dispose();
+
+                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, input is DeviceAudioInput && !isScreen,
+                            isScreen, noiseSuppression))
+                    {
+                        if (source.Resource != null)
+                            _audioResources[outboundId] = source.Resource;
+
+                        LogOutboundInputChanged(_core.SessionId, input, noiseSuppression);
+                    }
+                    else
+                    {
+                        source.Resource?.Dispose();
+                        LogCaptureBranchBuildFailed(_core.SessionId);
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                LogOutboundInputChangeFailed(exception, _core.SessionId);
+            }
+        });
+    }
+
+    /// <summary>
+    /// The capture branch of an outbound track, linked to webrtcbin or still waiting for its section.
+    /// </summary>
+    private Bin? FindOutgoingBranch(string outboundId) =>
+        _outgoing.TryGetValue(outboundId, out var outgoing)
+            ? outgoing.Branch
+            : _pendingOutgoing.GetValueOrDefault(outboundId);
+
+    /// <summary>
+    /// Links the capture branches of new outbound sections to webrtcbin. Runs between applying the
+    /// remote description, which creates the transceivers, and creating the answer, which then
+    /// sends on them.
+    /// </summary>
+    public void AttachPending()
+    {
+        List<(int Index, string OutboundId)> pending;
+
+        using (_sections.Enter())
+        {
+            pending = _sections.Slots
+                .Select((slot, index) => (Slot: slot, Index: index))
+                .Where(item => item.Slot.OutboundId != null && _pendingOutgoing.ContainsKey(item.Slot.OutboundId))
+                .Select(item => (item.Index, item.Slot.OutboundId!))
+                .ToList();
+        }
+
+        foreach (var (index, outboundId) in pending)
+        {
+            if (!_pendingOutgoing.TryRemove(outboundId, out var branch))
+                continue;
+
+            var webrtc = _core.WebRTC;
+            var pipeline = _core.Pipeline;
+
+            if (webrtc == null || pipeline == null)
+            {
+                branch.Dispose();
+                return;
+            }
+
+            using (var transceiver = GstNative.EmitGetObject<Gst.GObject.Object>(webrtc, "get-transceiver", index))
+            {
+                if (transceiver != null)
+                    Global.UtilSetObjectArg(transceiver, "direction", "sendonly");
+            }
+
+            // Naming the pad after the mline binds it to the transceiver of that section.
+            if (!_sendPads.TryGetValue(index, out var sinkPad))
+            {
+                sinkPad = webrtc.RequestPadSimple($"sink_{index}");
+
+                if (sinkPad == null)
+                {
+                    LogSendPadRequestFailed(_core.SessionId, index);
+                    branch.Dispose();
+                    continue;
+                }
+
+                _sendPads[index] = sinkPad;
+            }
+
+            // The track that used the section a moment ago is released off this thread and may
+            // not have let go of the pad yet
+            if (sinkPad.GetPeer() is { } previous)
+            {
+                using (previous)
+                    previous.Unlink(sinkPad);
+            }
+
+            pipeline.Add(branch);
+
+            PadLinkReturn result;
+
+            using (var output = branch.GetStaticPad("src"))
+                result = output?.Link(sinkPad) ?? PadLinkReturn.Refused;
+
+            if (result != PadLinkReturn.Ok)
+            {
+                LogCaptureBranchLinkFailed(_core.SessionId, index, result);
+                pipeline.Remove(branch);
+                branch.Dispose();
+                continue;
+            }
+
+            branch.SyncStateWithParent();
+            _outgoing[outboundId] = new OutgoingStream(branch, sinkPad);
+
+            if (_outgoingVideo.ContainsKey(outboundId))
+                LogSendingVideo(_core.SessionId, index);
+            else
+                LogSendingAudio(_core.SessionId, index);
+        }
+    }
+
+    private void ReleaseOutgoing(string outboundId, OutgoingStream outgoing, OutgoingVideo? video,
+        OutgoingMeter? meter)
+    {
+        try
+        {
+            // Stopped first: the threads must not work on elements that are shutting down
+            video?.Pump.Dispose();
+            video?.Resource?.Dispose();
+
+            lock (_captureLock)
+                PipelineBranch.Shutdown(outgoing.Branch);
+
+            meter?.Pad.Dispose();
+
+            // Nothing leaves the branch anymore, so this is the number the next one continues with,
+            // unless the track was started again meanwhile and took the estimate
+            if (video != null && !_outbounds.ContainsKey(outboundId) &&
+                OutgoingVideoBranch.ReadNextSequenceNumber(outgoing.Branch) is { } nextSequenceNumber)
+                _videoSequenceNumbers[outboundId] = nextSequenceNumber;
+
+            // Removing the branch unlinks it; the pad of webrtcbin stays for the next track
+            _core.Pipeline?.Remove(outgoing.Branch);
+            outgoing.Branch.Dispose();
+        }
+        catch (Exception exception)
+        {
+            LogCaptureBranchReleaseFailed(exception, _core.SessionId);
+        }
+    }
+
+    private sealed record OutgoingStream(Bin Branch, Pad SinkPad);
+
+    /// <param name="Resource">What feeds the element from a thread of its own, or null.</param>
+    private sealed record AudioSource(Element Element, IDisposable? Resource = null)
+    {
+        public static AudioSource? Of(Element? element) => element == null ? null : new AudioSource(element);
+    }
+
+    /// <param name="Pump">Reads the preview frames of the branch.</param>
+    /// <param name="Resource">What feeds the capture element from a thread of its own, or null.</param>
+    private sealed record OutgoingVideo(VideoFramePump Pump, IDisposable? Resource);
+
+    /// <param name="Pad">The pad the meter watches, disposed once its branch has stopped.</param>
+    private sealed record OutgoingMeter(int UserId, SpeechActivityMeter Meter, Pad Pad);
+
+    /// <summary>
+    /// Passes the level messages of the capture branches to their gates. Runs on the bus watcher.
+    /// </summary>
+    public void OnElementMessage(Message message)
+    {
+        // Read without a wrapper: one made here for an element nobody else wraps, such as the RTP
+        // manager inside webrtcbin, would never be disposed and would keep that element for good
+        if (!_gates.TryGetValue(GstNative.GetMessageSource(message), out var gate) || !gate.Update(message))
+            return;
+
+        LogVoiceGateChanged(_core.SessionId, gate.IsOpen);
+    }
+}

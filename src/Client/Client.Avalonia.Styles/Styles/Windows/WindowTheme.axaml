@@ -1,0 +1,69 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:scaling="clr-namespace:Client.Avalonia.Styles.Scaling;assembly=Client.Avalonia.Styles"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The window of the Fluent theme with its content laid out at the scale of the interface.
+         The layers are scaled along with the content, so what is shown in the overlay layer
+         (dialogs, the settings) has the size of everything else -->
+    <ControlTheme x:Key="{x:Type Window}" TargetType="Window">
+        <Setter Property="Background" Value="{DynamicResource SystemRegionBrush}"/>
+        <Setter Property="TransparencyBackgroundFallback" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+        <Setter Property="TopLevel.SystemBarColor" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Name="PART_TransparencyFallback" IsHitTestVisible="False"/>
+                    <!-- A window that draws its own frame leaves the margin to it: the frame and its
+                         shadow are drawn there, under the window. Such a window may round its corners,
+                         which cuts the content and what is shown over it -->
+                    <Border Background="{TemplateBinding Background}" IsHitTestVisible="False"
+                            Margin="{TemplateBinding WindowDecorationMargin}"
+                            CornerRadius="{TemplateBinding CornerRadius}"/>
+                    <Border Margin="{TemplateBinding WindowDecorationMargin}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            ClipToBounds="True">
+                        <LayoutTransformControl LayoutTransform="{x:Static scaling:WindowScale.Transform}">
+                            <VisualLayerManager Name="PART_VisualLayerManager">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Content="{TemplateBinding Content}"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </VisualLayerManager>
+                        </LayoutTransformControl>
+                    </Border>
+                    <!-- The line around a window that draws its own frame. Above the content, whose
+                         edge would otherwise show through the rounded corners -->
+                    <Border Margin="{TemplateBinding WindowDecorationMargin}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            IsHitTestVisible="False"/>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- What Avalonia draws around a window without the title bar of the system, where the platform
+         leaves that to the application (X11): only the shadow, which needs a transparent window.
+         Its width is also where the window is resized. The line around the window is drawn by the
+         window itself, over its content: the line of the decorations lies under the content and
+         breaks up at rounded corners -->
+    <ControlTheme x:Key="BorderlessWindowDecorations" TargetType="WindowDrawnDecorations"
+                  BasedOn="{StaticResource {x:Type WindowDrawnDecorations}}">
+        <Setter Property="DefaultShadowThickness" Value="28"/>
+        <Setter Property="DefaultFrameThickness" Value="0"/>
+
+        <!-- The corners of the window, see MainWindow -->
+        <Style Selector="^ /template/ Border#PART_WindowBorder">
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+        <Style Selector="^:has-shadow /template/ Border#PART_WindowBorder">
+            <Setter Property="BoxShadow" Value="{DynamicResource WindowShadow}"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

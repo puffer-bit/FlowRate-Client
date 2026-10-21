@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsAotCompatible>true</IsAotCompatible>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Avalonia" Version="12.1.2" />
+      <PackageReference Include="Avalonia.BuildServices" Version="11.3.2">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Controls\Banners\WarningBanner.axaml" />
+      <AdditionalFiles Include="Controls\LoadingIndicators\ProgressRing.axaml" />
+      <AdditionalFiles Include="Controls\LoadingIndicators\PulseLoadingIndicator.axaml" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Controls\SettingsHeader.axaml.cs">
+        <DependentUpon>SettingsHeader.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+    </ItemGroup>
+
+</Project>

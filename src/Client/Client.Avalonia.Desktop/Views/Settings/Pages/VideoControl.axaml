@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.VideoControl"
+             x:DataType="pagesVm:VideoControlVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="video.hardwareDecoding">
+                <CheckBox IsChecked="{Binding IsHardwareDecodingEnabled}"/>
+            </ui:SettingsRow>
+            <!-- Which decoder and how frames leave it only matter while the GPU decodes -->
+            <ui:SettingsRow services:SettingText.Key="video.decoder"
+                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
+                <ComboBox MinWidth="160" ItemsSource="{Binding DecoderChoices}"
+                          SelectedIndex="{Binding DecoderIndex}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.zeroCopy"
+                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
+                <CheckBox IsChecked="{Binding IsZeroCopyEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="video.presentation"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="video.timedPresentation">
+                <CheckBox IsChecked="{Binding IsTimedPresentationEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.presentationBuffer"
+                            IsExpanded="{Binding IsTimedPresentationEnabled}">
+                <ComboBox MinWidth="120" ItemsSource="{Binding PresentationBufferChoices}"
+                          SelectedIndex="{Binding PresentationBufferIndex}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.frameStats">
+                <CheckBox IsChecked="{Binding ShowFrameStats}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="video.encoding"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="video.encoder">
+                <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
+                          SelectedIndex="{Binding EncoderIndex}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

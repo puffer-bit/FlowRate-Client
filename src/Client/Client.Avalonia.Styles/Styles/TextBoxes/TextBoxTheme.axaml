@@ -1,0 +1,274 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20" Width="300">
+            <StackPanel Spacing="12">
+                <TextBox Text="Text"/>
+                <TextBox PlaceholderText="Placeholder"/>
+                <TextBox Classes="password" Text="password"/>
+                <TextBox Classes="password" Text="password" RevealPassword="True"/>
+                <TextBox Classes="password" PlaceholderText="Password"/>
+                <TextBox Classes="invalid" Text="Invalid"/>
+                <TextBox IsEnabled="False" Text="Disabled"/>
+                <TextBox Classes="search" PlaceholderText="Search"/>
+            </StackPanel>
+        </Border>
+    </Design.PreviewWith>
+
+    <x:Double x:Key="TextControlDisabledOpacity">0.5</x:Double>
+
+    <!-- The eye at the right edge of a password field: a small flat button like the spinner buttons.
+         A slash is drawn across the eye while the password is shown.
+         The states go to the template parts: the global ToggleButton style owns the control's own brushes -->
+    <ControlTheme x:Key="TextBoxRevealButton" TargetType="ToggleButton">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="bg" Background="Transparent" CornerRadius="4">
+                    <Panel Width="16" Height="16"
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Stretch="None"
+                              Data="M 1,8 C 3,4.3 5.3,3 8,3 C 10.7,3 13,4.3 15,8 C 13,11.7 10.7,13 8,13 C 5.3,13 3,11.7 1,8 Z M 6,8 A 2,2 0 1 0 10,8 A 2,2 0 1 0 6,8 Z"
+                              Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                        <Path Name="slash" Stretch="None"
+                              Data="M 2.5,2.5 L 13.5,13.5"
+                              Stroke="{TemplateBinding Foreground}" StrokeThickness="1.3"
+                              StrokeLineCap="Round"/>
+                    </Panel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Short}"/>
+            </Transitions>
+        </Setter>
+
+        <Style Selector="^ /template/ Border#bg">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^ /template/ Path#slash">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="scale(0.3)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^:checked /template/ Path#slash">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#bg">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="^:pressed /template/ Border#bg">
+            <Setter Property="Background" Value="{DynamicResource OverlayBrush}"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- Replaces the Fluent TextBox everywhere. Same field as the ComboBox: one pixel of border in every
+         state, accent border while focused. The part names are the Fluent ones, so the styles that
+         reach into the template (the chat composer, .invalid) keep working.
+         Classes="password" turns it into a password field: dots instead of the text and an eye that
+         flips RevealPassword. Classes="search" puts a magnifier in front of the text -->
+    <ControlTheme x:Key="{x:Type TextBox}" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource TextControlBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource TextSelectionBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource OnAccentTextBrush}"/>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="MinWidth" Value="{DynamicResource TextControlThemeMinWidth}"/>
+        <Setter Property="Padding" Value="10,5,10,6"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="ScrollViewer.IsScrollChainingEnabled" Value="True"/>
+        <!-- Cut, copy and paste; the menu itself is the Fluent one -->
+        <Setter Property="ContextFlyout" Value="{DynamicResource DefaultTextBoxContextFlyout}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DataValidationErrors>
+                    <Panel>
+                        <Border Name="PART_BorderElement"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                MinWidth="{TemplateBinding MinWidth}"
+                                MinHeight="{TemplateBinding MinHeight}"/>
+
+                        <Border Margin="{TemplateBinding BorderThickness}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <ContentPresenter Grid.Column="0"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Content="{TemplateBinding InnerLeftContent}"/>
+                                <DockPanel Name="PART_InnerDockPanel" Grid.Column="1"
+                                           Margin="{TemplateBinding Padding}">
+                                    <TextBlock Name="PART_FloatingPlaceholder"
+                                               DockPanel.Dock="Top"
+                                               Foreground="{TemplateBinding PlaceholderForeground}"
+                                               IsVisible="False"
+                                               Text="{TemplateBinding PlaceholderText}"/>
+
+                                    <ScrollViewer Name="PART_ScrollViewer"
+                                                  HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                                                  VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+                                                  IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}"
+                                                  AllowAutoHide="{TemplateBinding (ScrollViewer.AllowAutoHide)}"
+                                                  BringIntoViewOnFocusChange="{TemplateBinding (ScrollViewer.BringIntoViewOnFocusChange)}">
+                                        <Panel>
+                                            <!-- Hidden as soon as there is text, including text still being composed by an input method -->
+                                            <TextBlock Name="PART_Placeholder"
+                                                       Foreground="{TemplateBinding PlaceholderForeground}"
+                                                       Text="{TemplateBinding PlaceholderText}"
+                                                       TextAlignment="{TemplateBinding TextAlignment}"
+                                                       TextWrapping="{TemplateBinding TextWrapping}"
+                                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                                                <TextBlock.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                        <Binding ElementName="PART_TextPresenter" Path="PreeditText" Converter="{x:Static StringConverters.IsNullOrEmpty}"/>
+                                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text" Converter="{x:Static StringConverters.IsNullOrEmpty}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.IsVisible>
+                                            </TextBlock>
+
+                                            <TextPresenter Name="PART_TextPresenter"
+                                                           Text="{TemplateBinding Text, Mode=TwoWay}"
+                                                           CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                                                           CaretIndex="{TemplateBinding CaretIndex}"
+                                                           SelectionStart="{TemplateBinding SelectionStart}"
+                                                           SelectionEnd="{TemplateBinding SelectionEnd}"
+                                                           TextAlignment="{TemplateBinding TextAlignment}"
+                                                           TextWrapping="{TemplateBinding TextWrapping}"
+                                                           LineHeight="{TemplateBinding LineHeight}"
+                                                           LetterSpacing="{TemplateBinding LetterSpacing}"
+                                                           PasswordChar="{TemplateBinding PasswordChar}"
+                                                           RevealPassword="{TemplateBinding RevealPassword}"
+                                                           SelectionBrush="{TemplateBinding SelectionBrush}"
+                                                           SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                                           CaretBrush="{TemplateBinding CaretBrush}"
+                                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                                        </Panel>
+                                        <ScrollViewer.Styles>
+                                            <Style Selector="ScrollContentPresenter#PART_ContentPresenter">
+                                                <Setter Property="Cursor" Value="IBeam"/>
+                                            </Style>
+                                        </ScrollViewer.Styles>
+                                    </ScrollViewer>
+                                </DockPanel>
+                                <ContentPresenter Grid.Column="2"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Content="{TemplateBinding InnerRightContent}"/>
+                                <ToggleButton Name="reveal" Grid.Column="3"
+                                              Theme="{StaticResource TextBoxRevealButton}"
+                                              Margin="0,0,3,0"
+                                              VerticalAlignment="Center"
+                                              IsVisible="False"
+                                              IsChecked="{TemplateBinding RevealPassword, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </Panel>
+                </DataValidationErrors>
+            </ControlTemplate>
+        </Setter>
+
+        <!-- Focus, hover, errors and the disabled state of a busy form change these brushes; blend them instead of snapping -->
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Medium}"/>
+            </Transitions>
+        </Setter>
+        <Style Selector="^ /template/ Border#PART_BorderElement">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Medium}"/>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Medium}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="^ /template/ TextBlock#PART_FloatingPlaceholder">
+            <Setter Property="Cursor" Value="IBeam"/>
+        </Style>
+        <Style Selector="^[UseFloatingPlaceholder=true]:not(:empty) /template/ TextBlock#PART_FloatingPlaceholder">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrushPointerOver}"/>
+        </Style>
+
+        <Style Selector="^:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource TextControlBackgroundFocused}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonHoveredBrush}"/>
+        </Style>
+
+        <!-- Dimmed as a whole, like the ComboBox, so the two look the same side by side in a disabled form.
+             A text box inside another field sets the resource to 1: the field dims itself -->
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="{DynamicResource TextControlDisabledOpacity}"/>
+        </Style>
+
+        <!-- Password field. The dots are spaced out a little; revealed text keeps the normal spacing -->
+        <Style Selector="^.password">
+            <Setter Property="PasswordChar" Value="•"/>
+            <Setter Property="Padding" Value="10,5,4,6"/>
+        </Style>
+        <Style Selector="^.password[RevealPassword=False]">
+            <Setter Property="LetterSpacing" Value="3"/>
+        </Style>
+        <!-- The placeholder is ordinary text, not dots -->
+        <Style Selector="^.password /template/ TextBlock#PART_Placeholder">
+            <Setter Property="LetterSpacing" Value="0"/>
+        </Style>
+        <Style Selector="^.password /template/ ToggleButton#reveal">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+
+        <!-- Search field: a magnifier in front of the text -->
+        <Style Selector="^.search">
+            <Setter Property="Padding" Value="8,5,10,6"/>
+            <Setter Property="InnerLeftContent">
+                <Template>
+                    <Path Width="16" Height="16" Stretch="None"
+                          Margin="10,0,0,0" VerticalAlignment="Center"
+                          Data="M 2,6.5 A 4.5,4.5 0 1 0 11,6.5 A 4.5,4.5 0 1 0 2,6.5 Z M 9.9,9.9 L 14,14"
+                          Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.4"
+                          StrokeLineCap="Round"/>
+                </Template>
+            </Setter>
+        </Style>
+
+        <!-- A value the form does not accept; wins over the hover and focus colors so it stays visible while typing -->
+        <Style Selector="^:error /template/ Border#PART_BorderElement,
+                         ^.invalid /template/ Border#PART_BorderElement,
+                         ^.invalid:pointerover /template/ Border#PART_BorderElement,
+                         ^.invalid:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

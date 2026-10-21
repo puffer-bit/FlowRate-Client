@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:DataType="mainVm:MainWindowVM"
+             x:Class="Client.Views.Main.MainStatusBar">
+
+    <Border Height="28" Padding="12,0"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
+            IsVisible="{Binding !IsContentFullScreen}">
+        <Border.Styles>
+            <Style Selector="Ellipse.connection">
+                <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Fill" Duration="{anim:Motion Short}"/>
+                    </Transitions>
+                </Setter>
+            </Style>
+            <Style Selector="Ellipse.connection.online">
+                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+            </Style>
+        </Border.Styles>
+
+        <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="8">
+
+            <Panel Grid.Column="0" VerticalAlignment="Center">
+                <loadingIndicators:ProgressRing x:Name="LoadingIcon"
+                                                Width="14" Height="14" MinWidth="14" MinHeight="14"
+                                                IsIndeterminate="True"
+                                                IsVisible="{Binding StatusLine.IsActive}"
+                                                BorderThickness="2"
+                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+                <Ellipse Classes="connection" Classes.online="{Binding IsConnected}"
+                         Width="8" Height="8"
+                         IsVisible="{Binding !StatusLine.IsActive}"/>
+            </Panel>
+
+            <TextBlock Grid.Column="1"
+                       Text="{Binding StatusLine.Text}"
+                       FontSize="12"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"
+                       Opacity="{Binding StatusLine.IsTextVisible}">
+                <TextBlock.Transitions>
+                    <Transitions>
+                        <!-- The same duration as ActionTextFadeDuration, so the text is swapped only once it is fully faded out -->
+                        <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    </Transitions>
+                </TextBlock.Transitions>
+            </TextBlock>
+
+            <!-- The bar is not filled with the accent color any more, so the ping takes the text color of the theme -->
+            <!-- The notification center: everything the corner of the window has shown. The dot tells
+                 that something came since it was last opened -->
+            <Button Grid.Column="3" Classes="borderless"
+                    Width="24" Height="24"
+                    VerticalAlignment="Center"
+                    DataContext="{Binding Notifications}"
+                    ToolTip.Tip="{l:Text notification.center.title}">
+                <Button.Flyout>
+                    <Flyout Placement="TopEdgeAlignedRight">
+                        <notificationViews:NotificationCenter/>
+                    </Flyout>
+                </Button.Flyout>
+                <!-- The bell is drawn in the lower part of its icon, so it is lifted to sit in the middle of the bar -->
+                <Panel x:DataType="notificationVm:NotificationCenterVM" RenderTransform="translateY(-2px)">
+                    <Image Width="18" Height="18" Source="{StaticResource BellIcon}"/>
+                    <Ellipse Width="7" Height="7"
+                             HorizontalAlignment="Right" VerticalAlignment="Top"
+                             Margin="0,2,2,0"
+                             Fill="{DynamicResource ButtonMainBrush}"
+                             IsVisible="{Binding HasUnread}"/>
+                </Panel>
+            </Button>
+
+            <indicators:PingIndicator Grid.Column="2"
+                                      VerticalAlignment="Center"
+                                      FontSize="12"
+                                      Foreground="{DynamicResource SecondaryTextBrush}"
+                                      RoundTrip="{Binding ServerRoundTrip}"
+                                      IsVisible="{Binding ServerRoundTrip, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                      ToolTip.Tip="{l:Text main.ping.tooltip}"/>
+        </Grid>
+    </Border>
+</UserControl>

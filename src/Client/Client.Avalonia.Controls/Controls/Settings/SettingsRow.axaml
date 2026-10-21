@@ -1,0 +1,161 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:settings="clr-namespace:Client.Avalonia.Controls.Settings">
+    <Design.PreviewWith>
+        <Border Padding="20" Width="460">
+            <settings:SettingsCard>
+                <settings:SettingsRow Title="Setting" Description="What the setting does">
+                    <CheckBox/>
+                </settings:SettingsRow>
+                <settings:SettingsRow Title="Wide setting" ContentPlacement="Below">
+                    <ProgressBar Value="40"/>
+                </settings:SettingsRow>
+                <settings:SettingsRow Title="Unavailable setting" IsEnabled="False">
+                    <CheckBox/>
+                </settings:SettingsRow>
+            </settings:SettingsCard>
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="settings|SettingsRow">
+        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The least height is kept here and not on the row, which folds to nothing when it is collapsed -->
+                <!-- Transparent so the empty space of the row takes a tap that switches its check box -->
+                <Panel MinHeight="52" Background="Transparent">
+                    <Border Name="highlight" Background="{DynamicResource SettingsRowHighlightBrush}"/>
+                    <Border Name="separator" Height="1" VerticalAlignment="Top"
+                            Background="{DynamicResource SettingsCardBorderBrush}"/>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
+                          Margin="{TemplateBinding Padding}" VerticalAlignment="Center">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                            <!-- Heavier than the description under it, so the two do not read as one paragraph -->
+                            <Grid ColumnDefinitions="Auto,*"
+                                  IsVisible="{TemplateBinding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Image Width="18" Height="18" Margin="0,0,10,0" VerticalAlignment="Center"
+                                       Source="{TemplateBinding Icon}"
+                                       IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <TextBlock Name="title" Grid.Column="1"
+                                           Text="{TemplateBinding Title}"
+                                           FontWeight="Medium"
+                                           VerticalAlignment="Center"
+                                           Foreground="{TemplateBinding Foreground}"
+                                           TextWrapping="Wrap"/>
+                            </Grid>
+                            <TextBlock Name="description"
+                                       Text="{TemplateBinding Description}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{TemplateBinding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Grid>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Medium}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- Shown for a moment when the settings search brings the row into view -->
+    <Style Selector="settings|SettingsRow /template/ Border#highlight">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion ExtraLong}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="settings|SettingsRow:highlighted /template/ Border#highlight">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- The first row of a card has nothing above it to be separated from -->
+    <Style Selector="settings|SettingsRow:nth-child(1) /template/ Border#separator">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <Style Selector="settings|SettingsRow /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Row" Value="0"/>
+        <Setter Property="Grid.Column" Value="1"/>
+        <Setter Property="Margin" Value="16,0,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="settings|SettingsRow[ContentPlacement=Below] /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Row" Value="1"/>
+        <Setter Property="Grid.Column" Value="0"/>
+        <Setter Property="Grid.ColumnSpan" Value="2"/>
+        <Setter Property="Margin" Value="0,10,0,2"/>
+    </Style>
+
+    <!-- Settings that refine the one above them are shifted to the right, together with their separator -->
+    <Style Selector="settings|SettingsRow[IndentLevel=1]">
+        <Setter Property="Padding" Value="38,10,14,10"/>
+    </Style>
+    <Style Selector="settings|SettingsRow[IndentLevel=1] /template/ Border#separator">
+        <Setter Property="Margin" Value="38,0,0,0"/>
+    </Style>
+    <Style Selector="settings|SettingsRow[IndentLevel=2]">
+        <Setter Property="Padding" Value="62,10,14,10"/>
+    </Style>
+    <Style Selector="settings|SettingsRow[IndentLevel=2] /template/ Border#separator">
+        <Setter Property="Margin" Value="62,0,0,0"/>
+    </Style>
+
+    <!-- A setting that cannot be changed reads as secondary text -->
+    <Style Selector="settings|SettingsRow:disabled">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="settings|SettingsRow:disabled /template/ TextBlock#description">
+        <Setter Property="Foreground" Value="{DynamicResource SettingsRowDisabledDescriptionBrush}"/>
+    </Style>
+
+    <!-- Unfolds the rows nested under its own: the same arrow as on a section header, down while they are shown -->
+    <Style Selector="settings|SettingsRow > ToggleButton.expander">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The background and the padding make more than the arrow itself take the click -->
+                <Border Background="Transparent" Padding="12,10,2,10">
+                    <Path Name="chevron"
+                          Width="10" Height="6" Stretch="None"
+                          VerticalAlignment="Center"
+                          Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                          Stroke="{DynamicResource SecondaryTextBrush}"
+                          StrokeThickness="1.5"
+                          StrokeLineCap="Round"
+                          StrokeJoin="Round"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="settings|SettingsRow > ToggleButton.expander /template/ Path#chevron">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="settings|SettingsRow > ToggleButton.expander:checked /template/ Path#chevron">
+        <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+    </Style>
+    <Style Selector="settings|SettingsRow > ToggleButton.expander:pointerover /template/ Path#chevron">
+        <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+
+    <!-- A check box in a row has no label of its own: the row title is the label -->
+    <Style Selector="settings|SettingsRow > CheckBox">
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+</Styles>

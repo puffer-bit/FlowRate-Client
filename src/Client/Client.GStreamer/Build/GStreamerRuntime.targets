@@ -1,0 +1,33 @@
+<Project>
+    <!-- The GStreamer runtime produced by the scripts next to this file (see README.md). It goes to the
+         'gstreamer' folder next to the executable, where GstNativeLibraryResolver looks for it.
+
+         Imported by the executable project, not by Client.GStreamer: only the executable knows the RID it
+         is built for. A library does not receive the RuntimeIdentifier of the application, so it would
+         take the runtime of the build machine and ship Linux libraries in a Windows build or the other
+         way round. Without a RID the build falls back to the OS it runs on. -->
+    <PropertyGroup>
+        <GStreamerRid>$(RuntimeIdentifier)</GStreamerRid>
+        <GStreamerRid Condition="'$(GStreamerRid)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</GStreamerRid>
+        <GStreamerRid Condition="'$(GStreamerRid)' == ''">linux-x64</GStreamerRid>
+        <GStreamerRuntimeDir>$(MSBuildThisFileDirectory)artifacts\$(GStreamerRid)\</GStreamerRuntimeDir>
+    </PropertyGroup>
+
+    <!-- Hidden from the solution explorer: hundreds of generated files. Never part of a single-file
+         bundle: GStreamer loads its plugins and gst-plugin-scanner from these paths. -->
+    <ItemGroup Condition="Exists('$(GStreamerRuntimeDir)gstreamer')">
+        <None Include="$(GStreamerRuntimeDir)gstreamer\**" Link="gstreamer\%(RecursiveDir)%(Filename)%(Extension)" Visible="false"
+              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+        <None Include="$(GStreamerRuntimeDir)licenses\**" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" Visible="false"
+              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+        <None Include="$(GStreamerRuntimeDir)THIRD-PARTY-NOTICES.txt" Condition="Exists('$(GStreamerRuntimeDir)THIRD-PARTY-NOTICES.txt')"
+              Link="THIRD-PARTY-NOTICES.txt" Visible="false"
+              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+
+    <!-- Every configuration, Debug included, runs only on its own runtime -->
+    <Target Name="RequireGStreamerRuntime" BeforeTargets="Build"
+            Condition="!Exists('$(GStreamerRuntimeDir)gstreamer')">
+        <Error Text="The GStreamer runtime for $(GStreamerRid) is missing in $(GStreamerRuntimeDir). Build it with the script in $(MSBuildThisFileDirectory), see README.md there, or copy it from a machine that built it." />
+    </Target>
+</Project>

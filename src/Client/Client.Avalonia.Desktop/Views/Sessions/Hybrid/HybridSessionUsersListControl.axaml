@@ -1,0 +1,125 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="hybridVm:HybridSessionParticipantsListVM"
+             x:Class="Client.Views.Sessions.Hybrid.HybridSessionUsersListControl"
+             d:DataContext="{d:DesignInstance Type=hybridVm:HybridSessionParticipantsListVM, IsDesignTimeCreatable=True}"
+             Background="{DynamicResource GeneralBrush}"
+             x:Name="Main"
+             HorizontalAlignment="Stretch">
+    <Control.Resources>
+        <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
+        <services:VideoSessionStateToStringConverter x:Key="VideoSessionStateToStringConverter"/>
+        <converters:BoolToGridLengthConverter x:Key="BoolToGridLengthConverter"/>
+    </Control.Resources>
+    
+    <Grid RowDefinitions="20, *" Margin="10">
+        <TextBlock Grid.Row="0" Text="{l:Text hybrid.participants}"/>
+        <ListBox Grid.Row="1" ItemsSource="{Binding Participants}" VerticalAlignment="Stretch" 
+                 Background="{DynamicResource GeneralBrush}" HorizontalAlignment="Stretch" Margin="0,4,0,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="hybridVm:HybridSessionParticipantVM">
+                    <Border Background="Transparent"
+                            Tag="{Binding}">
+                        <Border.ContextFlyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Spacing="2">
+                                    <menus:MenuItemButton Icon="{StaticResource IInCircleIcon}" Content="{l:Text common.details.short}"/>
+                                    <!-- Nobody kicks themselves, and only roles or the host kick others -->
+                                    <Separator IsVisible="{Binding CanKick}"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          IsVisible="{Binding CanKick}"
+                                                          Command="{Binding DataContext.KickParticipant, ElementName=Main}"
+                                                          CommandParameter="{Binding}"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Border.ContextFlyout>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="3*"/>
+                                <ColumnDefinition Width="{Binding !PeerData.State, Converter={StaticResource BoolToGridLengthConverter}}"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <Grid.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                                </Transitions>
+                            </Grid.Transitions>
+
+                            <Grid Grid.Column="0" ColumnDefinitions="24,*,Auto" VerticalAlignment="Center" HorizontalAlignment="Left" ColumnSpacing="10">
+
+                                <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
+                                       Source="{StaticResource ScreenShareIcon}"
+                                       ToolTip.Tip="{l:Text hybrid.screen.sharing}"
+                                       IsVisible="{Binding IsSharingScreen}"/>
+                                
+                                <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
+                                                    UserName="{Binding UserData.Username}"
+                                                    AvatarUrl="{Binding UserData.AvatarUrl}"
+                                                    IsSpeaking="{Binding IsSpeaking}"/>
+
+                                <StackPanel Grid.Column="1" Orientation="Vertical">
+                                    <text:MarqueeTextBlock Text="{Binding UserData.Username}"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:Text hybrid.status.connecting}"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               FontSize="10"
+                                               IsVisible="{Binding !IsConnected}"/>
+                                    <TextBlock Text="{l:Text session.peer.connected}"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               FontSize="10"
+                                               IsVisible="{Binding IsConnected}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2" IsVisible="{Binding !PeerData.State}">
+                                <Button Padding="0"
+                                        Command="{Binding DataContext.ApproveParticipant, ElementName=Main}"
+                                        CommandParameter="{Binding}"
+                                        HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center"
+                                        Background="Transparent"
+                                        IsEnabled="{Binding !PeerData.State}">
+                                    <Image Width="32" Height="32" Margin="-4,0,0,0"
+                                         Source="{StaticResource DoorWithMarkIcon}"
+                                         Opacity="{Binding PeerData.State, Converter={StaticResource BoolToOpacityConverter}}"/>
+                                </Button>
+                                <Button Padding="0"
+                                        Command="{Binding DataContext.RejectParticipant, ElementName=Main}"
+                                        CommandParameter="{Binding}"
+                                        HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center"
+                                        Background="Transparent"
+                                        IsEnabled="{Binding !PeerData.State}">
+                                    <Image Width="32" Height="32" Margin="-4,0,0,0"
+                                         Source="{StaticResource DoorWithCrossIcon}"
+                                         Opacity="{Binding PeerData.State, Converter={StaticResource BoolToOpacityConverter}}"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

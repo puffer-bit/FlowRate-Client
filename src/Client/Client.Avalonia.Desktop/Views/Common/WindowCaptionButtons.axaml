@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Client.Views.Common.WindowCaptionButtons">
+
+    <UserControl.Styles>
+        <!-- Drawn as the items of the top bar are -->
+        <Style Selector="Button.caption">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.caption /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.caption:pressed /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+        </Style>
+        <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuItemDangerHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.caption.close:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuItemDangerPressedBrush}"/>
+        </Style>
+
+        <Style Selector="Button.caption Path">
+            <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.2"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.caption.close:pointerover Path">
+            <Setter Property="Stroke" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Classes="caption" Click="OnMinimizeClick"
+                WindowDecorationProperties.ElementRole="MinimizeButton"
+                ToolTip.Tip="{l:Text window.minimize}">
+            <Path Data="M 0,0.5 H 10"/>
+        </Button>
+        <Button x:Name="MaximizeButton" Classes="caption" Click="OnMaximizeClick"
+                WindowDecorationProperties.ElementRole="MaximizeButton"
+                ToolTip.Tip="{l:Text window.maximize}">
+            <Path Data="M 0.5,0.5 H 9.5 V 9.5 H 0.5 Z"/>
+        </Button>
+        <Button x:Name="RestoreButton" Classes="caption" Click="OnMaximizeClick"
+                WindowDecorationProperties.ElementRole="MaximizeButton"
+                ToolTip.Tip="{l:Text window.restore}">
+            <Path Data="M 0.5,2.5 H 7.5 V 9.5 H 0.5 Z M 2.5,2.5 V 0.5 H 9.5 V 7.5 H 7.5"/>
+        </Button>
+        <Button Classes="caption close" Click="OnCloseClick"
+                WindowDecorationProperties.ElementRole="CloseButton"
+                ToolTip.Tip="{l:Text common.close}">
+            <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
+        </Button>
+    </StackPanel>
+</UserControl>

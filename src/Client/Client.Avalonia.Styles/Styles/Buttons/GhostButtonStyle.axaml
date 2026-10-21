@@ -1,0 +1,19 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A button that is flat until the pointer is over it: no fill and no border of its own, lit on hover.
+         For a row or an icon in a panel that already has a background -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.ghost /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+
+</Styles>

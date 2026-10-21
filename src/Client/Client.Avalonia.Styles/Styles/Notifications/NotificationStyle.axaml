@@ -1,0 +1,18 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The stripe on the left of a notification tells its kind before it is read -->
+    <Style Selector="Border.stripe">
+        <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+    </Style>
+    <Style Selector="Border.stripe.success">
+        <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
+    <Style Selector="Border.stripe.warning">
+        <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+    </Style>
+    <Style Selector="Border.stripe.error">
+        <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+
+</Styles>

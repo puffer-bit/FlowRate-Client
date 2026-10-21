@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pickers="clr-namespace:Client.Avalonia.Controls.Pickers;assembly=Client.Avalonia.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:settingsPages="clr-namespace:Client.Views.Settings.Pages"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.AppearanceControl"
+             x:DataType="pagesVm:AppearanceControlVM"
+             d:DataContext="{d:DesignInstance Type=pagesVm:AppearanceControlVM, IsDesignTimeCreatable=True}">
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="appearance.language"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.language">
+                <ComboBox MinWidth="180" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:LanguageOption">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Name^}" VerticalAlignment="Center"/>
+                                <!-- Tells that no speaker of the language has checked the texts -->
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                                            IsVisible="{Binding IsMachineTranslated}">
+                                    <Image Width="14" Height="14" Source="{StaticResource SparklesIcon}"/>
+                                    <TextBlock Text="{l:Text settings.appearance.language.aiTranslated}"
+                                               FontSize="12" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.theme"/>
+        <!-- The items carry their preset in Tag. "System" is only drawn so far: following the theme
+             of the OS is not implemented, so the card cannot be picked -->
+        <settingsPages:ThemePresetPicker ui:SettingsPage.SearchKey="appearance.theme"/>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.scale"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.scale">
+                <ComboBox MinWidth="180" ItemsSource="{Binding InterfaceScales}"
+                          SelectedItem="{Binding SelectedInterfaceScale}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="x:Int32">
+                            <TextBlock Text="{Binding StringFormat='{}{0}%'}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.buttonColors"/>
+        <!-- The colors are the same in both themes; the buttons below show them as they are picked -->
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.primaryColor">
+                <pickers:ColorPicker Color="{Binding PrimaryColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.secondaryColor">
+                <pickers:ColorPicker Color="{Binding SecondaryColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.dangerColor">
+                <pickers:ColorPicker Color="{Binding DangerColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.saveColor">
+                <pickers:ColorPicker Color="{Binding SaveColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.successColor">
+                <pickers:ColorPicker Color="{Binding SuccessColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.warningColor">
+                <pickers:ColorPicker Color="{Binding WarningColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.errorColor">
+                <pickers:ColorPicker Color="{Binding ErrorColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.resetColors">
+                <Button Content="{l:Text common.reset}" Command="{Binding ResetColorsCommand}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.animations"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.animations">
+                <CheckBox IsChecked="{Binding IsAnimationEnabled}"/>
+            </ui:SettingsRow>
+            <!-- The speed only matters while there is something to speed up -->
+            <ui:SettingsRow services:SettingText.Key="appearance.animationSpeed"
+                            IsExpanded="{Binding IsAnimationEnabled}">
+                <!-- Items are in the order of AnimationSpeed -->
+                <ComboBox MinWidth="180" SelectedIndex="{Binding AnimationSpeedIndex}">
+                    <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.slow}"/>
+                    <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.normal}"/>
+                    <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.fast}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.preview"/>
+        <!-- A piece of a chat built from the styles of the real one, so it changes with the theme and
+             the colors above; the messages are texts of the interface, not view models -->
+        <settingsPages:ChatPreview/>
+        
+        <hints:HintBlock Text="{l:Text settings.appearance.preview.hint}"/>
+    </ui:SettingsPage>
+</UserControl>

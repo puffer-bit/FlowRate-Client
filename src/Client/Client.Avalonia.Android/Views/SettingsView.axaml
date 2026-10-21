@@ -1,0 +1,653 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:settingsVm="clr-namespace:Client.ViewModels.Settings;assembly=Client.Avalonia.ViewModels"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:models="clr-namespace:Client.Core.Settings;assembly=Client.Core"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
+             x:Class="Client.Droid.Views.SettingsView"
+             Background="{DynamicResource GeneralBrush}">
+
+    <UserControl.Resources>
+        <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- A category of the list: its icon, its name and an arrow into it; tall enough for a finger -->
+        <Style Selector="Button.category">
+            <Setter Property="MinHeight" Value="60"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.category TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <!-- A category that cannot be opened reads as secondary text, without the grey fill of Fluent -->
+        <Style Selector="Button.category:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.category:disabled TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="Button.category.danger TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="Border.category-icon">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.category-icon > Image">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+        </Style>
+        <Style Selector="Path.category-arrow">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Data" Value="M0,0 L5,5 L0,10"/>
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+        </Style>
+
+        <!-- The list of categories, with the room a page has around its settings -->
+        <Style Selector="StackPanel.page">
+            <Setter Property="Margin" Value="12,16,12,24"/>
+            <Setter Property="Spacing" Value="12"/>
+        </Style>
+        <!-- The same room around the settings of a page; its sections fold at a tap on their header, as on the desktop -->
+        <Style Selector="ui|SettingsPage /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="Margin" Value="12,16,12,24"/>
+        </Style>
+        <Style Selector="TextBlock.empty">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <!-- The row title is the label of a switch, so it has no words of its own -->
+        <Style Selector="ui|SettingsRow ToggleSwitch">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="OnContent" Value="{x:Null}"/>
+            <Setter Property="OffContent" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="ui|SettingsRow > ComboBox">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="ui|SettingsRow > Button">
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="MinWidth" Value="90"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- A fact about the application, on the right of what it is -->
+        <Style Selector="ui|SettingsRow TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <!-- Each library is alone in the container of its item, so its row cannot tell that rows stand above it -->
+        <Style Selector="ContentPresenter:nth-child(n+2) > ui|SettingsRow /template/ Border#separator">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+
+        <!-- Listens to a sound of the list -->
+        <Style Selector="Button.listen">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- A saved server or a trusted certificate -->
+        <Style Selector="TextBlock.detail">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.detail.label">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="Button.forget">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *">
+
+        <!-- Header: back to the list of categories, or out of the settings from the list itself -->
+        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, *" ColumnSpacing="8">
+            <Button Grid.Column="0" x:Name="BackButton"
+                    Classes="borderless"
+                    Width="44" Height="44" Padding="0" CornerRadius="22"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Click="OnBackClick">
+                <!-- The arrow of the scroll-down button, turned to point back -->
+                <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+            </Button>
+
+            <Panel Grid.Column="1" x:Name="HeaderArea">
+                <!-- "Settings", or the name of the page that is open. It fades away under the search as that widens -->
+                <TextBlock x:Name="TitleText"
+                           FontSize="18" FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                    <TextBlock.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                        </Transitions>
+                    </TextBlock.Transitions>
+                </TextBlock>
+
+                <!-- The search of the list of categories: typing swaps the categories for the settings
+                     that match, as on the desktop. It stands beside the title until it is focused or
+                     typed in, and then grows from the right edge over the whole header; the code
+                     sets the width, which is animated here -->
+                <TextBox x:Name="SearchBox"
+                         Width="150" MinHeight="40"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         VerticalContentAlignment="Center"
+                         PlaceholderText="{l:Text settings.search.placeholder}"
+                         TextChanged="OnSearchTextChanged"
+                         GotFocus="OnSearchFocusChanged"
+                         LostFocus="OnSearchFocusChanged">
+                    <TextBox.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                        </Transitions>
+                    </TextBox.Transitions>
+                    <TextBox.InnerLeftContent>
+                        <Image Width="16" Height="16" Margin="10,0,0,0" VerticalAlignment="Center"
+                               Source="{StaticResource FindIcon}"/>
+                    </TextBox.InnerLeftContent>
+                </TextBox>
+            </Panel>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- ====== The list of categories ====== -->
+        <ScrollViewer Grid.Row="2" x:Name="Categories" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Classes="page">
+                <StackPanel x:Name="CategoryList" Spacing="12">
+                    <ui:SettingsCard>
+                        <Button Classes="borderless category" Click="OnAppearanceClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource PaintRollerIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.appearance.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Classes="borderless category" Click="OnBehaviorClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource LightningIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.behavior.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Classes="borderless category" Click="OnAudioClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource VoiceIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.audio.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Classes="borderless category" Click="OnStorageClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource StorageIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.storage.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Classes="borderless category" Click="OnAccountingClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource ShieldedUser}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.accounting.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- Has no settings yet, as on the desktop: listed, but cannot be opened -->
+                        <Button Classes="borderless category" IsEnabled="False">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource AndroidIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.platform.name}"/>
+                            </Grid>
+                        </Button>
+                    </ui:SettingsCard>
+
+                    <!-- Red: it cannot be undone -->
+                    <ui:SettingsCard>
+                        <Button Classes="borderless category danger" Click="OnResetClick">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource ResetIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.reset}"/>
+                            </Grid>
+                        </Button>
+                    </ui:SettingsCard>
+
+                    <!-- Not settings, so it stands apart and closes the list -->
+                    <ui:SettingsCard>
+                        <Button Classes="borderless category" Click="OnAboutClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource IInCircleIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.about.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+                    </ui:SettingsCard>
+                </StackPanel>
+
+                <!-- What the search has found: a tap opens the page of the setting and shows it there -->
+                <ItemsControl x:Name="SearchResults" IsVisible="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="settingsVm:SettingSearchResultVM">
+                            <Button Classes="borderless category" Click="OnSearchResultClick">
+                                <StackPanel Spacing="2">
+                                    <TextBlock FontWeight="Medium" Text="{Binding Title}"/>
+                                    <TextBlock FontSize="12"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{Binding Path}"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock x:Name="NothingFound" Classes="empty" IsVisible="False"
+                           Text="{l:Text settings.search.nothingFound}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ====== Appearance: without the scale and the colors, which are picked with desktop controls ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="AppearancePage" IsVisible="False"
+                         x:DataType="pagesVm:AppearanceControlVM">
+            <controls:SettingsHeader services:SettingText.Section="appearance.language"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="appearance.language" ContentPlacement="Below">
+                    <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="pagesVm:LanguageOption">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding Name^}" VerticalAlignment="Center"/>
+                                    <!-- Tells that no speaker of the language has checked the texts -->
+                                    <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                                                IsVisible="{Binding IsMachineTranslated}">
+                                        <Image Width="14" Height="14" Source="{StaticResource SparklesIcon}"/>
+                                        <TextBlock Text="{l:Text settings.appearance.language.aiTranslated}"
+                                                   FontSize="12" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="appearance.theme"/>
+            <!-- Cards with a miniature of the application in each theme, as on the desktop -->
+            <views:ThemePresetPicker ui:SettingsPage.SearchKey="appearance.theme"/>
+
+            <controls:SettingsHeader services:SettingText.Section="appearance.animations"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="appearance.animations">
+                    <ToggleSwitch IsChecked="{Binding IsAnimationEnabled}"/>
+                </ui:SettingsRow>
+                <!-- The speed only matters while there is something to speed up -->
+                <ui:SettingsRow services:SettingText.Key="appearance.animationSpeed" ContentPlacement="Below"
+                                IsExpanded="{Binding IsAnimationEnabled}">
+                    <!-- Items are in the order of AnimationSpeed -->
+                    <ComboBox SelectedIndex="{Binding AnimationSpeedIndex}">
+                        <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.slow}"/>
+                        <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.normal}"/>
+                        <ComboBoxItem Content="{l:Text settings.appearance.animationSpeed.fast}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <!-- ====== Behavior: without the tray, which Android does not have ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="BehaviorPage" IsVisible="False"
+                         x:DataType="pagesVm:BehaviorControlVM">
+            <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">
+                    <ToggleSwitch IsChecked="{Binding IsAutoConnectedEnabled}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="behavior.resetConnection">
+                    <Button Command="{Binding ResetSavedCoordinator}" IsEnabled="{Binding IsSavedCoordinatorExists}"
+                            Content="{l:Text common.reset}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="behavior.manualConnection"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="behavior.fallbackServers">
+                    <ToggleSwitch IsChecked="{Binding IsAutoConnectedToFallbackServersEnabled}"/>
+                </ui:SettingsRow>
+                <!-- The warnings only matter while fallback servers are allowed, and are folded away otherwise -->
+                <ui:SettingsRow services:SettingText.Key="behavior.fallbackWarning"
+                                IsExpanded="{Binding IsAutoConnectedToFallbackServersEnabled}">
+                    <ToggleSwitch IsChecked="{Binding IsFallbackConnectionWarningEnabled}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="behavior.propagatedWarning"
+                                IsExpanded="{Binding IsAutoConnectedToFallbackServersEnabled}">
+                    <ToggleSwitch IsChecked="{Binding IsPropagatedConnectionWarningEnabled}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <!-- ====== Voice and audio: the sounds of the interface only. There is no voice on Android yet,
+             and no sound packs: there is no folder here the user could put one into ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="AudioPage" IsVisible="False"
+                         x:DataType="pagesVm:AudioControlVM">
+            <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="audio.soundsEnabled">
+                    <ToggleSwitch IsChecked="{Binding AreSoundsEnabled}"/>
+                </ui:SettingsRow>
+                <!-- The volume and the list only matter while the sounds are played, and are folded away otherwise -->
+                <ui:SettingsRow services:SettingText.Key="audio.soundsVolume" ContentPlacement="Below"
+                                IsExpanded="{Binding AreSoundsEnabled}">
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                        <Slider Grid.Column="0" VerticalAlignment="Center"
+                                Minimum="{Binding MinSoundsVolumePercent}"
+                                Maximum="{Binding MaxSoundsVolumePercent}"
+                                Value="{Binding SoundsVolumePercent}"
+                                TickFrequency="5" IsSnapToTickEnabled="True"/>
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                                   Text="{Binding SoundsVolumePercent, StringFormat={}{0:0}%}"/>
+                    </Grid>
+                </ui:SettingsRow>
+                <!-- Every sound of the desktop, also the ones nothing makes here yet -->
+                <ui:SettingsRow services:SettingText.Key="audio.soundEvents" ContentPlacement="Below"
+                                IsExpanded="{Binding AreSoundsEnabled}">
+                    <ItemsControl ItemsSource="{Binding Sounds}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="pagesVm:SoundItemVM">
+                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8" MinHeight="48">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                                               TextWrapping="Wrap" Text="{Binding Title}"/>
+                                    <Button Grid.Column="1" Classes="borderless listen"
+                                            Command="{Binding PlayCommand}">
+                                        <Image Width="18" Height="18" Source="{StaticResource PlayIcon}"/>
+                                    </Button>
+                                    <ToggleSwitch Grid.Column="2" VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsEnabled}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <!-- ====== Servers and security: without the database encryption, which is not implemented anywhere yet ====== -->
+        <!-- ====== Data and storage: what of the chats is kept on the phone ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="StoragePage" IsVisible="False"
+                         x:DataType="pagesVm:StorageControlVM">
+            <controls:SettingsHeader services:SettingText.Section="storage.messages"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="storage.keepMessages">
+                    <ToggleSwitch IsChecked="{Binding IsChatCacheEnabled}"/>
+                </ui:SettingsRow>
+                <!-- How much is kept only matters while messages are kept, and is folded away otherwise -->
+                <ui:SettingsRow services:SettingText.Key="storage.messagesPerChat"
+                                IsExpanded="{Binding IsChatCacheEnabled}">
+                    <ComboBox MinWidth="110" ItemsSource="{Binding ChatCacheMessageChoices}"
+                              SelectedIndex="{Binding ChatCacheMessagesIndex}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="storage.clearMessages"
+                                IsExpanded="{Binding IsChatCacheEnabled}">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding ClearChatCacheCommand}" Content="{l:Text common.clear}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding ChatCacheUsageText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="storage.media"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="storage.mediaLimit">
+                    <ComboBox MinWidth="110" ItemsSource="{Binding MediaCacheLimitChoices}"
+                              SelectedIndex="{Binding MediaCacheLimitIndex}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="storage.clearMedia">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding ClearMediaCacheCommand}" Content="{l:Text common.clear}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding MediaCacheUsageText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <ui:SettingsPage Grid.Row="2" x:Name="AccountingPage" IsVisible="False"
+                         x:DataType="pagesVm:AccountingControlVM">
+            <controls:SettingsHeader services:SettingText.Section="accounting.savedServers" ui:SettingsPage.SearchKey="accounting.savedServers"/>
+            <TextBlock Classes="empty"
+                       IsVisible="{Binding !CoordinatorSessions.Count}"
+                       Text="{l:Text settings.accounting.noServers}"/>
+            <ItemsControl ItemsSource="{Binding CoordinatorSessions}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:SavedCoordinatorModel">
+                        <ui:SettingsCard Padding="12">
+                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12">
+                                <Image Grid.Row="0" Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                       Source="{StaticResource ServerIcon}"/>
+
+                                <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                               Text="{Binding Name, Converter={x:Static services:TextOrDefaultConverter.Instance}, ConverterParameter=settings.accounting.unnamedServer}"/>
+                                    <TextBlock Classes="detail label" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0}:{1}">
+                                                <Binding Path="Address"/>
+                                                <Binding Path="Port"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <Button Grid.Row="0" Grid.Column="2" Classes="borderless forget"
+                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Image Width="20" Height="20" Source="{StaticResource TrashIcon}"/>
+                                </Button>
+
+                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                           Classes="detail label" FontStyle="Italic"
+                                           IsVisible="{Binding !Users.Count}"
+                                           Text="{l:Text settings.accounting.noAccounts}"/>
+
+                                <!-- Saved accounts, aligned with the server name -->
+                                <ItemsControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                              IsVisible="{Binding !!Users.Count}"
+                                              ItemsSource="{Binding Users}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="6"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SavedUserModel">
+                                            <Grid ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+                                                <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
+                                                       Source="{StaticResource UserIcon}"/>
+                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Username}"/>
+                                                <!-- The identity is a credential: only its edges are shown, to tell accounts apart -->
+                                                <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <controls:SettingsHeader services:SettingText.Section="accounting.trustedCertificates" ui:SettingsPage.SearchKey="accounting.trustedCertificates"/>
+            <TextBlock Classes="empty"
+                       IsVisible="{Binding !TrustedCertificates.Count}"
+                       Text="{l:Text settings.accounting.noCertificates}"/>
+            <ItemsControl ItemsSource="{Binding TrustedCertificates}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="pagesVm:TrustedCertificateItem">
+                        <ui:SettingsCard Padding="12">
+                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12">
+                                <Image Grid.Row="0" Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                       Source="{StaticResource KeyIcon}"/>
+
+                                <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Address}"/>
+                                    <TextBlock Classes="detail label" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               Text="{Binding Subject}"/>
+                                </StackPanel>
+
+                                <Button Grid.Row="0" Grid.Column="2" Classes="borderless forget"
+                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).ForgetCertificateCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Image Width="20" Height="20" Source="{StaticResource TrashIcon}"/>
+                                </Button>
+
+                                <!-- Each fact under its name: a fingerprint does not fit beside one on a phone -->
+                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,10,0,0" Spacing="3">
+                                    <TextBlock Classes="detail label" Text="{l:Text settings.accounting.certificate.fingerprint}"/>
+                                    <TextBlock Classes="detail" Text="{Binding Fingerprint}"/>
+
+                                    <TextBlock Classes="detail label" Margin="0,6,0,0"
+                                               Text="{l:Text settings.accounting.certificate.validUntil}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Classes="detail" Text="{Binding ValidUntil}"/>
+                                        <Image Width="14" Height="14" IsVisible="{Binding IsExpired}"
+                                               Source="{StaticResource WarningIcon}"/>
+                                    </StackPanel>
+
+                                    <TextBlock Classes="detail label" Margin="0,6,0,0"
+                                               Text="{l:Text settings.accounting.certificate.coordinator}"/>
+                                    <TextBlock Classes="detail" Text="{Binding Coordinator}"/>
+                                </StackPanel>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ui:SettingsPage>
+
+        <!-- ====== About the application: the same facts as on the desktop ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="AboutPage" IsVisible="False"
+                         x:DataType="pagesVm:AboutControlVM">
+            <controls:SettingsHeader services:SettingText.Section="about.application"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="about.version">
+                    <TextBlock Classes="value" Text="{Binding Version}"/>
+                </ui:SettingsRow>
+                <!-- Not by the key: the description is the release of the system and not a text -->
+                <ui:SettingsRow Title="{l:Text settings.about.platform.title}"
+                                Description="{Binding PlatformDetails}"
+                                ui:SettingsPage.SearchKey="about.platform">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Width="20" Height="20" VerticalAlignment="Center"
+                               Source="{Binding PlatformIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                        <TextBlock Classes="value" Text="{Binding PlatformName}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="about.project"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow Title="{l:Text settings.about.repository.title}"
+                                Description="{Binding RepositoryName}"
+                                ui:SettingsPage.SearchKey="about.repository">
+                    <Button Click="OnRepositoryClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="18" Height="18" Source="{StaticResource GitHubIcon}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text settings.about.repository.open}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="about.support">
+                    <!-- Leads nowhere yet: there is no place to support the project at -->
+                    <Button>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="18" Height="18" Source="{StaticResource CoinIcon}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text settings.about.support.button}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="about.libraries"/>
+            <ui:SettingsCard ItemsSource="{Binding Libraries}">
+                <ui:SettingsCard.ItemTemplate>
+                    <DataTemplate x:DataType="pagesVm:AboutLibrary">
+                        <ui:SettingsRow Title="{Binding Name}" Description="{Binding Description^}">
+                            <TextBlock Classes="value" Text="{Binding Version}"/>
+                        </ui:SettingsRow>
+                    </DataTemplate>
+                </ui:SettingsCard.ItemTemplate>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+    </Grid>
+</UserControl>

@@ -1,0 +1,39 @@
+# Build output of every project
+bin/
+obj/
+TestResults/
+*.nupkg
+
+# IDE and editor state
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+*.rsuser
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+*.db
+*.log
+*.tmp
+
+# GStreamer runtime produced by Client.GStreamer/Build scripts
+src/Client/Client.GStreamer/Build/artifacts/
+
+# Release archives produced by the publish scripts in src/Scripts
+dist/
+
+# Python caches of the generator scripts
+__pycache__/
+
+# Local test audio, never published
+src/Client/Client.TestBot/Assets/Audio/*.mp3
+
+# Local backups
+src/Client/Client.Avalonia.Assets/IconsBackup/
+*.bak

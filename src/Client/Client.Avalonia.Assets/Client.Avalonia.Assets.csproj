@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <RootNamespace>Client.Avalonia.Icons</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="Avalonia.BuildServices" Version="11.3.2">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <AvaloniaResource Include="Icons\**" />
+      <AvaloniaResource Include="Sounds\*.wav" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Folder Include="Sounds\" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,91 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators">
+    <Design.PreviewWith>
+        <StackPanel Spacing="6" Margin="8" Background="#5A52E0">
+            <indicators:PingIndicator/>
+            <indicators:PingIndicator RoundTrip="{x:Static sys:TimeSpan.Zero}"/>
+            <indicators:PingIndicator RoundTrip="0:0:0.15"/>
+            <indicators:PingIndicator RoundTrip="0:0:0.3"/>
+            <indicators:PingIndicator RoundTrip="0:0:0.6"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <Style Selector="indicators|PingIndicator">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <!-- Signal bars, bottom aligned like a mobile network icon -->
+                        <StackPanel Orientation="Horizontal" Spacing="2" Height="14" VerticalAlignment="Center">
+                            <Border Classes="bar b1" Height="5"/>
+                            <Border Classes="bar b2" Height="8"/>
+                            <Border Classes="bar b3" Height="11"/>
+                            <Border Classes="bar b4" Height="14"/>
+                        </StackPanel>
+                        <TextBlock Text="{TemplateBinding Text}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="indicators|PingIndicator /template/ Border.bar">
+        <Setter Property="Width" Value="3.5"/>
+        <Setter Property="CornerRadius" Value="1"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <!-- Only the bars take the quality color; the text keeps Foreground -->
+        <Setter Property="Background" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"/>
+        <!-- Dimmed is unlit; with no measurement yet every bar stays unlit -->
+        <Setter Property="Opacity" Value="0.3"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="{anim:Motion Medium}"/>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="indicators|PingIndicator:good /template/ Border.bar">
+        <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
+    <Style Selector="indicators|PingIndicator:good /template/ Border.bar">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <Style Selector="indicators|PingIndicator:fair /template/ Border.bar">
+        <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+    </Style>
+    <Style Selector="indicators|PingIndicator:fair /template/ Border.bar">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="indicators|PingIndicator:fair /template/ Border.b4">
+        <Setter Property="Opacity" Value="0.3"/>
+    </Style>
+
+    <Style Selector="indicators|PingIndicator:poor /template/ Border.bar">
+        <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="indicators|PingIndicator:poor /template/ Border.b1, indicators|PingIndicator:poor /template/ Border.b2">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <Style Selector="indicators|PingIndicator:bad /template/ Border.bar">
+        <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="indicators|PingIndicator:bad /template/ Border.b1">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+</Styles>

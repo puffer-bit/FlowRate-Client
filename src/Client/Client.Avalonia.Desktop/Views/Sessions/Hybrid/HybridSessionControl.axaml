@@ -1,0 +1,244 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+    xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+    xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+    xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+    xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+    xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
+    xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
+    mc:Ignorable="d"
+    x:DataType="hybridVm:ActiveHybridSessionVM"
+    x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl"
+    Background="{DynamicResource SessionBackdropBrush}">
+
+    <Control.Styles>
+        <!-- Each glow wanders along its own closed path and comes back to where it started, so the
+             loop shows no jump. Different paths and durations keep the picture from repeating.
+             The backdrop carries "moving" only while animations are switched on, and the glows
+             move only while the backdrop is shown -->
+        <Style Selector="Canvas.moving:shown > Ellipse.far">
+            <Style.Animations>
+                <Animation Duration="0:0:46" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="35%">
+                        <Setter Property="TranslateTransform.X" Value="220"/>
+                        <Setter Property="TranslateTransform.Y" Value="90"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="70%">
+                        <Setter Property="TranslateTransform.X" Value="80"/>
+                        <Setter Property="TranslateTransform.Y" Value="-70"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Canvas.moving:shown > Ellipse.middle">
+            <Style.Animations>
+                <Animation Duration="0:0:37" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="30%">
+                        <Setter Property="TranslateTransform.X" Value="-180"/>
+                        <Setter Property="TranslateTransform.Y" Value="-110"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="65%">
+                        <Setter Property="TranslateTransform.X" Value="-260"/>
+                        <Setter Property="TranslateTransform.Y" Value="60"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Canvas.moving:shown > Ellipse.near">
+            <Style.Animations>
+                <Animation Duration="0:0:29" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="40%">
+                        <Setter Property="TranslateTransform.X" Value="140"/>
+                        <Setter Property="TranslateTransform.Y" Value="-130"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="75%">
+                        <Setter Property="TranslateTransform.X" Value="-110"/>
+                        <Setter Property="TranslateTransform.Y" Value="-60"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </Control.Styles>
+
+    <Control.DataTemplates>
+        <DataTemplate DataType="hybridVm:HybridSessionParticipantsListVM">
+            <hybridViews:HybridSessionUsersListControl/>
+        </DataTemplate>
+        <DataTemplate DataType="hybridVm:HybridSessionStatusBarVM">
+             <hybridViews:HybridSessionStatusBarControl/>
+        </DataTemplate>
+    </Control.DataTemplates>
+    
+    <!-- The header is as tall as the server title and the chat header -->
+    <Grid RowDefinitions="56, *">
+
+        <!-- HEADER -->
+        <ContentControl
+            Grid.Column="0"
+            Content="{Binding StatusBar}"/>
+
+        <!-- MAIN AREA -->
+        <Grid Grid.Row="1" ColumnDefinitions="4*,1,Auto">
+            
+            <!-- The glows of the backdrop. They are laid out on a canvas of a fixed size that is
+                 stretched to fill the area, so the picture and the paths of the glows grow with
+                 it. They start partly outside the canvas, the panel cuts the rest off -->
+            <Panel Grid.ColumnSpan="3" IsHitTestVisible="False" ClipToBounds="True">
+                <Viewbox Stretch="UniformToFill">
+                    <Canvas x:Name="Backdrop" Width="1280" Height="720" anim:ShownState.Track="True">
+                        <Ellipse Classes="far" Width="900" Height="900"
+                                 Canvas.Left="-300" Canvas.Top="-340"
+                                 Fill="{DynamicResource SessionGlowFarBrush}">
+                            <Ellipse.RenderTransform>
+                                <TranslateTransform/>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Ellipse Classes="middle" Width="760" Height="760"
+                                 Canvas.Left="760" Canvas.Top="-20"
+                                 Fill="{DynamicResource SessionGlowMiddleBrush}">
+                            <Ellipse.RenderTransform>
+                                <TranslateTransform/>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Ellipse Classes="near" Width="620" Height="620"
+                                 Canvas.Left="120" Canvas.Top="360"
+                                 Fill="{DynamicResource SessionGlowNearBrush}">
+                            <Ellipse.RenderTransform>
+                                <TranslateTransform/>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                    </Canvas>
+                </Viewbox>
+            </Panel>
+
+            <!-- VIDEO + NOTIFICATIONS OVERLAY -->
+            <Grid Grid.ColumnSpan="3">
+
+                <!-- Transparent, so that the menu opens anywhere in the area and not only over a tile -->
+                <Border Background="Transparent">
+                    <Border.ContextFlyout>
+                        <Flyout Placement="Pointer">
+                            <StackPanel Spacing="2">
+                                <menus:MenuItemButton Icon="{StaticResource ScreenShareIcon}"
+                                                      Content="{l:Text hybrid.screen.start}"
+                                                      IsVisible="{Binding !StatusBar.IsScreenShareOn}"
+                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                      Command="{Binding StatusBar.ToggleScreenShareCommand}"/>
+                                <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
+                                                      Content="{l:Text hybrid.screen.stop}"
+                                                      IsVisible="{Binding StatusBar.IsScreenShareOn}"
+                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                      Command="{Binding StatusBar.ToggleScreenShareCommand}"/>
+                            </StackPanel>
+                        </Flyout>
+                    </Border.ContextFlyout>
+                    <Panel>
+                        <!-- One tile per shared screen, laid out as a grid; a tile that is expanded
+                             hides the others and so gets the whole area -->
+                        <ItemsControl ItemsSource="{Binding ScreenStreams}">
+                            <ItemsControl.Styles>
+                                <Style Selector="ItemsControl > ContentPresenter" x:DataType="hybridVm:ScreenStreamVM">
+                                    <Setter Property="IsVisible" Value="{Binding !IsHidden}"/>
+                                </Style>
+                                <!-- A tile grows in from slightly smaller as it fades in: when a screen starts
+                                     being shared, and when the tiles come back after one was expanded -->
+                                <Style Selector="ItemsControl > ContentPresenter">
+                                    <Setter Property="anim:Presence.Appear" Value="Grow"/>
+                                </Style>
+                            </ItemsControl.Styles>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <!-- The tiles glide to their new place and size when the grid changes -->
+                                    <panels:AnimatedUniformGrid/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="hybridVm:ScreenStreamVM">
+                                    <hybridViews:HybridScreenTile/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Shown while nobody shares a screen -->
+                        <StackPanel IsVisible="{Binding !ScreenStreams.Count}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="8">
+                            <Image Width="48" Height="48" Source="{StaticResource ScreenShareIcon}"/>
+                            <TextBlock Text="{l:Text hybrid.screen.empty}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <Button Classes="save"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,4,0,0"
+                                    Command="{Binding StatusBar.ToggleScreenShareCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Image Width="16" Height="16" Source="{StaticResource ScreenShareIcon}"/>
+                                    <TextBlock Text="{l:Text hybrid.screen.start}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Panel>
+                </Border>
+
+                <ItemsControl
+                    ItemsSource="{Binding NotificationsListViewModel}"
+                    ZIndex="10"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="notificationVm:NotificationPopUpVM">
+                            <notificationViews:NotificationPopUp/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </Grid>
+
+            <!-- SPLITTER -->
+            <GridSplitter
+                Grid.Column="1"
+                Width="1"
+                Background="Transparent"
+                IsVisible="{Binding IsUserListVisible}"/>
+
+            <!-- USER LIST -->
+            <ContentControl
+                Grid.Column="2"
+                IsVisible="{Binding IsUserListVisible}"
+                Content="{Binding ParticipantsListVM}">
+            </ContentControl>
+        </Grid>
+    </Grid>
+</UserControl>

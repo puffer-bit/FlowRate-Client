@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="chatVm:ChatStatusBarVM"
+             x:Class="Client.Views.Sessions.Chat.ChatStatusBarControl">
+    <!-- The background spans the whole width; only the content is inset -->
+    <Border Background="{DynamicResource GeneralBrush}" Padding="12,0">
+        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
+
+            <Image Grid.Column="0" Width="36" Height="36" Source="{StaticResource HashIcon}"/>
+
+            <!-- Name with the chat status under it, as in Telegram -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <text:MarqueeTextBlock Text="{Binding Name}"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                <!-- A grid, not a horizontal stack panel, so a long description is trimmed -->
+                <Grid ColumnDefinitions="Auto, *">
+                    <loadingIndicators:ProgressRing Grid.Column="0"
+                                                    Margin="0,0,6,0"
+                                                    Width="12"
+                                                    Height="12"
+                                                    MinWidth="0"
+                                                    MinHeight="0"
+                                                    VerticalAlignment="Center"
+                                                    IsIndeterminate="True"
+                                                    BorderThickness="2"
+                                                    IsVisible="{Binding IsLoading}"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding StatusText}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

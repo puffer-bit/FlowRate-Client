@@ -1,0 +1,57 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style Selector="ToggleButton">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+    
+    <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+    </Style>
+    
+    <Style Selector="ToggleButton:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+    </Style>
+
+    <Style Selector="ToggleButton:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderLight}"/>
+    </Style>
+    
+    <Style Selector="ToggleButton:disabled /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderMedium}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    
+    <Style Selector="ToggleButton:checked:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+    </Style>
+    
+    <!-- On the base state, not only while hovered: leaving the pointer and turning disabled animate as well -->
+    <Style Selector="ToggleButton /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Brief}"/>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    
+</Styles>

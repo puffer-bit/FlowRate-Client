@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             x:DataType="notificationVm:NotificationCenterVM"
+             x:Class="Client.Views.Notifications.NotificationCenter"
+             Width="340">
+
+    <UserControl.Styles>
+        <Style Selector="Border.entry">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.entry:pointerover">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+
+        <!-- Under the pointer the time gives its place to the cross that removes the entry -->
+        <Style Selector="Border.entry Button.remove">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.entry:pointerover Button.remove">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Border.entry:pointerover TextBlock.time">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, Auto">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="4" Margin="8,6,6,6">
+            <TextBlock Grid.Column="0"
+                       Text="{l:Text notification.center.title}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+            <!-- The sound of notifications; one button, shown by the state it would change -->
+            <Panel Grid.Column="1">
+                <Button Classes="borderless" Width="26" Height="26"
+                        IsVisible="{Binding !IsSoundMuted}"
+                        ToolTip.Tip="{l:Text notification.center.mute}"
+                        Command="{Binding ToggleSoundCommand}">
+                    <Image Width="16" Height="16" Source="{StaticResource HighVolumeIcon}"/>
+                </Button>
+                <Button Classes="borderless" Width="26" Height="26"
+                        IsVisible="{Binding IsSoundMuted}"
+                        ToolTip.Tip="{l:Text notification.center.unmute}"
+                        Command="{Binding ToggleSoundCommand}">
+                    <Image Width="16" Height="16" Source="{StaticResource CrossedNoVolumeIcon}"/>
+                </Button>
+            </Panel>
+
+            <Button Grid.Column="2" Classes="borderless" Width="26" Height="26"
+                    IsVisible="{Binding HasHistory}"
+                    ToolTip.Tip="{l:Text notification.center.clear}"
+                    Command="{Binding ClearHistoryCommand}">
+                <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
+            </Button>
+        </Grid>
+
+        <TextBlock Grid.Row="1"
+                   Margin="8,18,8,24"
+                   HorizontalAlignment="Center"
+                   Text="{l:Text notification.center.empty}"
+                   FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   IsVisible="{Binding !HasHistory}"/>
+
+        <ScrollViewer Grid.Row="1"
+                      MaxHeight="360"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding HasHistory}">
+            <ItemsControl ItemsSource="{Binding History}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="2"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="notificationVm:ToastVM">
+                        <Border Classes="entry" CornerRadius="4" ClipToBounds="True">
+                            <Grid ColumnDefinitions="3, Auto, *, Auto">
+                                <Border Grid.Column="0" Classes="stripe"
+                                        Classes.success="{Binding IsSuccess}"
+                                        Classes.warning="{Binding IsWarning}"
+                                        Classes.error="{Binding IsError}"/>
+
+                                <Panel Grid.Column="1" Width="18" Height="18" Margin="9,9,9,9" VerticalAlignment="Top">
+                                    <Image Source="{StaticResource IInCircleIcon}" IsVisible="{Binding IsInfo}"/>
+                                    <Image Source="{StaticResource MarkInCircleIcon}" IsVisible="{Binding IsSuccess}"/>
+                                    <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding IsWarning}"/>
+                                    <Image Source="{StaticResource CrossInCircleIcon}" IsVisible="{Binding IsError}"/>
+                                </Panel>
+
+                                <StackPanel Grid.Column="2" Spacing="2" Margin="0,8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                    <TextBlock Text="{Binding Message}"
+                                               IsVisible="{Binding HasMessage}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                </StackPanel>
+
+                                <Panel Grid.Column="3" Margin="8,9,8,0" MinWidth="32" VerticalAlignment="Top">
+                                    <TextBlock Classes="time"
+                                               Text="{Binding TimeText}"
+                                               FontSize="11"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <Button Classes="borderless remove"
+                                            Width="16" Height="16"
+                                            HorizontalAlignment="Right"
+                                            Command="{Binding $parent[ItemsControl].((notificationVm:NotificationCenterVM)DataContext).RemoveCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                                    </Button>
+                                </Panel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

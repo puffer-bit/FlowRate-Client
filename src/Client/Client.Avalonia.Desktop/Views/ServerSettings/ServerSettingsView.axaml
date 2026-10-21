@@ -1,0 +1,236 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:pages="clr-namespace:Client.Views.ServerSettings"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.ServerSettingsView"
+             x:DataType="serverSettingsVm:ServerSettingsVM"
+             MaxWidth="900"
+             MaxHeight="640"
+             Background="{DynamicResource GeneralBrush}">
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="serverSettingsVm:ServerInfoTabVM">
+            <pages:ServerInfoPage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:NetworkTabVM">
+            <pages:NetworkPage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:SfuNodesTabVM">
+            <pages:SfuNodesPage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:ServerUsersTabVM">
+            <pages:ServerUsersPage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:ServerSecurityTabVM">
+            <pages:ServerSecurityPage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:ServerStorageTabVM">
+            <pages:ServerStoragePage/>
+        </DataTemplate>
+        <DataTemplate DataType="serverSettingsVm:RolesTabVM">
+            <pages:RolesPage/>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <!-- Out of sight but still measured, unlike a control that is not visible -->
+        <Style Selector="StackPanel.hidden">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <!-- A tab looks as a tab of the application settings does -->
+        <Style Selector="ListBox.tabs Image">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+        </Style>
+        <Style Selector="ListBox.tabs TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="MaxLines" Value="2"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The same frame as the settings of the application: a title, tabs and a page, a footer -->
+    <Grid ColumnDefinitions="220, *" RowDefinitions="56, 1, *, Auto, 1, 44">
+        <!-- Title: the icon on a tile, the name of the dialog and under it the server they belong to;
+             the dialog can be closed from here as well as from the footer -->
+        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" Margin="16,0,10,0">
+            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" VerticalAlignment="Center"
+                    Background="{DynamicResource BackgroundGeneralBrush}">
+                <Image Width="22" Height="22" Source="{StaticResource ServerIcon}"/>
+            </Border>
+
+            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="{l:Text main.server.settings}"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                           Text="{Binding Server.DisplayName}"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <Button Grid.Column="3" Classes="borderless" Width="32" Height="32" Padding="0"
+                    CornerRadius="6" VerticalAlignment="Center"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Command="{Binding CloseCommand}"
+                    ToolTip.Tip="{l:Text common.close}">
+                <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+            </Button>
+        </Grid>
+
+        <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Height="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Items are in the order of the tabs of ServerSettingsVM -->
+        <ListBox Grid.Column="0" Grid.Row="2" Classes="tabs"
+                 SelectedIndex="{Binding SelectedTabIndex}"
+                 Margin="12"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource ServerIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.info}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource PlugIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.network}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource NetIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.sfu}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource BaseUsersIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.users}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource BlueShieldIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.security}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanViewSettings}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource BucketIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.storage}"/>
+                </Grid>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding CanManageRoles}">
+                <Grid ColumnDefinitions="Auto, *" Height="40">
+                    <Image Source="{StaticResource GreenShieldIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.roles}"/>
+                </Grid>
+            </ListBoxItem>
+        </ListBox>
+
+        <!-- The pages are edited only once the settings came, and not while they are being saved.
+             A change that disconnects everyone is told above them, whichever page made it -->
+        <DockPanel Grid.Column="1" Grid.Row="2" Margin="12" IsVisible="{Binding IsPageShown}">
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,8" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource WarningBrush}"
+                    IsVisible="{Binding IsReadOnly}">
+                <TextBlock TextWrapping="Wrap" FontSize="13" Text="{l:Text serverSettings.readOnly}"/>
+            </Border>
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,8" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource WarningBrush}"
+                    IsVisible="{Binding Form.MovesEndpoint}">
+                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                    <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13"
+                               Text="{l:Text serverSettings.network.restartHint}"/>
+                </Grid>
+            </Border>
+            <ContentControl Content="{Binding SelectedTab}">
+                <ContentControl.IsEnabled>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsBusy"/>
+                        <Binding Path="CanEditPage"/>
+                    </MultiBinding>
+                </ContentControl.IsEnabled>
+            </ContentControl>
+        </DockPanel>
+        <loadingIndicators:ProgressRing Grid.Column="1" Grid.Row="2" Width="32" Height="32"
+                                        IsIndeterminate="True"
+                                        IsVisible="{Binding IsLoading}"/>
+
+        <!-- What happened to the settings: changed elsewhere, refused, saved -->
+        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3" Margin="12,0,12,8" Spacing="6">
+            <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource WarningBrush}"
+                    IsVisible="{Binding IsChangedElsewhere}">
+                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                    <Image Width="18" Height="18" VerticalAlignment="Center" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" VerticalAlignment="Center"
+                               Text="{l:Text serverSettings.changedElsewhere}"/>
+                    <Button Grid.Column="2" Command="{Binding LoadCommand}"
+                            Content="{l:Text serverSettings.changedElsewhere.load}"/>
+                </Grid>
+            </Border>
+            <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource ErrorBrush}"
+                    IsVisible="{Binding GeneralError, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                    <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding GeneralError}"/>
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="4" Height="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Reset on the left, away from saving; the buttons are as wide as their text in any language -->
+        <Grid Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="5" Margin="10,0" ColumnDefinitions="Auto, *, Auto"
+              ColumnSpacing="10">
+            <Button Grid.Column="0" VerticalAlignment="Center" Command="{Binding ResetCommand}"
+                    IsVisible="{Binding ShowsSettingsFooter}"
+                    Content="{l:Text serverSettings.reset}"/>
+
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{l:Text serverSettings.saved}"
+                       IsVisible="{Binding IsSaved}"/>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Button Classes="primary" Command="{Binding SaveCommand}" HorizontalContentAlignment="Center"
+                        IsVisible="{Binding ShowsSettingsFooter}">
+                    <!-- Both states stay measured, so the button keeps the width of the longer one -->
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center"
+                                    Classes.hidden="{Binding IsBusy}">
+                            <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource SaveIcon}"
+                                   VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text serverSettings.save}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                                    Classes.hidden="{Binding !IsBusy}">
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            IsVisible="{Binding IsBusy}"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"/>
+                            <TextBlock Text="{l:Text serverSettings.saving}"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+
+                <Button Command="{Binding CloseCommand}" IsCancel="True">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text common.close}"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

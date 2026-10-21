@@ -1,0 +1,291 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="520"
+        x:Class="Client.Views.Sessions.Hybrid.HybridSourceSelectView"
+        x:DataType="hybridVm:VideoSourceSelectWindowVM"
+        x:CompileBindings="True"
+        Background="{DynamicResource GeneralBrush}"
+        Width="500"
+        MaxHeight="620">
+
+    <UserControl.Styles>
+        <!-- The two kinds of sources, one of which is chosen from at a time -->
+        <Style Selector="Button.kind">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="12,8"/>
+        </Style>
+        <Style Selector="Border.sources">
+            <Setter Property="Height" Value="170"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+        </Style>
+        <Style Selector="Border.sources ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text source.title}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" Text="{l:Text source.hint}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20,16" Spacing="18">
+
+                <!-- The source, picked here: the application lists the windows and monitors itself -->
+                <StackPanel Spacing="8" IsVisible="{Binding !UsesSystemPicker}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.source}"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Grid.Column="0" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsWindowsMode}"
+                                Command="{Binding SelectWindowsCommand}">
+                            <TextBlock Text="{l:Text source.applications}"/>
+                        </Button>
+                        <Button Grid.Column="1" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsMonitorsMode}"
+                                Command="{Binding SelectMonitorsCommand}">
+                            <TextBlock Text="{l:Text source.monitors}"/>
+                        </Button>
+                    </Grid>
+
+                    <Border Classes="sources" IsVisible="{Binding IsWindowsMode}">
+                        <Panel>
+                            <ListBox ItemsSource="{Binding Windows}" SelectedItem="{Binding SelectedWindow}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Classes="hint" Margin="16"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextAlignment="Center"
+                                       IsVisible="{Binding !Windows.Count}"
+                                       Text="{l:Text source.applications.empty}"/>
+                        </Panel>
+                    </Border>
+
+                    <Border Classes="sources" IsVisible="{Binding IsMonitorsMode}">
+                        <Panel>
+                            <ListBox ItemsSource="{Binding Monitors}" SelectedItem="{Binding SelectedMonitor}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Classes="hint" Margin="16"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextAlignment="Center"
+                                       IsVisible="{Binding !Monitors.Count}"
+                                       Text="{l:Text source.monitors.empty}"/>
+                        </Panel>
+                    </Border>
+                </StackPanel>
+
+                <!-- The source, picked in the dialog of the system, which is called from here -->
+                <StackPanel Spacing="8" IsVisible="{Binding UsesSystemPicker}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.source}"/>
+                    <Border Padding="14,12" CornerRadius="8" Background="{DynamicResource DarkBackgroundBrush}">
+                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                            <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                                <Image Source="{StaticResource ScreenShareIcon}" IsVisible="{Binding !HasSystemInput}"/>
+                                <Image Source="{StaticResource MarkInCircleIcon}" IsVisible="{Binding HasSystemInput}"/>
+                            </Panel>
+
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <Panel>
+                                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap"
+                                               IsVisible="{Binding !HasSystemInput}"
+                                               Text="{l:Text source.system.notPicked}"/>
+                                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap"
+                                               IsVisible="{Binding HasSystemInput}"
+                                               Text="{l:Text source.system.picked}"/>
+                                </Panel>
+                                <TextBlock Classes="hint"
+                                           IsVisible="{Binding !HasSystemInput}"
+                                           Text="{l:Text source.system.hint}"/>
+                                <TextBlock Classes="hint"
+                                           IsVisible="{Binding SystemInputSize, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Text="{Binding SystemInputSize}"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="2" VerticalAlignment="Center" MinWidth="96"
+                                    HorizontalContentAlignment="Center"
+                                    Command="{Binding PickSystemSourceCommand}">
+                                <Panel>
+                                    <Panel IsVisible="{Binding !IsPicking}">
+                                        <TextBlock IsVisible="{Binding !HasSystemInput}" Text="{l:Text source.system.pick}"/>
+                                        <TextBlock IsVisible="{Binding HasSystemInput}" Text="{l:Text source.system.pickAnother}"/>
+                                    </Panel>
+                                    <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                                    IsIndeterminate="True" BorderThickness="2"
+                                                                    IsVisible="{Binding IsPicking}"
+                                                                    Foreground="{DynamicResource ProgressRingBrush}"/>
+                                </Panel>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- The sound, from what is shown: the window, or the whole system for a monitor -->
+                <StackPanel Spacing="8" IsVisible="{Binding HasAudioToggle}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.audio}"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Grid.Column="0" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsAudioDisabled}"
+                                Command="{Binding DisableAudioCommand}">
+                            <TextBlock Text="{l:Text source.audio.off}"/>
+                        </Button>
+                        <Button Grid.Column="1" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsAudioEnabled}"
+                                Command="{Binding EnableAudioCommand}">
+                            <TextBlock Text="{l:Text source.audio.on}"/>
+                        </Button>
+                    </Grid>
+                    <TextBlock Classes="hint" TextWrapping="Wrap"
+                               IsVisible="{Binding AudioHint, Converter={x:Static ObjectConverters.IsNotNull}}"
+                               Text="{Binding AudioHint}"/>
+                </StackPanel>
+
+                <!-- The sound, from an application chosen apart: the system dialog does not tell whose window it is -->
+                <StackPanel Spacing="8" IsVisible="{Binding HasAudioApps}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.audio}"/>
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding AudioApps}"
+                              SelectedItem="{Binding SelectedAudioApp}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="hybridVm:AudioAppOptionVM">
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text source.audio.app.hint}"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" IsVisible="{Binding HasNoAudioApps}"
+                               Text="{l:Text source.audio.app.empty}"/>
+                </StackPanel>
+
+                <!-- The options of the share, one block per option -->
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.resolution}"/>
+                    <ItemsControl ItemsSource="{Binding Resolutions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" ColumnSpacing="10"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="hybridVm:ScreenShareOptionVM">
+                                <Button Classes="choiceCard kind"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding SelectCommand}">
+                                    <TextBlock Text="{Binding Label}"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text source.resolution.hint}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.framerate}"/>
+                    <ItemsControl ItemsSource="{Binding Framerates}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" ColumnSpacing="8"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="hybridVm:ScreenShareOptionVM">
+                                <!-- Four rates share the row, so these cards are narrower than the others -->
+                                <Button Classes="choiceCard kind" Padding="6,8"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding SelectCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center">
+                                        <Image Width="18" Height="18" VerticalAlignment="Center"
+                                               Source="{StaticResource LightningIcon}"
+                                               IsVisible="{Binding IsDemanding}"/>
+                                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.bitrate}"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Grid.Column="0" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsAutoBitrate}"
+                                Command="{Binding SelectAutoBitrateCommand}">
+                            <TextBlock Text="{Binding AutoBitrateLabel}"/>
+                        </Button>
+                        <Button Grid.Column="1" Classes="choiceCard kind"
+                                Classes.selected="{Binding IsCustomBitrate}"
+                                Command="{Binding SelectCustomBitrateCommand}">
+                            <TextBlock Text="{l:Text source.bitrate.custom}"/>
+                        </Button>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8" IsVisible="{Binding IsCustomBitrate}">
+                        <TextBox Grid.Column="0" Text="{Binding CustomBitrate}" MaxLength="6"/>
+                        <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
+                                   Text="{l:Text source.bitrate.unit}"/>
+                    </Grid>
+
+                    <!-- Only a warning: the share starts with such a bitrate all the same -->
+                    <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                            BorderBrush="{DynamicResource WarningBrush}"
+                            IsVisible="{Binding BitrateWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                            <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                            <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding BitrateWarning}"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource ErrorBrush}"
+                        IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                        <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding Error}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="4" Margin="20,12" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.cancel}"/>
+                </StackPanel>
+            </Button>
+
+            <Button Classes="save" Command="{Binding GoLive}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlayIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text source.start}"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

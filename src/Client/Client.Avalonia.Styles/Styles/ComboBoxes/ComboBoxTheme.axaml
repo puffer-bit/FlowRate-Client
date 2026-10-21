@@ -1,0 +1,227 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A list entry: rounded overlay under the pointer; the selected one keeps a faint overlay
+         and an accent pill on the left that grows in when it gets selected -->
+    <ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Margin" Value="0,1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      Padding="{TemplateBinding Padding}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    <Border Name="pill" Width="3" Height="16" CornerRadius="1.5"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Background="{DynamicResource ButtonMainBrush}"/>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+
+        <!-- Hidden by opacity: a zero scale is a degenerate transform and is not reliably applied -->
+        <Style Selector="^ /template/ Border#pill">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="scaleY(0.4)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^:selected /template/ Border#pill">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="scaleY(1)"/>
+        </Style>
+
+        <Style Selector="^:selected">
+            <Setter Property="Background" Value="{DynamicResource ComboBoxItemBackgroundPointerOver}"/>
+        </Style>
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ComboBoxItemBackgroundPointerOver}"/>
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource ComboBoxItemBackgroundPressed}"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- Replaces the Fluent ComboBox everywhere. The closed box looks like a text box (same brushes,
+         accent border while open or focused from the keyboard), with a chevron that turns over while
+         the list is open. The list fades and slides in under the box -->
+    <ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource TextControlBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}"/>
+        <Setter Property="Padding" Value="10,5,0,6"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="MaxDropDownHeight" Value="360"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DataValidationErrors>
+                    <Grid ColumnDefinitions="*,32">
+                        <Border Name="bg" Grid.Column="0" Grid.ColumnSpan="2"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"/>
+
+                        <!-- The picked item, or the placeholder while nothing is picked; hidden when editable -->
+                        <Panel Name="selection" Grid.Column="0" Margin="{TemplateBinding Padding}">
+                            <TextBlock Text="{TemplateBinding PlaceholderText}"
+                                       Foreground="{TemplateBinding PlaceholderForeground}"
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                       IsVisible="{TemplateBinding SelectionBoxItem, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <ContentControl Content="{TemplateBinding SelectionBoxItem}"
+                                            ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Panel>
+
+                        <!-- Editable mode: a bare text box inside the field; the field draws the border -->
+                        <TextBox Name="PART_EditableTextBox" Grid.Column="0"
+                                 IsVisible="{TemplateBinding IsEditable}"
+                                 Padding="{TemplateBinding Padding}"
+                                 MinHeight="0"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                 PlaceholderText="{TemplateBinding PlaceholderText}"
+                                 PlaceholderForeground="{TemplateBinding PlaceholderForeground}"
+                                 Text="{TemplateBinding Text, Mode=TwoWay}"
+                                 Cursor="IBeam">
+                            <TextBox.Resources>
+                                <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
+                                <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
+                                <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
+                                <x:Double x:Key="TextControlDisabledOpacity">1</x:Double>
+                                <Thickness x:Key="TextControlBorderThemeThickness">0</Thickness>
+                                <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                            </TextBox.Resources>
+                        </TextBox>
+
+                        <Path Name="chevron" Grid.Column="1"
+                              Width="10" Height="6" Stretch="None"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              IsHitTestVisible="False"
+                              Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                              Stroke="{DynamicResource SecondaryTextBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"/>
+
+                        <Popup Name="PART_Popup"
+                               IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                               MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
+                               MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                               Placement="BottomEdgeAlignedLeft"
+                               VerticalOffset="4"
+                               WindowManagerAddShadowHint="False"
+                               IsLightDismissEnabled="True"
+                               InheritsTransform="True">
+                            <Border Name="PopupBorder"
+                                    Background="{DynamicResource ComboBoxDropDownBackground}"
+                                    BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4,3">
+                                <!-- The opening animation moves this transform; animations cannot animate RenderTransform itself -->
+                                <Border.RenderTransform>
+                                    <TranslateTransform/>
+                                </Border.RenderTransform>
+                                <ScrollViewer HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                              VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </DataValidationErrors>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^ /template/ Border#bg">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Medium}"/>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Medium}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^ /template/ Path#chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="^[IsEditable=True] /template/ Panel#selection">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrushPointerOver}"/>
+        </Style>
+        <Style Selector="^:pointerover /template/ Path#chevron">
+            <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+
+        <!-- Open, typed into, or reached with Tab: same accent border as a focused text box -->
+        <Style Selector="^:dropdownopen, ^:focus-visible, ^[IsEditable=True]:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonHoveredBrush}"/>
+        </Style>
+        <Style Selector="^:dropdownopen /template/ Path#chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+
+        <!-- Played each time the list opens: its border enters the tree of the popup anew -->
+        <Style Selector="^ /template/ Border#PopupBorder">
+            <Setter Property="anim:Presence.Appear" Value="Drop"/>
+            <Setter Property="anim:Presence.Duration" Value="Short"/>
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <!-- A value the form does not accept, see TextBox.invalid; wins over hover, focus and open -->
+        <Style Selector="^.invalid, ^.invalid:pointerover, ^.invalid:dropdownopen, ^.invalid:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

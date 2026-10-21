@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0-android</TargetFramework>
+        <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <!-- Not Client.Android: inside the Client namespace that name would hide the Android SDK namespace -->
+        <RootNamespace>Client.Droid</RootNamespace>
+        <ApplicationId>com.flowrate.client</ApplicationId>
+        <ApplicationVersion>1</ApplicationVersion>
+        <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
+        <AndroidPackageFormat>apk</AndroidPackageFormat>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Android" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
+        <PackageReference Include="Xamarin.Firebase.Core" Version="121.1.1.20" />
+        <PackageReference Include="Xamarin.Firebase.Messaging" Version="125.1.3" />
+    </ItemGroup>
+
+    <!-- No Client.GStreamer or Client.OpenAL: they are built for the desktop. What the view models
+         need of them is in the Platform folder -->
+    <ItemGroup>
+        <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
+        <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+        <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
+        <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <GoogleServicesJson Include="google-services.json" />
+    </ItemGroup>
+    
+    <!-- The time and the commit of the build, shown after the version -->
+    <Import Project="..\BuildNumber.targets" />
+</Project>

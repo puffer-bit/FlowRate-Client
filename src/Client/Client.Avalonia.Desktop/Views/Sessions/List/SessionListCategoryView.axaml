@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="32"
+             x:Class="Client.Views.Sessions.List.SessionListCategoryView"
+             x:DataType="listVm:SessionCategoryVM"
+             x:Name="Root">
+
+    <Border Classes="categoryHeader"
+            Classes.collapsed="{Binding IsCollapsed}"
+            Classes.unread="{Binding HasUnread}"
+            Classes.dropTarget="{Binding IsDropTarget}"
+            Classes.dragged="{Binding IsDragged}"
+            Tapped="OnHeaderTapped">
+        <Border.ContextFlyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Spacing="2">
+                    <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text sessions.category.createSession}"
+                                          menus:FlyoutMenu.CloseOnClick="True"
+                                          IsVisible="{Binding CanCreateSessions}"
+                                          Command="{Binding CreateSessionCommand}"/>
+                    <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text sessions.category.rename}"
+                                          menus:FlyoutMenu.CloseOnClick="True"
+                                          IsVisible="{Binding CanManage}"
+                                          Command="{Binding BeginRenameCommand}"/>
+                    <Separator IsVisible="{Binding CanManage}"/>
+                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text sessions.category.delete}"
+                                          menus:FlyoutMenu.CloseOnClick="True"
+                                          IsVisible="{Binding CanManage}"
+                                          Command="{Binding DeleteCommand}"/>
+                </StackPanel>
+            </Flyout>
+        </Border.ContextFlyout>
+
+        <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="4">
+            <Path Grid.Column="0" Classes="categoryChevron" Data="M0,0 L4,4 L8,0"/>
+
+            <TextBlock Grid.Column="1" Classes="categoryName"
+                       Text="{Binding Name}"
+                       ToolTip.Tip="{Binding Name}"
+                       IsVisible="{Binding !IsEditing}"/>
+
+            <TextBox Grid.Column="1" x:Name="NameEditor"
+                     Classes="categoryNameEditor"
+                     Text="{Binding EditedName}"
+                     PlaceholderText="{l:Text sessions.category.namePlaceholder}"
+                     MaxLength="50"
+                     IsVisible="{Binding IsEditing}"
+                     KeyDown="OnEditorKeyDown"
+                     LostFocus="OnEditorLostFocus"/>
+
+            <!-- A collapsed category counts what its chats hide; mentions take the place of the plain counter -->
+            <Panel Grid.Column="2" VerticalAlignment="Center">
+                <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
+                    <TextBlock Text="{Binding UnreadCountText}"/>
+                </Border>
+                <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
+                    <TextBlock Text="{Binding MentionCountText}"/>
+                </Border>
+            </Panel>
+
+            <!-- The button shows on hover by its style, so the roles hide its place instead -->
+            <Panel Grid.Column="3" IsVisible="{Binding CanCreateSessions}">
+                <Button Classes="categoryAdd borderless"
+                        ToolTip.Tip="{l:Text sessions.category.createSession}"
+                        Width="26" Height="26" Padding="0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        Command="{Binding CreateSessionCommand}">
+                    <Image Width="20" Height="20" Source="{StaticResource PlusIcon}"/>
+                </Button>
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,126 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="56"
+             x:DataType="hybridVm:HybridSessionStatusBarVM"
+             x:Class="Client.Views.Sessions.Hybrid.HybridSessionStatusBarControl">
+
+    <UserControl.Styles>
+        <!-- The same look as the session actions of the main window: flat, lit on hover, and a state
+             that matters stays colored -->
+        <Style Selector=":is(Button).barAction">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector=":is(Button).barAction /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector=":is(Button).barAction:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.barAction:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+        <!-- A screen that is being shared stays visible at a glance -->
+        <Style Selector="Button.barAction.sharing /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+        </Style>
+        <Style Selector="Button.barAction.leave:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
+        </Style>
+        <Style Selector=":is(Button).barAction Image">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="{DynamicResource GeneralBrush}" ColumnDefinitions="*, Auto" ColumnSpacing="12">
+
+        <!-- The session and the state of its connection -->
+        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,0,0,0">
+            <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                IsIndeterminate="True"
+                                                BorderThickness="3"
+                                                Foreground="{DynamicResource ProgressRingBrush}"
+                                                IsVisible="{Binding IsLoading}"/>
+                <Image Width="20" Height="20" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}" IsVisible="{Binding !IsLoading}"/>
+            </Panel>
+
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <text:MarqueeTextBlock Text="{Binding SessionName}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                <text:MarqueeTextBlock Text="{Binding ShortStatusText}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,10,0" VerticalAlignment="Center">
+
+            <!-- What we send -->
+            <Button Classes="barAction"
+                    Command="{Binding ToggleMicrophoneCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
+                <Panel>
+                    <Image Source="{StaticResource MicrophoneIcon}" IsVisible="{Binding IsMicrophoneOn}"/>
+                    <Image Source="{StaticResource CrossedMicrophoneIcon}" IsVisible="{Binding !IsMicrophoneOn}"/>
+                </Panel>
+            </Button>
+
+            <!-- What we hear -->
+            <Button Classes="barAction"
+                    Command="{Binding ToggleSoundCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleSound}">
+                <Panel>
+                    <Image Source="{StaticResource HeadphonesIcon}" IsVisible="{Binding IsSoundOn}"/>
+                    <Image Source="{StaticResource CrossedHeadphonesIcon}" IsVisible="{Binding !IsSoundOn}"/>
+                </Panel>
+            </Button>
+
+            <Button Classes="barAction"
+                    Classes.sharing="{Binding IsScreenShareOn}"
+                    Command="{Binding ToggleScreenShareCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                <Image Source="{StaticResource ScreenShareIcon}"/>
+            </Button>
+
+            <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
+
+            <!-- How the session is shown -->
+            <ToggleButton Classes="barAction"
+                          IsChecked="{Binding IsUserListVisible}"
+                          ToolTip.Tip="{l:Text hybrid.participants}">
+                <Image Source="{StaticResource BaseUsersIcon}"/>
+            </ToggleButton>
+
+            <Button Classes="barAction"
+                    Command="{Binding ToggleFullscreenCommand}"
+                    ToolTip.Tip="{l:Text hybrid.fullscreen}">
+                <Image Source="{StaticResource FullscreenIcon}"/>
+            </Button>
+
+            <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
+
+            <Button Classes="barAction leave"
+                    Command="{Binding CloseCommand}"
+                    ToolTip.Tip="{l:Text main.voice.leave}">
+                <Image Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

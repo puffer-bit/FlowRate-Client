@@ -1,0 +1,70 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+        xmlns:views="clr-namespace:Client.Droid.Views">
+
+    <Style Selector="views|BottomSheet">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <!-- Covers what the sheet lies over and takes the pointer input; a tap on it dismisses the sheet -->
+                    <Border Name="PART_Backdrop" Background="{DynamicResource DialogBackdropBrush}"/>
+
+                    <Border Name="sheet"
+                            VerticalAlignment="Bottom"
+                            Background="{DynamicResource GeneralBrush}"
+                            BorderBrush="{DynamicResource DialogBorderBrush}"
+                            BorderThickness="1,1,1,0"
+                            CornerRadius="16,16,0,0"
+                            Padding="8,8,8,12"
+                            BoxShadow="{DynamicResource DialogShadow}">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="views|BottomSheet:open">
+        <Setter Property="IsHitTestVisible" Value="True"/>
+    </Style>
+
+    <Style Selector="views|BottomSheet /template/ Border#PART_Backdrop">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="views|BottomSheet:open /template/ Border#PART_Backdrop">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- Closed, the sheet waits under the edge of the screen, further down than a menu is tall. It
+         fades as well, so one that is taller than that still does not show -->
+    <Style Selector="views|BottomSheet /template/ Border#sheet">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="RenderTransform" Value="translateY(480px)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="views|BottomSheet:open /template/ Border#sheet">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="translateY(0px)"/>
+    </Style>
+
+    <!-- Items tall enough for a finger; the desktop menu keeps its 32 -->
+    <Style Selector="views|BottomSheet menus|MenuItemButton">
+        <Setter Property="MinHeight" Value="48"/>
+        <Setter Property="Padding" Value="12,4"/>
+        <Setter Property="FontSize" Value="15"/>
+    </Style>
+</Styles>

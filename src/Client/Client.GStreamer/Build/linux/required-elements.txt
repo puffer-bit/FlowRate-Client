@@ -1,0 +1,66 @@
+# Elements verify.sh expects in the bundle. Mirrors the lists in Loader/GstElementCheck.cs,
+# keep both in sync. Lines starting with '?' are optional: reported, but not fatal.
+
+# Transport
+webrtcbin
+rtpbin
+nicesrc
+nicesink
+dtlssrtpenc
+dtlssrtpdec
+sctpenc
+sctpdec
+
+# Voice
+opusenc
+opusdec
+rtpopuspay
+rtpopusdepay
+audioconvert
+audioresample
+audiomixer
+audiodynamic
+volume
+valve
+level
+?webrtcdsp
+autoaudiosrc
+autoaudiosink
+pulsesrc
+pulsesink
+alsasrc
+alsasink
+
+# Generic
+queue
+tee
+capsfilter
+appsrc
+appsink
+fakesink
+
+# Video
+videoconvert
+videoscale
+videorate
+h264parse
+openh264enc
+openh264dec
+rtph264pay
+rtph264depay
+av1parse
+svtav1enc
+dav1ddec
+rtpav1pay
+rtpav1depay
+vp8enc
+vp8dec
+rtpvp8pay
+rtpvp8depay
+?vp9enc
+?vp9dec
+?rtpvp9pay
+?rtpvp9depay
+
+# Screen capture, registered only when libpipewire is on the system
+?pipewiresrc

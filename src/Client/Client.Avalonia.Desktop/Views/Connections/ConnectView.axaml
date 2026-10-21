@@ -1,0 +1,169 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:connectVm="clr-namespace:Client.ViewModels.Connections;assembly=Client.Avalonia.ViewModels"
+        xmlns:models="clr-namespace:Client.Core.Settings;assembly=Client.Core"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="440"
+        x:Class="Client.Views.Connections.ConnectView"
+        x:DataType="connectVm:ConnectWindowVM"
+        Background="{DynamicResource GeneralBrush}"
+        Width="420">
+
+    <UserControl.Resources>
+        <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource PlugIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text connect.title}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" Text="{l:Text connect.subtitle}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Form -->
+        <StackPanel Grid.Row="2" Margin="20,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
+
+            <!-- Address and port -->
+            <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*, 96" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="fieldLabel" Text="{l:Text connect.field.address}"/>
+                    <TextBlock Grid.Column="1" Classes="fieldLabel" Text="{l:Text connect.field.port}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*, 96" ColumnSpacing="10">
+                    <!-- Typed by hand or picked from the remembered servers; a pasted host:port or link is accepted too -->
+                    <ComboBox Grid.Column="0"
+                              x:Name="AddressInput"
+                              IsEditable="True"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="{l:Text connect.address.placeholder}"
+                              ItemsSource="{Binding SavedServers}"
+                              SelectedItem="{Binding SelectedSavedServer}"
+                              Text="{Binding ServerAddress, Mode=TwoWay}"
+                              Classes.invalid="{Binding AddressError, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="connectVm:SavedServerItem">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
+                                           Source="{StaticResource PlanetIcon}"/>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding Name}"
+                                                   IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        <TextBlock Classes="hint" Text="{Binding Endpoint}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Port}"
+                             PlaceholderText="{Binding PortPlaceholder}"
+                             MaxLength="5"
+                             Classes.invalid="{Binding PortError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </Grid>
+
+                <TextBlock Classes="fieldError" Text="{Binding AddressError}"
+                           IsVisible="{Binding AddressError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Classes="fieldError" Text="{Binding PortError}"
+                           IsVisible="{Binding PortError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Classes="hint" Text="{Binding PortHint}"
+                           IsVisible="{Binding PortHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+
+            <!-- Password -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.password}"/>
+                <TextBox Classes="password"
+                         PlaceholderText="{l:Text connect.password.placeholder}"
+                         Text="{Binding Password}"
+                         RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"
+                         Classes.invalid="{Binding PasswordError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Classes="fieldError" Text="{Binding PasswordError}"
+                           IsVisible="{Binding PasswordError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+
+            <!-- Identity -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.identity}"/>
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Identities}"
+                          SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:SavedUserModel">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                    UserName="{Binding Username}"
+                                                    Coordinator="{Binding CoordinatorId}"
+                                                    AvatarUrl="{Binding AvatarUrl}"/>
+                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                               Text="{Binding Username}"/>
+                                    <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
+                                         The entry that registers a new user has none -->
+                                    <TextBlock Classes="hint" TextWrapping="NoWrap"
+                                               Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
+                                               IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <CheckBox Content="{l:Text connect.saveToProfiles}"/>
+        </StackPanel>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
+            <!-- What the connection is waiting for at the moment -->
+            <!-- The indicator is as wide as its dot, so the dot starts at the left edge of the form;
+                 the glow around it is painted past the bounds -->
+            <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" IsVisible="{Binding IsBusy}">
+                <loadingIndicators:PulseLoadingIndicator Grid.Column="0" Width="10"
+                                                         Color="{DynamicResource ButtonMainBrush}"/>
+                <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
+                           Text="{Binding ConnectionStatus}"/>
+            </Grid>
+
+            <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.cancel}"/>
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="2" Classes="primary" MinWidth="130" HorizontalContentAlignment="Left"
+                    Command="{Binding ConnectCommand}"
+                    IsEnabled="{Binding IsFormValid}"
+                    IsDefault="True">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
+                                IsVisible="{Binding !IsBusy}">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlugIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text connect.button}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                IsVisible="{Binding IsBusy}">
+                        <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                        IsIndeterminate="True" BorderThickness="2"
+                                                        Foreground="{DynamicResource OnAccentTextBrush}"/>
+                        <TextBlock Text="{l:Text hybrid.status.connecting}"/>
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,33 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Every flyout is a menu card: rounded, thin border, items close to the edge.
+         Menu items are MenuItemButton (Client.Avalonia.Controls), stacked with Spacing="2" -->
+    <Style Selector="FlyoutPresenter">
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="MinWidth" Value="200"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+    </Style>
+
+    <!-- Splits a menu into groups -->
+    <Style Selector="FlyoutPresenter Separator">
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Margin" Value="8,3"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayBrush}"/>
+    </Style>
+
+    <!-- A caption inside a menu, e.g. above a slider; aligned with the item labels -->
+    <Style Selector="FlyoutPresenter TextBlock.menuLabel">
+        <Setter Property="Margin" Value="8,4,8,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+
+    <!-- A non-button row of a menu (a slider and the like), with the same side insets as the items -->
+    <Style Selector="FlyoutPresenter :is(Control).menuRow">
+        <Setter Property="Margin" Value="8,0"/>
+    </Style>
+</Styles>

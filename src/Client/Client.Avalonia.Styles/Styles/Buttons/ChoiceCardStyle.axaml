@@ -1,0 +1,22 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- One of a few options picked by clicking its tile; the picked one has the class "selected"
+         and an accent frame -->
+    <Style Selector="Button.choiceCard">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.choiceCard:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundAltBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}"/>
+    </Style>
+    <Style Selector="Button.choiceCard.selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundAltBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonMainBrush}"/>
+    </Style>
+
+</Styles>

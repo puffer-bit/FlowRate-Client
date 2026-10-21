@@ -1,0 +1,142 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="360"
+             x:Class="Client.Views.Profile.EditProfileView"
+             x:DataType="profileVm:EditProfileWindowVM"
+             Background="{DynamicResource GeneralBrush}"
+             Width="460">
+
+    <UserControl.Styles>
+        <!-- The avatar itself opens the file picker; a dimmed layer with a hint shows on hover -->
+        <Style Selector="Button.avatarPicker">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="48"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.avatarPicker /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.avatarPicker:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.avatarPicker Border.avatarHover">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.avatarPicker:pointerover Border.avatarHover">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource BaseUserIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" Text="{l:Text profile.edit.hint}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Form -->
+        <Grid Grid.Row="2" Margin="20,18" ColumnDefinitions="Auto, *" ColumnSpacing="20" IsEnabled="{Binding !IsBusy}">
+
+            <!-- Avatar -->
+            <StackPanel Grid.Column="0" Spacing="8" Width="112">
+                <Button Classes="avatarPicker" Width="96" Height="96" HorizontalAlignment="Center"
+                        Command="{Binding AvatarPicker.ChooseAvatarCommand}"
+                        ToolTip.Tip="{l:Text profile.avatar.choose}">
+                    <Panel>
+                        <avatars:UserAvatar Width="96" Height="96"
+                                            UserName="{Binding Name}"
+                                            AvatarUrl="{Binding ShownAvatarUrl}"
+                                            Source="{Binding AvatarPicker.Avatar}"/>
+                        <Border Classes="avatarHover" CornerRadius="48"
+                                Background="{DynamicResource DialogBackdropBrush}">
+                            <TextBlock Text="{l:Text profile.avatar.change}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource OnAccentTextBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Panel>
+                </Button>
+
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        Command="{Binding AvatarPicker.ChooseAvatarCommand}">
+                    <TextBlock Text="{l:Text profile.avatar.chooseImage}" FontSize="12"/>
+                </Button>
+
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        Command="{Binding RemoveAvatarCommand}">
+                    <TextBlock Text="{l:Text common.remove}" FontSize="12"/>
+                </Button>
+
+                <TextBlock Classes="fieldError" TextAlignment="Center" Text="{Binding AvatarPicker.AvatarError}"
+                           IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+
+            <!-- Name -->
+            <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                <TextBox x:Name="NameInput"
+                         PlaceholderText="{l:Text profile.name.yours}"
+                         Text="{Binding Name}"
+                         Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Classes="fieldError" Text="{Binding NameError}"
+                           IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Classes="hint" Text="{Binding NameHint}"
+                           IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto">
+            <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                                 Text="{Binding UserId, StringFormat='ID: {0}'}"
+                                 IsVisible="{Binding UserId, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text common.cancel}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
+                                    IsVisible="{Binding !IsBusy}">
+                            <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource DisketteIcon}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text common.save}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                    IsVisible="{Binding IsBusy}">
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"/>
+                            <TextBlock Text="{l:Text common.saving}"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

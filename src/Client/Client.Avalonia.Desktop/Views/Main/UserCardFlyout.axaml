@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:user="clr-namespace:Shared.Enums.User;assembly=Shared.Core"
+             x:DataType="mainVm:UserCardVM"
+             x:Class="Client.Views.Main.UserCardFlyout">
+
+    <StackPanel Spacing="2">
+        <menus:MenuItemButton Icon="{Binding StatusIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                              Content="{l:Text profile.status.title}">
+            <menus:MenuItemButton.Flyout>
+                <Flyout Placement="RightEdgeAlignedTop">
+                    <StackPanel Spacing="2">
+                        <menus:MenuItemButton Icon="{StaticResource StatusOnlineIcon}"
+                                              Content="{l:Text profile.status.online}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding SetStatusCommand}"
+                                              CommandParameter="{x:Static user:UserStatus.Online}"/>
+                        <menus:MenuItemButton Icon="{StaticResource StatusAwayIcon}"
+                                              Content="{l:Text profile.status.away}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding SetStatusCommand}"
+                                              CommandParameter="{x:Static user:UserStatus.Away}"/>
+                        <menus:MenuItemButton Icon="{StaticResource StatusDoNotDisturbIcon}"
+                                              Content="{l:Text profile.status.doNotDisturb}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding SetStatusCommand}"
+                                              CommandParameter="{x:Static user:UserStatus.DoNotDisturb}"/>
+                        <menus:MenuItemButton Icon="{StaticResource StatusInvisibleIcon}"
+                                              Content="{l:Text profile.status.invisible}"
+                                              ToolTip.Tip="{l:Text profile.status.invisible.hint}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding SetStatusCommand}"
+                                              CommandParameter="{x:Static user:UserStatus.Invisible}"/>
+                    </StackPanel>
+                </Flyout>
+            </menus:MenuItemButton.Flyout>
+        </menus:MenuItemButton>
+        <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text profile.change}"
+                              Command="{Binding EditProfileCommand}"/>
+    </StackPanel>
+</UserControl>

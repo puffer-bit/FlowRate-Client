@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             x:DataType="notificationVm:NotificationCenterVM"
+             x:Class="Client.Views.Notifications.ToastHost">
+
+    <UserControl.Styles>
+        <!-- The cross shows itself only while the pointer is over the notification -->
+        <Style Selector="Border.toast Button.close">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.toast:pointerover Button.close">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The newest notification is the lowest one, next to the corner -->
+    <ItemsControl ItemsSource="{Binding Notifications}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="8"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="notificationVm:ToastVM">
+                <Border Classes="toast"
+                        Width="320"
+                        CornerRadius="8"
+                        ClipToBounds="True"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource FlyoutBorderBrush}"
+                        Background="{DynamicResource FlyoutBackgroundBrush}"
+                        anim:Presence.Appear="Rise"
+                        anim:Presence.Leave="Fade"
+                        anim:Presence.IsLeaving="{Binding IsLeaving}"
+                        PointerEntered="Toast_PointerEntered"
+                        PointerExited="Toast_PointerExited">
+                    <Grid ColumnDefinitions="4, Auto, *, Auto">
+                        <Border Grid.Column="0" Classes="stripe"
+                                Classes.success="{Binding IsSuccess}"
+                                Classes.warning="{Binding IsWarning}"
+                                Classes.error="{Binding IsError}"/>
+
+                        <Panel Grid.Column="1" Width="20" Height="20" Margin="12,12,10,12" VerticalAlignment="Top">
+                            <Image Source="{StaticResource IInCircleIcon}" IsVisible="{Binding IsInfo}"/>
+                            <Image Source="{StaticResource MarkInCircleIcon}" IsVisible="{Binding IsSuccess}"/>
+                            <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding IsWarning}"/>
+                            <Image Source="{StaticResource CrossInCircleIcon}" IsVisible="{Binding IsError}"/>
+                        </Panel>
+
+                        <StackPanel Grid.Column="2" Spacing="3" Margin="0,11" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+                            <TextBlock Text="{Binding Message}"
+                                       IsVisible="{Binding HasMessage}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       MaxLines="4"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="3" Classes="borderless close"
+                                Width="16" Height="16" Margin="8,12,10,0"
+                                VerticalAlignment="Top"
+                                Command="{Binding CloseCommand}">
+                            <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

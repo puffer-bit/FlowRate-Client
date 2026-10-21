@@ -1,0 +1,48 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Client.Avalonia.Controls"
+        xmlns:settings="clr-namespace:Client.Avalonia.Controls.Settings">
+    <Design.PreviewWith>
+        <Border Padding="20" Width="460">
+            <settings:SettingsPage>
+                <controls:SettingsHeader Text="Section"/>
+                <settings:SettingsCard>
+                    <settings:SettingsRow Title="Setting">
+                        <CheckBox/>
+                    </settings:SettingsRow>
+                </settings:SettingsCard>
+                <controls:SettingsHeader Text="Another section"/>
+                <settings:SettingsCard>
+                    <settings:SettingsRow Title="Setting">
+                        <CheckBox/>
+                    </settings:SettingsRow>
+                </settings:SettingsCard>
+            </settings:SettingsPage>
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="settings|SettingsPage">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="10"/>
+            </ItemsPanelTemplate>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                    VerticalAlignment="Top"/>
+                </ScrollViewer>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A section that follows another one stands a little further from it -->
+    <Style Selector="settings|SettingsPage > controls|SettingsHeader">
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style Selector="settings|SettingsPage > controls|SettingsHeader:nth-child(1)">
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+</Styles>

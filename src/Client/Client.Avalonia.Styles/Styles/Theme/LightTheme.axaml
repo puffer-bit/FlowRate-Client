@@ -1,0 +1,260 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            
+            <!-- ====== ПАЛИТРА ЦВЕТОВ (Легко менять отсюда) ====== -->
+            <!-- Фоны -->
+            <Color x:Key="ColorDark1">#F5F5F5</Color>
+            <Color x:Key="ColorDark2">#FFFFFF</Color>
+            <Color x:Key="ColorDark3">#E8E8E8</Color>
+            <Color x:Key="ColorDark4">#F0F0F0</Color>
+            <Color x:Key="ColorDarkVeryDark">#F9F9F9</Color>
+            
+            <!-- Текст -->
+            <Color x:Key="ColorTextLight">#000000</Color>
+            <Color x:Key="ColorTextMedium">#666666</Color>
+            
+            <!-- Основной цвет (Фиолет) -->
+            <Color x:Key="ColorPrimary">#6C63FF</Color>
+            <Color x:Key="ColorPrimaryLight">#8B7FFF</Color>
+            <Color x:Key="ColorPrimaryDark">#5A52E0</Color>
+            <Color x:Key="ColorPrimaryVeryDark">#E8E8FF</Color>
+            
+            <!-- Оверлеи -->
+            <!-- The backdrop of a hybrid session: a quiet base and three soft glows that drift
+                 over it, the farthest one first. Each glow fades into its own colour with no
+                 opacity left, which keeps its rim from turning grey -->
+            <Color x:Key="ColorSessionBackdrop">#EFEEF8</Color>
+            <Color x:Key="ColorSessionGlowFar">#99C9C4FF</Color>
+            <Color x:Key="ColorSessionGlowFarEdge">#00C9C4FF</Color>
+            <Color x:Key="ColorSessionGlowMiddle">#597FC4E8</Color>
+            <Color x:Key="ColorSessionGlowMiddleEdge">#007FC4E8</Color>
+            <Color x:Key="ColorSessionGlowNear">#4D8B7FFF</Color>
+            <Color x:Key="ColorSessionGlowNearEdge">#008B7FFF</Color>
+
+            <Color x:Key="ColorOverlay">#30000000</Color>
+            <Color x:Key="ColorOverlayLight">#E6000000</Color>
+            
+            <!-- Вспомогательные -->
+            <Color x:Key="ColorWarning">#FFC107</Color>
+            <Color x:Key="ColorError">#FF5252</Color>
+            <Color x:Key="ColorSuccess">#4CAF50</Color>
+            
+            <!-- Дополнительные цвета для кнопок и borderes -->
+            <Color x:Key="ColorBorderLight">#CCCCCC</Color>
+            <Color x:Key="ColorBorderMedium">#CCCCCC</Color>
+            <Color x:Key="ColorBorderDark">#CCCCCC</Color>
+            <Color x:Key="ColorSliderDisabled">#CCCCCC</Color>
+            <Color x:Key="ColorOverlayMedium">#15000000</Color>
+            <Color x:Key="ColorOverlayGray">#999999</Color>
+            
+            <!-- Outline of the ordinary button, at rest and while pressed -->
+            <Color x:Key="ColorSecondary">#CCCCCC</Color>
+            <Color x:Key="ColorSecondaryPressed">#CCCCCC</Color>
+
+            
+            <!-- Зелёные кнопки (Save) -->
+            <Color x:Key="ColorSaveBase">ForestGreen</Color>
+            <Color x:Key="ColorSaveHovered">#4CAF50</Color>
+            <Color x:Key="ColorSavePressed">#388E3C</Color>
+            <Color x:Key="ColorSaveDisabled">#BDBDBD</Color>
+            
+            <!-- Красные кнопки (Danger) -->
+            <Color x:Key="ColorDangerBase">#D32F2F</Color>
+            <Color x:Key="ColorDangerHovered">#E53935</Color>
+            <Color x:Key="ColorDangerPressed">#C62828</Color>
+            <Color x:Key="ColorDangerDisabled">#BDBDBD</Color>
+            
+            <!-- ====== СИСТЕМНЫЕ ФОНЫ И БАЗОВЫЕ КЛЮЧИ (используют палитру) ====== -->
+            <SolidColorBrush x:Key="SystemRegionBrush" Color="{DynamicResource ColorDark2}" />
+            <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{DynamicResource ColorDark1}" />
+            <SolidColorBrush x:Key="SolidBackgroundFillColorBase" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="WindowDefaultBackground" Color="{DynamicResource ColorDark2}" />
+            <SolidColorBrush x:Key="FlyoutBackgroundBrush" Color="{DynamicResource ColorDarkVeryDark}" />
+            <!-- ComboBox drop-down list (overrides FluentTheme keys) -->
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource ColorDark3}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{DynamicResource ColorOverlayMedium}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="{DynamicResource ColorOverlay}" />
+
+            <!-- Fluent accent (blue by default) replaced with the palette's primary color.
+                 Literal values: a Color resource cannot reference another one dynamically -->
+            <Color x:Key="SystemAccentColor">#6C63FF</Color>
+            <Color x:Key="SystemAccentColorLight1">#8B7FFF</Color>
+            <Color x:Key="SystemAccentColorLight2">#A39DFF</Color>
+            <Color x:Key="SystemAccentColorLight3">#C4C0FF</Color>
+            <Color x:Key="SystemAccentColorDark1">#5A52E0</Color>
+            <Color x:Key="SystemAccentColorDark2">#4A43C0</Color>
+            <Color x:Key="SystemAccentColorDark3">#3A34A0</Color>
+
+            <!-- CheckBox checked/indeterminate states (overrides FluentTheme keys) -->
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="White" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="White" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" Color="White" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillIndeterminate" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillIndeterminatePointerOver" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillIndeterminatePressed" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeIndeterminate" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeIndeterminatePointerOver" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeIndeterminatePressed" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundIndeterminate" Color="White" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundIndeterminatePointerOver" Color="White" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundIndeterminatePressed" Color="White" />
+            
+            <!-- ====== СИСТЕМНЫЙ ТЕКСТ И МЕНЮ (используют палитру) ====== -->
+            <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="{DynamicResource ColorTextLight}" />
+            <SolidColorBrush x:Key="SystemControlHighlightForegroundBaseHighBrush" Color="{DynamicResource ColorTextLight}" />
+            <SolidColorBrush x:Key="SystemControlForegroundBaseMediumBrush" Color="{DynamicResource ColorTextMedium}" />
+            <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="{DynamicResource ColorTextLight}" />
+
+            <!-- ====== КАСТОМНЫЕ СЕМАНТИЧЕСКИЕ КИСТИ (используют палитру) ====== -->
+            <SolidColorBrush x:Key="GeneralBrush" Color="{DynamicResource ColorDark1}" />
+            <SolidColorBrush x:Key="BackgroundGeneralBrush" Color="{DynamicResource ColorDark2}" />
+            
+            <!-- Текстовые кисти -->
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="{DynamicResource ColorTextLight}" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="{DynamicResource ColorTextMedium}" />
+            <!-- Text on filled accent surfaces (primary/danger/save buttons, selected items), white in both themes -->
+            <SolidColorBrush x:Key="OnAccentTextBrush" Color="White" />
+            
+            <!-- Основной фиолетовый бренд-цвет и элементы управления -->
+            <SolidColorBrush x:Key="ButtonMainBrush" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="ProgressRingBrush" Color="{DynamicResource ColorPrimary}" />
+            <!-- The roller of the appearance settings icon: the main color, a shade darker -->
+            <SolidColorBrush x:Key="AppearanceIconBrush" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="ListBoxItemSelectedBrush" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="PeerItemHoverBrush" Color="{DynamicResource ColorOverlayMedium}" />
+            <SolidColorBrush x:Key="PeerItemSelectedBrush" Color="{DynamicResource ColorOverlay}" />
+            
+            <SolidColorBrush x:Key="SecondaryButtonBorderBrush" Color="{DynamicResource ColorSecondary}" />
+            <SolidColorBrush x:Key="SecondaryButtonPressedBorderBrush" Color="{DynamicResource ColorSecondaryPressed}" />
+
+            <!-- Состояния кнопок (Наведение, нажатие, отключено) -->
+            <SolidColorBrush x:Key="ButtonHoveredBrush" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="SelectionForegroundBrush" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="LinkTextBrush" Color="{DynamicResource ColorPrimaryLight}" />
+            <!-- Mentions in the chat: a name in the text, the current user's one, and a message calling them -->
+            <SolidColorBrush x:Key="MentionTextBrush" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="MentionBackgroundBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.15" />
+            <SolidColorBrush x:Key="MentionSelfTextBrush" Color="{DynamicResource ColorWarning}" />
+            <SolidColorBrush x:Key="MentionSelfBackgroundBrush" Color="{DynamicResource ColorWarning}" Opacity="0.2" />
+            <SolidColorBrush x:Key="MessageMentionedBackgroundBrush" Color="{DynamicResource ColorWarning}" Opacity="0.22" />
+            <SolidColorBrush x:Key="MessageMentionedHoverBrush" Color="{DynamicResource ColorWarning}" Opacity="0.32" />
+            <SolidColorBrush x:Key="MessageMentionedBarBrush" Color="{DynamicResource ColorWarning}" />
+            <!-- Unread counters in the list of chats; a mention one gets through a muted chat -->
+            <SolidColorBrush x:Key="UnreadBadgeBrush" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="UnreadBadgeTextBrush" Color="White" />
+            <SolidColorBrush x:Key="MentionBadgeBrush" Color="{DynamicResource ColorDangerBase}" />
+            <SolidColorBrush x:Key="MentionBadgeTextBrush" Color="White" />
+            <!-- Category headers of the session list and the marks of a session being dragged -->
+            <SolidColorBrush x:Key="SessionCategoryTextBrush" Color="{DynamicResource ColorTextMedium}" />
+            <SolidColorBrush x:Key="SessionCategoryHoverTextBrush" Color="{DynamicResource ColorTextLight}" />
+            <SolidColorBrush x:Key="SessionDropIndicatorBrush" Color="{DynamicResource ColorPrimaryLight}" />
+            <SolidColorBrush x:Key="SessionDropTargetBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.25" />
+            <SolidColorBrush x:Key="SessionDragSourceBrush" Color="{DynamicResource ColorOverlay}" />
+            <SolidColorBrush x:Key="SessionDragGhostBrush" Color="{DynamicResource ColorDarkVeryDark}" />
+            <SolidColorBrush x:Key="SessionDragGhostBorderBrush" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="MessageBoxDetailBrush" Color="{DynamicResource ColorOverlayMedium}" />
+            <!-- Text selection in every text box and selectable text; the Fluent default is blue -->
+            <SolidColorBrush x:Key="TextSelectionBrush" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="{DynamicResource ColorPrimary}" />
+            <SolidColorBrush x:Key="ButtonHoveredPressedBrush" Color="{DynamicResource ColorPrimaryDark}" />
+            <SolidColorBrush x:Key="ButtonDisabledBrush" Color="{DynamicResource ColorBorderMedium}" />
+            
+            <!-- Вспомогательные системные цвета -->
+            <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}" />
+            <!-- Scroll bar thumb: faint at rest, brighter under the pointer, accent while dragged -->
+            <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
+            <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{DynamicResource ColorOverlayGray}" />
+            <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="{DynamicResource ColorPrimary}" />
+            <!-- Slider: faint unfilled track, neutral thumb ring, gray fill while disabled -->
+            <SolidColorBrush x:Key="SliderTrackBrush" Color="{DynamicResource ColorOverlay}" />
+            <SolidColorBrush x:Key="SliderThumbBrush" Color="{DynamicResource ColorDark2}" />
+            <SolidColorBrush x:Key="SliderThumbBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <SolidColorBrush x:Key="SliderDisabledBrush" Color="{DynamicResource ColorSliderDisabled}" />
+            <!-- Behind the ghost a deleted user has instead of an avatar -->
+            <SolidColorBrush x:Key="AvatarDeletedBrush" Color="#9A9CA3" />
+            <SolidColorBrush x:Key="ToggleSwitchTrackBrush" Color="{DynamicResource ColorOverlay}" />
+            <SolidColorBrush x:Key="ToggleSwitchBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <SolidColorBrush x:Key="ToggleSwitchDisabledBrush" Color="{DynamicResource ColorSliderDisabled}" />
+            <!-- Color picker: the ring of a thumb and the line around it lie on any color, so they are the same in both themes;
+                 the line around a swatch keeps a color close to the surface apart from it -->
+            <SolidColorBrush x:Key="ColorThumbRingBrush" Color="White" />
+            <SolidColorBrush x:Key="ColorThumbOutlineBrush" Color="Black" Opacity="0.35" />
+            <SolidColorBrush x:Key="ColorSwatchBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <!-- Settings: the panel that groups the rows of a section; the border also draws row separators and header lines -->
+            <SolidColorBrush x:Key="SettingsCardBackgroundBrush" Color="{DynamicResource ColorDark2}" />
+            <SolidColorBrush x:Key="SettingsCardBorderBrush" Color="{DynamicResource ColorDark3}" />
+            <!-- The flash of a row the settings search has scrolled to -->
+            <SolidColorBrush x:Key="SettingsRowHighlightBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.22" />
+            <!-- The description of a setting that cannot be changed: one step below its title, which is already secondary -->
+            <SolidColorBrush x:Key="SettingsRowDisabledDescriptionBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
+            <!-- Flyout menus: item hover and press overlays, red tints for destructive items, keycaps of hot keys -->
+            <SolidColorBrush x:Key="FlyoutBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <SolidColorBrush x:Key="MenuItemHoverBrush" Color="{DynamicResource ColorOverlayMedium}" />
+            <SolidColorBrush x:Key="MenuItemPressedBrush" Color="{DynamicResource ColorOverlay}" />
+            <SolidColorBrush x:Key="MenuItemDangerHoverBrush" Color="{DynamicResource ColorError}" Opacity="0.15" />
+            <SolidColorBrush x:Key="MenuItemDangerPressedBrush" Color="{DynamicResource ColorError}" Opacity="0.25" />
+            <SolidColorBrush x:Key="KeycapBackgroundBrush" Color="{DynamicResource ColorOverlayMedium}" Opacity="0.5" />
+            <SolidColorBrush x:Key="KeycapBorderBrush" Color="{DynamicResource ColorOverlayMedium}" />
+            <!-- Keys are hints next to the label: well below secondary text, barely outlined -->
+            <SolidColorBrush x:Key="KeycapForegroundBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
+            <!-- A warning banner: a faint yellow plate with a yellow outline -->
+            <SolidColorBrush x:Key="WarningBannerBackgroundBrush" Color="{DynamicResource ColorWarning}" Opacity="0.12" />
+            <SolidColorBrush x:Key="WarningBannerBorderBrush" Color="{DynamicResource ColorWarning}" Opacity="0.6" />
+            <!-- The field that shows and records the keys of a hot key: outlined in the accent, fully while recording -->
+            <SolidColorBrush x:Key="HotKeyFieldBackgroundBrush" Color="{DynamicResource ColorOverlayMedium}" />
+            <SolidColorBrush x:Key="HotKeyFieldBorderBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.5" />
+            <SolidColorBrush x:Key="HotKeyFieldRecordingBrush" Color="{DynamicResource ColorPrimary}" />
+            <!-- Playback louder than the original, in the overdrive range -->
+            <SolidColorBrush x:Key="OverdriveBrush" Color="#FF9800" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ColorError}" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource ColorSuccess}" />
+            
+            <!-- Фоновые цвета для View -->
+            <SolidColorBrush x:Key="DarkBackgroundBrush" Color="{DynamicResource ColorDark3}" />
+            <SolidColorBrush x:Key="DarkBackgroundAltBrush" Color="{DynamicResource ColorDark4}" />
+            <SolidColorBrush x:Key="OverlayBrush" Color="{DynamicResource ColorOverlay}" />
+            <SolidColorBrush x:Key="OverlayLightBrush" Color="{DynamicResource ColorOverlayLight}" />
+            <!-- Dims the window behind an in-window dialog, in both themes -->
+            <SolidColorBrush x:Key="DialogBackdropBrush" Color="#80000000" />
+            <SolidColorBrush x:Key="DialogBorderBrush" Color="{DynamicResource ColorBorderMedium}" />
+            <!-- Backgrounds of the notifications inside a hybrid session, by their kind; the same in both themes -->
+            <SolidColorBrush x:Key="PopUpWarningBrush" Color="#5C4501" />
+            <SolidColorBrush x:Key="PopUpInfoBrush" Color="#114A78" />
+            <SolidColorBrush x:Key="PopUpSuccessBrush" Color="#278A25" />
+            <SolidColorBrush x:Key="PopUpErrorBrush" Color="#8A2F25" />
+            <SolidColorBrush x:Key="PopUpLoadingBrush" Color="#363333" />
+            <SolidColorBrush x:Key="PopUpQuestionBrush" Color="#372152" />
+            <SolidColorBrush x:Key="SessionBackdropBrush" Color="{DynamicResource ColorSessionBackdrop}" />
+            <RadialGradientBrush x:Key="SessionGlowFarBrush">
+                <GradientStop Color="{DynamicResource ColorSessionGlowFar}" Offset="0"/>
+                <GradientStop Color="{DynamicResource ColorSessionGlowFarEdge}" Offset="1"/>
+            </RadialGradientBrush>
+            <RadialGradientBrush x:Key="SessionGlowMiddleBrush">
+                <GradientStop Color="{DynamicResource ColorSessionGlowMiddle}" Offset="0"/>
+                <GradientStop Color="{DynamicResource ColorSessionGlowMiddleEdge}" Offset="1"/>
+            </RadialGradientBrush>
+            <RadialGradientBrush x:Key="SessionGlowNearBrush">
+                <GradientStop Color="{DynamicResource ColorSessionGlowNear}" Offset="0"/>
+                <GradientStop Color="{DynamicResource ColorSessionGlowNearEdge}" Offset="1"/>
+            </RadialGradientBrush>
+            
+            <!-- Shadows of what floats over the content -->
+            <BoxShadows x:Key="DialogShadow">0 8 24 0 #66000000</BoxShadows>
+            <BoxShadows x:Key="FloatingButtonShadow">0 2 10 0 #40000000</BoxShadows>
+            <!-- Of a window that draws its own frame; has to fit into the shadow width of its decorations -->
+            <BoxShadows x:Key="WindowShadow">0 6 24 0 #8C000000</BoxShadows>
+
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

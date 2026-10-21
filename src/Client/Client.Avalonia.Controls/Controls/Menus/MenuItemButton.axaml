@@ -1,0 +1,123 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus">
+    <Design.PreviewWith>
+        <Border Padding="20" Width="260">
+            <StackPanel Spacing="2">
+                <menus:MenuItemButton Content="Reply" Gesture="R"/>
+                <menus:MenuItemButton Content="Copy all text" Gesture="Ctrl+C"/>
+                <menus:MenuItemButton Content="Move to">
+                    <menus:MenuItemButton.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop">
+                            <menus:MenuItemButton Content="Somewhere"/>
+                        </Flyout>
+                    </menus:MenuItemButton.Flyout>
+                </menus:MenuItemButton>
+                <Separator/>
+                <menus:MenuItemButton Classes="danger" Content="Delete" Gesture="Delete"/>
+            </StackPanel>
+        </Border>
+    </Design.PreviewWith>
+
+    <!-- Icon column, label, keycaps. The icon column is kept even without an icon,
+         so the labels of one menu line up -->
+    <Style Selector="menus|MenuItemButton">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="Padding" Value="8,4,6,4"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <!-- Keyboard focus is shown by the hover background, see :focus-visible -->
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="bg"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="10">
+                        <Image Grid.Column="0" Width="16" Height="16"
+                               VerticalAlignment="Center"
+                               Source="{TemplateBinding Icon}"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        <ItemsControl Grid.Column="2" Margin="28,0,0,0"
+                                      VerticalAlignment="Center"
+                                      ItemsSource="{TemplateBinding GestureKeys}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="3"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <!-- Set here and not by a /template/ style: the items are not part of this template -->
+                                <DataTemplate x:DataType="menus:GestureKey">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <TextBlock Text="+" FontSize="11" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource KeycapForegroundBrush}"
+                                                   IsVisible="{Binding !IsFirst}"/>
+                                        <Border MinWidth="20" Padding="5,1" CornerRadius="4" BorderThickness="1"
+                                                BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                Background="{DynamicResource KeycapBackgroundBrush}">
+                                            <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource KeycapForegroundBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- The arrow of a submenu, drawn in the label color so it follows the theme -->
+                        <Path Name="PART_SubmenuArrow" Grid.Column="3"
+                              Width="5" Height="9" Stretch="Uniform"
+                              VerticalAlignment="Center"
+                              Data="M 0,0 L 4,4 L 0,8"
+                              Stroke="{TemplateBinding Foreground}" StrokeThickness="1.5"
+                              StrokeLineCap="Round" StrokeJoin="Round"
+                              IsVisible="False"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="menus|MenuItemButton:submenu /template/ Path#PART_SubmenuArrow">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <Style Selector="menus|MenuItemButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+    </Style>
+    <Style Selector="menus|MenuItemButton:pressed">
+        <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+    </Style>
+    <Style Selector="menus|MenuItemButton:focus-visible">
+        <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+    </Style>
+    <Style Selector="menus|MenuItemButton:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- Destructive actions: red label, red tint under the pointer -->
+    <Style Selector="menus|MenuItemButton.danger">
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="menus|MenuItemButton.danger:pointerover, menus|MenuItemButton.danger:focus-visible">
+        <Setter Property="Background" Value="{DynamicResource MenuItemDangerHoverBrush}"/>
+    </Style>
+    <Style Selector="menus|MenuItemButton.danger:pressed">
+        <Setter Property="Background" Value="{DynamicResource MenuItemDangerPressedBrush}"/>
+    </Style>
+</Styles>

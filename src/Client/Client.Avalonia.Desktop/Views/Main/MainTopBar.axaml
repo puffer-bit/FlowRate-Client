@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             x:DataType="mainVm:MainWindowVM"
+             x:Class="Client.Views.Main.MainTopBar">
+
+    <!-- The bar is the title bar of the window as well: its free space drags the window -->
+    <Border Height="36" Padding="6,0"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,0,0,1"
+            IsVisible="{Binding !IsContentFullScreen}"
+            common:WindowDragArea.IsEnabled="True">
+        <Border.Styles>
+            <Style Selector="Button.topBar">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="8,0,10,0"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="Button.topBar /template/ ContentPresenter">
+                <Setter Property="BorderThickness" Value="0"/>
+            </Style>
+            <Style Selector="Button.topBar:pointerover /template/ ContentPresenter, Button.topBar:flyout-open /template/ ContentPresenter">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            </Style>
+            <Style Selector="Button.topBar:pressed /template/ ContentPresenter">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            </Style>
+            <Style Selector="Button.topBar:disabled">
+                <Setter Property="Opacity" Value="0.4"/>
+            </Style>
+            <Style Selector="Button.topBar:disabled /template/ ContentPresenter">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            </Style>
+            <Style Selector="Button.topBar Image">
+                <Setter Property="Width" Value="16"/>
+                <Setter Property="Height" Value="16"/>
+            </Style>
+            <Style Selector="Button.topBar AccessText">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+        </Border.Styles>
+
+        <Grid ColumnDefinitions="Auto, *, Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2"
+                    IsEnabled="{Binding IsInitialized}" Opacity="{Binding MenuOpacity}">
+            <StackPanel.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </StackPanel.Transitions>
+            <Button Classes="topBar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Source="{StaticResource PlugIcon}"/>
+                    <AccessText Text="{l:Text main.menu.connect}"/>
+                </StackPanel>
+            </Button>
+            <Button Classes="topBar" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsConnected}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Source="{StaticResource DoorWithRedArrowIcon}"/>
+                    <AccessText Text="{l:Text main.menu.disconnect}"/>
+                </StackPanel>
+            </Button>
+
+            <Button Classes="topBar" IsEnabled="False">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Source="{StaticResource BaseUsersIcon}"/>
+                    <AccessText Text="{l:Text main.menu.profiles}"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <StackPanel Spacing="2">
+                            <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.menu.profiles.new}"/>
+                            <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text main.menu.profiles.edit}"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <Button Classes="topBar" IsEnabled="False">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Source="{StaticResource ServerIcon}"/>
+                    <AccessText Text="{l:Text main.menu.server}"/>
+                </StackPanel>
+            </Button>
+
+            <!-- The dot tells that a newer release is there; the first line of the menu says what the updater knows -->
+            <Button Classes="topBar" DataContext="{Binding Updater}">
+                <StackPanel x:DataType="mainVm:UpdaterVM" Orientation="Horizontal" Spacing="6">
+                    <Panel>
+                        <Image Source="{StaticResource DownloadIcon}"/>
+                        <Ellipse Width="6" Height="6"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,-1,-2,0"
+                                 Fill="{DynamicResource ButtonMainBrush}"
+                                 IsVisible="{Binding HasUpdate}"/>
+                    </Panel>
+                    <AccessText Text="{l:Text main.menu.updater}"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <StackPanel x:DataType="mainVm:UpdaterVM" Spacing="2" MinWidth="240">
+                            <TextBlock Margin="10,6,10,4" MaxWidth="320" TextWrapping="Wrap"
+                                       FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                       Text="{Binding StatusText}"/>
+                            <ProgressBar Margin="10,0,10,6" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                                         IsVisible="{Binding IsDownloading}"/>
+                            <menus:MenuItemButton Icon="{StaticResource DownloadIcon}"
+                                                  Content="{Binding DownloadText}"
+                                                  Command="{Binding DownloadCommand}"
+                                                  IsVisible="{Binding IsAvailable}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                            <menus:MenuItemButton Icon="{StaticResource ResetIcon}"
+                                                  Content="{l:Text main.menu.updater.restart}"
+                                                  Command="{Binding RestartCommand}"
+                                                  IsVisible="{Binding IsReadyToRestart}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                            <menus:MenuItemButton Icon="{StaticResource FindIcon}"
+                                                  Content="{l:Text main.menu.updater.check}"
+                                                  Command="{Binding CheckCommand}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                            <Separator/>
+                            <menus:MenuItemButton Icon="{StaticResource GitHubIcon}"
+                                                  Content="{l:Text main.menu.updater.github}"
+                                                  Click="OnOpenRepository"
+                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </StackPanel>
+
+        <common:WindowCaptionButtons Grid.Column="2"/>
+        </Grid>
+    </Border>
+</UserControl>

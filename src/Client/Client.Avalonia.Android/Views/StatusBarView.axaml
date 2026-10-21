@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Droid.Views.StatusBarView"
+             x:DataType="mainVm:MainWindowVM">
+
+    <!-- The status bar of the desktop: what the application is doing, behind a ring while it is busy
+         and a dot that is green once connected, and the ping on the right -->
+    <Border Height="28" Padding="12,0"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0">
+        <Border.Styles>
+            <Style Selector="Ellipse.connection">
+                <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Fill" Duration="{anim:Motion Short}"/>
+                    </Transitions>
+                </Setter>
+            </Style>
+            <Style Selector="Ellipse.connection.online">
+                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+            </Style>
+        </Border.Styles>
+
+        <Grid ColumnDefinitions="16,*,Auto" ColumnSpacing="8">
+
+            <Panel Grid.Column="0" VerticalAlignment="Center">
+                <loadingIndicators:ProgressRing Width="14" Height="14" MinWidth="14" MinHeight="14"
+                                                IsIndeterminate="True"
+                                                IsVisible="{Binding StatusLine.IsActive}"
+                                                BorderThickness="2"
+                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+                <Ellipse Classes="connection" Classes.online="{Binding IsConnected}"
+                         Width="8" Height="8"
+                         IsVisible="{Binding !StatusLine.IsActive}"/>
+            </Panel>
+
+            <TextBlock Grid.Column="1"
+                       Text="{Binding StatusLine.Text}"
+                       FontSize="12"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"
+                       Opacity="{Binding StatusLine.IsTextVisible}">
+                <TextBlock.Transitions>
+                    <Transitions>
+                        <!-- The same duration as the fade of the view model, so the text is swapped only once it is fully faded out -->
+                        <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    </Transitions>
+                </TextBlock.Transitions>
+            </TextBlock>
+
+            <indicators:PingIndicator Grid.Column="2"
+                                      VerticalAlignment="Center"
+                                      FontSize="12"
+                                      Foreground="{DynamicResource SecondaryTextBrush}"
+                                      RoundTrip="{Binding ServerRoundTrip}"
+                                      IsVisible="{Binding ServerRoundTrip, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+    </Border>
+</UserControl>

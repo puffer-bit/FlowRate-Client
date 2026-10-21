@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.ServerSecurityPage"
+             x:DataType="serverSettingsVm:ServerSecurityTabVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader Text="{l:Text serverSettings.security.section.access}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.security.serverPassword}"
+                            Description="{l:Text serverSettings.security.serverPassword.description}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{l:Text serverSettings.security.serverPassword.set}"
+                               IsVisible="{Binding Form.IsPasswordProtected}"/>
+                    <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{l:Text serverSettings.security.serverPassword.notSet}"
+                               IsVisible="{Binding !Form.IsPasswordProtected}"/>
+                    <!-- Items are in the order of PasswordChange -->
+                    <ComboBox MinWidth="160" SelectedIndex="{Binding Form.PasswordChangeIndex}">
+                        <ComboBoxItem Content="{l:Text serverSettings.security.serverPassword.keep}"/>
+                        <ComboBoxItem Content="{l:Text serverSettings.security.serverPassword.change}"/>
+                        <ComboBoxItem Content="{l:Text serverSettings.security.serverPassword.remove}"
+                                      IsEnabled="{Binding Form.IsPasswordProtected}"/>
+                    </ComboBox>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.security.serverPassword.new}"
+                            IndentLevel="1"
+                            IsExpanded="{Binding Form.IsNewPasswordShown}">
+                <TextBox Width="220" Classes="password" Text="{Binding Form.NewPassword}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.security.allowedIps}"
+                            Description="{l:Text serverSettings.security.allowedIps.description}"
+                            ContentPlacement="Below">
+                <TextBox Height="80" AcceptsReturn="True" VerticalContentAlignment="Top"
+                         PlaceholderText="{l:Text serverSettings.security.ips.placeholder}"
+                         Text="{Binding Form.AllowedIps}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.security.bannedIps}"
+                            ContentPlacement="Below">
+                <TextBox Height="80" AcceptsReturn="True" VerticalContentAlignment="Top"
+                         PlaceholderText="{l:Text serverSettings.security.ips.placeholder}"
+                         Text="{Binding Form.BannedIps}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

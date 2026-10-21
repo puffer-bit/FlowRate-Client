@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.ServerStoragePage"
+             x:DataType="serverSettingsVm:ServerStorageTabVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.limits}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.maxFileSize}">
+                <NumericUpDown MinWidth="140" Minimum="1" Increment="1" FormatString="0"
+                               Value="{Binding Form.MaxFileSizeMegabytes}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.quota}"
+                            Description="{l:Text serverSettings.storage.quota.description}">
+                <NumericUpDown MinWidth="140" Minimum="0" Increment="1" FormatString="0"
+                               Value="{Binding Form.StorageQuotaMegabytes}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

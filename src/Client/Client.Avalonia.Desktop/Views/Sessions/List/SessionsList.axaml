@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.SessionsList"
+             x:DataType="listVm:SessionsListVM"
+             d:DataContext="{d:DesignInstance Type=listVm:SessionsListVM, IsDesignTimeCreatable=True}"
+             x:Name="Root">
+    
+    <UserControl.Styles>
+        <!-- Placeholders shown in place of the list, one at a time -->
+        <Style Selector="StackPanel.placeholder">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Spacing" Value="12"/>
+            <Setter Property="Margin" Value="16"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder > Image">
+            <Setter Property="Width" Value="56"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="TextWrapping" Value="WrapWithOverflow"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder TextBlock.title">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Each placeholder and the list rise in as they are switched to, instead of snapping in -->
+        <Style Selector="StackPanel.placeholder">
+            <Setter Property="anim:Presence.Appear" Value="Rise"/>
+        </Style>
+        <!-- The list from before a lost connection stays, but takes no input until it is loaded again -->
+        <Style Selector="ListBox.sessionsList:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <Style Selector="ListBox.sessionsList">
+            <Setter Property="anim:Presence.Appear" Value="Fade"/>
+        </Style>
+        <!-- The rows of a collapsed category stay in the list, hidden, and drop in again on expanding -->
+        <Style Selector="ListBox.sessionsList > ListBoxItem" x:DataType="listVm:ISessionListRow">
+            <Setter Property="IsVisible" Value="{Binding !IsFolded}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <!-- A right click where there is no session: what can be added to the list. The rows have
+             menus of their own, so this one opens only on the empty part -->
+        <Flyout x:Key="CreateMenu" Placement="Pointer">
+            <StackPanel Spacing="2" x:DataType="listVm:SessionsListVM">
+                <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding Access.CanCreateSessions}"
+                                      Command="{Binding CreateSessionCommand}"/>
+                <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding Access.CanManageSessions}"
+                                      Command="{Binding CreateCategoryCommand}"/>
+            </StackPanel>
+        </Flyout>
+    </UserControl.Resources>
+
+    <Grid x:Name="ListArea" Background="{DynamicResource GeneralBrush}">
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
+            <Image Source="{StaticResource PlugIcon}"/>
+            <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
+            <TextBlock Text="{l:Text sessions.notConnected.text}"/>
+            <Button Classes="primary" Command="{Binding ConnectCommand}"
+                    HorizontalAlignment="Center" MinWidth="110" Margin="0,4,0,0">
+                <TextBlock Text="{l:Text connect.button}" Foreground="{DynamicResource OnAccentTextBrush}"/>
+            </Button>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsReconnecting}">
+            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                            IsIndeterminate="True" BorderThickness="4"
+                                            Foreground="{DynamicResource ProgressRingBrush}"/>
+            <TextBlock Classes="title" Text="{l:Text sessions.connectionLost.title}"/>
+            <TextBlock Text="{l:Text sessions.connectionLost.text}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsLoading}">
+            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                            IsIndeterminate="True" BorderThickness="4"
+                                            Foreground="{DynamicResource ProgressRingBrush}"/>
+            <TextBlock Text="{l:Text sessions.retrieving}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsFailed}">
+            <Image Source="{StaticResource DashInCircleIcon}"/>
+            <TextBlock Text="{Binding ErrorMessage}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsEmpty}">
+            <Image Source="{StaticResource TipIcon}"/>
+            <TextBlock>
+                <Run x:Name="EmptyHintBeforeIcon"/>
+                <InlineUIContainer>
+                    <Image Width="24" Height="24"
+                         Source="{StaticResource PlusIcon}"/>
+                </InlineUIContainer>
+                <Run x:Name="EmptyHintAfterIcon"/>
+            </TextBlock>
+        </StackPanel>
+        <ListBox x:Name="SessionsListBox"
+                 Classes="sessionsList byContent"
+                 ItemsSource="{Binding Rows}"
+                 IsVisible="{Binding HasSessions}"
+                 IsEnabled="{Binding !IsStale}"
+                 SelectedItem="{Binding SelectedSession}"
+                 Background="Transparent"
+                 SelectionMode="Single">
+
+            <ListBox.DataTemplates>
+                
+                <DataTemplate DataType="listVm:HybridSessionVM">
+                    <listViews:SessionListItemHybridView/>
+                </DataTemplate>
+
+                <DataTemplate DataType="listVm:ChatSessionVM">
+                    <listViews:SessionListChatItemView/>
+                </DataTemplate>
+
+                <DataTemplate DataType="listVm:SessionCategoryVM">
+                    <listViews:SessionListCategoryView/>
+                </DataTemplate>
+
+            </ListBox.DataTemplates>
+
+        </ListBox>
+
+        <!-- The name of a dragged row and the line where it lands; drawn over the list, never hit -->
+        <Canvas x:Name="DragLayer" IsHitTestVisible="False" ClipToBounds="False"/>
+
+    </Grid>
+</UserControl>

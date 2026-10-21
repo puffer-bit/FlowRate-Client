@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:DataType="chatVm:ActiveChatSessionVM"
+             x:Class="Client.Views.Sessions.Chat.ChatScrollDownButton"
+             ClipToBounds="False">
+    <!-- Not clipped: the shadow of the button and the badge above it reach past the bounds -->
+
+    <UserControl.Styles>
+        <!-- Floating "scroll to latest" button over the bottom right corner of the list -->
+        <Style Selector="Panel.chat-scroll-down">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="RenderTransform" Value="translateY(12px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.chat-scroll-down.visible">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+        </Style>
+
+        <Style Selector="Button.chat-scroll-down-button">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="21"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.chat-scroll-down-button /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GeneralBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.chat-scroll-down-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.chat-scroll-down-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Border.chat-unread-badge">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="MinWidth" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Margin" Value="0,-8,0,0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.chat-unread-badge > TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel Classes="chat-scroll-down"
+           Classes.visible="{Binding IsScrolledUp}">
+        <Border CornerRadius="21" BoxShadow="{DynamicResource FloatingButtonShadow}">
+            <Button Classes="chat-scroll-down-button"
+                    Command="{Binding ScrollToEndCommand}"
+                    ToolTip.Tip="{l:Text chat.scrollToLatest}">
+                <Image Width="20" Height="20" Source="{StaticResource DownArrowIcon}"/>
+            </Button>
+        </Border>
+        <Border Classes="chat-unread-badge" IsVisible="{Binding HasUnreadBelow}">
+            <TextBlock Text="{Binding UnreadBelowCount}"/>
+        </Border>
+    </Panel>
+</UserControl>

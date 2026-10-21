@@ -1,0 +1,16 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <!-- Add Controls for Previewer Here -->
+        </Border>
+    </Design.PreviewWith>
+
+    <!-- The text box itself is themed in TextBoxTheme.axaml. This rule crosses two templates,
+         which a theme cannot do: the .invalid class sits on the NumericUpDown, the border is in its text box -->
+    <Style Selector="NumericUpDown.invalid TextBox /template/ Border#PART_BorderElement,
+                     NumericUpDown.invalid TextBox:pointerover /template/ Border#PART_BorderElement,
+                     NumericUpDown.invalid TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+</Styles>

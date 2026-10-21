@@ -1,0 +1,171 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:pickers="clr-namespace:Client.Avalonia.Controls.Pickers">
+    <Design.PreviewWith>
+        <StackPanel Spacing="8" Margin="12" Width="260" Height="360">
+            <pickers:ColorPicker Color="#A784E6"/>
+            <pickers:ColorPicker Color="#46A758" IsEnabled="False"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <!-- The closed picker looks like a text box and a combo box: same brushes, accent border while
+         the panel is open or the field is focused from the keyboard -->
+    <Style Selector="pickers|ColorPicker">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource TextControlBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}"/>
+        <Setter Property="Padding" Value="6,5,10,6"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Name="bg"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            MinHeight="{TemplateBinding MinHeight}"
+                            Padding="{TemplateBinding Padding}">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="swatch" Width="20" Height="20" CornerRadius="5"
+                                    Background="{TemplateBinding ColorBrush}"/>
+                            <TextBlock Text="{TemplateBinding HexText}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Popup Name="PART_Popup"
+                           IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                           Placement="BottomEdgeAlignedRight"
+                           VerticalOffset="4"
+                           WindowManagerAddShadowHint="False"
+                           IsLightDismissEnabled="True"
+                           InheritsTransform="True">
+                        <Border Name="PopupBorder"
+                                Background="{DynamicResource ComboBoxDropDownBackground}"
+                                BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Cursor="Arrow">
+                            <StackPanel Width="216" Spacing="12">
+                                <pickers:ColorSquare Name="PART_Square" Height="140" CornerRadius="6"
+                                                     Hue="{TemplateBinding Hue}"
+                                                     Saturation="{TemplateBinding Saturation, Mode=TwoWay}"
+                                                     Value="{TemplateBinding Value, Mode=TwoWay}"/>
+
+                                <!-- Inset by the radius of the thumb, which runs to the very ends of the strip -->
+                                <pickers:HueSlider Height="12" Margin="8,2"
+                                                   Hue="{TemplateBinding Hue, Mode=TwoWay}"/>
+
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <Border Grid.Column="0" Classes="swatch" Width="32" Height="32" CornerRadius="6"
+                                            Background="{TemplateBinding ColorBrush}"/>
+                                    <TextBox Name="PART_Hex" Grid.Column="1" MaxLength="7"/>
+                                </Grid>
+
+                                <ItemsControl Name="PART_Palette" ItemsSource="{TemplateBinding Palette}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="6" RowSpacing="8" ColumnSpacing="8"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="Color">
+                                            <Button Classes="colorChip">
+                                                <Button.Background>
+                                                    <SolidColorBrush Color="{Binding}"/>
+                                                </Button.Background>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="pickers|ColorPicker /template/ Border#bg">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Medium}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Medium}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="pickers|ColorPicker:pointerover">
+        <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrushPointerOver}"/>
+    </Style>
+    <Style Selector="pickers|ColorPicker:dropdownopen, pickers|ColorPicker:focus-visible">
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonHoveredBrush}"/>
+    </Style>
+    <Style Selector="pickers|ColorPicker:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
+    <!-- A thin line keeps a color that is close to the surface apart from it -->
+    <Style Selector="pickers|ColorPicker /template/ Border.swatch">
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorSwatchBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style Selector="pickers|ColorPicker /template/ pickers|ColorSquare">
+        <Setter Property="ThumbRingBrush" Value="{DynamicResource ColorThumbRingBrush}"/>
+        <Setter Property="ThumbOutlineBrush" Value="{DynamicResource ColorThumbOutlineBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="pickers|ColorPicker /template/ pickers|HueSlider">
+        <Setter Property="ThumbRingBrush" Value="{DynamicResource ColorThumbRingBrush}"/>
+        <Setter Property="ThumbOutlineBrush" Value="{DynamicResource ColorThumbOutlineBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <Style Selector="pickers|ColorPicker /template/ Border#PopupBorder">
+        <Setter Property="anim:Presence.Appear" Value="Drop"/>
+        <Setter Property="anim:Presence.Duration" Value="Short"/>
+    </Style>
+
+    <!-- A ready color: a plain square of that color that grows a little under the pointer. The chips
+         come from an item template, so they are not parts of the template of the picker -->
+    <Style Selector="Button.colorChip">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorSwatchBorderBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"/>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.colorChip:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.12)"/>
+    </Style>
+    <Style Selector="Button.colorChip:focus-visible">
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonHoveredBrush}"/>
+    </Style>
+</Styles>

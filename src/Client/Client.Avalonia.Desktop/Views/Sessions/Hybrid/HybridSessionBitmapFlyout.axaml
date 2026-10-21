@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Hybrid.HybridSessionBitmapFlyout"
+             x:DataType="hybridVm:ScreenStreamVM">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.volumePercent">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.volumePercent.amplified">
+            <Setter Property="Foreground" Value="{DynamicResource OverdriveBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="2">
+
+        <menus:MenuItemButton Icon="{StaticResource EyeIcon}" Content="{l:Text hybrid.screen.watch}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding WatchCommand}"
+                              IsVisible="{Binding !IsWatched}"/>
+        <menus:MenuItemButton Icon="{StaticResource CrossedEyeIcon}" Content="{l:Text hybrid.screen.stopWatching}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding StopWatchingCommand}"
+                              IsVisible="{Binding IsWatched}"/>
+
+        <!-- Only a picture that is shown can take the whole surface -->
+        <StackPanel Spacing="2" IsVisible="{Binding IsWatched}">
+            <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text hybrid.screen.expand}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleExpandCommand}"
+                                  IsVisible="{Binding !IsExpanded}"/>
+            <menus:MenuItemButton Icon="{StaticResource CollapseIcon}" Content="{l:Text hybrid.screen.collapse}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleExpandCommand}"
+                                  IsVisible="{Binding IsExpanded}"/>
+        </StackPanel>
+
+        <!-- The sound of the user who shows the screen, the same settings as in the lists of peers.
+             There is nothing to adjust about ourselves -->
+        <StackPanel Spacing="2" IsVisible="{Binding !IsSelf}">
+
+            <Separator/>
+
+            <Grid ColumnDefinitions="*, Auto" Margin="8,4,8,0">
+                <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
+                <TextBlock Grid.Column="1"
+                           Classes="volumePercent"
+                           Classes.amplified="{Binding IsAmplified}"
+                           Text="{Binding VolumePercentText}"/>
+            </Grid>
+
+            <Slider Classes="menuRow"
+                    Minimum="0"
+                    Maximum="{Binding MaxVolume}"
+                    Value="{Binding Volume}"
+                    IsEnabled="{Binding !IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource CrossedNoVolumeIcon}" Content="{l:Text peer.muteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource HighVolumeIcon}" Content="{l:Text peer.unmuteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource VolumeUpIcon}" Content="{l:Text peer.enableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding !IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedVolumeUpIcon}" Content="{l:Text peer.disableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

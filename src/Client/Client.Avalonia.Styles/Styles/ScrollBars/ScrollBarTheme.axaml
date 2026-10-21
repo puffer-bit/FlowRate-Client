@@ -1,0 +1,116 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles">
+
+    <!-- Replaces the Fluent scroll bar everywhere: no arrows and no visible track, only a rounded thumb
+         that stays thin and faint at rest, widens while the pointer is over the bar and takes the accent
+         color while it is dragged. The bar keeps a 12 px strip, so it is easy to hit. -->
+    <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+
+        <Style Selector="^:vertical">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="MinWidth" Value="12"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <!-- Inset from the ends, so the thumb never touches the edges of the scrolled area -->
+                    <Border Background="{TemplateBinding Background}" Padding="0,4">
+                        <Track Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               ViewportSize="{TemplateBinding ViewportSize}"
+                               Orientation="{TemplateBinding Orientation}"
+                               DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+                               IsDirectionReversed="True">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_PageUpButton" Classes="scrollPage" Focusable="False"/>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_PageDownButton" Classes="scrollPage" Focusable="False"/>
+                            </Track.IncreaseButton>
+                            <Thumb Name="thumb" Classes="scrollThumb" MinHeight="24"/>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^:horizontal">
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="MinHeight" Value="12"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" Padding="4,0">
+                        <Track Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               ViewportSize="{TemplateBinding ViewportSize}"
+                               Orientation="{TemplateBinding Orientation}"
+                               DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_PageUpButton" Classes="scrollPage" Focusable="False"/>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_PageDownButton" Classes="scrollPage" Focusable="False"/>
+                            </Track.IncreaseButton>
+                            <Thumb Name="thumb" Classes="scrollThumb" MinWidth="24"/>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- A click on the empty part of the bar still pages, but nothing is drawn there -->
+        <Style Selector="^ /template/ RepeatButton.scrollPage">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- The thumb fills the 12 px strip; its padding leaves the visible bar in the middle.
+             Sized by padding because a style here may not reach into the thumb's own template -->
+        <Style Selector="^ /template/ Thumb.scrollThumb">
+            <Setter Property="Background" Value="{DynamicResource ScrollBarThumbBrush}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <ThicknessTransition Property="Padding" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent">
+                        <Border Background="{TemplateBinding Background}"
+                                Margin="{TemplateBinding Padding}"
+                                CornerRadius="4"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- Thin at rest (4 px), wide (8 px) while the pointer is over the bar or the thumb is held -->
+        <Style Selector="^:vertical /template/ Thumb.scrollThumb">
+            <Setter Property="Padding" Value="4,0"/>
+        </Style>
+        <Style Selector="^:vertical:pointerover /template/ Thumb.scrollThumb,
+                         ^:vertical /template/ Thumb.scrollThumb:pressed">
+            <Setter Property="Padding" Value="2,0"/>
+        </Style>
+        <Style Selector="^:horizontal /template/ Thumb.scrollThumb">
+            <Setter Property="Padding" Value="0,4"/>
+        </Style>
+        <Style Selector="^:horizontal:pointerover /template/ Thumb.scrollThumb,
+                         ^:horizontal /template/ Thumb.scrollThumb:pressed">
+            <Setter Property="Padding" Value="0,2"/>
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Thumb.scrollThumb">
+            <Setter Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+        </Style>
+        <Style Selector="^ /template/ Thumb.scrollThumb:pressed">
+            <Setter Property="Background" Value="{DynamicResource ScrollBarThumbPressedBrush}"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

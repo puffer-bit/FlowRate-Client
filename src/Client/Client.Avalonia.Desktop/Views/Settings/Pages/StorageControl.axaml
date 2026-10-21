@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.StorageControl"
+             x:DataType="pagesVm:StorageControlVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="storage.messages"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="storage.keepMessages">
+                <CheckBox IsChecked="{Binding IsChatCacheEnabled}"/>
+            </ui:SettingsRow>
+            <!-- How much is kept only matters while messages are kept, and is folded away otherwise -->
+            <ui:SettingsRow services:SettingText.Key="storage.messagesPerChat"
+                            IsExpanded="{Binding IsChatCacheEnabled}">
+                <ComboBox MinWidth="120" ItemsSource="{Binding ChatCacheMessageChoices}"
+                          SelectedIndex="{Binding ChatCacheMessagesIndex}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="storage.clearMessages"
+                            IsExpanded="{Binding IsChatCacheEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding ChatCacheUsageText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding ClearChatCacheCommand}" Content="{l:Text common.clear}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="storage.media"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="storage.mediaLimit">
+                <ComboBox MinWidth="120" ItemsSource="{Binding MediaCacheLimitChoices}"
+                          SelectedIndex="{Binding MediaCacheLimitIndex}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="storage.clearMedia">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding MediaCacheUsageText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding ClearMediaCacheCommand}" Content="{l:Text common.clear}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

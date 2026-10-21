@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles">
+
+    <!-- Replaces the Fluent scroll viewer everywhere. A scroll bar never lies over the content: it takes
+         a strip of its own next to it and stands 4 px away, so the distance between the content and
+         the bar is the same in every scrolled area and no view has to leave a margin for the bar.
+         The presenter scrolls smoothly on the mouse wheel. -->
+    <ControlTheme x:Key="{x:Type ScrollViewer}" TargetType="ScrollViewer">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+                    <anim:SmoothScrollContentPresenter Name="PART_ContentPresenter"
+                                                       Grid.Row="0"
+                                                       Grid.Column="0"
+                                                       Background="{TemplateBinding Background}"
+                                                       HorizontalSnapPointsType="{TemplateBinding HorizontalSnapPointsType}"
+                                                       VerticalSnapPointsType="{TemplateBinding VerticalSnapPointsType}"
+                                                       HorizontalSnapPointsAlignment="{TemplateBinding HorizontalSnapPointsAlignment}"
+                                                       VerticalSnapPointsAlignment="{TemplateBinding VerticalSnapPointsAlignment}"
+                                                       Padding="{TemplateBinding Padding}"
+                                                       ScrollViewer.IsScrollInertiaEnabled="{TemplateBinding IsScrollInertiaEnabled}"/>
+                    <!-- A hidden bar takes no room, its margin included -->
+                    <ScrollBar Name="PART_HorizontalScrollBar"
+                               Orientation="Horizontal"
+                               Grid.Row="1" Grid.Column="0"
+                               Margin="0,4,0,0"/>
+                    <ScrollBar Name="PART_VerticalScrollBar"
+                               Orientation="Vertical"
+                               Grid.Column="1" Grid.Row="0"
+                               Margin="4,0,0,0"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             x:DataType="mainVm:ServerTitleVM"
+             x:Class="Client.Views.Main.ServerTitleFlyout"
+             Width="256">
+
+    <UserControl.Styles>
+        <!-- A fact about the server: what it is on the left, the value on the right -->
+        <Style Selector="TextBlock.infoLabel">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.infoValue">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="2">
+
+        <!-- Who we are connected to -->
+        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="8,8,8,6">
+            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10"
+                    Background="{DynamicResource DarkBackgroundBrush}"
+                    VerticalAlignment="Center">
+                <Image Width="22" Height="22" Source="{StaticResource ServerIcon}"/>
+            </Border>
+
+            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                <text:MarqueeTextBlock Text="{Binding DisplayName}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Ellipse Width="7" Height="7" VerticalAlignment="Center"
+                             Fill="{DynamicResource SuccessBrush}"/>
+                    <TextBlock Classes="infoLabel" Text="{l:Text main.status.connected}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- A few facts about the server -->
+        <Border Margin="4,0,4,4" Padding="10,8" CornerRadius="6"
+                Background="{DynamicResource MenuItemHoverBrush}">
+            <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="6">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.platform}"/>
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right">
+                    <Image Width="14" Height="14" VerticalAlignment="Center" Source="{StaticResource LinuxIcon}"/>
+                    <TextBlock Classes="infoValue" Text="{Binding Platform}"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.version}"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Classes="infoValue" HorizontalAlignment="Right"
+                           Text="{Binding Version}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.online}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Classes="infoValue" HorizontalAlignment="Right"
+                           Text="{Binding OnlineText}"/>
+            </Grid>
+        </Border>
+
+        <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              IsVisible="{Binding Access.CanCreateSessions}"
+                              Command="{Binding CreateSessionCommand}"/>
+        <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              IsVisible="{Binding Access.CanManageSessions}"
+                              Command="{Binding CreateCategoryCommand}"/>
+
+        <Separator/>
+
+        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text main.server.settings}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              IsVisible="{Binding Access.CanOpenServerSettings}"
+                              Command="{Binding OpenSettingsCommand}"/>
+
+        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Click="CopyAddress_Click"/>
+
+        <!-- Stays open, so several notifications can be called in a row -->
+        <menus:MenuItemButton Icon="{StaticResource DebugIcon}" Content="{l:Text main.server.testNotification}"
+                              Command="{Binding TestNotificationCommand}"/>
+
+        <Separator/>
+
+        <menus:MenuItemButton Icon="{StaticResource ResetIcon}" Content="{l:Text main.server.reconnect}"/>
+
+        <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text main.menu.disconnect.plain}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding DisconnectCommand}"/>
+    </StackPanel>
+</UserControl>

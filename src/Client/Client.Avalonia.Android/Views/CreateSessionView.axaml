@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:createVm="clr-namespace:Client.ViewModels.Sessions.Create;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Droid.Views.CreateSessionView"
+             x:DataType="createVm:CreateSessionWindowVM"
+             Background="{DynamicResource GeneralBrush}">
+
+    <UserControl.Styles>
+        <!-- Session type cards: a selectable tile with an icon, a title and a short description -->
+        <Style Selector="Button.typeCard">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="Button.typeCard TextBlock.cardTitle">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+
+        <!-- Fields and the button tall enough for a finger; the desktop form keeps its own height -->
+        <Style Selector="TextBox">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *">
+
+        <!-- Header: back to where the form was opened from -->
+        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, *" ColumnSpacing="8">
+            <Button Grid.Column="0" Classes="borderless"
+                    Width="44" Height="44" Padding="0" CornerRadius="22"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Command="{Binding CloseCommand}">
+                <!-- The arrow of the scroll-down button, turned to point back -->
+                <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+            </Button>
+            <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{l:Text createSession.title}"/>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="20,16,20,24" Spacing="18">
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text createSession.hint}"/>
+
+                <StackPanel Spacing="18" IsEnabled="{Binding !IsBusy}">
+
+                    <!-- Type -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.type}"/>
+                        <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                            <Button Grid.Column="0" Classes="choiceCard typeCard"
+                                    Classes.selected="{Binding HybridOption.IsSelected}"
+                                    Command="{Binding SelectTypeCommand}"
+                                    CommandParameter="{Binding HybridOption}">
+                                <StackPanel Spacing="6">
+                                    <Image Width="24" Height="24" HorizontalAlignment="Left"
+                                           Source="{StaticResource HybridSessionIcon}"/>
+                                    <TextBlock Classes="cardTitle" TextWrapping="Wrap" Text="{Binding HybridOption.Title}"/>
+                                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding HybridOption.Description}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Classes="choiceCard typeCard"
+                                    Classes.selected="{Binding ChatOption.IsSelected}"
+                                    Command="{Binding SelectTypeCommand}"
+                                    CommandParameter="{Binding ChatOption}">
+                                <StackPanel Spacing="6">
+                                    <Image Width="24" Height="24" HorizontalAlignment="Left"
+                                           Source="{StaticResource SendIcon}"/>
+                                    <TextBlock Classes="cardTitle" TextWrapping="Wrap" Text="{Binding ChatOption.Title}"/>
+                                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding ChatOption.Description}"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Name -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                        <TextBox PlaceholderText="{l:Text createSession.name.watermark}"
+                                 Text="{Binding Name}"
+                                 Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding NameError}"
+                                   IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+
+                    <!-- Capacity: the hint goes under the field, there is no room beside it -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
+                        <NumericUpDown Value="{Binding Capacity}"
+                                       Minimum="{Binding CapacityMin}"
+                                       Maximum="{Binding CapacityMax}"
+                                       Increment="1"
+                                       FormatString="0"
+                                       ParsingNumberStyle="Integer"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding CapacityHint}"
+                                   IsVisible="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNull}}"/>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding CapacityError}"
+                                   IsVisible="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+
+                    <!-- Chat only -->
+                    <StackPanel Spacing="6" IsVisible="{Binding IsChatSelected}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.description}"/>
+                        <TextBox Height="96"
+                                 PlaceholderText="{l:Text createSession.description.watermark}"
+                                 Text="{Binding Description}"
+                                 MaxLength="{Binding DescriptionMaxLength}"
+                                 Classes.invalid="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalContentAlignment="Top"/>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding DescriptionError}"
+                                   IsVisible="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- A failure that belongs to no single field -->
+                <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource ErrorBrush}"
+                        IsVisible="{Binding GeneralError, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                        <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding GeneralError}"/>
+                    </Grid>
+                </Border>
+
+                <Button Classes="primary" Command="{Binding CreateCommand}"
+                        MinHeight="48"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                    <Panel>
+                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !IsBusy}">
+                            <Image Width="16" Height="16" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text createSession.create}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsBusy}">
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"/>
+                            <TextBlock Text="{l:Text createSession.creating}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Panel>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

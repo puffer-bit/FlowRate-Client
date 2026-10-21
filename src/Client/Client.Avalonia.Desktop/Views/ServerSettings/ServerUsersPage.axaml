@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:coordinator="clr-namespace:Client.Core.Coordinator;assembly=Client.Core"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.ServerUsersPage"
+             x:DataType="serverSettingsVm:ServerUsersTabVM">
+    <UserControl.Styles>
+        <!-- The whole card is the button that opens the menu of the user -->
+        <Style Selector="Button.userCard">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.userCard:pointerover /template/ ContentPresenter, Button.userCard:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.userCard:pointerover ui|SettingsCard">
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <!-- A role without a color shows a plain dot -->
+        <Style Selector="Ellipse.roleDot">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="Border.chip">
+            <Setter Property="Padding" Value="6,1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <Style Selector="Border.chip TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader Text="{l:Text serverSettings.users.section.limits}"/>
+        <ui:SettingsCard IsEnabled="{Binding CanEditLimits}">
+            <ui:SettingsRow Title="{l:Text serverSettings.users.maxOnline}"
+                            Description="{l:Text serverSettings.users.maxOnline.description}">
+                <NumericUpDown MinWidth="140" Minimum="1" Increment="1" FormatString="0"
+                               Value="{Binding Form.MaxOnlineUsers}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.users.maxUsers}"
+                            Description="{l:Text serverSettings.users.maxUsers.description}">
+                <NumericUpDown MinWidth="140" Minimum="1" Increment="1" FormatString="0"
+                               Value="{Binding Form.MaxUsers}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <!-- Every user of the server, by name -->
+        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
+            <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}"/>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Text="{Binding TotalCount}"/>
+            <TextBox Grid.Column="2" Width="200" VerticalAlignment="Center" Classes="search"
+                     PlaceholderText="{l:Text serverSettings.users.filter}"
+                     Text="{Binding Filter}"/>
+        </Grid>
+
+        <loadingIndicators:ProgressRing Width="24" Height="24" HorizontalAlignment="Center"
+                                        IsIndeterminate="True"
+                                        IsVisible="{Binding IsLoading}"/>
+
+        <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                BorderBrush="{DynamicResource ErrorBrush}"
+                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                <TextBlock TextWrapping="Wrap" FontSize="13" VerticalAlignment="Center" Text="{Binding Error}"/>
+                <Button Grid.Column="1" Command="{Binding LoadCommand}" Content="{l:Text serverSettings.users.retry}"/>
+            </Grid>
+        </Border>
+
+        <!-- Each user is a card, as the saved servers in the settings; a click opens what the roles of the current
+             user allow to do to them. The current user has no menu, nor anyone it does not outrank -->
+        <ItemsControl ItemsSource="{Binding Users}" IsEnabled="{Binding !IsBusy}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="serverSettingsVm:ServerUserRowVM">
+                    <Button Classes="userCard" IsEnabled="{Binding HasActions}">
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Spacing="2" MinWidth="180">
+                                    <menus:MenuItemButton Icon="{StaticResource PencilIcon}"
+                                                          Content="{l:Text serverSettings.users.action.editProfile}"
+                                                          IsVisible="{Binding CanEditProfile}"
+                                                          Command="{Binding EditProfileCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+                                    <menus:MenuItemButton Icon="{StaticResource SnowflakeIcon}"
+                                                          Content="{l:Text serverSettings.users.action.freeze}"
+                                                          IsVisible="{Binding CanFreeze}"
+                                                          Command="{Binding ToggleFreezeCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+                                    <menus:MenuItemButton Icon="{StaticResource SnowflakeIcon}"
+                                                          Content="{l:Text serverSettings.users.action.unfreeze}"
+                                                          IsVisible="{Binding CanUnfreeze}"
+                                                          Command="{Binding ToggleFreezeCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+
+                                    <Separator IsVisible="{Binding CanModerate}"/>
+
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}"
+                                                          Content="{l:Text serverSettings.users.action.ban}"
+                                                          IsVisible="{Binding CanBan}"
+                                                          Command="{Binding ToggleBanCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+                                    <menus:MenuItemButton Icon="{StaticResource HammerIcon}"
+                                                          Content="{l:Text serverSettings.users.action.unban}"
+                                                          IsVisible="{Binding CanUnban}"
+                                                          Command="{Binding ToggleBanCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
+                                                          Content="{l:Text serverSettings.users.action.delete}"
+                                                          IsVisible="{Binding CanModerate}"
+                                                          Command="{Binding DeleteCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+
+                        <ui:SettingsCard Padding="12">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                    UserName="{Binding Username}"
+                                                    AvatarUrl="{Binding AvatarUrl}"
+                                                    Status="{Binding Status}"
+                                                    StatusBackground="{DynamicResource SettingsCardBackgroundBrush}"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <text:MarqueeTextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Username}"/>
+                                        <Border Classes="chip" BorderBrush="{DynamicResource ErrorBrush}"
+                                                IsVisible="{Binding IsBanned}">
+                                            <TextBlock Text="{l:Text serverSettings.users.banned}"/>
+                                        </Border>
+                                        <Border Classes="chip" IsVisible="{Binding IsFrozen}">
+                                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                                <Image Width="10" Height="10" Source="{StaticResource SnowflakeIcon}"/>
+                                                <TextBlock Text="{l:Text serverSettings.users.frozen}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                               IsVisible="{Binding !Roles.Count}"
+                                               Text="{l:Text serverSettings.users.noRoles}"/>
+                                    <!-- Highest first, as in the roles tab -->
+                                    <ItemsControl ItemsSource="{Binding Roles}" IsVisible="{Binding !!Roles.Count}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel ItemSpacing="4" LineSpacing="4"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="coordinator:RoleModel">
+                                                <Border Classes="chip">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <Panel VerticalAlignment="Center">
+                                                            <Ellipse Classes="roleDot"
+                                                                     IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                            <Ellipse Classes="roleDot"
+                                                                     Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                                     IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                        </Panel>
+                                                        <TextBlock Text="{Binding Name}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
+                                       Source="{StaticResource MoreIcon}"
+                                       IsVisible="{Binding HasActions}"/>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ui:SettingsPage>
+</UserControl>

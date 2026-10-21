@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.SessionListItemHybridView"
+             x:DataType="listVm:HybridSessionVM"
+             d:DataContext="{d:DesignInstance Type=listVm:HybridSessionVM, IsDesignTimeCreatable=True}"
+             x:Name="Root">
+    
+    <Control.Resources>
+        <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
+    </Control.Resources>
+    
+    <Grid RowDefinitions="Auto, Auto" RowSpacing="2"
+          anim:Presence.Leave="Fold"
+          anim:Presence.IsLeaving="{Binding IsLeaving}">
+        <Border Classes="sessionHeader"
+            Classes.entered="{Binding IsEntered}"
+            Classes.shown="{Binding IsShown}"
+            Classes.dragged="{Binding IsDragged}"
+            Tag="{Binding}"
+            Tapped="OnHeaderTapped">
+            <Border.ContextFlyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Spacing="2">
+                        <!-- One item, shown by the state it would change -->
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{l:Text sessions.join}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding !DataContext.IsEntered, ElementName=Root}"
+                                              Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leave}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.IsEntered, ElementName=Root}"
+                                              Command="{Binding DataContext.LeaveSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                        <Separator IsVisible="{Binding DataContext.CanManage, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionSettings.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanManage, ElementName=Root}"
+                                              Command="{Binding DataContext.EditSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
+                                              IsVisible="{Binding DataContext.CanArrange, ElementName=Root}">
+                            <menus:MenuItemButton.Flyout>
+                                <Flyout Placement="RightEdgeAlignedTop">
+                                    <!-- The session goes along as the parameter, the template cannot name the view -->
+                                    <ItemsControl ItemsSource="{Binding DataContext.MoveTargets, ElementName=Root}"
+                                                  Tag="{Binding DataContext, ElementName=Root}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="2"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="listVm:MoveTargetVM">
+                                                <menus:MenuItemButton Content="{Binding Name}"
+                                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                                      Command="{Binding MoveHereCommand}"
+                                                                      CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Flyout>
+                            </menus:MenuItemButton.Flyout>
+                        </menus:MenuItemButton>
+                        <Separator IsVisible="{Binding DataContext.CanManage, ElementName=Root}"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanManage, ElementName=Root}"
+                                              Command="{Binding DataContext.DeleteSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                    </StackPanel>
+                </Flyout>
+            </Border.ContextFlyout>
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="8">
+                <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+                    <Image Source="{StaticResource HybridSessionIcon}"
+                           Opacity="{Binding IsCorrupted, Converter={StaticResource BoolToOpacityConverter}}"/>
+                    <Image Width="10" Height="10" Margin="0,0,-3,-3"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           IsVisible="{Binding IsCorrupted}"
+                           ToolTip.Tip="{l:Text sessions.loadFailed}"
+                           Source="{StaticResource CrossIcon}"/>
+                </Panel>
+
+                <text:MarqueeTextBlock Grid.Column="1"
+                           Classes="sessionName"
+                           Classes.entered="{Binding IsEntered}"
+                           Text="{Binding Model.Name}"
+                           ToolTip.Tip="{Binding Model.Name}"/>
+                
+                <Image Grid.Column="2" Width="14" Height="14" VerticalAlignment="Center"
+                       IsVisible="{Binding IsHost}"
+                       ToolTip.Tip="{l:Text sessions.youAreHost}"
+                       Source="{StaticResource CrownIcon}"/>
+                
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                            IsVisible="{Binding !!Peers.Count}"
+                            ToolTip.Tip="{l:Text sessions.participants}">
+                    <Image Width="12" Height="12" Opacity="0.7" Source="{StaticResource BaseUserIcon}"/>
+                    <TextBlock Classes="sessionCounter" Text="{Binding Peers.Count}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- The line runs down from the center of the session icon and ties the peers to it -->
+        <Border Grid.Row="1"
+                Classes="peersBranch"
+                IsVisible="{Binding !!Peers.Count}">
+            <ListBox Classes="peersList"
+                     ItemsSource="{Binding Peers}"
+                     SelectedItem="{Binding SelectedPeer}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type listVm:PeerVM}">
+                        <listViews:HybridSessionPeer/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

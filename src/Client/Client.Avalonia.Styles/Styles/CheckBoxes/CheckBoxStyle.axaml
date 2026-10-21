@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style Selector="CheckBox /template/ Border#NormalRectangle">
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- On the base state, not only while hovered: leaving the pointer and turning disabled animate as well -->
+    <Style Selector="CheckBox /template/ Border#NormalRectangle">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Medium}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Medium}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="CheckBox /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Medium}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+</Styles>

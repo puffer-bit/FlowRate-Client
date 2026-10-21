@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+      <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+      <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+    </ItemGroup>
+
+    <!-- The GStreamer runtime in Build/artifacts is not part of this library: the executable imports
+         Build/GStreamerRuntime.targets, since only it knows the RID it is built for. The generated
+         files stay out of the project; the build scripts themselves remain visible. -->
+    <ItemGroup>
+        <None Remove="Build\artifacts\**" />
+    </ItemGroup>
+
+    <!-- The GStreamer binding. The packages carry managed code only; the native runtime comes from
+         Build/GStreamerRuntime.targets. All of them share one version. -->
+    <ItemGroup>
+      <PackageReference Include="GstSharp.Net" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.App" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.Sdp" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.WebRTC" Version="1.28.17" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    </ItemGroup>
+
+</Project>

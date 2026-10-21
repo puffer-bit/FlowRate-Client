@@ -1,0 +1,46 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <!-- Add Controls for Previewer Here -->
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="TextBlock /template/ TextPresenter">
+        <Setter Property="TextWrapping" Value="Wrap"></Setter>
+    </Style>
+    
+    <Style Selector="TextBlock.SettingText:disabled, :disabled TextBlock.SettingText">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- A small label above a group of controls, e.g. a column heading -->
+    <Style Selector="TextBlock.caption">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+
+    <!-- Texts of a form: the label over a field, a hint under it and what is wrong with its value -->
+    <Style Selector="TextBlock.fieldLabel">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource OverlayLightBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBlock.fieldError">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- Selected text is purple with white text, as in the rest of the theme -->
+    <Style Selector="SelectableTextBlock">
+        <Setter Property="SelectionBrush" Value="{DynamicResource TextSelectionBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+</Styles>

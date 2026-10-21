@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:themes="clr-namespace:Client.Core.Settings.Themes;assembly=Client.Core"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             x:DataType="pagesVm:AppearanceControlVM"
+             x:Class="Client.Views.Settings.Pages.ThemePresetPicker">
+
+    <UserControl.Resources>
+        <!-- A miniature of the main window for a theme card. It is drawn with theme brushes, so the
+             ThemeVariantScope around it decides which theme it shows, whatever theme the app is in -->
+        <ControlTheme x:Key="ThemeMiniature" TargetType="ContentControl">
+            <Setter Property="Width" Value="176"/>
+            <Setter Property="Height" Value="108"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border CornerRadius="7" ClipToBounds="True"
+                            Background="{DynamicResource GeneralBrush}"
+                            BorderBrush="{DynamicResource DarkBackgroundAltBrush}"
+                            BorderThickness="1">
+                        <Grid ColumnDefinitions="52,*">
+                            <Border Grid.Column="0" Background="{DynamicResource BackgroundGeneralBrush}">
+                                <StackPanel Margin="8,10,8,0" Spacing="7">
+                                    <Border Classes="bar" Width="26" Background="{DynamicResource SecondaryTextBrush}"/>
+                                    <Border Height="11" CornerRadius="3" Margin="-3,0"
+                                            Background="{DynamicResource ButtonMainBrush}"/>
+                                    <Border Classes="bar" Width="32" Background="{DynamicResource SecondaryTextBrush}"/>
+                                    <Border Classes="bar" Width="22" Background="{DynamicResource SecondaryTextBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <Grid Grid.Column="1" RowDefinitions="*,Auto" Margin="10,10,10,8">
+                                <StackPanel Grid.Row="0" Spacing="6">
+                                    <Border Classes="bar" Width="44" Background="{DynamicResource PrimaryTextBrush}"/>
+                                    <Border Classes="bar" Width="88" Background="{DynamicResource SecondaryTextBrush}"/>
+                                    <Border Classes="bar" Width="64" Background="{DynamicResource SecondaryTextBrush}"/>
+                                </StackPanel>
+                                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                                    <Border Grid.Column="0" Height="14" CornerRadius="4"
+                                            Background="{DynamicResource DarkBackgroundBrush}"/>
+                                    <Border Grid.Column="1" Width="22" Height="14" CornerRadius="4"
+                                            Background="{DynamicResource ButtonMainBrush}"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Theme presets are picked as cards: the list draws no selection of its own,
+             the card gets an accent frame and a filled mark instead -->
+        <Style Selector="ListBox.themeCards">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem /template/ ContentPresenter,
+                         ListBox.themeCards ListBoxItem:pointerover /template/ ContentPresenter,
+                         ListBox.themeCards ListBoxItem:selected /template/ ContentPresenter,
+                         ListBox.themeCards ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                         ListBox.themeCards ListBoxItem:selected:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+
+        <!-- The card that cannot be picked yet keeps its real colors: a dimmed miniature would show a wrong theme -->
+        <Style Selector="ListBox.themeCards ListBoxItem:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <!-- Only its label is dimmed -->
+        <Style Selector="ListBox.themeCards ListBoxItem:disabled TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <Style Selector="ListBox.themeCards Border.frame">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem:pointerover Border.frame">
+            <Setter Property="BorderBrush" Value="{DynamicResource DarkBackgroundAltBrush}"/>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem:selected Border.frame,
+                         ListBox.themeCards ListBoxItem:selected:pointerover Border.frame">
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+
+        <Style Selector="ListBox.themeCards Ellipse.ring">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem:selected Ellipse.ring">
+            <Setter Property="Stroke" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="ListBox.themeCards Ellipse.dot">
+            <Setter Property="Fill" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="scale(0.4)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.themeCards ListBoxItem:selected Ellipse.dot">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+
+        <!-- Lines of text in the miniature window of a theme card -->
+        <Style Selector="Border.bar">
+            <Setter Property="Height" Value="5"/>
+            <Setter Property="CornerRadius" Value="2.5"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ListBox Classes="themeCards"
+             SelectedValueBinding="{Binding Tag, x:DataType=ListBoxItem}"
+             SelectedValue="{Binding SelectedThemeType}">
+        <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="12"/>
+            </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBoxItem Tag="{x:Static themes:ThemeType.Dark}">
+            <StackPanel Spacing="6">
+                <Border Classes="frame" BorderThickness="2" CornerRadius="11" Padding="3">
+                    <ThemeVariantScope RequestedThemeVariant="Dark">
+                        <ContentControl Theme="{StaticResource ThemeMiniature}"/>
+                    </ThemeVariantScope>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5,0,0,2">
+                    <Panel Width="16" Height="16" VerticalAlignment="Center">
+                        <Ellipse Classes="ring" StrokeThickness="1.5"/>
+                        <Ellipse Classes="dot" Width="8" Height="8"/>
+                    </Panel>
+                    <TextBlock Text="{l:Text settings.appearance.theme.dark}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem Tag="{x:Static themes:ThemeType.Light}">
+            <StackPanel Spacing="6">
+                <Border Classes="frame" BorderThickness="2" CornerRadius="11" Padding="3">
+                    <ThemeVariantScope RequestedThemeVariant="Light">
+                        <ContentControl Theme="{StaticResource ThemeMiniature}"/>
+                    </ThemeVariantScope>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5,0,0,2">
+                    <Panel Width="16" Height="16" VerticalAlignment="Center">
+                        <Ellipse Classes="ring" StrokeThickness="1.5"/>
+                        <Ellipse Classes="dot" Width="8" Height="8"/>
+                    </Panel>
+                    <TextBlock Text="{l:Text settings.appearance.theme.light}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem IsEnabled="False" Cursor="Arrow">
+            <StackPanel Spacing="6">
+                <Border Classes="frame" BorderThickness="2" CornerRadius="11" Padding="3">
+                    <!-- Dark on one side of the diagonal, light on the other -->
+                    <Panel>
+                        <ThemeVariantScope RequestedThemeVariant="Dark">
+                            <ContentControl Theme="{StaticResource ThemeMiniature}"/>
+                        </ThemeVariantScope>
+                        <ThemeVariantScope RequestedThemeVariant="Light" Clip="M176,0 V108 H0 Z">
+                            <ContentControl Theme="{StaticResource ThemeMiniature}"/>
+                        </ThemeVariantScope>
+                    </Panel>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5,0,0,2">
+                    <Panel Width="16" Height="16" VerticalAlignment="Center">
+                        <Ellipse Classes="ring" StrokeThickness="1.5"/>
+                        <Ellipse Classes="dot" Width="8" Height="8"/>
+                    </Panel>
+                    <TextBlock Text="{l:Text settings.appearance.theme.system}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </ListBoxItem>
+    </ListBox>
+</UserControl>

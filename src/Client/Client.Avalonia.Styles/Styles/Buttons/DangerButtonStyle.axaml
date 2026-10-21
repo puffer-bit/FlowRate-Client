@@ -1,0 +1,33 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Основной стиль danger -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+
+    <!-- White text in every state; set on the presenter so Fluent's state foregrounds do not win -->
+    <Style Selector="Button.danger /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+
+    <!-- Hover -->
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorDangerHovered}"/>
+    </Style>
+
+    <!-- Pressed -->
+    <Style Selector="Button.danger:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorDangerPressed}"/>
+    </Style>
+
+    <!-- Disabled -->
+    <Style Selector="Button.danger:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorDangerDisabled}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OverlayLightBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+
+</Styles>

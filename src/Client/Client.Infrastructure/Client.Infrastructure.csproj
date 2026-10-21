@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!-- Dapper.AOT replaces the Dapper calls with generated code, the app is published with NativeAOT -->
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+      <ProjectReference Include="..\..\Shared\Shared.Parsers\Shared.Parsers.csproj" />
+      <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Dapper" Version="2.1.89" />
+      <PackageReference Include="Dapper.AOT" Version="1.1.0" />
+      <!-- The Core package without its bundled SQLite: SQLite3 Multiple Ciphers takes its place and encrypts the file -->
+      <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.12" />
+      <PackageReference Include="SQLite3MC.PCLRaw.bundle" Version="2.6.1" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="Database\Migrations\*.sql" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <InternalsVisibleTo Include="Client.Infrastructure.Tests" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,87 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Droid.Views.ChatMessageView"
+             x:DataType="chatVm:ChatMessageVM">
+
+    <!-- The message as the desktop shows it, without the time of a continuation, which appears on
+         hover there. The menu of a message is a sheet of the chat view, opened by a long press -->
+    <Border Classes="msg-root"
+            Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
+            Classes.highlighted="{Binding IsHighlighted}"
+            Classes.mentioned="{Binding IsMentioningMe}">
+        <!-- The avatar column stays in continuations, so their text lines up with the first message -->
+        <Grid ColumnDefinitions="46, *">
+
+            <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
+                                UserName="{Binding SenderName}"
+                                IsDeleted="{Binding IsSenderDeleted}"
+                                AvatarUrl="{Binding SenderAvatarUrl}"
+                                Status="{Binding SenderStatus}"/>
+
+            <StackPanel Grid.Column="1" Classes="msg-content">
+
+                <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
+                    <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
+                               Classes.deleted-user="{Binding IsSenderDeleted}"
+                               Text="{Binding SenderName}"/>
+                    <TextBlock Classes="msg-time"
+                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                </StackPanel>
+
+                <!-- A tap on the quote goes to the message it quotes -->
+                <Button Classes="msg-reply"
+                        Classes.deleted="{Binding Reply.IsDeleted, FallbackValue=False}"
+                        IsVisible="{Binding HasReply}"
+                        Command="{Binding OpenReplyCommand}">
+                    <Border Classes="msg-reply-body">
+                        <StackPanel>
+                            <TextBlock Classes="msg-reply-username" Text="{Binding Reply.SenderName}"
+                                       Classes.deleted-user="{Binding Reply.IsSenderDeleted, FallbackValue=False}"/>
+                            <TextBlock Classes="msg-reply-text"
+                                       IsVisible="{Binding !Reply.IsDeleted, FallbackValue=False}"
+                                       Text="{Binding Reply.Text}"/>
+                            <TextBlock Classes="msg-deleted-text"
+                                       IsVisible="{Binding Reply.IsDeleted, FallbackValue=False}"
+                                       Text="{l:Text chat.messageDeleted}"/>
+                        </StackPanel>
+                    </Border>
+                </Button>
+
+                <!-- Not selectable: a drag over the text scrolls the list.
+                     An edited message ends with a pencil, right after its last word -->
+                <text:TrailingMarkPanel IsVisible="{Binding HasText}">
+                    <TextBlock Classes="msg-body" chatVm:ChatMessageText.Body="{Binding Body}"
+                               chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
+                    <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
+                </text:TrailingMarkPanel>
+
+                <!-- The reduced copies; a tap opens the image itself over the chat -->
+                <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatImageVM">
+                            <Button Classes="msg-image"
+                                    Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                    chatVm:ChatImagePresence.Image="{Binding}"
+                                    Command="{Binding OpenCommand}">
+                                <Panel>
+                                    <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
+                                    <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
+                                           IsVisible="{Binding IsFailed}"/>
+                                </Panel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

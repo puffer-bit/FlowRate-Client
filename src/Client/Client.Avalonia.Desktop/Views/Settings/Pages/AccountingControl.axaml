@@ -1,0 +1,200 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:models="clr-namespace:Client.Core.Settings;assembly=Client.Core"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.AccountingControl"
+             x:DataType="pagesVm:AccountingControlVM"
+             d:DataContext="{d:DesignInstance Type=pagesVm:AccountingControlVM, IsDesignTimeCreatable=True}"
+             x:Name="Root">
+    <UserControl.Resources>
+        <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
+    </UserControl.Resources>
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="accounting.database"/>
+        <ui:SettingsCard IsEnabled="{Binding !IsDatabaseBusy}">
+            <ui:SettingsRow services:SettingText.Key="accounting.encryptDatabase">
+                <CheckBox IsChecked="{Binding IsDatabaseEncryptionEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="accounting.changePassword"
+                            IsExpanded="{Binding IsDatabaseEncryptionEnabled}">
+                <Button MinWidth="90" HorizontalContentAlignment="Center"
+                        Command="{Binding ChangeDatabasePasswordCommand}"
+                        Content="{l:Text settings.accounting.changePassword.button}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="accounting.keyringPassword"
+                            IsExpanded="{Binding IsDatabaseEncryptionEnabled}"
+                            IsEnabled="{Binding CanStorePassword}">
+                <CheckBox IsChecked="{Binding IsDatabasePasswordSaveEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="accounting.lockDatabase"
+                            IsEnabled="{Binding CanLockFile}">
+                <CheckBox IsChecked="{Binding IsDatabaseLockEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <hints:HintBlock Text="{l:Text settings.accounting.keyringUnavailable}" IsVisible="{Binding !CanStorePassword}"/>
+        <hints:HintBlock Text="{l:Text settings.accounting.lockUnavailable}" IsVisible="{Binding !CanLockFile}"/>
+        <hints:HintBlock Text="{l:Text settings.accounting.encryptionHint}"/>
+
+        <controls:SettingsHeader services:SettingText.Section="accounting.savedServers" ui:SettingsPage.SearchKey="accounting.savedServers"/>
+        
+        <TextBlock IsVisible="{Binding !CoordinatorSessions.Count}"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   Text="{l:Text settings.accounting.noServers}"/>
+        
+        <ItemsControl ItemsSource="{Binding CoordinatorSessions}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:SavedCoordinatorModel">
+                    <ui:SettingsCard Padding="12">
+                        <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12">
+                            <Image Grid.Row="0" Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                   Source="{StaticResource ServerIcon}"/>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <text:MarqueeTextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           Text="{Binding Name, Converter={x:Static services:TextOrDefaultConverter.Instance}, ConverterParameter=settings.accounting.unnamedServer}"/>
+                                <SelectableTextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}">
+                                    <SelectableTextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}:{1}">
+                                            <Binding Path="Address"/>
+                                            <Binding Path="Port"/>
+                                        </MultiBinding>
+                                    </SelectableTextBlock.Text>
+                                </SelectableTextBlock>
+                            </StackPanel>
+                            
+                            <Button Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"
+                                    ToolTip.Tip="{l:Text settings.accounting.forgetServer.tooltip}"
+                                    Command="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
+                                    <TextBlock Text="{l:Text settings.accounting.forget}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                       FontSize="12" FontStyle="Italic"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       IsVisible="{Binding !Users.Count}"
+                                       Text="{l:Text settings.accounting.noAccounts}"/>
+                            
+                            <!-- Saved accounts, aligned with the server name -->
+                            <ItemsControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                          IsVisible="{Binding !!Users.Count}"
+                                          ItemsSource="{Binding Users}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:SavedUserModel">
+                                        <Grid ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+                                            <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
+                                                   Source="{StaticResource UserIcon}"/>
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Username}"/>
+                                            <!-- The identity is a credential: only its edges are shown, to tell accounts apart -->
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </ui:SettingsCard>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        
+        <hints:HintBlock Text="{l:Text settings.accounting.serversHint}"/>
+
+        <controls:SettingsHeader services:SettingText.Section="accounting.trustedCertificates" ui:SettingsPage.SearchKey="accounting.trustedCertificates"/>
+        
+        <TextBlock IsVisible="{Binding !TrustedCertificates.Count}"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   Text="{l:Text settings.accounting.noCertificates}"/>
+        
+        <ItemsControl ItemsSource="{Binding TrustedCertificates}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pagesVm:TrustedCertificateItem">
+                    <ui:SettingsCard Padding="12">
+                        <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12">
+                            <Image Grid.Row="0" Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                   Source="{StaticResource KeyIcon}"/>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <SelectableTextBlock FontWeight="SemiBold" Text="{Binding Address}"/>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           TextTrimming="CharacterEllipsis" Text="{Binding Subject}"/>
+                            </StackPanel>
+                            
+                            <Button Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"
+                                    ToolTip.Tip="{l:Text settings.accounting.forgetCertificate.tooltip}"
+                                    Command="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).ForgetCertificateCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
+                                    <TextBlock Text="{l:Text settings.accounting.forget}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                  ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto"
+                                  ColumnSpacing="12" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="{l:Text settings.accounting.certificate.fingerprint}"/>
+                                <SelectableTextBlock Grid.Row="0" Grid.Column="1" FontSize="12"
+                                                     FontFamily="Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace"
+                                                     Text="{Binding Fingerprint}"/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="{l:Text settings.accounting.certificate.validUntil}"/>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                    <TextBlock FontSize="12" Text="{Binding ValidUntil}"/>
+                                    <Image Width="14" Height="14" IsVisible="{Binding IsExpired}"
+                                           ToolTip.Tip="{l:Text settings.accounting.certificate.expired}"
+                                           Source="{StaticResource WarningIcon}"/>
+                                </StackPanel>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="{l:Text settings.accounting.certificate.coordinator}"/>
+                                <SelectableTextBlock Grid.Row="2" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                                     Text="{Binding Coordinator}"/>
+                            </Grid>
+                        </Grid>
+                    </ui:SettingsCard>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        
+        <hints:HintBlock Text="{l:Text settings.accounting.certificatesHint}"/>
+    </ui:SettingsPage>
+</UserControl>

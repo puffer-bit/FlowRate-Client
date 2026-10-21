@@ -1,0 +1,106 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars">
+    <Design.PreviewWith>
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8">
+            <avatars:UserAvatar Width="20" Height="20" UserName="alice"/>
+            <avatars:UserAvatar Width="28" Height="28" UserName="Bob" IsSpeaking="True"/>
+            <avatars:UserAvatar Width="32" Height="32"/>
+            <avatars:UserAvatar Width="32" Height="32" UserName="Deleted user" IsDeleted="True"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <Style Selector="avatars|UserAvatar">
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
+        <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="StatusBackground" Value="{DynamicResource BackgroundGeneralBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <!-- Drawn at 20px and scaled, so the letter keeps its proportion at any size. Not drawn
+                         under a picture: it would show through one with a transparent background -->
+                    <Viewbox Stretch="Uniform"
+                             IsVisible="{Binding Picture, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNull}}">
+                        <Border Width="20" Height="20"
+                                CornerRadius="10"
+                                Background="{TemplateBinding Background}">
+                            <Panel>
+                                <avatars:AvatarInitial Name="PART_Initial"
+                                                       Text="{TemplateBinding Initial}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{TemplateBinding Foreground}"/>
+                                <!-- A deleted user: a ghost with a wavy hem, its eyes cut out of the body -->
+                                <!-- Only the height is set: a uniform stretch puts the shape at the left of a
+                                     wider box, so the box takes the width of the ghost and is centered -->
+                                <Path Name="PART_Ghost"
+                                      Height="11"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Stretch="Uniform"
+                                      IsVisible="False"
+                                      Fill="{TemplateBinding Foreground}"
+                                      Data="M12 3 C7.6 3 5 6.2 5 10.5 V20 L7.33 18 L9.67 20 L12 18 L14.33 20 L16.67 18 L19 20 V10.5 C19 6.2 16.4 3 12 3 Z
+                                            M8 10.5 A1.5 1.5 0 1 0 11 10.5 A1.5 1.5 0 1 0 8 10.5 Z
+                                            M13 10.5 A1.5 1.5 0 1 0 16 10.5 A1.5 1.5 0 1 0 13 10.5 Z"/>
+                            </Panel>
+                        </Border>
+                    </Viewbox>
+
+                    <!-- Laid out at full size rather than in the Viewbox, so the picture is not scaled up from 20px -->
+                    <Border CornerRadius="9999" ClipToBounds="True"
+                            IsVisible="{Binding Picture, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Image Source="{TemplateBinding Picture}" Stretch="UniformToFill"/>
+                    </Border>
+
+                    <!-- Drawn at 20px and scaled as the initial is, so the badge keeps its share of the avatar.
+                         Kept inside the bounds, unlike the speaking ring: the two are never shown together -->
+                    <Viewbox Stretch="Uniform"
+                             IsVisible="{Binding StatusIcon, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel Width="20" Height="20">
+                            <Border Width="8" Height="8"
+                                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    CornerRadius="4"
+                                    Padding="1.25"
+                                    Background="{TemplateBinding StatusBackground}">
+                                <Image Source="{TemplateBinding StatusIcon}"/>
+                            </Border>
+                        </Panel>
+                    </Viewbox>
+
+                    <!-- Around the avatar with a 1 px gap, so the picture keeps its size. It reaches 3 px
+                         past the bounds of the control: rows that clip leave at least that much padding
+                         around their avatar -->
+                    <Border Name="PART_SpeakingRing"
+                            Margin="-3"
+                            CornerRadius="9999"
+                            BorderThickness="2"
+                            BorderBrush="{DynamicResource SuccessBrush}"
+                            Opacity="0">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="avatars|UserAvatar:deleted">
+        <Setter Property="Background" Value="{DynamicResource AvatarDeletedBrush}"/>
+    </Style>
+    <Style Selector="avatars|UserAvatar:deleted /template/ avatars|AvatarInitial#PART_Initial">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="avatars|UserAvatar:deleted /template/ Path#PART_Ghost">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <Style Selector="avatars|UserAvatar:speaking /template/ Border#PART_SpeakingRing">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+</Styles>

@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.AudioControl"
+             x:DataType="pagesVm:AudioControlVM">
+    <UserControl.Styles>
+        <!-- Saved device that is not connected right now -->
+        <Style Selector="TextBlock.unavailable">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <!-- The voice gate would send what the microphone hears -->
+        <Style Selector="ProgressBar.voiceDetected">
+            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="audio.microphone"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="audio.inputDevice">
+                <ComboBox Width="300"
+                          ItemsSource="{Binding InputDevices}"
+                          SelectedItem="{Binding SelectedInputDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
+                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                       Classes.unavailable="{Binding !IsAvailable}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.inputVolume">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center"
+                            Minimum="{Binding MinInputVolumePercent}"
+                            Maximum="{Binding MaxInputVolumePercent}"
+                            Value="{Binding InputVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding InputVolumePercent, StringFormat={}{0:0}%}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.noiseSuppression">
+                <ComboBox MinWidth="180" SelectedIndex="{Binding NoiseSuppressionIndex}">
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.low}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.moderate}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.high}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.veryHigh}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
+                <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="audio.soundsEnabled">
+                <CheckBox IsChecked="{Binding AreSoundsEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.soundsVolume" IsExpanded="{Binding AreSoundsEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center"
+                            Minimum="{Binding MinSoundsVolumePercent}"
+                            Maximum="{Binding MaxSoundsVolumePercent}"
+                            Value="{Binding SoundsVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding SoundsVolumePercent, StringFormat={}{0:0}%}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.soundPack" IsExpanded="{Binding AreSoundsEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="180"
+                              ItemsSource="{Binding SoundPacks}"
+                              SelectedItem="{Binding SelectedSoundPack}"
+                              DropDownOpened="OnSoundPacksOpened">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="pagesVm:SoundPackItem">
+                                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="{l:Text settings.audio.soundPack.openFolder}"
+                            Click="OnOpenSoundPacksFolder"/>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.soundEvents" IsExpanded="{Binding AreSoundsEnabled}">
+                <ToggleButton Name="SoundListToggle" Classes="expander"
+                              IsCheckedChanged="OnSoundListToggled"/>
+            </ui:SettingsRow>
+            <!-- Folded and unfolded by the arrow of the row above; the page remembers which it was -->
+            <ui:SettingsRow Name="SoundListRow" ContentPlacement="Below"
+                            IsExpanded="{Binding AreSoundsEnabled}">
+                <ItemsControl ItemsSource="{Binding Sounds}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:SoundItemVM">
+                            <Grid ColumnDefinitions="*,Auto,Auto" MinHeight="36">
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
+                                <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Center"
+                                        Command="{Binding PlayCommand}"
+                                        ToolTip.Tip="{l:Text settings.audio.soundEvents.listen}">
+                                    <Image Width="16" Height="16" Source="{StaticResource PlayIcon}"/>
+                                </Button>
+                                <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="audio.microphoneTest"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="audio.testMicrophone">
+                <Button MinWidth="140" HorizontalContentAlignment="Center"
+                        Content="{Binding TestButtonText}"
+                        Command="{Binding ToggleTestCommand}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
+                <StackPanel Spacing="6">
+                    <ProgressBar Height="10" MinHeight="10" MinWidth="0"
+                                 Minimum="0" Maximum="1"
+                                 Value="{Binding InputLevel}"
+                                 IsEnabled="{Binding IsTestRunning}"
+                                 Classes.voiceDetected="{Binding IsVoiceDetected}"/>
+                    <!-- The threshold slider is as wide as the meter, so both use one scale -->
+                    <StackPanel Spacing="0" Margin="0,6,0,0" IsVisible="{Binding IsVoiceGateEnabled}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       Text="{l:Text settings.audio.voiceThreshold.title}"/>
+                            <TextBlock Grid.Column="1" FontSize="12"
+                                       Text="{Binding VoiceGateThresholdDb, StringFormat={}{0:0} dB}"/>
+                        </Grid>
+                        <Slider Minimum="{Binding MinVoiceGateThresholdDb}"
+                                Maximum="{Binding MaxVoiceGateThresholdDb}"
+                                Value="{Binding VoiceGateThresholdDb}"
+                                TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.hearMyself">
+                <CheckBox IsChecked="{Binding IsLoopbackEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                   Text="{Binding TestError}"
+                   IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+    </ui:SettingsPage>
+</UserControl>

@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Settings.Pages.AboutControl"
+             x:DataType="pagesVm:AboutControlVM">
+    <UserControl.Styles>
+        <!-- A fact, on the right of what it is -->
+        <Style Selector="ui|SettingsRow TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="ui|SettingsRow > Button">
+            <Setter Property="MinWidth" Value="130"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- Each library is alone in the container of its item, so its row cannot tell that rows stand above it -->
+        <Style Selector="ContentPresenter:nth-child(n+2) > ui|SettingsRow /template/ Border#separator">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="about.application"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="about.version">
+                <TextBlock Classes="value" Text="{Binding Version}"/>
+            </ui:SettingsRow>
+            <!-- Not by the key: the description is the release of the system and not a text -->
+            <ui:SettingsRow Title="{l:Text settings.about.platform.title}"
+                            Description="{Binding PlatformDetails}"
+                            ui:SettingsPage.SearchKey="about.platform">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="20" Height="20" VerticalAlignment="Center"
+                           Source="{Binding PlatformIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                    <TextBlock Classes="value" Text="{Binding PlatformName}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="about.project"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text settings.about.repository.title}"
+                            Description="{Binding RepositoryName}"
+                            ui:SettingsPage.SearchKey="about.repository">
+                <Button Click="OnRepositoryClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource GitHubIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text settings.about.repository.open}"/>
+                    </StackPanel>
+                </Button>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="about.support">
+                <!-- Leads nowhere yet: there is no place to support the project at -->
+                <Button>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CoinIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text settings.about.support.button}"/>
+                    </StackPanel>
+                </Button>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="about.libraries"/>
+        <ui:SettingsCard ItemsSource="{Binding Libraries}">
+            <ui:SettingsCard.ItemTemplate>
+                <DataTemplate x:DataType="pagesVm:AboutLibrary">
+                    <ui:SettingsRow Title="{Binding Name}" Description="{Binding Description^}">
+                        <TextBlock Classes="value" Text="{Binding Version}"/>
+                    </ui:SettingsRow>
+                </DataTemplate>
+            </ui:SettingsCard.ItemTemplate>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

@@ -1,0 +1,9 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A popup is a window of its own, outside the scaled content of the window it belongs to: this
+         makes every flyout, tooltip, menu and drop-down take the scale of the control it opens at -->
+    <Style Selector="Popup">
+        <Setter Property="InheritsTransform" Value="True"/>
+    </Style>
+</Styles>

@@ -1,0 +1,81 @@
+# Options of the GStreamer monorepo build, one per line. Everything is off unless listed here.
+# Adding a plugin: enable it below, add its elements to required-elements.txt if the client needs them.
+
+-Dauto_features=disabled
+-Dgpl=disabled
+-Dlibav=disabled
+-Dugly=disabled
+-Drs=disabled
+-Ddevtools=disabled
+-Dges=disabled
+-Drtsp_server=disabled
+-Dpython=disabled
+-Dsharp=disabled
+-Dgst-examples=disabled
+-Dtls=disabled
+-Dintrospection=disabled
+-Dnls=disabled
+-Ddoc=disabled
+-Dtests=disabled
+-Dexamples=disabled
+
+-Dbase=enabled
+-Dgood=enabled
+-Dbad=enabled
+-Dorc=enabled
+-Dtools=enabled
+
+# ICE for webrtcbin, also builds the nicesrc/nicesink plugin of libnice
+-Dwebrtc=enabled
+-Dlibnice=enabled
+-Dlibnice:crypto-library=openssl
+
+# Core: gst-plugin-scanner and gst-inspect (the latter only for verify.sh, not shipped)
+-Dgstreamer:tools=enabled
+-Dgstreamer:coretracers=disabled
+# Only libgstcheck (not shipped); the docs of the plugin modules need the variables it defines
+-Dgstreamer:check=enabled
+
+# gst-plugins-base
+-Dgst-plugins-base:app=enabled
+-Dgst-plugins-base:audioconvert=enabled
+-Dgst-plugins-base:audioresample=enabled
+-Dgst-plugins-base:audiomixer=enabled
+-Dgst-plugins-base:audiotestsrc=enabled
+-Dgst-plugins-base:volume=enabled
+-Dgst-plugins-base:rawparse=enabled
+-Dgst-plugins-base:videoconvertscale=enabled
+-Dgst-plugins-base:videorate=enabled
+-Dgst-plugins-base:opus=enabled
+-Dgst-plugins-base:alsa=enabled
+
+# gst-plugins-good
+-Dgst-plugins-good:audiofx=enabled
+-Dgst-plugins-good:autodetect=enabled
+-Dgst-plugins-good:level=enabled
+-Dgst-plugins-good:rtp=enabled
+-Dgst-plugins-good:rtpmanager=enabled
+-Dgst-plugins-good:udp=enabled
+-Dgst-plugins-good:vpx=enabled
+-Dgst-plugins-good:pulse=enabled
+
+# gst-plugins-bad
+-Dgst-plugins-bad:webrtc=enabled
+-Dgst-plugins-bad:dtls=enabled
+-Dgst-plugins-bad:srtp=enabled
+# The Ubuntu libsrtp2 is built against NSS and would drag five NSS/NSPR libraries into the bundle
+--force-fallback-for=libsrtp2
+-Dlibsrtp2:crypto-library=openssl
+-Dgst-plugins-bad:sctp=enabled
+-Dgst-plugins-bad:sctp-internal-usrsctp=enabled
+-Dgst-plugins-bad:sdp=enabled
+-Dgst-plugins-bad:videoparsers=enabled
+-Dgst-plugins-bad:audiobuffersplit=enabled
+# Microphone processing: automatic gain, noise suppression. Builds webrtc-audio-processing and
+# abseil from the subprojects (BSD-3-Clause, Apache-2.0)
+-Dgst-plugins-bad:webrtcdsp=enabled
+-Dgst-plugins-bad:openh264=enabled
+-Dgst-plugins-bad:svtav1=enabled
+-Dgst-plugins-bad:nvcodec=enabled
+-Dgst-plugins-bad:va=enabled
+-Dgst-plugins-bad:drm=enabled

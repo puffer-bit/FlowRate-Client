@@ -1,0 +1,32 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates">
+    <Design.PreviewWith>
+        <emptyStates:EmptyState Title="No messages yet" Text="Write the first one to start the conversation"/>
+    </Design.PreviewWith>
+
+    <Style Selector="emptyStates|EmptyState">
+        <Setter Property="MaxWidth" Value="340"/>
+        <Setter Property="Margin" Value="24"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Spacing="6">
+                    <Image Width="72" Height="72" Margin="0,0,0,10" Source="{TemplateBinding Icon}"/>
+                    <TextBlock Text="{TemplateBinding Title}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               TextWrapping="WrapWithOverflow"
+                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <TextBlock Text="{TemplateBinding Text}"
+                               FontSize="13"
+                               TextAlignment="Center"
+                               TextWrapping="WrapWithOverflow"
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

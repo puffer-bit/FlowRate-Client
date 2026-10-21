@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="chatVm:ChatMessageVM"
+             x:Class="Client.Views.Sessions.Chat.ChatMessageControl"
+             x:Name="MessageView">
+    
+    <UserControl.ContextFlyout>
+        <Flyout Placement="BottomEdgeAlignedRight" 
+                Opened="FlyoutBase_OnOpened"
+                Closed="FlyoutBase_OnClosed">
+            <chatViews:ChatMessageFlyout/>
+        </Flyout>
+    </UserControl.ContextFlyout>
+    
+    <Border Classes="msg-root"
+            Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
+            Classes.highlighted="{Binding IsHighlighted}"
+            Classes.mentioned="{Binding IsMentioningMe}">
+        <!-- The avatar column also holds the time of continuations, so their text lines up with the first message -->
+        <Grid ColumnDefinitions="46, *"> 
+
+            <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
+                                UserName="{Binding SenderName}"
+                                IsDeleted="{Binding IsSenderDeleted}"
+                                AvatarUrl="{Binding SenderAvatarUrl}"
+                                Status="{Binding SenderStatus}"/>
+
+            <StackPanel Grid.Column="1" Classes="msg-content">
+                
+                <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
+                    <SelectableTextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
+                                         Classes.deleted-user="{Binding IsSenderDeleted}"
+                                         x:Name="NameTextBlock"
+                                         ContextFlyout="{x:Null}"
+                                         Text="{Binding SenderName}"/>
+                    <TextBlock Classes="msg-time"
+                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                </StackPanel>
+                
+                <Button Classes="msg-reply"
+                        Classes.deleted="{Binding Reply.IsDeleted, FallbackValue=False}"
+                        IsVisible="{Binding HasReply}"
+                        Command="{Binding OpenReplyCommand}"
+                        ToolTip.Tip="{l:Text chat.goToMessage}">
+                    <Border Classes="msg-reply-body">
+                        <StackPanel>
+                            <TextBlock Classes="msg-reply-username" Text="{Binding Reply.SenderName}"
+                                       Classes.deleted-user="{Binding Reply.IsSenderDeleted, FallbackValue=False}"/>
+                            <TextBlock Classes="msg-reply-text"
+                                       IsVisible="{Binding !Reply.IsDeleted, FallbackValue=False}"
+                                       Text="{Binding Reply.Text}"/>
+                            <TextBlock Classes="msg-deleted-text"
+                                       IsVisible="{Binding Reply.IsDeleted, FallbackValue=False}"
+                                       Text="{l:Text chat.messageDeleted}"/>
+                        </StackPanel>
+                    </Border>
+                </Button>
+                
+                <!-- An edited message ends with a pencil, right after its last word -->
+                <text:TrailingMarkPanel IsVisible="{Binding HasText}">
+                    <SelectableTextBlock Classes="msg-body"
+                                         chatVm:ChatMessageText.Body="{Binding Body}"
+                                         chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
+                                         x:Name="MessageTextBlock"
+                                         ContextFlyout="{x:Null}"/>
+                    <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"
+                          ToolTip.Tip="{l:Text chat.edited}"/>
+                </text:TrailingMarkPanel>
+
+                <!-- The reduced copies; a click opens the image itself over the chat -->
+                <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatImageVM">
+                            <Button Classes="msg-image"
+                                    Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                    chatVm:ChatImagePresence.Image="{Binding}"
+                                    Command="{Binding OpenCommand}"
+                                    ToolTip.Tip="{Binding Image.FileName}">
+                                <Panel>
+                                    <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
+                                    <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
+                                           IsVisible="{Binding IsFailed}"/>
+                                </Panel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            
+            <!-- A continuation of a sequence shows its time at the start, on hover only. The hidden text
+                 is one line of the message body, so the time is centered on that first line;
+                 the panel is as wide as the avatar, so the time sits under the avatar's center. -->
+            <Panel Grid.Column="0" IsVisible="{Binding !IsSequenceStart}"
+                   Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
+                <TextBlock Classes="msg-time continuation" VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>

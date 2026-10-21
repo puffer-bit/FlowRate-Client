@@ -1,0 +1,33 @@
+<Project>
+    <!-- Marks every build of the importing project with the moment it was made and the commit it was
+         made from. Both get into the assembly as the "BuildNumber" and "BuildCommit" metadata, and
+         the interface shows them after the version: "0.5.1-build2610130042(c6f00e6)".
+         A Debug build has the commit only, "0.5.1(c6f00e6)": the moment changes every minute and
+         would compile the project again on every build with nothing changed. -->
+
+    <!-- Not in the design-time builds an IDE runs in the background. Every other pass over the project
+         gets the same mark, the ones that compile nothing as well (the Android SDK runs such passes):
+         a pass without it would write the assembly attributes anew and the next build would compile again -->
+    <Target Name="StampBuildNumber" BeforeTargets="GetAssemblyAttributes" Condition="'$(DesignTimeBuild)' != 'true'">
+        <!-- Year, month, day, hour and minute in UTC: a later build has a greater number on any machine -->
+        <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+            <BuildNumber>$([System.DateTime]::UtcNow.ToString('yyMMddHHmm'))</BuildNumber>
+        </PropertyGroup>
+
+        <!-- Left out where there is no git or no repository, as in a build from an archive of the sources -->
+        <Exec Command="git rev-parse --short HEAD" WorkingDirectory="$(MSBuildProjectDirectory)"
+              ConsoleToMSBuild="true" StandardOutputImportance="low" StandardErrorImportance="low"
+              IgnoreExitCode="true" ContinueOnError="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="_BuildCommitOutput" />
+            <Output TaskParameter="ExitCode" PropertyName="_BuildCommitExitCode" />
+        </Exec>
+        <PropertyGroup>
+            <BuildCommit Condition="'$(_BuildCommitExitCode)' == '0'">$(_BuildCommitOutput.Trim())</BuildCommit>
+        </PropertyGroup>
+
+        <ItemGroup>
+            <AssemblyMetadata Include="BuildNumber" Value="$(BuildNumber)" Condition="'$(BuildNumber)' != ''" />
+            <AssemblyMetadata Include="BuildCommit" Value="$(BuildCommit)" Condition="'$(BuildCommit)' != ''" />
+        </ItemGroup>
+    </Target>
+</Project>

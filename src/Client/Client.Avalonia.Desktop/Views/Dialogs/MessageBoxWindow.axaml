@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogVm="clr-namespace:Client.ViewModels.Dialogs;assembly=Client.Avalonia.ViewModels"
+        xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Client.Views.Dialogs.MessageBoxWindow"
+        x:DataType="dialogVm:MessageBoxVM"
+        Icon="/Assets/avalonia-logo.ico"
+        Background="{DynamicResource GeneralBrush}"
+        CanResize="False"
+        SizeToContent="WidthAndHeight" 
+        WindowStartupLocation="CenterOwner"
+        Title="{Binding Title}">
+    
+    <!-- Used only when there is no window to show the message box in -->
+    <dialogs:MessageBoxView/>
+</Window>

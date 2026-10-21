@@ -1,0 +1,284 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ====== Sessions list: container highlight is moved to the session header ====== -->
+
+    <Style Selector="ListBox.sessionsList > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+
+    <!-- Plain panels: a virtualizing one hands a removed container to the next new item, and a
+         reused container does not play the enter animation again. The lists are short anyway. -->
+    <Style Selector="ListBox.sessionsList, ListBox.peersList">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel/>
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A new session drops in from above; a row of a category that is expanded drops in the same way -->
+    <Style Selector="ListBox.sessionsList > ListBoxItem">
+        <Setter Property="anim:Presence.Appear" Value="Drop"/>
+    </Style>
+
+    <!-- The container itself stays transparent so peers are not covered by the session selection -->
+    <Style Selector="ListBox.sessionsList > ListBoxItem /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBox.sessionsList > ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <!-- Keeps the regular text color: only the session header is filled, not the peers below it -->
+    <Style Selector="ListBox.sessionsList > ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+
+    <Style Selector="Border.sessionHeader">
+        <Setter Property="Padding" Value="8,2"/>
+        <Setter Property="MinHeight" Value="36"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <!-- Always there, so the outline of the entered session does not move the content -->
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- The hybrid session the user is in, whether it is on screen or not -->
+    <Style Selector="Border.sessionHeader.entered">
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
+    <!-- The header itself reacts, so hovering the peers below does not light up the whole session -->
+    <Style Selector="Border.sessionHeader:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+    <!-- A list marked byContent fills the session shown in the main window, not the clicked item -->
+    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader, Border.sessionHeader.shown">
+        <Setter Property="Background" Value="{DynamicResource ListBoxItemSelectedBrush}"/>
+    </Style>
+    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader TextBlock, Border.sessionHeader.shown TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+    <!-- The text changes color together with the header fill -->
+    <Style Selector="Border.sessionHeader TextBlock">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="TextBlock.sessionName">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+    </Style>
+    <!-- The session the user is in -->
+    <Style Selector="TextBlock.sessionName.entered">
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <!-- A chat with messages the user has not read -->
+    <Style Selector="TextBlock.sessionName.unread">
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Border.unreadBadge">
+        <Setter Property="Background" Value="{DynamicResource UnreadBadgeBrush}"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="MinWidth" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Padding" Value="5,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.unreadBadge.mention">
+        <Setter Property="Background" Value="{DynamicResource MentionBadgeBrush}"/>
+    </Style>
+    <Style Selector="Border.sessionHeader Border.unreadBadge > TextBlock">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource UnreadBadgeTextBrush}"/>
+        <!-- The counter changes and goes away at once, without the fade of the header text -->
+        <Setter Property="Transitions" Value="{x:Null}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.sessionHeader Border.unreadBadge.mention > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MentionBadgeTextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.sessionCounter">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected TextBlock.sessionCounter, Border.sessionHeader.shown TextBlock.sessionCounter">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+
+    <!-- ====== Peers list inside a hybrid session (Discord-like voice channel members) ====== -->
+
+    <!-- Header padding 8 + half of the 20 px session icon puts the 2 px line under the icon center -->
+    <Style Selector="Border.peersBranch">
+        <Setter Property="Margin" Value="17,0,0,4"/>
+        <Setter Property="Padding" Value="2,0,0,0"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PeerItemSelectedBrush}"/>
+    </Style>
+
+    <Style Selector="ListBox.peersList">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+    </Style>
+
+    <!-- The peer view pads itself, so its context menu opens anywhere on the highlighted row -->
+    <Style Selector="ListBox.peersList > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Margin" Value="0,1"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <!-- The row is cut, not squeezed over its neighbours, while its height animates -->
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+
+    <!-- A joining peer unfolds its row, so the sessions below slide down instead of jumping -->
+    <Style Selector="ListBox.peersList > ListBoxItem">
+        <Setter Property="anim:Presence.Appear" Value="Unfold"/>
+    </Style>
+
+    <Style Selector="TextBlock.peerName">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+    </Style>
+    <Style Selector="TextBlock.peerName.connecting">
+        <Setter Property="FontStyle" Value="Italic"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+
+    <Style Selector="ListBox.peersList > ListBoxItem /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.peersList > ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+    <!-- A translucent highlight, not a fill, so the regular text color stays -->
+    <Style Selector="ListBox.peersList > ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+    <Style Selector="ListBox.peersList > ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+    </Style>
+
+    <!-- ====== Category headers ====== -->
+
+    <Style Selector="Border.categoryHeader">
+        <Setter Property="Padding" Value="4,2,8,2"/>
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.categoryHeader TextBlock.categoryName">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="LetterSpacing" Value="0.6"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="Foreground" Value="{DynamicResource SessionCategoryTextBrush}"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- The header lights up on hover, and stays lit while a collapsed category hides something unread -->
+    <Style Selector="Border.categoryHeader:pointerover TextBlock.categoryName, Border.categoryHeader.unread TextBlock.categoryName">
+        <Setter Property="Foreground" Value="{DynamicResource SessionCategoryHoverTextBrush}"/>
+    </Style>
+    <Style Selector="Border.categoryHeader Path.categoryChevron">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="5"/>
+        <Setter Property="Margin" Value="3,0"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Stroke" Value="{DynamicResource SessionCategoryTextBrush}"/>
+        <Setter Property="StrokeThickness" Value="1.5"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.categoryHeader:pointerover Path.categoryChevron, Border.categoryHeader.unread Path.categoryChevron">
+        <Setter Property="Stroke" Value="{DynamicResource SessionCategoryHoverTextBrush}"/>
+    </Style>
+    <Style Selector="Border.categoryHeader.collapsed Path.categoryChevron">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+    </Style>
+    <!-- The add button shows on hover only, so the headers stay quiet -->
+    <Style Selector="Border.categoryHeader Button.categoryAdd">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.categoryHeader:pointerover Button.categoryAdd">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <!-- ====== Dragging ====== -->
+
+    <!-- A session dragged over a header goes into that category -->
+    <Style Selector="Border.categoryHeader.dropTarget">
+        <Setter Property="Background" Value="{DynamicResource SessionDropTargetBrush}"/>
+    </Style>
+    <!-- The row being dragged stays in place as an empty slot until it is dropped -->
+    <Style Selector="Border.sessionHeader.dragged, Border.categoryHeader.dragged">
+        <Setter Property="Background" Value="{DynamicResource SessionDragSourceBrush}"/>
+    </Style>
+    <Style Selector="Border.sessionHeader.dragged TextBlock, Border.categoryHeader.dragged TextBlock.categoryName">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="Border.sessionDropIndicator">
+        <Setter Property="Height" Value="2"/>
+        <Setter Property="CornerRadius" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource SessionDropIndicatorBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.sessionDragGhost">
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource SessionDragGhostBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SessionDragGhostBorderBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.sessionDragGhost TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+</Styles>

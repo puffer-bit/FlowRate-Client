@@ -1,0 +1,70 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:controls="clr-namespace:Client.Avalonia.Controls">
+    <Design.PreviewWith>
+        <StackPanel Width="360" Spacing="10">
+            <controls:SettingsHeader Text="Section"/>
+            <controls:SettingsHeader Text="Section that folds" SectionKey="tab.section"/>
+            <controls:SettingsHeader Text="Folded section" SectionKey="tab.folded" IsCollapsed="True"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <Style Selector="controls|SettingsHeader">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The background makes the whole line take the click, not only the text -->
+                <Grid Margin="0,0" Background="Transparent">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{TemplateBinding Text}"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Margin="0,0,10,0"
+                               VerticalAlignment="Center" />
+
+                    <Rectangle Grid.Column="1"
+                               Height="1"
+                               Fill="{DynamicResource SettingsCardBorderBrush}"
+                               VerticalAlignment="Center" />
+
+                    <!-- Points down while the section is shown and to the right while it is folded -->
+                    <Path Name="chevron" Grid.Column="2"
+                          Width="10" Height="6" Stretch="None"
+                          Margin="10,0,2,0"
+                          VerticalAlignment="Center"
+                          IsVisible="False"
+                          Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                          Stroke="{DynamicResource SecondaryTextBrush}"
+                          StrokeThickness="1.5"
+                          StrokeLineCap="Round"
+                          StrokeJoin="Round"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="controls|SettingsHeader:collapsible">
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="controls|SettingsHeader:collapsible /template/ Path#chevron">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="controls|SettingsHeader:collapsible:pointerover /template/ Path#chevron">
+        <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+    <Style Selector="controls|SettingsHeader:collapsed /template/ Path#chevron">
+        <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+    </Style>
+</Styles>

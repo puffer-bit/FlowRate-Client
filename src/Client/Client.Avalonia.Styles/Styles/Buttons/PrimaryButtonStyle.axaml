@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <!-- Add Controls for Previewer Here -->
+        </Border>
+    </Design.PreviewWith>
+    
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+
+    <!-- Set on the presenter so Fluent's hover/pressed foregrounds do not bring back dark text -->
+    <Style Selector="Button.primary /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonHoveredBrush}"/>
+    </Style>
+
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
+    </Style>
+    
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonDisabledBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+
+</Styles>

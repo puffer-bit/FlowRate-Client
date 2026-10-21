@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:mainViews="clr-namespace:Client.Views.Main"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="60"
+             x:DataType="mainVm:UserCardVM"
+             x:Class="Client.Views.Main.UserCard">
+
+    <UserControl.ContextFlyout>
+        <Flyout Placement="TopEdgeAlignedLeft">
+            <mainViews:UserCardFlyout/>
+        </Flyout>
+    </UserControl.ContextFlyout>
+
+    <UserControl.Styles>
+        <!-- Offline the card only dims; Fluent's grey disabled fill would make it look like a pressed button -->
+        <Style Selector="Button.userCard:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The same ghost button as the hybrid session header above, so the avatar and its icon line up -->
+    <Button Classes="ghost userCard"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+            VerticalAlignment="Center"
+            IsEnabled="{Binding IsReady}"
+            Command="{Binding ViewProfileCommand}"
+            CommandParameter="{Binding UserId}"
+            ToolTip.Tip="{Binding UserId, StringFormat='ID: {0}'}">
+
+
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <avatars:UserAvatar Grid.Column="0" Width="32" Height="32"
+                                UserName="{Binding Username}"
+                                AvatarUrl="{Binding AvatarUrl}"
+                                Status="{Binding Presence}"
+                                VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <text:MarqueeTextBlock Text="{Binding Username}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                <text:MarqueeTextBlock Text="{Binding StatusText}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Grid>
+    </Button>
+</UserControl>

@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.HybridSessionPeer"
+             x:DataType="listVm:PeerVM"
+             Background="Transparent"
+             Padding="4,3"
+             anim:Presence.Leave="Fold"
+             anim:Presence.IsLeaving="{Binding IsLeaving}">
+    <UserControl.ContextFlyout>
+        <Flyout Placement="BottomEdgeAlignedRight">
+            <listViews:HybridSessionPeerFlyout/>
+        </Flyout>
+    </UserControl.ContextFlyout>
+    
+    <UserControl.Styles>
+        <Style Selector="Button.screenWatch">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.screenWatch:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+        <!-- A screen that is being watched stays visible at a glance -->
+        <Style Selector="Button.screenWatch.watching /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="28, *, Auto" VerticalAlignment="Center" ColumnSpacing="6">
+        <Panel Grid.Column="0" Width="28" Height="28">
+            <avatars:UserAvatar UserName="{Binding UserData.Username}"
+                                AvatarUrl="{Binding UserData.AvatarUrl}"
+                                IsSpeaking="{Binding IsSpeaking}"
+                                IsVisible="{Binding IsConnected}"/>
+
+            <loadingIndicators:ProgressRing
+                Width="16"
+                Height="16"
+                MinWidth="0"
+                MinHeight="0"
+                IsIndeterminate="True"
+                IsVisible="{Binding !IsConnected}"
+                BorderThickness="2"
+                Foreground="{DynamicResource PrimaryTextBrush}"/>
+        </Panel>
+
+        <text:MarqueeTextBlock Grid.Column="1"
+                   Classes="peerName"
+                   Classes.connecting="{Binding !IsConnected}"
+                   Text="{Binding DisplayedName}"/>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <!-- The user shows a screen; everyone sees the mark, in the session or not. Inside the
+                 session it starts and stops watching that screen, outside it is only a mark -->
+            <Button Classes="screenWatch"
+                    Classes.watching="{Binding IsWatchingScreen}"
+                    IsVisible="{Binding IsSharingScreen}"
+                    IsHitTestVisible="{Binding CanWatchScreen}"
+                    Command="{Binding ToggleScreenWatch}">
+                <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                <ToolTip.Tip>
+                    <Panel>
+                        <TextBlock Text="{l:Text hybrid.screen.sharing}" IsVisible="{Binding !CanWatchScreen}"/>
+                        <Panel IsVisible="{Binding CanWatchScreen}">
+                            <TextBlock Text="{l:Text hybrid.screen.watch}" IsVisible="{Binding !IsWatchingScreen}"/>
+                            <TextBlock Text="{l:Text hybrid.screen.stopWatching}" IsVisible="{Binding IsWatchingScreen}"/>
+                        </Panel>
+                    </Panel>
+                </ToolTip.Tip>
+            </Button>
+
+            <!-- The user turned their own microphone off; everyone sees it -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource CrossedMicrophoneIcon}"
+                   IsVisible="{Binding IsMicrophoneMuted}"
+                   ToolTip.Tip="{l:Text peer.microphoneOff}"/>
+
+            <!-- The user turned the sound of the session off and hears nobody; everyone sees it -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource CrossedHeadphonesIcon}"
+                   IsVisible="{Binding IsDeafened}"
+                   ToolTip.Tip="{l:Text peer.soundOff}"/>
+
+            <!-- We turned this user's sound off; only here, the others still hear them -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource CrossedNoVolumeIcon}"
+                   IsVisible="{Binding IsMuted}"
+                   ToolTip.Tip="{l:Text peer.soundMuted}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

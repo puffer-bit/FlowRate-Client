@@ -1,0 +1,319 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:views="clr-namespace:Client.Droid.Views"
+             xmlns:user="clr-namespace:Shared.Enums.User;assembly=Shared.Core"
+             x:Class="Client.Droid.Views.MainView"
+             x:DataType="mainVm:MainWindowVM"
+             Background="{DynamicResource GeneralBrush}">
+
+    <UserControl.Styles>
+        <!-- The three lines of the menu button, drawn on a 22 px grid; the header of a chat has the same button -->
+        <Style Selector="Path.burger">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Stretch" Value="None"/>
+            <Setter Property="Data" Value="M2,5 H20 M2,11 H20 M2,17 H20"/>
+            <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.75"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+        </Style>
+
+        <!-- ====== Menu: the side panel of the desktop, slid in from the left over the screen ====== -->
+        <Style Selector="Panel.drawer">
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Panel.drawer.open">
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+        <Style Selector="Panel.drawer > Border.drawer-backdrop">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.drawer.open > Border.drawer-backdrop">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <!-- Moved out by its own width while closed -->
+        <Style Selector="Panel.drawer > Border.drawer-panel">
+            <Setter Property="Width" Value="304"/>
+            <Setter Property="RenderTransform" Value="translateX(-304px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.drawer.open > Border.drawer-panel">
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+        </Style>
+
+        <!-- A fact about the server: what it is on the left, the value on the right -->
+        <Style Selector="TextBlock.infoLabel">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.infoValue">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The padding of the view itself belongs to the system: it keeps the content out of the status
+         bar and the gesture area. Room for the keyboard is made by the margin of this panel -->
+    <Grid x:Name="Root" RowDefinitions="*, Auto">
+
+        <!-- Shown while no session is open, as the right side of the desktop window is -->
+        <Grid Grid.Row="0" x:Name="Home" RowDefinitions="Auto, 1, *">
+            <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                <Button Grid.Column="0"
+                        Classes="borderless"
+                        Width="44" Height="44" Padding="0" CornerRadius="22"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        Click="OnMenuClick">
+                    <Path Classes="burger"/>
+                </Button>
+
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock FontSize="16" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               Text="{Binding ServerTitle.DisplayName}"/>
+                    <TextBlock FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               Text="{Binding ServerTitle.DisplayAddress}"/>
+                </StackPanel>
+            </Grid>
+
+            <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+            <emptyStates:EmptyState Grid.Row="2"
+                                    anim:Presence.Appear="Rise"
+                                    Icon="{StaticResource SelectSessionIcon}"
+                                    Title="{l:Text main.noSession.title}"
+                                    Text="{l:Text main.noSession.text.menu}"/>
+        </Grid>
+
+        <!-- The session that is open -->
+        <ContentControl Grid.Row="0" x:Name="Screen"/>
+
+        <!-- The menu. The backdrop covers the screen and takes the pointer input; a tap on it closes the menu -->
+        <Panel Grid.Row="0" x:Name="Drawer" Classes="drawer" ClipToBounds="True">
+            <Border Classes="drawer-backdrop"
+                    Background="{DynamicResource DialogBackdropBrush}"
+                    Tapped="OnDrawerBackdropTapped"/>
+
+            <Border Classes="drawer-panel"
+                    HorizontalAlignment="Left"
+                    Background="{DynamicResource GeneralBrush}"
+                    BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,0,1,0">
+                <views:SessionsView x:Name="Sessions"/>
+            </Border>
+        </Panel>
+
+        <!-- The connect form, the profile, the settings and the form of a new session take the whole screen, over the session and
+             the menu. They slide in from the right and back out to it -->
+        <TransitioningContentControl Grid.Row="0" x:Name="Overlay">
+            <TransitioningContentControl.PageTransition>
+                <views:ScreenSlide/>
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
+
+        <!-- Under every screen, as the status bar of the desktop is under the whole window -->
+        <views:StatusBarView Grid.Row="1" x:Name="StatusBar"/>
+
+        <!-- Sheets lie over the status bar too. The menu of a message is written in the chat view and joins this layer in code -->
+        <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="SheetLayer">
+            <!-- Menu of the server, opened from its title in the menu: what the flyout of the desktop
+                 shows, without what is not on Android yet -->
+            <views:BottomSheet x:Name="ServerMenu">
+                <StackPanel Spacing="2">
+
+                    <!-- Who we are connected to -->
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12" Margin="12,8,12,10">
+                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
+                                Background="{DynamicResource DarkBackgroundBrush}"
+                                VerticalAlignment="Center">
+                            <Image Width="24" Height="24" Source="{StaticResource ServerIcon}"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock FontSize="16" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding ServerTitle.DisplayName}"/>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding ServerTitle.DisplayAddress}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- A few facts about the server -->
+                    <Border Margin="4,0,4,6" Padding="12,10" CornerRadius="8"
+                            Background="{DynamicResource MenuItemHoverBrush}">
+                        <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="8">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.platform}"/>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                <Image Width="16" Height="16" VerticalAlignment="Center" Source="{StaticResource LinuxIcon}"/>
+                                <TextBlock Classes="infoValue" Text="{Binding ServerTitle.Platform}"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.version}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="infoValue" Text="{Binding ServerTitle.Version}"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Classes="infoLabel" Text="{l:Text main.server.info.online}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="infoValue" Text="{Binding ServerTitle.OnlineText}"/>
+                        </Grid>
+                    </Border>
+
+                    <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
+                                          Click="OnCreateSessionClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
+                                          Click="OnCreateCategoryClick"/>
+
+                    <Separator/>
+
+                    <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
+                                          Click="OnCopyAddressClick"/>
+
+                    <Separator/>
+
+                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}"
+                                          Content="{l:Text main.menu.disconnect.plain}"
+                                          Click="OnDisconnectClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <!-- The status of the user, opened by pressing and holding the user in the menu -->
+            <views:BottomSheet x:Name="StatusMenu">
+                <StackPanel Spacing="2">
+                    <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
+                               Text="{l:Text profile.status.title}"/>
+                    <menus:MenuItemButton Icon="{StaticResource StatusOnlineIcon}"
+                                          Content="{l:Text profile.status.online}"
+                                          Command="{Binding UserCard.SetStatusCommand}"
+                                          CommandParameter="{x:Static user:UserStatus.Online}"
+                                          Click="OnStatusClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource StatusAwayIcon}"
+                                          Content="{l:Text profile.status.away}"
+                                          Command="{Binding UserCard.SetStatusCommand}"
+                                          CommandParameter="{x:Static user:UserStatus.Away}"
+                                          Click="OnStatusClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource StatusDoNotDisturbIcon}"
+                                          Content="{l:Text profile.status.doNotDisturb}"
+                                          Command="{Binding UserCard.SetStatusCommand}"
+                                          CommandParameter="{x:Static user:UserStatus.DoNotDisturb}"
+                                          Click="OnStatusClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource StatusInvisibleIcon}"
+                                          Content="{l:Text profile.status.invisible}"
+                                          Command="{Binding UserCard.SetStatusCommand}"
+                                          CommandParameter="{x:Static user:UserStatus.Invisible}"
+                                          Click="OnStatusClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <!-- Menu of the chat that was pressed and held in the list of sessions. The data context
+                 is the chat -->
+            <views:BottomSheet x:Name="ChatMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:ChatSessionVM">
+                <StackPanel Spacing="2">
+                    <!-- The chat the menu is about -->
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,8,12,10">
+                        <Image Grid.Column="0" Width="22" Height="22" VerticalAlignment="Center"
+                               Source="{StaticResource HashIcon}"/>
+                        <TextBlock Grid.Column="1" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                   Text="{Binding Model.Name}"/>
+                    </Grid>
+
+                    <!-- One item, shown by the state it would change -->
+                    <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
+                                          IsVisible="{Binding !IsMuted}"
+                                          Click="OnToggleChatMuteClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource BellIcon}" Content="{l:Text sessions.unmuteNotifications}"
+                                          IsVisible="{Binding IsMuted}"
+                                          Click="OnToggleChatMuteClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
+                                          IsVisible="{Binding CanArrange}"
+                                          Click="OnMoveChatClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <!-- Where a session goes: a step up or down, or into a category. The data context is the session -->
+            <views:BottomSheet x:Name="SessionMoveMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:ISessionVM">
+                <StackPanel Spacing="2">
+                    <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               Text="{Binding Model.Name}"/>
+
+                    <menus:MenuItemButton Content="{l:Text sessions.moveUp}" Click="OnMoveSessionUpClick"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.moveDown}" Click="OnMoveSessionDownClick"/>
+
+                    <Separator/>
+
+                    <TextBlock Margin="12,6,12,4" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{l:Text sessions.moveTo}"/>
+                    <ItemsControl ItemsSource="{Binding MoveTargets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="2"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="listVm:MoveTargetVM">
+                                <menus:MenuItemButton Content="{Binding Name}" Click="OnMoveTargetClick"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <!-- Menu of a category held in the list of sessions. The data context is the category -->
+            <views:BottomSheet x:Name="CategoryMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:SessionCategoryVM">
+                <StackPanel Spacing="2">
+                    <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               Text="{Binding Name}"/>
+
+                    <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text sessions.category.createSession}"
+                                          IsVisible="{Binding CanCreateSessions}"
+                                          Click="OnCategoryCreateSessionClick"/>
+                    <!-- Arranging categories is for the roles that manage sessions -->
+                    <StackPanel Spacing="2" IsVisible="{Binding CanManage}">
+                        <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text sessions.category.rename}"
+                                              Click="OnCategoryRenameClick"/>
+                        <menus:MenuItemButton Content="{l:Text sessions.moveUp}" Click="OnCategoryUpClick"/>
+                        <menus:MenuItemButton Content="{l:Text sessions.moveDown}" Click="OnCategoryDownClick"/>
+
+                        <Separator/>
+
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
+                                              Content="{l:Text sessions.category.delete}"
+                                              Click="OnCategoryDeleteClick"/>
+                    </StackPanel>
+                </StackPanel>
+            </views:BottomSheet>
+        </Panel>
+
+        <!-- Message boxes lie over whatever screen is shown -->
+        <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="DialogLayer"/>
+    </Grid>
+</UserControl>

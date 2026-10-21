@@ -1,0 +1,134 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles">
+
+    <!-- One part of the track on either side of the thumb. The button fills the whole strip, so a click
+         anywhere near the bar hits it, but only a thin rounded bar is drawn in the middle -->
+    <ControlTheme x:Key="SliderTrackButton" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <Border Name="bar" Background="{TemplateBinding Background}" CornerRadius="2"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^.horizontal /template/ Border#bar">
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="^.vertical /template/ Border#bar">
+            <Setter Property="Width" Value="4"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A neutral ring with a dot of the slider color: the dot grows under the pointer and shrinks
+         while the thumb is held -->
+    <ControlTheme x:Key="SliderThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <Border Width="18" Height="18" CornerRadius="9"
+                            Background="{DynamicResource SliderThumbBrush}"
+                            BorderBrush="{DynamicResource SliderThumbBorderBrush}"
+                            BorderThickness="1">
+                        <Ellipse Name="dot" Width="10" Height="10" Fill="{TemplateBinding Background}"/>
+                    </Border>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^ /template/ Ellipse#dot">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^:pointerover /template/ Ellipse#dot">
+            <Setter Property="RenderTransform" Value="scale(1.2)"/>
+        </Style>
+        <Style Selector="^:pressed /template/ Ellipse#dot">
+            <Setter Property="RenderTransform" Value="scale(0.8)"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- Replaces the Fluent slider everywhere. Foreground paints the filled part and the thumb's dot,
+         Background the rest of the track, so a single slider can be recolored by setting Foreground.
+         Tick marks are not drawn; TickFrequency still snaps the value -->
+    <ControlTheme x:Key="{x:Type Slider}" TargetType="Slider">
+        <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SliderTrackBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+
+        <Style Selector="^:horizontal">
+            <Setter Property="MinWidth" Value="40"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <DataValidationErrors>
+                        <Track Name="PART_Track"
+                               Orientation="Horizontal"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Classes="horizontal"
+                                              Theme="{StaticResource SliderTrackButton}"
+                                              Background="{TemplateBinding Foreground}"/>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Classes="horizontal"
+                                              Theme="{StaticResource SliderTrackButton}"
+                                              Background="{TemplateBinding Background}"/>
+                            </Track.IncreaseButton>
+                            <Thumb Name="thumb" Width="18"
+                                   Theme="{StaticResource SliderThumb}"
+                                   Background="{TemplateBinding Foreground}"/>
+                        </Track>
+                    </DataValidationErrors>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^:vertical">
+            <Setter Property="MinWidth" Value="24"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <DataValidationErrors>
+                        <Track Name="PART_Track"
+                               Orientation="Vertical"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Classes="vertical"
+                                              Theme="{StaticResource SliderTrackButton}"
+                                              Background="{TemplateBinding Foreground}"/>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Classes="vertical"
+                                              Theme="{StaticResource SliderTrackButton}"
+                                              Background="{TemplateBinding Background}"/>
+                            </Track.IncreaseButton>
+                            <Thumb Name="thumb" Height="18"
+                                   Theme="{StaticResource SliderThumb}"
+                                   Background="{TemplateBinding Foreground}"/>
+                        </Track>
+                    </DataValidationErrors>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource SliderDisabledBrush}"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

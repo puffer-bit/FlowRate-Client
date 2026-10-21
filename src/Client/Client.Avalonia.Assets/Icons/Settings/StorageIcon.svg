@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Three stacked disks of a storage, a green light on each -->
+  <path d="M4 4.5 A8 2 0 1 0 20 4.5 A8 2 0 1 0 4 4.5 Z M4 4.5 V19.5 A8 2 0 0 0 20 19.5 V4.5 M4 9.5 A8 2 0 0 0 20 9.5 M4 14.5 A8 2 0 0 0 20 14.5" stroke="#E0E0E0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="16.5" cy="8.7" r="0.9" fill="#4CAF50"/>
+  <circle cx="16.5" cy="13.7" r="0.9" fill="#4CAF50"/>
+  <circle cx="16.5" cy="18.7" r="0.9" fill="#4CAF50"/>
+</svg>

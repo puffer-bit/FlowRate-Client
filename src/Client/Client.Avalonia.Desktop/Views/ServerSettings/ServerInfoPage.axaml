@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.ServerInfoPage"
+             x:DataType="serverSettingsVm:ServerInfoTabVM">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader Text="{l:Text serverSettings.info.section.general}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.name}">
+                <TextBox Width="260"
+                         PlaceholderText="{l:Text serverSettings.info.name.placeholder}"
+                         Text="{Binding Form.Name}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.motd}"
+                            Description="{l:Text serverSettings.info.motd.description}">
+                <CheckBox IsChecked="{Binding Form.IsMotdEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.motd.text}"
+                            IndentLevel="1"
+                            IsExpanded="{Binding Form.IsMotdEnabled}">
+                <TextBox Width="260" Height="80"
+                         Text="{Binding Form.MotdText}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalContentAlignment="Top"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader Text="{l:Text serverSettings.info.section.about}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.address}">
+                <TextBlock Classes="value" Text="{Binding Address}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text main.server.info.version}">
+                <TextBlock Classes="value" Text="{Binding Version}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text main.server.info.online}">
+                <TextBlock Classes="value" Text="{Binding OnlineText}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.firstStarted}">
+                <TextBlock Classes="value" Text="{Binding FirstStartedText}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.lastStarted}">
+                <TextBlock Classes="value" Text="{Binding LastStartedText}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>

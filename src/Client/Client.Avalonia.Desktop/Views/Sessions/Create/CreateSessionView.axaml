@@ -1,0 +1,160 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:createVm="clr-namespace:Client.ViewModels.Sessions.Create;assembly=Client.Avalonia.ViewModels"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="520"
+        x:Class="Client.Views.Sessions.Create.CreateSessionView"
+        x:DataType="createVm:CreateSessionWindowVM"
+        Background="{DynamicResource GeneralBrush}"
+        Width="440"
+        MaxHeight="620">
+
+    <UserControl.Styles>
+        <!-- Session type cards: a selectable tile with an icon, a title and a short description -->
+        <Style Selector="Button.typeCard">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="Button.typeCard TextBlock.cardTitle">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text createSession.title}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" Text="{l:Text createSession.hint}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Form -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
+
+                <!-- Type -->
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.type}"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Grid.Column="0" Classes="choiceCard typeCard"
+                                Classes.selected="{Binding HybridOption.IsSelected}"
+                                Command="{Binding SelectTypeCommand}"
+                                CommandParameter="{Binding HybridOption}">
+                            <StackPanel Spacing="6">
+                                <Image Width="24" Height="24" HorizontalAlignment="Left"
+                                       Source="{StaticResource HybridSessionIcon}"/>
+                                <TextBlock Classes="cardTitle" Text="{Binding HybridOption.Title}"/>
+                                <TextBlock Classes="hint" Text="{Binding HybridOption.Description}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1" Classes="choiceCard typeCard"
+                                Classes.selected="{Binding ChatOption.IsSelected}"
+                                Command="{Binding SelectTypeCommand}"
+                                CommandParameter="{Binding ChatOption}">
+                            <StackPanel Spacing="6">
+                                <Image Width="24" Height="24" HorizontalAlignment="Left"
+                                       Source="{StaticResource SendIcon}"/>
+                                <TextBlock Classes="cardTitle" Text="{Binding ChatOption.Title}"/>
+                                <TextBlock Classes="hint" Text="{Binding ChatOption.Description}"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Name -->
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                    <TextBox x:Name="NameInput"
+                             Watermark="{l:Text createSession.name.watermark}"
+                             Text="{Binding Name}"
+                             Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Classes="fieldError" Text="{Binding NameError}"
+                               IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <!-- Capacity -->
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <NumericUpDown Width="140"
+                                       Value="{Binding Capacity}"
+                                       Minimum="{Binding CapacityMin}"
+                                       Maximum="{Binding CapacityMax}"
+                                       Increment="1"
+                                       FormatString="0"
+                                       ParsingNumberStyle="Integer"
+                                       Classes.invalid="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <TextBlock Classes="hint" VerticalAlignment="Center" Text="{Binding CapacityHint}"/>
+                    </StackPanel>
+                    <TextBlock Classes="fieldError" Text="{Binding CapacityError}"
+                               IsVisible="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <!-- Chat only -->
+                <StackPanel Spacing="6" IsVisible="{Binding IsChatSelected}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.description}"/>
+                    <TextBox Height="80"
+                             Watermark="{l:Text createSession.description.watermark}"
+                             Text="{Binding Description}"
+                             MaxLength="{Binding DescriptionMaxLength}"
+                             Classes.invalid="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"/>
+                    <TextBlock Classes="fieldError" Text="{Binding DescriptionError}"
+                               IsVisible="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <!-- A failure that belongs to no single field -->
+                <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource ErrorBrush}"
+                        IsVisible="{Binding GeneralError, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                        <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding GeneralError}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="4" Margin="20,12" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.cancel}"/>
+                </StackPanel>
+            </Button>
+
+            <Button Classes="primary" Command="{Binding CreateCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
+                                IsVisible="{Binding !IsBusy}">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text createSession.create}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                IsVisible="{Binding IsBusy}">
+                        <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                        IsIndeterminate="True" BorderThickness="2"
+                                                        Foreground="{DynamicResource OnAccentTextBrush}"/>
+                        <TextBlock Text="{l:Text createSession.creating}"/>
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

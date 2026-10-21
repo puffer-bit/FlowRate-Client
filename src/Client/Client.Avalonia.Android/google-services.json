@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "353576142159",
+    "project_id": "flowrate-1efb1",
+    "storage_bucket": "flowrate-1efb1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353576142159:android:b1d4b14c5b5f05104fb13a",
+        "android_client_info": {
+          "package_name": "com.flowrate.client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeHLXDalaMEzmvf6bbE6mxZAudj6rtpVE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

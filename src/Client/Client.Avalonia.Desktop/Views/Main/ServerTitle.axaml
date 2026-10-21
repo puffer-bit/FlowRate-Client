@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:mainViews="clr-namespace:Client.Views.Main"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="48"
+             x:DataType="mainVm:ServerTitleVM"
+             x:Class="Client.Views.Main.ServerTitle">
+
+    <UserControl.Styles>
+        <!-- Looks like the user card at the bottom of the side panel: flat until hovered, and lit while its
+             menu is open -->
+        <Style Selector="Button.serverTitle:flyout-open /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <!-- Offline the title only dims; Fluent's grey disabled fill would make it look like a pressed button -->
+        <Style Selector="Button.serverTitle:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.serverTitle:disabled">
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
+
+        <!-- The chevron turns up while the menu is open -->
+        <Style Selector="Button.serverTitle Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.serverTitle:flyout-open Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Button Classes="ghost serverTitle"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+            VerticalAlignment="Center"
+            IsEnabled="{Binding IsReady}"
+            ToolTip.Tip="{Binding Address}">
+
+        <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+                <mainViews:ServerTitleFlyout/>
+            </Flyout>
+        </Button.Flyout>
+
+        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+
+            <!-- Takes the place the avatar has in the user card -->
+            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8"
+                    Background="{DynamicResource DarkBackgroundBrush}"
+                    VerticalAlignment="Center">
+                <Panel>
+                    <Image Width="18" Height="18" Source="{StaticResource ServerIcon}"
+                           IsVisible="{Binding IsReady}"/>
+                    <Image Width="18" Height="18" Source="{StaticResource DashInCircleIcon}"
+                           IsVisible="{Binding !IsReady}"/>
+                </Panel>
+            </Border>
+
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <text:MarqueeTextBlock Text="{Binding DisplayName}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                <text:MarqueeTextBlock Text="{Binding DisplayAddress}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <Path Grid.Column="2" Classes="chevron"
+                  Width="10" Height="6" Margin="0,0,4,0"
+                  VerticalAlignment="Center"
+                  Stretch="Uniform"
+                  Data="M0,0 L5,5 L10,0"
+                  Stroke="{DynamicResource SecondaryTextBrush}"
+                  StrokeThickness="1.5"
+                  StrokeLineCap="Round"
+                  StrokeJoin="Round"/>
+        </Grid>
+    </Button>
+</UserControl>

@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Dialogs.DialogOverlay"
+             Background="{DynamicResource DialogBackdropBrush}"
+             KeyboardNavigation.TabNavigation="Cycle"
+             anim:Presence.Appear="Fade"
+             anim:Presence.Leave="Fade"
+             anim:Presence.Duration="Short">
+
+    <Grid RowDefinitions="Auto, *">
+    <!-- The backdrop covers the title bar of the window too, so the dialog brings its own: the strip
+         drags the window and carries the window buttons. Gone where the system draws the title bar -->
+    <Border Grid.Row="0" Height="36" Padding="6,0" Background="Transparent"
+            IsVisible="{Binding #CaptionButtons.IsVisible}"
+            common:WindowDragArea.IsEnabled="True">
+        <common:WindowCaptionButtons x:Name="CaptionButtons" HorizontalAlignment="Right"/>
+    </Border>
+
+    <!-- The backdrop fades while the card grows in and shrinks out; the code-behind starts the leave -->
+    <!-- The backdrop covers the whole window and takes the pointer input, which makes the dialog modal -->
+    <Panel x:Name="Card"
+           Grid.Row="1"
+           Margin="16"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"
+           anim:Presence.Appear="Grow"
+           anim:Presence.Leave="Shrink"
+           anim:Presence.Duration="Short">
+
+        <Border Background="{DynamicResource GeneralBrush}"
+                CornerRadius="8"
+                Padding="1"
+                BoxShadow="{DynamicResource DialogShadow}"
+                ClipToBounds="True">
+            <ContentControl x:Name="DialogContent"/>
+        </Border>
+
+        <!-- Drawn above the content: the square corners of the content would otherwise cover the rounded outline -->
+        <Border x:Name="Outline"
+                BorderBrush="{DynamicResource DialogBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                IsHitTestVisible="False"/>
+    </Panel>
+    </Grid>
+</UserControl>

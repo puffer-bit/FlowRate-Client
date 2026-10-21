@@ -1,0 +1,379 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:DataType="chatVm:ChatComposerVM"
+             x:Class="Client.Views.Sessions.Chat.ChatComposer">
+
+    <UserControl.Styles>
+        <!-- ====== Composer ====== -->
+        <Style Selector="Border.composer-box">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.composer-box:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        </Style>
+        <!-- A notice colors the frame, focused or not -->
+        <Style Selector="Border.composer-box.warning, Border.composer-box.warning:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.composer-box.error, Border.composer-box.error:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <Style Selector="Grid.composer-notice TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.warning TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.error TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <!-- The box draws the frame, so the input itself has none in any state -->
+        <!-- Centered in the row rather than stretched to the 32 px of the buttons: a single line then sits
+             in the middle whatever its height, and a taller input sets the row height itself -->
+        <Style Selector="TextBox.composer-input">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MaxHeight" Value="160"/>
+            <Setter Property="Padding" Value="6,6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+        <Style Selector="TextBox.composer-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Icon buttons inside the box: dim at rest, full on hover, faint when unavailable -->
+        <Style Selector="Button.composer-icon">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.composer-icon Image">
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+        <Style Selector="Button.composer-icon:pointerover Image">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.composer-icon:disabled Image">
+            <Setter Property="Opacity" Value="0.3"/>
+        </Style>
+
+        <!-- Send: an accent circle while there is something to send, a faint plane otherwise -->
+        <Style Selector="Button.composer-send">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.composer-send /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.composer-send:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.composer-send:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <!-- The circle stays while the message is on its way -->
+        <Style Selector="Button.composer-send.sending:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled">
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <Style Selector="Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.75"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+            <Setter Property="Stretch" Value="None"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- ====== Mention list ====== -->
+        <Style Selector="Border.mention-list">
+            <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource DialogShadow}"/>
+        </Style>
+        <Style Selector="Button.mention-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style Selector="Button.mention-item.selected, Button.mention-item:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        </Style>
+        <Style Selector="Button.mention-item TextBlock.mention-hint">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="Transparent"
+            Padding="9,7,9,8">
+        <StackPanel>
+            <!-- Users to mention, over the input while a name after "@" is typed; the input keeps the focus -->
+            <Popup IsOpen="{Binding MentionPicker.IsOpen}"
+                   PlacementTarget="{Binding #ComposerBox}"
+                   Placement="TopEdgeAlignedLeft"
+                   IsLightDismissEnabled="False"
+                   Width="{Binding #ComposerBox.Bounds.Width}">
+                <Border Classes="mention-list">
+                    <ItemsControl ItemsSource="{Binding MentionPicker.Suggestions}" MaxHeight="320">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                                <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                        Click="OnMentionClick">
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                        <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
+                                                            IsVisible="{Binding !IsGroup}"
+                                                            UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}"
+                                                            Status="{Binding Status}"/>
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                                   Text="{Binding Name, StringFormat=@\{0\}}"/>
+                                        <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                                   IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </Popup>
+
+            <Border x:Name="ComposerBox"
+                    Classes="composer-box"
+                    Classes.warning="{Binding IsComposerWarning}"
+                    Classes.error="{Binding IsComposerError}">
+                <StackPanel>
+                    <!-- The reply bar unfolds when a reply is attached and folds back when it is
+                         detached; the part that is folded is cut off, not drawn over the input -->
+                    <Grid Classes="reply-bar"
+                          anim:Presence.Appear="Unfold"
+                          anim:Presence.Leave="Fold"
+                          anim:Presence.IsLeaving="{Binding IsReplyBarLeaving}"
+                          IsVisible="{Binding ReplyBarPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                          ColumnDefinitions="Auto, *, Auto"
+                          Margin="10,8,6,0">
+                        <Grid.Styles>
+                            <!-- A style and not a value of the element: the end of a fold clears
+                                 the value the element has -->
+                            <Style Selector="Grid.reply-bar">
+                                <Setter Property="ClipToBounds" Value="True"/>
+                            </Style>
+                        </Grid.Styles>
+                        <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                               VerticalAlignment="Center" Opacity="0.8"
+                               IsVisible="{Binding !ReplyBarPreview.IsEdit, FallbackValue=False}"
+                               Source="{StaticResource ReplyIcon}"/>
+                        <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                               VerticalAlignment="Center" Opacity="0.8"
+                               IsVisible="{Binding ReplyBarPreview.IsEdit, FallbackValue=False}"
+                               Source="{StaticResource PencilIcon}"/>
+
+                        <Button Grid.Column="1"
+                                Classes="msg-reply"
+                                Margin="0"
+                                MaxWidth="Infinity"
+                                HorizontalAlignment="Stretch"
+                                Command="{Binding JumpToReplyTargetCommand}"
+                                ToolTip.Tip="{l:Text chat.goToMessage}">
+                            <Border Classes="msg-reply-body">
+                                <StackPanel>
+                                    <TextBlock Classes="msg-reply-username"
+                                               Text="{Binding ReplyBarPreview.ReplyTitle}"/>
+                                    <text:MarqueeTextBlock FontSize="13"
+                                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                                           Text="{Binding ReplyBarPreview.Text}"
+                                                           MaxLines="1"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Border>
+                        </Button>
+
+                        <Button Grid.Column="2"
+                                Classes="borderless composer-icon"
+                                Width="28" Height="28"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding CancelBarToolTip}"
+                                Command="{Binding ResetReplyMessageCommand}">
+                            <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                        </Button>
+                    </Grid>
+
+                    <StackPanel IsVisible="{Binding HasAttachments}" Margin="10,8,10,0">
+                        <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,0,0,-6">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="chatVm:ChatAttachmentVM">
+                                    <!-- The card shows how far the image got, and why it did not go -->
+                                    <Border Classes="chat-attachment" Classes.error="{Binding HasError}"
+                                            ToolTip.Tip="{Binding Key}">
+                                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                            <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
+                                                <TextBlock Classes="chat-attachment-size" Text="{Binding SizeText}"
+                                                           IsVisible="{Binding !HasError}"/>
+                                                <TextBlock Classes="chat-attachment-error" Text="{Binding Error}"
+                                                           ToolTip.Tip="{Binding Error}"
+                                                           IsVisible="{Binding HasError}"/>
+                                                <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsUploading}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="2"
+                                                    Classes="borderless composer-icon"
+                                                    Width="20" Height="20"
+                                                    VerticalAlignment="Top"
+                                                    ToolTip.Tip="{l:Text common.remove}"
+                                                    Command="{Binding $parent[ItemsControl].((chatVm:ChatComposerVM)DataContext).RemoveAttachmentCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Image Width="12" Height="12" Source="{StaticResource CloseIcon}"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- The buttons stay on the last line while the input grows -->
+                    <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="4">
+                        <Button Grid.Column="0"
+                                Classes="borderless composer-icon"
+                                VerticalAlignment="Bottom"
+                                Width="32" Height="32"
+                                Command="{Binding AttachFilesCommand}"
+                                ToolTip.Tip="{Binding AttachToolTip}"
+                                ToolTip.ShowOnDisabled="True">
+                            <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
+                        </Button>
+
+                        <TextBox Grid.Column="1"
+                                 x:Name="MessageInput"
+                                 Classes="composer-input"
+                                 Watermark="{Binding InputWatermark}"
+                                 Text="{Binding InputtedText}"
+                                 MaxLength="{Binding MaxMessageLength}"
+                                 IsReadOnly="{Binding IsMessageSending}"/>
+
+                        <!-- Characters left; appears only near the limit -->
+                        <TextBlock Grid.Column="2"
+                                   VerticalAlignment="Bottom"
+                                   Margin="6,0,6,8"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   IsVisible="{Binding IsLengthCounterVisible}"
+                                   Text="{Binding RemainingCharacters}"/>
+
+                        <Button Grid.Column="3"
+                                Classes="composer-send"
+                                Classes.sending="{Binding IsMessageSending}"
+                                VerticalAlignment="Bottom"
+                                Margin="2"
+                                Command="{Binding SendMessageCommand}"
+                                ToolTip.Tip="{l:Text chat.send}">
+                            <Panel>
+                                <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                                IsIndeterminate="True" BorderThickness="2"
+                                                                Foreground="{DynamicResource OnAccentTextBrush}"
+                                                                IsVisible="{Binding IsMessageSending}"/>
+                                <!-- Paper plane pointing right, drawn on an 18 px grid -->
+                                <Path Classes="composer-send-plane"
+                                      IsVisible="{Binding !IsMessageSending}"
+                                      Width="18" Height="18"
+                                      Data="M3,3 L16.5,9 L3,15 L5.25,9 Z M5.25,9 H10.5"/>
+                            </Panel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- What keeps the message from going out, in the color of the frame above -->
+            <Grid Classes="composer-notice"
+                  Classes.warning="{Binding IsComposerWarning}"
+                  Classes.error="{Binding IsComposerError}"
+                  IsVisible="{Binding HasComposerNotice}"
+                  ColumnDefinitions="Auto, *" ColumnSpacing="6"
+                  Margin="4,0">
+                <Panel Grid.Column="0" Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0">
+                    <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding IsComposerWarning}"/>
+                    <Image Source="{StaticResource CrossInCircleIcon}" IsVisible="{Binding IsComposerError}"/>
+                </Panel>
+                <TextBlock Grid.Column="1" Text="{Binding ComposerNotice}"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

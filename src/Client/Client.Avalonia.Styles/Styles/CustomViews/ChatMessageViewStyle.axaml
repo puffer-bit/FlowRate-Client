@@ -1,0 +1,309 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <SolidColorBrush x:Key="MsgReplyBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.10"/>
+        <SolidColorBrush x:Key="MsgReplyHoverBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.18"/>
+        <SolidColorBrush x:Key="MsgReplyPressedBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.26"/>
+        <SolidColorBrush x:Key="MsgHighlightBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.22"/>
+    </Styles.Resources>
+    
+    <Style Selector="Border.msg-root">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="6,6,12,6"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Medium}" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- A message that calls the current user: a yellow background and a bar on the left -->
+    <Style Selector="Border.msg-root.mentioned">
+        <Setter Property="Background" Value="{DynamicResource MessageMentionedBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource MessageMentionedBarBrush}"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        <Setter Property="Padding" Value="4,6,12,6"/>
+    </Style>
+    <Style Selector="Border.msg-root:pointerover, Border.msg-root:pressed">
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/> 
+    </Style>
+    <Style Selector="Border.msg-root.has-opened-flyout">
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/> 
+    </Style>
+    <!-- A message calling the current user stays yellow under the pointer and the menu -->
+    <Style Selector="Border.msg-root.mentioned:pointerover, Border.msg-root.mentioned:pressed, Border.msg-root.mentioned.has-opened-flyout">
+        <Setter Property="Background" Value="{DynamicResource MessageMentionedHoverBrush}"/>
+    </Style>
+    <Style Selector="Border.msg-root.highlighted">
+        <Setter Property="Background" Value="{DynamicResource MsgHighlightBrush}"/>
+    </Style>
+
+    <Style Selector=":is(Control).msg-avatar">
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <!-- Top-aligned with the username, which starts at the top of the content -->
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <Style Selector="StackPanel.msg-content">
+        <Setter Property="Spacing" Value="4"/>
+    </Style>
+
+    <Style Selector="StackPanel.msg-header">
+        <Setter Property="Orientation" Value="Horizontal"/>
+        <Setter Property="Spacing" Value="8"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector=":is(TextBlock).msg-username">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimary}"/>
+    </Style>
+    <!-- A deleted author keeps a placeholder name, set apart in italics -->
+    <Style Selector=":is(TextBlock).msg-username.deleted-user">
+        <Setter Property="FontStyle" Value="Italic"/>
+    </Style>
+    <Style Selector="TextBlock.msg-time">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorOverlayGray}"/>
+    </Style>
+
+    <!-- The pencil at the end of an edited message, drawn like the time -->
+    <Style Selector="Path.msg-edited">
+        <Setter Property="Data" Value="M16.5 3.5 A2.12 2.12 0 0 1 19.5 6.5 L7.5 18.5 L3 20 L4.5 15.5 Z M14 6 L17 9"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Height" Value="10"/>
+        <Setter Property="Stroke" Value="{DynamicResource ColorOverlayGray}"/>
+        <Setter Property="StrokeThickness" Value="1"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <!-- Filled so that the whole icon answers the pointer, not only its outline -->
+        <Setter Property="Fill" Value="Transparent"/>
+    </Style>
+
+    <!-- The time of a continuation shows up only while the message is hovered or its menu is open -->
+    <Style Selector="Border.msg-root TextBlock.msg-time.continuation">
+        <Setter Property="Opacity" Value="0"/>
+    </Style>
+    <Style Selector="Border.msg-root:pointerover TextBlock.msg-time.continuation, Border.msg-root.has-opened-flyout TextBlock.msg-time.continuation">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- :is() so it reaches the SelectableTextBlock of the message: a plain TextBlock selector
+         matches the exact type only. Wrap (not WrapWithOverflow) also breaks a word longer than
+         the line, such as a link, instead of letting it run out of the message -->
+    <Style Selector=":is(TextBlock).msg-body">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <!-- A web address in the text; underlined while the pointer is over it -->
+    <Style Selector=":is(TextBlock).msg-body Run.link">
+        <Setter Property="Foreground" Value="{DynamicResource LinkTextBrush}"/>
+    </Style>
+    <Style Selector=":is(TextBlock).msg-body Run.link.hover">
+        <Setter Property="TextDecorations" Value="Underline"/>
+    </Style>
+    <!-- A mentioned name; the current user's own stands out more -->
+    <Style Selector=":is(TextBlock).msg-body Run.mention">
+        <Setter Property="Foreground" Value="{DynamicResource MentionTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource MentionBackgroundBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector=":is(TextBlock).msg-body Run.mention.self">
+        <Setter Property="Foreground" Value="{DynamicResource MentionSelfTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource MentionSelfBackgroundBrush}"/>
+    </Style>
+
+    <!-- Reply quote: a tinted card with an accent bar, clickable to jump to the original -->
+    <Style Selector="Button.msg-reply">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,2,0,2"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="MaxWidth" Value="520"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <!-- The shared Button styles give the presenter a 1px border on hover and press;
+         the quote must keep its size, or the whole list shifts under the cursor -->
+    <Style Selector="Button.msg-reply /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.msg-reply:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyHoverBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.msg-reply:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyPressedBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.msg-reply.deleted, Button.msg-reply:disabled">
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+    <Style Selector="Button.msg-reply.deleted /template/ ContentPresenter#PART_ContentPresenter, Button.msg-reply:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+
+    <Style Selector="Border.msg-reply-body">
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="BorderThickness" Value="3,0,0,0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,4,10,5"/>
+    </Style>
+    <Style Selector="Button.msg-reply.deleted Border.msg-reply-body">
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayGray}"/>
+    </Style>
+
+    <Style Selector="TextBlock.msg-reply-username">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimaryLight}"/>
+        <Setter Property="MaxLines" Value="1"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.msg-reply-username.deleted-user">
+        <Setter Property="FontStyle" Value="Italic"/>
+    </Style>
+    <Style Selector="Button.msg-reply.deleted TextBlock.msg-reply-username">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.msg-reply-text">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="MaxLines" Value="1"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.msg-deleted-text">
+        <Setter Property="FontStyle" Value="Italic"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="MaxLines" Value="1"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- ====== Images of a message ====== -->
+    <Style Selector="ItemsControl.msg-images">
+        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <!-- A tile shows the reduced copy cut to its shape; until it is loaded the tile is a plain plate
+         of the size the image will take, so the messages below do not jump -->
+    <Style Selector="Button.msg-image">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,4,4"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        ClipToBounds="True">
+                    <ContentPresenter Content="{TemplateBinding Content}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.msg-image Image.msg-image-picture">
+        <Setter Property="Stretch" Value="UniformToFill"/>
+    </Style>
+    <Style Selector="Button.msg-image Image.msg-image-failed">
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
+    </Style>
+
+    <!-- ====== An image attached to the message being typed ====== -->
+    <!-- Darker than the composer box the cards sit in -->
+    <Style Selector="Border.chat-attachment">
+        <Setter Property="Background" Value="{DynamicResource GeneralBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Width" Value="220"/>
+    </Style>
+    <Style Selector="Border.chat-attachment.error">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="Border.chat-attachment Border.chat-attachment-thumbnail">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+    <Style Selector="Border.chat-attachment TextBlock">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="MaxLines" Value="1"/>
+    </Style>
+    <Style Selector="Border.chat-attachment TextBlock.chat-attachment-name">
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Border.chat-attachment TextBlock.chat-attachment-size">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="Border.chat-attachment TextBlock.chat-attachment-error">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="Border.chat-attachment ProgressBar">
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="MinHeight" Value="3"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Minimum" Value="0"/>
+        <Setter Property="Maximum" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+
+    <!-- ====== An image opened over the chat ====== -->
+    <Style Selector="Grid.image-viewer">
+        <Setter Property="Background" Value="{DynamicResource DialogBackdropBrush}"/>
+    </Style>
+    <!-- The whole backdrop is a button that closes the viewer; it shows nothing of its own -->
+    <Style Selector="Button.image-viewer-backdrop">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Border.image-viewer-bar">
+        <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+        <Setter Property="Padding" Value="12,6,6,6"/>
+    </Style>
+    <Style Selector="Border.image-viewer-bar ProgressBar">
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="MinHeight" Value="3"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Minimum" Value="0"/>
+        <Setter Property="Maximum" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+    <Style Selector="Border.image-viewer-bar TextBlock.image-viewer-error">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+
+</Styles>

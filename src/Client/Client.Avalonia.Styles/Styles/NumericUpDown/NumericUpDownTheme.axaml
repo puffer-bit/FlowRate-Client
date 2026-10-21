@@ -1,0 +1,130 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A small flat "-" or "+" button: no fill at rest, a faint overlay under the pointer.
+         Repeats while held, like the Fluent spinner -->
+    <ControlTheme x:Key="NumericSpinButton" TargetType="RepeatButton">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="bg" Background="{TemplateBinding Background}" CornerRadius="4">
+                    <Path Name="glyph" Width="10" Height="10" Stretch="None"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{TemplateBinding Foreground}" StrokeThickness="1.5"
+                          StrokeLineCap="Round"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Short}"/>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Short}"/>
+            </Transitions>
+        </Setter>
+
+        <Style Selector="^.minus /template/ Path#glyph">
+            <Setter Property="Data" Value="M 0,5 L 10,5"/>
+        </Style>
+        <Style Selector="^.plus /template/ Path#glyph">
+            <Setter Property="Data" Value="M 0,5 L 10,5 M 5,0 L 5,10"/>
+        </Style>
+
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource OverlayBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+        <!-- At the minimum or maximum the spinner disables the matching button -->
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.35"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- The text box takes the whole spinner and the buttons sit on top of it, inside its border,
+         so the box keeps the usual text box look: hover, focus and the .invalid color -->
+    <ControlTheme x:Key="NumericSpinner" TargetType="ButtonSpinner">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    <StackPanel Name="buttons" Orientation="Horizontal" Spacing="2"
+                                VerticalAlignment="Center"
+                                IsVisible="{TemplateBinding ShowButtonSpinner}">
+                        <RepeatButton Name="PART_DecreaseButton" Classes="minus"
+                                      Theme="{StaticResource NumericSpinButton}"/>
+                        <RepeatButton Name="PART_IncreaseButton" Classes="plus"
+                                      Theme="{StaticResource NumericSpinButton}"/>
+                    </StackPanel>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^:right /template/ StackPanel#buttons">
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <Style Selector="^:left /template/ StackPanel#buttons">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- Replaces the Fluent NumericUpDown everywhere. The padding keeps the text clear of the buttons -->
+    <ControlTheme x:Key="{x:Type NumericUpDown}" TargetType="NumericUpDown">
+        <Setter Property="Padding" Value="10,5,62,6"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DataValidationErrors>
+                    <ButtonSpinner Name="PART_Spinner"
+                                   Theme="{StaticResource NumericSpinner}"
+                                   HorizontalContentAlignment="Stretch"
+                                   VerticalContentAlignment="Stretch"
+                                   AllowSpin="{TemplateBinding AllowSpin}"
+                                   ShowButtonSpinner="{TemplateBinding ShowButtonSpinner}"
+                                   ButtonSpinnerLocation="{TemplateBinding ButtonSpinnerLocation}">
+                        <TextBox Name="PART_TextBox"
+                                 MinWidth="0"
+                                 Padding="{TemplateBinding Padding}"
+                                 CornerRadius="{TemplateBinding CornerRadius}"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 FontSize="{TemplateBinding FontSize}"
+                                 PlaceholderText="{TemplateBinding PlaceholderText}"
+                                 PlaceholderForeground="{TemplateBinding PlaceholderForeground}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}"
+                                 Text="{TemplateBinding Text}"
+                                 TextAlignment="{TemplateBinding TextAlignment}"
+                                 HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                 VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                 InnerLeftContent="{TemplateBinding InnerLeftContent}"
+                                 InnerRightContent="{TemplateBinding InnerRightContent}"
+                                 AcceptsReturn="False"
+                                 TextWrapping="NoWrap"/>
+                    </ButtonSpinner>
+                </DataValidationErrors>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^[ButtonSpinnerLocation=Left]">
+            <Setter Property="Padding" Value="62,5,10,6"/>
+        </Style>
+        <Style Selector="^[ShowButtonSpinner=False]">
+            <Setter Property="Padding" Value="10,5,6,6"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

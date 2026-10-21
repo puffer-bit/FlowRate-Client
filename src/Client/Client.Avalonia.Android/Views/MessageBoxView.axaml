@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:dialogVm="clr-namespace:Client.ViewModels.Dialogs;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Droid.Views.MessageBoxView"
+             x:DataType="dialogVm:MessageBoxVM"
+             Background="{DynamicResource DialogBackdropBrush}"
+             anim:Presence.Appear="Fade"
+             anim:Presence.Duration="Short">
+
+    <!-- The backdrop covers the whole screen and takes the pointer input, which makes the box modal -->
+    <!-- As wide as the screen lets it, so a short text does not squeeze the buttons -->
+    <Border Margin="20"
+            MaxWidth="480"
+            VerticalAlignment="Center"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DialogBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            BoxShadow="{DynamicResource DialogShadow}"
+            anim:Presence.Appear="Grow"
+            anim:Presence.Duration="Short">
+        <Grid RowDefinitions="Auto, *, Auto">
+            <TextBlock Grid.Row="0" Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
+                       TextWrapping="Wrap" Margin="20,16,20,0"/>
+
+            <!-- A long text, such as the details of a certificate, scrolls between the title and the buttons -->
+            <ScrollViewer Grid.Row="1" Margin="0,12,0,0">
+                <Grid ColumnDefinitions="Auto, *" Margin="20,0">
+                    <Image Grid.Column="0" Width="40" Height="40" VerticalAlignment="Top"
+                           Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="10" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                        <!-- What the text is about, such as the address a link leads to -->
+                        <Border IsVisible="{Binding HasDetail}"
+                                Background="{DynamicResource MessageBoxDetailBrush}"
+                                CornerRadius="6" Padding="10,8">
+                            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/>
+                        </Border>
+                        <CheckBox IsVisible="{Binding HasCheckBox}"
+                                  IsChecked="{Binding IsChecked}"
+                                  Content="{Binding CheckBoxText}"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- The buttons share the width of the box equally, each tall enough for a finger. The answer
+                 the box asks for is the filled one and stands last, under the right thumb -->
+            <ItemsControl Grid.Row="2" ItemsSource="{Binding ButtonsList}" Margin="12,20,12,16"
+                          FlowDirection="RightToLeft">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="dialogVm:ButtonVM">
+                        <Button Classes.primary="{Binding IsDefault}"
+                                Command="{Binding Command}"
+                                Margin="4,0" MinHeight="46" CornerRadius="8"
+                                FlowDirection="LeftToRight"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                            <TextBlock Text="{Binding Text}" FontSize="15" FontWeight="SemiBold"/>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.BehaviorControl"
+             x:DataType="pagesVm:BehaviorControlVM"
+             d:DataContext="{d:DesignInstance Type=pagesVm:BehaviorControlVM, IsDesignTimeCreatable=True}">
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">
+                <CheckBox IsChecked="{Binding IsAutoConnectedEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.resetConnection">
+                <Button MinWidth="90" HorizontalContentAlignment="Center"
+                        Command="{Binding ResetSavedCoordinator}" IsEnabled="{Binding IsSavedCoordinatorExists}" Content="{l:Text common.reset}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="behavior.manualConnection" IsEnabled="False"/>
+        <ui:SettingsCard IsEnabled="False">
+            <ui:SettingsRow services:SettingText.Key="behavior.fallbackServers">
+                <CheckBox IsChecked="{Binding IsAutoConnectedToFallbackServersEnabled}"/>
+            </ui:SettingsRow>
+            <!-- The warnings only matter while fallback servers are allowed, and are folded away otherwise -->
+            <ui:SettingsRow services:SettingText.Key="behavior.fallbackWarning"
+                            IsExpanded="{Binding IsAutoConnectedToFallbackServersEnabled}">
+                <CheckBox IsChecked="{Binding IsFallbackConnectionWarningEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.propagatedWarning"
+                            IsExpanded="{Binding IsAutoConnectedToFallbackServersEnabled}">
+                <CheckBox IsChecked="{Binding IsPropagatedConnectionWarningEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="behavior.tray"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.closeAction">
+                <!-- Items are in the order of CloseButtonAction -->
+                <ComboBox MinWidth="180" SelectedIndex="{Binding CloseButtonActionIndex}">
+                    <ComboBoxItem Content="{l:Text settings.behavior.closeAction.ask}"/>
+                    <ComboBoxItem Content="{l:Text closeApp.minimize}"/>
+                    <ComboBoxItem Content="{l:Text settings.behavior.closeAction.exit}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <hints:HintBlock Text="{l:Text settings.behavior.trayHint}"/>
+
+        <controls:SettingsHeader services:SettingText.Section="behavior.updates"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.updateCheck">
+                <CheckBox IsChecked="{Binding IsUpdateCheckOnStartupEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.updateChannel">
+                <!-- Items are in the order of UpdateChannel -->
+                <ComboBox MinWidth="180" SelectedIndex="{Binding UpdateChannelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.behavior.updateChannel.release}"/>
+                    <ComboBoxItem Content="{l:Text settings.behavior.updateChannel.dev}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <hints:HintBlock Text="{l:Text settings.behavior.updateChannelHint}"/>
+    </ui:SettingsPage>
+</UserControl>

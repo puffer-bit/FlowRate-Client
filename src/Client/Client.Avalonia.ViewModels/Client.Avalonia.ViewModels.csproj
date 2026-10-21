@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <RootNamespace>Client</RootNamespace>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="ReactiveUI" Version="24.2.0" />
+        <PackageReference Include="SkiaSharp" Version="4.148.0" />
+        <PackageReference Include="System.Reactive" Version="6.1.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="Services\ApplicationLoader\ApplicationLoader.Native.cs">
+            <DependentUpon>ApplicationLoader.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ViewModels\Sessions\Hybrid\ActiveHybridSessionVM.Voice.cs">
+            <DependentUpon>ActiveHybridSessionVM.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ViewModels\Sessions\Chat\ActiveChatSessionVM.Sync.cs">
+            <DependentUpon>ActiveChatSessionVM.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ViewModels\Main\MainWindowVM.Connection.cs">
+            <DependentUpon>MainWindowVM.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ViewModels\Sessions\Hybrid\ActiveHybridSessionVM.Actions.cs">
+            <DependentUpon>ActiveHybridSessionVM.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+    <!-- No media or storage backend here: view models reach them through the ports of Client.Application,
+         so that a platform without GStreamer and OpenAL can use this project -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+        <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+        <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+    </ItemGroup>
+
+</Project>

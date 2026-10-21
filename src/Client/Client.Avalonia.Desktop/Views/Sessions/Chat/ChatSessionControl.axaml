@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:DataType="chatVm:ActiveChatSessionVM"
+             x:Class="Client.Views.Sessions.Chat.ChatSessionControl">
+
+    <Control.DataTemplates>
+        <DataTemplate DataType="chatVm:ChatStatusBarVM">
+            <chatViews:ChatStatusBarControl/>
+        </DataTemplate>
+    </Control.DataTemplates>
+    
+    <Grid RowDefinitions="Auto, *, Auto">
+        <ContentControl
+            Grid.Row="0"
+            Content="{Binding StatusBar}"
+            Height="56"/>
+        
+        <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
+             only the text inside a message can be selected for copying -->
+        <ItemsControl Grid.Row="1"
+                      x:Name="MessagesList"
+                      IsVisible="{Binding HasMessages}"
+                      ItemsSource="{Binding Messages}"
+                      Margin="6">
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <panels:MessageListPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.DataTemplates>
+                <DataTemplate DataType="{x:Type chatVm:ChatMessageVM}">
+                    <chatViews:ChatMessageControl />
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type chatVm:ChatDateSeparatorVM}">
+                    <chatViews:ChatDateSeparatorControl />
+                </DataTemplate>
+            </ItemsControl.DataTemplates>
+
+            <ItemsControl.Styles>
+                <!-- The spacing the rows had as list items -->
+                <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
+                    <Setter Property="Margin" Value="0,2"/>
+                </Style>
+            </ItemsControl.Styles>
+        </ItemsControl>
+        
+        <!-- Shown while the chat has no messages; laid out like the placeholder of the main window -->
+        <emptyStates:EmptyState Grid.Row="1"
+                                anim:Presence.Appear="Rise"
+                                IsVisible="{Binding !HasMessages}"
+                                Icon="{StaticResource EmptyChat}"
+                                Title="{l:Text chat.empty.title}"
+                                Text="{l:Text chat.empty.text}"/>
+                
+        <!-- Floating "scroll to latest" button over the bottom right corner of the list -->
+        <chatViews:ChatScrollDownButton Grid.Row="1"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,12,12"/>
+
+        <!-- Composer: one rounded box holds the reply bar, the attachments and the input row,
+             floating over the bottom of the chat; its outline lights up while the input has focus -->
+        <Panel Grid.Row="2" IsVisible="{Binding !IsInitialLoading}">
+            <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
+        </Panel>
+
+        <!-- An image of a message opened over the chat; a click beside it or Esc closes it -->
+        <ContentControl Grid.Row="0" Grid.RowSpan="3"
+                        x:Name="ImageViewerHost"
+                        Focusable="True"
+                        IsVisible="{Binding IsImageViewerOpen}"
+                        Content="{Binding ImageViewer}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="chatVm:ChatImageViewerVM">
+                    <Grid Classes="image-viewer" RowDefinitions="Auto, *" anim:Presence.Appear="Fade">
+                        <Button Grid.Row="0" Grid.RowSpan="2" Classes="image-viewer-backdrop"
+                                Command="{Binding CloseCommand}"/>
+
+                        <Image Grid.Row="1" Margin="24"
+                               Source="{Binding Picture}"
+                               Stretch="Uniform" StretchDirection="DownOnly"
+                               IsHitTestVisible="False"/>
+
+                        <Border Grid.Row="0" Classes="image-viewer-bar">
+                            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Classes="image-viewer-error" Text="{Binding Error}"
+                                               IsVisible="{Binding HasError}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="borderless"
+                                        Width="32" Height="32" Padding="0"
+                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                        Command="{Binding SaveCommand}"
+                                        ToolTip.Tip="{l:Text common.save}">
+                                    <Image Width="18" Height="18" Source="{StaticResource DownloadIcon}"/>
+                                </Button>
+                                <Button Grid.Column="2" Classes="borderless"
+                                        Width="32" Height="32" Padding="0"
+                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                        Command="{Binding CloseCommand}"
+                                        ToolTip.Tip="{l:Text common.close}">
+                                    <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                                </Button>
+                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,6,6,0"
+                                             Value="{Binding Progress}" IsVisible="{Binding IsLoading}"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+    </Grid>
+</UserControl>

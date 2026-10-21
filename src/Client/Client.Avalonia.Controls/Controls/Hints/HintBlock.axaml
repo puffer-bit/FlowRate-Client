@@ -1,0 +1,36 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints">
+    <Design.PreviewWith>
+        <hints:HintBlock Width="300" Text="Once enabled, enter a special password to wipe the entire database"/>
+    </Design.PreviewWith>
+
+    <Style Selector="hints|HintBlock">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                    <Image x:Name="PART_Icon"
+                           Grid.Column="0"
+                           Width="20" Height="20"
+                           VerticalAlignment="Top"
+                           Source="{DynamicResource IInCircleIcon}"/>
+                    <TextBlock x:Name="PART_Text"
+                               Grid.Column="1"
+                               Margin="-3,3,0,0"
+                               FontSize="12"
+                               FontStyle="Italic"
+                               TextWrapping="Wrap"
+                               Text="{TemplateBinding Text}"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A hint of a disabled setting fades with it -->
+    <Style Selector="hints|HintBlock:disabled /template/ Image#PART_Icon">
+        <Setter Property="Opacity" Value="0.2"/>
+    </Style>
+    <Style Selector="hints|HintBlock:disabled /template/ TextBlock#PART_Text">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+</Styles>

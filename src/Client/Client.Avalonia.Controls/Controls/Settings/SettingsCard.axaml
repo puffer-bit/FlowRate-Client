@@ -1,0 +1,36 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:settings="clr-namespace:Client.Avalonia.Controls.Settings">
+    <Design.PreviewWith>
+        <Border Padding="20" Width="460">
+            <settings:SettingsCard>
+                <settings:SettingsRow Title="Setting" Description="What the setting does">
+                    <CheckBox/>
+                </settings:SettingsRow>
+                <settings:SettingsRow Title="Another setting">
+                    <Button>Action</Button>
+                </settings:SettingsRow>
+            </settings:SettingsCard>
+        </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="settings|SettingsCard">
+        <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}"
+                        ClipToBounds="True">
+                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

@@ -1,0 +1,172 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+        xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+        xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+        xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+        xmlns:mainViews="clr-namespace:Client.Views.Main"
+        xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
+        xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+        xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
+        xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Client.Views.Main.MainWindow"
+        x:DataType="mainVm:MainWindowVM"
+        d:DataContext="{d:DesignInstance Type=mainVm:MainWindowVM, IsDesignTimeCreatable=True}"
+        Icon="/Assets/avalonia-logo.ico"
+        MinHeight="560"
+        MinWidth="900"
+        Width="1300"
+        Height="800"
+        Title="Client.Avalonia.Desktop"
+        x:Name="Main"
+        WindowDecorationsTheme="{DynamicResource BorderlessWindowDecorations}"
+        TransparencyLevelHint="Transparent"
+        BorderBrush="{DynamicResource DialogBorderBrush}">
+    
+    <Window.DataTemplates>
+        <DataTemplate DataType="hybridVm:ActiveHybridSessionVM">
+            <hybridViews:HybridSessionControl/>
+        </DataTemplate>
+        
+        <DataTemplate DataType="chatVm:ActiveChatSessionVM">
+            <chatViews:ChatSessionControl/>
+        </DataTemplate>
+        
+        <DataTemplate DataType="listVm:SessionsListVM">
+            <listViews:SessionsList/>
+        </DataTemplate>
+        
+        <DataTemplate DataType="mainVm:ServerTitleVM">
+            <mainViews:ServerTitle/>
+        </DataTemplate>
+
+        <DataTemplate DataType="mainVm:UserCardVM">
+            <mainViews:UserCard/>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <Window.Resources>
+        <!-- A session shown fullscreen takes the place of the side panel too -->
+        <converters:BoolToGridLengthConverter x:Key="SidePanelWidthConverter" TrueLength="0" FalseLength="260"/>
+    </Window.Resources>
+    
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Top bar: the same items the menu had, drawn as the rest of the application is -->
+        <mainViews:MainTopBar Grid.Row="0"/>
+        
+        <!-- Main Grid -->
+        <Grid Grid.Row="1" IsVisible="{Binding IsInitialized}" Opacity="{Binding GridOpacity}">
+            <Grid.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Grid.Transitions>
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition MinWidth="240" MaxWidth="380" Width="{Binding IsContentFullScreen, Converter={StaticResource SidePanelWidthConverter}}" />
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+        <Grid Grid.Column="0" RowDefinitions="Auto,1,*,Auto,1,56" IsVisible="{Binding MenuVisibility}">
+
+            <!-- Higher Grid -->
+            <!-- The same height as the chat header next to it -->
+            <Grid Grid.Row="0" Background="{DynamicResource GeneralBrush}" Height="56">
+                <ContentControl Grid.Row="0" x:Name="ServerTitleControl"
+                                Margin="4"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                Content="{Binding ServerTitle}">
+                </ContentControl>
+            </Grid>
+            
+            <!-- Center Grid -->
+            <Grid Grid.Row="2" Background="{DynamicResource GeneralBrush}">
+                
+                <ContentControl x:Name="SessionListControl"
+                                Margin="4"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Content="{Binding SessionsList}">
+                </ContentControl>
+            </Grid>
+            
+            <!-- The hybrid session we are in; it keeps running while other content is shown.
+                 It unfolds upwards when we join and folds back when we leave, so the session list
+                 above gives way smoothly -->
+            <mainViews:HybridSessionPanel Grid.Row="3"/>
+            
+            <!-- Lower Grid -->
+            <!-- The same 8px side gutter as the hybrid session panel above, so the avatar lines up with its icon -->
+            <Grid Grid.Row="5" Background="{DynamicResource GeneralBrush}"
+                  ColumnDefinitions="*,Auto" ColumnSpacing="4" IsVisible="{Binding MenuVisibility}">
+                <Grid.Styles>
+                    <Style Selector="Button.sidePanelIcon">
+                        <Setter Property="Width" Value="40"/>
+                        <Setter Property="Height" Value="40"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    </Style>
+                </Grid.Styles>
+
+                <ContentControl Grid.Column="0" Margin="8,0,0,0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                Content="{Binding UserCard}"/>
+                
+                <Button Grid.Column="1" Classes="ghost sidePanelIcon" Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding OpenSettingsCommand}"
+                        ToolTip.Tip="{l:Text settings.title}">
+                    <Image Width="20" Height="20" Source="{StaticResource GearIcon}"/>
+                </Button>
+            </Grid>
+        </Grid>
+        
+            <GridSplitter IsVisible="{Binding MenuVisibility}" Margin="0" Padding="0" Grid.Column="1" Background="Transparent"></GridSplitter>
+            
+            <!-- Shown while no session is open. It has no background of its own and lies under the
+                 content, which fades in and out over it. It rises in each time it comes back -->
+            <emptyStates:EmptyState Grid.Column="2"
+                                    anim:Presence.Appear="Rise"
+                                    IsVisible="{Binding CurrentContent, Converter={x:Static ObjectConverters.IsNull}}"
+                                    Icon="{StaticResource SelectSessionIcon}"
+                                    Title="{l:Text main.noSession.title}"
+                                    Text="{l:Text main.noSession.text}"/>
+
+            <!-- The old content fades out before the new one fades in, including to and from nothing.
+                 A cross-fade would draw two chat histories over each other -->
+            <TransitioningContentControl x:Name="MainContentControl"
+                                         Grid.Column="2"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch"
+                                         Content="{Binding CurrentContent}">
+                <TransitioningContentControl.PageTransition>
+                    <anim:MotionFadeThrough Duration="Medium"/>
+                </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
+        </Grid>
+        
+        <!-- Notifications of the whole application, over whatever the window shows -->
+        <notificationViews:ToastHost Grid.Row="1"
+                         Margin="16"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Bottom"
+                         DataContext="{Binding Notifications}"/>
+
+        <!-- Status bar: drawn as the top bar is, a plain strip with a line towards the content.
+             Left: what the application is doing, behind a ring while it is busy and a dot that is
+             green once connected. Right: the ping -->
+        <mainViews:MainStatusBar Grid.Row="2"/>
+    </Grid>
+</Window>

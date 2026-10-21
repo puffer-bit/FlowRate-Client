@@ -1,0 +1,83 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles">
+
+    <!-- Replaces the Fluent switch everywhere: a pill with a round knob and no "On"/"Off" words,
+         what it switches is said by the label next to it. Foreground paints the pill while it is on -->
+    <ControlTheme x:Key="{x:Type ToggleSwitch}" TargetType="ToggleSwitch">
+        <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource ToggleSwitchTrackBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchBorderBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="KnobTransitions">
+            <Transitions>
+                <DoubleTransition Property="Canvas.Left" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The background makes the gaps around the pill take the click as well -->
+                <Grid Background="Transparent" ColumnDefinitions="Auto,Auto">
+                    <ContentPresenter Name="PART_ContentPresenter" Grid.Column="0"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Margin="0,0,10,0" VerticalAlignment="Center"
+                                      IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Panel Grid.Column="1" Width="40" Height="22" VerticalAlignment="Center">
+                        <Border Name="track" CornerRadius="11"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"/>
+                        <Border Name="fill" CornerRadius="11" Background="{TemplateBinding Foreground}"/>
+                        <!-- The switch moves the inner panel by the width of this one, which is half of the pill -->
+                        <Canvas Name="PART_SwitchKnob" Width="20" Height="22" HorizontalAlignment="Left">
+                            <Panel Name="PART_MovingKnobs" Width="20" Height="22">
+                                <Ellipse Name="knob" Width="14" Height="14"/>
+                            </Panel>
+                        </Canvas>
+                    </Panel>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^ /template/ Border#fill">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^:checked /template/ Border#fill">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <Style Selector="^ /template/ Ellipse#knob">
+            <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Fill" Duration="{anim:Motion Short}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="^:checked /template/ Ellipse#knob">
+            <Setter Property="Fill" Value="{DynamicResource OnAccentTextBrush}"/>
+        </Style>
+        <Style Selector="^:pointerover /template/ Ellipse#knob">
+            <Setter Property="RenderTransform" Value="scale(1.15)"/>
+        </Style>
+        <Style Selector="^:pressed /template/ Ellipse#knob">
+            <Setter Property="RenderTransform" Value="scale(0.9)"/>
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource ToggleSwitchDisabledBrush}"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

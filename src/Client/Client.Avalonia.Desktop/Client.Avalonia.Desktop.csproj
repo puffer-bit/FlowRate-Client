@@ -1,0 +1,105 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsAotCompatible>true</IsAotCompatible>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!-- A Dapper call Dapper.AOT did not intercept falls back to Reflection.Emit and crashes under
+             NativeAOT; ILC reports it only as these assembly-level warnings, so they fail an AOT publish.
+             Only then: the trimmed single-file publish raises IL2104 for every library with trim warnings -->
+        <WarningsAsErrors Condition="'$(PublishAot)' == 'true'">$(WarningsAsErrors);IL2104;IL3053</WarningsAsErrors>
+        <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT'">linux-x64</RuntimeIdentifier>
+        <Version>0.6.0</Version>
+        <AssemblyVersion>0.6.0.0</AssemblyVersion>
+        <FileVersion>0.6.0.0</FileVersion>
+        <LangVersion>preview</LangVersion>
+        <RootNamespace>Client</RootNamespace>
+        <!-- A release carries its own .NET runtime, so the target machine needs none installed. The
+             publish profiles make it a single file, apart from the LGPL libraries (see below). -->
+        <SelfContained Condition="'$(Configuration)' == 'Release'">true</SelfContained>
+        <!-- No libicu needed on Linux. The UI is English only and formats dates in English anyway. -->
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <!-- A culture is created only to name the language for the plural rules of the interface texts -->
+        <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+        <!-- A trimmed publish turns reflection-based System.Text.Json off by default, and MessageParser
+             serializes BaseMessage through reflection -->
+        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+        <!-- Bridge to AvaloniaUI Developer Tools (F12), only in Debug builds -->
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" Condition="'$(Configuration)' == 'Debug'" />
+        <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="DynamicData" Version="9.4.33" />
+        <!-- XAML hot reload, only in Debug builds -->
+        <PackageReference Include="HotAvalonia" Version="3.1.5" Condition="'$(Configuration)' == 'Debug'" />
+        <PackageReference Include="System.Reactive" Version="6.1.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
+        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
+        <!-- For the screen cast portal. The same version Avalonia.FreeDesktop brings; free of run-time
+             code generation, unlike Tmds.DBus -->
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+        <PackageReference Include="Velopack" Version="1.2.161" />
+        <PackageReference Include="Xaml.Behaviors.Avalonia" Version="12.0.7" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <None Remove="Assets\avalonia-logo.ico" />
+      <AvaloniaResource Include="Assets\avalonia-logo.ico" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+      <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
+      <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+      <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+      <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
+      <ProjectReference Include="..\Client.OpenAL\Client.OpenAL.csproj" />
+      <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+    </ItemGroup>
+
+    <!-- The time and the commit of the build, shown after the version -->
+    <Import Project="..\BuildNumber.targets" />
+
+    <!-- The GStreamer runtime for the RID of this build, next to the executable -->
+    <Import Project="..\Client.GStreamer\Build\GStreamerRuntime.targets" />
+
+    <!-- The LGPL libraries stay separate files next to the executable, so the user can replace them:
+         the GStreamer binding (GstSharp.Net) and OpenAL Soft. The GStreamer runtime is content, never bundled. -->
+    <PropertyGroup>
+        <LgplLibraries>;GstSharp.Net.dll;GstSharp.Net.Base.dll;GstSharp.Net.App.dll;GstSharp.Net.Sdp.dll;GstSharp.Net.WebRTC.dll;soft_oal.dll;libopenal.so;</LgplLibraries>
+    </PropertyGroup>
+    <Target Name="ExcludeLgplFromSingleFile" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(PublishSingleFile)' == 'true'">
+        <ItemGroup>
+            <ResolvedFileToPublish Condition="$(LgplLibraries.Contains(';%(Filename)%(Extension);'))">
+                <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            </ResolvedFileToPublish>
+        </ItemGroup>
+    </Target>
+
+    <!-- DebugType=none of a publish profile reaches only this project: the referenced projects still
+         bring their .pdb files, and NuGet packages their native ones (libSkiaSharp.pdb alone is 88 MB) -->
+    <Target Name="RemoveSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(DebugType)' == 'none'">
+        <ItemGroup>
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+        </ItemGroup>
+    </Target>
+    
+
+</Project>

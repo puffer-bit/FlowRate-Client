@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="MessageFormat" Version="8.0.0" />
+    </ItemGroup>
+
+    <!-- One file per language. A new language is a new file here: nothing else names the languages -->
+    <ItemGroup>
+        <EmbeddedResource Include="Languages\*.arb" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Client.Avalonia.Localization.Tests" />
+    </ItemGroup>
+
+</Project>

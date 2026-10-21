@@ -1,0 +1,3 @@
+[submodule "src/Shared"]
+	path = src/Shared
+	url = https://github.com/puffer-bit/FlowRate-Shared

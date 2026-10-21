@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.HybridSessionPeerFlyout"
+             x:DataType="listVm:PeerVM">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.volumePercent">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.volumePercent.amplified">
+            <Setter Property="Foreground" Value="{DynamicResource OverdriveBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="2">
+
+        <!-- Our own screen is watched the same way, as a preview -->
+        <StackPanel Spacing="2" IsVisible="{Binding CanWatchScreen}">
+            <menus:MenuItemButton Icon="{StaticResource EyeIcon}" Content="{l:Text hybrid.screen.watch}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleScreenWatch}"
+                                  IsVisible="{Binding !IsWatchingScreen}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedEyeIcon}" Content="{l:Text hybrid.screen.stopWatching}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleScreenWatch}"
+                                  IsVisible="{Binding IsWatchingScreen}"/>
+
+            <Separator/>
+        </StackPanel>
+
+        <!-- Nothing to adjust or moderate about ourselves -->
+        <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+
+            <menus:MenuItemButton Content="{l:Text peer.poke}"/>
+
+            <Separator/>
+
+            <Grid ColumnDefinitions="*, Auto" Margin="8,4,8,0">
+                <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
+                <TextBlock Grid.Column="1"
+                           Classes="volumePercent"
+                           Classes.amplified="{Binding IsAmplified}"
+                           Text="{Binding VolumePercentText}"/>
+            </Grid>
+
+            <Slider Classes="menuRow"
+                    Minimum="0"
+                    Maximum="{Binding MaxVolume}"
+                    Value="{Binding Volume}"
+                    IsEnabled="{Binding !IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource CrossedNoVolumeIcon}" Content="{l:Text peer.muteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource HighVolumeIcon}" Content="{l:Text peer.unmuteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource VolumeUpIcon}" Content="{l:Text peer.enableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding !IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedVolumeUpIcon}" Content="{l:Text peer.disableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+
+            <Separator/>
+
+            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  IsVisible="{Binding CanKick}"
+                                  Command="{Binding Kick}"/>
+            <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"/>
+            <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"/>
+            <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"/>
+
+            <Separator/>
+        </StackPanel>
+
+        <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding ViewProfileCommand}"
+                              CommandParameter="{Binding PeerData.UserId}"/>
+    </StackPanel>
+</UserControl>

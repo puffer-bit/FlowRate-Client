@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.SfuNodesPage"
+             x:DataType="serverSettingsVm:SfuNodesTabVM">
+    <UserControl.Styles>
+        <!-- A node the server cannot send sessions through stands out -->
+        <Style Selector="TextBlock.connection">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.connection.problem">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <controls:SettingsHeader Text="{l:Text serverSettings.sfu.section.nodes}"/>
+
+        <!-- Each node of the server is a card of its own: checked when this coordinator sends sessions through it -->
+        <ItemsControl ItemsSource="{Binding Form.SfuNodes}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="serverSettingsVm:SfuNodeOptionVM">
+                    <Border Padding="14,10" CornerRadius="8" BorderThickness="1"
+                            Background="{DynamicResource SettingsCardBackgroundBrush}"
+                            BorderBrush="{DynamicResource SettingsCardBorderBrush}">
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                            <!-- The node's connection as it was when the settings were opened: the bars take the
+                                 color of the ping like in the status bar of the main window, and stay unlit without one -->
+                            <Panel Grid.Column="0" VerticalAlignment="Center">
+                                <Image Width="24" Height="24"
+                                       Source="{StaticResource NetIcon}"
+                                       IsVisible="{Binding !HasConnection}"/>
+                                <indicators:PingIndicator FontSize="12"
+                                                          Foreground="{DynamicResource SecondaryTextBrush}"
+                                                          RoundTrip="{Binding RoundTrip}"
+                                                          IsVisible="{Binding HasConnection}"
+                                                          ToolTip.Tip="{l:Text serverSettings.sfu.ping.tooltip}"/>
+                            </Panel>
+
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Address}" FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <TextBlock Classes="connection" Text="{Binding ConnectionText}" FontSize="12"
+                                           Classes.problem="{Binding IsConnectionProblem}"
+                                           IsVisible="{Binding HasConnection}"
+                                           ToolTip.Tip="{Binding ConnectionError}"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="2" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       Text="{l:Text serverSettings.sfu.disabled}"
+                                       IsVisible="{Binding IsDisabled}"/>
+
+                            <CheckBox Grid.Column="3" VerticalAlignment="Center" IsChecked="{Binding IsSelected}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <hints:HintBlock Text="{l:Text serverSettings.sfu.hint}"/>
+    </ui:SettingsPage>
+</UserControl>

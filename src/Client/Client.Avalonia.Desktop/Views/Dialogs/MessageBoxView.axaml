@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dialogVm="clr-namespace:Client.ViewModels.Dialogs;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="180"
+             x:Class="Client.Views.Dialogs.MessageBoxView"
+             x:DataType="dialogVm:MessageBoxVM"
+             MinWidth="350"
+             MaxWidth="700">
+    
+    <Grid RowDefinitions="Auto, Auto, Auto">
+        <!-- The title bar of a window is not there when shown inside another window -->
+        <TextBlock Grid.Row="0" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="20, 16, 20, 0"/>
+        
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *" Margin="20, 12, 20, 10">
+            <Image Grid.Column="0" Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Top" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+            <StackPanel Grid.Column="1" Margin="20, 0, 0, 0" Spacing="10" VerticalAlignment="Top">
+                <SelectableTextBlock Text="{Binding Text}"
+                           TextWrapping="Wrap"/>
+                <!-- What the text is about, such as the address a link leads to -->
+                <Border IsVisible="{Binding HasDetail}"
+                        Background="{DynamicResource MessageBoxDetailBrush}"
+                        CornerRadius="6" Padding="10, 8">
+                    <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap"/>
+                </Border>
+                <CheckBox IsVisible="{Binding HasCheckBox}"
+                          IsChecked="{Binding IsChecked}"
+                          Content="{Binding CheckBoxText}"/>
+            </StackPanel>
+        </Grid>
+        
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding ButtonsList}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                      Margin="12, 12">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Command="{Binding Command}" Margin="0, 0, 8, 0"
+                            IsDefault="{Binding IsDefault}" IsCancel="{Binding IsCancel}">
+                        <TextBlock Text="{Binding Text}"/>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

@@ -1,0 +1,28 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="Button.save">
+        <Setter Property="Background" Value="{DynamicResource ColorSaveBase}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+
+    <!-- White text in every state; set on the presenter so Fluent's state foregrounds do not win -->
+    <Style Selector="Button.save /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+    </Style>
+
+    <Style Selector="Button.save:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorSaveHovered}"/>
+    </Style>
+
+    <Style Selector="Button.save:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorSavePressed}"/>
+    </Style>
+
+    <Style Selector="Button.save:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColorSaveDisabled}"/>
+        <Setter Property="Foreground" Value="{DynamicResource OverlayLightBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+</Styles>

@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="60"
+             x:DataType="notificationVm:NotificationPopUpVM"
+             x:Class="Client.Views.Notifications.NotificationPopUp"
+             anim:Presence.Appear="Drop"
+             anim:Presence.Leave="Fade"
+             anim:Presence.IsLeaving="{Binding IsLeaving}">
+
+    <!-- A bar over the whole width of the video, filled with the color of its kind -->
+    <Border MinHeight="42"
+            Background="{Binding Type, Converter={x:Static services:PopUpBackgroundConverter.Instance}}">
+        <Grid ColumnDefinitions="Auto, *, Auto">
+            <Panel Grid.Column="0" Width="20" Height="20" Margin="14,11,10,11" VerticalAlignment="Top">
+                <Image Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                       IsVisible="{Binding !IsLoading}"/>
+                <loadingIndicators:ProgressRing MinWidth="20" MinHeight="20"
+                                                IsIndeterminate="True"
+                                                BorderThickness="3"
+                                                IsVisible="{Binding IsLoading}"
+                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+            </Panel>
+
+            <TextBlock Grid.Column="1"
+                       Margin="0,11"
+                       VerticalAlignment="Center"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       MaxLines="4"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource PrimaryTextBrush}"
+                       Text="{Binding Message}"/>
+
+            <Button Grid.Column="2" Classes="borderless"
+                    Width="16" Height="16" Margin="10,13,14,0"
+                    VerticalAlignment="Top"
+                    Command="{Binding CloseCommand}"
+                    IsVisible="{Binding !IsLoading}">
+                <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

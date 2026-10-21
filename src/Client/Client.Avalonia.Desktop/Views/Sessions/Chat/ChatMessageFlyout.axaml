@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Chat.ChatMessageFlyout"
+             x:DataType="chatVm:ChatMessageVM">
+
+    <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
+    <StackPanel Spacing="2">
+        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
+                              Command="{Binding StartReply}"/>
+        <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"
+                              IsVisible="{Binding CanEdit}"
+                              Command="{Binding StartEdit}"/>
+
+        <!-- One copy item at a time: the selection when there is one, the whole text otherwise -->
+        <menus:MenuItemButton Icon="{StaticResource CopySelectionIcon}" Content="{l:Text chat.menu.copySelected}" Gesture="Ctrl+C"
+                              IsVisible="{Binding IsTextSelected}"
+                              IsEnabled="{Binding HasCopyText}"
+                              Command="{Binding Copy}"/>
+        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}" Gesture="Ctrl+C"
+                              IsVisible="{Binding !IsTextSelected}"
+                              IsEnabled="{Binding HasCopyText}"
+                              Command="{Binding Copy}"/>
+
+        <!-- Only when the menu was opened over a link of the message -->
+        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
+                              IsVisible="{Binding HasCopyLink}"
+                              Command="{Binding CopyLink}"/>
+
+        <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}" Gesture="P"
+                              IsEnabled="{Binding !IsSenderDeleted}"
+                              Command="{Binding ViewProfile}"/>
+
+        <Separator IsVisible="{Binding CanDelete}"/>
+
+        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}" Gesture="Delete"
+                              IsVisible="{Binding CanDelete}"
+                              Command="{Binding Delete}"/>
+    </StackPanel>
+</UserControl>

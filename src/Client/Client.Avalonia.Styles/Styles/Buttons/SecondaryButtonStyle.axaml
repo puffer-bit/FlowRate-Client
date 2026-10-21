@@ -1,0 +1,61 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style Selector="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+    
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderDark}"/>
+    </Style>
+
+    <Style Selector="Button:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorBorderLight}"/>
+    </Style>
+    
+    <!-- The outline color is a setting of its own; filled buttons keep the neutral outline -->
+    <Style Selector="Button:not(.primary):not(.danger):not(.save)">
+        <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonBorderBrush}"/>
+    </Style>
+
+    <Style Selector="Button:not(.primary):not(.danger):not(.save):pointerover /template/ ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonBorderBrush}"/>
+    </Style>
+
+    <Style Selector="Button:not(.primary):not(.danger):not(.save):pressed /template/ ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonPressedBorderBrush}"/>
+    </Style>
+
+    <Style Selector="Button:checked /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    
+    <Style Selector="Button:disabled /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    
+    <!-- On the base state, not only while hovered: leaving the pointer and turning disabled animate as well -->
+    <Style Selector="Button /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Brief}"/>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    
+</Styles>
