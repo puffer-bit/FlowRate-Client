@@ -76,8 +76,8 @@ internal static class VideoSourceFactory
         Action<double, string>? onRate = null, bool acceptDmaBuf = false) => input switch
     {
         PipeWireVideoInput pipeWire => CreatePipeWire(pipeWire, framerate, onError, onRate, acceptDmaBuf),
-        MonitorVideoInput monitor => CreateScreenCapture("monitor-handle", monitor.Handle, isWindow: false, onRate),
-        WindowVideoInput window => CreateScreenCapture("window-handle", window.Handle, isWindow: true, onRate),
+        MonitorVideoInput monitor => CreateScreenCapture("monitor-handle", monitor.Handle, isWindow: false, framerate, onRate),
+        WindowVideoInput window => CreateScreenCapture("window-handle", window.Handle, isWindow: true, framerate, onRate),
         TestPatternVideoInput => TestPatternSource.Create(framerate),
         _ => null
     };
@@ -122,16 +122,35 @@ internal static class VideoSourceFactory
         return new VideoSource(bin, new CaptureBridge(bridgeSink, bridgeSource, onError, onRate));
     }
 
+    // d3d11screencapturesrc paces itself at the rate it negotiates, and with nothing downstream to
+    // fix one it settles on 30/1. The drop-only videorate of the send branch cannot raise that, so
+    // the rate is fixed right at the capture. Both memory kinds stay open: the CPU branch takes
+    // system memory, the Direct3D 11 one textures
+    private const string ScreenCaptureDescription =
+        "d3d11screencapturesrc name=" + ScreenCaptureElementName + " ! capsfilter name=" + ScreenCaptureFilterName;
+
+    private const string ScreenCaptureElementName = "capture";
+    private const string ScreenCaptureFilterName = "capture_rate";
+
     private static VideoSource? CreateScreenCapture(string handleProperty, IntPtr handle, bool isWindow,
-        Action<double, string>? onRate)
+        int framerate, Action<double, string>? onRate)
     {
         if (!OperatingSystem.IsWindows() || handle == IntPtr.Zero)
             return null;
 
-        var source = ElementFactory.Make("d3d11screencapturesrc", "capture");
+        // The only open end is the output of the capsfilter, which becomes the output of the bin
+        var bin = Global.ParseBinFromDescription(ScreenCaptureDescription, true);
 
-        if (source == null)
+        if (bin?.GetByName(ScreenCaptureElementName) is not { } source ||
+            bin.GetByName(ScreenCaptureFilterName) is not { } filter)
+        {
+            bin?.Dispose();
             return null;
+        }
+
+        Global.UtilSetObjectArg(filter, "caps", string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "video/x-raw(memory:D3D11Memory),framerate={0}/1; video/x-raw,framerate={0}/1", framerate));
+        filter.Dispose();
 
         source.SetProperty(handleProperty, (ulong)handle.ToInt64());
         source.SetProperty("show-cursor", true);
@@ -141,10 +160,11 @@ internal static class VideoSourceFactory
         if (isWindow)
             Global.UtilSetObjectArg(source, "capture-api", "wgc");
 
+        // The probe delegate is kept as long as the element is, so the wrapper stays undisposed
         if (onRate != null)
             WatchRate(source, onRate);
 
-        return new VideoSource(source);
+        return new VideoSource(bin);
     }
 
     // Keeps each probe delegate alive as long as the element it watches
