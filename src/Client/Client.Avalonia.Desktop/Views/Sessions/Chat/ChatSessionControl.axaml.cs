@@ -30,7 +30,7 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
         _scroll = new ChatScrollController(this, MessagesList);
         Selection = new ChatSelectionController(MessagesList);
 
-        // Images dropped anywhere on the chat are attached to the message being typed
+        // Files dropped anywhere on the chat are attached to the message being typed
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -47,6 +47,9 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
 
                 vm.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
                     interaction.SetOutput(await PickFiles())).DisposeWith(subscriptions);
+
+                vm.PickFileSaveTarget.RegisterHandler(async interaction =>
+                    interaction.SetOutput(await PickSaveTarget(interaction.Input))).DisposeWith(subscriptions);
 
                 // The viewer of an image is made anew for each image; saving asks this view where to
                 var viewerSubscription = new SerialDisposable().DisposeWith(subscriptions);
@@ -112,7 +115,11 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
         {
             Title = Strings.Get("chat.attach.tooltip"),
             AllowMultiple = true,
-            FileTypeFilter = [PickedFiles.ImageFileType(Strings.Get("chat.attach.filter.images"))]
+            FileTypeFilter =
+            [
+                PickedFiles.AnyFileType(Strings.Get("chat.attach.filter.all")),
+                PickedFiles.ImageFileType(Strings.Get("chat.attach.filter.images"))
+            ]
         });
 
         // The files stay open: they are read when the message is sent

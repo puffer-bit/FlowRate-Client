@@ -20,7 +20,7 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
-/// The input of a chat: the text being typed, the images attached to it, the message it answers
+/// The input of a chat: the text being typed, the files attached to it, the message it answers
 /// or edits, and sending all of that.
 /// </summary>
 public sealed class ChatComposerVM : ReactiveObject, IDisposable
@@ -181,7 +181,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     private string? _draftText;
 
     /// <summary>
-    /// Images attached to the message being typed. They are uploaded when the message is sent
+    /// Files attached to the message being typed. They are uploaded when the message is sent
     /// and stay here, with what was uploaded, if it does not go.
     /// </summary>
     public AvaloniaList<ChatAttachmentVM> Attachments { get; } = new();
@@ -249,7 +249,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 nameof(IsConnected), nameof(IsEditingMessage))
             .Select(vm => vm.IsConnected && !vm.IsMessageSending
                 && (vm.InputtedText?.Length ?? 0) <= ChatTextContent.MaxLength
-                // Images go without a text too; an edit is about the text alone
+                // Attachments go without a text too; an edit is about the text alone
                 && (!string.IsNullOrWhiteSpace(vm.InputtedText) || (vm.HasAttachments && !vm.IsEditingMessage)));
         SendMessageCommand = ReactiveCommand.CreateFromTask(SendMessage, canSend);
 
@@ -292,14 +292,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             if (file.Key != null && Attachments.Any(a => a.Key == file.Key))
                 continue;
 
-            // What is certainly not an image is refused here; the rest is known when the file is read
-            if (!ImageFilePatterns.Any(pattern => file.Name.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase)))
-            {
-                notice = Strings.Get("chat.attach.imagesOnly");
-                continue;
-            }
-
-            Attachments.Add(new ChatAttachmentVM(file, _images));
+            // A picture by its name goes as an image; whether it is one is known when the file is read
+            var isImage = ImageFilePatterns.Any(pattern =>
+                file.Name.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase));
+            Attachments.Add(new ChatAttachmentVM(file, isImage, _images));
         }
 
         // After the collection has changed, which clears the notice of the draft before it
@@ -308,7 +304,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Taking an image off the message being sent stops the sending: the message would go without it.
+    /// Taking a file off the message being sent stops the sending: the message would go without it.
     /// </summary>
     private void RemoveAttachment(ChatAttachmentVM attachment)
     {
@@ -432,7 +428,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 return;
             }
 
-            // Nothing visible was typed: only images can make a message of it
+            // Nothing visible was typed: only attachments can make a message of it
             if (IsEditingMessage || !HasAttachments)
                 return;
         }
@@ -460,7 +456,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 SentTime = DateTime.UtcNow,
                 TextContent = textContent,
                 ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
-                Images = attachments.Select(attachment => attachment.Upload.Image!).ToList()
+                Images = attachments.Where(attachment => attachment.IsImage)
+                    .Select(attachment => attachment.Upload.Image!).ToList(),
+                Files = attachments.Where(attachment => attachment.IsFile)
+                    .Select(attachment => attachment.FileUpload.File!).ToList()
             };
 
             var result = await _session.SendChatMessage(message);
@@ -475,13 +474,13 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 // A rejection is reported by the main window
                 case AddMessageResult.Rejected:
                     break;
-                // The server does not hold the uploads anymore, so the next try sends the images again
+                // The server does not hold the uploads anymore, so the next try sends the files again
                 case AddMessageResult.AttachmentNotReady or AddMessageResult.AttachmentInvalid:
                     foreach (var attachment in attachments)
                         attachment.ResetUpload();
                     SendError = Strings.Get("chat.send.imagesLost");
                     break;
-                // The text and the images stay in the composer for another try
+                // The text and the files stay in the composer for another try
                 default:
                     SendError = Strings.Get(result switch
                     {
@@ -500,7 +499,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Uploads the images one after another, each showing its progress on its card.
+    /// Uploads the files one after another, each showing its progress on its card.
     /// </summary>
     /// <returns>False when one did not go; its card and the line under the input say why.</returns>
     private async Task<bool> UploadAttachments(IReadOnlyList<ChatAttachmentVM> attachments, CancellationToken cancellationToken)
@@ -509,35 +508,47 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         {
             attachment.Error = null;
             attachment.IsUploading = true;
-            ChatImageUploadResult result;
+            ChatMediaUploadResult result;
             try
             {
-                result = await _mediaUploader.UploadImageAsync(_session, _chatId, attachment.Source,
-                    attachment.Upload, new Progress<double>(share => attachment.Progress = share), cancellationToken);
+                var progress = new Progress<double>(share => attachment.Progress = share);
+                result = attachment.IsImage
+                    ? await _mediaUploader.UploadImageAsync(_session, _chatId, attachment.Source, attachment.Upload,
+                        progress, cancellationToken)
+                    : ChatMediaUploadResult.NotAnImage;
+
+                // Named like a picture but not one the chat can show: it is still a file to send
+                if (result == ChatMediaUploadResult.NotAnImage)
+                {
+                    attachment.SendAsFile();
+                    result = await _mediaUploader.UploadFileAsync(_session, _chatId, attachment.Source,
+                        attachment.FileUpload, progress, cancellationToken);
+                }
             }
             finally
             {
                 attachment.IsUploading = false;
             }
 
-            if (result == ChatImageUploadResult.NoError)
+            if (result == ChatMediaUploadResult.NoError)
             {
                 attachment.Progress = 1;
                 continue;
             }
 
-            // The user took an image off the message; nothing went wrong
-            if (result == ChatImageUploadResult.Canceled)
+            // The user took a file off the message; nothing went wrong
+            if (result == ChatMediaUploadResult.Canceled)
                 return false;
 
             attachment.Error = Strings.Get(result switch
             {
-                ChatImageUploadResult.NotAnImage => "chat.attach.error.notAnImage",
-                ChatImageUploadResult.TooLarge => "chat.attach.error.tooLarge",
-                ChatImageUploadResult.NotAllowed => "chat.attach.turnedOff",
-                ChatImageUploadResult.TooManyUploads => "chat.attach.error.tooMany",
-                ChatImageUploadResult.StorageFull => "chat.attach.error.storageFull",
-                ChatImageUploadResult.ConnectionFailed => "chat.attach.error.connection",
+                ChatMediaUploadResult.NotAnImage => "chat.attach.error.notAnImage",
+                ChatMediaUploadResult.Empty => "chat.attach.error.empty",
+                ChatMediaUploadResult.TooLarge => "chat.attach.error.tooLarge",
+                ChatMediaUploadResult.NotAllowed => "chat.attach.turnedOff",
+                ChatMediaUploadResult.TooManyUploads => "chat.attach.error.tooMany",
+                ChatMediaUploadResult.StorageFull => "chat.attach.error.storageFull",
+                ChatMediaUploadResult.ConnectionFailed => "chat.attach.error.connection",
                 _ => "chat.attach.error.failed"
             });
             SendError = Strings.Format("chat.send.imageFailed", ("file", attachment.FileName), ("reason", attachment.Error));

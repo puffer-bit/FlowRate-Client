@@ -63,7 +63,11 @@ internal static class RequestMapper
             Height = image.Height
         }).ToList(),
         Video = model.Video.Select(ChatMessageMapper.MapVideoContentDto).ToList(),
-        Files = model.Files.Select(ChatMessageMapper.MapFileContentDto).ToList(),
+        Files = model.Files.Select(file => new NewChatFileModel
+        {
+            UploadId = file.UploadId,
+            FileName = file.FileName
+        }).ToList(),
 
         IsDelayed = model.IsDelayed,
         IsDisposable = model.IsDisposable

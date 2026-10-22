@@ -228,7 +228,73 @@
         <Setter Property="Height" Value="20"/>
     </Style>
 
-    <!-- ====== An image attached to the message being typed ====== -->
+    <!-- ====== Files of a message, saved rather than shown ====== -->
+    <Style Selector="ItemsControl.msg-files">
+        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="Button.msg-file">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Margin" Value="0,0,0,4"/>
+        <Setter Property="Width" Value="260"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      HorizontalContentAlignment="Stretch"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.msg-file:pointerover">
+        <Setter Property="Background" Value="{DynamicResource ColorOverlay}"/>
+    </Style>
+    <Style Selector="Button.msg-file.error">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-file Border.msg-file-icon">
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="CornerRadius" Value="18"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+    <Style Selector="Button.msg-file Border.msg-file-icon Image">
+        <Setter Property="Width" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+    </Style>
+    <Style Selector="Button.msg-file TextBlock">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="MaxLines" Value="1"/>
+    </Style>
+    <Style Selector="Button.msg-file TextBlock.msg-file-size">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-file TextBlock.msg-file-error">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-file ProgressBar">
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="MinHeight" Value="3"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Minimum" Value="0"/>
+        <Setter Property="Maximum" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+
+    <!-- ====== A file attached to the message being typed ====== -->
     <!-- Darker than the composer box the cards sit in -->
     <Style Selector="Border.chat-attachment">
         <Setter Property="Background" Value="{DynamicResource GeneralBrush}"/>
@@ -248,6 +314,11 @@
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="ClipToBounds" Value="True"/>
         <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+    <!-- A file that is not an image has no picture: the clip stands for it -->
+    <Style Selector="Border.chat-attachment Border.chat-attachment-thumbnail Image.chat-attachment-file">
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
     </Style>
     <Style Selector="Border.chat-attachment TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
