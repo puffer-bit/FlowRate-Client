@@ -12,7 +12,6 @@ The client needs a FlowRate server to connect to.
 - Screen sharing with system audio, watched on request
 - Chat with images, mentions and unread counters
 - Roles and moderation
-- Several servers at once (desktop)
 - Encrypted local database, with the key kept in the system keyring or behind a password
 - Automatic updates from GitHub Releases (desktop)
 - Interface in English, Russian, Spanish, Japanese and Chinese
