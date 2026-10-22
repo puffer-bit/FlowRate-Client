@@ -163,6 +163,13 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
         branch.SyncStateWithParent();
 
+        // The mixer has the latency recalculated when its pad is requested, before the branch is
+        // linked to its live source. Without voices before it, the output then counts as not live,
+        // its latency drops to zero and every buffer reaches the sink too late: WASAPI throws all
+        // of them away, so a user who left and came back stayed silent
+        if (mixerPad != null)
+            _pipeline.RecalculateLatency();
+
         SpeechActivityMeter? meter = null;
 
         if (isOpus)
