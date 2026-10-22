@@ -1,0 +1,143 @@
+# Builds the desktop client for Linux and Windows, run by hand from the Actions tab.
+#
+# Each platform is built on its own system with the publish script of that system: NativeAOT does not
+# compile for another one, and the Windows GStreamer runtime comes from the official installer, which
+# runs on Windows only. The results (dist/<version>/<platform>: installer, update packages, standalone
+# archive) are uploaded as the artifacts of the run; nothing is published to a release.
+#
+# The GStreamer runtimes are cached: the Linux one takes 30-60 minutes in Docker. A change to the build
+# scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      aot:
+        description: Compile ahead of time (NativeAOT) instead of the JIT build
+        type: boolean
+        default: true
+      dev:
+        description: A development build, <version>-dev.<UTC yyMMddHHmm>
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  GSTREAMER_DIR: src/Client/Client.GStreamer/Build
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stamp: ${{ steps.version.outputs.stamp }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # One stamp for both platforms: they are one release and share the version
+      - name: Version
+        id: version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' \
+              src/Client/Client.Avalonia.Desktop/Client.Avalonia.Desktop.csproj | head -n1)
+          stamp=
+          if [[ "${{ inputs.dev }}" == true ]]; then
+              stamp=$(date -u +%y%m%d%H%M)
+              version="$version-dev.$stamp"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+          echo "### FlowRate client $version" >> "$GITHUB_STEP_SUMMARY"
+
+  linux:
+    name: linux-x64
+    needs: version
+    # Ubuntu 22.04, as the GStreamer runtime: a NativeAOT executable needs the glibc of the system it was
+    # linked on, so a newer runner would leave out the older distributions the runtime runs on
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: NativeAOT tools
+        if: inputs.aot
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends clang zlib1g-dev
+
+      - name: GStreamer runtime cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GSTREAMER_DIR }}/artifacts/linux-x64
+          key: gstreamer-linux-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/linux/**') }}
+
+      # Builds the runtime in Docker when the cache had none
+      - name: Publish
+        env:
+          # vpk takes the previous release of the channel from GitHub for the delta package
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          arguments=()
+          [[ "${{ inputs.aot }}" == true ]] && arguments+=(--aot)
+          [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
+          src/Scripts/bash/publish.sh linux-x64 "${arguments[@]}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-linux-x64${{ inputs.aot && '-aot' || '' }}
+          path: dist/${{ needs.version.outputs.version }}/linux-x64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          # Already compressed: the AppImage, the packages and the archive
+          compression-level: 0
+
+  windows:
+    name: win-x64
+    needs: version
+    # Has the C++ build tools of Visual Studio, which NativeAOT links with
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: GStreamer runtime cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GSTREAMER_DIR }}/artifacts/win-x64
+          key: gstreamer-win-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/windows/**') }}
+
+      # Collects the runtime from the official installer when the cache had none
+      - name: Publish
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $arguments = @{}
+          if ("${{ inputs.aot }}" -eq "true") { $arguments.Aot = $true }
+          if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
+          & src\Scripts\powershell\publish.ps1 win-x64 @arguments
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-win-x64${{ inputs.aot && '-aot' || '' }}
+          path: dist/${{ needs.version.outputs.version }}/win-x64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          compression-level: 0
