@@ -103,6 +103,12 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
+    <!-- A message of a few emoji alone is a picture: large, and all of it in the emoji font, so that
+         ☺ or ✔ written without the variation selector are in color too -->
+    <Style Selector=":is(TextBlock).msg-body.jumbo">
+        <Setter Property="FontSize" Value="40"/>
+        <Setter Property="FontFamily" Value="avares://Client.Avalonia.Assets/Fonts#Noto Color Emoji"/>
+    </Style>
     <!-- A web address in the text; underlined while the pointer is over it -->
     <Style Selector=":is(TextBlock).msg-body Run.link">
         <Setter Property="Foreground" Value="{DynamicResource LinkTextBrush}"/>
@@ -219,6 +225,11 @@
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+    <!-- The global Button:pointerover style outlines the presenter of every button; on a tile the outline
+         would draw inside it and make it taller under the pointer, moving the messages below -->
+    <Style Selector="Button.msg-image /template/ ContentPresenter, Button.msg-file /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style Selector="Button.msg-image Image.msg-image-picture">
         <Setter Property="Stretch" Value="UniformToFill"/>

@@ -3,7 +3,7 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Media.Imaging;
+using Avalonia.Media;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
@@ -24,7 +24,7 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
 
     public string FileName { get; }
 
-    public Bitmap? Picture
+    public IImage? Picture
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);

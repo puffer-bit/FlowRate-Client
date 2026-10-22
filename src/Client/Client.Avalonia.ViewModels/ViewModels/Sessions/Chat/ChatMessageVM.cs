@@ -34,8 +34,17 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public ChatMessageBody? Body
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsJumboEmoji));
+        }
     }
+
+    /// <summary>
+    /// The text is a few emoji alone and is shown large.
+    /// </summary>
+    public bool IsJumboEmoji => ChatEmoji.IsJumbo(Body?.Text);
 
     /// <summary>
     /// A message that calls the current user, by name or as one of everyone; the user's own included.
@@ -92,6 +101,15 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     /// The status of the author, known together with the name.
     /// </summary>
     public UserStatus? SenderStatus
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// The color of the highest colored role of the author, 0xRRGGBB; null keeps the usual one.
+    /// </summary>
+    public int? SenderColor
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);

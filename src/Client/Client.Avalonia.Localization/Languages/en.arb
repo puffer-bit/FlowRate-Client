@@ -254,6 +254,12 @@
       "size": {}
     }
   },
+  "profile.avatar.animationTooLarge": "An animated image can be at most {size} MB",
+  "@profile.avatar.animationTooLarge": {
+    "placeholders": {
+      "size": {}
+    }
+  },
   "profile.avatar.notAnImage": "The file could not be read as an image",
   "profile.avatar.fileType": "Images",
   "profile.avatar.pickerTitle": "Choose an avatar",
@@ -906,6 +912,10 @@
   "chat.menu.copySelected": "Copy selected text",
   "chat.menu.copyAll": "Copy all text",
   "chat.menu.copyLink": "Copy link",
+  "chat.input.cut": "Cut",
+  "chat.input.copy": "Copy",
+  "chat.input.paste": "Paste",
+  "chat.input.selectAll": "Select all",
   "chat.openLink.title": "Open link?",
   "chat.openLink.message": "Open this link in the browser?",
   "chat.goToMessage": "Go to message",

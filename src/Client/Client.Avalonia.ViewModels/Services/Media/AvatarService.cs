@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Avalonia.Media;
 using Client.Avalonia.Controls.Avatars;
+using Client.Avalonia.Controls.Images;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Core.Chat;
 using Client.Core.Users;
 using Microsoft.Extensions.Logging;
+using Shared.Validation;
 using SkiaSharp;
 
 namespace Client.Services;
@@ -18,9 +19,22 @@ namespace Client.Services;
 /// <summary>
 /// A picture picked for an avatar, made as small as an avatar is shown.
 /// </summary>
-/// <param name="Bitmap">What the dialog shows until the picture is saved; owned by the receiver.</param>
+/// <param name="Picture">What the dialog shows until the picture is saved; owned by the receiver.</param>
 /// <param name="Encoded">What goes to the server.</param>
-public sealed record PreparedAvatar(Bitmap Bitmap, byte[] Encoded, string MimeType);
+public sealed record PreparedAvatar(IImage Picture, byte[] Encoded, string MimeType);
+
+/// <summary>Why a picked file cannot be an avatar.</summary>
+public enum AvatarRejection
+{
+    None,
+    NotAnImage,
+
+    /// <summary>
+    /// An animation goes to the server as it is, since it cannot be encoded again, and the server
+    /// takes no more than <see cref="Limits.AvatarMaxSize"/>.
+    /// </summary>
+    AnimationTooLarge
+}
 
 /// <summary>
 /// The avatars of users as the interface needs them: fetched from the coordinator once, kept in
@@ -38,12 +52,13 @@ public interface IAvatarService
     /// The picture at <see cref="UserModel.AvatarUrl"/>, or null when there is none or it cannot be had now.
     /// </summary>
     /// <param name="coordinatorInstanceId">Null means the coordinator of the attached session.</param>
-    Task<Bitmap?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl);
+    Task<IImage?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl);
 
     /// <summary>
-    /// Cuts the middle square out of a picked image and reduces it. Null when it is not an image.
+    /// Cuts the middle square out of a picked image and reduces it. An animated one is kept as it
+    /// is, so it still moves; the avatar shows its middle all the same.
     /// </summary>
-    Task<PreparedAvatar?> PrepareAsync(Func<Task<Stream>> openContent);
+    Task<(PreparedAvatar? Avatar, AvatarRejection Rejection)> PrepareAsync(Func<Task<Stream>> openContent);
 }
 
 public sealed partial class AvatarService : IAvatarService
@@ -60,10 +75,10 @@ public sealed partial class AvatarService : IAvatarService
     private readonly ILogger<AvatarService> _logger;
 
     // A bitmap lives as long as something shows it; the next one to ask decodes the kept file again
-    private readonly ConcurrentDictionary<(string Coordinator, string AvatarId), WeakReference<Bitmap>> _bitmaps = new();
+    private readonly ConcurrentDictionary<(string Coordinator, string AvatarId), WeakReference<IImage>> _pictures = new();
 
     // One download and one decoding per avatar at a time, however many views ask for it
-    private readonly ConcurrentDictionary<(string Coordinator, string AvatarId), Task<Bitmap?>> _loads = new();
+    private readonly ConcurrentDictionary<(string Coordinator, string AvatarId), Task<IImage?>> _loads = new();
 
     private ICoordinatorSession? _session;
     private string? _coordinator;
@@ -83,20 +98,20 @@ public sealed partial class AvatarService : IAvatarService
             _coordinator = session.GetCurrentUser().CoordinatorInstanceId;
     }
 
-    public Task<Bitmap?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl)
+    public Task<IImage?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl)
     {
         var coordinator = coordinatorInstanceId ?? _coordinator;
         if (coordinator == null || AvatarAddress.IdOf(avatarUrl) is not { } avatarId)
-            return Task.FromResult<Bitmap?>(null);
+            return Task.FromResult<IImage?>(null);
 
         var key = (coordinator, avatarId);
-        if (_bitmaps.TryGetValue(key, out var kept) && kept.TryGetTarget(out var bitmap))
-            return Task.FromResult<Bitmap?>(bitmap);
+        if (_pictures.TryGetValue(key, out var kept) && kept.TryGetTarget(out var picture))
+            return Task.FromResult<IImage?>(picture);
 
         return AwaitAsync(key, _loads.GetOrAdd(key, _ => Task.Run(() => ReadAsync(coordinator, avatarId))));
     }
 
-    private async Task<Bitmap?> AwaitAsync((string, string) key, Task<Bitmap?> load)
+    private async Task<IImage?> AwaitAsync((string, string) key, Task<IImage?> load)
     {
         try
         {
@@ -109,28 +124,54 @@ public sealed partial class AvatarService : IAvatarService
         }
     }
 
-    public Task<PreparedAvatar?> PrepareAsync(Func<Task<Stream>> openContent) =>
+    public Task<(PreparedAvatar? Avatar, AvatarRejection Rejection)> PrepareAsync(Func<Task<Stream>> openContent) =>
         Task.Run(async () =>
         {
             try
             {
-                await using var content = await OpenSeekableAsync(openContent);
+                var bytes = await ReadAllAsync(openContent);
+                if (PrepareAnimated(bytes) is { } animated)
+                    return animated;
+
+                using var content = new MemoryStream(bytes, writable: false);
                 using var decoded = SkiaImages.Decode(content, PickedMaxSide);
                 if (decoded == null)
-                    return null;
+                    return (null, AvatarRejection.NotAnImage);
 
                 using var square = SkiaImages.CropSquare(decoded.Bitmap, Side);
                 using var encoded = square.Encode(SKEncodedImageFormat.Webp, Quality);
-                return encoded == null ? null : new PreparedAvatar(ToBitmap(square), encoded.ToArray(), MimeType);
+                return encoded == null
+                    ? (null, AvatarRejection.NotAnImage)
+                    : (new PreparedAvatar(Pictures.ToBitmap(square), encoded.ToArray(), MimeType), AvatarRejection.None);
             }
             catch (Exception exception)
             {
                 LogDecodeFailed(exception);
-                return null;
+                return ((PreparedAvatar?)null, AvatarRejection.NotAnImage);
             }
         });
 
-    private async Task<Bitmap?> ReadAsync(string coordinator, string avatarId)
+    /// <summary>
+    /// Null when the picked file is not an animation, which is then made still like any other image.
+    /// </summary>
+    private static (PreparedAvatar?, AvatarRejection)? PrepareAnimated(byte[] bytes)
+    {
+        using var codec = SKCodec.Create(new MemoryStream(bytes, writable: false));
+        if (codec is not { FrameCount: > 1 } || SkiaImages.MimeTypeOf(codec.EncodedFormat) is not
+                { } mimeType || !Limits.ChatImageMimeTypes.Contains(mimeType))
+            return null;
+
+        if (bytes.Length > Limits.AvatarMaxSize)
+            return (null, AvatarRejection.AnimationTooLarge);
+
+        // Shown as a whole, not cut square: the avatar fills its circle with the middle of it anyway
+        using var animation = SkiaImages.DecodeAnimation(codec, Side);
+        return animation == null
+            ? null
+            : (new PreparedAvatar(Pictures.ToAnimatedImage(animation), bytes, mimeType), AvatarRejection.None);
+    }
+
+    private async Task<IImage?> ReadAsync(string coordinator, string avatarId)
     {
         var key = (coordinator, avatarId);
         try
@@ -140,13 +181,11 @@ public sealed partial class AvatarService : IAvatarService
                 return null;
 
             await using var content = File.OpenRead(path);
-            using var decoded = SkiaImages.Decode(content, Side);
-            if (decoded == null)
+            if (Pictures.Decode(content, Side) is not { } picture)
                 return null;
 
-            var bitmap = ToBitmap(decoded.Bitmap);
-            _bitmaps[key] = new WeakReference<Bitmap>(bitmap);
-            return bitmap;
+            _pictures[key] = new WeakReference<IImage>(picture);
+            return picture;
         }
         catch (Exception exception)
         {
@@ -165,26 +204,16 @@ public sealed partial class AvatarService : IAvatarService
             await session.DownloadAvatar(avatarId, stream) == MediaTransferResult.NoError);
     }
 
-    private static Bitmap ToBitmap(SKBitmap bitmap) =>
-        new(PixelFormat.Bgra8888, AlphaFormat.Premul, bitmap.GetPixels(),
-            new PixelSize(bitmap.Width, bitmap.Height), new Vector(96, 96), bitmap.RowBytes);
-
     /// <summary>
-    /// The decoder goes back and forth in the content; a source that cannot is read into memory first.
+    /// The picked file in memory: an animation is uploaded byte for byte, and the decoder goes back
+    /// and forth in it. Its size was checked before.
     /// </summary>
-    private static async Task<Stream> OpenSeekableAsync(Func<Task<Stream>> openContent)
+    private static async Task<byte[]> ReadAllAsync(Func<Task<Stream>> openContent)
     {
-        var content = await openContent();
-        if (content.CanSeek)
-            return content;
-
-        await using (content)
-        {
-            var buffered = new MemoryStream();
-            await content.CopyToAsync(buffered);
-            buffered.Position = 0;
-            return buffered;
-        }
+        await using var content = await openContent();
+        using var buffered = new MemoryStream();
+        await content.CopyToAsync(buffered);
+        return buffered.ToArray();
     }
 
     [LoggerMessage(LogLevel.Debug, "An avatar could not be decoded")]

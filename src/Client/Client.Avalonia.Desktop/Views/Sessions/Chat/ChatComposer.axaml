@@ -6,6 +6,7 @@
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              x:DataType="chatVm:ChatComposerVM"
              x:Class="Client.Views.Sessions.Chat.ChatComposer">
 
@@ -333,7 +334,32 @@
                                  Text="{Binding InputtedText}"
                                  MaxLength="{Binding MaxMessageLength}"
                                  IsReadOnly="{Binding IsMessageSending}"
-                                 IsEnabled="{Binding CanWrite}"/>
+                                 IsEnabled="{Binding CanWrite}">
+                            <!-- The app's own menu instead of the theme's MenuFlyout. The items are not focusable,
+                                 so a click keeps the focus and the selection in the input -->
+                            <TextBox.ContextFlyout>
+                                <Flyout Placement="TopEdgeAlignedLeft">
+                                    <StackPanel Spacing="2">
+                                        <menus:MenuItemButton Icon="{StaticResource CutIcon}" Content="{l:Text chat.input.cut}" Gesture="Ctrl+X"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanCut}"
+                                                              Command="{Binding $parent[TextBox].Cut}"/>
+                                        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.input.copy}" Gesture="Ctrl+C"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanCopy}"
+                                                              Command="{Binding $parent[TextBox].Copy}"/>
+                                        <menus:MenuItemButton Icon="{StaticResource PasteIcon}" Content="{l:Text chat.input.paste}" Gesture="Ctrl+V"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanPaste}"
+                                                              Command="{Binding $parent[TextBox].Paste}"/>
+                                        <Separator/>
+                                        <menus:MenuItemButton Icon="{StaticResource SelectAllIcon}" Content="{l:Text chat.input.selectAll}" Gesture="Ctrl+A"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding $parent[TextBox].SelectAll}"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </TextBox.ContextFlyout>
+                        </TextBox>
 
                         <!-- Characters left; appears only near the limit -->
                         <TextBlock Grid.Column="2"

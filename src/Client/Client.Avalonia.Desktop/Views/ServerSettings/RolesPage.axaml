@@ -22,7 +22,7 @@
             <Setter Property="Width" Value="12"/>
             <Setter Property="Height" Value="12"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource PrimaryTextBrush}"/>
         </Style>
         <Style Selector="Button.swatch">
             <Setter Property="Width" Value="26"/>

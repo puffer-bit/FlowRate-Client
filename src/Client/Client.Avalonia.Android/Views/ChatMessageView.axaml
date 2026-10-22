@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -27,7 +28,8 @@
                 <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
                     <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
                                Classes.deleted-user="{Binding IsSenderDeleted}"
-                               Text="{Binding SenderName}"/>
+                               Text="{Binding SenderName}"
+                               Foreground="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
                     <TextBlock Classes="msg-time"
                                Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
@@ -54,7 +56,8 @@
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <TextBlock Classes="msg-body" chatVm:ChatMessageText.Body="{Binding Body}"
+                    <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                               chatVm:ChatMessageText.Body="{Binding Body}"
                                chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
