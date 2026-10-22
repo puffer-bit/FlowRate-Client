@@ -16,7 +16,7 @@ public class NewChatMessage
 
     public List<NewChatImage> Images { get; init; } = new();
     public List<ChatVideoContent> Video { get; init; } = new();
-    public List<ChatFileContent> Files { get; init; } = new();
+    public List<NewChatFile> Files { get; init; } = new();
 
     public bool IsDelayed { get; init; }
     public bool IsDisposable { get; init; }

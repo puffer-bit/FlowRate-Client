@@ -316,6 +316,10 @@ public interface ICoordinatorSession : IDisposable
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatImage"/>
     Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFile"/>
+    Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
+        IProgress<long>? progress = null, CancellationToken cancellationToken = default);
     Task<DeleteMessageResult> DeleteChatMessage(int chatId, int messageId);
 
     /// <summary>
