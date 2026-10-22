@@ -120,13 +120,4 @@ internal static class ChatMessageMapper
             Height = model.Height,
             Duration = model.Duration
         };
-
-    internal static ChatFileContentDTO MapFileContentDto(ChatFileContent model)
-        => new ChatFileContentDTO
-        {
-            Id = model.Id,
-            FileName = model.FileName,
-            Size = model.Size,
-            MimeType = model.MimeType
-        };
 }

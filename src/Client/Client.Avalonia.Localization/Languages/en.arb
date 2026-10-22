@@ -544,18 +544,17 @@
     }
   },
   "chat.attach.turnedOff": "Attachments are turned off in this chat",
-  "chat.attach.limit": "At most {limit} images per message",
+  "chat.attach.limit": "At most {limit} files per message",
   "@chat.attach.limit": {
     "placeholders": {
       "limit": {}
     }
   },
-  "chat.attach.tooltip": "Attach images",
-  "chat.attach.imagesOnly": "Only images can be attached for now",
+  "chat.attach.tooltip": "Attach files",
   "chat.attach.filter.images": "Images",
   "chat.attach.error.notAnImage": "Not an image the chat can show",
   "chat.attach.error.tooLarge": "Too large for this server",
-  "chat.attach.error.tooMany": "Too many unsent images, try later",
+  "chat.attach.error.tooMany": "Too many unsent files, try later",
   "chat.attach.error.storageFull": "The server is out of space",
   "chat.attach.error.connection": "No connection to the server",
   "chat.attach.error.failed": "The server did not take the file",
@@ -566,10 +565,17 @@
       "reason": {}
     }
   },
-  "chat.send.imagesLost": "The server no longer holds the uploaded images. Send the message again.",
+  "chat.send.imagesLost": "The server no longer holds the uploaded files. Send the message again.",
   "chat.image.gone": "The image was deleted.",
   "chat.image.loadFailed": "The image could not be loaded.",
   "chat.image.saveFailed": "The image could not be saved.",
+  "chat.attach.filter.all": "All files",
+  "chat.attach.error.empty": "The file is empty",
+  "chat.file.download": "Download",
+  "chat.file.cancel": "Stop downloading",
+  "chat.file.saved": "Saved",
+  "chat.file.gone": "The file was deleted",
+  "chat.file.downloadFailed": "The file could not be downloaded",
   "chat.attachment": "Attachment",
   "chat.unknownUser": "Unknown user",
   "chat.deletedUser": "Deleted user",

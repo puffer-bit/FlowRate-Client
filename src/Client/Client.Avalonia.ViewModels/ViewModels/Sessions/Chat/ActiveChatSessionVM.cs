@@ -2,6 +2,7 @@ using Client.Services;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -147,6 +148,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public Interaction<RxVoid, RxVoid> ScrollToEndInteraction { get; } = new();
     public Interaction<int, RxVoid> ScrollToMessageIndexInteraction { get; } = new();
 
+    /// <summary>
+    /// Asks the view where to save a file of a message: it is given the suggested file name and returns
+    /// the stream to write into, or null when the user changed their mind.
+    /// </summary>
+    public Interaction<string, Stream?> PickFileSaveTarget { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> ScrollToEndCommand { get; }
 
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _setReplyMessageCommand;
@@ -229,6 +236,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             ? []
             : model.Images.Select(image => new ChatImageVM(image, model.Images.Count == 1, _coordinatorSession, _images, OpenImage))
             .ToList();
+
+    private IReadOnlyList<ChatFileVM> CreateFiles(ChatMessageModel model) =>
+        model.Files.Count == 0
+            ? []
+            : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
+                async fileName => await PickFileSaveTarget.Handle(fileName))).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.
@@ -319,7 +332,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
             var messageVm = new ChatMessageVM(model, _currentUserId, _setReplyMessageCommand,
                 _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
-                ConfirmOpenLinkAsync, CreateImages(model))
+                ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model))
             {
                 IsNew = isNew,
                 CanManageMessages = canManage

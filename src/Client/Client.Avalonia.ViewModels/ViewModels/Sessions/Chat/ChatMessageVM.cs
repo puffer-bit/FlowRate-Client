@@ -105,6 +105,10 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public IReadOnlyList<ChatImageVM> Images { get; }
     public bool HasImages => Images.Count > 0;
+
+    /// <summary>The files of the message that are downloaded rather than shown.</summary>
+    public IReadOnlyList<ChatFileVM> Files { get; }
+    public bool HasFiles => Files.Count > 0;
     public bool HasText => Message.TextContent != null;
 
     public bool IsSequenceStart
@@ -201,12 +205,14 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         ReactiveCommand<ChatMessageModel, RxVoid> deleteCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         Func<Uri, Task<bool>> confirmOpenLink,
-        IReadOnlyList<ChatImageVM>? images = null)
+        IReadOnlyList<ChatImageVM>? images = null,
+        IReadOnlyList<ChatFileVM>? files = null)
     {
         ConfirmOpenLink = confirmOpenLink;
         _currentUserId = currentUserId;
         Message = messageModel;
         Images = images ?? [];
+        Files = files ?? [];
         Reply = messageModel.ReplyContent != null ? new ChatReplyPreviewVM(messageModel.ReplyContent) : null;
         _replyCommand = replyCommand;
         _editCommand = editCommand;

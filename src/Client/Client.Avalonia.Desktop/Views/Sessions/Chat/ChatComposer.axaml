@@ -277,12 +277,17 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="chatVm:ChatAttachmentVM">
-                                    <!-- The card shows how far the image got, and why it did not go -->
+                                    <!-- The card shows how far the file got, and why it did not go -->
                                     <Border Classes="chat-attachment" Classes.error="{Binding HasError}"
                                             ToolTip.Tip="{Binding Key}">
                                         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                                             <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
-                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                                <Panel>
+                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                                           IsVisible="{Binding IsImage}"/>
+                                                    <Image Classes="chat-attachment-file" Source="{StaticResource ClipIcon}"
+                                                           IsVisible="{Binding IsFile}"/>
+                                                </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                                 <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
