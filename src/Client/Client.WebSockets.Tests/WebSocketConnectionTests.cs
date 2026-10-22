@@ -31,11 +31,11 @@ public class WebSocketConnectionTests
             }
         };
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
         for (var i = 0; i < 100; i++)
             Assert.True(connection.SendText($"message {i}"));
 
-        await allReceived.Task.WaitAsync(Timeout);
+        await allReceived.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(Enumerable.Range(0, 100).Select(i => $"echo:message {i}"), received);
     }
 
@@ -54,9 +54,9 @@ public class WebSocketConnectionTests
         var received = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.MessageReceived += message => received.TrySetResult(message.GetText());
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        Assert.Equal(80_000, (await received.Task.WaitAsync(Timeout)).Length);
+        Assert.Equal(80_000, (await received.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken)).Length);
     }
 
     [Fact]
@@ -73,11 +73,11 @@ public class WebSocketConnectionTests
         connection.MessageReceived += _ => textReceived = true;
         var disconnected = DisconnectedTask(connection);
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        var info = await disconnected.WaitAsync(Timeout);
+        var info = await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(WebSocketCloseStatus.MessageTooBig, info.CloseStatus);
-        Assert.Equal(WebSocketCloseStatus.MessageTooBig, await server.ClientCloseStatus.WaitAsync(Timeout));
+        Assert.Equal(WebSocketCloseStatus.MessageTooBig, await server.ClientCloseStatus.WaitAsync(Timeout, TestContext.Current.CancellationToken));
         Assert.False(textReceived);
         Assert.False(connection.IsOpen);
     }
@@ -97,11 +97,11 @@ public class WebSocketConnectionTests
         var received = new TaskCompletionSource<(WebSocketMessageType Type, byte[] Payload)>(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.MessageReceived += message => received.TrySetResult((message.Type, message.Payload.ToArray()));
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
         var payload = new byte[] { 0, 1, 2, 0xFF };
         Assert.True(connection.SendBinary(payload));
 
-        var (type, echoed) = await received.Task.WaitAsync(Timeout);
+        var (type, echoed) = await received.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(WebSocketMessageType.Binary, type);
         Assert.Equal(payload, echoed);
     }
@@ -121,10 +121,10 @@ public class WebSocketConnectionTests
         connection.MessageReceived += _ => textReceived = true;
         var disconnected = DisconnectedTask(connection);
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        await disconnected.WaitAsync(Timeout);
-        Assert.Equal(WebSocketCloseStatus.InvalidPayloadData, await server.ClientCloseStatus.WaitAsync(Timeout));
+        await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
+        Assert.Equal(WebSocketCloseStatus.InvalidPayloadData, await server.ClientCloseStatus.WaitAsync(Timeout, TestContext.Current.CancellationToken));
         Assert.False(textReceived);
     }
 
@@ -139,9 +139,9 @@ public class WebSocketConnectionTests
         await using var connection = new WebSocketConnection();
         var disconnected = DisconnectedTask(connection);
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        var info = await disconnected.WaitAsync(Timeout);
+        var info = await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(WebSocketCloseStatus.PolicyViolation, info.CloseStatus);
         Assert.Contains("auth timeout", info.Reason);
     }
@@ -158,9 +158,9 @@ public class WebSocketConnectionTests
         await using var connection = new WebSocketConnection();
         var disconnected = DisconnectedTask(connection);
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        var info = await disconnected.WaitAsync(Timeout);
+        var info = await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Null(info.CloseStatus);
     }
 
@@ -173,11 +173,11 @@ public class WebSocketConnectionTests
         var raised = false;
         connection.Disconnected += _ => raised = true;
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
         await connection.CloseAsync();
         await connection.DisposeAsync();
 
-        Assert.Equal(WebSocketCloseStatus.NormalClosure, await server.ClientCloseStatus.WaitAsync(Timeout));
+        Assert.Equal(WebSocketCloseStatus.NormalClosure, await server.ClientCloseStatus.WaitAsync(Timeout, TestContext.Current.CancellationToken));
         Assert.False(raised);
         Assert.False(connection.SendText("late"));
     }
@@ -195,9 +195,9 @@ public class WebSocketConnectionTests
         connection.MessageReceived += _ => throw new InvalidOperationException("handler bug");
         var disconnected = DisconnectedTask(connection);
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        var info = await disconnected.WaitAsync(Timeout);
+        var info = await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(WebSocketCloseStatus.InternalServerError, info.CloseStatus);
         Assert.IsType<InvalidOperationException>(info.Exception);
     }
@@ -215,7 +215,7 @@ public class WebSocketConnectionTests
             ConnectTimeout = TimeSpan.FromMilliseconds(300)
         });
 
-        await Assert.ThrowsAsync<TimeoutException>(() => connection.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/")));
+        await Assert.ThrowsAsync<TimeoutException>(() => connection.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/"), TestContext.Current.CancellationToken));
         Assert.False(connection.IsOpen);
     }
 
@@ -233,9 +233,9 @@ public class WebSocketConnectionTests
         await using var server = await TestWebSocketServer.StartAsync((socket, s) => s.ReceiveUntilClosedAsync(socket));
         await using var connection = new WebSocketConnection();
 
-        await connection.ConnectAsync(server.Uri);
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => connection.ConnectAsync(server.Uri));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken));
     }
 
     [Fact]

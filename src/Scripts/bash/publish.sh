@@ -13,6 +13,8 @@
 #        ./publish.sh --gstreamer         rebuild the linux-x64 GStreamer runtime too
 #        ./publish.sh --notes FILE        what is new in this version, Markdown, shown by the updater
 #        ./publish.sh --dev               a development build: <version>-dev.<UTC yyMMddHHmm>
+#        ./publish.sh --dev --stamp STAMP the dev build stamped STAMP (yyMMddHHmm) instead of now: the
+#                                         builds of one release on Linux and Windows share it
 #
 # A desktop platform folder holds two forms of the client:
 #  - the installed one, made by vpk (Velopack, a local dotnet tool of the repository), which updates
@@ -58,6 +60,7 @@ rebuild_gstreamer=0
 aot=0
 dev=0
 notes=
+stamp=
 while (( $# )); do
     case "$1" in
         --target) target=${2:-}; shift ;;
@@ -66,9 +69,11 @@ while (( $# )); do
         --aot) aot=1 ;;
         --gstreamer) rebuild_gstreamer=1 ;;
         --dev) dev=1 ;;
+        --stamp) stamp=${2:-}; shift ;;
+        --stamp=*) stamp=${1#*=} ;;
         --notes) notes=${2:-}; shift ;;
         --notes=*) notes=${1#*=} ;;
-        -h|--help) sed -n '2,39p' "$script"; exit 0 ;;
+        -h|--help) sed -n '2,41p' "$script"; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
     shift
@@ -82,6 +87,10 @@ esac
 
 command -v dotnet >/dev/null || { echo "error: dotnet is not installed" >&2; exit 1; }
 if [[ -n "$notes" && ! -f "$notes" ]]; then echo "error: no release notes in $notes" >&2; exit 1; fi
+if [[ -n "$stamp" ]]; then
+    (( dev )) || { echo "error: --stamp is for a --dev build" >&2; exit 1; }
+    [[ "$stamp" =~ ^[0-9]{10}$ ]] || { echo "error: --stamp takes yyMMddHHmm, not '$stamp'" >&2; exit 1; }
+fi
 if [[ " ${targets[*]} " != " android " ]]; then
     command -v python3 >/dev/null || { echo "error: python3 is needed to pack the releases" >&2; exit 1; }
     # vpk, of the version in dotnet-tools.json: the same as the Velopack library of the client
@@ -111,7 +120,7 @@ if (( aot )); then
 fi
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$PROJECT" | head -n1)
 # The moment in UTC, as in the build number: a later dev build has the greater version
-(( dev )) && version="$version-dev.$(date -u +%y%m%d%H%M)"
+(( dev )) && version="$version-dev.${stamp:-$(date -u +%y%m%d%H%M)}"
 version_dir="dist/$version"
 
 # Makes sure artifacts/<rid> holds a GStreamer runtime, building the Linux one when needed
