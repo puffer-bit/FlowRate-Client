@@ -105,6 +105,12 @@ public record PeerLeftEvent(int SessionId, int UserId) : HybridSessionPeerEvent(
 public sealed record PeerKickedEvent(int SessionId, int UserId, int? InitiatorUserId, string? Reason)
     : PeerLeftEvent(SessionId, UserId);
 
+/// <summary>
+/// The host or a user who approves members turned away a peer waiting to be let in, which takes it out of the session.
+/// </summary>
+public sealed record PeerRejectedEvent(int SessionId, int UserId, int? InitiatorUserId)
+    : PeerLeftEvent(SessionId, UserId);
+
 public sealed record PeerStateChangedEvent(int SessionId, int UserId, HybridSessionPeerState State)
     : HybridSessionPeerEvent(SessionId, UserId);
 

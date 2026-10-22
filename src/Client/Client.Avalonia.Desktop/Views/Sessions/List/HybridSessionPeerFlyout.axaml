@@ -73,6 +73,15 @@
 
             <Separator/>
 
+            <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
+            <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  IsVisible="{Binding CanApprove}"
+                                  Command="{Binding Approve}"/>
+            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  IsVisible="{Binding CanApprove}"
+                                  Command="{Binding Reject}"/>
             <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
                                   menus:FlyoutMenu.CloseOnClick="True"
                                   IsVisible="{Binding CanKick}"

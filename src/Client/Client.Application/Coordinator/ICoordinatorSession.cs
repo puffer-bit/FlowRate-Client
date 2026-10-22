@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
@@ -230,12 +231,25 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId);
 
+    /// <summary>Lets a user waiting for the host into the hybrid session.</summary>
+    Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
+
+    /// <summary>Turns away a user waiting for the host; they cannot join the session again while it runs.</summary>
+    Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
+
     /// <summary>
     /// Replaces the settings of the hybrid session. A saved change comes back to every client, this one too,
     /// as <see cref="HybridSessionReconfigured"/>.
     /// </summary>
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isHostMustApprove);
+
+    /// <summary>
+    /// Replaces the permission overrides of the session. A saved change comes back as the session reconfigured,
+    /// or removed for a client that may no longer see it.
+    /// </summary>
+    Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides);
     bool ValidateSession(NewSessionModel newSession);
     
     Task<UserModel?> GetUser(int userId);
