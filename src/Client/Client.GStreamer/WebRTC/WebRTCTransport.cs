@@ -107,6 +107,12 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
                 return false;
 
             var pipeline = Pipeline.New($"webrtc_transport_{_core.SessionId}");
+            // Left to choose, the pipeline runs on the clock of the most upstream element, the
+            // microphone. Every xrun of the capture device then jumps the clock the voices are
+            // played by, and the sink resyncs with a click; a replaced microphone takes the clock
+            // away with it. The system clock goes on evenly whatever the devices do.
+            using (var clock = SystemClock.Obtain())
+                pipeline.UseClock(clock);
             var webrtc = ElementFactory.Make("webrtcbin", "webrtc");
 
             _core.Pipeline = pipeline;
