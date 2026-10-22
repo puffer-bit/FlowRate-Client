@@ -25,7 +25,20 @@ namespace Client.ViewModels.Sessions.Chat;
 /// </summary>
 public sealed class ChatComposerVM : ReactiveObject, IDisposable
 {
-    public string InputWatermark { get; }
+    public string InputWatermark => CanWrite
+        ? Strings.Format("chat.input.watermark", ("chat", _chatName))
+        : Strings.Get("chat.input.noPermission");
+
+    /// <summary>The roles of the current user let it write in the chat.</summary>
+    public bool CanWrite
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(InputWatermark));
+        }
+    } = true;
 
     public string? InputtedText
     {
@@ -188,12 +201,26 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
 
     public bool HasAttachments => Attachments.Count > 0;
     public bool IsAttachmentsAllowed { get; }
+
+    /// <summary>The roles of the current user let it attach files in the chat.</summary>
+    public bool CanAttachFiles
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanAttachMore));
+            this.RaisePropertyChanged(nameof(AttachToolTip));
+        }
+    } = true;
     public int MaxAttachments => Limits.ChatAttachmentsMaxCount;
     // An edit changes only the text of a message
-    public bool CanAttachMore => IsAttachmentsAllowed && !IsEditingMessage && Attachments.Count < MaxAttachments;
+    public bool CanAttachMore => IsAttachmentsAllowed && CanAttachFiles && CanWrite && !IsEditingMessage && Attachments.Count < MaxAttachments;
 
     public string AttachToolTip => !IsAttachmentsAllowed
         ? Strings.Get("chat.attach.turnedOff")
+        : !CanAttachFiles || !CanWrite
+        ? Strings.Get("chat.attach.noPermission")
         : Attachments.Count >= MaxAttachments
             ? Strings.Format("chat.attach.limit", ("limit", MaxAttachments))
             : Strings.Get("chat.attach.tooltip");
@@ -214,6 +241,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     public static IReadOnlyList<string> ImageFilePatterns { get; } = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"];
 
     private readonly int _chatId;
+    private readonly string _chatName;
     private readonly ICoordinatorSession _session;
     private readonly IChatMediaUploader _mediaUploader;
     private readonly IChatImageService _images;
@@ -231,7 +259,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         _mediaUploader = mediaUploader;
         _images = images;
         _senders = senders;
-        InputWatermark = Strings.Format("chat.input.watermark", ("chat", chatName));
+        _chatName = chatName;
         IsAttachmentsAllowed = isAttachmentsAllowed;
         MentionPicker = new ChatMentionPickerVM(session, currentUserId);
 
@@ -246,8 +274,8 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         };
 
         var canSend = this.WatchProperties(nameof(InputtedText), nameof(IsMessageSending), nameof(HasAttachments),
-                nameof(IsConnected), nameof(IsEditingMessage))
-            .Select(vm => vm.IsConnected && !vm.IsMessageSending
+                nameof(IsConnected), nameof(IsEditingMessage), nameof(CanWrite))
+            .Select(vm => vm.IsConnected && vm.CanWrite && !vm.IsMessageSending
                 && (vm.InputtedText?.Length ?? 0) <= ChatTextContent.MaxLength
                 // Attachments go without a text too; an edit is about the text alone
                 && (!string.IsNullOrWhiteSpace(vm.InputtedText) || (vm.HasAttachments && !vm.IsEditingMessage)));

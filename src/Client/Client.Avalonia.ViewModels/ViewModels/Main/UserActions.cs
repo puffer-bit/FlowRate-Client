@@ -28,6 +28,9 @@ public sealed class UserActions
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
 
+    /// <summary>Lets a peer waiting for the host into a hybrid session, or turns it away, which takes it out.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> AdmitPeerCommand { get; }
+
     private readonly ReactiveCommand<string, ChangeUsernameResult> _changeUsernameCommand;
     private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUserUsernameCommand;
     private readonly ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> _setAvatarCommand;
@@ -65,6 +68,8 @@ public sealed class UserActions
         ViewProfileCommand = ReactiveCommand.CreateFromTask<int>(ViewProfile, isConnected);
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
+        AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
+            isConnected);
 
         _changeUsernameCommand = ReactiveCommand.CreateFromTask<string, ChangeUsernameResult>(
             name => Session.ChangeUsername(name));
@@ -132,5 +137,27 @@ public sealed class UserActions
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+    }
+
+    private async Task AdmitPeer((int SessionId, int UserId, bool IsApproved) target)
+    {
+        // A peer that is gone, or was decided on by someone else meanwhile, needs no word
+        var code = target.IsApproved
+            ? await Session.ApproveInHybridSession(target.SessionId, target.UserId) switch
+            {
+                ApproveUserSessionResult.NoError or ApproveUserSessionResult.PeerNotExists => (int?)null,
+                var result => (int)result
+            }
+            : await Session.RejectInHybridSession(target.SessionId, target.UserId) switch
+            {
+                RejectUserSessionResult.NoError or RejectUserSessionResult.PeerNotExists
+                    or RejectUserSessionResult.AlreadyApproved => (int?)null,
+                var result => (int)result
+            };
+        if (code is not { } failure)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.approve.failed"),
+            Strings.Format("peer.kick.failed.text", ("code", failure)));
     }
 }

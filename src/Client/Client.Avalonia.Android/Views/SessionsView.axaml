@@ -224,14 +224,27 @@
                                                     <avatars:UserAvatar UserName="{Binding UserData.Username}"
                                                                         AvatarUrl="{Binding UserData.AvatarUrl}"
                                                                         IsSpeaking="{Binding IsSpeaking}"
-                                                                        IsVisible="{Binding IsConnected}"/>
+                                                                        IsWaiting="{Binding IsWaiting}">
+                                                        <avatars:UserAvatar.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                                <Binding Path="IsConnected"/>
+                                                                <Binding Path="IsWaiting"/>
+                                                            </MultiBinding>
+                                                        </avatars:UserAvatar.IsVisible>
+                                                    </avatars:UserAvatar>
 
                                                     <loadingIndicators:ProgressRing Width="16" Height="16"
                                                                                     MinWidth="0" MinHeight="0"
                                                                                     IsIndeterminate="True"
-                                                                                    IsVisible="{Binding !IsConnected}"
                                                                                     BorderThickness="2"
-                                                                                    Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                                                    Foreground="{DynamicResource PrimaryTextBrush}">
+                                                        <loadingIndicators:ProgressRing.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                <Binding Path="!IsConnected"/>
+                                                                <Binding Path="!IsWaiting"/>
+                                                            </MultiBinding>
+                                                        </loadingIndicators:ProgressRing.IsVisible>
+                                                    </loadingIndicators:ProgressRing>
                                                 </Panel>
 
                                                 <TextBlock Grid.Column="1"

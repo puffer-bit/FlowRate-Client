@@ -733,6 +733,11 @@
   "peer.enableOverdrive": "Enable overdrive",
   "peer.disableOverdrive": "Disable overdrive",
   "peer.kick": "Kick",
+  "peer.approve": "Let in",
+  "peer.reject": "Turn away",
+  "peer.approve.failed": "Could not answer the request to join",
+  "hybrid.rejected.title": "Not let in",
+  "hybrid.rejected.text": "{user} did not let you into the session \"{session}\"",
   "peer.kick.failed.title": "Could not kick the user",
   "peer.kick.failed.text": "Error code: {code}",
   "@peer.kick.failed.text": {
@@ -1256,5 +1261,26 @@
       "name": {}
     }
   },
-  "language.name": "English"
+  "language.name": "English",
+  "roles.permission.viewSessions": "View sessions",
+  "roles.permission.viewSessions.description": "See sessions and the messages of chats.",
+  "roles.permission.sendMessages": "Send messages",
+  "roles.permission.sendMessages.description": "Write in chats.",
+  "roles.permission.attachFiles": "Attach files",
+  "roles.permission.attachFiles.description": "Attach files and images to messages.",
+  "roles.permission.joinSessions": "Join sessions",
+  "roles.permission.joinSessions.description": "Join voice sessions.",
+  "roles.permission.speak": "Speak",
+  "roles.permission.speak.description": "Turn on the microphone in voice sessions.",
+  "roles.permission.shareVideo": "Share the screen",
+  "roles.permission.shareVideo.description": "Share the screen in voice sessions.",
+  "sessionPermissions.title": "Permissions",
+  "sessionPermissions.hint": "What roles may do in this session. A setting left as on the server follows the role.",
+  "sessionPermissions.allow": "Allow",
+  "sessionPermissions.deny": "Deny",
+  "sessionPermissions.inherit": "As on the server",
+  "sessionPermissions.roleGone": "A role was deleted meanwhile. Open the dialog again.",
+  "sessionPermissions.notAllowed": "You cannot change this role or grant a permission you do not have.",
+  "chat.input.noPermission": "You cannot write in this chat",
+  "chat.attach.noPermission": "You cannot attach files in this chat"
 }

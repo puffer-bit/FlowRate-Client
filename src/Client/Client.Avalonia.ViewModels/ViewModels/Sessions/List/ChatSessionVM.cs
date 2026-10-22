@@ -69,9 +69,25 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
     // Chats have no host
     public bool IsHost => false;
 
+    /// <summary>The roles of the current user let it see the chat. The server sends no chat it may not see.</summary>
+    public bool CanView
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>The roles of the current user let it change what roles may do in the chat.</summary>
+    public bool CanEditPermissions
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public void ApplyAccess(CoordinatorPermissions permissions)
     {
         CanManage = permissions.Has(Permission.ManageSessions);
+        CanView = permissions.HasIn(Model, Permission.ViewSessions);
+        CanEditPermissions = permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
         this.RaisePropertyChanged(nameof(CanArrange));
     }
 
@@ -144,12 +160,14 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> ToggleMuteCommand { get; set; }
+    public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
     
     
     public ChatSessionVM(SessionModel model, 
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand, 
         ReactiveCommand<int, RxVoid> deleteSessionCommand,
-        ReactiveCommand<int, RxVoid> toggleMuteCommand)
+        ReactiveCommand<int, RxVoid> toggleMuteCommand,
+        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand)
     {
         Model = model;
         
@@ -158,6 +176,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
         ShowSessionCommand = showSessionCommand;
         DeleteSessionCommand = deleteSessionCommand;
         ToggleMuteCommand = toggleMuteCommand;
+        EditPermissionsCommand = editPermissionsCommand;
     }
 
     public void ApplyReadState(ChatReadState state)

@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Client.Api.Mappers;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
@@ -384,12 +385,37 @@ internal partial class CoordinatorGateway
 
         return kickResponse.Result;
     }
+
+    public async Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId)
+    {
+        var request = new ApproveUserRequest(sessionId, userId, SessionType.Hybrid);
+        var response = await SendRequestAsync<ApproveUserResponse>(request);
+
+        return response.Result;
+    }
+
+    public async Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId)
+    {
+        var request = new RejectUserRequest(sessionId, userId, SessionType.Hybrid, null);
+        var response = await SendRequestAsync<RejectUserResponse>(request);
+
+        return response.Result;
+    }
     
     public async Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name,
         int capacity, bool isHostMustApprove)
     {
         var request = new ChangeHybridSessionSettingsRequest(sessionId, name, capacity, isHostMustApprove);
         var response = await SendRequestAsync<ChangeSessionSettingsResponse>(request);
+
+        return response.Result;
+    }
+
+    public async Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides)
+    {
+        var request = new ChangeSessionPermissionsRequest(sessionId, overrides.ToDTO());
+        var response = await SendRequestAsync<ChangeSessionPermissionsResponse>(request);
 
         return response.Result;
     }
