@@ -55,6 +55,8 @@ internal static class CoordinatorEventMapper
             new PeerLeftEvent(kicked.SessionId, kicked.UserId),
         HybridSessionPeerKickedNotification kicked =>
             new PeerKickedEvent(kicked.SessionId, kicked.UserId, kicked.InitiatorUserId, kicked.Reason),
+        HybridSessionPeerRejectedNotification rejected =>
+            new PeerRejectedEvent(rejected.SessionId, rejected.UserId, rejected.InitiatorUserId),
         HybridSessionPeerStateChangedNotification changed =>
             new PeerStateChangedEvent(changed.SessionId, changed.UserId, changed.State),
 

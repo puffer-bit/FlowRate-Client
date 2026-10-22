@@ -36,6 +36,18 @@
                             <Flyout Placement="BottomEdgeAlignedRight">
                                 <StackPanel Spacing="2">
                                     <menus:MenuItemButton Icon="{StaticResource IInCircleIcon}" Content="{l:Text common.details.short}"/>
+                                    <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
+                                    <Separator IsVisible="{Binding CanApprove}"/>
+                                    <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          IsVisible="{Binding CanApprove}"
+                                                          Command="{Binding DataContext.ApproveParticipant, ElementName=Main}"
+                                                          CommandParameter="{Binding}"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          IsVisible="{Binding CanApprove}"
+                                                          Command="{Binding DataContext.RejectParticipant, ElementName=Main}"
+                                                          CommandParameter="{Binding}"/>
                                     <!-- Nobody kicks themselves, and only roles or the host kick others -->
                                     <Separator IsVisible="{Binding CanKick}"/>
                                     <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
@@ -47,11 +59,6 @@
                             </Flyout>
                         </Border.ContextFlyout>
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="3*"/>
-                                <ColumnDefinition Width="{Binding !PeerData.State, Converter={StaticResource BoolToGridLengthConverter}}"/>
-                            </Grid.ColumnDefinitions>
-                            
                             <Grid.Transitions>
                                 <Transitions>
                                     <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
@@ -68,7 +75,8 @@
                                 <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
                                                     UserName="{Binding UserData.Username}"
                                                     AvatarUrl="{Binding UserData.AvatarUrl}"
-                                                    IsSpeaking="{Binding IsSpeaking}"/>
+                                                    IsSpeaking="{Binding IsSpeaking}"
+                                                    IsWaiting="{Binding IsWaiting}"/>
 
                                 <StackPanel Grid.Column="1" Orientation="Vertical">
                                     <text:MarqueeTextBlock Text="{Binding UserData.Username}"
@@ -80,8 +88,21 @@
                                                TextWrapping="NoWrap"
                                                VerticalAlignment="Center"
                                                Foreground="{DynamicResource SecondaryTextBrush}"
+                                               FontSize="10">
+                                        <TextBlock.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="!IsConnected"/>
+                                                <Binding Path="!IsWaiting"/>
+                                            </MultiBinding>
+                                        </TextBlock.IsVisible>
+                                    </TextBlock>
+                                    <TextBlock Text="{l:Text session.peer.waiting}"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource WarningBrush}"
                                                FontSize="10"
-                                               IsVisible="{Binding !IsConnected}"/>
+                                               IsVisible="{Binding IsWaiting}"/>
                                     <TextBlock Text="{l:Text session.peer.connected}"
                                                TextTrimming="CharacterEllipsis"
                                                TextWrapping="NoWrap"
@@ -91,31 +112,6 @@
                                                IsVisible="{Binding IsConnected}"/>
                                 </StackPanel>
                             </Grid>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2" IsVisible="{Binding !PeerData.State}">
-                                <Button Padding="0"
-                                        Command="{Binding DataContext.ApproveParticipant, ElementName=Main}"
-                                        CommandParameter="{Binding}"
-                                        HorizontalContentAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        Background="Transparent"
-                                        IsEnabled="{Binding !PeerData.State}">
-                                    <Image Width="32" Height="32" Margin="-4,0,0,0"
-                                         Source="{StaticResource DoorWithMarkIcon}"
-                                         Opacity="{Binding PeerData.State, Converter={StaticResource BoolToOpacityConverter}}"/>
-                                </Button>
-                                <Button Padding="0"
-                                        Command="{Binding DataContext.RejectParticipant, ElementName=Main}"
-                                        CommandParameter="{Binding}"
-                                        HorizontalContentAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        Background="Transparent"
-                                        IsEnabled="{Binding !PeerData.State}">
-                                    <Image Width="32" Height="32" Margin="-4,0,0,0"
-                                         Source="{StaticResource DoorWithCrossIcon}"
-                                         Opacity="{Binding PeerData.State, Converter={StaticResource BoolToOpacityConverter}}"/>
-                                </Button>
-                            </StackPanel>
                         </Grid>
                     </Border>
                 </DataTemplate>
