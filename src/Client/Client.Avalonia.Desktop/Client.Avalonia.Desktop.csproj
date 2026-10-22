@@ -14,9 +14,9 @@
         <WarningsAsErrors Condition="'$(PublishAot)' == 'true'">$(WarningsAsErrors);IL2104;IL3053</WarningsAsErrors>
         <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifier>
         <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT'">linux-x64</RuntimeIdentifier>
-        <Version>0.6.0</Version>
-        <AssemblyVersion>0.6.0.0</AssemblyVersion>
-        <FileVersion>0.6.0.0</FileVersion>
+        <Version>0.6.1</Version>
+        <AssemblyVersion>0.6.1.0</AssemblyVersion>
+        <FileVersion>0.6.1.0</FileVersion>
         <LangVersion>preview</LangVersion>
         <RootNamespace>Client</RootNamespace>
         <!-- A release carries its own .NET runtime, so the target machine needs none installed. The
