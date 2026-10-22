@@ -2,6 +2,7 @@ using Shared.Models.DataTransferObjects;
 using Shared.Models.DataTransferObjects.ChatSession;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
+using Shared.Permissions;
 
 namespace Client.Api.Mappers;
 
@@ -12,6 +13,13 @@ internal static class SessionMapper
         dto.RootSessionIds.ToList(),
         dto.Categories.Select(category => new SessionCategory(category.Id, category.Name, category.SessionIds.ToList()))
             .ToList());
+
+    public static IReadOnlyList<PermissionOverride> ToModel(this IEnumerable<SessionPermissionOverrideDTO> dtos) =>
+        dtos.Select(dto => new PermissionOverride(dto.RoleId, dto.Allow, dto.Deny)).ToList();
+
+    public static List<SessionPermissionOverrideDTO> ToDTO(this IEnumerable<PermissionOverride> overrides) =>
+        overrides.Select(o => new SessionPermissionOverrideDTO { RoleId = o.RoleId, Allow = o.Allow, Deny = o.Deny })
+            .ToList();
 
     public static SessionModel ToModel(this SessionDTO dto)
     {
@@ -37,7 +45,8 @@ internal static class SessionMapper
             Name = dto.Name,
             Capacity = dto.Capacity,
             SessionType = dto.SessionType,
-            IsEntered = dto.IsEntered
+            IsEntered = dto.IsEntered,
+            PermissionOverrides = dto.PermissionOverrides.ToModel()
         };
     }
 
@@ -55,6 +64,7 @@ internal static class SessionMapper
             Capacity = dto.Capacity,
             SessionType = dto.SessionType,
             IsEntered = dto.IsEntered,
+            PermissionOverrides = dto.PermissionOverrides.ToModel(),
             
             IsAudioRequested = dto.IsAudioRequested,
             IsApprovalRequested = dto.IsHostMustApprove,
@@ -69,6 +79,7 @@ internal static class SessionMapper
             Name = sessionDTO.Name,
             Capacity = sessionDTO.Capacity,
             SessionType = sessionDTO.SessionType,   
+            PermissionOverrides = sessionDTO.PermissionOverrides.ToModel(),
 
             CreatorUserId = sessionDTO.CreatorUserId,
             AdminUserId = sessionDTO.AdminUserId,

@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Validation;
@@ -82,10 +83,24 @@ public partial class CoordinatorSession
             : SendAsync(() => _gateway.KickFromHybridSession(sessionId, userId),
                 LeaveSessionResult.Rejected, LeaveSessionResult.TimedOut);
 
+    // Neither result has a value of its own for a request the server refused unread
+    public Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.ApproveInHybridSession(sessionId, userId),
+            ApproveUserSessionResult.InternalError, ApproveUserSessionResult.TimedOut);
+
+    public Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId),
+            RejectUserSessionResult.InternalError, RejectUserSessionResult.TimedOut);
+
     public Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isHostMustApprove) =>
         SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove),
             ChangeSessionSettingsResult.Rejected, ChangeSessionSettingsResult.TimedOut);
+
+    public Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides) =>
+        SendAsync(() => _gateway.ChangeSessionPermissions(sessionId, overrides),
+            ChangeSessionPermissionsResult.Rejected, ChangeSessionPermissionsResult.TimedOut);
 
     public Task<(HybridSessionJoinResult Result, TransportParameters? Transport)> JoinHybridSession(int sessionId,
         string clientEpoch) =>

@@ -150,6 +150,10 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <Style Selector="TextBox.composer-input:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
 
         <!-- Send: an accent circle while there is something to send, a faint plane otherwise -->
         <Style Selector="Button.composer-send">
@@ -456,7 +460,8 @@
                              PlaceholderText="{Binding Composer.InputWatermark}"
                              Text="{Binding Composer.InputtedText}"
                              MaxLength="{Binding Composer.MaxMessageLength}"
-                             IsReadOnly="{Binding Composer.IsMessageSending}"/>
+                             IsReadOnly="{Binding Composer.IsMessageSending}"
+                             IsEnabled="{Binding Composer.CanWrite}"/>
 
                     <!-- Characters left; appears only near the limit -->
                     <TextBlock Grid.Column="2"

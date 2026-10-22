@@ -332,7 +332,8 @@
                                  Watermark="{Binding InputWatermark}"
                                  Text="{Binding InputtedText}"
                                  MaxLength="{Binding MaxMessageLength}"
-                                 IsReadOnly="{Binding IsMessageSending}"/>
+                                 IsReadOnly="{Binding IsMessageSending}"
+                                 IsEnabled="{Binding CanWrite}"/>
 
                         <!-- Characters left; appears only near the limit -->
                         <TextBlock Grid.Column="2"

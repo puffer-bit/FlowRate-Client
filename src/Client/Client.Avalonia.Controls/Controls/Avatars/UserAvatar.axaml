@@ -103,4 +103,10 @@
     <Style Selector="avatars|UserAvatar:speaking /template/ Border#PART_SpeakingRing">
         <Setter Property="Opacity" Value="1"/>
     </Style>
+
+    <!-- A user waiting for approval sends no sound, so the ring only tells that they wait -->
+    <Style Selector="avatars|UserAvatar:waiting /template/ Border#PART_SpeakingRing">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+    </Style>
 </Styles>

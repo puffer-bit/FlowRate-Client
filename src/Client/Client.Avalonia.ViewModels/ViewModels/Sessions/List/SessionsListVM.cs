@@ -127,9 +127,11 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<SessionModel, RxVoid> _showSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveHybridSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editHybridSessionCommand;
+    private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
     private readonly ReactiveCommand<int, RxVoid> _deleteSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
+    private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<int, RxVoid> _toggleChatMuteCommand;
     
     private ICoordinatorSession? _coordinatorSession;
@@ -151,8 +153,10 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> leaveHybridSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editHybridSessionCommand,
+        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
+        ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand,
         ReactiveCommand<int?, RxVoid> createSessionCommand,
         IPeerPlaybackService playbackService, IVoiceActivityService voiceActivity, IScreenWatchService screenWatch,
         SessionListPreferences preferences,
@@ -166,8 +170,10 @@ public partial class SessionsListVM : ReactiveObject
         _showSessionCommand = showSessionCommand;
         _leaveHybridSessionCommand = leaveHybridSessionCommand;
         _editHybridSessionCommand = editHybridSessionCommand;
+        _editPermissionsCommand = editPermissionsCommand;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
+        _admitPeerCommand = admitPeerCommand;
         _createSessionCommand = createSessionCommand;
         _playbackService = playbackService;
         _preferences = preferences;
@@ -268,6 +274,8 @@ public partial class SessionsListVM : ReactiveObject
                 () => session.HybridSessionReconfigured -= OnHybridSessionReconfigured)
             .Add(() => session.ChatSessionAdded += AddNewChatSession, () => session.ChatSessionAdded -= AddNewChatSession)
             .Add(() => session.ChatSessionDeleted += RemoveChatSession, () => session.ChatSessionDeleted -= RemoveChatSession)
+            .Add(() => session.ChatSessionReconfigured += OnChatSessionReconfigured,
+                () => session.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => session.HybridSessionPeerJoined += AddPeerToSession, () => session.HybridSessionPeerJoined -= AddPeerToSession)
             .Add(() => session.HybridSessionPeerLeft += RemovePeerFromSession,
                 () => session.HybridSessionPeerLeft -= RemovePeerFromSession)
@@ -440,7 +448,8 @@ public partial class SessionsListVM : ReactiveObject
             chatSessionModel, 
             _showSessionCommand, 
             _deleteSessionCommand,
-            _toggleChatMuteCommand)
+            _toggleChatMuteCommand,
+            _editPermissionsCommand)
         {
             IsMuted = isMuted
         };
@@ -507,7 +516,8 @@ public partial class SessionsListVM : ReactiveObject
     {
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
             _screenWatch, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
-            _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand);
+            _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
+            _admitPeerCommand);
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);
@@ -544,6 +554,21 @@ public partial class SessionsListVM : ReactiveObject
 
             session.Model = model;
             // The host may have changed
+            session.ApplyAccess(Access.Permissions);
+        });
+    }
+
+    // Raised on the socket thread
+    private void OnChatSessionReconfigured(ChatSessionModel model)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Sessions.OfType<ChatSessionVM>().FirstOrDefault(s => s.Model.Id == model.Id && !s.IsLeaving) is not
+                { } session)
+                return;
+
+            session.Model = model;
+            // Its overrides may have changed
             session.ApplyAccess(Access.Permissions);
         });
     }
