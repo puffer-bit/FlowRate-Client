@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -40,7 +41,8 @@
                                          Classes.deleted-user="{Binding IsSenderDeleted}"
                                          x:Name="NameTextBlock"
                                          ContextFlyout="{x:Null}"
-                                         Text="{Binding SenderName}"/>
+                                         Text="{Binding SenderName}"
+                                         Foreground="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
                     <TextBlock Classes="msg-time"
                                Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
@@ -66,7 +68,7 @@
                 
                 <!-- An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <SelectableTextBlock Classes="msg-body"
+                    <SelectableTextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
                                          chatVm:ChatMessageText.Body="{Binding Body}"
                                          chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
                                          x:Name="MessageTextBlock"
