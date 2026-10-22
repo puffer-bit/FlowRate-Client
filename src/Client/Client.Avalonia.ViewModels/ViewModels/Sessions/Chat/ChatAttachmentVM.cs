@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Client.Application.Chat;
@@ -105,7 +106,7 @@ public class ChatAttachmentVM : ReactiveObject
     /// <inheritdoc cref="Upload"/>
     public ChatFileUploadState FileUpload { get; private set; } = new();
 
-    public Bitmap? Thumbnail
+    public IImage? Thumbnail
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);

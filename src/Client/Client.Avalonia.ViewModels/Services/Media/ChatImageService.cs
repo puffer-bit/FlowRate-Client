@@ -3,9 +3,9 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Client.Avalonia.Controls.Images;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Core.Chat;
@@ -23,13 +23,22 @@ public interface IChatImageService : IImagePreviewer
     /// <summary>The reduced copy of an image of a message, or null when it cannot be had now.</summary>
     Task<Bitmap?> LoadPreviewAsync(ICoordinatorSession session, int imageId);
 
+    /// <summary>
+    /// An animated image of a message as it moves, reduced as its copy is; the reduced copy holds
+    /// only the first frame. Null when it cannot be had now or is not animated.
+    /// </summary>
+    Task<IImage?> LoadAnimationAsync(ICoordinatorSession session, int imageId);
+
     /// <summary>The file of the image itself, downloaded when it is not kept yet.</summary>
     /// <param name="progress">Reports how many bytes were received.</param>
     Task<(MediaTransferResult Result, string? Path)> FetchOriginalAsync(ICoordinatorSession session, int imageId,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
 
-    /// <summary>A bitmap of an image file, not larger than <paramref name="maxSide"/> on its longer side.</summary>
-    Task<Bitmap?> DecodeAsync(Func<Task<Stream>> openContent, int maxSide);
+    /// <summary>
+    /// A picture of an image file, not larger than <paramref name="maxSide"/> on its longer side.
+    /// An animated one moves.
+    /// </summary>
+    Task<IImage?> DecodeAsync(Func<Task<Stream>> openContent, int maxSide);
 }
 
 public sealed partial class ChatImageService : IChatImageService
@@ -76,26 +85,45 @@ public sealed partial class ChatImageService : IChatImageService
     public async Task<Bitmap?> LoadPreviewAsync(ICoordinatorSession session, int imageId)
     {
         var (_, path) = await FetchAsync(session, imageId, preview: true, null, CancellationToken.None);
-        return path == null ? null : await DecodeAsync(() => Task.FromResult<Stream>(File.OpenRead(path)), PreviewSide);
+        return path == null ? null : await DecodeStillAsync(path);
+    }
+
+    public async Task<IImage?> LoadAnimationAsync(ICoordinatorSession session, int imageId)
+    {
+        var (_, path) = await FetchAsync(session, imageId, preview: false, null, CancellationToken.None);
+        return path == null
+            ? null
+            : await DecodeAsync(() => Task.FromResult<Stream>(File.OpenRead(path)), PreviewSide) as AnimatedImage;
     }
 
     public Task<(MediaTransferResult Result, string? Path)> FetchOriginalAsync(ICoordinatorSession session,
         int imageId, IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
         FetchAsync(session, imageId, preview: false, progress, cancellationToken);
 
-    public Task<Bitmap?> DecodeAsync(Func<Task<Stream>> openContent, int maxSide) =>
+    public Task<IImage?> DecodeAsync(Func<Task<Stream>> openContent, int maxSide) =>
         Task.Run(async () =>
         {
             try
             {
                 await using var content = await OpenSeekableAsync(openContent, CancellationToken.None);
-                using var decoded = SkiaImages.Decode(content, maxSide);
-                if (decoded == null)
-                    return null;
+                return Pictures.Decode(content, maxSide);
+            }
+            catch (Exception exception)
+            {
+                LogDecodeFailed(exception);
+                return null;
+            }
+        });
 
-                var bitmap = decoded.Bitmap;
-                return new Bitmap(PixelFormat.Bgra8888, AlphaFormat.Premul, bitmap.GetPixels(),
-                    new PixelSize(bitmap.Width, bitmap.Height), new Vector(96, 96), bitmap.RowBytes);
+    // The reduced copy is a still WebP: there is nothing to animate in it
+    private Task<Bitmap?> DecodeStillAsync(string path) =>
+        Task.Run(() =>
+        {
+            try
+            {
+                using var content = File.OpenRead(path);
+                using var decoded = SkiaImages.Decode(content, PreviewSide);
+                return decoded == null ? null : Pictures.ToBitmap(decoded.Bitmap);
             }
             catch (Exception exception)
             {

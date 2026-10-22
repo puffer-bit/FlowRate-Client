@@ -1176,6 +1176,57 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Scissors with blue rings (cut). Source: Icons/ChatView/CutIcon.svg -->
+    <DrawingImage x:Key="CutIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8.5 15.5 L18.5 3.5 M15.5 15.5 L5.5 3.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M3.7 17.5 A2.8 2.8 0 1 0 9.3 17.5 A2.8 2.8 0 1 0 3.7 17.5 Z M14.7 17.5 A2.8 2.8 0 1 0 20.3 17.5 A2.8 2.8 0 1 0 14.7 17.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#00B4FF" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Clipboard with blue lines of text (paste). Source: Icons/ChatView/PasteIcon.svg -->
+    <DrawingImage x:Key="PasteIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8.5 4.5 H6.5 A2 2 0 0 0 4.5 6.5 V18.5 A2 2 0 0 0 6.5 20.5 H17.5 A2 2 0 0 0 19.5 18.5 V6.5 A2 2 0 0 0 17.5 4.5 H15.5 M9.5 3 H14.5 A1 1 0 0 1 15.5 4 V5.5 A1 1 0 0 1 14.5 6.5 H9.5 A1 1 0 0 1 8.5 5.5 V4 A1 1 0 0 1 9.5 3 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8.5 11.5 H15.5 M8.5 15.5 H13">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#00B4FF" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Selection corners around blue lines of text (select all). Source: Icons/ChatView/SelectAllIcon.svg -->
+    <DrawingImage x:Key="SelectAllIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M4.5 8 V6.5 A2 2 0 0 1 6.5 4.5 H8 M16 4.5 H17.5 A2 2 0 0 1 19.5 6.5 V8 M19.5 16 V17.5 A2 2 0 0 1 17.5 19.5 H16 M8 19.5 H6.5 A2 2 0 0 1 4.5 17.5 V16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8.5 10 H15.5 M8.5 14 H15.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#00B4FF" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Trash can with a red lid (delete). Source: Icons/ChatView/TrashIcon.svg -->
     <DrawingImage x:Key="TrashIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
