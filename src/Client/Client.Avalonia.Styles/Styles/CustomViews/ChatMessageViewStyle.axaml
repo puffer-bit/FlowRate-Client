@@ -226,6 +226,11 @@
             </ControlTemplate>
         </Setter>
     </Style>
+    <!-- The global Button:pointerover style outlines the presenter of every button; on a tile the outline
+         would draw inside it and make it taller under the pointer, moving the messages below -->
+    <Style Selector="Button.msg-image /template/ ContentPresenter, Button.msg-file /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
     <Style Selector="Button.msg-image Image.msg-image-picture">
         <Setter Property="Stretch" Value="UniformToFill"/>
     </Style>

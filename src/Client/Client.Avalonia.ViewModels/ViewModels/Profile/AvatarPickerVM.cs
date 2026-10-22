@@ -3,10 +3,11 @@ using Client.Avalonia.Localization;
 using System;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Avalonia.Media.Imaging;
+using Avalonia.Media;
 using Client.ViewModels.Sessions.Chat;
 using ReactiveUI;
 using Shared.Enums.User;
+using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Profile;
@@ -20,7 +21,7 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
 
     private readonly IAvatarService _avatars;
 
-    public Bitmap? Avatar
+    public IImage? Avatar
     {
         get;
         private set
@@ -29,7 +30,7 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
             this.RaiseAndSetIfChanged(ref field, value);
 
             if (!ReferenceEquals(previous, value))
-                previous?.Dispose();
+                (previous as IDisposable)?.Dispose();
         }
     }
 
@@ -98,15 +99,17 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
             return;
         }
 
-        var prepared = await _avatars.PrepareAsync(file.Open);
+        var (prepared, rejection) = await _avatars.PrepareAsync(file.Open);
         if (prepared == null)
         {
-            AvatarError = Strings.Get("profile.avatar.notAnImage");
+            AvatarError = rejection == AvatarRejection.AnimationTooLarge
+                ? Strings.Format("profile.avatar.animationTooLarge", ("size", Limits.AvatarMaxSize / (1024 * 1024)))
+                : Strings.Get("profile.avatar.notAnImage");
             return;
         }
 
         Picked = prepared;
-        Avatar = prepared.Bitmap;
+        Avatar = prepared.Picture;
     }
 
     public void Dispose()

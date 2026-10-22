@@ -63,11 +63,12 @@
     <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader, Border.sessionHeader.shown">
         <Setter Property="Background" Value="{DynamicResource ListBoxItemSelectedBrush}"/>
     </Style>
-    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader TextBlock, Border.sessionHeader.shown TextBlock">
+    <!-- Through the Grid of the header: the context menu of the header is its logical child too, and keeps its own colors -->
+    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader > Grid TextBlock, Border.sessionHeader.shown > Grid TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
     </Style>
     <!-- The text changes color together with the header fill -->
-    <Style Selector="Border.sessionHeader TextBlock">
+    <Style Selector="Border.sessionHeader > Grid TextBlock">
         <Setter Property="Transitions">
             <Transitions>
                 <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Brief}"/>

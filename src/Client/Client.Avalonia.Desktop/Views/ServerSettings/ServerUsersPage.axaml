@@ -32,7 +32,7 @@
             <Setter Property="Width" Value="8"/>
             <Setter Property="Height" Value="8"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource PrimaryTextBrush}"/>
         </Style>
         <Style Selector="Border.chip">
             <Setter Property="Padding" Value="6,1"/>

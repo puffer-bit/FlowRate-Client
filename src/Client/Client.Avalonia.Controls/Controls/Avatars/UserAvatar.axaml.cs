@@ -4,6 +4,7 @@ using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Client.Avalonia.Controls.Icons;
+using Client.Avalonia.Controls.Images;
 
 namespace Client.Avalonia.Controls.Avatars;
 
@@ -27,6 +28,9 @@ public class UserAvatar : TemplatedControl
 
     public static readonly StyledProperty<string?> UserNameProperty =
         AvaloniaProperty.Register<UserAvatar, string?>(nameof(UserName));
+
+    public static readonly StyledProperty<bool> IsAnimatedProperty =
+        AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsAnimated));
 
     public static readonly StyledProperty<IImage?> SourceProperty =
         AvaloniaProperty.Register<UserAvatar, IImage?>(nameof(Source));
@@ -126,6 +130,16 @@ public class UserAvatar : TemplatedControl
     }
 
     /// <summary>
+    /// Whether an animated picture moves; otherwise it holds still on its first frame, so a screen full
+    /// of avatars does not flicker.
+    /// </summary>
+    public bool IsAnimated
+    {
+        get => GetValue(IsAnimatedProperty);
+        set => SetValue(IsAnimatedProperty, value);
+    }
+
+    /// <summary>
     /// The status of the user, shown as the icon "Status{name}Icon" of the assets, so a value of any enum
     /// with the names of the icons will do. No badge when null.
     /// </summary>
@@ -175,8 +189,8 @@ public class UserAvatar : TemplatedControl
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == SourceProperty)
-            Picture = Source ?? _loaded;
+        if (change.Property == SourceProperty || change.Property == IsAnimatedProperty)
+            Picture = Shown(Source ?? _loaded);
         else if (change.Property == AvatarUrlProperty || change.Property == CoordinatorProperty)
             _ = LoadAsync();
 
@@ -211,6 +225,9 @@ public class UserAvatar : TemplatedControl
         }
 
         _loaded = loaded;
-        Picture = Source ?? loaded;
+        Picture = Shown(Source ?? loaded);
     }
+
+    private IImage? Shown(IImage? picture) =>
+        !IsAnimated && picture is AnimatedImage animated ? animated.FirstFrame : picture;
 }

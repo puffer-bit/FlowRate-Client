@@ -222,6 +222,7 @@
                                                   anim:Presence.IsLeaving="{Binding IsLeaving}">
                                                 <Panel Grid.Column="0" Width="28" Height="28">
                                                     <avatars:UserAvatar UserName="{Binding UserData.Username}"
+                                                                        IsAnimated="True"
                                                                         AvatarUrl="{Binding UserData.AvatarUrl}"
                                                                         IsSpeaking="{Binding IsSpeaking}"
                                                                         IsVisible="{Binding IsConnected}"/>
