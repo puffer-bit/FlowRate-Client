@@ -103,6 +103,12 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
+    <!-- A message of a few emoji alone is a picture: large, and all of it in the emoji font, so that
+         ☺ or ✔ written without the variation selector are in color too -->
+    <Style Selector=":is(TextBlock).msg-body.jumbo">
+        <Setter Property="FontSize" Value="40"/>
+        <Setter Property="FontFamily" Value="avares://Client.Avalonia.Assets/Fonts#Noto Color Emoji"/>
+    </Style>
     <!-- A web address in the text; underlined while the pointer is over it -->
     <Style Selector=":is(TextBlock).msg-body Run.link">
         <Setter Property="Foreground" Value="{DynamicResource LinkTextBrush}"/>

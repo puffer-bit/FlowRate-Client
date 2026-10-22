@@ -3,6 +3,7 @@ using Android.App;
 using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
+using Client.Avalonia.Icons;
 using ReactiveUI.Avalonia;
 
 namespace Client.Droid;
@@ -16,6 +17,6 @@ public class AndroidApp : AvaloniaAndroidApplication<App>
 
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
-        return base.CustomizeAppBuilder(builder).WithInterFont().LogToTrace().UseReactiveUI(_ => { });
+        return base.CustomizeAppBuilder(builder).WithInterFont().WithEmojiFont().LogToTrace().UseReactiveUI(_ => { });
     }
 }

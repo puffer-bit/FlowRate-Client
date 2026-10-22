@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using System;
+using Client.Avalonia.Icons;
 using Client.GStreamer.Loader;
 using ReactiveUI.Avalonia;
 using Velopack;
@@ -28,6 +29,7 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
+            .WithEmojiFont()
             .LogToTrace()
             // The main window draws its own title bar; on X11 that needs the frame drawn by Avalonia too.
             // Avalonia 12.1 marks the option experimental
