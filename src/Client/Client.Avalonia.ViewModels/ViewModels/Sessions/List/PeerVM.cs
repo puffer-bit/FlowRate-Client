@@ -24,6 +24,12 @@ public class PeerVM : ReactiveObject
         get => PeerData.State == HybridSessionPeerState.Connected;
     }
 
+    /// <summary>The user waits for the host to let them in.</summary>
+    public bool IsWaiting
+    {
+        get => PeerData.State == HybridSessionPeerState.WaitingForApprove;
+    }
+
     public bool IsCurrentUser { get; }
 
     /// <summary>
@@ -137,16 +143,18 @@ public class PeerVM : ReactiveObject
     private readonly IPeerPlaybackService _playbackService;
     private readonly Action<PeerVM> _toggleScreenWatch;
     private readonly Action<PeerVM> _kick;
+    private readonly Action<PeerVM, bool> _admit;
 
     // Set while the settings come from the service, so they are not sent back to it
     private bool _isApplyingPlayback;
 
     public PeerVM(PeerModel peerData, bool isCurrentUser, IPeerPlaybackService playbackService,
         ReactiveCommand<int, RxVoid> viewProfileCommand, Action<PeerVM> toggleScreenWatch, Action<PeerVM> kick,
-        UserModel? userData = null)
+        Action<PeerVM, bool> admit, UserModel? userData = null)
     {
         _toggleScreenWatch = toggleScreenWatch;
         _kick = kick;
+        _admit = admit;
         ViewProfileCommand = viewProfileCommand;
         PeerData = peerData;
         IsCurrentUser = isCurrentUser;
@@ -216,6 +224,29 @@ public class PeerVM : ReactiveObject
             _kick(this);
     }
 
+    /// <summary>
+    /// The user waits to be let in, and the roles of the current user, or hosting the session, let it decide.
+    /// </summary>
+    public bool CanApprove
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Lets the waiting user in. Offered only when <see cref="CanApprove"/>.</summary>
+    public void Approve()
+    {
+        if (CanApprove)
+            _admit(this, true);
+    }
+
+    /// <summary>Turns the waiting user away, which takes them out. Offered only when <see cref="CanApprove"/>.</summary>
+    public void Reject()
+    {
+        if (CanApprove)
+            _admit(this, false);
+    }
+
     public void ToggleOverdrive()
     {
         IsOverdriveEnabled = !IsOverdriveEnabled;
@@ -261,5 +292,6 @@ public class PeerVM : ReactiveObject
 
         this.RaisePropertyChanged(nameof(PeerData));
         this.RaisePropertyChanged(nameof(IsConnected));
+        this.RaisePropertyChanged(nameof(IsWaiting));
     }
 }

@@ -20,6 +20,12 @@ public class HybridSessionParticipantVM : ReactiveObject, IParticipantVM
     {
         get => PeerData.State == HybridSessionPeerState.Connected;
     }
+
+    /// <summary>The user waits for the host to let them in.</summary>
+    public bool IsWaiting
+    {
+        get => PeerData.State == HybridSessionPeerState.WaitingForApprove;
+    }
     
     /// <summary>
     /// The user speaks right now.
@@ -48,6 +54,13 @@ public class HybridSessionParticipantVM : ReactiveObject, IParticipantVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The user waits to be let in, and the roles of the current user, or hosting the session, let it decide.</summary>
+    public bool CanApprove
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public HybridSessionParticipantVM(PeerModel peerData, bool isCurrentUser, UserModel? userData = null)
     {
         PeerData = peerData;
@@ -68,5 +81,6 @@ public class HybridSessionParticipantVM : ReactiveObject, IParticipantVM
         PeerData.State = newState;
         this.RaisePropertyChanged(nameof(PeerData));
         this.RaisePropertyChanged(nameof(IsConnected));
+        this.RaisePropertyChanged(nameof(IsWaiting));
     }
 }

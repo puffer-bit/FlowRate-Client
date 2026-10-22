@@ -18,7 +18,7 @@
         <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
     </Control.Resources>
     
-    <Grid RowDefinitions="Auto, *" RowSpacing="2"
+    <Grid RowDefinitions="Auto, *" RowSpacing="2" IsVisible="{Binding CanView}"
           anim:Presence.Leave="Fold"
           anim:Presence.IsLeaving="{Binding IsLeaving}">
         <Border Classes="sessionHeader"
@@ -31,6 +31,11 @@
                         <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text sessions.openChat}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionPermissions.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditPermissions, ElementName=Root}"
+                                              Command="{Binding DataContext.EditPermissionsCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
                         <Separator/>
                         <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"

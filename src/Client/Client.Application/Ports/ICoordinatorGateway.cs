@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
@@ -167,8 +168,12 @@ public interface ICoordinatorGateway : IDisposable
         int messageId);
     Task<LeaveSessionResult> LeaveSession(int sessionId);
     Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId);
+    Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
+    Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isHostMustApprove);
+    Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides);
 
     /// <summary>
     /// Puts a file on the server over HTTP, in parts, and continues after a break in the connection.

@@ -1,5 +1,6 @@
 ﻿using Client.Application.Push;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
+using Shared.Permissions;
 using Client.Core.Push;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
@@ -30,6 +32,7 @@ using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Create;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
+using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
 
 namespace Client.ViewModels.Main;
@@ -191,6 +194,7 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
     public Interaction<UserProfileWindowVM, RxVoid> ShowUserProfileWindow { get; } = new();
     public Interaction<HybridSessionSettingsWindowVM, RxVoid> ShowHybridSessionSettingsWindow { get; } = new();
+    public Interaction<SessionPermissionsWindowVM, RxVoid> ShowSessionPermissionsWindow { get; } = new();
 
     // Reactive Commands
     public ReactiveCommand<RxVoid, RxVoid> OpenSettingsCommand { get; }
@@ -203,6 +207,8 @@ public partial class MainWindowVM : ReactiveObject
 
     private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>
         _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>
+        _changeSessionPermissionsCommand;
 
     private readonly UserActions _users;
     private readonly ChatPushReporter _pushReporter;
@@ -270,6 +276,9 @@ public partial class MainWindowVM : ReactiveObject
             .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
                     change.Capacity, change.IsHostMustApprove));
+        _changeSessionPermissionsCommand = ReactiveCommand
+            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>(
+                change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
         // Leaves only the session asked for: the menu may have been opened before we moved to another one
         var leaveHybridSessionCommand = ReactiveCommand.Create<int>(sessionId =>
@@ -282,7 +291,8 @@ public partial class MainWindowVM : ReactiveObject
             ReactiveCommand.Create<SessionModel>(OpenSession),
             leaveHybridSessionCommand,
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
-            _users.ViewProfileCommand, _users.KickPeerCommand,
+            ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
+            _users.ViewProfileCommand, _users.KickPeerCommand, _users.AdmitPeerCommand,
             ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
             playback, voiceActivity, screenWatch, listPreferences,
             ChatReads,
@@ -382,7 +392,8 @@ public partial class MainWindowVM : ReactiveObject
     }
 
     private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
-        new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand);
+        new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,
+            _users.AdmitPeerCommand);
 
     private void OnSessionClosed(IMainWindowContentVM session)
     {
@@ -420,6 +431,16 @@ public partial class MainWindowVM : ReactiveObject
 
         using var vm = new HybridSessionSettingsWindowVM(hybridSession, _changeHybridSessionSettingsCommand);
         await ShowHybridSessionSettingsWindow.Handle(vm);
+    }
+
+    private async Task EditSessionPermissions(SessionModel session)
+    {
+        if (_coordinatorSession == null)
+            return;
+
+        using var vm = new SessionPermissionsWindowVM(session, _coordinatorSession.Permissions,
+            _changeSessionPermissionsCommand);
+        await ShowSessionPermissionsWindow.Handle(vm);
     }
 
     private void OpenSession(SessionModel sessionModel)
