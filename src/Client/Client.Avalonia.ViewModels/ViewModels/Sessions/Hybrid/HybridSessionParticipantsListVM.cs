@@ -17,8 +17,8 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     public ObservableCollection<HybridSessionParticipantVM> Participants { get; set; } = new();
     
     // UI Commands
-    public ReactiveCommand<Unit, Unit> ApproveParticipant { get; init; }
-    public ReactiveCommand<Unit, Unit> RejectParticipant { get; init; }
+    public ReactiveCommand<HybridSessionParticipantVM, RxVoid> ApproveParticipant { get; }
+    public ReactiveCommand<HybridSessionParticipantVM, RxVoid> RejectParticipant { get; }
     public ReactiveCommand<HybridSessionParticipantVM, RxVoid> KickParticipant { get; }
 
     private readonly int _currentUserId;
@@ -28,13 +28,26 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     private bool _isHost;
 
     /// <param name="kickPeer">Removes the user with the given id from the session.</param>
-    public HybridSessionParticipantsListVM(int currentUserId, Action<int> kickPeer)
+    /// <param name="approvePeer">Lets the user with the given id, who waits for it, into the session.</param>
+    /// <param name="rejectPeer">Turns away the user with the given id, who waits to be let in.</param>
+    public HybridSessionParticipantsListVM(int currentUserId, Action<int> kickPeer, Action<int> approvePeer,
+        Action<int> rejectPeer)
     {
         _currentUserId = currentUserId;
         KickParticipant = ReactiveCommand.Create<HybridSessionParticipantVM>(participant =>
         {
             if (participant.CanKick)
                 kickPeer(participant.PeerData.UserId);
+        });
+        ApproveParticipant = ReactiveCommand.Create<HybridSessionParticipantVM>(participant =>
+        {
+            if (participant.CanApprove)
+                approvePeer(participant.PeerData.UserId);
+        });
+        RejectParticipant = ReactiveCommand.Create<HybridSessionParticipantVM>(participant =>
+        {
+            if (participant.CanApprove)
+                rejectPeer(participant.PeerData.UserId);
         });
     }
 
@@ -62,10 +75,14 @@ public class HybridSessionParticipantsListVM : ReactiveObject
             ApplyAccess(participant);
     }
 
-    private void ApplyAccess(HybridSessionParticipantVM participant) =>
+    private void ApplyAccess(HybridSessionParticipantVM participant)
+    {
         participant.CanKick = !participant.IsCurrentUser
                               && _permissions.CanInSessionOn(Permission.KickMembers, _isHost,
                                   participant.UserData?.RoleIds ?? []);
+        participant.CanApprove = !participant.IsCurrentUser && participant.IsWaiting
+                                 && _permissions.CanInSession(Permission.ApproveMembers, _isHost);
+    }
     
     public void RemovePeerFromSession(int userId)
     {
@@ -111,6 +128,11 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     {
         var peer = Participants.FirstOrDefault(p => p.PeerData.UserId == userId);
 
-        peer?.UpdatePeerStatus(newState);
+        if (peer == null)
+            return;
+
+        peer.UpdatePeerStatus(newState);
+        // Being let in ends the decision
+        ApplyAccess(peer);
     }
 }

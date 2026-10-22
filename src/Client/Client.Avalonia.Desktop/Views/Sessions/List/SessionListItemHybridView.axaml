@@ -20,7 +20,7 @@
         <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
     </Control.Resources>
     
-    <Grid RowDefinitions="Auto, Auto" RowSpacing="2"
+    <Grid RowDefinitions="Auto, Auto" RowSpacing="2" IsVisible="{Binding CanView}"
           anim:Presence.Leave="Fold"
           anim:Presence.IsLeaving="{Binding IsLeaving}">
         <Border Classes="sessionHeader"
@@ -36,6 +36,7 @@
                         <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{l:Text sessions.join}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding !DataContext.IsEntered, ElementName=Root}"
+                                              IsEnabled="{Binding DataContext.CanJoin, ElementName=Root}"
                                               Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
                         <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leave}"
@@ -48,6 +49,11 @@
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.CanManage, ElementName=Root}"
                                               Command="{Binding DataContext.EditSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionPermissions.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditPermissions, ElementName=Root}"
+                                              Command="{Binding DataContext.EditPermissionsCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
                         <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
                                               IsVisible="{Binding DataContext.CanArrange, ElementName=Root}">

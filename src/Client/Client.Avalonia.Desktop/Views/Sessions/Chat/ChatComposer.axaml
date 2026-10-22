@@ -333,7 +333,8 @@
                                  Watermark="{Binding InputWatermark}"
                                  Text="{Binding InputtedText}"
                                  MaxLength="{Binding MaxMessageLength}"
-                                 IsReadOnly="{Binding IsMessageSending}">
+                                 IsReadOnly="{Binding IsMessageSending}"
+                                 IsEnabled="{Binding CanWrite}">
                             <!-- The app's own menu instead of the theme's MenuFlyout. The items are not focusable,
                                  so a click keeps the focus and the selection in the input -->
                             <TextBox.ContextFlyout>
