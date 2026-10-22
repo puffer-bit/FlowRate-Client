@@ -1,0 +1,55 @@
+# Builds a dev release of the desktop client for Linux and Windows and publishes it as the GitHub
+# pre-release v<version>-dev.<UTC yyMMddHHmm>, run by hand from the Actions tab. Clients set to the dev
+# builds update to it.
+#
+# The build is build.yml; both platforms go to one release under one tag, on the commit that was built.
+# The description is the one GitHub generates (the changes since the previous release); nothing goes
+# into the packages.
+name: Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      aot:
+        description: Compile ahead of time (NativeAOT) instead of the JIT build
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+    with:
+      aot: ${{ inputs.aot }}
+      dev: true
+
+  release:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      # The files of both platforms side by side, as the release holds them
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: FlowRateClient-${{ needs.build.outputs.version }}-*
+          path: assets
+          merge-multiple: true
+
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          ls -l assets
+          gh release create "v$VERSION" assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --prerelease --title "FlowRate $VERSION" --generate-notes
+          echo "### [FlowRate $VERSION]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION)" >> "$GITHUB_STEP_SUMMARY"

@@ -64,7 +64,7 @@ public class DatabaseInitializerTests
     public async Task ReportsAFileThatIsNotADatabase()
     {
         await using var database = TestDatabase.CreateEmpty();
-        await File.WriteAllTextAsync(database.FilePath, new string('x', 4096));
+        await File.WriteAllTextAsync(database.FilePath, new string('x', 4096), TestContext.Current.CancellationToken);
 
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 

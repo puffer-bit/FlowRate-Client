@@ -30,7 +30,7 @@ public class DatabaseProtectionTests
         Assert.Equal("wal", await database.ScalarAsync("PRAGMA journal_mode"));
 
         SqliteConnection.ClearAllPools();
-        Assert.DoesNotContain("secret-marker", await File.ReadAllTextAsync(database.FilePath));
+        Assert.DoesNotContain("secret-marker", await File.ReadAllTextAsync(database.FilePath, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class DatabaseProtectionTests
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
         var backup = database.FilePath + ".v3.bak";
-        await File.WriteAllTextAsync(backup, "plain copy");
+        await File.WriteAllTextAsync(backup, "plain copy", TestContext.Current.CancellationToken);
 
         await new DatabaseProtection(database.Database).ChangePasswordAsync("password");
 
@@ -113,12 +113,12 @@ public class DatabaseProtectionTests
         await using (var write = second.CreateCommand())
         {
             write.CommandText = "INSERT INTO DismissedPrompts (PromptKey) VALUES ('locked')";
-            await write.ExecuteNonQueryAsync();
+            await write.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         await using var read = first.CreateCommand();
         read.CommandText = "SELECT COUNT(*) FROM DismissedPrompts WHERE PromptKey = 'locked'";
-        Assert.Equal(1L, await read.ExecuteScalarAsync());
+        Assert.Equal(1L, await read.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         Assert.True(database.Database.IsFileLocked);
     }
 }

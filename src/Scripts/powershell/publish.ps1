@@ -50,6 +50,10 @@ A Markdown file with what is new in this version, shown by the updater of the cl
 A development build: the version gets "-dev.<UTC yyMMddHHmm>"; publish it as a GitHub pre-release. Its version is below the release of the same number, so
 raise <Version> in the project after a release, or the dev builds of the next one are not newer.
 
+.PARAMETER Stamp
+The stamp of a -Dev build, yyMMddHHmm, instead of the current moment: the builds of one release on
+Windows and Linux share it.
+
 .EXAMPLE
 powershell -ExecutionPolicy Bypass -File publish.ps1
 powershell -ExecutionPolicy Bypass -File publish.ps1 -Target all
@@ -65,7 +69,9 @@ param(
     [switch]$Aot,
     [switch]$GStreamer,
     [string]$Notes,
-    [switch]$Dev
+    [switch]$Dev,
+    [ValidatePattern('^\d{10}$')]
+    [string]$Stamp
 )
 
 $ErrorActionPreference = "Stop"
@@ -86,12 +92,16 @@ $packId = "FlowRateClient"
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw "The .NET SDK (dotnet) is not installed" }
 if ($Notes -and -not (Test-Path $Notes -PathType Leaf)) { throw "No release notes in $Notes" }
+if ($Stamp -and -not $Dev) { throw "-Stamp is for a -Dev build" }
 if (-not (Get-Command tar.exe -ErrorAction SilentlyContinue)) { throw "tar.exe (part of Windows 10 1803+) is not available" }
 
 $version = ([xml](Get-Content $project)).Project.PropertyGroup |
     ForEach-Object { $_.Version } | Where-Object { $_ } | Select-Object -First 1
 # The moment in UTC, as in the build number: a later dev build has the greater version
-if ($Dev) { $version = "$version-dev.$([DateTime]::UtcNow.ToString('yyMMddHHmm'))" }
+if ($Dev) {
+    if (-not $Stamp) { $Stamp = [DateTime]::UtcNow.ToString('yyMMddHHmm') }
+    $version = "$version-dev.$Stamp"
+}
 $versionDir = Join-Path "dist" $version
 $targets = if ($Target -eq "all") { @("win-x64", "linux-x64", "android") } else { @($Target) }
 
