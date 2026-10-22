@@ -3,7 +3,8 @@
 # Each platform is built on its own system with the publish script of that system: NativeAOT does not
 # compile for another one, and the Windows GStreamer runtime comes from the official installer, which
 # runs on Windows only. The results (dist/<version>/<platform>: installer, update packages, standalone
-# archive) are uploaded as the artifacts of the run; nothing is published to a release.
+# archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
+# calls this workflow and publishes them.
 #
 # The GStreamer runtimes are cached: the Linux one takes 30-60 minutes in Docker. A change to the build
 # scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
@@ -20,6 +21,18 @@ on:
         description: A development build, <version>-dev.<UTC yyMMddHHmm>
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      aot:
+        type: boolean
+        default: true
+      dev:
+        type: boolean
+        default: true
+    outputs:
+      version:
+        description: The version of the build, also in the names of the artifacts
+        value: ${{ jobs.version.outputs.version }}
 
 permissions:
   contents: read
