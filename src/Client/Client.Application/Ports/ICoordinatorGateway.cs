@@ -187,6 +187,14 @@ public interface ICoordinatorGateway : IDisposable
         IProgress<long>? progress, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Writes a file of a message into <paramref name="destination"/>.
+    /// Failures come back as a result, never as an exception.
+    /// </summary>
+    /// <param name="progress">Reports how many bytes were received.</param>
+    Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination, IProgress<long>? progress,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Writes the avatar with the id from <see cref="Client.Core.Users.AvatarAddress.IdOf"/> into
     /// <paramref name="destination"/>. Failures come back as a result, never as an exception.
     /// </summary>

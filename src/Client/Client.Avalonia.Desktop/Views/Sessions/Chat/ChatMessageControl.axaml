@@ -98,6 +98,37 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- Files that are not shown; a click saves one where the user picks -->
+                <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatFileVM">
+                            <Button Classes="msg-file" Classes.error="{Binding HasError}"
+                                    Command="{Binding DownloadCommand}"
+                                    ToolTip.Tip="{Binding ActionToolTip}">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <Border Grid.Column="0" Classes="msg-file-icon">
+                                        <Panel>
+                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding !IsDownloading}"/>
+                                            <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Classes="msg-file-name" Text="{Binding FileName}"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !HasError}">
+                                            <TextBlock Classes="msg-file-size" Text="{Binding SizeText}"/>
+                                            <TextBlock Classes="msg-file-size" Text="{l:Text chat.file.saved}"
+                                                       IsVisible="{Binding IsSaved}"/>
+                                        </StackPanel>
+                                        <TextBlock Classes="msg-file-error" Text="{Binding Error}"
+                                                   IsVisible="{Binding HasError}"/>
+                                        <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
             
             <!-- A continuation of a sequence shows its time at the start, on hover only. The hidden text

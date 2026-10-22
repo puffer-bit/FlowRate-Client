@@ -9,7 +9,7 @@ namespace Client.Application.Chat;
 /// A picked file as the platform hands it over.
 /// </summary>
 /// <param name="Open">Opens the bytes from their start; may be called several times.</param>
-public record ChatImageSource(string FileName, long Size, Func<Task<Stream>> Open);
+public record ChatMediaSource(string FileName, long Size, Func<Task<Stream>> Open);
 
 /// <summary>
 /// What is known about an image being uploaded. Kept by the caller between attempts, so a retry
@@ -26,12 +26,26 @@ public class ChatImageUploadState
     public NewChatImage? Image { get; internal set; }
 }
 
-public enum ChatImageUploadResult
+/// <summary>
+/// What is known about a file being uploaded, kept by the caller between attempts like
+/// <see cref="ChatImageUploadState"/>.
+/// </summary>
+public class ChatFileUploadState
+{
+    internal string? UploadId { get; set; }
+
+    /// <summary>Set once the upload is complete.</summary>
+    public NewChatFile? File { get; internal set; }
+}
+
+public enum ChatMediaUploadResult
 {
     NoError,
     Canceled,
     /// <summary>The file is not an image the chat can carry.</summary>
     NotAnImage,
+    /// <summary>The file has no bytes: the server takes none such.</summary>
+    Empty,
     ConnectionFailed,
     NotAllowed,
     TooLarge,
@@ -46,8 +60,15 @@ public interface IChatMediaUploader
     /// Puts an image and its reduced copy on the server, ready to be named by a message.
     /// </summary>
     /// <param name="progress">The share of the image the server holds, from 0 to 1.</param>
-    Task<ChatImageUploadResult> UploadImageAsync(ICoordinatorSession session, int chatId, ChatImageSource source,
+    Task<ChatMediaUploadResult> UploadImageAsync(ICoordinatorSession session, int chatId, ChatMediaSource source,
         ChatImageUploadState state, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Puts a file of any type on the server as it is, ready to be named by a message.
+    /// </summary>
+    /// <param name="progress">The share of the file the server holds, from 0 to 1.</param>
+    Task<ChatMediaUploadResult> UploadFileAsync(ICoordinatorSession session, int chatId, ChatMediaSource source,
+        ChatFileUploadState state, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 }
 
 public class ChatMediaUploader : IChatMediaUploader
@@ -59,12 +80,12 @@ public class ChatMediaUploader : IChatMediaUploader
         _previewer = previewer;
     }
 
-    public async Task<ChatImageUploadResult> UploadImageAsync(ICoordinatorSession session, int chatId,
-        ChatImageSource source, ChatImageUploadState state, IProgress<double>? progress = null,
+    public async Task<ChatMediaUploadResult> UploadImageAsync(ICoordinatorSession session, int chatId,
+        ChatMediaSource source, ChatImageUploadState state, IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
     {
         if (state.Image != null)
-            return ChatImageUploadResult.NoError;
+            return ChatMediaUploadResult.NoError;
 
         try
         {
@@ -72,11 +93,11 @@ public class ChatMediaUploader : IChatMediaUploader
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return ChatImageUploadResult.Canceled;
+            return ChatMediaUploadResult.Canceled;
         }
 
         if (state.Preview is not { } preview || !Limits.ChatImageMimeTypes.Contains(preview.MimeType))
-            return ChatImageUploadResult.NotAnImage;
+            return ChatMediaUploadResult.NotAnImage;
 
         // The reduced copy goes first: it is small, and the server refuses here what it would refuse anyway
         if (!state.IsPreviewUploaded)
@@ -103,12 +124,39 @@ public class ChatMediaUploader : IChatMediaUploader
         {
             UploadId = state.UploadId!,
             PreviewUploadId = state.PreviewUploadId!,
-            FileName = FileNameOf(source.FileName),
+            FileName = FileNameOf(source.FileName, "image"),
             Width = preview.Width,
             Height = preview.Height
         };
         progress?.Report(1);
-        return ChatImageUploadResult.NoError;
+        return ChatMediaUploadResult.NoError;
+    }
+
+    public async Task<ChatMediaUploadResult> UploadFileAsync(ICoordinatorSession session, int chatId,
+        ChatMediaSource source, ChatFileUploadState state, IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (state.File != null)
+            return ChatMediaUploadResult.NoError;
+
+        // The server takes no empty upload, and an empty file says nothing anyway
+        if (source.Size <= 0)
+            return ChatMediaUploadResult.Empty;
+
+        var result = await UploadAsync(session, new MediaUpload(chatId, MediaUploadKind.File,
+                FileMimeTypes.Of(source.FileName), source.Size, source.Open, state.UploadId),
+            progress == null ? null : new Progress(progress, source.Size), id => state.UploadId = id,
+            cancellationToken);
+        if (result != MediaTransferResult.NoError)
+            return ResultOf(result);
+
+        state.File = new NewChatFile
+        {
+            UploadId = state.UploadId!,
+            FileName = FileNameOf(source.FileName, "file")
+        };
+        progress?.Report(1);
+        return ChatMediaUploadResult.NoError;
     }
 
     private static async Task<MediaTransferResult> UploadAsync(ICoordinatorSession session, MediaUpload upload,
@@ -130,11 +178,11 @@ public class ChatMediaUploader : IChatMediaUploader
     /// The name the server accepts: without the control characters a file system may allow, and not
     /// longer than its limit, keeping the extension.
     /// </summary>
-    private static string FileNameOf(string name)
+    private static string FileNameOf(string name, string fallback)
     {
         var cleaned = new string(name.Where(c => !char.IsControl(c)).ToArray()).Trim();
         if (cleaned.Length == 0)
-            return "image";
+            return fallback;
         if (cleaned.Length <= Limits.FileNameMaxLength)
             return cleaned;
 
@@ -144,17 +192,17 @@ public class ChatMediaUploader : IChatMediaUploader
             : cleaned[..Limits.FileNameMaxLength];
     }
 
-    private static ChatImageUploadResult ResultOf(MediaTransferResult result) => result switch
+    private static ChatMediaUploadResult ResultOf(MediaTransferResult result) => result switch
     {
-        MediaTransferResult.NoError => ChatImageUploadResult.NoError,
-        MediaTransferResult.Canceled => ChatImageUploadResult.Canceled,
-        MediaTransferResult.ConnectionFailed or MediaTransferResult.Unauthorized => ChatImageUploadResult.ConnectionFailed,
-        MediaTransferResult.NotAllowed => ChatImageUploadResult.NotAllowed,
-        MediaTransferResult.TooLarge => ChatImageUploadResult.TooLarge,
-        MediaTransferResult.TypeNotAllowed => ChatImageUploadResult.NotAnImage,
-        MediaTransferResult.TooManyUploads => ChatImageUploadResult.TooManyUploads,
-        MediaTransferResult.StorageFull => ChatImageUploadResult.StorageFull,
-        _ => ChatImageUploadResult.Failed
+        MediaTransferResult.NoError => ChatMediaUploadResult.NoError,
+        MediaTransferResult.Canceled => ChatMediaUploadResult.Canceled,
+        MediaTransferResult.ConnectionFailed or MediaTransferResult.Unauthorized => ChatMediaUploadResult.ConnectionFailed,
+        MediaTransferResult.NotAllowed => ChatMediaUploadResult.NotAllowed,
+        MediaTransferResult.TooLarge => ChatMediaUploadResult.TooLarge,
+        MediaTransferResult.TypeNotAllowed => ChatMediaUploadResult.NotAnImage,
+        MediaTransferResult.TooManyUploads => ChatMediaUploadResult.TooManyUploads,
+        MediaTransferResult.StorageFull => ChatMediaUploadResult.StorageFull,
+        _ => ChatMediaUploadResult.Failed
     };
 
     private sealed class Progress(IProgress<double> target, long size) : IProgress<long>

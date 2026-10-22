@@ -156,7 +156,9 @@ public partial class ChatView : UserControl
                 interaction.SetOutput(RxVoid.Default);
             }),
             chat.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
-                interaction.SetOutput(await PickImages()))
+                interaction.SetOutput(await PickFiles())),
+            chat.PickFileSaveTarget.RegisterHandler(async interaction =>
+                interaction.SetOutput(await PickSaveTarget(interaction.Input)))
         };
 
         // The viewer of an image is made anew for each image; saving asks this view where to
@@ -203,7 +205,7 @@ public partial class ChatView : UserControl
         return true;
     }
 
-    private async Task<IReadOnlyList<PickedFile>> PickImages()
+    private async Task<IReadOnlyList<PickedFile>> PickFiles()
     {
         var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storage == null)
@@ -212,7 +214,8 @@ public partial class ChatView : UserControl
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             AllowMultiple = true,
-            FileTypeFilter = [PickedFiles.ImageFileType(Strings.Get("chat.attach.filter.images"))]
+            // The system picker takes one filter: any file, pictures among them
+            FileTypeFilter = [PickedFiles.AnyFileType(Strings.Get("chat.attach.filter.all"))]
         });
 
         // The files stay open: they are read when the message is sent
