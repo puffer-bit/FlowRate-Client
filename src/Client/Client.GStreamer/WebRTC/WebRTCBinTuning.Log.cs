@@ -13,4 +13,10 @@ internal sealed partial class WebRTCBinTuning
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to enable ICE keepalive requests")]
     private partial void LogIceKeepaliveFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to tune the RTP manager")]
+    private partial void LogRtpBinTuningFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Video ssrc {Ssrc} is buffered for {Latency} ms")]
+    private partial void LogVideoJitterBuffer(int sessionId, uint ssrc, uint latency);
 }
