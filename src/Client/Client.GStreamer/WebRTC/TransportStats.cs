@@ -7,10 +7,14 @@ namespace Client.GStreamer.WebRTC;
 /// <summary>
 /// Reads the statistics of webrtcbin on a timer and logs, for every RTP stream, what happened to it
 /// since the last reading: the bitrate, the loss, the jitter, the round trip and the repair requests.
+/// Also logs the candidate pair the media goes over whenever ICE picks another one.
 /// </summary>
 /// <remarks>
-/// The figures are meant for measuring the transport, so they go to the debug log only. A stream is
-/// recognized by its SSRC, which is the one the SFU created the producer or the consumer with.
+/// The figures of the streams are meant for measuring the transport, so they go to the debug log
+/// only. A stream is recognized by its SSRC, which is the one the SFU created the producer or the
+/// consumer with. The pair is logged as information: ICE may move the media to a worse pair on a bad
+/// network, from a UDP to a TCP candidate of the SFU, and stay there while the connection reports
+/// itself connected all along.
 /// </remarks>
 internal sealed partial class TransportStats
 {
@@ -31,6 +35,7 @@ internal sealed partial class TransportStats
     // difference to. Only on the thread that answers the promise, one reading at a time
     private readonly Dictionary<uint, Counters> _previous = [];
     private double _previousTimestamp;
+    private string? _selectedPair;
 
     private System.Threading.Timer? _timer;
     private volatile bool _isStopped;
@@ -50,7 +55,7 @@ internal sealed partial class TransportStats
     public void Start()
     {
         // Nobody would read the figures
-        if (!_logger.IsEnabled(LogLevel.Debug))
+        if (!_logger.IsEnabled(LogLevel.Information))
             return;
 
         _isStopped = false;
@@ -131,6 +136,9 @@ internal sealed partial class TransportStats
         var inbound = new List<Counters>();
         var outbound = new List<Counters>();
         var remote = new Dictionary<uint, RemoteReport>();
+        var candidates = new Dictionary<string, string>();
+        var pairs = new Dictionary<string, (string? Local, string? Remote)>();
+        string? selectedPairId = null;
         double timestamp = 0;
 
         // Every field is a structure of its own, named after the type of the statistics it holds
@@ -157,6 +165,20 @@ internal sealed partial class TransportStats
                     remote[report.Ssrc] = report;
                     break;
 
+                case "transport":
+                    selectedPairId ??= stats.GetString("selected-candidate-pair-id");
+                    continue;
+
+                case "candidate-pair":
+                    if (stats.GetString("id") is { } pairId)
+                        pairs[pairId] = (stats.GetString("local-candidate-id"), stats.GetString("remote-candidate-id"));
+                    continue;
+
+                case "local-candidate" or "remote-candidate":
+                    if (stats.GetString("id") is { } candidateId)
+                        candidates[candidateId] = DescribeCandidate(stats);
+                    continue;
+
                 default:
                     continue;
             }
@@ -164,6 +186,11 @@ internal sealed partial class TransportStats
             if (stats.GetDouble("timestamp", out var time))
                 timestamp = Math.Max(timestamp, time);
         }
+
+        ReportSelectedPair(selectedPairId, pairs, candidates);
+
+        if (!_logger.IsEnabled(LogLevel.Debug))
+            return;
 
         // The timestamps are in milliseconds. The first reading has nothing to be compared to
         var seconds = (timestamp - _previousTimestamp) / 1000;
@@ -189,6 +216,42 @@ internal sealed partial class TransportStats
 
         foreach (var current in inbound.Concat(outbound))
             _previous[current.Ssrc] = current;
+    }
+
+    private void ReportSelectedPair(string? pairId, Dictionary<string, (string? Local, string? Remote)> pairs,
+        Dictionary<string, string> candidates)
+    {
+        if (pairId == null || !pairs.TryGetValue(pairId, out var pair))
+            return;
+
+        var local = pair.Local == null ? null : candidates.GetValueOrDefault(pair.Local);
+        var remote = pair.Remote == null ? null : candidates.GetValueOrDefault(pair.Remote);
+
+        if (local == null || remote == null)
+            return;
+
+        var description = $"{local} -> {remote}";
+
+        if (description == _selectedPair)
+            return;
+
+        var isFirst = _selectedPair == null;
+        _selectedPair = description;
+
+        if (isFirst)
+            LogCandidatePair(_core.SessionId, local, remote);
+        else
+            LogCandidatePairChanged(_core.SessionId, local, remote);
+    }
+
+    /// <summary>
+    /// The protocol, the type and the address of a candidate, e.g. "udp host 10.0.0.2:50000".
+    /// </summary>
+    private static string DescribeCandidate(Structure stats)
+    {
+        stats.GetUint("port", out var port);
+
+        return $"{stats.GetString("protocol")} {stats.GetString("candidate-type")} {stats.GetString("address")}:{port}";
     }
 
     private void LogInbound(Counters current, Counters delta, double seconds)
