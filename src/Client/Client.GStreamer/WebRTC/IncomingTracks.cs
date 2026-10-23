@@ -62,6 +62,8 @@ internal sealed partial class IncomingTracks
 
     public InboundTrack? Find(string inboundId) => _inbounds.GetValueOrDefault(inboundId);
 
+    public InboundTrack? FindBySsrc(uint ssrc) => _inbounds.Values.FirstOrDefault(inbound => inbound.SSRC == ssrc);
+
     /// <summary>
     /// The track the section carries now. A section changes hands when it is reused, so it is
     /// matched to its track at the moment of asking. Only inside <see cref="MediaSections.Enter"/>.
