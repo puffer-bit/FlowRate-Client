@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Gst;
 
@@ -44,7 +45,16 @@ public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Na
 /// </summary>
 public static class VideoEncoderSelector
 {
-    private sealed record Candidate(string Factory, bool IsHardware, Func<int, (string, string)[]> Properties);
+    /// <param name="Tuning">
+    /// Low-latency settings that only some versions of the element have. Each is used where the
+    /// element takes it: a description with a property or a value the element does not know fails
+    /// to parse, and with it the whole branch.
+    /// </param>
+    private sealed record Candidate(string Factory, bool IsHardware, Func<int, (string, string)[]> Properties,
+        (string Name, string Value)[]? Tuning = null);
+
+    // Whether the element of a factory takes a property with a value, once found out
+    private static readonly ConcurrentDictionary<(string Factory, string Name, string Value), bool> Accepted = new();
 
     /// <param name="preferred">The factory to use when this system has it, before the usual order.</param>
     public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null)
@@ -63,7 +73,10 @@ public static class VideoEncoderSelector
             if (ElementFactory.Find(candidate.Factory) == null)
                 continue;
 
-            return new VideoEncoderChoice(candidate.Factory, candidate.Properties(bitrateKbps), candidate.IsHardware);
+            var tuning = (candidate.Tuning ?? []).Where(property => Accepts(candidate.Factory, property.Name, property.Value));
+
+            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning],
+                candidate.IsHardware);
         }
 
         return null;
@@ -110,12 +123,12 @@ public static class VideoEncoderSelector
     private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) => codec switch
     {
         VideoCodec.H264 => OperatingSystem.IsWindows()
-            ? [Hardware("nvd3d11h264enc"), NvidiaLegacy("nvh264enc"), Qsv("qsvh264enc"), Hardware("amfh264enc"),
+            ? [Nvidia("nvd3d11h264enc"), NvidiaLegacy("nvh264enc"), Qsv("qsvh264enc"), Amf("amfh264enc"),
                MediaFoundation("mfh264enc"), OpenH264]
-            : [Hardware("nvcudah264enc"), NvidiaLegacy("nvh264enc"), Va("vah264enc"), Va("vah264lpenc"), OpenH264],
+            : [Nvidia("nvcudah264enc"), NvidiaLegacy("nvh264enc"), Va("vah264enc"), Va("vah264lpenc"), OpenH264],
         VideoCodec.AV1 => OperatingSystem.IsWindows()
-            ? [Hardware("nvd3d11av1enc"), Qsv("qsvav1enc"), Hardware("amfav1enc"), SvtAv1]
-            : [Hardware("nvcudaav1enc"), Hardware("nvav1enc"), Va("vaav1enc"), Va("vaav1lpenc"), SvtAv1],
+            ? [Nvidia("nvd3d11av1enc"), Qsv("qsvav1enc"), Amf("amfav1enc"), SvtAv1]
+            : [Nvidia("nvcudaav1enc"), Nvidia("nvav1enc"), Va("vaav1enc"), Va("vaav1lpenc"), SvtAv1],
         VideoCodec.VP8 => [Vpx("vp8enc")],
         VideoCodec.VP9 => OperatingSystem.IsWindows()
             ? [Qsv("qsvvp9enc"), Vpx("vp9enc")]
@@ -123,12 +136,20 @@ public static class VideoEncoderSelector
         _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, null)
     };
 
-    // Hardware encoders take the bitrate in kbit/s
-    private static Candidate Hardware(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps))]);
+    // Hardware encoders take the bitrate in kbit/s. Left to their defaults, the NVENC and AMF ones
+    // are tuned for quality: a variable rate that sends a keyframe as a burst of several times the
+    // average frame, and frames held back for reordering
+    private static Candidate Nvidia(string factory) =>
+        new(factory, true, kbps => [("bitrate", Format(kbps))],
+            [("rate-control", "cbr"), ("tune", "ultra-low-latency"), ("zero-reorder-delay", "true")]);
 
     private static Candidate NvidiaLegacy(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps)), ("preset", "low-latency-hq"), ("zerolatency", "true")]);
+        new(factory, true, kbps => [("bitrate", Format(kbps)), ("preset", "low-latency-hq"), ("zerolatency", "true")],
+            [("rc-mode", "cbr")]);
+
+    private static Candidate Amf(string factory) =>
+        new(factory, true, kbps => [("bitrate", Format(kbps))],
+            [("usage", "ultra-low-latency"), ("rate-control", "cbr")]);
 
     private static Candidate Va(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")]);
@@ -137,7 +158,7 @@ public static class VideoEncoderSelector
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")]);
 
     private static Candidate MediaFoundation(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")]);
+        new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")], [("rc-mode", "cbr")]);
 
     // openh264 takes bit/s and has a mode tuned for screen content
     private static readonly Candidate OpenH264 = new("openh264enc", false, kbps =>
@@ -152,4 +173,23 @@ public static class VideoEncoderSelector
         [("target-bitrate", Format(kbps * 1000)), ("deadline", "1"), ("cpu-used", "8"), ("end-usage", "cbr")]);
 
     private static string Format(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Whether the element of <paramref name="factory"/> takes <paramref name="value"/> for
+    /// <paramref name="name"/>, tried on an element of its own the way the branch will set it.
+    /// </summary>
+    private static bool Accepts(string factory, string name, string value) =>
+        Accepted.GetOrAdd((factory, name, value), key =>
+        {
+            try
+            {
+                using var element = Global.ParseLaunch($"{key.Factory} {key.Name}={key.Value}");
+
+                return element != null;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        });
 }
