@@ -24,6 +24,14 @@ internal sealed partial class TransportStats
         "[Session {SessionId}] ICE moved the media to another candidate pair: {Local} -> {Remote}")]
     private partial void LogCandidatePairChanged(int sessionId, string local, string remote);
 
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Send queue of {Source} ssrc {Ssrc}: {LevelMs:F0} ms")]
+    private partial void LogSendQueue(int sessionId, string source, uint ssrc, double levelMs);
+
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] {LevelMs:F0} ms of {Source} ssrc {Ssrc} ({Packets} packets) wait for the socket: " +
+        "the network does not take what we send")]
+    private partial void LogSendQueueBacklog(int sessionId, string source, uint ssrc, double levelMs, uint packets);
+
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to request the transport statistics")]
     private partial void LogStatsRequestFailed(Exception exception, int sessionId);
 

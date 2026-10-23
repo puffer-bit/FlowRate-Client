@@ -85,7 +85,7 @@ internal static class OutgoingAudioBranch
         "opusenc audio-type=voice bitrate=64000 inband-fec=true packet-loss-percentage=10 dtx=true " +
         "frame-size=20 ! " +
         "rtpopuspay pt={1} ssrc={2} dtx=true ! " +
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
     // Stereo at a rate that keeps music clean. No DTX: a quiet passage of a film is not a pause,
     // and the producer of the screen sound is created without it. The volume and mute elements
@@ -96,7 +96,7 @@ internal static class OutgoingAudioBranch
         "volume name=" + MuteValveName + " mute=false ! " +
         "opusenc audio-type=generic bitrate=128000 inband-fec=true packet-loss-percentage=10 frame-size=20 ! " +
         "rtpopuspay pt={1} ssrc={2} ! " +
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
     // Starts closed, that is silent.
     private const string GateDescription =
