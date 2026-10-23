@@ -41,7 +41,7 @@ internal static class OutgoingVideoBranch
         "video/x-h264,profile=constrained-baseline ! {3}" +
         "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
         "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "videoscale ! videoconvert ! " +
@@ -59,7 +59,7 @@ internal static class OutgoingVideoBranch
         "video/x-h264,profile=constrained-baseline ! {3}" +
         "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
         "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "vapostproc ! " + VideoFramePump.FrameCaps + ",height=[2,{6}],pixel-aspect-ratio=1/1 ! {7}";
@@ -77,7 +77,7 @@ internal static class OutgoingVideoBranch
         "video/x-h264,profile=constrained-baseline ! {3}" +
         "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
         "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{6}],pixel-aspect-ratio=1/1 ! " +

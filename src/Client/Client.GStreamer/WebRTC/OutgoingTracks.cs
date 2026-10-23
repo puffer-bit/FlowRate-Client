@@ -85,6 +85,39 @@ internal sealed partial class OutgoingTracks
     public OutboundTrack? FindBySsrc(uint ssrc) => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc);
 
     /// <summary>
+    /// What the last queue of every running track holds: the time in ms and the packets.
+    /// </summary>
+    public List<(OutboundTrack Track, double LevelMs, uint Packets)> ReadSendQueues()
+    {
+        var levels = new List<(OutboundTrack, double, uint)>();
+
+        foreach (var (outboundId, outgoing) in _outgoing)
+        {
+            if (Find(outboundId) is not { } track)
+                continue;
+
+            try
+            {
+                using var queue = outgoing.Branch.GetByName(PipelineBranch.SendQueueName);
+
+                if (queue == null)
+                    continue;
+
+                var packets = queue.GetProperty<uint>("current-level-buffers");
+                var levelMs = packets == 0 ? 0 : queue.GetProperty<ulong>("current-level-time") / 1_000_000.0;
+
+                levels.Add((track, levelMs, packets));
+            }
+            catch (ObjectDisposedException)
+            {
+                // The track stopped meanwhile
+            }
+        }
+
+        return levels;
+    }
+
+    /// <summary>
     /// Adds the users whose outgoing tracks carry speech at the moment.
     /// </summary>
     public void CollectSpeaking(long now, HashSet<int> speaking)
