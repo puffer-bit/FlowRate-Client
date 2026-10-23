@@ -22,8 +22,8 @@ namespace Client.GStreamer.WebRTC;
 /// work on them is done by its parts: <see cref="Negotiator"/> runs the offer/answer rounds over
 /// the <see cref="MediaSections"/>, <see cref="IncomingTracks"/> and <see cref="OutgoingTracks"/>
 /// keep the tracks of each direction, <see cref="IncomingStreamPlayer"/> plays what arrives,
-/// <see cref="TransportStateObserver"/> follows the connection and <see cref="SpeakingIndicator"/>
-/// reports who speaks.
+/// <see cref="TransportStateObserver"/> follows the connection, <see cref="SpeakingIndicator"/>
+/// reports who speaks and <see cref="TransportStats"/> logs how the streams fare.
 /// </remarks>
 public sealed partial class WebRTCTransport : IWebRTCTransport
 {
@@ -35,6 +35,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     private readonly TransportStateObserver _states;
     private readonly WebRTCBinTuning _tuning;
     private readonly SpeakingIndicator _speaking;
+    private readonly TransportStats _stats;
 
     private readonly bool _isPlaybackEnabled;
     private readonly ILogger<WebRTCTransport> _logger;
@@ -89,6 +90,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             _outgoing.AttachPending, _states.ObserveTransports, _incoming.OnRoundCompleted, logger);
         _speaking = new SpeakingIndicator(sessionId, CollectSpeaking,
             (userId, isSpeaking) => SpeakingChanged?.Invoke(userId, isSpeaking), logger);
+        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, logger);
     }
 
     private bool Negotiate() => _negotiator.Negotiate();
@@ -149,6 +151,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
                 $"webrtc_transport_{_core.SessionId}", _logger);
 
             _speaking.Start();
+            _stats.Start();
 
             pipeline.SetState(State.Ready);
         }
@@ -331,6 +334,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         _busWatcher = null;
 
         _speaking.Stop();
+        _stats.Stop();
 
         _core.Connected.TrySetResult(false);
         pipeline?.SetState(State.Null);

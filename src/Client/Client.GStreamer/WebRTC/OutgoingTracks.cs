@@ -82,6 +82,8 @@ internal sealed partial class OutgoingTracks
 
     public OutboundTrack? Find(string outboundId) => _outbounds.GetValueOrDefault(outboundId);
 
+    public OutboundTrack? FindBySsrc(uint ssrc) => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc);
+
     /// <summary>
     /// Adds the users whose outgoing tracks carry speech at the moment.
     /// </summary>
