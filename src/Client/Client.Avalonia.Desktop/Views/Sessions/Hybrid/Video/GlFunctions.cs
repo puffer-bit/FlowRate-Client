@@ -84,6 +84,9 @@ internal sealed unsafe class GlFunctions
     public delegate* unmanaged<byte, byte, byte, byte, void> ColorMask;
     public delegate* unmanaged<int, uint, void> BindBuffer;
 
+    /// <summary>Null below OpenGL 3.3 and OpenGL ES 3.0, where there are no sampler objects.</summary>
+    public delegate* unmanaged<uint, uint, void> BindSampler;
+
     /// <summary>Null where the context cannot take EGL images.</summary>
     public delegate* unmanaged<int, IntPtr, void> EglImageTargetTexture2D;
 
@@ -148,6 +151,7 @@ internal sealed unsafe class GlFunctions
             return null;
 
         functions.EglImageTargetTexture2D = (delegate* unmanaged<int, IntPtr, void>)gl.GetProcAddress("glEGLImageTargetTexture2DOES");
+        functions.BindSampler = (delegate* unmanaged<uint, uint, void>)gl.GetProcAddress("glBindSampler");
 
         return functions;
     }
@@ -179,6 +183,15 @@ internal sealed unsafe class GlFunctions
         ColorMask(1, 1, 1, 1);
         BindBuffer(PixelUnpackBuffer, 0);
         PixelStorei(UnpackRowLength, 0);
+
+        // Skia samples through sampler objects, which override the parameters of a texture: one left
+        // bound with a mipmap filter, after a downscaled image, makes our textures without mipmaps
+        // incomplete, and they read as black
+        if (BindSampler != null)
+        {
+            BindSampler(0, 0);
+            BindSampler(1, 0);
+        }
     }
 
     public uint GenTexture()
