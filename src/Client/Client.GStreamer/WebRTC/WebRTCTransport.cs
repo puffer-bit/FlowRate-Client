@@ -129,16 +129,15 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             // max-bundle keeps every section on a single ICE transport, which is what the SFU
             // expects and what keeps all of its clients on one port.
             Global.UtilSetObjectArg(webrtc, "bundle-policy", "max-bundle");
-            // The jitter buffer, in ms: what a voice is delayed by to even out the network. It also
-            // bounds the time a NACKed video packet has to come back in, so a long round trip to
-            // the SFU costs broken frames of a screen
+            // The jitter buffer, in ms: what a voice is delayed by to even out the network. The video
+            // streams get a longer one, see WebRTCBinTuning.ConfigureRtpBin
             webrtc.SetProperty("latency", 60u);
 
             _tuning.EnableConnectivityCheckKeepalives();
 
             pipeline.Add(webrtc);
 
-            _tuning.EnableSourceAutoremove();
+            _tuning.ConfigureRtpBin(ssrc => _incoming.FindBySsrc(ssrc)?.MediaType == MediaType.Video);
 
             _states.Connect(webrtc);
             _core.Player = new IncomingStreamPlayer(pipeline, _logger, _core.SessionId, _incoming.ResolveSectionVolume,
@@ -352,6 +351,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
         _outgoing.Release(webrtc);
         _states.ReleaseWatches();
+        _tuning.Release();
 
         // The handlers go before the wrappers. webrtcbin removes the pads of its incoming streams
         // only while it is being destroyed, and a pad-removed handled then would wrap an object
