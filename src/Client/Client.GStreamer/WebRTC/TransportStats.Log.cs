@@ -17,6 +17,13 @@ internal sealed partial class TransportStats
     private partial void LogOutboundStats(int sessionId, string source, uint ssrc, double kbps, double packetRate,
         double lossPercent, double jitterMs, double roundTripMs, uint nacks, uint plis);
 
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Media goes over {Local} -> {Remote}")]
+    private partial void LogCandidatePair(int sessionId, string local, string remote);
+
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] ICE moved the media to another candidate pair: {Local} -> {Remote}")]
+    private partial void LogCandidatePairChanged(int sessionId, string local, string remote);
+
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to request the transport statistics")]
     private partial void LogStatsRequestFailed(Exception exception, int sessionId);
 
