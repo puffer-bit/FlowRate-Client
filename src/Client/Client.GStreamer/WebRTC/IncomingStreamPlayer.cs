@@ -57,9 +57,12 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private const string VideoSinkName = "frames";
 
     // A lost packet breaks every frame up to the next keyframe, so the depayloader asks the sender
-    // for one and holds the broken frames back meanwhile
+    // for one and holds the broken frames back meanwhile. The queue drops the oldest packets past
+    // half a second: with the default room a decoder that fell behind, or a stalled drawing,
+    // would leave the picture late for good. The gap that leaves is repaired like a loss
     private const string H264Description =
-        "queue ! rtph264depay request-keyframe=true ! " +
+        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
+        "rtph264depay request-keyframe=true ! " +
         "h264parse ! {0} ! {1}";
 
     private const string VolumeElementName = "volume";
