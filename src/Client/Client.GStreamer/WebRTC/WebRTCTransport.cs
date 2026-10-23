@@ -90,7 +90,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             _outgoing.AttachPending, _states.ObserveTransports, _incoming.OnRoundCompleted, logger);
         _speaking = new SpeakingIndicator(sessionId, CollectSpeaking,
             (userId, isSpeaking) => SpeakingChanged?.Invoke(userId, isSpeaking), logger);
-        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, logger);
+        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _outgoing.ReadSendQueues, logger);
     }
 
     private bool Negotiate() => _negotiator.Negotiate();

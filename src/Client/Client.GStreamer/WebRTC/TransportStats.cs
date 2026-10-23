@@ -25,6 +25,7 @@ internal sealed partial class TransportStats
     private readonly TransportCore _core;
     private readonly Func<uint, InboundTrack?> _findInbound;
     private readonly Func<uint, OutboundTrack?> _findOutbound;
+    private readonly Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> _readSendQueues;
     private readonly ILogger _logger;
 
     // For a stream of no known track. The kind webrtcbin reports is not used instead: with every
@@ -37,18 +38,25 @@ internal sealed partial class TransportStats
     private double _previousTimestamp;
     private string? _selectedPair;
 
+    // What the last queue of a track we send may hold before it is reported, in ms. Packets wait
+    // there only while the socket does not take them, which over UDP it always does
+    private const double SendQueueWarningMs = 100;
+
     private System.Threading.Timer? _timer;
     private volatile bool _isStopped;
     private int _readingInFlight;
 
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
     /// <param name="findOutbound">The outbound track with the given SSRC.</param>
+    /// <param name="readSendQueues">What the last queue of every track we send holds.</param>
     public TransportStats(TransportCore core, Func<uint, InboundTrack?> findInbound,
-        Func<uint, OutboundTrack?> findOutbound, ILogger logger)
+        Func<uint, OutboundTrack?> findOutbound,
+        Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, ILogger logger)
     {
         _core = core;
         _findInbound = findInbound;
         _findOutbound = findOutbound;
+        _readSendQueues = readSendQueues;
         _logger = logger;
     }
 
@@ -88,6 +96,8 @@ internal sealed partial class TransportStats
             if (_isStopped || _core.IsDisposed || webrtc == null)
                 return;
 
+            ReportSendQueues();
+
             // A transport that is busy answers late; a second request would only pile up behind it
             if (Interlocked.Exchange(ref _readingInFlight, 1) == 1)
                 return;
@@ -102,6 +112,23 @@ internal sealed partial class TransportStats
         {
             Interlocked.Exchange(ref _readingInFlight, 0);
             LogStatsRequestFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// Logs how much of every track we send waits in front of webrtcbin. The socket takes the packets
+    /// on the streaming thread of the track, so one that stops taking them, as a TCP one does while
+    /// it repairs a loss, fills the last queue of the branch; the voice queue then drops what is
+    /// older than 200 ms and the listeners hear us break up. Over UDP the queue stays empty.
+    /// </summary>
+    private void ReportSendQueues()
+    {
+        foreach (var (track, levelMs, packets) in _readSendQueues())
+        {
+            if (levelMs >= SendQueueWarningMs)
+                LogSendQueueBacklog(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs, packets);
+            else
+                LogSendQueue(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs);
         }
     }
 
