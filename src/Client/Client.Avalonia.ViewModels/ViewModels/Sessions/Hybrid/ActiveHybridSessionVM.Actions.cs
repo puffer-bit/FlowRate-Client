@@ -208,18 +208,20 @@ public partial class ActiveHybridSessionVM
         if (!_screenStreamsByUser.TryRemove(userId, out var stream))
             return;
 
-        if (stream.IsExpanded)
-            ToggleExpanded(stream);
-
-        UpdateCanExpand();
-
-        // Nothing to fade while another screen covers this one
+        // Nothing to fade while another screen covers this one. It is taken out before the last
+        // screen is brought back from being expanded, which would show it again for its fade
         if (stream.IsHidden)
         {
             stream.Clear();
             ScreenStreams.Remove(stream);
+            UpdateCanExpand();
             return;
         }
+
+        if (stream.IsExpanded)
+            ToggleExpanded(stream);
+
+        UpdateCanExpand();
 
         // The tile fades away with its last frame still on it, and is only taken out after that
         stream.IsLeaving = true;
