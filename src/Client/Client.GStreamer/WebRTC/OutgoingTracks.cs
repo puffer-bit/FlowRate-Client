@@ -23,6 +23,7 @@ internal sealed partial class OutgoingTracks
     private readonly MediaSections _sections;
     private readonly GstAudioDeviceProvider? _devices;
     private readonly Func<bool> _negotiate;
+    private readonly OutgoingRetransmission _retransmission;
     private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
     private readonly ILogger _logger;
 
@@ -68,19 +69,57 @@ internal sealed partial class OutgoingTracks
 
     /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
     /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
+    /// <param name="retransmission">Resends the lost packets of the tracks that have an RTX stream.</param>
     /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
     public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
-        Func<bool> negotiate, Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
+        Func<bool> negotiate, OutgoingRetransmission retransmission,
+        Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
     {
         _core = core;
         _sections = sections;
         _devices = devices;
         _negotiate = negotiate;
+        _retransmission = retransmission;
         _onVideoFrame = onVideoFrame;
         _logger = logger;
     }
 
     public OutboundTrack? Find(string outboundId) => _outbounds.GetValueOrDefault(outboundId);
+
+    public OutboundTrack? FindBySsrc(uint ssrc) => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc);
+
+    /// <summary>
+    /// What the last queue of every running track holds: the time in ms and the packets.
+    /// </summary>
+    public List<(OutboundTrack Track, double LevelMs, uint Packets)> ReadSendQueues()
+    {
+        var levels = new List<(OutboundTrack, double, uint)>();
+
+        foreach (var (outboundId, outgoing) in _outgoing)
+        {
+            if (Find(outboundId) is not { } track)
+                continue;
+
+            try
+            {
+                using var queue = outgoing.Branch.GetByName(PipelineBranch.SendQueueName);
+
+                if (queue == null)
+                    continue;
+
+                var packets = queue.GetProperty<uint>("current-level-buffers");
+                var levelMs = packets == 0 ? 0 : queue.GetProperty<ulong>("current-level-time") / 1_000_000.0;
+
+                levels.Add((track, levelMs, packets));
+            }
+            catch (ObjectDisposedException)
+            {
+                // The track stopped meanwhile
+            }
+        }
+
+        return levels;
+    }
 
     /// <summary>
     /// Adds the users whose outgoing tracks carry speech at the moment.
@@ -266,7 +305,7 @@ internal sealed partial class OutgoingTracks
             return true;
 
         // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
-        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf();
+        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf(OutgoingVideoBranch.CodecOf(outbound));
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(exception, _core.SessionId),
             (rate, caps) => LogCaptureRate(_core.SessionId, rate, settings.Framerate, caps), isDmaBuf);
@@ -314,11 +353,13 @@ internal sealed partial class OutgoingTracks
     /// </summary>
     private bool RegisterOutgoing(OutboundTrack outbound, Bin branch)
     {
+        // Before the branch is linked: the RTX stream of a track is set up by its first packet
+        _retransmission.Track(outbound);
         _pendingOutgoing[outbound.Id] = branch;
 
         using (_sections.Enter())
         {
-            _sections.ClaimSending(outbound.MediaType).OutboundId = outbound.Id;
+            _sections.ClaimSending(outbound.MediaType, outbound.MimeType).OutboundId = outbound.Id;
         }
 
         LogOutboundRegistered(_core.SessionId, outbound.MediaType, outbound.SSRC);
@@ -333,6 +374,8 @@ internal sealed partial class OutgoingTracks
     {
         if (!_outbounds.TryRemove(outboundId, out _))
             return;
+
+        _retransmission.Untrack(outboundId);
 
         _outgoingVideo.TryRemove(outboundId, out var video);
 
