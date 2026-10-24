@@ -133,7 +133,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             Global.UtilSetObjectArg(webrtc, "bundle-policy", "max-bundle");
             // The jitter buffer, in ms: what a voice is delayed by to even out the network. The video
             // streams get a longer one, see WebRTCBinTuning.ConfigureRtpBin
-            webrtc.SetProperty("latency", 60u);
+            webrtc.SetProperty("latency", 100u);
 
             _tuning.EnableConnectivityCheckKeepalives();
             _retransmission.Attach(webrtc);
