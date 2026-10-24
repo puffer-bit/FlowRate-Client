@@ -171,7 +171,7 @@ public interface ICoordinatorGateway : IDisposable
     Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
     Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove);
+        bool isHostMustApprove, MediaSettings media);
     Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides);
 

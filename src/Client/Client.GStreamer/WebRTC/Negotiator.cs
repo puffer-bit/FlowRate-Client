@@ -158,6 +158,7 @@ internal sealed partial class Negotiator
                     LogOutboundAttachFailed(exception, _core.SessionId);
                 }
 
+                RequestRetransmissions(sections);
                 CreateAnswer(sections);
             });
         });
@@ -165,6 +166,37 @@ internal sealed partial class Negotiator
         _core.WebRTC!.EmitSignal("set-remote-description", description, applied);
 
         return true;
+    }
+
+    /// <summary>
+    /// Has the jitter buffer of every section whose codec offers NACK ask the SFU for the packets it
+    /// lost, instead of waiting for the next keyframe or leaving a voice to FEC. The SFU resends
+    /// them on the original SSRC. For a section we send, it lets the SFU's NACKs reach the RTX
+    /// sender. Applied to the transceivers the remote description just created, before the answer,
+    /// which keeps the nack feedback only where it is set; the jitter buffer reads it when its
+    /// stream starts. Which tracks have it is up to the media settings of the session.
+    /// </summary>
+    private void RequestRetransmissions(IReadOnlyList<SdpMediaSection> sections)
+    {
+        var webrtc = _core.WebRTC;
+
+        if (webrtc == null)
+            return;
+
+        for (var index = 0; index < sections.Count; index++)
+        {
+            try
+            {
+                using var transceiver = GstNative.EmitGetObject<Gst.GObject.Object>(webrtc, "get-transceiver", index);
+
+                if (transceiver != null)
+                    GstNative.SetBoolean(transceiver.Handle, "do-nack", sections[index].Codec.IsNackEnabled);
+            }
+            catch (Exception exception)
+            {
+                LogRetransmissionRequestsFailed(exception, _core.SessionId, index);
+            }
+        }
     }
 
     private void CreateAnswer(IReadOnlyList<SdpMediaSection> sections)

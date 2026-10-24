@@ -10,4 +10,5 @@ public class HybridSessionModel : SessionModel
     public bool IsAudioRequested { get; init; }
     public bool IsApprovalRequested { get; init; }
     public required int HostId { get; init; }
+    public MediaSettings Media { get; init; } = MediaSettings.Default;
 }

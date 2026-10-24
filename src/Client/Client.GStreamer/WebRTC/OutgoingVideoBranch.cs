@@ -3,12 +3,14 @@ using Gst;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.GStreamer.Video;
+using Client.GStreamer.WebRTC.Sdp;
 
 namespace Client.GStreamer.WebRTC;
 
 /// <summary>
-/// Capture branch of an outbound screen track: the picture is paced and scaled, encoded to H.264 and
-/// packetized with the payload type and SSRC the SFU created the producer with. A second leg feeds
+/// Capture branch of an outbound screen track: the picture is paced and scaled, encoded with the codec
+/// of the track, H.264 or VP8, and packetized with the payload type and SSRC the SFU created the
+/// producer with. A second leg feeds
 /// a sink with raw frames, so the sender sees what is being sent.
 /// </summary>
 /// <remarks>
@@ -30,22 +32,19 @@ internal static class OutgoingVideoBranch
     // Each leg scales for itself, after the tee: a limit placed before it is negotiated against
     // both legs, and the smaller preview would then shrink what is sent as well.
     //
-    // Constrained baseline is what the SFU router announces (profile-level-id 42e01f) and what the
-    // software decoder of the viewers can always decode.
+    // The encoded picture is packetized by {3}, see Packetizer.
     private const string Description =
         "queue max-size-buffers=2 leaky=downstream ! " +
         "videoconvert ! videorate drop-only=true max-rate={0} ! tee name=split " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! {10}" +
+        "split. ! queue max-size-buffers=1 leaky=downstream ! {6}" +
         "{2} ! " +
-        "video/x-h264,profile=constrained-baseline ! {3}" +
-        "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
-        "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "{3}" +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "videoscale ! videoconvert ! " +
-        VideoFramePump.FrameCaps + ",height=[2,{6}],pixel-aspect-ratio=1/1 ! {7}";
+        VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
 
 
     // The same branch for DMA-BUF frames of a capture, sent with a VA-API encoder: no CPU element
@@ -54,15 +53,13 @@ internal static class OutgoingVideoBranch
         "queue max-size-buffers=2 leaky=downstream ! " +
         "videorate drop-only=true max-rate={0} ! tee name=split " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! {10}" +
+        "split. ! queue max-size-buffers=1 leaky=downstream ! {6}" +
         "{2} ! " +
-        "video/x-h264,profile=constrained-baseline ! {3}" +
-        "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
-        "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "{3}" +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
-        "vapostproc ! " + VideoFramePump.FrameCaps + ",height=[2,{6}],pixel-aspect-ratio=1/1 ! {7}";
+        "vapostproc ! " + VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
 
     // The same branch for a Direct3D 11 capture on Windows: the frames stay textures from the capture
     // to the encoder. d3d11convert scales and converts for the encoder, and the preview is scaled down
@@ -74,17 +71,28 @@ internal static class OutgoingVideoBranch
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "d3d11convert ! video/x-raw(memory:D3D11Memory),format=NV12,height=[2,{1}],pixel-aspect-ratio=1/1 ! " +
         "{2} ! " +
-        "video/x-h264,profile=constrained-baseline ! {3}" +
-        "rtph264pay name=" + PayloaderName + " pt={4} ssrc={5} seqnum-offset={8} timestamp-offset={9} " +
-        "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! " +
-        "queue " +
+        "{3}" +
+        "queue name=" + PipelineBranch.SendQueueName + " " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! " +
-        "d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{6}],pixel-aspect-ratio=1/1 ! " +
-        "d3d11download ! " + VideoFramePump.FrameCaps + " ! {7}";
+        "d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{4}],pixel-aspect-ratio=1/1 ! " +
+        "d3d11download ! " + VideoFramePump.FrameCaps + " ! {5}";
 
     // Hardware encoders of Windows that take Direct3D 11 textures as they are
     private static readonly string[] D3D11Encoders = ["nvd3d11h264enc", "amfh264enc", "qsvh264enc", "mfh264enc"];
+
+    // Constrained baseline is what the SFU router announces (profile-level-id 42e01f) and what the
+    // software decoder of the viewers can always decode.
+    private const string H264Packetizer =
+        "video/x-h264,profile=constrained-baseline ! {0}" +
+        "rtph264pay name=" + PayloaderName + " pt={1} ssrc={2} seqnum-offset={3} timestamp-offset={4} " +
+        "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! ";
+
+    // A picture id lets the receivers tell which frame a lost packet broke
+    private const string Vp8Packetizer =
+        "video/x-vp8 ! " +
+        "rtpvp8pay name=" + PayloaderName + " pt={1} ssrc={2} seqnum-offset={3} timestamp-offset={4} " +
+        "picture-id-mode=15-bit mtu=1200 ! ";
 
     // Scales and converts for the encoder: on the GPU where the encoder is a VA-API one, whose
     // postprocessor does both, otherwise on the CPU
@@ -117,18 +125,39 @@ internal static class OutgoingVideoBranch
     /// <param name="Scaler">Where the picture is scaled and converted for the encoder, for the log.</param>
     public sealed record Result(Bin Bin, Element Preview, VideoEncoderChoice Encoder, string Scaler);
 
-    private static string Describe(OutboundTrack outbound, ScreenShareSettings settings, VideoEncoderChoice encoder,
-        string parser, string scale, int sequenceNumber, string description = Description) =>
+    private static string Describe(OutboundTrack outbound, VideoCodec codec, ScreenShareSettings settings,
+        VideoEncoderChoice encoder, string scale, int sequenceNumber, string description = Description) =>
         string.Format(CultureInfo.InvariantCulture, description, settings.Framerate, settings.MaxHeight,
-            encoder.ToLaunchString(), parser, outbound.PayloadType, outbound.SSRC, PreviewMaxHeight,
-            VideoFramePump.SinkDescription(PreviewSinkName), sequenceNumber, outbound.SSRC,
+            encoder.ToLaunchString(), Packetizer(outbound, codec, sequenceNumber), PreviewMaxHeight,
+            VideoFramePump.SinkDescription(PreviewSinkName),
             string.Format(CultureInfo.InvariantCulture, scale, settings.MaxHeight));
+
+    private static string Packetizer(OutboundTrack outbound, VideoCodec codec, int sequenceNumber)
+    {
+        var parser = VideoEncoderSelector.GetParser(codec) is { } parserFactory ? $"{parserFactory} ! " : "";
+
+        return string.Format(CultureInfo.InvariantCulture, codec == VideoCodec.VP8 ? Vp8Packetizer : H264Packetizer,
+            parser, outbound.PayloadType, outbound.SSRC, sequenceNumber, outbound.SSRC);
+    }
+
+    /// <summary>
+    /// The codec the SFU created the producer with: VP8 when it says so, H.264 otherwise.
+    /// </summary>
+    public static VideoCodec CodecOf(OutboundTrack outbound) =>
+        RtpCodec.EncodingNameOf(outbound.MimeType).Equals("VP8", StringComparison.OrdinalIgnoreCase)
+            ? VideoCodec.VP8
+            : VideoCodec.H264;
+
+    // The encoder chosen in the settings is one of H.264
+    private static VideoEncoderChoice? SelectEncoder(VideoCodec codec, int bitrateKbps) =>
+        VideoEncoderSelector.Select(codec, bitrateKbps,
+            codec == VideoCodec.H264 ? Client.Core.Settings.VideoSettings.Current.Encoder : null);
 
     /// <summary>
     /// Whether the branch would take DMA-BUF frames: only the VA-API encoder with its postprocessor does.
     /// </summary>
-    public static bool CanSendDmaBuf() =>
-        VideoEncoderSelector.Select(VideoCodec.H264, 1000, Client.Core.Settings.VideoSettings.Current.Encoder) is { } encoder &&
+    public static bool CanSendDmaBuf(VideoCodec codec) =>
+        SelectEncoder(codec, 1000) is { } encoder &&
         encoder.Factory.StartsWith("va", StringComparison.Ordinal) && ElementFactory.Find("vapostproc") != null;
 
     /// <summary>
@@ -152,16 +181,14 @@ internal static class OutgoingVideoBranch
     public static Result? Build(OutboundTrack outbound, Element source, ScreenShareSettings settings,
         int sequenceNumber = -1, bool isD3D11Source = false, bool isDmaBufSource = false)
     {
-        var encoder = VideoEncoderSelector.Select(VideoCodec.H264, settings.EffectiveBitrateKbps,
-            Client.Core.Settings.VideoSettings.Current.Encoder);
+        var codec = CodecOf(outbound);
+        var encoder = SelectEncoder(codec, settings.EffectiveBitrateKbps);
 
         if (encoder == null)
         {
             source.Dispose();
             return null;
         }
-
-        var parser = VideoEncoderSelector.GetParser(VideoCodec.H264) is { } parserFactory ? $"{parserFactory} ! " : "";
 
         var scale = encoder.Factory.StartsWith("va", StringComparison.Ordinal) && ElementFactory.Find("vapostproc") != null
             ? VaScale
@@ -174,20 +201,20 @@ internal static class OutgoingVideoBranch
             ElementFactory.Find("d3d11convert") != null && ElementFactory.Find("d3d11download") != null)
         {
             processing = Global.ParseBinFromDescription(
-                Describe(outbound, settings, encoder, parser, CpuScale, sequenceNumber, D3D11Description), true);
+                Describe(outbound, codec, settings, encoder, CpuScale, sequenceNumber, D3D11Description), true);
             scaler = "GPU (Direct3D 11)";
         }
 
         if (processing == null && isDmaBufSource && scale == VaScale)
         {
             processing = Global.ParseBinFromDescription(
-                Describe(outbound, settings, encoder, parser, scale, sequenceNumber, VaDmaBufDescription), true);
+                Describe(outbound, codec, settings, encoder, scale, sequenceNumber, VaDmaBufDescription), true);
             scaler = "GPU (VA-API, DMA-BUF)";
         }
 
         if (processing == null)
         {
-            processing = Global.ParseBinFromDescription(Describe(outbound, settings, encoder, parser, scale, sequenceNumber), true);
+            processing = Global.ParseBinFromDescription(Describe(outbound, codec, settings, encoder, scale, sequenceNumber), true);
             scaler = scale == VaScale ? "GPU (VA-API)" : "CPU";
         }
 
@@ -195,7 +222,7 @@ internal static class OutgoingVideoBranch
         if (processing == null && scale != CpuScale)
         {
             scaler = "CPU";
-            processing = Global.ParseBinFromDescription(Describe(outbound, settings, encoder, parser, CpuScale, sequenceNumber), true);
+            processing = Global.ParseBinFromDescription(Describe(outbound, codec, settings, encoder, CpuScale, sequenceNumber), true);
         }
 
         if (processing?.GetByName(PreviewSinkName) is not { } preview)
