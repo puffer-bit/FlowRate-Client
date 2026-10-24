@@ -9,7 +9,8 @@ namespace Client.Services.HotKeys;
 /// <summary>
 /// Modifiers and one physical key: the place of the key on the keyboard, not what it types, so a
 /// hot key stays the same in every keyboard layout. Saved as "Ctrl+Shift+M" with the names of
-/// <see cref="PhysicalKey"/>.
+/// <see cref="PhysicalKey"/>. The key can be a modifier itself, "ControlRight" or "Ctrl+AltLeft",
+/// triggered when pressed, also as the start of Ctrl+C.
 /// </summary>
 public readonly record struct HotKeyGesture(KeyModifiers Modifiers, PhysicalKey Key)
 {
@@ -23,6 +24,10 @@ public readonly record struct HotKeyGesture(KeyModifiers Modifiers, PhysicalKey 
         (KeyModifiers.Alt, "Alt"),
         (KeyModifiers.Meta, "Meta")
     ];
+
+    /// <summary>The gesture with only the known modifiers, without the one the key is.</summary>
+    public static HotKeyGesture Of(KeyModifiers modifiers, PhysicalKey key) =>
+        new(modifiers & AllModifiers & ~ModifierOf(key), key);
 
     /// <summary>
     /// The key types a character when pressed alone, so it toggles the action while the user types.
@@ -62,10 +67,10 @@ public readonly record struct HotKeyGesture(KeyModifiers Modifiers, PhysicalKey 
             modifiers |= ModifierNames[index].Modifier;
         }
 
-        if (!Enum.TryParse<PhysicalKey>(parts[^1], out var key) || key == PhysicalKey.None || IsModifier(key))
+        if (!Enum.TryParse<PhysicalKey>(parts[^1], out var key) || key == PhysicalKey.None)
             return false;
 
-        gesture = new HotKeyGesture(modifiers & AllModifiers, key);
+        gesture = Of(modifiers, key);
         return true;
     }
 
@@ -92,13 +97,23 @@ public readonly record struct HotKeyGesture(KeyModifiers Modifiers, PhysicalKey 
         if (Modifiers.HasFlag(KeyModifiers.Alt))
             labels.Add("Alt");
         if (Modifiers.HasFlag(KeyModifiers.Meta))
-            labels.Add(OperatingSystem.IsMacOS() ? "Cmd" : "Win");
+            labels.Add(MetaLabel);
         labels.Add(KeyLabel(Key));
         return labels.Select((label, i) => new GestureKey(label, i == 0)).ToList();
     }
 
+    private static string MetaLabel => OperatingSystem.IsMacOS() ? "Cmd" : "Win";
+
     private static string KeyLabel(PhysicalKey key) => key switch
     {
+        PhysicalKey.ControlLeft => "Left Ctrl",
+        PhysicalKey.ControlRight => "Right Ctrl",
+        PhysicalKey.ShiftLeft => "Left Shift",
+        PhysicalKey.ShiftRight => "Right Shift",
+        PhysicalKey.AltLeft => "Left Alt",
+        PhysicalKey.AltRight => "Right Alt",
+        PhysicalKey.MetaLeft => "Left " + MetaLabel,
+        PhysicalKey.MetaRight => "Right " + MetaLabel,
         >= PhysicalKey.Digit0 and <= PhysicalKey.Digit9 => ((char)('0' + (key - PhysicalKey.Digit0))).ToString(),
         >= PhysicalKey.NumPad0 and <= PhysicalKey.NumPad9 => "Num " + (char)('0' + (key - PhysicalKey.NumPad0)),
         PhysicalKey.NumPadAdd => "Num +",
