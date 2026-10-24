@@ -29,7 +29,9 @@ internal static class SfuMapper
         MimeType = outbound.MimeType,
         PayloadType = outbound.PayloadType,
         ClockRate = outbound.ClockRate,
-        Channels = outbound.Channels
+        Channels = outbound.Channels,
+        RtxPayloadType = outbound.RtxPayloadType,
+        RtxSSRC = outbound.RtxSSRC
     };
 
     public static TransportParameters ToModel(this TransportData transportData) => new(
