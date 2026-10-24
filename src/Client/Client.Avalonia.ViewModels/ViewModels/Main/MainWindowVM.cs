@@ -205,8 +205,8 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
-    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>
-        _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+        ChangeSessionSettingsResult> _changeHybridSessionSettingsCommand;
     private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>
         _changeSessionPermissionsCommand;
 
@@ -273,9 +273,10 @@ public partial class MainWindowVM : ReactiveObject
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeHybridSessionSettingsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>(
+            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+                ChangeSessionSettingsResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
-                    change.Capacity, change.IsHostMustApprove));
+                    change.Capacity, change.IsHostMustApprove, change.Media));
         _changeSessionPermissionsCommand = ReactiveCommand
             .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>(
                 change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
