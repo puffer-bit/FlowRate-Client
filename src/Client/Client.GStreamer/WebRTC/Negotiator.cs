@@ -169,12 +169,12 @@ internal sealed partial class Negotiator
     }
 
     /// <summary>
-    /// Has the jitter buffer of every video section ask the SFU for the packets it lost, with
-    /// NACKs, instead of waiting for the next keyframe. The SFU resends them on the original SSRC.
-    /// Applied to the transceivers the remote description just created, before the answer, which
-    /// keeps the nack feedback only where it is set; the jitter buffer reads it when its stream
-    /// starts. The voices are left as they are: Opus covers a loss with FEC, and the SFU keeps no
-    /// packets of a voice to resend.
+    /// Has the jitter buffer of every section whose codec offers NACK ask the SFU for the packets it
+    /// lost, instead of waiting for the next keyframe or leaving a voice to FEC. The SFU resends
+    /// them on the original SSRC. For a section we send, it lets the SFU's NACKs reach the RTX
+    /// sender. Applied to the transceivers the remote description just created, before the answer,
+    /// which keeps the nack feedback only where it is set; the jitter buffer reads it when its
+    /// stream starts. Which tracks have it is up to the media settings of the session.
     /// </summary>
     private void RequestRetransmissions(IReadOnlyList<SdpMediaSection> sections)
     {
@@ -185,15 +185,12 @@ internal sealed partial class Negotiator
 
         for (var index = 0; index < sections.Count; index++)
         {
-            if (sections[index].Kind != "video")
-                continue;
-
             try
             {
                 using var transceiver = GstNative.EmitGetObject<Gst.GObject.Object>(webrtc, "get-transceiver", index);
 
                 if (transceiver != null)
-                    GstNative.SetBoolean(transceiver.Handle, "do-nack", true);
+                    GstNative.SetBoolean(transceiver.Handle, "do-nack", sections[index].Codec.IsNackEnabled);
             }
             catch (Exception exception)
             {
