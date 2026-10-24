@@ -14,18 +14,6 @@ internal static class CoordinatorMapper
             Address = dto.Address,
             Port = dto.Port,
 
-            IsStunServerAvailable = dto.IsStunServerAvailable,
-            IsTurnServerAvailable = dto.IsTurnServerAvailable,
-
-            IsTurnEnabled = dto.IsTurnEnabled,
-            TurnAddress = dto.TurnAddress,
-            TurnPort = dto.TurnPort,
-            TurnUsername = dto.TurnUsername,
-            TurnPassword = dto.TurnPassword,
-
-            IsStunEnabled = dto.IsStunEnabled,
-            StunAddress = dto.StunAddress,
-            StunPort = dto.StunPort,
 
             ConnectedUsersCount = dto.ConnectedUsersCount,
 

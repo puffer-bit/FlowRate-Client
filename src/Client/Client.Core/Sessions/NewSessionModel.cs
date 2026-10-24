@@ -25,8 +25,6 @@ public sealed record NewHybridSessionOptions(
     bool IsSimulcastEnabled = false,
     bool IsTunnelingEnabled = false,
     bool IsProxyActive = false,
-    bool DisableStun = false,
-    bool DisableTurn = false,
     MediaSettings? Media = null
 ) : NewSessionOptions
 {
