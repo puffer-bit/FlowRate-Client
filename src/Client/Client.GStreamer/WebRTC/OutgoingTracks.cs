@@ -23,6 +23,7 @@ internal sealed partial class OutgoingTracks
     private readonly MediaSections _sections;
     private readonly GstAudioDeviceProvider? _devices;
     private readonly Func<bool> _negotiate;
+    private readonly OutgoingRetransmission _retransmission;
     private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
     private readonly ILogger _logger;
 
@@ -68,14 +69,17 @@ internal sealed partial class OutgoingTracks
 
     /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
     /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
+    /// <param name="retransmission">Resends the lost packets of the tracks that have an RTX stream.</param>
     /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
     public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
-        Func<bool> negotiate, Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
+        Func<bool> negotiate, OutgoingRetransmission retransmission,
+        Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
     {
         _core = core;
         _sections = sections;
         _devices = devices;
         _negotiate = negotiate;
+        _retransmission = retransmission;
         _onVideoFrame = onVideoFrame;
         _logger = logger;
     }
@@ -349,6 +353,8 @@ internal sealed partial class OutgoingTracks
     /// </summary>
     private bool RegisterOutgoing(OutboundTrack outbound, Bin branch)
     {
+        // Before the branch is linked: the RTX stream of a track is set up by its first packet
+        _retransmission.Track(outbound);
         _pendingOutgoing[outbound.Id] = branch;
 
         using (_sections.Enter())
@@ -368,6 +374,8 @@ internal sealed partial class OutgoingTracks
     {
         if (!_outbounds.TryRemove(outboundId, out _))
             return;
+
+        _retransmission.Untrack(outboundId);
 
         _outgoingVideo.TryRemove(outboundId, out var video);
 

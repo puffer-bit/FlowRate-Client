@@ -19,4 +19,7 @@ internal sealed partial class WebRTCBinTuning
 
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Video ssrc {Ssrc} is buffered for {Latency} ms")]
     private partial void LogVideoJitterBuffer(int sessionId, uint ssrc, uint latency);
+
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] RTCP may take up to {Budget} bytes/s")]
+    private partial void LogFeedbackBudget(int sessionId, int budget);
 }

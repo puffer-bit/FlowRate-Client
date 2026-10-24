@@ -19,6 +19,12 @@ internal sealed partial class WebRTCBinTuning
     /// </summary>
     private const uint VideoLatency = 200;
 
+    /// <summary>
+    /// The RTCP bandwidth of the session, in bytes per second, a quarter of it for the senders. As
+    /// much as the default 5% of a screen at 8 Mbit/s, and with room for the reports of a full room.
+    /// </summary>
+    private const int RtcpBudget = 50_000;
+
     private readonly TransportCore _core;
     private readonly ILogger _logger;
 
@@ -74,7 +80,8 @@ internal sealed partial class WebRTCBinTuning
     /// <summary>
     /// Makes the RTP manager drop a source that timed out, with its jitter buffer and the thread
     /// of it. Every rejoin of a peer brings a new SSRC, and by default the old ones stay until the
-    /// session is left. Gives the jitter buffer of every video stream the <see cref="VideoLatency"/>.
+    /// session is left. Gives the jitter buffer of every video stream the <see cref="VideoLatency"/>,
+    /// and the RTP session the <see cref="RtcpBudget"/>.
     /// </summary>
     /// <param name="isVideo">Whether the stream with the given SSRC is a video track.</param>
     public void ConfigureRtpBin(Func<uint, bool> isVideo)
@@ -86,6 +93,15 @@ internal sealed partial class WebRTCBinTuning
 
             _rtpbin = rtpbin;
             rtpbin.SetProperty("autoremove", true);
+
+            // The RTP session of the bundle is made during the first negotiation, after this
+            rtpbin.ConnectSignal("element-added", (_, args) =>
+            {
+                if (args is [Element element] && element.GetFactory()?.GetName() == "rtpsession")
+                    WidenFeedbackBudget(element);
+
+                return null;
+            });
 
             // On a streaming thread, once the first packet of a stream arrived. The arguments are the
             // jitter buffer, the session and the SSRC
@@ -102,6 +118,27 @@ internal sealed partial class WebRTCBinTuning
 
                 return null;
             });
+        }
+        catch (Exception exception)
+        {
+            LogRtpBinTuningFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// Gives the RTCP of the session a fixed budget instead of 5% of the bitrate it sees. A NACK goes
+    /// out in RTCP, and after one sent early the next waits a whole RTCP interval (RFC 4585), which
+    /// grows as the bitrate falls: on a still screen, at some tens of kbit/s, it reaches half a second,
+    /// and a resent packet comes after the video jitter buffer gave it up. The budget only bounds how
+    /// often reports may go out; what is sent stays a few kbit/s, mostly the feedback itself.
+    /// </summary>
+    private void WidenFeedbackBudget(Element session)
+    {
+        try
+        {
+            session.SetProperty("rtcp-rs-bandwidth", RtcpBudget / 4);
+            session.SetProperty("rtcp-rr-bandwidth", RtcpBudget - RtcpBudget / 4);
+            LogFeedbackBudget(_core.SessionId, RtcpBudget);
         }
         catch (Exception exception)
         {

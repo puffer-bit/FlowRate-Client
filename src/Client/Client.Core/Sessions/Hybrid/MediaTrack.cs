@@ -26,7 +26,17 @@ public sealed record InboundTrack : MediaTrack;
 /// <summary>
 /// A track we send to a producer the SFU created for it.
 /// </summary>
-public sealed record OutboundTrack : MediaTrack;
+public sealed record OutboundTrack : MediaTrack
+{
+    /// <summary>
+    /// Payload type the lost packets of the track are resent with as RTX, or 0 when the SFU gave the
+    /// track no RTX stream and they are not resent.
+    /// </summary>
+    public int RtxPayloadType { get; init; }
+
+    /// <summary>SSRC of the RTX stream, or 0 when the track has none.</summary>
+    public uint RtxSSRC { get; init; }
+}
 
 /// <summary>
 /// The producers of our screen share: the picture, and the sound when it was asked for.

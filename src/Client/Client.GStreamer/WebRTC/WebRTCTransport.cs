@@ -31,6 +31,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     private readonly MediaSections _sections = new();
     private readonly IncomingTracks _incoming;
     private readonly OutgoingTracks _outgoing;
+    private readonly OutgoingRetransmission _retransmission;
     private readonly Negotiator _negotiator;
     private readonly TransportStateObserver _states;
     private readonly WebRTCBinTuning _tuning;
@@ -82,7 +83,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         _core = new TransportCore(sessionId, logger);
         _incoming = new IncomingTracks(_core, _sections, Negotiate,
             inboundIds => InboundsReady?.Invoke(inboundIds), logger);
-        _outgoing = new OutgoingTracks(_core, _sections, devices, Negotiate,
+        _retransmission = new OutgoingRetransmission(_core, logger);
+        _outgoing = new OutgoingTracks(_core, _sections, devices, Negotiate, _retransmission,
             (userId, sourceType, frame) => VideoFrameReady?.Invoke(userId, sourceType, frame), logger);
         _states = new TransportStateObserver(_core, state => ConnectionStateChanged?.Invoke(state), logger);
         _tuning = new WebRTCBinTuning(_core, logger);
@@ -134,6 +136,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             webrtc.SetProperty("latency", 60u);
 
             _tuning.EnableConnectivityCheckKeepalives();
+            _retransmission.Attach(webrtc);
 
             pipeline.Add(webrtc);
 
@@ -352,6 +355,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         _outgoing.Release(webrtc);
         _states.ReleaseWatches();
         _tuning.Release();
+        _retransmission.Release();
 
         // The handlers go before the wrappers. webrtcbin removes the pads of its incoming streams
         // only while it is being destroyed, and a pad-removed handled then would wrap an object
