@@ -173,8 +173,8 @@ internal sealed partial class Negotiator
     /// NACKs, instead of waiting for the next keyframe. The SFU resends them on the original SSRC.
     /// Applied to the transceivers the remote description just created, before the answer, which
     /// keeps the nack feedback only where it is set; the jitter buffer reads it when its stream
-    /// starts. The voices are left as they are: Opus covers a loss with FEC, and a resent packet
-    /// would come too late for their short buffer anyway.
+    /// starts. The voices are left as they are: Opus covers a loss with FEC, and the SFU keeps no
+    /// packets of a voice to resend.
     /// </summary>
     private void RequestRetransmissions(IReadOnlyList<SdpMediaSection> sections)
     {
