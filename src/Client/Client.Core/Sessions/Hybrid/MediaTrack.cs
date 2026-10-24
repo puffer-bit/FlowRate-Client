@@ -21,7 +21,16 @@ public abstract record MediaTrack
 /// <summary>
 /// A track another peer sends and we receive.
 /// </summary>
-public sealed record InboundTrack : MediaTrack;
+public sealed record InboundTrack : MediaTrack
+{
+    /// <summary>
+    /// The SFU resends lost packets of the track when asked with a NACK, on the same SSRC.
+    /// </summary>
+    public bool IsNackEnabled { get; init; }
+
+    /// <summary>How long the packets of the track are held before they play, in ms; 0 for the default.</summary>
+    public int JitterBufferMs { get; init; }
+}
 
 /// <summary>
 /// A track we send to a producer the SFU created for it.
@@ -36,6 +45,15 @@ public sealed record OutboundTrack : MediaTrack
 
     /// <summary>SSRC of the RTX stream, or 0 when the track has none.</summary>
     public uint RtxSSRC { get; init; }
+
+    /// <summary>An Opus track carries a copy of the previous packet in each one, to restore single losses.</summary>
+    public bool IsFecEnabled { get; init; } = true;
+
+    /// <summary>The loss, in percent, the Opus encoder prepares its FEC for.</summary>
+    public int FecLossPercent { get; init; } = 10;
+
+    /// <summary>A voice sends next to nothing while silent.</summary>
+    public bool IsDtxEnabled { get; init; } = true;
 }
 
 /// <summary>

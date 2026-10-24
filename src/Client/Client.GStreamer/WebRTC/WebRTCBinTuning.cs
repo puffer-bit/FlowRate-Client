@@ -1,4 +1,6 @@
+using Client.Core.Sessions.Hybrid;
 using Client.GStreamer.Interop;
+using Shared.Models.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +12,7 @@ namespace Client.GStreamer.WebRTC;
 internal sealed partial class WebRTCBinTuning
 {
     /// <summary>
-    /// The jitter buffer of a video stream, in ms. webrtcbin gives every stream the one of the voices,
+    /// The jitter buffer of a video stream whose track names none, in ms. webrtcbin gives every stream the one of the voices,
     /// which also bounds the time a NACKed packet has to come back in: past a round trip of about
     /// that much to the SFU, a lost packet of a screen breaks every frame up to the next keyframe.
     /// Past the first packets of a stream, which wait for it once, packets that come in order pass
@@ -80,11 +82,18 @@ internal sealed partial class WebRTCBinTuning
     /// <summary>
     /// Makes the RTP manager drop a source that timed out, with its jitter buffer and the thread
     /// of it. Every rejoin of a peer brings a new SSRC, and by default the old ones stay until the
-    /// session is left. Gives the jitter buffer of every video stream the <see cref="VideoLatency"/>,
-    /// and the RTP session the <see cref="RtcpBudget"/>.
+    /// session is left. Gives the jitter buffer of every stream the latency of its track and whether
+    /// it asks for lost packets again, and the RTP session the <see cref="RtcpBudget"/>.
     /// </summary>
-    /// <param name="isVideo">Whether the stream with the given SSRC is a video track.</param>
-    public void ConfigureRtpBin(Func<uint, bool> isVideo)
+    /// <remarks>
+    /// webrtcbin sets the retransmission of a new jitter buffer from do-nack of a transceiver too,
+    /// but with every stream of the bundle in one session it walks all of their SSRCs and the last
+    /// one wins (GStreamer 1.28 does not compare them with the SSRC of the jitter buffer). A voice
+    /// without NACK then turned it off for the picture as well. Its handler runs before this one,
+    /// so the value of the track stays.
+    /// </remarks>
+    /// <param name="findTrack">The track with the given SSRC, if it is one we receive.</param>
+    public void ConfigureRtpBin(Func<uint, InboundTrack?> findTrack)
     {
         try
         {
@@ -109,11 +118,16 @@ internal sealed partial class WebRTCBinTuning
             {
                 _core.Notify(() =>
                 {
-                    if (args is [Element jitterBuffer, _, uint ssrc] && isVideo(ssrc))
-                    {
-                        jitterBuffer.SetProperty("latency", VideoLatency);
-                        LogVideoJitterBuffer(_core.SessionId, ssrc, VideoLatency);
-                    }
+                    if (args is not [Element jitterBuffer, _, uint ssrc] || findTrack(ssrc) is not { } track)
+                        return;
+
+                    jitterBuffer.SetProperty("do-retransmission", track.IsNackEnabled);
+
+                    if (LatencyOf(track) is { } latency)
+                        jitterBuffer.SetProperty("latency", latency);
+
+                    LogJitterBuffer(_core.SessionId, ssrc, track.MediaType,
+                        jitterBuffer.GetProperty<uint>("latency"), track.IsNackEnabled);
                 });
 
                 return null;
@@ -124,6 +138,15 @@ internal sealed partial class WebRTCBinTuning
             LogRtpBinTuningFailed(exception, _core.SessionId);
         }
     }
+
+    /// <summary>
+    /// What the media settings gave the track, else <see cref="VideoLatency"/> for a video and the
+    /// latency of webrtcbin, which is already set, for a voice.
+    /// </summary>
+    private static uint? LatencyOf(InboundTrack track) =>
+        track.JitterBufferMs > 0 ? (uint)track.JitterBufferMs
+        : track.MediaType == MediaType.Video ? VideoLatency
+        : null;
 
     /// <summary>
     /// Gives the RTCP of the session a fixed budget instead of 5% of the bitrate it sees. A NACK goes

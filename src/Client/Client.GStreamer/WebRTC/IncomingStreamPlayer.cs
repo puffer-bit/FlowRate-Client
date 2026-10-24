@@ -65,6 +65,11 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         "rtph264depay request-keyframe=true ! " +
         "h264parse ! {0} ! {1}";
 
+    // The same for VP8, whose depayloader drops what it has until the next keyframe
+    private const string Vp8Description =
+        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
+        "rtpvp8depay request-keyframe=true wait-for-keyframe=true ! {0} ! {1}";
+
     private const string VolumeElementName = "volume";
 
     private readonly Pipeline _pipeline;
@@ -120,7 +125,8 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         var mline = GetMline(pad);
 
         // Frames of a section that cannot be resolved would belong to nobody
-        var video = !isOpus && mline != null && IsH264(caps) ? BuildVideoBranch(padName, mline.Value, true) : null;
+        var codec = isOpus ? null : VideoCodecOf(caps);
+        var video = codec != null && mline != null ? BuildVideoBranch(padName, mline.Value, codec.Value, true) : null;
 
         var description = !isOpus ? DrainDescription
             : _isPlaybackEnabled ? OpusPlaybackDescription
@@ -184,6 +190,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         _branches[padName] = new Branch(branch, mline, meter, video?.Pump, pad)
         {
             MixerPad = mixerPad,
+            Codec = video == null ? null : codec,
             Output = video?.Output.Kind,
             Chain = video?.Output.Chain
         };
@@ -284,27 +291,28 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     }
 
     /// <summary>
-    /// A branch that decodes H.264 into frames.
+    /// A branch that decodes H.264 or VP8 into frames.
     /// </summary>
     /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
     /// <returns>Null when the runtime has no decoder or an element is missing.</returns>
     private (Bin Bin, VideoFramePump Pump, VideoOutput Output)? BuildVideoBranch(string padName, uint mline,
-        bool allowGpuSurfaces)
+        VideoCodec codec, bool allowGpuSurfaces)
     {
-        var output = VideoOutputSelector.Select(VideoCodec.H264, allowGpuSurfaces);
+        var output = VideoOutputSelector.Select(codec, allowGpuSurfaces);
 
         if (output == null)
             return null;
 
+        var description = codec == VideoCodec.VP8 ? Vp8Description : H264Description;
         var branch = Global.ParseBinFromDescription(
-            string.Format(H264Description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
+            string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
 
         // An element of the chosen chain is missing after all: the plain chain needs none of them
         if (branch == null && output.Kind != VideoOutputKind.Memory)
         {
             output = VideoOutputSelector.Plain(output.Decoder);
             branch = Global.ParseBinFromDescription(
-                string.Format(H264Description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
+                string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
         }
 
         if (branch?.GetByName(VideoSinkName) is not { } sink)
@@ -377,7 +385,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         {
             branch.Pump?.Dispose();
 
-            if (_isDisposed || branch.Mline is not { } mline)
+            if (_isDisposed || branch.Mline is not { } mline || branch.Codec is not { } codec)
                 return;
 
             using (var input = branch.Bin.GetStaticPad("sink"))
@@ -390,7 +398,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             _pipeline.Remove(branch.Bin);
             branch.Bin.Dispose();
 
-            var video = BuildVideoBranch(padName, mline, allowGpuSurfaces);
+            var video = BuildVideoBranch(padName, mline, codec, allowGpuSurfaces);
 
             if (video == null || _isDisposed)
             {
@@ -421,6 +429,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             video.Value.Bin.SyncStateWithParent();
             _branches[padName] = new Branch(video.Value.Bin, branch.Mline, null, video.Value.Pump, branch.Pad)
             {
+                Codec = codec,
                 Output = video.Value.Output.Kind,
                 Chain = video.Value.Output.Chain
             };
@@ -628,15 +637,23 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
                string.Equals(structure.GetString("encoding-name"), "OPUS", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsH264(Caps caps)
+    /// <summary>The codec of a video stream this player decodes, or null for any other stream.</summary>
+    private static VideoCodec? VideoCodecOf(Caps caps)
     {
         if (caps.GetSize() == 0)
-            return false;
+            return null;
 
         using var structure = caps.GetStructure(0);
 
-        return structure.GetString("media") == "video" &&
-               string.Equals(structure.GetString("encoding-name"), "H264", StringComparison.OrdinalIgnoreCase);
+        if (structure.GetString("media") != "video")
+            return null;
+
+        return structure.GetString("encoding-name")?.ToUpperInvariant() switch
+        {
+            "H264" => VideoCodec.H264,
+            "VP8" => VideoCodec.VP8,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -656,6 +673,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     {
         /// <summary>The pad of the mixer a played voice is linked to.</summary>
         public Pad? MixerPad { get; init; }
+
+        /// <summary>The codec a video branch decodes.</summary>
+        public VideoCodec? Codec { get; init; }
 
         /// <summary>The form the frames of a video branch are delivered in.</summary>
         public VideoOutputKind? Output { get; init; }

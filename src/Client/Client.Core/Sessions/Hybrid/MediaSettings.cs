@@ -7,7 +7,10 @@ namespace Client.Core.Sessions.Hybrid;
 /// How the media of a hybrid session travel: codecs and the ways lost packets are made up for.
 /// Bitrate, frame rate and resolution are not here; they are picked when a stream starts.
 /// </summary>
-/// <remarks>Shown and changed in the session settings, not yet applied to streams.</remarks>
+/// <remarks>
+/// Shown and changed in the session settings. Streams do not read them here: the server puts what
+/// applies to a track into it when the track starts.
+/// </remarks>
 public sealed record MediaSettings(
     WebRTCVideoCodecs CameraCodec = WebRTCVideoCodecs.VP8,
     WebRTCVideoCodecs ScreenCodec = WebRTCVideoCodecs.H264,

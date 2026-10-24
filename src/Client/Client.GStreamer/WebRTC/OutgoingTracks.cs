@@ -305,7 +305,7 @@ internal sealed partial class OutgoingTracks
             return true;
 
         // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
-        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf();
+        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf(OutgoingVideoBranch.CodecOf(outbound));
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(exception, _core.SessionId),
             (rate, caps) => LogCaptureRate(_core.SessionId, rate, settings.Framerate, caps), isDmaBuf);
@@ -359,7 +359,7 @@ internal sealed partial class OutgoingTracks
 
         using (_sections.Enter())
         {
-            _sections.ClaimSending(outbound.MediaType).OutboundId = outbound.Id;
+            _sections.ClaimSending(outbound.MediaType, outbound.MimeType).OutboundId = outbound.Id;
         }
 
         LogOutboundRegistered(_core.SessionId, outbound.MediaType, outbound.SSRC);

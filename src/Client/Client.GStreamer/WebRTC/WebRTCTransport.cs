@@ -131,8 +131,9 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             // max-bundle keeps every section on a single ICE transport, which is what the SFU
             // expects and what keeps all of its clients on one port.
             Global.UtilSetObjectArg(webrtc, "bundle-policy", "max-bundle");
-            // The jitter buffer, in ms: what a voice is delayed by to even out the network. The video
-            // streams get a longer one, see WebRTCBinTuning.ConfigureRtpBin
+            // The jitter buffer, in ms: what a voice is delayed by to even out the network, unless the
+            // media settings gave its track another. The video streams get a longer one, see
+            // WebRTCBinTuning.ConfigureRtpBin
             webrtc.SetProperty("latency", 100u);
 
             _tuning.EnableConnectivityCheckKeepalives();
@@ -140,7 +141,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
             pipeline.Add(webrtc);
 
-            _tuning.ConfigureRtpBin(ssrc => _incoming.FindBySsrc(ssrc)?.MediaType == MediaType.Video);
+            _tuning.ConfigureRtpBin(_incoming.FindBySsrc);
 
             _states.Connect(webrtc);
             _core.Player = new IncomingStreamPlayer(pipeline, _logger, _core.SessionId, _incoming.ResolveSectionVolume,

@@ -118,7 +118,7 @@ internal sealed partial class IncomingTracks
                 _core.Player?.Retire((uint)_sections.Slots.IndexOf(staleSlot));
             }
 
-            var slot = _sections.ClaimReceiving(inbound.MediaType);
+            var slot = _sections.ClaimReceiving(inbound.MediaType, inbound.MimeType);
             slot.InboundId = inbound.Id;
             index = _sections.Slots.IndexOf(slot);
         }
