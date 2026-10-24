@@ -19,5 +19,24 @@
                                Value="{Binding Form.StorageQuotaMegabytes}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.uploads}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.unattachedUploads}"
+                            Description="{l:Text serverSettings.storage.unattachedUploads.description}">
+                <NumericUpDown MinWidth="140" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
+                               Value="{Binding Form.MaxUnattachedUploadsPerUser}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.unattachedLifetime}"
+                            Description="{l:Text serverSettings.storage.unattachedLifetime.description}">
+                <NumericUpDown MinWidth="140" Minimum="1" Maximum="720" Increment="1" FormatString="0"
+                               Value="{Binding Form.UnattachedUploadLifetimeHours}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.mediaTokenLifetime}"
+                            Description="{l:Text serverSettings.storage.mediaTokenLifetime.description}">
+                <NumericUpDown MinWidth="140" Minimum="1" Maximum="1440" Increment="1" FormatString="0"
+                               Value="{Binding Form.MediaTokenLifetimeMinutes}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>
