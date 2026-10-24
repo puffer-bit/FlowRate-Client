@@ -68,6 +68,7 @@ internal static class SessionMapper
             
             IsAudioRequested = dto.IsAudioRequested,
             IsApprovalRequested = dto.IsHostMustApprove,
+            Media = dto.Media.ToModel(),
         };
     }
     
@@ -96,4 +97,33 @@ internal static class SessionMapper
         };
     }
 
+    public static MediaSettings ToModel(this HybridMediaSettingsDTO dto) => new(
+        dto.CameraCodec,
+        dto.ScreenCodec,
+        dto.AudioCodec,
+        dto.IsVideoNackEnabled,
+        dto.IsVideoRtxEnabled,
+        dto.KeyFrameRequestDelayMs,
+        dto.IsAudioNackEnabled,
+        dto.IsOpusFecEnabled,
+        dto.OpusPacketLossPercent,
+        dto.IsVoiceDtxEnabled,
+        dto.VoiceJitterBufferMs,
+        dto.VideoJitterBufferMs);
+
+    public static HybridMediaSettingsDTO ToDto(this MediaSettings media) => new()
+    {
+        CameraCodec = media.CameraCodec,
+        ScreenCodec = media.ScreenCodec,
+        AudioCodec = media.AudioCodec,
+        IsVideoNackEnabled = media.IsVideoNackEnabled,
+        IsVideoRtxEnabled = media.IsVideoRtxEnabled,
+        KeyFrameRequestDelayMs = media.KeyFrameRequestDelayMs,
+        IsAudioNackEnabled = media.IsAudioNackEnabled,
+        IsOpusFecEnabled = media.IsOpusFecEnabled,
+        OpusPacketLossPercent = media.OpusPacketLossPercent,
+        IsVoiceDtxEnabled = media.IsVoiceDtxEnabled,
+        VoiceJitterBufferMs = media.VoiceJitterBufferMs,
+        VideoJitterBufferMs = media.VideoJitterBufferMs
+    };
 }

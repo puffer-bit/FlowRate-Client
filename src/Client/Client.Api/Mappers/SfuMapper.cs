@@ -16,7 +16,9 @@ internal static class SfuMapper
         MimeType = inbound.MimeType,
         PayloadType = inbound.PayloadType,
         ClockRate = inbound.ClockRate,
-        Channels = inbound.Channels
+        Channels = inbound.Channels,
+        IsNackEnabled = inbound.IsNackEnabled,
+        JitterBufferMs = inbound.JitterBufferMs
     };
 
     public static OutboundTrack ToModel(this Outbound outbound) => new()
@@ -29,7 +31,12 @@ internal static class SfuMapper
         MimeType = outbound.MimeType,
         PayloadType = outbound.PayloadType,
         ClockRate = outbound.ClockRate,
-        Channels = outbound.Channels
+        Channels = outbound.Channels,
+        RtxPayloadType = outbound.RtxPayloadType,
+        RtxSSRC = outbound.RtxSSRC,
+        IsFecEnabled = outbound.IsFecEnabled,
+        FecLossPercent = outbound.FecLossPercent,
+        IsDtxEnabled = outbound.IsDtxEnabled
     };
 
     public static TransportParameters ToModel(this TransportData transportData) => new(

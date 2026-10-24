@@ -21,6 +21,7 @@ using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Push;
 using Client.Core.Sessions;
+using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Ports;
 
@@ -403,9 +404,10 @@ internal partial class CoordinatorGateway
     }
     
     public async Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name,
-        int capacity, bool isHostMustApprove)
+        int capacity, bool isHostMustApprove, MediaSettings media)
     {
-        var request = new ChangeHybridSessionSettingsRequest(sessionId, name, capacity, isHostMustApprove);
+        var request = new ChangeHybridSessionSettingsRequest(sessionId, name, capacity, isHostMustApprove,
+            media.ToDto());
         var response = await SendRequestAsync<ChangeSessionSettingsResponse>(request);
 
         return response.Result;

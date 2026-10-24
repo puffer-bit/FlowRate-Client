@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 using Shared.Enums;
+using Shared.Enums.WebRTC;
+using Shared.Validation;
 using Client.Avalonia.Localization;
 using Client.Core.Sessions.Hybrid;
 using Client.Services;
@@ -18,8 +21,8 @@ namespace Client.ViewModels.Sessions.Hybrid;
 public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
 {
     private readonly HybridSessionModel _session;
-    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove),
-        ChangeSessionSettingsResult> _changeSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
+        MediaSettings Media), ChangeSessionSettingsResult> _changeSettingsCommand;
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
@@ -44,6 +47,87 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
     /// Users wait for the host to let them in.
     /// </summary>
     public bool IsApprovalRequested
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public WebRTCVideoCodecs CameraCodec
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public WebRTCVideoCodecs ScreenCodec
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public WebRTCAudioCodecs AudioCodec
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// Receivers ask for lost video packets again instead of waiting for a keyframe.
+    /// </summary>
+    public bool IsVideoNackEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// Lost video packets come again on a stream of their own. Means nothing without NACK.
+    /// </summary>
+    public bool IsVideoRtxEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? KeyFrameRequestDelayMs
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsAudioNackEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsOpusFecEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// The loss the Opus FEC is prepared for. Means nothing without FEC.
+    /// </summary>
+    public decimal? OpusPacketLossPercent
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsVoiceDtxEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? VoiceJitterBufferMs
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? VideoJitterBufferMs
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -76,27 +160,41 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
     public decimal CapacityMax => SessionRules.CapacityMax;
     public string CapacityHint => SessionRules.CapacityHint;
 
+    public IReadOnlyList<WebRTCVideoCodecs> VideoCodecs => MediaSettings.SupportedVideoCodecs;
+    public IReadOnlyList<WebRTCAudioCodecs> AudioCodecs => MediaSettings.SupportedAudioCodecs;
+    public decimal KeyFrameRequestDelayMin => Limits.KeyFrameRequestDelayMinMs;
+    public decimal KeyFrameRequestDelayMax => Limits.KeyFrameRequestDelayMaxMs;
+    public decimal JitterBufferMin => Limits.JitterBufferMinMs;
+    public decimal JitterBufferMax => Limits.JitterBufferMaxMs;
+
     public Interaction<RxVoid, RxVoid> CloseWindow { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
     public HybridSessionSettingsWindowVM(HybridSessionModel session,
-        ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove),
-            ChangeSessionSettingsResult> changeSettingsCommand)
+        ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
+            MediaSettings Media), ChangeSessionSettingsResult> changeSettingsCommand)
     {
         _session = session;
         _changeSettingsCommand = changeSettingsCommand;
         Name = session.Name;
         Capacity = session.Capacity;
         IsApprovalRequested = session.IsApprovalRequested;
+        ShowMedia(session.Media);
 
-        var hasChanges = this.WatchProperties(nameof(Name), nameof(Capacity), nameof(IsApprovalRequested))
+        var hasChanges = this.WatchProperties(nameof(Name), nameof(Capacity), nameof(IsApprovalRequested),
+                nameof(CameraCodec), nameof(ScreenCodec), nameof(AudioCodec), nameof(IsVideoNackEnabled),
+                nameof(IsVideoRtxEnabled), nameof(KeyFrameRequestDelayMs), nameof(IsAudioNackEnabled),
+                nameof(IsOpusFecEnabled), nameof(OpusPacketLossPercent), nameof(IsVoiceDtxEnabled),
+                nameof(VoiceJitterBufferMs), nameof(VideoJitterBufferMs))
             .Select(vm => SessionRules.ValidateName(vm.Name) == null
                 && SessionRules.ValidateCapacity(vm.Capacity) == null
+                && vm.ReadMedia() is { } media
                 && (vm.Name.Trim() != _session.Name
                     || vm.Capacity != _session.Capacity
-                    || vm.IsApprovalRequested != _session.IsApprovalRequested));
+                    || vm.IsApprovalRequested != _session.IsApprovalRequested
+                    || media != _session.Media));
 
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, hasChanges);
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(RxVoid.Default); },
@@ -118,10 +216,11 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
     {
         GeneralError = null;
 
-        if (Capacity is not { } capacity)
+        if (Capacity is not { } capacity || ReadMedia() is not { } media)
             return;
 
-        var result = await _changeSettingsCommand.Execute((_session.Id, Name.Trim(), (int)capacity, IsApprovalRequested));
+        var result = await _changeSettingsCommand.Execute((_session.Id, Name.Trim(), (int)capacity, IsApprovalRequested,
+            media));
 
         switch (result)
         {
@@ -147,6 +246,38 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
                 GeneralError = Strings.Format("sessionSettings.notSaved", ("reason", result));
                 break;
         }
+    }
+
+    private void ShowMedia(MediaSettings media)
+    {
+        CameraCodec = media.CameraCodec;
+        ScreenCodec = media.ScreenCodec;
+        AudioCodec = media.AudioCodec;
+        IsVideoNackEnabled = media.IsVideoNackEnabled;
+        IsVideoRtxEnabled = media.IsVideoRtxEnabled;
+        KeyFrameRequestDelayMs = media.KeyFrameRequestDelayMs;
+        IsAudioNackEnabled = media.IsAudioNackEnabled;
+        IsOpusFecEnabled = media.IsOpusFecEnabled;
+        OpusPacketLossPercent = media.OpusPacketLossPercent;
+        IsVoiceDtxEnabled = media.IsVoiceDtxEnabled;
+        VoiceJitterBufferMs = media.VoiceJitterBufferMs;
+        VideoJitterBufferMs = media.VideoJitterBufferMs;
+    }
+
+    /// <summary>
+    /// Null while a number box is empty.
+    /// </summary>
+    private MediaSettings? ReadMedia()
+    {
+        if (KeyFrameRequestDelayMs is not { } keyFrameRequestDelay
+            || OpusPacketLossPercent is not { } opusPacketLoss
+            || VoiceJitterBufferMs is not { } voiceJitterBuffer
+            || VideoJitterBufferMs is not { } videoJitterBuffer)
+            return null;
+
+        return new MediaSettings(CameraCodec, ScreenCodec, AudioCodec, IsVideoNackEnabled, IsVideoRtxEnabled,
+            (int)keyFrameRequestDelay, IsAudioNackEnabled, IsOpusFecEnabled, (int)opusPacketLoss, IsVoiceDtxEnabled,
+            (int)voiceJitterBuffer, (int)videoJitterBuffer);
     }
 
     public void Dispose()

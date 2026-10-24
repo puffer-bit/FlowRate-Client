@@ -73,7 +73,8 @@ internal static class OutgoingAudioBranch
     // Mono speech at up to 64 kbit/s, less when the signal needs less. FEC lets the receiver rebuild
     // a lost packet from the next one, but the encoder only adds the redundancy for the loss it is
     // told to expect, and with the default of 0 it adds none. DTX stops sending while the speaker
-    // is silent: the encoder only shrinks silent frames, the payloader's own dtx drops them. The
+    // is silent: the encoder only shrinks silent frames, the payloader's own dtx drops them. FEC,
+    // the loss it expects and DTX are what the media settings of the session gave the track. The
     // gate and the mute silence the voice instead of dropping it: a hole in the stream would be
     // closed up by the encoder, the RTP clock would not advance over the pause, and the receiver
     // would replay the voice. The last queue drops the oldest packets past 200 ms rather than
@@ -82,10 +83,10 @@ internal static class OutgoingAudioBranch
         "volume name=" + InputVolumeName + " volume={0} ! {3}" +
         "volume name=" + MuteFadeName + " ! " +
         "volume name=" + MuteValveName + " mute=false ! " +
-        "opusenc audio-type=voice bitrate=64000 inband-fec=true packet-loss-percentage=10 dtx=true " +
+        "opusenc audio-type=voice bitrate=64000 {4} " +
         "frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} dtx=true ! " +
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
+        "rtpopuspay pt={1} ssrc={2} dtx={5} ! " +
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
     // Stereo at a rate that keeps music clean. No DTX: a quiet passage of a film is not a pause,
     // and the producer of the screen sound is created without it. The volume and mute elements
@@ -94,14 +95,26 @@ internal static class OutgoingAudioBranch
         "volume name=" + InputVolumeName + " volume={0} ! " +
         "volume name=" + MuteFadeName + " ! " +
         "volume name=" + MuteValveName + " mute=false ! " +
-        "opusenc audio-type=generic bitrate=128000 inband-fec=true packet-loss-percentage=10 frame-size=20 ! " +
+        "opusenc audio-type=generic bitrate=128000 {4} frame-size=20 ! " +
         "rtpopuspay pt={1} ssrc={2} ! " +
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
     // Starts closed, that is silent.
     private const string GateDescription =
         "level name=" + GateLevelName + " interval={0} ! " +
         "volume name=" + GateValveName + " mute=true ! ";
+
+    /// <summary>
+    /// The FEC and DTX properties of the encoder. The sound of a screen never has DTX.
+    /// </summary>
+    private static string EncoderSettings(OutboundTrack outbound, bool isScreen) =>
+        string.Format(CultureInfo.InvariantCulture, "inband-fec={0} packet-loss-percentage={1} dtx={2}",
+            outbound.IsFecEnabled ? "true" : "false",
+            outbound.IsFecEnabled ? Math.Clamp(outbound.FecLossPercent, 0, 100) : 0,
+            DtxOf(outbound, isScreen));
+
+    private static string DtxOf(OutboundTrack outbound, bool isScreen) =>
+        outbound.IsDtxEnabled && !isScreen ? "true" : "false";
 
     /// <summary>
     /// Builds the branch around <paramref name="source"/>, which it takes ownership of.
@@ -128,7 +141,8 @@ internal static class OutgoingAudioBranch
             : "";
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
-            isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate), true);
+            isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
+            EncoderSettings(outbound, isScreen), DtxOf(outbound, isScreen)), true);
 
         if (encoding == null)
         {
