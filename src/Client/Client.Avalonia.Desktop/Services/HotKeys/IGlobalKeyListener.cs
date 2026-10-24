@@ -17,3 +17,9 @@ internal interface IGlobalKeyListener : IDisposable
 /// </summary>
 /// <param name="isRepeat">The key is held and the keyboard repeats it.</param>
 internal delegate void GlobalKeyHandler(PhysicalKey key, bool isDown, bool isRepeat);
+
+/// <summary>
+/// The state of a modifier as the system sees it, for a release the listener never got. Called on
+/// the thread of the listener.
+/// </summary>
+internal delegate void GlobalModifierSync(PhysicalKey key, bool isDown);

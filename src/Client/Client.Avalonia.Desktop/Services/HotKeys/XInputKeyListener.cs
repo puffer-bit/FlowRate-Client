@@ -41,6 +41,7 @@ internal sealed partial class XInputKeyListener : IGlobalKeyListener
     private const int RawFlagsOffset = 60;
 
     private readonly GlobalKeyHandler _onKey;
+    private readonly GlobalModifierSync _onModifierSync;
     private readonly IntPtr _display;
     private readonly int _opcode;
     private readonly Thread _thread;
@@ -48,16 +49,17 @@ internal sealed partial class XInputKeyListener : IGlobalKeyListener
 
     public GlobalHotKeysBackend Kind => GlobalHotKeysBackend.XInput;
 
-    private XInputKeyListener(GlobalKeyHandler onKey, IntPtr display, int opcode)
+    private XInputKeyListener(GlobalKeyHandler onKey, GlobalModifierSync onModifierSync, IntPtr display, int opcode)
     {
         _onKey = onKey;
+        _onModifierSync = onModifierSync;
         _display = display;
         _opcode = opcode;
         _thread = new Thread(Run) { IsBackground = true, Name = "Hot keys (XInput)" };
     }
 
     /// <summary>Null without an X server or its XInput 2 extension.</summary>
-    public static unsafe XInputKeyListener? TryStart(GlobalKeyHandler onKey)
+    public static unsafe XInputKeyListener? TryStart(GlobalKeyHandler onKey, GlobalModifierSync onModifierSync)
     {
         if (IntPtr.Size != 8 || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")))
             return null;
@@ -98,7 +100,7 @@ internal sealed partial class XInputKeyListener : IGlobalKeyListener
             XISelectEvents(display, XDefaultRootWindow(display), &eventMask, 1);
             XFlush(display);
 
-            var listener = new XInputKeyListener(onKey, display, opcode);
+            var listener = new XInputKeyListener(onKey, onModifierSync, display, opcode);
             listener._thread.Start();
             return listener;
         }
@@ -172,7 +174,7 @@ internal sealed partial class XInputKeyListener : IGlobalKeyListener
         {
             var key = LinuxKeyCodes.ToPhysicalKey(keyCode - KeyCodeOffset);
             if (HotKeyGesture.IsModifier(key))
-                _onKey(key, (keymap[keyCode / 8] & (1 << (keyCode % 8))) != 0, false);
+                _onModifierSync(key, (keymap[keyCode / 8] & (1 << (keyCode % 8))) != 0);
         }
     }
 
