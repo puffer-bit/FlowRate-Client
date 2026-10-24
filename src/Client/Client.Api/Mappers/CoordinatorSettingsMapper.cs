@@ -20,10 +20,12 @@ internal static class CoordinatorSettingsMapper
         BannedIps = dto.BannedIps,
         HeartbeatIntervalSeconds = dto.HeartbeatIntervalSeconds,
         HeartbeatTimeoutSeconds = dto.HeartbeatTimeoutSeconds,
-        Stun = dto.Stun.ToModel(),
-        Turn = dto.Turn.ToModel(),
         MaxFileSizeBytes = dto.MaxFileSizeBytes,
         StorageQuotaBytes = dto.StorageQuotaBytes,
+        MaxUnattachedUploadsPerUser = dto.MaxUnattachedUploadsPerUser,
+        UnattachedUploadLifetimeHours = dto.UnattachedUploadLifetimeHours,
+        MediaTokenLifetimeMinutes = dto.MediaTokenLifetimeMinutes,
+        RateLimits = dto.RateLimits.ToModel(),
         SfuNodeIds = dto.SfuNodeIds
     };
 
@@ -48,22 +50,62 @@ internal static class CoordinatorSettingsMapper
         BannedIps = update.BannedIps.ToList(),
         HeartbeatIntervalSeconds = update.HeartbeatIntervalSeconds,
         HeartbeatTimeoutSeconds = update.HeartbeatTimeoutSeconds,
-        Stun = update.Stun.ToDto(),
-        Turn = update.Turn.ToDto(),
         MaxFileSizeBytes = update.MaxFileSizeBytes,
         StorageQuotaBytes = update.StorageQuotaBytes,
+        MaxUnattachedUploadsPerUser = update.MaxUnattachedUploadsPerUser,
+        UnattachedUploadLifetimeHours = update.UnattachedUploadLifetimeHours,
+        MediaTokenLifetimeMinutes = update.MediaTokenLifetimeMinutes,
+        RateLimits = update.RateLimits.ToDto(),
         SfuNodeIds = update.SfuNodeIds.ToList()
     };
 
-    private static IceServerSettings ToModel(this IceServerSettingsDTO dto) =>
-        new(dto.IsEnabled, dto.Address, dto.Port, dto.Username, dto.Password);
-
-    private static IceServerSettingsDTO ToDto(this IceServerSettings settings) => new()
+    private static CoordinatorRateLimits ToModel(this CoordinatorRateLimitsDTO dto) => new()
     {
-        IsEnabled = settings.IsEnabled,
-        Address = settings.Address,
-        Port = settings.Port,
-        Username = settings.Username,
-        Password = settings.Password
+        Global = dto.Global.ToModel(),
+        AuthenticationPerIp = dto.AuthenticationPerIp.ToModel(),
+        SessionManagement = dto.SessionManagement.ToModel(),
+        SessionLayout = dto.SessionLayout.ToModel(),
+        SessionMedia = dto.SessionMedia.ToModel(),
+        MicrophoneMute = dto.MicrophoneMute.ToModel(),
+        InboundResume = dto.InboundResume.ToModel(),
+        Moderation = dto.Moderation.ToModel(),
+        ChatWrite = dto.ChatWrite.ToModel(),
+        ChatRead = dto.ChatRead.ToModel(),
+        PushRegistration = dto.PushRegistration.ToModel(),
+        MediaToken = dto.MediaToken.ToModel(),
+        Query = dto.Query.ToModel(),
+        Heartbeat = dto.Heartbeat.ToModel(),
+        MaxRejectionsPerWindow = dto.MaxRejectionsPerWindow,
+        RejectionWindowSeconds = dto.RejectionWindowSeconds,
+        MaxConnectionsPerIp = dto.MaxConnectionsPerIp
+    };
+
+    private static CoordinatorRateLimitsDTO ToDto(this CoordinatorRateLimits limits) => new()
+    {
+        Global = limits.Global.ToDto(),
+        AuthenticationPerIp = limits.AuthenticationPerIp.ToDto(),
+        SessionManagement = limits.SessionManagement.ToDto(),
+        SessionLayout = limits.SessionLayout.ToDto(),
+        SessionMedia = limits.SessionMedia.ToDto(),
+        MicrophoneMute = limits.MicrophoneMute.ToDto(),
+        InboundResume = limits.InboundResume.ToDto(),
+        Moderation = limits.Moderation.ToDto(),
+        ChatWrite = limits.ChatWrite.ToDto(),
+        ChatRead = limits.ChatRead.ToDto(),
+        PushRegistration = limits.PushRegistration.ToDto(),
+        MediaToken = limits.MediaToken.ToDto(),
+        Query = limits.Query.ToDto(),
+        Heartbeat = limits.Heartbeat.ToDto(),
+        MaxRejectionsPerWindow = limits.MaxRejectionsPerWindow,
+        RejectionWindowSeconds = limits.RejectionWindowSeconds,
+        MaxConnectionsPerIp = limits.MaxConnectionsPerIp
+    };
+
+    private static RequestRate ToModel(this RequestRateDTO dto) => new(dto.Count, dto.PeriodSeconds);
+
+    private static RequestRateDTO ToDto(this RequestRate rate) => new()
+    {
+        Count = rate.Count,
+        PeriodSeconds = rate.PeriodSeconds
     };
 }

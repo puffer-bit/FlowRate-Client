@@ -26,8 +26,6 @@ internal static class RequestMapper
             hybrid.IsSimulcastEnabled,
             hybrid.IsTunnelingEnabled,
             hybrid.IsProxyActive,
-            hybrid.DisableStun,
-            hybrid.DisableTurn,
             hybrid.Media?.ToDto()),
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
