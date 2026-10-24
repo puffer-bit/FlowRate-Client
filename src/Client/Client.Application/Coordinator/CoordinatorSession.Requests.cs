@@ -93,8 +93,8 @@ public partial class CoordinatorSession
             RejectUserSessionResult.InternalError, RejectUserSessionResult.TimedOut);
 
     public Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove) =>
-        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove),
+        bool isHostMustApprove, MediaSettings media) =>
+        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove, media),
             ChangeSessionSettingsResult.Rejected, ChangeSessionSettingsResult.TimedOut);
 
     public Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
