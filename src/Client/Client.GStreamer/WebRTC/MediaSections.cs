@@ -25,12 +25,14 @@ internal sealed class MediaSections
     public Lock.Scope Enter() => _lock.EnterScope();
 
     /// <summary>
-    /// A free receiving section of the kind, or a new one. Only inside <see cref="Enter"/>.
+    /// A free receiving section of the kind and the codec of <paramref name="mimeType"/>, or a new
+    /// one. Only inside <see cref="Enter"/>.
     /// </summary>
-    public MediaSlot ClaimReceiving(MediaType mediaType)
+    public MediaSlot ClaimReceiving(MediaType mediaType, string mimeType)
     {
         var slot = Slots.FirstOrDefault(item => !item.IsPlaceholder && !item.IsSend &&
-                                                item.InboundId == null && item.Kind == ToKind(mediaType));
+                                                item.InboundId == null && item.Kind == ToKind(mediaType) &&
+                                                item.Carries(mimeType));
 
         if (slot == null)
         {
@@ -42,15 +44,17 @@ internal sealed class MediaSections
     }
 
     /// <summary>
-    /// A free sending section of the kind, or a new one. Only inside <see cref="Enter"/>.
+    /// A free sending section of the kind and the codec of <paramref name="mimeType"/>, or a new
+    /// one. Only inside <see cref="Enter"/>.
     /// </summary>
     /// <remarks>
     /// Sending sections are only reused for sending: a receiving section still has the pad and the
     /// player of its previous stream.
     /// </remarks>
-    public MediaSlot ClaimSending(MediaType mediaType)
+    public MediaSlot ClaimSending(MediaType mediaType, string mimeType)
     {
-        var slot = Slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Kind == ToKind(mediaType));
+        var slot = Slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Kind == ToKind(mediaType) &&
+                                                item.Carries(mimeType));
 
         if (slot == null)
         {
@@ -177,4 +181,13 @@ internal sealed class MediaSlot
     /// rejected section cannot be brought back, the next track in it fails to negotiate.
     /// </summary>
     public RtpCodec? LastCodec { get; set; }
+
+    /// <summary>
+    /// Whether a track of <paramref name="mimeType"/> may take the section: one that carried no
+    /// codec yet, or the same. A section that changed its codec would be rejected like one that
+    /// lost it, which the media settings of a session make possible between two tracks.
+    /// </summary>
+    public bool Carries(string mimeType) =>
+        LastCodec == null || string.IsNullOrEmpty(mimeType) ||
+        LastCodec.EncodingName.Equals(RtpCodec.EncodingNameOf(mimeType), StringComparison.OrdinalIgnoreCase);
 }
