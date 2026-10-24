@@ -19,8 +19,6 @@ internal static class RequestMapper
     {
         NewHybridSessionOptions hybrid => new HybridSessionCreateData(
             hybrid.EngineType,
-            hybrid.VideoCodecs,
-            hybrid.AudioCodecs,
             hybrid.Resolution,
             hybrid.VideoBitrate,
             hybrid.IsAudioTransferEnabled,
@@ -29,7 +27,8 @@ internal static class RequestMapper
             hybrid.IsTunnelingEnabled,
             hybrid.IsProxyActive,
             hybrid.DisableStun,
-            hybrid.DisableTurn),
+            hybrid.DisableTurn,
+            hybrid.Media?.ToDto()),
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
             chat.Description,

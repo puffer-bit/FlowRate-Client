@@ -242,7 +242,7 @@ public interface ICoordinatorSession : IDisposable
     /// as <see cref="HybridSessionReconfigured"/>.
     /// </summary>
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove);
+        bool isHostMustApprove, MediaSettings media);
 
     /// <summary>
     /// Replaces the permission overrides of the session. A saved change comes back as the session reconfigured,
