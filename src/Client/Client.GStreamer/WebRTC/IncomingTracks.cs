@@ -226,6 +226,17 @@ internal sealed partial class IncomingTracks
         }
     }
 
+    /// <summary>
+    /// The user whose track the section carries, or null for a section of nobody.
+    /// </summary>
+    public int? ResolveSectionUser(uint mline)
+    {
+        using (_sections.Enter())
+        {
+            return FindBySection(mline)?.UserId;
+        }
+    }
+
     private void ReleaseInbounds(IReadOnlyList<string> inboundIds)
     {
         var released = false;

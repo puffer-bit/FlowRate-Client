@@ -25,6 +25,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/FlyoutStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/PopupStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/ExpandableSection.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsPage.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsCard.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsRow.axaml"/>
