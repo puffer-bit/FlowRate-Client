@@ -167,6 +167,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             .Add(() => hybridSession.ScreenWatchChanged += OnScreenWatchChanged,
                 () => hybridSession.ScreenWatchChanged -= OnScreenWatchChanged)
             .Add(() => hybridSession.VideoFrameReady += OnVideoFrame, () => hybridSession.VideoFrameReady -= OnVideoFrame)
+            .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)
             .Add(() => coordinatorSession.HybridSessionReconfigured += OnSessionReconfigured,
@@ -444,6 +445,13 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     // The session reports its state and errors from GStreamer and thread pool threads, so both are
     // marshalled to the UI thread before they touch any view model
+    private void OnStatsSampled(TransportStatsSample sample) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsClosed)
+                StatusBar.Stats.Add(sample);
+        });
+
     private void OnSessionStateChanged(HybridSessionState state) =>
         Dispatcher.UIThread.Post(async () => await HandleSessionStatus(state));
 
