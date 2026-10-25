@@ -18,8 +18,8 @@ using Result = Client.ViewModels.Dialogs.Result;
 namespace Client.ViewModels.Main;
 
 /// <summary>
-/// What can be done to users of the connected coordinator: the profiles, the status and kicking
-/// a peer out of a hybrid session.
+/// What can be done to users of the connected coordinator: the profiles, the status, kicking
+/// a peer out of a hybrid session and banning a user.
 /// </summary>
 public sealed class UserActions
 {
@@ -27,6 +27,9 @@ public sealed class UserActions
     public ReactiveCommand<int, RxVoid> ViewProfileCommand { get; }
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
+
+    /// <summary>Bans a user from the coordinator, once the user agrees to it.</summary>
+    public ReactiveCommand<(int UserId, string Name), RxVoid> BanUserCommand { get; }
 
     /// <summary>Lets a peer waiting for the host into a hybrid session, or turns it away, which takes it out.</summary>
     public ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> AdmitPeerCommand { get; }
@@ -68,6 +71,7 @@ public sealed class UserActions
         ViewProfileCommand = ReactiveCommand.CreateFromTask<int>(ViewProfile, isConnected);
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
+        BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);
         AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
             isConnected);
 
@@ -136,6 +140,24 @@ public sealed class UserActions
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
+            Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+    }
+
+    // The user leaves its sessions and the coordinator with the ban, as from the server settings
+    private async Task BanUser((int UserId, string Name) target)
+    {
+        if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
+                Strings.Format("serverSettings.users.ban.question", ("name", target.Name)),
+                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+            return;
+
+        var result = await Session.SetUserState(target.UserId, UserState.Banned);
+
+        // A rejection is reported on its own
+        if (result is ModerateUserResult.NoError or ModerateUserResult.Rejected)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.ban.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int)result)));
     }
 

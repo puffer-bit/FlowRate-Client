@@ -766,6 +766,7 @@
     }
   },
   "peer.ban": "Ban",
+  "peer.ban.failed.title": "Could not ban the user",
   "peer.suspend": "Suspend",
   "peer.report": "Report",
   "peer.viewProfile": "View profile",

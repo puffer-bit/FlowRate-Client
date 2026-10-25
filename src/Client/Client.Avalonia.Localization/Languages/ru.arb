@@ -488,6 +488,7 @@
   "hybrid.kicked.text": "{user} исключил(а) вас из сессии «{session}»",
   "hybrid.kickedByServer.text": "Сервер исключил вас из сессии «{session}»: {reason}",
   "peer.ban": "Заблокировать",
+  "peer.ban.failed.title": "Не удалось заблокировать пользователя",
   "peer.suspend": "Приостановить",
   "peer.report": "Пожаловаться",
   "peer.viewProfile": "Открыть профиль",
