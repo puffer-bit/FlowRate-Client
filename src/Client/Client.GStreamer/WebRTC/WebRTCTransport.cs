@@ -159,7 +159,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             webrtc.PadRemoved += OnPadRemoved;
 
             // Also keeps the bus from piling up the messages nobody reads
-            _busWatcher = new GstBusWatcher(pipeline.GetBus(), MessageType.Element, _outgoing.OnElementMessage,
+            _busWatcher = new GstBusWatcher(pipeline.GetBus(),
+                MessageType.Element | MessageType.Error | MessageType.Warning, OnBusMessage,
                 $"webrtc_transport_{_core.SessionId}", _logger);
 
             _speaking.Start();
@@ -169,6 +170,37 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         }
 
         return Negotiate();
+    }
+
+    /// <summary>
+    /// Passes the messages of the elements on and logs the errors and the warnings. An element
+    /// that fails, such as the sink of the voices when the device cannot be opened, posts only an
+    /// error and stops its part of the pipeline: the packets keep coming and nothing is heard.
+    /// </summary>
+    private void OnBusMessage(Message message)
+    {
+        switch (message.Type)
+        {
+            case MessageType.Element:
+                _outgoing.OnElementMessage(message);
+                break;
+
+            case MessageType.Error:
+            {
+                var (error, debug) = message.ParseError();
+                LogPipelineError(_core.SessionId, GstNative.GetPath(GstNative.GetMessageSource(message)),
+                    error.Message, debug);
+                break;
+            }
+
+            case MessageType.Warning:
+            {
+                var (warning, debug) = message.ParseWarning();
+                LogPipelineWarning(_core.SessionId, GstNative.GetPath(GstNative.GetMessageSource(message)),
+                    warning.Message, debug);
+                break;
+            }
+        }
     }
 
     public void Disconnect()
