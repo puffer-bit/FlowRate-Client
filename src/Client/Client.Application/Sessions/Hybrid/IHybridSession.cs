@@ -30,19 +30,19 @@ public interface IHybridSession : IDisposable
     /// </summary>
     /// <param name="inputDeviceId">Capture device, or null for the system default one.</param>
     /// <param name="inputVolume">Gain applied to the microphone before encoding.</param>
-    /// <param name="voiceGateThresholdDb">
-    /// Peak level in dBFS from which the microphone is sent, or null to send it all the time.
+    /// <param name="voiceGate">
+    /// How the voice gate of the microphone decides, or null to send it all the time.
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of the microphone.</param>
     /// <param name="isMuted">Starts muted, so that nothing is heard before the mute is put back.</param>
     Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression, bool isMuted = false);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isMuted = false);
 
     /// <summary>
     /// Same as the microphone overload, but sends any <paramref name="input"/>: a looped file or a tone as well.
     /// </summary>
     Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
-        double? voiceGateThresholdDb = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
+        VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
         bool isMuted = false);
 
     Task<StopVoiceShareResult> StopVoiceShareAsync();
@@ -145,6 +145,5 @@ public interface IHybridSession : IDisposable
     /// Changes the voice gate of the running microphone, null turns the gate off. Without a running
     /// microphone nothing happens.
     /// </summary>
-    /// <param name="thresholdDb">Peak level in dBFS from which the microphone is sent.</param>
-    void SetVoiceGateThreshold(double? thresholdDb);
+    void SetVoiceGate(VoiceGateOptions? voiceGate);
 }

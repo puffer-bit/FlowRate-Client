@@ -63,10 +63,13 @@ internal sealed partial class OutgoingTracks
     private partial void LogCaptureBranchReleaseFailed(Exception exception, int sessionId);
 
     [LoggerMessage(LogLevel.Information,
-        "[Session {SessionId}] Voice gate at {ThresholdDb:F0} dB: open {OpenPercent:F0}% of the time, opened " +
-        "{Openings} times, loudest peak {LoudestDb:F0} dB, average peak while open {AverageOpenPeakDb:F0} dB")]
-    private partial void LogVoiceGateSummary(int sessionId, double thresholdDb, double openPercent, int openings,
-        double loudestDb, double averageOpenPeakDb);
+        "[Session {SessionId}] Voice gate at {ThresholdDb:F0} dB, opening from {EffectiveThresholdDb:F0} dB over a " +
+        "noise floor of {NoiseFloorDb:F0} dB (null: not adaptive): open {OpenPercent:F0}% of the time, opened " +
+        "{Openings} times, loudest peak {LoudestDb:F0} dB, average peak while open {AverageOpenPeakDb:F0} dB, " +
+        "voice heard {VoicePercent:F0}% of the time (null: no voice detection)")]
+    private partial void LogVoiceGateSummary(int sessionId, double thresholdDb, double effectiveThresholdDb,
+        double? noiseFloorDb, double openPercent, int openings, double loudestDb, double averageOpenPeakDb,
+        double? voicePercent);
 
     [LoggerMessage(LogLevel.Trace, "[Session {SessionId}] Voice gate open: {IsOpen}")]
     private partial void LogVoiceGateChanged(int sessionId, bool isOpen);
@@ -77,9 +80,13 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Outbound input changed to {Input}, noise suppression {NoiseSuppression}")]
     private partial void LogOutboundInputChanged(int sessionId, AudioInput input, NoiseSuppressionLevel noiseSuppression);
 
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] Noise suppression {Requested} needs audiornnoise, which the GStreamer runtime lacks; using {Applied}")]
+    private partial void LogNoiseSuppressionReplaced(int sessionId, NoiseSuppressionLevel requested, NoiseSuppressionLevel applied);
+
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to change the outbound input")]
     private partial void LogOutboundInputChangeFailed(Exception exception, int sessionId);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Voice gate threshold changed to {ThresholdDb} dB (null: off)")]
-    private partial void LogVoiceGateThresholdChanged(int sessionId, double? thresholdDb);
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Voice gate changed to {Options} (null: off)")]
+    private partial void LogVoiceGateOptionsChanged(int sessionId, VoiceGateOptions? options);
 }

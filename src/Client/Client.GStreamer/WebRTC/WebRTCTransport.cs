@@ -145,6 +145,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             webrtc.SetProperty("latency", 100u);
 
             _tuning.EnableConnectivityCheckKeepalives();
+            _tuning.DisableSendClockSync();
             _retransmission.Attach(webrtc);
 
             pipeline.Add(webrtc);
@@ -158,7 +159,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             webrtc.PadRemoved += OnPadRemoved;
 
             // Also keeps the bus from piling up the messages nobody reads
-            _busWatcher = new GstBusWatcher(pipeline.GetBus(), MessageType.Element, _outgoing.OnElementMessage,
+            _busWatcher = new GstBusWatcher(pipeline.GetBus(),
+                MessageType.Element | MessageType.Error | MessageType.Warning, OnBusMessage,
                 $"webrtc_transport_{_core.SessionId}", _logger);
 
             _speaking.Start();
@@ -168,6 +170,37 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         }
 
         return Negotiate();
+    }
+
+    /// <summary>
+    /// Passes the messages of the elements on and logs the errors and the warnings. An element
+    /// that fails, such as the sink of the voices when the device cannot be opened, posts only an
+    /// error and stops its part of the pipeline: the packets keep coming and nothing is heard.
+    /// </summary>
+    private void OnBusMessage(Message message)
+    {
+        switch (message.Type)
+        {
+            case MessageType.Element:
+                _outgoing.OnElementMessage(message);
+                break;
+
+            case MessageType.Error:
+            {
+                var (error, debug) = message.ParseError();
+                LogPipelineError(_core.SessionId, GstNative.GetPath(GstNative.GetMessageSource(message)),
+                    error.Message, debug);
+                break;
+            }
+
+            case MessageType.Warning:
+            {
+                var (warning, debug) = message.ParseWarning();
+                LogPipelineWarning(_core.SessionId, GstNative.GetPath(GstNative.GetMessageSource(message)),
+                    warning.Message, debug);
+                break;
+            }
+        }
     }
 
     public void Disconnect()
@@ -210,14 +243,14 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
     public void SetInboundVoiceMuted(bool isMuted) => _incoming.SetVoiceMuted(isMuted);
 
-    public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, double? voiceGateThresholdDb,
+    public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
         NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, input, volume, voiceGateThresholdDb, noiseSuppression);
+        _outgoing.Start(outbound, input, volume, voiceGate, noiseSuppression);
 
-    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, double?, NoiseSuppressionLevel)"/>
+    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, VoiceGateOptions?, NoiseSuppressionLevel)"/>
     public bool StartOutbound(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGateThresholdDb, noiseSuppression);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression) =>
+        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGate, noiseSuppression);
 
     public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings) =>
         _outgoing.Start(outbound, input, settings);
@@ -231,8 +264,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression) =>
         _outgoing.SetInput(outboundId, input, noiseSuppression);
 
-    public void SetVoiceGateThreshold(string outboundId, double? thresholdDb) =>
-        _outgoing.SetVoiceGateThreshold(outboundId, thresholdDb);
+    public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate) =>
+        _outgoing.SetVoiceGate(outboundId, voiceGate);
 
     /// <summary>
     /// Hands a decoded frame to whoever draws it. Runs on the pump thread of the section.

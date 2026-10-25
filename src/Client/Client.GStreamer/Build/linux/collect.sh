@@ -32,6 +32,7 @@ mkdir -p "$DEST/lib/gstreamer-1.0" "$DEST/libexec/gstreamer-1.0" "$OUT/licenses"
 declare -A ORIGIN
 
 echo "== Copying GStreamer"
+# The plugins of gst-plugins-rs are installed there too: libgstdav1d.so, libgstrsrtp.so, libgstrsaudiofx.so
 for plugin in "$PREFIX"/lib/gstreamer-1.0/*.so; do
     install -m 644 "$plugin" "$DEST/lib/gstreamer-1.0/"
 done
@@ -143,7 +144,7 @@ copy_licenses gst-plugins-rs "$SRC/gst-plugins-rs"
     echo
     echo "GStreamer ${GST_VERSION:-} and its plugins: LGPL-2.1-or-later"
     echo "  source: https://gitlab.freedesktop.org/gstreamer/gstreamer"
-    echo "gst-plugins-rs (dav1d, rtp): MIT/Apache-2.0 and MPL-2.0"
+    echo "gst-plugins-rs (dav1d, rtp, audiofx with RNNoise): MIT/Apache-2.0 and MPL-2.0"
     echo "  source: https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"
     echo "PipeWire GStreamer plugin: MIT      source: https://gitlab.freedesktop.org/pipewire/pipewire"
     echo "libnice: LGPL-2.1 / MPL-1.1         source: https://libnice.freedesktop.org"
