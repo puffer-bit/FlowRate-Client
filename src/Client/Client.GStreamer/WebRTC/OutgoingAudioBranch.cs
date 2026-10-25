@@ -48,10 +48,24 @@ internal static class OutgoingAudioBranch
     public const string GateValveName = "gate";
 
     /// <summary>
+    /// Name of the level element that measures what RNNoise takes for a voice, for the voice
+    /// detection of the <see cref="VoiceGate"/>. Only a runtime with RNNoise has it.
+    /// </summary>
+    public const string VoiceLevelName = "voice_level";
+
+    /// <summary>
+    /// Name of the valve in front of RNNoise in the voice detection, closed while the gate is off.
+    /// </summary>
+    public const string VoiceValveName = "voice_valve";
+
+    /// <summary>
     /// Name of the queue that holds the audio back by <see cref="VoiceGate.PreRoll"/> between the
     /// level element and the valve of the gate.
     /// </summary>
     private const string GateDelayName = "gate_delay";
+
+    // Where the voice detection leaves the gate, in front of the delay
+    private const string GateSplitName = "gate_split";
 
     /// <summary>
     /// Name of the part that captures: the source and what its sound goes through before the input
@@ -76,6 +90,18 @@ internal static class OutgoingAudioBranch
     // The sound of a screen is music and films as often as speech, so it keeps both channels
     private const string ScreenCaps = "audio/x-raw,rate=48000,channels=2";
 
+    // The voice detection, beside the delay. RNNoise silences every 10 ms frame it takes for no voice,
+    // and the level after it tells the gate what is left; nothing of it is sent. Its queue is leaky,
+    // so a detector that falls behind never holds up the voice. The valve keeps RNNoise idle while
+    // the gate is off and passes the caps meanwhile, so it starts at once when turned on.
+    // While the valve drops, tee fails the allocation query on its way, and the elements in front
+    // of it allocate their buffers on their own, as they do without a downstream pool.
+    private const string VoiceDetectionDescription =
+        " " + GateSplitName + ". ! queue leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=100000000 ! " +
+        "valve name=" + VoiceValveName + " drop=true drop-mode=forward-sticky-events ! audioconvert ! " +
+        MicrophoneProcessing.NeuralCaps + " ! " + MicrophoneProcessing.NeuralElementName + " voice-activity-threshold={1} ! " +
+        "level name=" + VoiceLevelName + " interval={0} ! fakesink sync=false async=false";
+
     // Mono speech at up to 64 kbit/s, less when the signal needs less. FEC lets the receiver rebuild
     // a lost packet from the next one, but the encoder only adds the redundancy for the loss it is
     // told to expect, and with the default of 0 it adds none. DTX stops sending while the speaker
@@ -92,7 +118,8 @@ internal static class OutgoingAudioBranch
         "opusenc audio-type=voice bitrate=64000 {4} " +
         "frame-size=20 ! " +
         "rtpopuspay pt={1} ssrc={2} dtx={5} ! " +
-        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream" +
+        "{6}";
 
     // Stereo at a rate that keeps music clean. No DTX: a quiet passage of a film is not a pause,
     // and the producer of the screen sound is created without it. The volume and mute elements
@@ -111,7 +138,7 @@ internal static class OutgoingAudioBranch
     // Its upper limit only guards against a stalled valve: the queue behind the encoder is leaky,
     // so it never fills.
     private const string GateDescription =
-        "level name=" + GateLevelName + " interval={0} ! " +
+        "level name=" + GateLevelName + " interval={0} ! {2}" +
         "queue name=" + GateDelayName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 " +
         "min-threshold-time={1} ! " +
         "volume name=" + GateValveName + " mute=true ! ";
@@ -133,9 +160,9 @@ internal static class OutgoingAudioBranch
     /// </summary>
     /// <param name="isMicrophone">
     /// Whether the source is a microphone. Its branch gets the <see cref="MicrophoneProcessing"/> and
-    /// a gate, closed until a <see cref="VoiceGate"/> opens it; the gate stays even while it is turned
-    /// off, so it can be turned on again without rebuilding. Either is left out when the runtime
-    /// lacks its element.
+    /// a gate, closed until a <see cref="VoiceGate"/> opens it, with the voice detection beside it;
+    /// the gate stays even while it is turned off, so it can be turned on again without rebuilding.
+    /// Each is left out when the runtime lacks its element.
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
@@ -148,14 +175,27 @@ internal static class OutgoingAudioBranch
         // A runtime built before the gate has no level element; the voice still goes out, just ungated
         var isGated = isMicrophone && !isScreen && ElementFactory.Find("level") != null;
 
+        // Built along with the gate even while voice detection is off, so it can be turned on in a call
+        var hasVoiceDetection = isGated && MicrophoneProcessing.HasNeural;
+        var interval = (ulong)VoiceGate.LevelInterval.TotalNanoseconds;
+
+        // The delay is fixed with the branch: changed while the voice flows, it would leave a hole
+        // or a burst in it
         var gate = isGated
-            ? string.Format(CultureInfo.InvariantCulture, GateDescription, (ulong)VoiceGate.LevelInterval.TotalNanoseconds,
-                (ulong)VoiceGate.PreRoll.TotalNanoseconds)
+            ? string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
+                (ulong)(hasVoiceDetection ? VoiceGate.PreRoll + VoiceGate.VoiceDetectionDelay : VoiceGate.PreRoll)
+                .TotalNanoseconds,
+                hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "")
+            : "";
+
+        var voiceDetection = hasVoiceDetection
+            ? string.Format(CultureInfo.InvariantCulture, VoiceDetectionDescription, interval,
+                VoiceGate.VoiceActivityThreshold)
             : "";
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
             isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
-            EncoderSettings(outbound, isScreen), DtxOf(outbound, isScreen)), true);
+            EncoderSettings(outbound, isScreen), DtxOf(outbound, isScreen), voiceDetection), true);
 
         if (encoding == null)
         {
