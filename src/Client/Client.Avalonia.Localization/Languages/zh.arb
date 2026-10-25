@@ -563,7 +563,6 @@
   "sessions.retrieving": "正在获取会话...",
   "sessions.empty": "还没有会话。点击 {icon} 按钮创建一个。",
   "sessions.empty.plain": "还没有会话。",
-  "sessions.youAreHost": "你是主持人",
   "sessions.muteNotifications": "关闭通知",
   "sessions.unmuteNotifications": "开启通知",
   "sessions.notificationsMuted": "通知已关闭",
