@@ -77,6 +77,10 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Outbound input changed to {Input}, noise suppression {NoiseSuppression}")]
     private partial void LogOutboundInputChanged(int sessionId, AudioInput input, NoiseSuppressionLevel noiseSuppression);
 
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] Noise suppression {Requested} needs audiornnoise, which the GStreamer runtime lacks; using {Applied}")]
+    private partial void LogNoiseSuppressionReplaced(int sessionId, NoiseSuppressionLevel requested, NoiseSuppressionLevel applied);
+
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to change the outbound input")]
     private partial void LogOutboundInputChangeFailed(Exception exception, int sessionId);
 
