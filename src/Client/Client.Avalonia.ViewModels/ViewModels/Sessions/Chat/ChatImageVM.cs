@@ -79,7 +79,16 @@ public class ChatImageVM : ReactiveObject
     public void Hide()
     {
         if (_viewers > 0 && --_viewers == 0)
+            Release(Preview);
+    }
+
+    // The bitmap is native memory the collector does not count, so it is freed at once rather than
+    // when the collector comes around to it; a render still drawing it holds a reference of its own
+    private void Release(IImage? picture)
+    {
+        if (Preview == picture)
             Preview = null;
+        (picture as IDisposable)?.Dispose();
     }
 
     private async Task Load()
@@ -92,15 +101,30 @@ public class ChatImageVM : ReactiveObject
         {
             IsFailed = false;
             var bitmap = await _images.LoadPreviewAsync(_session, Image.Id);
-
-            // Scrolled away while it loaded
-            if (_viewers > 0)
-                Preview = bitmap;
             IsFailed = bitmap == null;
 
-            if (bitmap != null && IsAnimatable && await _images.LoadAnimationAsync(_session, Image.Id) is { } animation
-                && _viewers > 0)
+            // Scrolled away while it loaded
+            if (_viewers == 0)
+            {
+                Release(bitmap);
+                return;
+            }
+
+            Preview = bitmap;
+
+            if (bitmap != null && IsAnimatable && await _images.LoadAnimationAsync(_session, Image.Id) is { } animation)
+            {
+                if (_viewers == 0)
+                {
+                    Release(animation);
+                    return;
+                }
+
+                // The still copy was let go of already if the image was hidden and shown again meanwhile
+                var still = Preview;
                 Preview = animation;
+                Release(still);
+            }
         }
         finally
         {

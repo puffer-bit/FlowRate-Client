@@ -42,7 +42,15 @@
                                          x:Name="NameTextBlock"
                                          ContextFlyout="{x:Null}"
                                          Text="{Binding SenderName}"
-                                         Foreground="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                                         Classes.role-colored="{Binding SenderColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <!-- A local value would hide the usual color of the style whenever the author has no colored role -->
+                        <SelectableTextBlock.Styles>
+                            <Style Selector="SelectableTextBlock.role-colored">
+                                <Setter Property="Foreground"
+                                        Value="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                            </Style>
+                        </SelectableTextBlock.Styles>
+                    </SelectableTextBlock>
                     <TextBlock Classes="msg-time"
                                Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
