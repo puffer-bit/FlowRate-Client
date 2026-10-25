@@ -260,8 +260,10 @@ public partial class HybridSession : IHybridSession
     }
 
     public Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
-        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isMuted = false) =>
-        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression, isMuted);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isMuted = false) =>
+        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression,
+            isEchoCancellationEnabled, isMuted);
 
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending <paramref name="input"/> to it. Besides the
@@ -269,7 +271,7 @@ public partial class HybridSession : IHybridSession
     /// </summary>
     public async Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
         VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
-        bool isMuted = false)
+        bool isEchoCancellationEnabled = false, bool isMuted = false)
     {
         if (_voiceOutbound != null)
             return StartVoiceShareResult.NoError;
@@ -287,7 +289,8 @@ public partial class HybridSession : IHybridSession
         if (transport != _webRTCService)
             return StartVoiceShareResult.InternalError;
 
-        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression))
+        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression,
+                isEchoCancellationEnabled))
         {
             LogStartSendingFailed(Model.Id, input);
             await _coordinatorSession.StopVoiceShareInHybridSession(Model.Id);
@@ -357,19 +360,45 @@ public partial class HybridSession : IHybridSession
 
         // The picture goes out without the sound rather than not at all
         if (outbounds.Audio is { } audioOutbound && audioInput != null)
-        {
-            if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off))
-            {
-                _screenAudioOutbound = audioOutbound;
-                LogScreenAudioStarted(Model.Id, audioOutbound.SSRC);
-            }
-            else
-                LogScreenAudioStartFailed(Model.Id, audioInput);
-        }
+            StartScreenAudio(transport, audioOutbound, audioInput);
 
         ScreenShareChanged?.Invoke(outbound.UserId, true);
 
         return StartScreenShareResult.NoError;
+    }
+
+    private void StartScreenAudio(IWebRTCTransport transport, OutboundTrack audioOutbound, AudioInput audioInput)
+    {
+        if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off, false))
+        {
+            _screenAudioOutbound = audioOutbound;
+            LogScreenAudioStarted(Model.Id, audioOutbound.SSRC);
+        }
+        else
+            LogScreenAudioStartFailed(Model.Id, audioInput);
+    }
+
+    /// <summary>
+    /// Gives a running share the sound it was started without. The server adds the producer to the
+    /// share and hands it to those who watch, so the picture goes on meanwhile.
+    /// </summary>
+    private async Task AddScreenAudioAsync(OutboundTrack outbound, AudioInput audioInput)
+    {
+        var transport = _webRTCService;
+        var (result, outbounds) = await _coordinatorSession.StartScreenShareInHybridSession(Model.Id, true);
+
+        // Stopped, or moved to a new transport that starts it anew, in the meantime
+        if (_screenOutbound != outbound || transport != _webRTCService || _screenAudioOutbound != null)
+            return;
+
+        // A server that cannot add it leaves the share silent rather than restarting it under its viewers
+        if (result != StartScreenShareResult.NoError || outbounds?.Audio is not { } audioOutbound)
+        {
+            LogScreenAudioStartFailed(Model.Id, audioInput);
+            return;
+        }
+
+        StartScreenAudio(transport, audioOutbound, audioInput);
     }
 
     public async Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
@@ -378,12 +407,8 @@ public partial class HybridSession : IHybridSession
         var outbound = _screenOutbound;
         var audioOutbound = _screenAudioOutbound;
 
-        // Only a sound that has a producer already can be switched in place, a new one needs the server
-        if (outbound == null || (audioInput != null && audioOutbound == null))
-        {
-            await StopScreenShareAsync();
+        if (outbound == null)
             return await StartScreenShareAsync(input, settings, audioInput);
-        }
 
         var transport = _webRTCService;
 
@@ -403,10 +428,12 @@ public partial class HybridSession : IHybridSession
         if (audioOutbound != null)
         {
             if (audioInput != null)
-                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off);
+                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off, false);
 
             transport.SetOutboundMuted(audioOutbound.Id, audioInput == null);
         }
+        else if (audioInput != null)
+            await AddScreenAudioAsync(outbound, audioInput);
 
         return StartScreenShareResult.NoError;
     }
@@ -618,10 +645,12 @@ public partial class HybridSession : IHybridSession
             _webRTCService.SetOutboundVolume(outbound.Id, volume);
     }
 
-    public void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression)
+    public void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression,
+        bool isEchoCancellationEnabled)
     {
         if (_voiceOutbound is { } outbound)
-            _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression);
+            _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression,
+                isEchoCancellationEnabled);
     }
 
     public void SetVoiceGate(VoiceGateOptions? voiceGate)
