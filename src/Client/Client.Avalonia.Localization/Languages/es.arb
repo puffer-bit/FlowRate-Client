@@ -536,7 +536,6 @@
   "hybrid.stats.lossOut": "Pérdida sal.",
   "hybrid.stats.pingGraph": "Ping de los últimos 2 minutos",
   "hybrid.stats.lossGraph": "Pérdida de paquetes",
-  "hybrid.stats.pingHint": "El ping se mide mientras envías algo: con el micrófono silenciado puede quedar desconocido.",
   "hybrid.screen.change": "Configurar transmisión",
   "hybrid.screen.watchFailed": "No se pudo abrir la pantalla: {reason}",
   "hybrid.error.transportStartFailed": "No se pudo iniciar el transporte WebRTC",

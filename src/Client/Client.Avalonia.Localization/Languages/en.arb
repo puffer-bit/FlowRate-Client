@@ -684,7 +684,6 @@
   "hybrid.stats.lossOut": "Loss out",
   "hybrid.stats.pingGraph": "Ping over the last 2 minutes",
   "hybrid.stats.lossGraph": "Packet loss",
-  "hybrid.stats.pingHint": "The ping is measured while you send something: with the microphone muted it may stay unknown.",
   "hybrid.screen.change": "Change sharing",
   "hybrid.screen.watchFailed": "Failed to open the screen: {reason}",
   "@hybrid.screen.watchFailed": {

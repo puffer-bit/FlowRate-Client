@@ -57,7 +57,7 @@
                  of it across from its name. No spacing between the first two, so the texts start where
                  those of the user card below do -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
-            <Button Grid.Column="0" Classes="ghost" Padding="6,6,0,6"
+            <Button Grid.Column="0" Classes="ghost" Padding="6"
                     ToolTip.Tip="{l:Text hybrid.stats.open}">
                 <Button.Flyout>
                     <Flyout Placement="TopEdgeAlignedLeft">
@@ -86,7 +86,7 @@
                 </Panel>
             </Button>
 
-            <Button Grid.Column="1" Classes="ghost" Padding="8,6,6,6"
+            <Button Grid.Column="1" Classes="ghost" Padding="2,6,6,6"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                     Command="{Binding ShowHybridSessionCommand}"
                     ToolTip.Tip="{l:Text sessions.return}">

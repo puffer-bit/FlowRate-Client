@@ -455,7 +455,6 @@
   "hybrid.stats.lossOut": "Потери исх.",
   "hybrid.stats.pingGraph": "Пинг за последние 2 минуты",
   "hybrid.stats.lossGraph": "Потери пакетов",
-  "hybrid.stats.pingHint": "Пинг измеряется, пока вы что-то передаёте: с выключенным микрофоном он может быть неизвестен.",
   "hybrid.screen.change": "Настроить трансляцию",
   "hybrid.screen.watchFailed": "Не удалось открыть трансляцию экрана: {reason}",
   "hybrid.error.transportStartFailed": "Не удалось запустить WebRTC-транспорт",

@@ -536,7 +536,6 @@
   "hybrid.stats.lossOut": "送信ロス",
   "hybrid.stats.pingGraph": "直近2分間のPing",
   "hybrid.stats.lossGraph": "パケットロス",
-  "hybrid.stats.pingHint": "Pingは何かを送信している間に計測されます。マイクをミュートしていると不明のままになることがあります。",
   "hybrid.screen.change": "共有を設定",
   "hybrid.screen.watchFailed": "画面を表示できませんでした: {reason}",
   "hybrid.error.transportStartFailed": "WebRTC トランスポートを開始できませんでした",
