@@ -300,4 +300,150 @@ public class VoiceGateDecisionTests
         Assert.Equal(gate.EffectiveThresholdDb, summary.EffectiveThresholdDb);
         Assert.Equal(gate.NoiseFloorDb, summary.NoiseFloorDb);
     }
+
+    // Readings of the gate level and of the voice detector, which reports VoiceLag later
+    private static readonly TimeSpan VoiceLag = TimeSpan.FromMilliseconds(20);
+
+    private static VoiceGateDecision CreateDetectingGate(bool isEnabled = true, bool hasDetector = true) =>
+        new(new VoiceGateOptions(Threshold, IsVoiceDetectionEnabled: isEnabled), hasDetector);
+
+    // A sound for a while, which the detector does or does not take for a voice; tells when the gate last changed
+    private TimeSpan? FeedSound(VoiceGateDecision gate, double peakDb, bool isVoice, TimeSpan duration)
+    {
+        TimeSpan? changedAt = null;
+
+        for (var end = _now + duration; _now < end; _now += Interval)
+        {
+            if (gate.OnLevel(peakDb, _now))
+                changedAt = _now;
+
+            // The detector silences what it takes for no voice
+            if (gate.OnVoice(isVoice ? peakDb : double.NegativeInfinity, _now + VoiceLag))
+                changedAt = _now + VoiceLag;
+        }
+
+        return changedAt;
+    }
+
+    [Fact]
+    public void LoudSoundThatIsNoVoiceKeepsTheGateClosed()
+    {
+        var gate = CreateDetectingGate();
+
+        // Typing: loud clicks with the room between them
+        for (var key = 0; key < 20; key++)
+        {
+            Assert.Null(FeedSound(gate, -10, isVoice: false, Interval));
+            Assert.Null(FeedSound(gate, -80, isVoice: false, TimeSpan.FromMilliseconds(150)));
+        }
+
+        Assert.False(gate.IsOpen);
+        Assert.Equal(0, gate.TakeSummary()!.Openings);
+    }
+
+    [Fact]
+    public void VoiceOpensTheGateOnceTheDetectorHearsIt()
+    {
+        var gate = CreateDetectingGate();
+        var start = _now;
+
+        var openedAt = FeedSound(gate, -20, isVoice: true, TimeSpan.FromMilliseconds(100));
+
+        Assert.True(gate.IsOpen);
+        Assert.Equal(start + VoiceLag, openedAt);
+    }
+
+    [Fact]
+    public void QuietVoiceKeepsTheGateClosed()
+    {
+        var gate = CreateDetectingGate();
+
+        // The detector hears a voice, but below the threshold: someone talking in the next room
+        Assert.Null(FeedSound(gate, Threshold - 10, isVoice: true, TimeSpan.FromSeconds(1)));
+        Assert.False(gate.IsOpen);
+    }
+
+    [Fact]
+    public void ClickLongBeforeAVoiceDoesNotCountWithIt()
+    {
+        var gate = CreateDetectingGate();
+
+        gate.OnLevel(-10, _now);
+        gate.OnVoice(-60, _now + VoiceGateDecision.VoiceWindow + Interval);
+
+        Assert.False(gate.IsOpen);
+    }
+
+    [Fact]
+    public void GateClosesAfterTheHoldWhenTheVoiceStops()
+    {
+        var gate = CreateDetectingGate();
+
+        FeedSound(gate, -20, isVoice: true, TimeSpan.FromSeconds(2));
+        var lastVoice = _now - Interval + VoiceLag;
+
+        // Typing right after the sentence does not keep the gate open; it counts with the voice only
+        // within the window
+        var closedAt = FeedSound(gate, -10, isVoice: false, TimeSpan.FromSeconds(1));
+
+        Assert.False(gate.IsOpen);
+        Assert.NotNull(closedAt);
+        Assert.InRange(closedAt.Value - lastVoice, VoiceGateDecision.MaxHoldTime,
+            VoiceGateDecision.MaxHoldTime + VoiceGateDecision.VoiceWindow + Interval);
+    }
+
+    [Fact]
+    public void GateWithoutADetectorGoesByTheLevelAlone()
+    {
+        var gate = CreateDetectingGate(hasDetector: false);
+
+        Assert.False(gate.IsVoiceDetectionActive);
+        Assert.NotNull(FeedSound(gate, -10, isVoice: false, Interval));
+        Assert.True(gate.IsOpen);
+    }
+
+    [Fact]
+    public void VoiceDetectionTurnedOffGoesByTheLevelAlone()
+    {
+        var gate = CreateDetectingGate(isEnabled: false);
+
+        FeedSound(gate, -10, isVoice: false, Interval);
+        Assert.True(gate.IsOpen);
+        Assert.Null(gate.TakeSummary()!.VoicePercent);
+    }
+
+    [Fact]
+    public void VoiceDetectionTurnedOnLaterAppliesToTheNextSound()
+    {
+        var gate = CreateDetectingGate(isEnabled: false);
+
+        gate.SetOptions(new VoiceGateOptions(Threshold, IsVoiceDetectionEnabled: true), _now, isOpen: false);
+
+        Assert.Null(FeedSound(gate, -10, isVoice: false, TimeSpan.FromMilliseconds(200)));
+        Assert.NotNull(FeedSound(gate, -20, isVoice: true, TimeSpan.FromMilliseconds(100)));
+    }
+
+    [Fact]
+    public void SummaryReportsHowMuchOfTheTimeAVoiceWasHeard()
+    {
+        var gate = CreateDetectingGate();
+
+        FeedSound(gate, -20, isVoice: true, TimeSpan.FromSeconds(1));
+        FeedSound(gate, -10, isVoice: false, TimeSpan.FromSeconds(3));
+
+        Assert.Equal(25, gate.TakeSummary()!.VoicePercent);
+    }
+
+    [Fact]
+    public void AdaptiveThresholdLearnsANoiseTheDetectorKeepsOut()
+    {
+        var gate = new VoiceGateDecision(new VoiceGateOptions(Threshold, true, true), hasVoiceDetector: true);
+
+        // A loud fan never opens a detecting gate, so the closed gate learns it
+        FeedSound(gate, -30, isVoice: false, TimeSpan.FromSeconds(30));
+
+        Assert.False(gate.IsOpen);
+        Assert.InRange(gate.NoiseFloorDb!.Value, -31, -29);
+        Assert.Equal(Threshold + VoiceGateDecision.MaxAdaptiveRiseDb, gate.EffectiveThresholdDb);
+    }
 }

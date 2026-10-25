@@ -40,8 +40,9 @@ internal sealed partial class OutgoingTracks
     private readonly ConcurrentDictionary<int, Pad> _sendPads = new();
 
     // The voice gates of the outgoing tracks. A level message tells only which element posted it, so
-    // each gate is found by the native handle of its level element: the handle stays the same, while
-    // the binding may hand out a new wrapper object for the element every time.
+    // each gate is found by the native handle of its level elements, the one of the gate and the one
+    // of the voice detection: the handle stays the same, while the binding may hand out a new
+    // wrapper object for the element every time.
     private readonly ConcurrentDictionary<IntPtr, VoiceGate> _gates = new();
 
     // What the outgoing video tracks hold besides their branch, keyed by the outbound id
@@ -273,7 +274,21 @@ internal sealed partial class OutgoingTracks
 
         if (branch.GetByName(OutgoingAudioBranch.GateLevelName) is { } level &&
             branch.GetByName(OutgoingAudioBranch.GateValveName) is { } valve)
-            _gates[level.Handle] = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), voiceGate);
+        {
+            var detector = branch.GetByName(OutgoingAudioBranch.VoiceLevelName) is { } voiceLevel &&
+                           branch.GetByName(OutgoingAudioBranch.VoiceValveName) is { } voiceValve
+                ? new VoiceGate.VoiceDetector(_heldWrappers.Hold(voiceLevel), _heldWrappers.Hold(voiceValve))
+                : null;
+
+            var gate = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), detector,
+                voiceGate);
+
+            // Both level elements post to the same gate
+            _gates[level.Handle] = gate;
+
+            if (detector != null)
+                _gates[detector.Level.Handle] = gate;
+        }
 
         // Watches what really leaves: nothing while muted or gated. The sound of a screen is not
         // speech, and would show us speaking for as long as a film plays.
@@ -714,8 +729,9 @@ internal sealed partial class OutgoingTracks
 
     /// <summary>
     /// Logs what every running voice gate did since the previous call: how much of the time it let
-    /// the voice through, how loud the voice was against its threshold and, with the adaptive
-    /// threshold, how loud the room was and where that put the threshold. A voice that grows
+    /// the voice through, how loud the voice was against its threshold, with the adaptive threshold
+    /// how loud the room was and where that put the threshold, and with voice detection how much
+    /// of the time RNNoise heard a voice. A voice that grows
     /// quieter over a session, as the automatic gain of the processing may make it, shows here as
     /// a gate that opens less and less. Called by a timer of the transport.
     /// </summary>
@@ -726,7 +742,7 @@ internal sealed partial class OutgoingTracks
             if (gate.TakeSummary() is { } summary)
                 LogVoiceGateSummary(_core.SessionId, summary.ThresholdDb, summary.EffectiveThresholdDb,
                     summary.NoiseFloorDb, summary.OpenPercent, summary.Openings, summary.LoudestDb,
-                    summary.AverageOpenPeakDb);
+                    summary.AverageOpenPeakDb, summary.VoicePercent);
         }
     }
 
@@ -737,7 +753,9 @@ internal sealed partial class OutgoingTracks
     {
         // Read without a wrapper: one made here for an element nobody else wraps, such as the RTP
         // manager inside webrtcbin, would never be disposed and would keep that element for good
-        if (!_gates.TryGetValue(GstNative.GetMessageSource(message), out var gate) || !gate.Update(message))
+        var source = GstNative.GetMessageSource(message);
+
+        if (!_gates.TryGetValue(source, out var gate) || !gate.Update(source, message))
             return;
 
         LogVoiceGateChanged(_core.SessionId, gate.IsOpen);
