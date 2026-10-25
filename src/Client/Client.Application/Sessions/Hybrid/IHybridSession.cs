@@ -129,6 +129,12 @@ public interface IHybridSession : IDisposable
     event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     /// <summary>
+    /// Raised with how the media of the current transport fared, every few seconds while it runs.
+    /// Raised on any thread.
+    /// </summary>
+    event Action<TransportStatsSample>? StatsSampled;
+
+    /// <summary>
     /// Changes the gain of the running microphone. Without one nothing happens: the next start
     /// takes the volume it is given.
     /// </summary>
