@@ -62,7 +62,7 @@
     <Style Selector=":is(TextBlock).msg-username">
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
     </Style>
     <!-- A deleted author keeps a placeholder name, set apart in italics -->
     <Style Selector=":is(TextBlock).msg-username.deleted-user">
