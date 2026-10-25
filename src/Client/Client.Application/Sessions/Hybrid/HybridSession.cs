@@ -89,6 +89,8 @@ public partial class HybridSession : IHybridSession
 
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
+    public event Action<TransportStatsSample>? StatsSampled;
+
     private static readonly TimeSpan ReconnectConnectTimeout = TimeSpan.FromSeconds(15);
 
     private const int ResumeInboundsAttempts = 3;
@@ -158,6 +160,11 @@ public partial class HybridSession : IHybridSession
         transport.LocalDtlsParametersReady += parameters => SendLocalDtlsParameters(transport, parameters);
         transport.InboundsReady += inboundIds => ResumeInbounds(transport, inboundIds);
         transport.SpeakingChanged += (userId, isSpeaking) => OnSpeakingChanged(transport, userId, isSpeaking);
+        transport.StatsSampled += sample =>
+        {
+            if (transport == _webRTCService && !IsDisposed)
+                StatsSampled?.Invoke(sample);
+        };
         transport.VideoFrameReady += (userId, source, frame) =>
         {
             if (transport != _webRTCService || IsDisposed)
