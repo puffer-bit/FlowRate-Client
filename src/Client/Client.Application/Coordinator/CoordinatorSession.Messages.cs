@@ -111,6 +111,14 @@ public partial class CoordinatorSession
             case PeerSoundMuteChangedEvent muteChanged:
                 HybridSessionPeerSoundMuteChanged?.Invoke(muteChanged);
                 break;
+
+            case PeerAfkChangedEvent afkChanged:
+                HybridSessionPeerAfkChanged?.Invoke(afkChanged);
+                break;
+
+            case PeerPokedEvent poked:
+                HybridSessionPeerPoked?.Invoke(poked);
+                break;
         }
 
         HybridSessionUpdated?.Invoke(peerEvent);
