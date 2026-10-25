@@ -290,41 +290,74 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     }
 
     /// <summary>
-    /// Applies the current state of a message by its id: removes, replaces or adds it.
+    /// Applies the current state of messages by their ids: removes, replaces or adds them. The list is
+    /// rebuilt once for all of them, so a long run of changes after a gap does not rebuild it for each.
     /// </summary>
-    private void ApplyChange(ChatMessageModel message)
+    private void ApplyChanges(IReadOnlyList<ChatMessageModel> changes)
     {
-        if (message.IsDeleted)
-        {
-            RemoveMessage(message.Id);
+        if (changes.Count == 0)
             return;
-        }
 
-        // The message itself may be older than what is loaded, while replies to it are on screen
+        // Changes come in the order of their revisions, so a later state of a message replaces an earlier one
+        var latest = new Dictionary<int, ChatMessageModel>();
+        foreach (var message in changes)
+            latest[message.Id] = message;
+
+        // The messages themselves may be older than what is loaded, while replies to them are on screen.
+        // Quotes of a removed message stay in place but can no longer lead to it
         foreach (var messageVm in _messageVms.Values)
         {
-            if (messageVm.Reply?.MessageId == message.Id)
-                messageVm.Reply.Update(message);
+            if (messageVm.Reply is not { } reply || !latest.TryGetValue(reply.MessageId, out var quoted))
+                continue;
+
+            if (quoted.IsDeleted)
+                reply.IsDeleted = true;
+            else
+                reply.Update(quoted);
         }
 
-        Composer.OnMessageChanged(message);
-
-        if (_messageVms.TryGetValue(message.Id, out var loaded))
+        int? oldestLoaded = _messageVms.Count > 0 ? _messageVms.Keys.Min() : null;
+        var added = new List<ChatMessageModel>();
+        var edited = new List<ChatMessageVM>();
+        bool removed = false;
+        foreach (var message in latest.Values)
         {
-            // A notification can arrive after a page that already had a newer state
-            if (message.Revision > loaded.Message.Revision)
+            if (message.IsDeleted)
             {
-                loaded.Message = message;
-                // The edit may mention someone not looked up yet
-                _ = ResolveSendersAsync([loaded]);
-                _senders.Apply(loaded);
+                Composer.OnMessageRemoved(message.Id);
+                removed |= _messageVms.Remove(message.Id);
+                continue;
             }
-            return;
+
+            Composer.OnMessageChanged(message);
+
+            if (_messageVms.TryGetValue(message.Id, out var loaded))
+            {
+                // A notification can arrive after a page that already had a newer state
+                if (message.Revision > loaded.Message.Revision)
+                {
+                    loaded.Message = message;
+                    edited.Add(loaded);
+                }
+                continue;
+            }
+
+            // Only what continues the loaded messages is added; older history comes with its page
+            if (_pager.IsFullyLoaded || oldestLoaded == null || message.Id > oldestLoaded)
+                added.Add(message);
         }
 
-        // Only what continues the loaded messages is added; older history comes with its page
-        if (_pager.IsFullyLoaded || _messageVms.Count == 0 || message.Id > _messageVms.Keys.Min())
-            AddMessages([message]);
+        if (edited.Count > 0)
+        {
+            // The edits may mention someone not looked up yet
+            _ = ResolveSendersAsync(edited);
+            foreach (var messageVm in edited)
+                _senders.Apply(messageVm);
+        }
+
+        // Adding rebuilds the list, which then takes the removals too
+        if (AddMessages(added) == 0 && removed)
+            RebuildTimeline();
     }
 
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
