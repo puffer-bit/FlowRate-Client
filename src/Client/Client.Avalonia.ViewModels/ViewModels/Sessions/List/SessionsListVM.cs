@@ -133,6 +133,7 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
+    private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
     private readonly ReactiveCommand<int, RxVoid> _toggleChatMuteCommand;
     
     private ICoordinatorSession? _coordinatorSession;
@@ -159,6 +160,7 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
         ReactiveCommand<(int UserId, string Name), RxVoid> banUserCommand,
         ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand,
+        ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand,
         ReactiveCommand<int?, RxVoid> createSessionCommand,
         IPeerPlaybackService playbackService, IVoiceActivityService voiceActivity, IScreenWatchService screenWatch,
         SessionListPreferences preferences,
@@ -177,6 +179,7 @@ public partial class SessionsListVM : ReactiveObject
         _kickPeerCommand = kickPeerCommand;
         _banUserCommand = banUserCommand;
         _admitPeerCommand = admitPeerCommand;
+        _pokePeerCommand = pokePeerCommand;
         _createSessionCommand = createSessionCommand;
         _playbackService = playbackService;
         _preferences = preferences;
@@ -288,6 +291,8 @@ public partial class SessionsListVM : ReactiveObject
                 () => session.HybridSessionPeerMicrophoneMuteChanged -= UpdatePeerMicrophone)
             .Add(() => session.HybridSessionPeerSoundMuteChanged += UpdatePeerSound,
                 () => session.HybridSessionPeerSoundMuteChanged -= UpdatePeerSound)
+            .Add(() => session.HybridSessionPeerAfkChanged += UpdatePeerAfk,
+                () => session.HybridSessionPeerAfkChanged -= UpdatePeerAfk)
             .Add(() => session.HybridSessionUpdated += OnHybridSessionUpdated,
                 () => session.HybridSessionUpdated -= OnHybridSessionUpdated)
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
@@ -520,7 +525,7 @@ public partial class SessionsListVM : ReactiveObject
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
             _screenWatch, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
-            _banUserCommand, _admitPeerCommand);
+            _banUserCommand, _admitPeerCommand, _pokePeerCommand);
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);
@@ -700,6 +705,11 @@ public partial class SessionsListVM : ReactiveObject
     // Raised on socket threads
     private void UpdatePeerSound(PeerSoundMuteChangedEvent notification) =>
         PostToHybrid(notification.SessionId, session => session.UpdatePeerSound(notification.UserId, notification.IsMuted));
+
+    // Raised on socket threads
+    private void UpdatePeerAfk(PeerAfkChangedEvent notification) =>
+        PostToHybrid(notification.SessionId,
+            session => session.UpdatePeerAfk(notification.UserId, notification.IsAfk, notification.Reason));
 
     // Raised on socket threads
     private void OnHybridSessionUpdated(HybridSessionPeerEvent notification)

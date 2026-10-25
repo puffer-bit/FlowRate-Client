@@ -73,6 +73,19 @@ public interface IHybridSession : IDisposable
     Task<SetSoundMuteResult> SetSoundMutedAsync(bool isMuted);
 
     /// <summary>
+    /// Whether we are away from the keyboard, and the reason we gave. Kept over a reconnect, unlike the server,
+    /// which has to be told again.
+    /// </summary>
+    bool IsAfk { get; }
+    string? AfkReason { get; }
+
+    /// <summary>Tells the others that we are away, and why, or that we are back; kept here whatever the server answers.</summary>
+    Task<SetAfkResult> SetAfkAsync(bool isAfk, string? reason);
+
+    /// <summary>Pokes another peer of the session, with a message if there is one.</summary>
+    Task<PokeResult> PokeAsync(int userId, string? message);
+
+    /// <summary>
     /// Asks the SFU for a screen producer and starts sending <paramref name="input"/> to it.
     /// </summary>
     /// <param name="settings">The size and the frame rate the picture is sent with.</param>
