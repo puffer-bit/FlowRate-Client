@@ -72,6 +72,7 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
+    private readonly ChatImageVM _tile;
     private readonly ChatImageContent _image;
     private readonly ICoordinatorSession _session;
     private readonly IChatImageService _images;
@@ -80,6 +81,9 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
 
     public ChatImageViewerVM(ChatImageVM image, ICoordinatorSession session, IChatImageService images, Action close)
     {
+        // The reduced copy is shown until the image itself comes, so it is held like a tile holds it
+        _tile = image;
+        _tile.Show();
         _image = image.Image;
         _session = session;
         _images = images;
@@ -96,6 +100,12 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
     {
         _closed.Cancel();
         _closed.Dispose();
+
+        // The image itself is the viewer's own; the reduced copy belongs to the tile
+        if (Picture != _tile.Preview)
+            (Picture as IDisposable)?.Dispose();
+        Picture = null;
+        _tile.Hide();
     }
 
     private async Task Load()
@@ -121,7 +131,10 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
 
             var bitmap = await _images.DecodeAsync(() => Task.FromResult<Stream>(File.OpenRead(path)), MaxShownSide);
             if (token.IsCancellationRequested)
+            {
+                (bitmap as IDisposable)?.Dispose();
                 return;
+            }
 
             if (bitmap != null)
                 Picture = bitmap;
