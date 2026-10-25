@@ -633,6 +633,11 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
             output.SetName($"voices_{_sessionId}");
 
+            // The output is built before anyone speaks when the microphone wants its echo probe, and
+            // its sink cannot preroll from a mixer without inputs. Left to the pipeline, that waiting
+            // held the whole transport out of PLAYING, and the microphone sent nothing
+            output.SetProperty("async-handling", true);
+
             // The sound server may restore a mute an earlier version left for the client name
             VoicePlaybackSink.SetMuted(output, false);
 
