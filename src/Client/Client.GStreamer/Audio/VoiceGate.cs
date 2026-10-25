@@ -16,8 +16,8 @@ namespace Client.GStreamer.Audio;
 /// <para>The threshold changes from the settings while the level messages arrive on the bus watcher,
 /// so both run under one lock: otherwise turning the gate off could open the valve just before a
 /// level message closes it again.</para>
-/// <para>The valve opens and closes over one buffer, see <see cref="VoiceGateFade"/>: opened at once,
-/// the voice would start with a click.</para>
+/// <para>The valve ramps open and closed, see <see cref="VoiceGateFade"/>: switched at once, the voice
+/// would start with a click and its tail would be cut off.</para>
 /// </remarks>
 internal sealed class VoiceGate
 {
@@ -57,7 +57,7 @@ internal sealed class VoiceGate
     public bool IsOpen { get; private set; }
 
     /// <summary>
-    /// Changes the threshold of a running gate. Null turns the gate off and opens it at once. A new
+    /// Changes the threshold of a running gate. Null turns the gate off and opens it. A new
     /// threshold is applied by the next level message, an open gate first waits out its hold time,
     /// so raising the threshold does not cut a word in half.
     /// </summary>
@@ -72,7 +72,7 @@ internal sealed class VoiceGate
             _level.SetProperty("post-messages", thresholdDb != null);
 
             if (thresholdDb == null)
-                SetOpen(true, fade: false);
+                SetOpen(true);
         }
     }
 
@@ -100,22 +100,22 @@ internal sealed class VoiceGate
                 if (IsOpen)
                     return false;
 
-                SetOpen(true, fade: true);
+                SetOpen(true);
                 return true;
             }
 
             if (!IsOpen || Stopwatch.GetElapsedTime(_lastLoudTimestamp, now) < HoldTime)
                 return false;
 
-            SetOpen(false, fade: true);
+            SetOpen(false);
             return true;
         }
     }
 
-    private void SetOpen(bool isOpen, bool fade)
+    private void SetOpen(bool isOpen)
     {
         IsOpen = isOpen;
-        _valve.Set(isOpen, fade);
+        _valve.Set(isOpen);
     }
 
     /// <summary>
