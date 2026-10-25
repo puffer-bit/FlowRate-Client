@@ -4,7 +4,6 @@ using Client.Application.Settings.Search;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -252,11 +251,6 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     // Set while the view model changes its own properties, so that only user changes get saved
     private bool _isUpdating = true;
 
-    // Decides on the peaks of the test the way the gate of a call does on its own, so the meter
-    // turns green where a call would send. Null while the test or the gate is off.
-    private VoiceGateDecision? _testGate;
-    private readonly Stopwatch _testClock = Stopwatch.StartNew();
-    
     public AudioControlVM(IAudioService audioService, IMicrophoneTester microphoneTester, ISoundService soundService,
         ISoundPackCatalog soundPackCatalog)
     {
@@ -365,6 +359,15 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _disposables.Add(this.WatchProperty(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex)
             .Where(_ => !_isUpdating && IsTestRunning)
             .Subscribe(_ => StartTest()));
+
+        _disposables.Add(this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
+            .Where(_ => !_isUpdating && IsTestRunning)
+            .Subscribe(_ => StartTest()));
+
+        // The gate of the test decides as the one of a call, with the same options
+        _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(VoiceGateThresholdDb),
+                nameof(IsVoiceDetectionEnabled), nameof(IsAdaptiveThresholdEnabled))
+            .Subscribe(_ => _microphoneTester.SetVoiceGate(TestVoiceGate)));
         
         _disposables.Add(this.WatchProperty(nameof(InputVolumePercent), x => x.InputVolumePercent)
             .Subscribe(percent => _microphoneTester.SetVolume(percent / 100)));
@@ -377,6 +380,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
+        _microphoneTester.GateChanged += OnTestGateChanged;
         _microphoneTester.Failed += OnTestFailed;
     }
 
@@ -449,7 +453,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void StartTest()
     {
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
-            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression));
+            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled));
         IsTestRunning = TestError == null;
         InputLevel = 0;
     }
@@ -471,42 +475,21 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
                 return;
 
             InputLevel = level;
-            UpdateVoiceDetected();
         });
     }
 
-    private void ResetVoiceDetected()
+    private void OnTestGateChanged(bool isOpen)
     {
-        _testGate = null;
-        IsVoiceDetected = false;
+        Dispatcher.UIThread.Post(() => IsVoiceDetected = isOpen && IsVoiceGateEnabled && IsTestRunning);
     }
 
-    private void UpdateVoiceDetected()
+    private VoiceGateOptions? TestVoiceGate => IsVoiceGateEnabled
+        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled)
+        : null;
+
+    private void ResetVoiceDetected()
     {
-        if (!IsVoiceGateEnabled || !IsTestRunning)
-        {
-            ResetVoiceDetected();
-            return;
-        }
-
-        var now = _testClock.Elapsed;
-
-        // The test has no voice detection: it would need RNNoise in the test pipeline, and the meter
-        // shows the loudness the threshold is set against
-        var options = new VoiceGateOptions(VoiceGateThresholdDb, IsAdaptiveThresholdEnabled: IsAdaptiveThresholdEnabled);
-
-        if (_testGate == null)
-            _testGate = new VoiceGateDecision(options);
-        else if (_testGate.Options != options)
-            _testGate.SetOptions(options, now, _testGate.IsOpen);
-
-        // The meter shows the peak level on the same decibel scale the threshold is set on
-        var peakDb = InputLevel > 0
-            ? MinVoiceGateThresholdDb + InputLevel * (MaxVoiceGateThresholdDb - MinVoiceGateThresholdDb)
-            : double.NegativeInfinity;
-
-        _testGate.OnLevel(peakDb, now);
-        IsVoiceDetected = _testGate.IsOpen;
+        IsVoiceDetected = false;
     }
 
     private void OnTestFailed(string error)
@@ -639,6 +622,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public void Dispose()
     {
         _microphoneTester.LevelChanged -= OnInputLevelChanged;
+        _microphoneTester.GateChanged -= OnTestGateChanged;
         _microphoneTester.Failed -= OnTestFailed;
         _microphoneTester.Stop();
         
