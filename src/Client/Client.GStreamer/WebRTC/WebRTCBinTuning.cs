@@ -80,6 +80,37 @@ internal sealed partial class WebRTCBinTuning
     }
 
     /// <summary>
+    /// Lets the media we send pass webrtcbin as soon as it comes. In front of every section webrtcbin
+    /// puts a clocksync that holds each packet back until the pipeline clock reaches its timestamp.
+    /// The timestamps of a microphone follow its own clock, which runs off the system clock by some
+    /// 100 ppm, so packets that come faster than their timestamps pile up in the last queue of the
+    /// branch: 20 ms every few minutes. Once that leaky queue is full it drops the oldest packet,
+    /// the clocksync then waits for one 40 ms ahead, and from then on every other packet is lost
+    /// until the track is rebuilt. Sources that must be paced pace themselves, see FileAudioSource.
+    /// </summary>
+    public void DisableSendClockSync()
+    {
+        try
+        {
+            // While a section is linked, before its first packet
+            _core.WebRTC!.ConnectSignal("element-added", (_, args) =>
+            {
+                if (args is [Element element] && element.GetFactory()?.GetName() == "clocksync")
+                {
+                    element.SetProperty("sync", false);
+                    LogSendClockSyncDisabled(_core.SessionId, element.Name ?? "clocksync");
+                }
+
+                return null;
+            });
+        }
+        catch (Exception exception)
+        {
+            LogSendClockSyncFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
     /// Makes the RTP manager drop a source that timed out, with its jitter buffer and the thread
     /// of it. Every rejoin of a peer brings a new SSRC, and by default the old ones stay until the
     /// session is left. Gives the jitter buffer of every stream the latency of its track and whether

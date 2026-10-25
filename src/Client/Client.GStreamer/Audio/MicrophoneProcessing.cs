@@ -14,9 +14,21 @@ internal static class MicrophoneProcessing
     private const string ElementName = "webrtcdsp";
 
     /// <summary>
+    /// The RNNoise element of gst-plugins-rs (rsaudiofx), behind the neural levels and the voice
+    /// detection of the gate.
+    /// </summary>
+    public const string NeuralElementName = "audiornnoise";
+
+    /// <summary>
     /// The format the processing works on. The library takes only a few sample rates.
     /// </summary>
     public const string Caps = "audio/x-raw,rate=48000,channels=1";
+
+    /// <summary>
+    /// The only format RNNoise takes: interleaved 32-bit float at 48 kHz, which is what its network
+    /// was trained on. The rate and the channels are already those of <see cref="Caps"/>.
+    /// </summary>
+    public const string NeuralCaps = "audio/x-raw,format=F32LE,layout=interleaved,rate=48000";
 
     // No echo cancelling: it needs the played sound from a webrtcechoprobe, and the element refuses
     // to start without one.
@@ -31,21 +43,52 @@ internal static class MicrophoneProcessing
         ElementName + " echo-cancel=false high-pass-filter=false noise-suppression=false " +
         "gain-control=true limiter=true ! ";
 
+    // In front of webrtcdsp, so the gain is set on the voice and not raised along with the noise.
+    // Its threshold stays at 0: every frame comes out denoised and none is silenced, that is the
+    // job of the gate. The converter after it goes back to what webrtcdsp takes.
+    private const string Neural =
+        "audioconvert ! " + NeuralCaps + " ! " + NeuralElementName + " ! audioconvert ! ";
+
+    /// <summary>
+    /// Whether the runtime has RNNoise. A runtime built before it was bundled lacks it.
+    /// </summary>
+    public static bool HasNeural => ElementFactory.Find(NeuralElementName) != null;
+
+    /// <summary>
+    /// The level the processing really runs with: a neural one becomes
+    /// <see cref="NoiseSuppressionLevel.Moderate"/> without RNNoise in the runtime.
+    /// </summary>
+    public static NoiseSuppressionLevel Resolve(NoiseSuppressionLevel noiseSuppression) =>
+        IsNeural(noiseSuppression) && !HasNeural ? NoiseSuppressionLevel.Moderate : noiseSuppression;
+
     /// <summary>
     /// The fragment to put after a caps filter of <see cref="Caps"/>, ending with a link, or nothing
-    /// when the runtime has no such element: the voice is then sent unprocessed.
+    /// when the runtime has none of the elements: the voice is then sent unprocessed.
     /// </summary>
     /// <remarks>
-    /// The element reads its settings only when it starts, so another level takes a new fragment.
+    /// The elements read their settings only when they start, so another level takes a new fragment.
+    /// A level the runtime cannot run is replaced as <see cref="Resolve"/> says; callers that want to
+    /// report it resolve the level first.
     /// </remarks>
-    public static string Fragment(NoiseSuppressionLevel noiseSuppression) =>
-        ElementFactory.Find(ElementName) != null
-            ? string.Format(Cleanup, DescribeNoiseSuppression(noiseSuppression)) + Gain
-            : "";
+    public static string Fragment(NoiseSuppressionLevel noiseSuppression)
+    {
+        noiseSuppression = Resolve(noiseSuppression);
+
+        var neural = IsNeural(noiseSuppression) ? Neural : "";
+
+        if (ElementFactory.Find(ElementName) == null)
+            return neural;
+
+        return neural + string.Format(Cleanup, DescribeNoiseSuppression(noiseSuppression)) + Gain;
+    }
+
+    private static bool IsNeural(NoiseSuppressionLevel level) =>
+        level is NoiseSuppressionLevel.Neural or NoiseSuppressionLevel.NeuralAndWebRtc;
 
     private static string DescribeNoiseSuppression(NoiseSuppressionLevel level) => level switch
     {
-        NoiseSuppressionLevel.Off => "noise-suppression=false",
+        // RNNoise has done it already
+        NoiseSuppressionLevel.Off or NoiseSuppressionLevel.Neural => "noise-suppression=false",
         NoiseSuppressionLevel.Low => "noise-suppression=true noise-suppression-level=low",
         NoiseSuppressionLevel.High => "noise-suppression=true noise-suppression-level=high",
         NoiseSuppressionLevel.VeryHigh => "noise-suppression=true noise-suppression-level=very-high",

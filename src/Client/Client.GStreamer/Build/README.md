@@ -32,7 +32,7 @@ The first run takes 30-60 minutes. Output:
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | builds on Ubuntu 22.04: dav1d, SVT-AV1, GStreamer, the PipeWire plugin, gst-plugins-rs. Versions are the `ARG`s at the top |
+| `Dockerfile` | builds on Ubuntu 22.04: dav1d, SVT-AV1, GStreamer, the PipeWire plugin, gst-plugins-rs (dav1d, rtp, audiofx). Versions are the `ARG`s at the top |
 | `meson-options.txt` | the GStreamer plugin set. Everything not listed is disabled |
 | `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
 | `collect.sh` | copies the installed build into the `gstreamer/` layout, adds non-system dependencies, sets RPATH to `$ORIGIN`, collects licenses |

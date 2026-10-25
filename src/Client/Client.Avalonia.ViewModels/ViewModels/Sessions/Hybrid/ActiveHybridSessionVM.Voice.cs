@@ -37,7 +37,7 @@ public partial class ActiveHybridSessionVM
         var isMuted = _hybridSession.IsSoundMuted
                       || await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId);
         var result = await _hybridSession.StartVoiceShareAsync(device?.Id, settings.InputVolume,
-            settings.ActiveVoiceGateThresholdDb, settings.NoiseSuppression, isMuted);
+            settings.ActiveVoiceGate, settings.NoiseSuppression, isMuted);
 
         if (result == StartVoiceShareResult.NoError)
         {
@@ -158,7 +158,7 @@ public partial class ActiveHybridSessionVM
     private void OnAudioSettingsChanged(AudioSettings settings)
     {
         _hybridSession.SetInputVolume(settings.InputVolume);
-        _hybridSession.SetVoiceGateThreshold(settings.ActiveVoiceGateThresholdDb);
+        _hybridSession.SetVoiceGate(settings.ActiveVoiceGate);
         _ = ApplyMicrophoneInputAsync(settings);
     }
 

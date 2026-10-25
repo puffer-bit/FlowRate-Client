@@ -95,7 +95,13 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                 _pipeline = pipeline;
                 pipeline.Add(source);
 
-                if (Track(Global.ParseBinFromDescription(DescribeProcessing(noiseSuppression), true)) is not Bin processing)
+                // The test goes through what a call would, and a call without RNNoise runs a neural level as the moderate one
+                var applied = MicrophoneProcessing.Resolve(noiseSuppression);
+
+                if (applied != noiseSuppression)
+                    LogNoiseSuppressionReplaced(noiseSuppression, applied);
+
+                if (Track(Global.ParseBinFromDescription(DescribeProcessing(applied), true)) is not Bin processing)
                 {
                     StopPipeline();
                     return MicrophoneTestError.Unexpected;

@@ -25,8 +25,10 @@ internal sealed class VoiceGateFade
     // Short enough to keep the first syllable, long enough not to click
     private static readonly TimeSpan AttackTime = TimeSpan.FromMilliseconds(8);
 
-    // Lets the tail of a word and the room fade out the way they would on their own
-    private static readonly TimeSpan ReleaseTime = TimeSpan.FromMilliseconds(150);
+    // Lets the tail of a word and the room fade out the way they would on their own. Longer than
+    // the shortest hold of the gate: after a short burst the fade does most of the closing, and a
+    // word that only just ends there decays instead of stopping.
+    private static readonly TimeSpan ReleaseTime = TimeSpan.FromMilliseconds(200);
 
     private readonly Element _valve;
     private readonly Pad? _output;

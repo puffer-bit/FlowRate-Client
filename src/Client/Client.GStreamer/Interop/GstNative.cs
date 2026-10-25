@@ -33,6 +33,12 @@ internal static class GstNative
         [MarshalAs(UnmanagedType.LPUTF8Str)] string signal, int argument, out IntPtr result);
 
     [DllImport(NativeLibraries.GStreamer)]
+    private static extern IntPtr gst_object_get_path_string(IntPtr instance);
+
+    [DllImport(NativeLibraries.GLib)]
+    private static extern void g_free(IntPtr memory);
+
+    [DllImport(NativeLibraries.GStreamer)]
     private static extern IntPtr gst_structure_get_value(IntPtr structure,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldName);
 
@@ -133,6 +139,27 @@ internal static class GstNative
     /// </summary>
     public static IntPtr GetMessageSource(Gst.Message message) =>
         Marshal.ReadIntPtr(message.Handle, MessageSourceOffset);
+
+    /// <summary>
+    /// The path of an object in its pipeline, e.g. "/webrtc_transport_3/voices_3/output", read
+    /// without a wrapper.
+    /// </summary>
+    public static string GetPath(IntPtr instance)
+    {
+        if (instance == IntPtr.Zero)
+            return string.Empty;
+
+        var path = gst_object_get_path_string(instance);
+
+        try
+        {
+            return Marshal.PtrToStringUTF8(path) ?? string.Empty;
+        }
+        finally
+        {
+            g_free(path);
+        }
+    }
 
     /// <summary>
     /// Maps a buffer for writing in place, without a wrapper: a wrapper holds a reference of its own,

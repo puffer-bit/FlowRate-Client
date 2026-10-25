@@ -253,16 +253,15 @@ public partial class HybridSession : IHybridSession
     }
 
     public Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression, bool isMuted = false) =>
-        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGateThresholdDb, noiseSuppression,
-            isMuted);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isMuted = false) =>
+        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression, isMuted);
 
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending <paramref name="input"/> to it. Besides the
     /// microphone this takes a looped file or a tone, which is what the test bot sends.
     /// </summary>
     public async Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
-        double? voiceGateThresholdDb = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
+        VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
         bool isMuted = false)
     {
         if (_voiceOutbound != null)
@@ -281,7 +280,7 @@ public partial class HybridSession : IHybridSession
         if (transport != _webRTCService)
             return StartVoiceShareResult.InternalError;
 
-        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGateThresholdDb, noiseSuppression))
+        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression))
         {
             LogStartSendingFailed(Model.Id, input);
             await _coordinatorSession.StopVoiceShareInHybridSession(Model.Id);
@@ -597,10 +596,10 @@ public partial class HybridSession : IHybridSession
             _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression);
     }
 
-    public void SetVoiceGateThreshold(double? thresholdDb)
+    public void SetVoiceGate(VoiceGateOptions? voiceGate)
     {
         if (_voiceOutbound is { } outbound)
-            _webRTCService.SetVoiceGateThreshold(outbound.Id, thresholdDb);
+            _webRTCService.SetVoiceGate(outbound.Id, voiceGate);
     }
 
     private void HandleConnectionStatus(IWebRTCTransport transport, WebRTCConnectionState state)

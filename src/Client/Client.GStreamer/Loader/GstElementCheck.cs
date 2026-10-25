@@ -38,7 +38,10 @@ internal static partial class GstElementCheck
         "level",
         // Without it the microphone is sent as the device delivers it: no automatic gain, no noise
         // suppression
-        "webrtcdsp"
+        "webrtcdsp",
+        // RNNoise, bundled since the neural noise suppression. Without it the neural levels run as
+        // the moderate one of webrtcdsp and the voice gate goes by the level alone
+        "audiornnoise"
     ];
 
     // Missing only without PipeWire on the system, then screen sharing on Wayland is impossible anyway

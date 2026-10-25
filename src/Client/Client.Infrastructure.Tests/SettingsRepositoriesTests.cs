@@ -69,6 +69,8 @@ public class SettingsRepositoriesTests
         Assert.Equal(1.0, settings.InputVolume);
         Assert.True(settings.IsVoiceGateEnabled);
         Assert.Equal(-32.0, settings.VoiceGateThresholdDb);
+        Assert.False(settings.IsVoiceDetectionEnabled);
+        Assert.False(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.Moderate, settings.NoiseSuppression);
         Assert.True(settings.AreSoundsEnabled);
         Assert.Equal(0.7, settings.SoundsVolume);
@@ -86,7 +88,8 @@ public class SettingsRepositoriesTests
         {
             InputDeviceId = "device", InputDeviceName = "Microphone", InputVolume = 1.5,
             IsVoiceGateEnabled = false, VoiceGateThresholdDb = -32.5,
-            NoiseSuppression = NoiseSuppressionLevel.VeryHigh,
+            IsVoiceDetectionEnabled = true, IsAdaptiveThresholdEnabled = true,
+            NoiseSuppression = NoiseSuppressionLevel.NeuralAndWebRtc,
             AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
             DisabledSounds = ["join", "message_sent"]
         });
@@ -97,7 +100,9 @@ public class SettingsRepositoriesTests
         Assert.Equal(1.5, settings.InputVolume);
         Assert.False(settings.IsVoiceGateEnabled);
         Assert.Equal(-32.5, settings.VoiceGateThresholdDb);
-        Assert.Equal(NoiseSuppressionLevel.VeryHigh, settings.NoiseSuppression);
+        Assert.True(settings.IsVoiceDetectionEnabled);
+        Assert.True(settings.IsAdaptiveThresholdEnabled);
+        Assert.Equal(NoiseSuppressionLevel.NeuralAndWebRtc, settings.NoiseSuppression);
         Assert.False(settings.AreSoundsEnabled);
         Assert.Equal(0.35, settings.SoundsVolume);
         Assert.Equal("Retro", settings.SoundPack);
