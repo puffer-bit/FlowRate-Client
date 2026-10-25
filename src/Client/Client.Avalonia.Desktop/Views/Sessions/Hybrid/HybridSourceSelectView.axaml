@@ -283,7 +283,8 @@
             <Button Classes="save" Command="{Binding GoLive}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlayIcon}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{l:Text source.start}"/>
+                    <TextBlock Text="{l:Text source.start}" IsVisible="{Binding !IsChangingShare}"/>
+                    <TextBlock Text="{l:Text source.apply}" IsVisible="{Binding IsChangingShare}"/>
                 </StackPanel>
             </Button>
         </StackPanel>
