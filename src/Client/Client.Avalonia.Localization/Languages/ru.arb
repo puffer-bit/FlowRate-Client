@@ -741,6 +741,8 @@
   "settings.audio.sound.call_incoming": "Входящий звонок",
   "settings.audio.sound.mention": "Вас упомянули",
   "settings.audio.sound.user_kicked": "Пользователь исключён",
+  "settings.audio.sound.poke": "Вас позвали",
+  "settings.audio.sound.afk": "Вы отошли (AFK)",
   "settings.audio.section.microphoneTest": "Проверка микрофона",
   "settings.audio.testMicrophone.title": "Проверить микрофон",
   "settings.audio.testMicrophone.description": "Говорите, чтобы увидеть уровень сигнала на индикаторе",
