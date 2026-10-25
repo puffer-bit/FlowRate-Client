@@ -7,7 +7,8 @@ namespace Client.GStreamer.WebRTC;
 /// <summary>
 /// Reads the statistics of webrtcbin on a timer and logs, for every RTP stream, what happened to it
 /// since the last reading: the bitrate, the loss, the jitter, the round trip and the repair requests.
-/// Also logs the candidate pair the media goes over whenever ICE picks another one.
+/// Also logs the candidate pair the media goes over whenever ICE picks another one, and reports the
+/// round trip and the loss of every reading, which the user sees as the quality of the connection.
 /// </summary>
 /// <remarks>
 /// The figures of every reading are meant for measuring the transport, so they go to the debug log
@@ -19,12 +20,12 @@ namespace Client.GStreamer.WebRTC;
 /// </remarks>
 internal sealed partial class TransportStats
 {
-    // How often the statistics are read. Short enough to see a bad minute, long enough for the
-    // counters to move between two readings
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    // How often the statistics are read. Short enough for a graph of the connection to follow it,
+    // long enough for the counters to move between two readings
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
-    // How often the figures are summed up in the information log, in readings
-    private const int ReadingsPerSummary = 12;
+    // How often the figures are summed up in the information log, in readings: once a minute
+    private const int ReadingsPerSummary = 30;
 
     // A reading that lost more of a stream is worth a warning even without the debug log; a few
     // packets of a quiet stream do not make a burst
@@ -36,6 +37,7 @@ internal sealed partial class TransportStats
     private readonly Func<uint, OutboundTrack?> _findOutbound;
     private readonly Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> _readSendQueues;
     private readonly Action _reportPeriod;
+    private readonly Action<TransportStatsSample> _sampled;
     private readonly ILogger _logger;
 
     // For a stream of no known track. The kind webrtcbin reports is not used instead: with every
@@ -65,25 +67,23 @@ internal sealed partial class TransportStats
     /// <param name="findOutbound">The outbound track with the given SSRC.</param>
     /// <param name="readSendQueues">What the last queue of every track we send holds.</param>
     /// <param name="reportPeriod">Logs the figures of the media itself, once per summary.</param>
+    /// <param name="sampled">Takes the round trip and the loss of every reading, on a thread of webrtcbin.</param>
     public TransportStats(TransportCore core, Func<uint, InboundTrack?> findInbound,
         Func<uint, OutboundTrack?> findOutbound,
         Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, Action reportPeriod,
-        ILogger logger)
+        Action<TransportStatsSample> sampled, ILogger logger)
     {
         _core = core;
         _findInbound = findInbound;
         _findOutbound = findOutbound;
         _readSendQueues = readSendQueues;
         _reportPeriod = reportPeriod;
+        _sampled = sampled;
         _logger = logger;
     }
 
     public void Start()
     {
-        // Nobody would read the figures
-        if (!_logger.IsEnabled(LogLevel.Information))
-            return;
-
         _isStopped = false;
         _timer = new System.Threading.Timer(_ => Request(), null, PollInterval, PollInterval);
     }
@@ -267,6 +267,9 @@ internal sealed partial class TransportStats
             }
         }
 
+        if (!isFirst && seconds > 0)
+            _sampled(Sample(inbound, outbound, remote));
+
         // A stream that is gone is forgotten with the reading it was last in
         _previous.Clear();
 
@@ -345,6 +348,42 @@ internal sealed partial class TransportStats
         stats.GetUint("port", out var port);
 
         return $"{stats.GetString("protocol")} {stats.GetString("candidate-type")} {stats.GetString("address")}:{port}";
+    }
+
+    /// <summary>
+    /// The loss of all the streams together since the previous reading, and the round trip of the
+    /// streams we send. Called before the counters of this reading replace the previous ones.
+    /// </summary>
+    private TransportStatsSample Sample(List<Counters> inbound, List<Counters> outbound,
+        Dictionary<uint, RemoteReport> remote)
+    {
+        long received = 0;
+        long lost = 0;
+
+        foreach (var current in inbound.Where(stream => stream.Packets > 0))
+        {
+            if (!_previous.TryGetValue(current.Ssrc, out var last))
+                continue;
+
+            var delta = current - last;
+            received += Math.Max(0, delta.Packets);
+            lost += Math.Max(0, delta.Lost);
+        }
+
+        var inboundLoss = received + lost > 0 ? 100.0 * lost / (received + lost) : 0;
+
+        // Only the streams that still carry packets: the SFU repeats its last report of a stopped one
+        var reports = outbound
+            .Where(stream => stream.Packets > 0 && _previous.TryGetValue(stream.Ssrc, out var last)
+                                                && stream.Packets > last.Packets)
+            .Select(stream => remote.GetValueOrDefault(stream.Ssrc))
+            .OfType<RemoteReport>()
+            .ToList();
+
+        var outboundLoss = reports.Count > 0 ? reports.Max(report => report.FractionLost) * 100 : 0;
+        var roundTrips = reports.Where(report => report.RoundTripMs > 0).Select(report => report.RoundTripMs).ToList();
+
+        return new TransportStatsSample(roundTrips.Count > 0 ? roundTrips.Average() : null, inboundLoss, outboundLoss);
     }
 
     private static double LossPercent(Counters delta)

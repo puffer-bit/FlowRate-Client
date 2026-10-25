@@ -42,6 +42,12 @@ public interface IWebRTCTransport : IDisposable
     /// </summary>
     event Action<IReadOnlyList<string>>? InboundsReady;
 
+    /// <summary>
+    /// Raised with how the media fared since the previous reading of the statistics, every few
+    /// seconds while the transport runs. Raised on a thread of webrtcbin.
+    /// </summary>
+    event Action<TransportStatsSample>? StatsSampled;
+
     WebRTCConnectionState ConnectionState { get; }
 
     /// <summary>
