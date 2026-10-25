@@ -82,7 +82,7 @@ public partial class ActiveChatSessionVM
         {
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
-            ApplyChange(message);
+            ApplyChanges([message]);
         });
     }
 
@@ -166,7 +166,9 @@ public partial class ActiveChatSessionVM
                 if (result != FetchMessagesResult.NoError || changes == null)
                     return;
 
-                if (changes.Reset)
+                // More was missed than one answer holds: the newest page is loaded anew rather than
+                // every missed message, which a long absence from a busy chat makes thousands of
+                if (changes.Reset || changes.HasMore)
                 {
                     await ReloadAsync();
                     again = _isSyncRequested;
@@ -175,15 +177,10 @@ public partial class ActiveChatSessionVM
 
                 await UiThread.RunAsync(() =>
                 {
-                    foreach (var message in changes.Messages)
-                        ApplyChange(message);
+                    ApplyChanges(changes.Messages);
 
-                    // A partial answer is current only up to its last message
-                    long reached = changes.HasMore && changes.Messages.Count > 0
-                        ? changes.Messages[^1].Revision
-                        : changes.Revision;
-                    again = (changes.HasMore && reached > _revision) || _isSyncRequested;
-                    _revision = Math.Max(_revision, reached);
+                    again = _isSyncRequested;
+                    _revision = Math.Max(_revision, changes.Revision);
                     _cache.Apply(changes.Messages, _revision);
                 });
             } while (again);
