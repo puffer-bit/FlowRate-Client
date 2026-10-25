@@ -188,7 +188,26 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId)
         };
         ApplyAccess(added);
-        Peers.Add(added);
+        Peers.Insert(SortedIndexOf(added), added);
+    }
+
+    /// <summary>Where the peer belongs among the others, which stand in the order of their names.</summary>
+    private int SortedIndexOf(PeerVM peer)
+    {
+        var index = 0;
+        foreach (var other in Peers)
+        {
+            if (other != peer && ComparePeers(other, peer) <= 0)
+                index++;
+        }
+
+        return index;
+    }
+
+    private static int ComparePeers(PeerVM a, PeerVM b)
+    {
+        var byName = string.Compare(a.DisplayedName, b.DisplayedName, System.StringComparison.CurrentCultureIgnoreCase);
+        return byName != 0 ? byName : a.PeerData.UserId.CompareTo(b.PeerData.UserId);
     }
 
     /// <summary>
@@ -309,6 +328,12 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         peer.UpdateUserModel(userModel);
         // Their roles may have changed with them
         ApplyAccess(peer);
+
+        // The name may have come or changed with them, so the peer moves to its place by it
+        var oldIndex = Peers.IndexOf(peer);
+        var newIndex = SortedIndexOf(peer);
+        if (oldIndex != newIndex)
+            Peers.Move(oldIndex, newIndex);
     }
     
     public void ApplyPlayback(int userId, PeerPlayback playback)

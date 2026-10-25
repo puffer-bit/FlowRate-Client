@@ -1,5 +1,6 @@
 using Client.Avalonia.Localization;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using CloseAppDialog = Client.Views.Dialogs.CloseAppDialog;
 using Client.Views.Dialogs;
 using Client.Views.Main;
+using Client.ViewModels.Main;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.Services.Tray;
 
@@ -19,6 +22,8 @@ namespace Client.Services.Tray;
 /// The tray icon. Depending on the Application behavior settings, the close button of the main window
 /// hides it to the tray, and a click on the icon brings it back. Until a choice is remembered, closing asks.
 /// Minimizing stays a regular minimize.
+/// While we are in a hybrid session, the icon shows whether we speak, and whether the microphone or the
+/// sound is off or we are away, and the menu turns them on and off.
 /// </summary>
 internal sealed partial class TrayService : IDisposable
 {
@@ -29,6 +34,18 @@ internal sealed partial class TrayService : IDisposable
     private readonly TrayIcon _trayIcon;
     private readonly NativeMenuItem _openItem;
     private readonly NativeMenuItem _exitItem;
+    private readonly NativeMenuItem _microphoneItem;
+    private readonly NativeMenuItem _soundItem;
+    private readonly NativeMenuItem _afkItem;
+    private readonly NativeMenuItemSeparator _voiceSeparator;
+    private readonly MainWindowVM? _mainVM;
+
+    // Shown while we are in no hybrid session
+    private readonly WindowIcon _appIcon =
+        new(AssetLoader.Open(new Uri("avares://Client.Avalonia.Desktop/Assets/avalonia-logo.ico")));
+
+    // The session the icon follows, null outside of one
+    private ActiveHybridSessionVM? _session;
 
     // How long a restored state must hold before it counts as the user bringing the window back
     private static readonly TimeSpan RestoreSettleTime = TimeSpan.FromMilliseconds(300);
@@ -55,21 +72,47 @@ internal sealed partial class TrayService : IDisposable
         _exitItem = new NativeMenuItem();
         _exitItem.Click += (_, _) => Exit();
 
-        UpdateMenuTexts();
-        Strings.LanguageChanged += UpdateMenuTexts;
+        _microphoneItem = new NativeMenuItem { ToggleType = MenuItemToggleType.CheckBox };
+        _microphoneItem.Click += (_, _) => _session?.StatusBar.ToggleMicrophoneCommand.Execute().Subscribe();
+
+        _soundItem = new NativeMenuItem { ToggleType = MenuItemToggleType.CheckBox };
+        _soundItem.Click += (_, _) => _session?.StatusBar.ToggleSoundCommand.Execute().Subscribe();
+
+        _afkItem = new NativeMenuItem { ToggleType = MenuItemToggleType.CheckBox };
+        _afkItem.Click += (_, _) => _session?.StatusBar.ToggleAfkCommand.Execute().Subscribe();
+
+        _voiceSeparator = new NativeMenuItemSeparator();
 
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://Client.Avalonia.Desktop/Assets/avalonia-logo.ico"))),
-            ToolTipText = "FlowRate",
+            Icon = _appIcon,
             Menu = new NativeMenu
             {
-                Items = { _openItem, new NativeMenuItemSeparator(), _exitItem },
+                Items =
+                {
+                    _openItem, new NativeMenuItemSeparator(),
+                    _microphoneItem, _soundItem, _afkItem, _voiceSeparator,
+                    _exitItem,
+                },
             },
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
 
+        UpdateMenuTexts();
+        Strings.LanguageChanged += UpdateMenuTexts;
+
         TrayIcon.SetIcons(global::Avalonia.Application.Current!, new TrayIcons { _trayIcon });
+
+        _mainVM = _window.DataContext as MainWindowVM;
+        if (_mainVM != null)
+        {
+            _mainVM.PropertyChanged += OnMainPropertyChanged;
+            FollowSession(_mainVM.HybridSession);
+        }
+        else
+        {
+            UpdateVoiceState();
+        }
 
         _window.PropertyChanged += OnWindowPropertyChanged;
         _window.Closing += OnWindowClosing;
@@ -205,11 +248,95 @@ internal sealed partial class TrayService : IDisposable
     {
         _openItem.Header = Strings.Get("tray.open");
         _exitItem.Header = Strings.Get("tray.exit");
+        _microphoneItem.Header = Strings.Get("tray.microphone");
+        _soundItem.Header = Strings.Get("tray.sound");
+        _afkItem.Header = Strings.Get("tray.afk");
+        UpdateVoiceState();
     }
+
+    private void OnMainPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainWindowVM.HybridSession))
+            FollowSession(_mainVM!.HybridSession);
+    }
+
+    private void FollowSession(ActiveHybridSessionVM? session)
+    {
+        if (_session != null)
+        {
+            _session.PropertyChanged -= OnSessionPropertyChanged;
+            _session.StatusBar.PropertyChanged -= OnSessionPropertyChanged;
+        }
+
+        _session = session;
+        if (_session != null)
+        {
+            _session.PropertyChanged += OnSessionPropertyChanged;
+            _session.StatusBar.PropertyChanged += OnSessionPropertyChanged;
+        }
+
+        UpdateVoiceState();
+    }
+
+    // Some of the state comes straight from the coordinator, on its thread
+    private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateVoiceState();
+
+    private void UpdateVoiceState()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(UpdateVoiceState);
+            return;
+        }
+
+        var state = GetVoiceState();
+
+        var isInSession = state != null;
+        _microphoneItem.IsVisible = isInSession && _session!.CanSpeak;
+        _soundItem.IsVisible = isInSession;
+        _afkItem.IsVisible = isInSession;
+        _voiceSeparator.IsVisible = isInSession;
+
+        if (state is not { } voiceState)
+        {
+            _trayIcon.Icon = _appIcon;
+            return;
+        }
+
+        var statusBar = _session!.StatusBar;
+        _microphoneItem.IsChecked = statusBar.IsMicrophoneOn;
+        _soundItem.IsChecked = statusBar.IsSoundOn;
+        _afkItem.IsChecked = statusBar.IsAfk;
+
+        _trayIcon.Icon = TrayIconRenderer.Get(voiceState);
+    }
+
+    private TrayVoiceState? GetVoiceState()
+    {
+        if (_session is not { } session)
+            return null;
+
+        var statusBar = session.StatusBar;
+        if (!statusBar.IsConnected)
+            return TrayVoiceState.Connecting;
+        if (statusBar.IsAfk)
+            return TrayVoiceState.Afk;
+        if (!statusBar.IsSoundOn)
+            return TrayVoiceState.SoundOff;
+        if (!session.CanSpeak)
+            return TrayVoiceState.Idle;
+        if (!statusBar.IsMicrophoneOn)
+            return TrayVoiceState.MicrophoneOff;
+        return statusBar.IsSpeaking ? TrayVoiceState.Speaking : TrayVoiceState.Idle;
+    }
+
 
     public void Dispose()
     {
         Strings.LanguageChanged -= UpdateMenuTexts;
+        if (_mainVM != null)
+            _mainVM.PropertyChanged -= OnMainPropertyChanged;
+        FollowSession(null);
         _window.PropertyChanged -= OnWindowPropertyChanged;
         _window.Closing -= OnWindowClosing;
         if (_window is MainWindow mainWindow)
