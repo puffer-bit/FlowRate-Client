@@ -874,6 +874,8 @@
   "settings.audio.sound.call_incoming": "着信",
   "settings.audio.sound.mention": "メンションされた",
   "settings.audio.sound.user_kicked": "ユーザーが退出させられた",
+  "settings.audio.sound.poke": "つつかれた",
+  "settings.audio.sound.afk": "離席中になった",
   "settings.audio.section.microphoneTest": "マイクテスト",
   "settings.audio.testMicrophone.title": "マイクをテスト",
   "settings.audio.testMicrophone.description": "話すと、メーターに入力レベルが表示されます",

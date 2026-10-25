@@ -40,7 +40,7 @@
 
             <!-- Only a peer of the session we are in; the message is optional -->
             <StackPanel Spacing="2" IsVisible="{Binding CanPoke}">
-                <menus:MenuItemButton Icon="{StaticResource BellIcon}" Content="{l:Text peer.poke}">
+                <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}">
                     <menus:MenuItemButton.Flyout>
                         <Flyout Placement="RightEdgeAlignedTop">
                             <StackPanel Spacing="6" Width="240">

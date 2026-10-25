@@ -1099,6 +1099,8 @@
   "settings.audio.sound.call_incoming": "Incoming call",
   "settings.audio.sound.mention": "You were mentioned",
   "settings.audio.sound.user_kicked": "User kicked",
+  "settings.audio.sound.poke": "Someone poked you",
+  "settings.audio.sound.afk": "You went AFK",
   "settings.audio.section.microphoneTest": "Microphone test",
   "settings.audio.testMicrophone.title": "Test microphone",
   "settings.audio.testMicrophone.description": "Speak to see the input level on the meter",

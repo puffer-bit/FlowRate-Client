@@ -874,6 +874,8 @@
   "settings.audio.sound.call_incoming": "来电",
   "settings.audio.sound.mention": "有人提到你",
   "settings.audio.sound.user_kicked": "用户被移出",
+  "settings.audio.sound.poke": "有人戳了你",
+  "settings.audio.sound.afk": "你已离开 (AFK)",
   "settings.audio.section.microphoneTest": "麦克风测试",
   "settings.audio.testMicrophone.title": "测试麦克风",
   "settings.audio.testMicrophone.description": "说话即可在电平表上看到输入电平",

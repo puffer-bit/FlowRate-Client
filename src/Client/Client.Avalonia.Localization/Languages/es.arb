@@ -874,6 +874,8 @@
   "settings.audio.sound.call_incoming": "Llamada entrante",
   "settings.audio.sound.mention": "Te han mencionado",
   "settings.audio.sound.user_kicked": "Usuario expulsado",
+  "settings.audio.sound.poke": "Alguien te dio un toque",
+  "settings.audio.sound.afk": "Te has ausentado (AFK)",
   "settings.audio.section.microphoneTest": "Prueba del micrófono",
   "settings.audio.testMicrophone.title": "Probar el micrófono",
   "settings.audio.testMicrophone.description": "Habla para ver el nivel de entrada en el medidor",

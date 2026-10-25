@@ -22,4 +22,6 @@ public enum SoundEvent
     CallIncoming,
     Mention,
     UserKicked,
+    Poke,
+    Afk,
 }
