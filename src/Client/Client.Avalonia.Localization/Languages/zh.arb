@@ -536,7 +536,6 @@
   "hybrid.stats.lossOut": "发送丢包",
   "hybrid.stats.pingGraph": "最近 2 分钟的延迟",
   "hybrid.stats.lossGraph": "丢包率",
-  "hybrid.stats.pingHint": "延迟在你发送内容时测量：麦克风静音时可能无法得知。",
   "hybrid.screen.change": "设置共享",
   "hybrid.screen.watchFailed": "无法打开屏幕：{reason}",
   "hybrid.error.transportStartFailed": "无法启动 WebRTC 传输",

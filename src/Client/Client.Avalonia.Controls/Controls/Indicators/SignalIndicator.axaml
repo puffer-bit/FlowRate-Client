@@ -15,14 +15,14 @@
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <!-- Arcs of a Wi-Fi sign over the antenna they come from, on a grid of 24 -->
+                <!-- A mast that broadcasts waves to both sides, on a grid of 24 -->
                 <Viewbox Stretch="Uniform">
                     <Canvas Width="24" Height="24">
-                        <Path Classes="mast" Data="M12,12 V21 M9,21 H15"/>
-                        <Ellipse Classes="mast" Canvas.Left="10.6" Canvas.Top="10.6" Width="2.8" Height="2.8"/>
-                        <Path Classes="arc a1" Data="M9.53,9.53 A3.5,3.5 0 0 1 14.47,9.53"/>
-                        <Path Classes="arc a2" Data="M7.4,7.4 A6.5,6.5 0 0 1 16.6,7.4"/>
-                        <Path Classes="arc a3" Data="M5.28,5.28 A9.5,9.5 0 0 1 18.72,5.28"/>
+                        <Path Classes="mast" Data="M12,11 L8.5,21 M12,11 L15.5,21 M9.55,18 H14.45"/>
+                        <Ellipse Classes="mast" Canvas.Left="10.5" Canvas.Top="7.5" Width="3" Height="3"/>
+                        <Path Classes="arc a1" Data="M9.32,6.75 A3.5,3.5 0 0 0 9.32,11.25 M14.68,6.75 A3.5,3.5 0 0 1 14.68,11.25"/>
+                        <Path Classes="arc a2" Data="M7.02,4.82 A6.5,6.5 0 0 0 7.02,13.18 M16.98,4.82 A6.5,6.5 0 0 1 16.98,13.18"/>
+                        <Path Classes="arc a3" Data="M4.72,2.89 A9.5,9.5 0 0 0 4.72,15.11 M19.28,2.89 A9.5,9.5 0 0 1 19.28,15.11"/>
                     </Canvas>
                 </Viewbox>
             </ControlTemplate>

@@ -79,7 +79,5 @@
                                   SecondaryStroke="{DynamicResource WarningBrush}"
                                   MinimumMaximum="5" Unit="%"/>
         </StackPanel>
-
-        <TextBlock Text="{l:Text hybrid.stats.pingHint}" Classes="caption" TextWrapping="Wrap"/>
     </StackPanel>
 </UserControl>
