@@ -30,9 +30,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream ! rtpopusdepay ! opusdec plc=true use-inband-fec=true ! audioconvert ! audioresample ! " +
         "capsfilter caps=\"audio/x-raw,format=F32LE\" ! volume name=volume";
 
-    // One output for all voices, running on the clock whether packets come or not: DTX sends nothing
-    // in a pause, and a sink fed by the packets alone runs dry, resyncs and replays a piece of the
-    // voice. The mixer fills what is missing with silence on time. It starts at the first input
+    // One output for all voices, running on the clock whether packets come or not: packets stop
+    // with a loss or a muted sender, and a sink fed by the packets alone runs dry, resyncs and
+    // replays a piece of the voice. The mixer fills what is missing with silence on time. It starts at the first input
     // rather than at running time zero, which would make it catch up the whole session first. It
     // waits 20 ms, one Opus frame, for a late buffer: without that wait a voice arriving a little
     // unevenly is cut into pieces of silence, which crackles, and every millisecond more is heard
