@@ -636,6 +636,7 @@
   "hybrid.kicked.text": "{user} 将你移出了会话「{session}」",
   "hybrid.kickedByServer.text": "服务器将你移出了会话「{session}」：{reason}",
   "peer.ban": "封禁",
+  "peer.ban.failed.title": "无法封禁该用户",
   "peer.suspend": "停用",
   "peer.report": "举报",
   "peer.viewProfile": "查看资料",
