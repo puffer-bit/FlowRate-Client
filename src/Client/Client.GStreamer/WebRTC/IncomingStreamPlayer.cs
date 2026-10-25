@@ -62,7 +62,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // would leave the picture late for good. The gap that leaves is repaired like a loss
     private const string H264Description =
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
-        "rtph264depay request-keyframe=true ! " +
+        "rtph264depay request-keyframe=true wait-for-keyframe=true ! " +
         "h264parse ! {0} ! {1}";
 
     // The same for VP8, whose depayloader drops what it has until the next keyframe
