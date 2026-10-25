@@ -104,9 +104,13 @@ internal static class OutgoingAudioBranch
 
     // Mono speech at up to 64 kbit/s, less when the signal needs less. FEC lets the receiver rebuild
     // a lost packet from the next one, but the encoder only adds the redundancy for the loss it is
-    // told to expect, and with the default of 0 it adds none. DTX stops sending while the speaker
-    // is silent: the encoder only shrinks silent frames, the payloader's own dtx drops them. FEC,
-    // the loss it expects and DTX are what the media settings of the session gave the track. The
+    // told to expect, and with the default of 0 it adds none. DTX shrinks the frames of silence to
+    // a byte, refreshing the comfort noise every 400 ms. The payloader still sends every one of them:
+    // opusdec only decodes the packets it gets, so with its own dtx dropping them the receiver
+    // played 20 ms of comfort noise every 400 ms and silence between, which clicks through a long
+    // pause, and the decoder held each refresh until the next one for its FEC, past the deadline
+    // of the mixer. FEC, the loss it expects and DTX are what the media settings of the session
+    // gave the track. The
     // gate and the mute silence the voice instead of dropping it: a hole in the stream would be
     // closed up by the encoder, the RTP clock would not advance over the pause, and the receiver
     // would replay the voice. The last queue drops the oldest packets past 200 ms rather than
@@ -117,9 +121,9 @@ internal static class OutgoingAudioBranch
         "volume name=" + MuteValveName + " mute=false ! " +
         "opusenc audio-type=voice bitrate=64000 {4} " +
         "frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} dtx={5} ! " +
+        "rtpopuspay pt={1} ssrc={2} ! " +
         "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream" +
-        "{6}";
+        "{5}";
 
     // Stereo at a rate that keeps music clean. No DTX: a quiet passage of a film is not a pause,
     // and the producer of the screen sound is created without it. The volume and mute elements
@@ -195,7 +199,7 @@ internal static class OutgoingAudioBranch
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
             isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
-            EncoderSettings(outbound, isScreen), DtxOf(outbound, isScreen), voiceDetection), true);
+            EncoderSettings(outbound, isScreen), voiceDetection), true);
 
         if (encoding == null)
         {
