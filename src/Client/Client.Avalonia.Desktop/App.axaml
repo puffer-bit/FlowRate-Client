@@ -36,6 +36,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Avatars/UserAvatar.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/LoadingIndicators/ProgressRing.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Pickers/ColorPicker.axaml"/>
     </Application.Styles>
              
