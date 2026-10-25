@@ -76,28 +76,6 @@
                 </StackPanel>
             </Button>
 
-            <Button Classes="topBar" IsEnabled="False">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Image Source="{StaticResource BaseUsersIcon}"/>
-                    <AccessText Text="{l:Text main.menu.profiles}"/>
-                </StackPanel>
-                <Button.Flyout>
-                    <Flyout Placement="BottomEdgeAlignedLeft">
-                        <StackPanel Spacing="2">
-                            <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.menu.profiles.new}"/>
-                            <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text main.menu.profiles.edit}"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-
-            <Button Classes="topBar" IsEnabled="False">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Image Source="{StaticResource ServerIcon}"/>
-                    <AccessText Text="{l:Text main.menu.server}"/>
-                </StackPanel>
-            </Button>
-
             <!-- The dot tells that a newer release is there; the first line of the menu says what the updater knows -->
             <Button Classes="topBar" DataContext="{Binding Updater}">
                 <StackPanel x:DataType="mainVm:UpdaterVM" Orientation="Horizontal" Spacing="6">

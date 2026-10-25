@@ -5,6 +5,7 @@ using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator.Users;
 using Client.Avalonia.Localization;
+using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -269,8 +270,18 @@ public class PeerVM : ReactiveObject
     public string PokeMessage
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(PokeMessageCounter));
+        }
     } = string.Empty;
+
+    /// <summary>How much of the message is typed, out of how much fits.</summary>
+    public string PokeMessageCounter => $"{PokeMessage.Length}/{Limits.PokeMessageMaxLength}";
+
+    /// <summary>Who is poked, at the head of the card.</summary>
+    public string PokeTitle => Strings.Format("peer.poke.title", ("user", DisplayedName));
 
     /// <summary>
     /// Pokes the user with <see cref="PokeMessage"/>, which is cleared then. Offered only when <see cref="CanPoke"/>.
@@ -334,6 +345,7 @@ public class PeerVM : ReactiveObject
     {
         UserData = userModel;
         this.RaisePropertyChanged(nameof(DisplayedName));
+        this.RaisePropertyChanged(nameof(PokeTitle));
         this.RaisePropertyChanged(nameof(UserData));
     }
 

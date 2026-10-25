@@ -203,6 +203,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
                         nameof(CanShareVideo)),
                     vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo)));
+        _subscriptions.Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts,
+            () => Strings.LanguageChanged -= StatusBar.UpdateTexts);
         // Corrected by our own peer as soon as the server reports it
         IsAdmitted = !hybridSessionModel.IsApprovalRequested
                      || hybridSessionModel.HostId == _coordinatorSession.GetCurrentUser().Id;
@@ -618,7 +620,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (sessionId != Model.Id)
             return;
 
-        Dispatcher.UIThread.Post(() => ParticipantsListVM.UpdateSpeaking(userId, isSpeaking));
+        Dispatcher.UIThread.Post(() =>
+        {
+            ParticipantsListVM.UpdateSpeaking(userId, isSpeaking);
+            if (userId == _coordinatorSession.GetCurrentUser().Id)
+                StatusBar.IsSpeaking = isSpeaking;
+        });
     }
 
     private void ToggleUserList(bool isToggled)
