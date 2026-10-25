@@ -636,6 +636,7 @@
   "hybrid.kicked.text": "{user} te ha expulsado de la sesión «{session}»",
   "hybrid.kickedByServer.text": "El servidor te ha expulsado de la sesión «{session}»: {reason}",
   "peer.ban": "Vetar",
+  "peer.ban.failed.title": "No se pudo vetar al usuario",
   "peer.suspend": "Suspender",
   "peer.report": "Denunciar",
   "peer.viewProfile": "Ver perfil",
