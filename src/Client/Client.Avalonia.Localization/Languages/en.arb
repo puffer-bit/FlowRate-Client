@@ -656,6 +656,36 @@
       "reason": {}
     }
   },
+  "hybrid.afk.go": "Away from keyboard",
+  "hybrid.afk.reason.placeholder": "Reason (optional)",
+  "hybrid.afk.confirm": "Go AFK",
+  "hybrid.afk.title": "Step away",
+  "hybrid.afk.subtitle": "Your microphone turns off, and others see that you are away and why.",
+  "hybrid.afk.presets": "Quick reasons",
+  "hybrid.afk.preset.brb": "Be right back",
+  "hybrid.afk.preset.break": "Short break",
+  "hybrid.afk.preset.food": "Eating",
+  "hybrid.afk.preset.call": "On a call",
+  "hybrid.afk.back": "Back from AFK",
+  "hybrid.afk.backWithReason": "Back from AFK (away: {reason})",
+  "@hybrid.afk.backWithReason": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "hybrid.afk.failed": "Failed to switch AFK: {reason}",
+  "@hybrid.afk.failed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "hybrid.poked.title": "{user} poked you",
+  "@hybrid.poked.title": {
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "hybrid.poked.noMessage": "No message",
   "hybrid.screen.startFailed": "Failed to share the screen: {reason}",
   "@hybrid.screen.startFailed": {
     "placeholders": {
@@ -744,6 +774,15 @@
   },
   "createSession.description.controlCharacters": "The description cannot contain control characters",
   "peer.poke": "Poke",
+  "peer.poke.message.placeholder": "Message (optional)",
+  "peer.poke.send": "Poke",
+  "peer.afk": "Away from keyboard",
+  "peer.afk.reason": "Away from keyboard: {reason}",
+  "@peer.afk.reason": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
   "peer.volume": "Volume",
   "peer.muteSound": "Mute sound",
   "peer.unmuteSound": "Unmute sound",
@@ -758,6 +797,13 @@
   "peer.kick.failed.title": "Could not kick the user",
   "peer.kick.failed.text": "Error code: {code}",
   "@peer.kick.failed.text": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "peer.poke.failed.title": "Could not poke the user",
+  "peer.poke.failed.text": "Error code: {code}",
+  "@peer.poke.failed.text": {
     "placeholders": {
       "code": {}
     }
@@ -1320,6 +1366,8 @@
   "roles.permission.speak.description": "Turn on the microphone in voice sessions.",
   "roles.permission.shareVideo": "Share the screen",
   "roles.permission.shareVideo.description": "Share the screen in voice sessions.",
+  "roles.permission.poke": "Poke members",
+  "roles.permission.poke.description": "Poke other members of voice sessions.",
   "sessionPermissions.title": "Permissions",
   "sessionPermissions.hint": "What roles may do in this session. A setting left as on the server follows the role.",
   "sessionPermissions.allow": "Allow",

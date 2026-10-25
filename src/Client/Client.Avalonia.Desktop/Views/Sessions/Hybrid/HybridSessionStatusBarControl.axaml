@@ -110,6 +110,24 @@
                 </Panel>
             </Button>
 
+            <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
+            <Button Classes="barAction"
+                    IsVisible="{Binding !IsAfk}"
+                    ToolTip.Tip="{l:Text hybrid.afk.go}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <hybrid:AfkReasonCard/>
+                    </Flyout>
+                </Button.Flyout>
+                <Image Source="{StaticResource AfkIcon}"/>
+            </Button>
+            <Button Classes="barAction sharing"
+                    IsVisible="{Binding IsAfk}"
+                    Command="{Binding ToggleAfkCommand}"
+                    ToolTip.Tip="{Binding AfkHint}">
+                <Image Source="{StaticResource AfkIcon}"/>
+            </Button>
+
             <Button Classes="barAction"
                     IsVisible="{Binding !IsScreenShareOn}"
                     Command="{Binding ToggleScreenShareCommand}"

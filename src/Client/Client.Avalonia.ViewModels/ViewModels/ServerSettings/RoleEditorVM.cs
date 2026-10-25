@@ -203,7 +203,8 @@ public sealed class RoleEditorVM : ReactiveObject
         (Permission.AttachFiles, "roles.permission.attachFiles", "roles.permission.attachFiles.description"),
         (Permission.JoinSessions, "roles.permission.joinSessions", "roles.permission.joinSessions.description"),
         (Permission.Speak, "roles.permission.speak", "roles.permission.speak.description"),
-        (Permission.ShareVideo, "roles.permission.shareVideo", "roles.permission.shareVideo.description")
+        (Permission.ShareVideo, "roles.permission.shareVideo", "roles.permission.shareVideo.description"),
+        (Permission.PokeMembers, "roles.permission.poke", "roles.permission.poke.description")
     ];
 }
 

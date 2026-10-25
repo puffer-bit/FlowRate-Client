@@ -109,6 +109,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
+    private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
     
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
     
@@ -132,7 +133,8 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
         ReactiveCommand<(int UserId, string Name), RxVoid> banUserCommand,
-        ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand)
+        ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand,
+        ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand)
     {
         Model = model;
 
@@ -143,6 +145,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         _kickPeerCommand = kickPeerCommand;
         _banUserCommand = banUserCommand;
         _admitPeerCommand = admitPeerCommand;
+        _pokePeerCommand = pokePeerCommand;
 
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
 
@@ -179,7 +182,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             Peers.Remove(peer);
 
         var added = new PeerVM(peerModel, peerModel.UserId == _currentUserId, _playbackService,
-            _viewProfileCommand, ToggleScreenWatch, KickPeer, BanPeer, AdmitPeer)
+            _viewProfileCommand, ToggleScreenWatch, KickPeer, BanPeer, AdmitPeer, PokePeer)
         {
             IsInEnteredSession = IsEntered,
             IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId)
@@ -233,6 +236,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
                        && _permissions.CanInSessionOn(Permission.KickMembers, IsHost, peer.UserData?.RoleIds ?? []);
         peer.CanApprove = !peer.IsCurrentUser && peer.IsWaiting
                           && _permissions.CanInSession(Permission.ApproveMembers, IsHost);
+        peer.IsPokeAllowed = !peer.IsCurrentUser && _permissions.HasIn(Model, Permission.PokeMembers);
         // A ban is of the coordinator, not of the session, so hosting it gives no right to it
         peer.CanBan = !peer.IsCurrentUser && _permissions.Has(Permission.BanMembers)
                       && _permissions.Outranks(peer.UserData?.RoleIds ?? []);
@@ -248,6 +252,12 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     {
         if (!peer.IsCurrentUser)
             _kickPeerCommand.Execute((Model.Id, peer.PeerData.UserId)).Subscribe();
+    }
+
+    private void PokePeer(PeerVM peer, string? message)
+    {
+        if (!peer.IsCurrentUser)
+            _pokePeerCommand.Execute((Model.Id, peer.PeerData.UserId, message)).Subscribe();
     }
 
     private void BanPeer(PeerVM peer)
@@ -332,6 +342,13 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId);
 
         peer?.UpdateMicrophoneMuted(isMuted);
+    }
+
+    public void UpdatePeerAfk(int userId, bool isAfk, string? reason)
+    {
+        var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId);
+
+        peer?.UpdateAfk(isAfk, reason);
     }
 
     public void UpdatePeerSound(int userId, bool isMuted)

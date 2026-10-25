@@ -160,6 +160,14 @@ public partial class CoordinatorSession
         SendAsync(() => _gateway.SetSoundMuteInHybridSession(sessionId, isMuted),
             SetSoundMuteResult.Rejected, SetSoundMuteResult.TimedOut);
 
+    public Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason) =>
+        SendAsync(() => _gateway.SetAfkInHybridSession(sessionId, isAfk, reason),
+            SetAfkResult.Rejected, SetAfkResult.TimedOut);
+
+    public Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message) =>
+        SendAsync(() => _gateway.PokeInHybridSession(sessionId, userId, message),
+            PokeResult.Rejected, PokeResult.TimedOut);
+
     public async Task<(FetchMessagesResult Result, ChatHistoryPage? Page)> RequestChatHistoryPage(
         int sessionId, int? beforeMessageId, int take)
     {

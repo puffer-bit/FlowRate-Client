@@ -67,6 +67,17 @@
         <Style Selector="Border.categoryHeader TextBlock.categoryName">
             <Setter Property="FontSize" Value="13"/>
         </Style>
+        <!-- A user away from the keyboard fades out, all but the AFK mark -->
+        <Style Selector="Grid.peerRow :is(Control).afkDim">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.peerRow.afk :is(Control).afkDim">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, 1, *, 1, Auto">
@@ -216,8 +227,10 @@
                                                   ClipToBounds="True"
                                                   anim:Presence.Appear="Unfold"
                                                   anim:Presence.Leave="Fold"
-                                                  anim:Presence.IsLeaving="{Binding IsLeaving}">
-                                                <Panel Grid.Column="0" Width="28" Height="28">
+                                                  anim:Presence.IsLeaving="{Binding IsLeaving}"
+                                                  Classes="peerRow"
+                                                  Classes.afk="{Binding IsAfk}">
+                                                <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
                                                     <avatars:UserAvatar UserName="{Binding UserData.Username}"
                                                                         IsAnimated="True"
                                                                         AvatarUrl="{Binding UserData.AvatarUrl}"
@@ -245,27 +258,41 @@
                                                     </loadingIndicators:ProgressRing>
                                                 </Panel>
 
-                                                <TextBlock Grid.Column="1"
-                                                           Classes="peerName"
-                                                           Classes.connecting="{Binding !IsConnected}"
-                                                           Text="{Binding DisplayedName}"/>
+                                                <!-- The reason of an away user goes under the name, and stays readable -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Classes="peerName afkDim"
+                                                               Classes.connecting="{Binding !IsConnected}"
+                                                               Text="{Binding DisplayedName}"/>
+                                                    <TextBlock Text="{Binding AfkReason}"
+                                                               IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
 
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                                                             VerticalAlignment="Center">
                                                     <!-- The user shows a screen -->
-                                                    <Image Width="20" Height="20"
+                                                    <Image Width="20" Height="20" Classes="afkDim"
                                                            Source="{StaticResource ScreenShareIcon}"
                                                            IsVisible="{Binding IsSharingScreen}"/>
+
+                                                    <!-- The user stepped away from the keyboard: the mark stands for their microphone and sound -->
+                                                    <Image Width="20" Height="20"
+                                                           Source="{StaticResource AfkIcon}"
+                                                           IsVisible="{Binding IsAfk}"
+                                                           ToolTip.Tip="{Binding AfkHint}"/>
 
                                                     <!-- The user turned their own microphone off -->
                                                     <Image Width="20" Height="20"
                                                            Source="{StaticResource CrossedMicrophoneIcon}"
-                                                           IsVisible="{Binding IsMicrophoneMuted}"/>
+                                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
 
                                                     <!-- The user turned the sound of the session off -->
                                                     <Image Width="20" Height="20"
                                                            Source="{StaticResource CrossedHeadphonesIcon}"
-                                                           IsVisible="{Binding IsDeafened}"/>
+                                                           IsVisible="{Binding ShowsSoundOff}"/>
+
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>
