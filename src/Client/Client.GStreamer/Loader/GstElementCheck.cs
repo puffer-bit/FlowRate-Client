@@ -40,7 +40,7 @@ internal static partial class GstElementCheck
         // suppression
         "webrtcdsp",
         // RNNoise, bundled since the neural noise suppression. Without it the neural levels run as
-        // the moderate one of webrtcdsp
+        // the moderate one of webrtcdsp and the voice gate goes by the level alone
         "audiornnoise"
     ];
 
