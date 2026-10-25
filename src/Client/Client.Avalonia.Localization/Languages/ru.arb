@@ -514,7 +514,6 @@
   "sessions.retrieving": "Получение сессий...",
   "sessions.empty": "Сессий нет. Создайте новую кнопкой {icon}.",
   "sessions.empty.plain": "Сессий пока нет.",
-  "sessions.youAreHost": "Вы владелец сессии",
   "sessions.muteNotifications": "Заглушить уведомления",
   "sessions.unmuteNotifications": "Включить уведомления",
   "sessions.notificationsMuted": "Уведомления заглушены",

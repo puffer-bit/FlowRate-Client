@@ -563,7 +563,6 @@
   "sessions.retrieving": "Obteniendo las sesiones...",
   "sessions.empty": "No hay sesiones. Crea una con el botón {icon}.",
   "sessions.empty.plain": "Aún no hay sesiones.",
-  "sessions.youAreHost": "Eres el anfitrión",
   "sessions.muteNotifications": "Silenciar notificaciones",
   "sessions.unmuteNotifications": "Activar notificaciones",
   "sessions.notificationsMuted": "Las notificaciones están silenciadas",
