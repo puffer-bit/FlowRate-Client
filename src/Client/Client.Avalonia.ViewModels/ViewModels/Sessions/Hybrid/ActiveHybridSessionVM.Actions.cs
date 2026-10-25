@@ -1,4 +1,5 @@
 using Client.Avalonia.Styles.Animation;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,13 @@ public partial class ActiveHybridSessionVM
 
     // Whose screens the user asked to watch, kept across a reconnect of the transport. UI thread only
     private readonly HashSet<int> _wantedScreens = [];
+
+    // Screens that were watched when the media settings changed. They stop and come back on new
+    // tracks, and are watched again then without a sound. UI thread only
+    private readonly HashSet<int> _restartingScreens = [];
+
+    // How long a screen may take to come back on its new track before it is no longer waited for
+    private static readonly TimeSpan ScreenRestartTimeout = TimeSpan.FromSeconds(30);
 
     private async Task ToggleScreenShare()
     {
@@ -173,7 +181,9 @@ public partial class ActiveHybridSessionVM
         return (request, dialog.IsSharedInputLost);
     }
 
-    private async Task StartScreenShareAsync(VideoInput input, ScreenShareSettings settings, AudioInput? audioInput)
+    /// <param name="isSilent">Starts it without the sound, as when the share only moves to a new track.</param>
+    private async Task StartScreenShareAsync(VideoInput input, ScreenShareSettings settings, AudioInput? audioInput,
+        bool isSilent = false)
     {
         var result = await _hybridSession.StartScreenShareAsync(input, settings, audioInput);
 
@@ -183,7 +193,10 @@ public partial class ActiveHybridSessionVM
         if (result == StartScreenShareResult.NoError)
         {
             StatusBar.IsScreenShareOn = true;
-            _sounds.Play(SoundEvent.ScreenShareStart);
+
+            if (!isSilent)
+                _sounds.Play(SoundEvent.ScreenShareStart);
+
             return;
         }
 
@@ -249,15 +262,43 @@ public partial class ActiveHybridSessionVM
 
         ParticipantsListVM.UpdateScreenShare(userId, isSharing);
 
+        var isRestarting = _restartingScreens.Contains(userId);
+
         // Our own share sounds where it is started and stopped; a repeated report changes nothing
-        if (userId != _coordinatorSession.GetCurrentUser().Id && _screenStreamsByUser.ContainsKey(userId) != isSharing)
+        if (!isRestarting && userId != _coordinatorSession.GetCurrentUser().Id
+                          && _screenStreamsByUser.ContainsKey(userId) != isSharing)
             _sounds.Play(isSharing ? SoundEvent.ScreenShareStart : SoundEvent.ScreenShareStop);
 
-        if (isSharing)
-            AddScreenStream(userId);
-        else
+        if (!isSharing)
+        {
             RemoveScreenStream(userId);
+            return;
+        }
+
+        AddScreenStream(userId);
+
+        if (isRestarting && _restartingScreens.Remove(userId))
+            _ = SetScreenWatchedAsync(userId, true);
     });
+
+    /// <summary>
+    /// Remembers the screens watched now, ours among them, to watch them again once they are back
+    /// on the tracks that follow new media settings.
+    /// </summary>
+    private void RememberRestartingScreens()
+    {
+        var watched = _screenStreamsByUser.Keys.Where(_hybridSession.IsWatchingScreen).ToArray();
+
+        foreach (var userId in watched)
+            _restartingScreens.Add(userId);
+
+        // A sharer whose client does not restart its screen keeps it, and is not waited for
+        DispatcherTimer.RunOnce(() =>
+        {
+            foreach (var userId in watched)
+                _restartingScreens.Remove(userId);
+        }, ScreenRestartTimeout);
+    }
 
     private void AddScreenStream(int userId)
     {

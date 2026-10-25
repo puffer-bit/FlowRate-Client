@@ -101,6 +101,10 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     private readonly CompositeDisposable _disposables = new();
     private readonly EventSubscriptions _subscriptions = new();
+
+    // Set while the tracks are restarted for new media settings, and when they are to be once more. UI thread only
+    private bool _isRestartingMedia;
+    private bool _isMediaRestartPending;
     
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly IScreenCastClient? _screenCastClient;
@@ -379,6 +383,65 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             await RestoreWatchedScreensAsync();
     }
     
+    /// <summary>
+    /// Starts our running tracks again, so that they follow the media settings the session was just
+    /// given: the server puts them into a track only when it starts. The others restart theirs the
+    /// same way, and the screens that were watched are watched again when they come back.
+    /// </summary>
+    private async Task RestartMediaAsync()
+    {
+        RememberRestartingScreens();
+
+        // A change that comes while the tracks restart is taken by one more round
+        _isMediaRestartPending = true;
+
+        if (_isRestartingMedia)
+            return;
+
+        _isRestartingMedia = true;
+
+        try
+        {
+            // A transport that is not up has no tracks, and the next connection starts them with the new settings
+            while (_isMediaRestartPending && !IsClosed && IsTransportConnected && IsAdmitted)
+            {
+                _isMediaRestartPending = false;
+                await RestartTracksAsync();
+            }
+        }
+        finally
+        {
+            _isRestartingMedia = false;
+            _isMediaRestartPending = false;
+        }
+    }
+
+    private async Task RestartTracksAsync()
+    {
+        if (_hybridSession.IsVoiceStarted)
+        {
+            // The microphone comes back muted or not as the user left it
+            await _hybridSession.StopVoiceShareAsync();
+            ForgetMicrophoneInput();
+            StatusBar.IsMicrophoneOn = false;
+
+            if (!IsClosed && CanSpeak)
+                await StartVoiceAsync();
+        }
+
+        // The source stays granted, only the track it is sent on is replaced
+        if (!IsClosed && _hybridSession.IsScreenShareStarted && _screenInput is { } screenInput
+            && _screenSettings is { } screenSettings)
+        {
+            var audioInput = _screenAudioInput;
+
+            await _hybridSession.StopScreenShareAsync();
+
+            if (!IsClosed)
+                await StartScreenShareAsync(screenInput, screenSettings, audioInput, isSilent: true);
+        }
+    }
+
     // The session reports its state and errors from GStreamer and thread pool threads, so both are
     // marshalled to the UI thread before they touch any view model
     private void OnSessionStateChanged(HybridSessionState state) =>
@@ -419,12 +482,17 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (model.Id != Model.Id)
             return;
 
-        Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(async () =>
         {
+            var isMediaChanged = model.Media != Model.Media;
+
             Model = model;
             StatusBar.Rename(model.Name);
             // The host may have changed
             ApplyAccess(_coordinatorSession.Permissions);
+
+            if (isMediaChanged)
+                await RestartMediaAsync();
         });
     }
 
