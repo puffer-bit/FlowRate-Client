@@ -12,13 +12,17 @@ namespace Client.Core.Media;
 /// <param name="Openings">How many times it opened.</param>
 /// <param name="LoudestDb">The loudest peak of the period.</param>
 /// <param name="AverageOpenPeakDb">The average peak while the gate was open.</param>
+/// <param name="VoicePercent">
+/// The share of the period the voice detector heard a voice, or null without voice detection.
+/// </param>
 public sealed record VoiceGateSummary(double ThresholdDb, double EffectiveThresholdDb, double? NoiseFloorDb,
-    double OpenPercent, int Openings, double LoudestDb, double AverageOpenPeakDb);
+    double OpenPercent, int Openings, double LoudestDb, double AverageOpenPeakDb, double? VoicePercent);
 
 /// <summary>
-/// Decides from the measured loudness whether the voice gate of a microphone is open. It knows
-/// nothing of how the loudness is measured: every reading comes with the time it was taken, so the
-/// same logic runs in the transport, in the microphone test and in the tests.
+/// Decides from the measured loudness, and from a voice detector where there is one, whether the
+/// voice gate of a microphone is open. It knows nothing of how either is measured: every reading
+/// comes with the time it was taken, so the same logic runs in the transport, in the microphone
+/// test and in the tests.
 /// </summary>
 /// <remarks>
 /// <para>The gate opens at the threshold and stays open down to <see cref="HysteresisDb"/> below it,
@@ -35,6 +39,11 @@ public sealed record VoiceGateSummary(double ThresholdDb, double EffectiveThresh
 /// the gate before it was learned would otherwise hold it open through the hysteresis for good,
 /// never to be heard by a closed gate. It never goes below the threshold of the user and never more
 /// than <see cref="MaxAdaptiveRiseDb"/> above it, so a long loud noise cannot shut the gate.</para>
+/// <para>With voice detection the gate opens, and holds, only while the readings are loud enough
+/// and the detector hears a voice, so a key or a knock as loud as the voice stays out. The two come
+/// from separate measurements, and the detector reports later than the loudness, so each counts for
+/// <see cref="VoiceWindow"/> after it was taken: the gate opens on whichever of the two arrives
+/// second. A gate without a detector, or with voice detection off, goes by the loudness alone.</para>
 /// <para>Not thread-safe: the caller runs every call under one lock.</para>
 /// </remarks>
 public sealed class VoiceGateDecision
@@ -88,12 +97,23 @@ public sealed class VoiceGateDecision
     // by 5 dB, and every pause pulls it down again
     private const double OpenFloorRiseDbPerSecond = FloorRiseDbPerSecond / 4;
 
+    /// <summary>
+    /// How far apart a loud reading and a voice reading may be and still count together. A
+    /// detector such as RNNoise hears most words within 10 ms of the level and a soft onset up to
+    /// 70 ms later, and its messages come apart from those of the level; a word that the detector
+    /// is late for still opens the gate with its next loud readings. Much more would let a click
+    /// count with a voice that came well after it.
+    /// </summary>
+    public static readonly TimeSpan VoiceWindow = TimeSpan.FromMilliseconds(50);
+
     // A step longer than this, after the gate was open a while, moves the follower as far as this
     private static readonly TimeSpan MaxFloorStep = TimeSpan.FromMilliseconds(100);
 
+    private readonly bool _hasVoiceDetector;
     private double? _floorDb;
     private TimeSpan _lastFloorReading;
     private TimeSpan? _lastLoud;
+    private TimeSpan? _lastVoice;
     private TimeSpan _lastSpeech;
     private TimeSpan _openedAt;
 
@@ -103,10 +123,14 @@ public sealed class VoiceGateDecision
     private int _openings;
     private double _loudestDb = double.NegativeInfinity;
     private double _openPeakSumDb;
+    private int _voiceReadings;
+    private int _voiceIntervals;
 
-    public VoiceGateDecision(VoiceGateOptions options)
+    /// <param name="hasVoiceDetector">Whether voice readings will come, see <see cref="OnVoice"/>.</param>
+    public VoiceGateDecision(VoiceGateOptions options, bool hasVoiceDetector = false)
     {
         Options = options;
+        _hasVoiceDetector = hasVoiceDetector;
     }
 
     public VoiceGateOptions Options { get; private set; }
@@ -115,6 +139,12 @@ public sealed class VoiceGateDecision
     /// Peak level in dBFS from which the gate opens, as set.
     /// </summary>
     public double ThresholdDb => Options.ThresholdDb;
+
+    /// <summary>
+    /// Whether the gate waits for the detector to hear a voice: voice detection is on and there is a
+    /// detector to do it.
+    /// </summary>
+    public bool IsVoiceDetectionActive => Options.IsVoiceDetectionEnabled && _hasVoiceDetector;
 
     /// <summary>
     /// The noise of the room the adaptive threshold follows, or null while it is off or has not
@@ -187,6 +217,27 @@ public sealed class VoiceGateDecision
     }
 
     /// <summary>
+    /// Takes a reading of the voice detector: the peak of what it let through since the previous
+    /// one. It silences what it takes for no voice, so anything above the floor is a voice.
+    /// </summary>
+    /// <returns>Whether the gate opened or closed.</returns>
+    public bool OnVoice(double peakDb, TimeSpan now)
+    {
+        if (!IsVoiceDetectionActive)
+            return false;
+
+        _voiceReadings++;
+
+        if (peakDb > AudioFloorDb)
+        {
+            _lastVoice = now;
+            _voiceIntervals++;
+        }
+
+        return Evaluate(now);
+    }
+
+    /// <summary>
     /// What the gate did since the previous call, or null when it had no readings.
     /// </summary>
     public VoiceGateSummary? TakeSummary()
@@ -196,21 +247,23 @@ public sealed class VoiceGateDecision
 
         var summary = new VoiceGateSummary(ThresholdDb, EffectiveThresholdDb, NoiseFloorDb,
             100.0 * _openIntervals / _intervals, _openings, _loudestDb,
-            _openIntervals > 0 ? _openPeakSumDb / _openIntervals : double.NegativeInfinity);
+            _openIntervals > 0 ? _openPeakSumDb / _openIntervals : double.NegativeInfinity,
+            IsVoiceDetectionActive && _voiceReadings > 0 ? 100.0 * _voiceIntervals / _voiceReadings : null);
 
         _intervals = 0;
         _openIntervals = 0;
         _openings = 0;
         _loudestDb = double.NegativeInfinity;
         _openPeakSumDb = 0;
+        _voiceReadings = 0;
+        _voiceIntervals = 0;
 
         return summary;
     }
 
     private bool Evaluate(TimeSpan now)
     {
-        // Only the reading at hand counts
-        if (_lastLoud == now)
+        if (IsRecent(_lastLoud, now) && (!IsVoiceDetectionActive || IsRecent(_lastVoice, now)))
         {
             _lastSpeech = now;
 
@@ -229,6 +282,10 @@ public sealed class VoiceGateDecision
         IsOpen = false;
         return true;
     }
+
+    // Without a detector only the reading at hand counts, as it always did
+    private bool IsRecent(TimeSpan? reading, TimeSpan now) =>
+        IsVoiceDetectionActive ? now - reading <= VoiceWindow : reading == now;
 
     private void FollowFloor(double peak, TimeSpan now)
     {
