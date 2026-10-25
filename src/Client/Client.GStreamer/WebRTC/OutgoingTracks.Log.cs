@@ -62,6 +62,12 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to release the capture branch")]
     private partial void LogCaptureBranchReleaseFailed(Exception exception, int sessionId);
 
+    [LoggerMessage(LogLevel.Information,
+        "[Session {SessionId}] Voice gate at {ThresholdDb:F0} dB: open {OpenPercent:F0}% of the time, opened " +
+        "{Openings} times, loudest peak {LoudestDb:F0} dB, average peak while open {AverageOpenPeakDb:F0} dB")]
+    private partial void LogVoiceGateSummary(int sessionId, double thresholdDb, double openPercent, int openings,
+        double loudestDb, double averageOpenPeakDb);
+
     [LoggerMessage(LogLevel.Trace, "[Session {SessionId}] Voice gate open: {IsOpen}")]
     private partial void LogVoiceGateChanged(int sessionId, bool isOpen);
 
