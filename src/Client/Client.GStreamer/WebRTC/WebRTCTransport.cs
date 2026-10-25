@@ -145,6 +145,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             webrtc.SetProperty("latency", 100u);
 
             _tuning.EnableConnectivityCheckKeepalives();
+            _tuning.DisableSendClockSync();
             _retransmission.Attach(webrtc);
 
             pipeline.Add(webrtc);
