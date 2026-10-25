@@ -4,20 +4,30 @@ using Gst;
 namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// Opens and closes the valve of a <see cref="VoiceGate"/> over one buffer instead of at once. The
+/// Opens and closes the valve of a <see cref="VoiceGate"/> with a smooth ramp instead of at once. The
 /// gate opens when the voice is already loud, and a sound that jumps from silence to the middle of a
-/// wave is heard by the listeners as a click at the start of every sentence.
+/// wave is heard by the listeners as a click at the start of every sentence; a tail cut off short
+/// makes the gate heard as it chops the end of every word.
 /// </summary>
 /// <remarks>
-/// <para>A one-shot probe on the src pad of the valve does the fading, so managed code sees only the
-/// buffer at the edge of each sentence, not the whole stream. Opening unmutes the valve at once and
-/// fades in the first buffer it lets through; closing fades out the next buffer and mutes the valve
-/// right after it, on the streaming thread, before the following buffer is processed.</para>
+/// <para>A probe on the src pad of the valve does the fading, and only while a ramp runs, so managed
+/// code sees only the few buffers at the edge of each sentence, not the whole stream. Opening unmutes
+/// the valve and ramps up over <see cref="AttackTime"/>; closing ramps down over
+/// <see cref="ReleaseTime"/> and mutes the valve right after the buffer that reached silence, on the
+/// streaming thread, before the following buffer is processed.</para>
+/// <para>The ramp goes on from where it is when the gate turns around midway, so a word right after
+/// a closing tail does not start with a jump either. Its shape is a smoothstep, flat at both ends.</para>
 /// <para>The fade needs a writable buffer in a format it knows (16-bit or float samples). Without
-/// one the valve switches at once, the way it did before.</para>
+/// one the valve switches at once.</para>
 /// </remarks>
 internal sealed class VoiceGateFade
 {
+    // Short enough to keep the first syllable, long enough not to click
+    private static readonly TimeSpan AttackTime = TimeSpan.FromMilliseconds(8);
+
+    // Lets the tail of a word and the room fade out the way they would on their own
+    private static readonly TimeSpan ReleaseTime = TimeSpan.FromMilliseconds(150);
+
     private readonly Element _valve;
     private readonly Pad? _output;
 
@@ -25,11 +35,10 @@ internal sealed class VoiceGateFade
     private readonly PadProbeCallback _callback;
     private readonly Lock _lock = new();
 
-    // What the gate wants, what the valve does, and whether the first buffer it lets through is
-    // still to be faded in
+    // What the gate wants, what the valve does, and where the ramp is, from 0 (silent) to 1 (full)
     private bool _isOpen;
     private bool _isMuted = true;
-    private bool _isRising;
+    private double _position;
     private bool _hasProbe;
 
     /// <param name="valve">A volume element, muted when the branch is built.</param>
@@ -41,33 +50,34 @@ internal sealed class VoiceGateFade
     }
 
     /// <summary>
-    /// Opens or closes the valve. With <paramref name="fade"/> it fades over the next buffer,
-    /// otherwise it switches at once.
+    /// Opens or closes the valve, ramping over the next buffers.
     /// </summary>
-    public void Set(bool isOpen, bool fade)
+    public void Set(bool isOpen)
     {
         lock (_lock)
         {
             _isOpen = isOpen;
 
-            if (!fade || _output == null)
+            if (_output == null)
             {
-                _isRising = false;
+                _position = isOpen ? 1 : 0;
                 SetMuted(!isOpen);
                 return;
             }
 
-            if (isOpen && _isMuted)
+            // The probe comes first: a buffer let through by the unmuted valve before it was in
+            // place would go out at full level, with the very click the fade is there to stop
+            if (!_hasProbe)
             {
-                _isRising = true;
-                SetMuted(false);
+                _hasProbe = true;
+                _output.AddProbe(PadProbeType.Buffer, _callback);
             }
 
-            if (_hasProbe)
-                return;
-
-            _hasProbe = true;
-            _output.AddProbe(PadProbeType.Buffer, _callback);
+            if (isOpen && _isMuted)
+            {
+                _position = 0;
+                SetMuted(false);
+            }
         }
     }
 
@@ -88,24 +98,28 @@ internal sealed class VoiceGateFade
                 isGap = wrapper.HasFlags(BufferFlags.Gap);
             }
 
-            if (_isOpen)
+            var target = _isOpen ? 1.0 : 0.0;
+
+            if (_position != target)
             {
-                // A muted valve marks what it lets out as a gap: still the silence from before it opened
-                if (_isRising && isGap)
-                    return PadProbeReturn.Ok;
+                if (isGap)
+                {
+                    // A muted valve marks what it lets out as a gap: still the silence from before it
+                    // opened. Closing over silence has nothing to fade.
+                    if (_isOpen)
+                        return PadProbeReturn.Ok;
 
-                if (_isRising)
-                    Fade(pad, buffer, isRising: true);
-
-                _isRising = false;
+                    _position = 0;
+                }
+                else if (!TryFade(pad, buffer))
+                    _position = target;
             }
-            else if (!_isMuted)
-            {
-                if (!isGap)
-                    Fade(pad, buffer, isRising: false);
 
+            if (_position != target)
+                return PadProbeReturn.Ok;
+
+            if (!_isOpen && !_isMuted)
                 SetMuted(true);
-            }
 
             _hasProbe = false;
             return PadProbeReturn.Remove;
@@ -118,27 +132,33 @@ internal sealed class VoiceGateFade
         _valve.SetProperty("mute", isMuted);
     }
 
-    // Scales the buffer by a linear ramp from silence to full, or the other way
-    private static unsafe void Fade(Pad pad, IntPtr buffer, bool isRising)
+    // Scales the buffer along the ramp and moves the ramp on by its length
+    private unsafe bool TryFade(Pad pad, IntPtr buffer)
     {
         using var caps = pad.GetCurrentCaps();
 
         if (caps == null || caps.GetSize() == 0)
-            return;
+            return false;
 
         string? format;
         int channels;
+        int rate;
 
         using (var structure = caps.GetStructure(0))
         {
             format = structure.GetString("format");
 
-            if (!structure.GetInt("channels", out channels) || channels <= 0)
-                return;
+            if (!structure.GetInt("channels", out channels) || channels <= 0 ||
+                !structure.GetInt("rate", out rate) || rate <= 0)
+                return false;
         }
 
         if (format is not ("S16LE" or "F32LE") || !GstNative.TryMapWritable(buffer, out var map))
-            return;
+            return false;
+
+        // The ramp covers its whole length in so many frames
+        var step = 1.0 / (rate * (_isOpen ? AttackTime : ReleaseTime).TotalSeconds);
+        var delta = _isOpen ? step : -step;
 
         try
         {
@@ -147,25 +167,44 @@ internal sealed class VoiceGateFade
                 var samples = new Span<short>((void*)map.DataPtr, (int)map.Size / sizeof(short));
                 var frames = samples.Length / channels;
 
-                for (var index = 0; index < frames * channels; index++)
-                    samples[index] = (short)(samples[index] * Gain(index / channels, frames, isRising));
+                for (var frame = 0; frame < frames; frame++)
+                {
+                    var gain = Advance(delta);
+
+                    for (var channel = 0; channel < channels; channel++)
+                    {
+                        ref var sample = ref samples[frame * channels + channel];
+                        sample = (short)(sample * gain);
+                    }
+                }
             }
             else
             {
                 var samples = new Span<float>((void*)map.DataPtr, (int)map.Size / sizeof(float));
                 var frames = samples.Length / channels;
 
-                for (var index = 0; index < frames * channels; index++)
-                    samples[index] *= Gain(index / channels, frames, isRising);
+                for (var frame = 0; frame < frames; frame++)
+                {
+                    var gain = Advance(delta);
+
+                    for (var channel = 0; channel < channels; channel++)
+                        samples[frame * channels + channel] *= gain;
+                }
             }
         }
         finally
         {
             GstNative.Unmap(buffer, ref map);
         }
+
+        return true;
     }
 
-    // Starts at silence when rising and ends at it when falling
-    private static float Gain(int frame, int frames, bool isRising) =>
-        isRising ? (float)frame / frames : 1f - (float)(frame + 1) / frames;
+    // Moves the ramp by one frame and returns the gain there
+    private float Advance(double delta)
+    {
+        _position = Math.Clamp(_position + delta, 0, 1);
+
+        return (float)(_position * _position * (3 - 2 * _position));
+    }
 }
