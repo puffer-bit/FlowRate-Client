@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Client.Core.Media;
+using Client.Core.Settings;
 using Client.GStreamer.Interop;
 using Gst;
 
@@ -10,6 +12,8 @@ namespace Client.GStreamer.Audio;
 /// the machine and the others can tell who speaks just by whether packets arrive.
 /// </summary>
 /// <remarks>
+/// <para>When to open and close is up to <see cref="VoiceGateDecision"/>; this class feeds it the
+/// level messages and moves the valve.</para>
 /// <para>The gate compares peak levels, like the microphone test meter the threshold is set against.</para>
 /// <para>The gate learns of a loud interval only after it has passed the valve, so it opens one
 /// <see cref="LevelInterval"/> late and the very start of a word is lost.</para>
@@ -26,29 +30,15 @@ internal sealed class VoiceGate
     /// </summary>
     public static readonly TimeSpan LevelInterval = TimeSpan.FromMilliseconds(10);
 
-    // Closing lower than opening keeps a fading word from switching the gate on and off
-    private const double HysteresisDb = 6;
-
-    // Covers the pauses between words, so a sentence goes out in one piece
-    private static readonly TimeSpan HoldTime = TimeSpan.FromMilliseconds(300);
-
-    private const double AudioFloorDb = -100;
-
     private const string LevelMessageName = "level";
     private const string PeakField = "peak";
 
     private readonly Element _level;
     private readonly VoiceGateFade _valve;
     private readonly Lock _lock = new();
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private readonly VoiceGateDecision _decision;
     private double? _thresholdDb;
-    private long _lastLoudTimestamp;
-
-    // What the level messages of the current period showed, see TakeSummary
-    private int _intervals;
-    private int _openIntervals;
-    private int _openings;
-    private double _loudestDb = double.NegativeInfinity;
-    private double _openPeakSumDb;
 
     /// <param name="level">Posts the level messages; silenced while the gate is off.</param>
     /// <param name="valve">The gate valve, closed when the branch is built.</param>
@@ -58,6 +48,9 @@ internal sealed class VoiceGate
         OutboundId = outboundId;
         _level = level;
         _valve = new VoiceGateFade(valve);
+
+        // Any threshold will do while the gate is off, the one that turns it on replaces it
+        _decision = new VoiceGateDecision(thresholdDb ?? AudioSettings.MaxVoiceGateThresholdDb);
         SetThreshold(thresholdDb);
     }
 
@@ -75,13 +68,17 @@ internal sealed class VoiceGate
         lock (_lock)
         {
             _thresholdDb = thresholdDb;
-            _lastLoudTimestamp = Stopwatch.GetTimestamp();
 
             // Levels are measured only while they are needed
             _level.SetProperty("post-messages", thresholdDb != null);
 
-            if (thresholdDb == null)
+            if (thresholdDb is not { } threshold)
+            {
                 SetOpen(true);
+                return;
+            }
+
+            _decision.SetThreshold(threshold, _clock.Elapsed, IsOpen);
         }
     }
 
@@ -97,29 +94,10 @@ internal sealed class VoiceGate
         lock (_lock)
         {
             // A message posted just before the gate was turned off
-            if (_thresholdDb is not { } openThresholdDb)
+            if (_thresholdDb == null || !_decision.OnLevel(peak, _clock.Elapsed))
                 return false;
 
-            var now = Stopwatch.GetTimestamp();
-
-            Count(peak);
-
-            if (peak >= (IsOpen ? openThresholdDb - HysteresisDb : openThresholdDb))
-            {
-                _lastLoudTimestamp = now;
-
-                if (IsOpen)
-                    return false;
-
-                _openings++;
-                SetOpen(true);
-                return true;
-            }
-
-            if (!IsOpen || Stopwatch.GetElapsedTime(_lastLoudTimestamp, now) < HoldTime)
-                return false;
-
-            SetOpen(false);
+            SetOpen(_decision.IsOpen);
             return true;
         }
     }
@@ -127,39 +105,10 @@ internal sealed class VoiceGate
     /// <summary>
     /// What the gate did since the previous call, or null when it measured nothing, as while it is off.
     /// </summary>
-    public Summary? TakeSummary()
+    public VoiceGateSummary? TakeSummary()
     {
         lock (_lock)
-        {
-            if (_intervals == 0 || _thresholdDb is not { } thresholdDb)
-                return null;
-
-            var summary = new Summary(thresholdDb, 100.0 * _openIntervals / _intervals, _openings, _loudestDb,
-                _openIntervals > 0 ? _openPeakSumDb / _openIntervals : double.NegativeInfinity);
-
-            _intervals = 0;
-            _openIntervals = 0;
-            _openings = 0;
-            _loudestDb = double.NegativeInfinity;
-            _openPeakSumDb = 0;
-
-            return summary;
-        }
-    }
-
-    // Silence reads as minus infinity, which would make the average of the open intervals one too
-    private void Count(double peakDb)
-    {
-        var peak = Math.Max(peakDb, AudioFloorDb);
-
-        _intervals++;
-        _loudestDb = Math.Max(_loudestDb, peak);
-
-        if (!IsOpen)
-            return;
-
-        _openIntervals++;
-        _openPeakSumDb += peak;
+            return _thresholdDb == null ? null : _decision.TakeSummary();
     }
 
     private void SetOpen(bool isOpen)
@@ -182,12 +131,4 @@ internal sealed class VoiceGate
 
         return GstNative.ReadLargestDouble(value);
     }
-
-    /// <param name="ThresholdDb">The level the gate opens from.</param>
-    /// <param name="OpenPercent">The share of the period the gate was open.</param>
-    /// <param name="Openings">How many times it opened.</param>
-    /// <param name="LoudestDb">The loudest peak of the period.</param>
-    /// <param name="AverageOpenPeakDb">The average peak while the gate was open.</param>
-    public sealed record Summary(double ThresholdDb, double OpenPercent, int Openings, double LoudestDb,
-        double AverageOpenPeakDb);
 }

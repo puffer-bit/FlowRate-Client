@@ -4,6 +4,7 @@ using Client.Application.Settings.Search;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -233,9 +234,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     // Set while the view model changes its own properties, so that only user changes get saved
     private bool _isUpdating = true;
 
-    // Same as the hold time of the gate, so the meter shows the pauses between words as the gate does
-    private static readonly TimeSpan VoiceHoldTime = TimeSpan.FromMilliseconds(300);
-    private DateTime _lastVoiceTime;
+    // Decides on the peaks of the test the way the gate of a call does on its own, so the meter
+    // turns green where a call would send. Null while the test or the gate is off.
+    private VoiceGateDecision? _testGate;
+    private readonly Stopwatch _testClock = Stopwatch.StartNew();
     
     public AudioControlVM(IAudioService audioService, IMicrophoneTester microphoneTester, ISoundService soundService,
         ISoundPackCatalog soundPackCatalog)
@@ -338,7 +340,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Subscribe(_microphoneTester.SetLoopbackEnabled));
 
         _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(IsTestRunning))
-            .Subscribe(_ => UpdateVoiceDetected()));
+            .Subscribe(_ => ResetVoiceDetected()));
         
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
@@ -440,23 +442,34 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         });
     }
 
+    private void ResetVoiceDetected()
+    {
+        _testGate = null;
+        IsVoiceDetected = false;
+    }
+
     private void UpdateVoiceDetected()
     {
         if (!IsVoiceGateEnabled || !IsTestRunning)
         {
-            IsVoiceDetected = false;
+            ResetVoiceDetected();
             return;
         }
 
+        var now = _testClock.Elapsed;
+
+        if (_testGate == null)
+            _testGate = new VoiceGateDecision(VoiceGateThresholdDb);
+        else if (_testGate.ThresholdDb != VoiceGateThresholdDb)
+            _testGate.SetThreshold(VoiceGateThresholdDb, now, _testGate.IsOpen);
+
         // The meter shows the peak level on the same decibel scale the threshold is set on
-        var thresholdLevel = (VoiceGateThresholdDb - MinVoiceGateThresholdDb) /
-                             (MaxVoiceGateThresholdDb - MinVoiceGateThresholdDb);
-        var now = DateTime.UtcNow;
+        var peakDb = InputLevel > 0
+            ? MinVoiceGateThresholdDb + InputLevel * (MaxVoiceGateThresholdDb - MinVoiceGateThresholdDb)
+            : double.NegativeInfinity;
 
-        if (InputLevel > 0 && InputLevel >= thresholdLevel)
-            _lastVoiceTime = now;
-
-        IsVoiceDetected = now - _lastVoiceTime < VoiceHoldTime;
+        _testGate.OnLevel(peakDb, now);
+        IsVoiceDetected = _testGate.IsOpen;
     }
 
     private void OnTestFailed(string error)
