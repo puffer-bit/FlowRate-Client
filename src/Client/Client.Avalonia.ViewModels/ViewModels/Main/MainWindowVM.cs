@@ -294,6 +294,7 @@ public partial class MainWindowVM : ReactiveObject
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
+            _users.PokePeerCommand,
             ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
             playback, voiceActivity, screenWatch, listPreferences,
             ChatReads,

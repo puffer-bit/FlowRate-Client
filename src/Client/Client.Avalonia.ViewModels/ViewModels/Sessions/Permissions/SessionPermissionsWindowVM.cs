@@ -128,7 +128,8 @@ public sealed class SessionPermissionsWindowVM : ReactiveObject, IDisposable
         new(Permission.ManageMessages, "roles.permission.manageMessages", IsChatOnly: true),
         new(Permission.JoinSessions, "roles.permission.joinSessions", IsHybridOnly: true),
         new(Permission.Speak, "roles.permission.speak", IsHybridOnly: true),
-        new(Permission.ShareVideo, "roles.permission.shareVideo", IsHybridOnly: true)
+        new(Permission.ShareVideo, "roles.permission.shareVideo", IsHybridOnly: true),
+        new(Permission.PokeMembers, "roles.permission.poke", IsHybridOnly: true)
     ];
 }
 
