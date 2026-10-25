@@ -65,6 +65,8 @@ public partial class CoordinatorSession : ICoordinatorSession
     public event Action<PeerStateChangedEvent>? HybridSessionPeerStateChanged;
     public event Action<PeerMicrophoneMuteChangedEvent>? HybridSessionPeerMicrophoneMuteChanged;
     public event Action<PeerSoundMuteChangedEvent>? HybridSessionPeerSoundMuteChanged;
+    public event Action<PeerAfkChangedEvent>? HybridSessionPeerAfkChanged;
+    public event Action<PeerPokedEvent>? HybridSessionPeerPoked;
     public event Action<HybridSessionPeerEvent>? HybridSessionUpdated;
     public event Action<HybridSessionNodeEvent>? HybridSessionNodeChanged;
     public event Action<IReadOnlyCollection<UserModel>>? UsersReceived;

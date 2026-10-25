@@ -4,6 +4,7 @@ using Shared.Enums;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator.Users;
+using Client.Avalonia.Localization;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -52,6 +53,16 @@ public class PeerVM : ReactiveObject
     public bool IsDeafened => PeerData.IsSoundMuted;
 
     /// <summary>
+    /// The user is away from the keyboard.
+    /// </summary>
+    public bool IsAfk => PeerData.IsAfk;
+
+    /// <summary>What the away user said about it, for the hint of the mark; the bare word without a reason.</summary>
+    public string AfkHint => string.IsNullOrEmpty(PeerData.AfkReason)
+        ? Strings.Get("peer.afk")
+        : Strings.Format("peer.afk.reason", ("reason", PeerData.AfkReason));
+
+    /// <summary>
     /// The user shows a screen right now.
     /// </summary>
     public bool IsSharingScreen => PeerData.IsScreenShareActive;
@@ -80,6 +91,7 @@ public class PeerVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanWatchScreen));
+            this.RaisePropertyChanged(nameof(CanPoke));
         }
     }
 
@@ -145,14 +157,16 @@ public class PeerVM : ReactiveObject
     private readonly Action<PeerVM> _kick;
     private readonly Action<PeerVM> _ban;
     private readonly Action<PeerVM, bool> _admit;
+    private readonly Action<PeerVM, string?> _poke;
 
     // Set while the settings come from the service, so they are not sent back to it
     private bool _isApplyingPlayback;
 
     public PeerVM(PeerModel peerData, bool isCurrentUser, IPeerPlaybackService playbackService,
         ReactiveCommand<int, RxVoid> viewProfileCommand, Action<PeerVM> toggleScreenWatch, Action<PeerVM> kick,
-        Action<PeerVM> ban, Action<PeerVM, bool> admit, UserModel? userData = null)
+        Action<PeerVM> ban, Action<PeerVM, bool> admit, Action<PeerVM, string?> poke, UserModel? userData = null)
     {
+        _poke = poke;
         _toggleScreenWatch = toggleScreenWatch;
         _kick = kick;
         _ban = ban;
@@ -227,6 +241,41 @@ public class PeerVM : ReactiveObject
     }
 
     /// <summary>
+    /// The roles of the current user let it poke this user. Never ourselves.
+    /// </summary>
+    public bool IsPokeAllowed
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanPoke));
+        }
+    }
+
+    /// <summary>Only a peer of the session we are in can be poked: the server wants both inside.</summary>
+    public bool CanPoke => IsPokeAllowed && IsInEnteredSession;
+
+    /// <summary>The message typed for the next poke; optional.</summary>
+    public string PokeMessage
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
+
+    /// <summary>
+    /// Pokes the user with <see cref="PokeMessage"/>, which is cleared then. Offered only when <see cref="CanPoke"/>.
+    /// </summary>
+    public void Poke()
+    {
+        if (!CanPoke)
+            return;
+
+        _poke(this, string.IsNullOrWhiteSpace(PokeMessage) ? null : PokeMessage.Trim());
+        PokeMessage = string.Empty;
+    }
+
+    /// <summary>
     /// The roles of the current user let it ban this user from the coordinator. Never for ourselves.
     /// </summary>
     public bool CanBan
@@ -291,6 +340,14 @@ public class PeerVM : ReactiveObject
         this.RaisePropertyChanged(nameof(IsDeafened));
     }
 
+    public void UpdateAfk(bool isAfk, string? reason)
+    {
+        PeerData.IsAfk = isAfk;
+        PeerData.AfkReason = isAfk ? reason : null;
+        this.RaisePropertyChanged(nameof(IsAfk));
+        this.RaisePropertyChanged(nameof(AfkHint));
+    }
+
     public void UpdateScreenShare(bool isActive)
     {
         PeerData.IsScreenShareActive = isActive;
@@ -307,6 +364,7 @@ public class PeerVM : ReactiveObject
         {
             UpdateMicrophoneMuted(false);
             UpdateSoundMuted(false);
+            UpdateAfk(false, null);
             UpdateScreenShare(false);
         }
 

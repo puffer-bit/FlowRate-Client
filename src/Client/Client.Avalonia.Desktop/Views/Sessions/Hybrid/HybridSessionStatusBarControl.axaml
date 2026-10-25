@@ -2,6 +2,7 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -108,6 +109,33 @@
                     <Image Source="{StaticResource HeadphonesIcon}" IsVisible="{Binding IsSoundOn}"/>
                     <Image Source="{StaticResource CrossedHeadphonesIcon}" IsVisible="{Binding !IsSoundOn}"/>
                 </Panel>
+            </Button>
+
+            <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
+            <Button Classes="barAction"
+                    IsVisible="{Binding !IsAfk}"
+                    ToolTip.Tip="{l:Text hybrid.afk.go}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Spacing="6" Width="240">
+                            <TextBox Text="{Binding AfkReasonDraft}"
+                                     PlaceholderText="{l:Text hybrid.afk.reason.placeholder}"
+                                     MaxLength="{x:Static validation:Limits.ReasonMaxLength}"/>
+                            <Button HorizontalAlignment="Right"
+                                    Content="{l:Text hybrid.afk.confirm}"
+                                    IsDefault="True"
+                                    menus:FlyoutMenu.CloseOnClick="True"
+                                    Command="{Binding ToggleAfkCommand}"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+                <Image Source="{StaticResource AfkIcon}"/>
+            </Button>
+            <Button Classes="barAction sharing"
+                    IsVisible="{Binding IsAfk}"
+                    Command="{Binding ToggleAfkCommand}"
+                    ToolTip.Tip="{Binding AfkHint}">
+                <Image Source="{StaticResource AfkIcon}"/>
             </Button>
 
             <Button Classes="barAction"
