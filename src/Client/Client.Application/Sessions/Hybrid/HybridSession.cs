@@ -544,6 +544,21 @@ public partial class HybridSession : IHybridSession
 
     public bool IsSoundMuted => _isSoundMuted;
 
+    public bool IsAfk { get; private set; }
+    public string? AfkReason { get; private set; }
+
+    public async Task<SetAfkResult> SetAfkAsync(bool isAfk, string? reason)
+    {
+        IsAfk = isAfk;
+        AfkReason = isAfk && !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : null;
+
+        return await _coordinatorSession.SetAfkInHybridSession(Model.Id, isAfk, AfkReason);
+    }
+
+    public Task<PokeResult> PokeAsync(int userId, string? message) =>
+        _coordinatorSession.PokeInHybridSession(Model.Id, userId,
+            string.IsNullOrWhiteSpace(message) ? null : message.Trim());
+
     public async Task<SetSoundMuteResult> SetSoundMutedAsync(bool isMuted)
     {
         _isSoundMuted = isMuted;
