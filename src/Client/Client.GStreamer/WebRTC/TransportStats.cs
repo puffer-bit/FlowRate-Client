@@ -10,8 +10,9 @@ namespace Client.GStreamer.WebRTC;
 /// Also logs the candidate pair the media goes over whenever ICE picks another one.
 /// </summary>
 /// <remarks>
-/// The figures of the streams are meant for measuring the transport, so they go to the debug log
-/// only. A stream is recognized by its SSRC, which is the one the SFU created the producer or the
+/// The figures of every reading are meant for measuring the transport, so they go to the debug log
+/// only; a summary of every minute goes to the information log, so a release build still tells how
+/// a long session went, and a reading with a burst of loss is a warning. A stream is recognized by its SSRC, which is the one the SFU created the producer or the
 /// consumer with. The pair is logged as information: ICE may move the media to a worse pair on a bad
 /// network, from a UDP to a TCP candidate of the SFU, and stay there while the connection reports
 /// itself connected all along.
@@ -22,10 +23,19 @@ internal sealed partial class TransportStats
     // counters to move between two readings
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
+    // How often the figures are summed up in the information log, in readings
+    private const int ReadingsPerSummary = 12;
+
+    // A reading that lost more of a stream is worth a warning even without the debug log; a few
+    // packets of a quiet stream do not make a burst
+    private const double LossWarningPercent = 5;
+    private const long LossWarningPackets = 5;
+
     private readonly TransportCore _core;
     private readonly Func<uint, InboundTrack?> _findInbound;
     private readonly Func<uint, OutboundTrack?> _findOutbound;
     private readonly Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> _readSendQueues;
+    private readonly Action _reportPeriod;
     private readonly ILogger _logger;
 
     // For a stream of no known track. The kind webrtcbin reports is not used instead: with every
@@ -38,6 +48,11 @@ internal sealed partial class TransportStats
     private double _previousTimestamp;
     private string? _selectedPair;
 
+    // The counters at the start of the current summary, by SSRC, and when it started
+    private readonly Dictionary<uint, Counters> _summaryStart = [];
+    private double _summaryStartTimestamp;
+    private int _requests;
+
     // What the last queue of a track we send may hold before it is reported, in ms. Packets wait
     // there only while the socket does not take them, which over UDP it always does
     private const double SendQueueWarningMs = 100;
@@ -49,14 +64,17 @@ internal sealed partial class TransportStats
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
     /// <param name="findOutbound">The outbound track with the given SSRC.</param>
     /// <param name="readSendQueues">What the last queue of every track we send holds.</param>
+    /// <param name="reportPeriod">Logs the figures of the media itself, once per summary.</param>
     public TransportStats(TransportCore core, Func<uint, InboundTrack?> findInbound,
         Func<uint, OutboundTrack?> findOutbound,
-        Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, ILogger logger)
+        Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, Action reportPeriod,
+        ILogger logger)
     {
         _core = core;
         _findInbound = findInbound;
         _findOutbound = findOutbound;
         _readSendQueues = readSendQueues;
+        _reportPeriod = reportPeriod;
         _logger = logger;
     }
 
@@ -97,6 +115,9 @@ internal sealed partial class TransportStats
                 return;
 
             ReportSendQueues();
+
+            if (++_requests % ReadingsPerSummary == 0)
+                _reportPeriod();
 
             // A transport that is busy answers late; a second request would only pile up behind it
             if (Interlocked.Exchange(ref _readingInFlight, 1) == 1)
@@ -216,26 +237,34 @@ internal sealed partial class TransportStats
 
         ReportSelectedPair(selectedPairId, pairs, candidates);
 
-        if (!_logger.IsEnabled(LogLevel.Debug))
-            return;
-
         // The timestamps are in milliseconds. The first reading has nothing to be compared to
         var seconds = (timestamp - _previousTimestamp) / 1000;
         var isFirst = _previous.Count == 0;
+        var isDebug = _logger.IsEnabled(LogLevel.Debug);
 
         _previousTimestamp = timestamp;
 
         // A stream that never carried a packet is the SSRC the other side sends its reports from
         foreach (var current in inbound.Where(stream => stream.Packets > 0))
         {
-            if (!isFirst && seconds > 0 && _previous.TryGetValue(current.Ssrc, out var last))
-                LogInbound(current, current - last, seconds);
+            if (isFirst || seconds <= 0 || !_previous.TryGetValue(current.Ssrc, out var last))
+                continue;
+
+            var delta = current - last;
+
+            if (isDebug)
+                LogInbound(LogLevel.Debug, current, delta, seconds);
+            else if (delta.Lost >= LossWarningPackets && LossPercent(delta) >= LossWarningPercent)
+                LogInbound(LogLevel.Warning, current, delta, seconds);
         }
 
-        foreach (var current in outbound.Where(stream => stream.Packets > 0))
+        if (isDebug)
         {
-            if (!isFirst && seconds > 0 && _previous.TryGetValue(current.Ssrc, out var last))
-                LogOutbound(current, current - last, seconds, remote.GetValueOrDefault(current.Ssrc));
+            foreach (var current in outbound.Where(stream => stream.Packets > 0))
+            {
+                if (!isFirst && seconds > 0 && _previous.TryGetValue(current.Ssrc, out var last))
+                    LogOutbound(LogLevel.Debug, current, current - last, seconds, remote.GetValueOrDefault(current.Ssrc));
+            }
         }
 
         // A stream that is gone is forgotten with the reading it was last in
@@ -243,6 +272,43 @@ internal sealed partial class TransportStats
 
         foreach (var current in inbound.Concat(outbound))
             _previous[current.Ssrc] = current;
+
+        Summarize(inbound, outbound, remote, timestamp);
+    }
+
+    /// <summary>
+    /// Logs what every stream did since the previous summary, once per <see cref="ReadingsPerSummary"/>
+    /// readings' worth of time. A stream that came up meanwhile starts with the next one.
+    /// </summary>
+    private void Summarize(List<Counters> inbound, List<Counters> outbound, Dictionary<uint, RemoteReport> remote,
+        double timestamp)
+    {
+        var seconds = (timestamp - _summaryStartTimestamp) / 1000;
+
+        if (_summaryStart.Count > 0 && seconds < ReadingsPerSummary * PollInterval.TotalSeconds - 1)
+            return;
+
+        if (_summaryStart.Count > 0 && seconds > 0)
+        {
+            foreach (var current in inbound.Where(stream => stream.Packets > 0))
+            {
+                if (_summaryStart.TryGetValue(current.Ssrc, out var start))
+                    LogInbound(LogLevel.Information, current, current - start, seconds);
+            }
+
+            foreach (var current in outbound.Where(stream => stream.Packets > 0))
+            {
+                if (_summaryStart.TryGetValue(current.Ssrc, out var start))
+                    LogOutbound(LogLevel.Information, current, current - start, seconds,
+                        remote.GetValueOrDefault(current.Ssrc));
+            }
+        }
+
+        _summaryStart.Clear();
+        _summaryStartTimestamp = timestamp;
+
+        foreach (var current in inbound.Concat(outbound))
+            _summaryStart[current.Ssrc] = current;
     }
 
     private void ReportSelectedPair(string? pairId, Dictionary<string, (string? Local, string? Remote)> pairs,
@@ -281,22 +347,27 @@ internal sealed partial class TransportStats
         return $"{stats.GetString("protocol")} {stats.GetString("candidate-type")} {stats.GetString("address")}:{port}";
     }
 
-    private void LogInbound(Counters current, Counters delta, double seconds)
+    private static double LossPercent(Counters delta)
+    {
+        var expected = delta.Packets + Math.Max(0, delta.Lost);
+
+        return expected > 0 ? 100.0 * Math.Max(0, delta.Lost) / expected : 0;
+    }
+
+    private void LogInbound(LogLevel level, Counters current, Counters delta, double seconds)
     {
         var track = _findInbound(current.Ssrc);
-        var expected = delta.Packets + Math.Max(0, delta.Lost);
-        var lossPercent = expected > 0 ? 100.0 * Math.Max(0, delta.Lost) / expected : 0;
 
-        LogInboundStats(_core.SessionId, track?.UserId ?? 0, track?.SourceType.ToString() ?? UnknownSource,
-            current.Ssrc, Kbps(delta.Bytes, seconds), delta.Packets / seconds, Math.Max(0, delta.Lost), lossPercent,
+        LogInboundStats(level, _core.SessionId, track?.UserId ?? 0, track?.SourceType.ToString() ?? UnknownSource,
+            current.Ssrc, Kbps(delta.Bytes, seconds), delta.Packets / seconds, Math.Max(0, delta.Lost), LossPercent(delta),
             current.JitterMs, delta.Late, delta.Nacks, delta.Plis);
     }
 
-    private void LogOutbound(Counters current, Counters delta, double seconds, RemoteReport? remote)
+    private void LogOutbound(LogLevel level, Counters current, Counters delta, double seconds, RemoteReport? remote)
     {
         var track = _findOutbound(current.Ssrc);
 
-        LogOutboundStats(_core.SessionId, track?.SourceType.ToString() ?? UnknownSource, current.Ssrc,
+        LogOutboundStats(level, _core.SessionId, track?.SourceType.ToString() ?? UnknownSource, current.Ssrc,
             Kbps(delta.Bytes, seconds), delta.Packets / seconds, (remote?.FractionLost ?? 0) * 100,
             remote?.JitterMs ?? 0, remote?.RoundTripMs ?? 0, delta.Nacks, delta.Plis);
     }

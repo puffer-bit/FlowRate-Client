@@ -693,6 +693,22 @@ internal sealed partial class OutgoingTracks
     private sealed record OutgoingMeter(int UserId, SpeechActivityMeter Meter, Pad Pad);
 
     /// <summary>
+    /// Logs what every running voice gate did since the previous call: how much of the time it let
+    /// the voice through and how loud the voice was against its threshold. A voice that grows
+    /// quieter over a session, as the automatic gain of the processing may make it, shows here as
+    /// a gate that opens less and less. Called by a timer of the transport.
+    /// </summary>
+    public void ReportGates()
+    {
+        foreach (var gate in _gates.Values)
+        {
+            if (gate.TakeSummary() is { } summary)
+                LogVoiceGateSummary(_core.SessionId, summary.ThresholdDb, summary.OpenPercent, summary.Openings,
+                    summary.LoudestDb, summary.AverageOpenPeakDb);
+        }
+    }
+
+    /// <summary>
     /// Passes the level messages of the capture branches to their gates. Runs on the bus watcher.
     /// </summary>
     public void OnElementMessage(Message message)
