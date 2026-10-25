@@ -28,6 +28,9 @@ public partial class HybridSession
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Screen share started, ssrc {Ssrc}")]
     private partial void LogScreenShareStarted(int sessionId, uint ssrc);
 
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Screen share changed, ssrc {Ssrc}")]
+    private partial void LogScreenShareChanged(int sessionId, uint ssrc);
+
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Screen of user {UserId} watched: {IsWatched}")]
     private partial void LogScreenWatchChanged(int sessionId, int userId, bool isWatched);
 

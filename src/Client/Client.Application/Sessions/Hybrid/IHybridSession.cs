@@ -83,6 +83,15 @@ public interface IHybridSession : IDisposable
     Task<StartScreenShareResult> StartScreenShareAsync(VideoInput input, ScreenShareSettings settings,
         AudioInput? audioInput = null);
 
+    /// <summary>
+    /// Shows another source or with other settings on the producer of the running share, so that
+    /// the viewers keep watching it. Starts a new share where there is none, or where a sound is
+    /// added to a share that went out silent.
+    /// </summary>
+    /// <param name="audioInput">The sound sent along, or null to mute it.</param>
+    Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+        AudioInput? audioInput = null);
+
     Task<StopScreenShareResult> StopScreenShareAsync();
 
     /// <summary>
