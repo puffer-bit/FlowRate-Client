@@ -903,6 +903,23 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Pointing hand with tap lines (poke a peer). Source: Icons/PokeIcon.svg -->
+    <DrawingImage x:Key="PokeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 8 H16.5 A1.5 1.5 0 0 1 16.5 11 H11 A1.25 1.25 0 0 1 11 13.5 A1.3 1.3 0 0 1 10.5 16 H6.5 A3.5 3.5 0 0 1 3 12.5 V11 A3 3 0 0 1 6 8 Z M6 11 H8.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M18.5 6.5 L20 5 M19 9.5 H21 M18.5 12.5 L20 14">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#00B4FF" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Plug (connection). Source: Icons/PlugIcon.svg -->
     <DrawingImage x:Key="PlugIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

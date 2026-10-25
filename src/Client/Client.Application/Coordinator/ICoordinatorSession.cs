@@ -28,6 +28,11 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     string? ConnectedAddress { get; }
 
+    /// <summary>
+    /// The system verified the certificate of the last connection; false when the user trusted it by hand.
+    /// </summary>
+    bool IsCertificateVerified { get; }
+
     event Action<CoordinatorState>? StateChanged; 
 
     /// <summary>

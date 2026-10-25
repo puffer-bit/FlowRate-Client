@@ -16,7 +16,10 @@ public sealed class StatusLineVM : ReactiveObject
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = Strings.Get("main.status.notConnected");
+    }
+
+    // Builds the text in the current language, to build it again when the language changes
+    private Func<string> _text = () => Strings.Get("main.status.notConnected");
 
     /// <summary>
     /// The action goes on: the spinner is shown instead of the icon.
@@ -37,19 +40,32 @@ public sealed class StatusLineVM : ReactiveObject
     private static TimeSpan FadeDuration => Motion.Get(MotionDuration.Short);
 
     // The text the running fade swaps in; a newer change only replaces it instead of fading again
-    private (string Text, bool IsActive)? _pending;
+    private (Func<string> Text, bool IsActive)? _pending;
+
+    public StatusLineVM()
+    {
+        Text = _text();
+
+        // The line lives as long as the main window, so the subscription is never dropped
+        Strings.LanguageChanged += () =>
+        {
+            if (_pending == null)
+                Text = _text();
+        };
+    }
 
     /// <summary>
     /// Shows a new text; may be called from any thread.
     /// </summary>
-    public Task SetAsync(string text, bool isActive) => UiThread.RunAsync(() => SetOnUiThreadAsync(text, isActive));
+    /// <param name="text">Builds the text, again on every change of the language.</param>
+    public Task SetAsync(Func<string> text, bool isActive) => UiThread.RunAsync(() => SetOnUiThreadAsync(text, isActive));
 
     /// <summary>
     /// Shows a new text without waiting for the fade.
     /// </summary>
-    public void Set(string text, bool isActive) => _ = SetAsync(text, isActive);
+    public void Set(Func<string> text, bool isActive) => _ = SetAsync(text, isActive);
 
-    private async Task SetOnUiThreadAsync(string text, bool isActive)
+    private async Task SetOnUiThreadAsync(Func<string> text, bool isActive)
     {
         if (_pending != null)
         {
@@ -58,8 +74,9 @@ public sealed class StatusLineVM : ReactiveObject
         }
 
         // The same text again would only blink
-        if (text == Text)
+        if (text() == Text)
         {
+            _text = text;
             IsActive = isActive;
             return;
         }
@@ -68,7 +85,8 @@ public sealed class StatusLineVM : ReactiveObject
         IsTextVisible = false;
         await Task.Delay(FadeDuration);
 
-        (Text, IsActive) = _pending.Value;
+        (_text, IsActive) = _pending.Value;
+        Text = _text();
         _pending = null;
         IsTextVisible = true;
     }

@@ -196,18 +196,15 @@
                               anim:Presence.Leave="Fold"
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
                             <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}">
-                                <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                                     <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
                                            Source="{StaticResource HybridSessionIcon}"/>
 
                                     <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
                                                Text="{Binding Model.Name}"/>
 
-                                    <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsHost}"
-                                           Source="{StaticResource CrownIcon}"/>
 
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4"
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                                                 VerticalAlignment="Center"
                                                 IsVisible="{Binding !!Peers.Count}">
                                         <Image Width="14" Height="14" Source="{StaticResource BaseUserIcon}"/>
@@ -343,7 +340,7 @@
                         <Grid anim:Presence.Leave="Fold"
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
                             <Border Classes="sessionHeader" Classes.shown="{Binding IsShown}">
-                                <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                                     <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
                                            Source="{StaticResource HashIcon}"/>
 
@@ -351,12 +348,9 @@
                                                Classes.unread="{Binding HasUnread}"
                                                Text="{Binding Model.Name}"/>
 
-                                    <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsHost}"
-                                           Source="{StaticResource CrownIcon}"/>
 
                                     <!-- Mentions take the place of the plain counter; a muted chat shows its bell there -->
-                                    <Panel Grid.Column="3" VerticalAlignment="Center">
+                                    <Panel Grid.Column="2" VerticalAlignment="Center">
                                         <Image Width="20" Height="20"
                                                IsVisible="{Binding ShowsMutedMark}"
                                                Source="{StaticResource CrossedBellIcon}"/>

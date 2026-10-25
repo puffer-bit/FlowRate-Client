@@ -71,6 +71,10 @@ EVENTS = {
                            (0.130, 0, [0, 7], 1.0, 0, 0.17, 0.7, 0.010)],
     # Error: a low dissonant cluster, twice.
     "error":              [(0.00, -2, [0, 1, 6], 1.0, 0, 0.10, 1.4, 0), (0.17, -2, [0, 1, 6], 1.0, 0, 0.10, 1.4, 0)],
+    # Poke: two quick knocks on the same bright note, like a tap on the shoulder.
+    "poke":               [(0.00, 19, [0, 12], 0.9, -3, 0.06, 1.2, 0, 0.010), (0.11, 19, [0, 12], 1.0, -3, 0.07, 1.2, 0, 0.010)],
+    # AFK: an open chord sinking slowly and dimming, like drifting off.
+    "afk":                [(0.00, 7, OPEN, 0.8, 0, 0.14, 0.6, 0.020), (0.22, 0, OPEN, 0.9, 2, 0.30, 0.3, 0.030, 0.12)],
     # Call: a bubble melody, up and back down, played twice.
     "call_incoming":      [(0.13 * i + 0.72 * r, n, [0], 1.0, -5, 0.11, 1.0, 0, 0.014)
                            for r in range(2) for i, n in enumerate((12, 19, 24, 19))],
