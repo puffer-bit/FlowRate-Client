@@ -40,7 +40,13 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // yet; the soft knee then bends the peaks under it instead of the hard clipping of integer
     // samples, which a loud voice in overdrive crackles with.
     private const string OutputDescription =
-        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " +
+        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " + ShapingDescription;
+
+    /// <summary>
+    /// What the mixed voices go through on their way to the sink, ending with a link. The microphone
+    /// test plays the user back through it too.
+    /// </summary>
+    internal const string ShapingDescription =
         "capsfilter caps=\"audio/x-raw,format=F32LE,rate=48000,channels=2\" ! " +
         "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! ";
 

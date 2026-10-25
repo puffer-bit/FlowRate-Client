@@ -15,7 +15,8 @@ public enum MicrophoneTestError
 
 /// <summary>
 /// Captures from an input device outside of any session, so the user can see and hear that the
-/// device actually works.
+/// device actually works. What it plays back is what the others in a session would hear: the same
+/// processing, gate and Opus encoding, decoded as a receiver does and a second late.
 /// </summary>
 public interface IMicrophoneTester : IDisposable
 {
@@ -30,6 +31,12 @@ public interface IMicrophoneTester : IDisposable
     /// the audio backend, which are a technical detail and not a text of the interface.
     /// </summary>
     event Action<string>? Failed;
+
+    /// <summary>
+    /// Raised from a thread of the tester when the voice gate opens or closes. Not raised while
+    /// the gate is off, it is then open.
+    /// </summary>
+    event Action<bool>? GateChanged;
     
     bool IsRunning { get; }
 
@@ -37,11 +44,18 @@ public interface IMicrophoneTester : IDisposable
     /// <param name="volume">Gain applied to the input, 1.0 keeps the level unchanged.</param>
     /// <param name="isLoopbackEnabled">Whether the captured sound is played back to the default output.</param>
     /// <param name="noiseSuppression">How much background noise is taken out, as the voice pipeline would.</param>
+    /// <param name="voiceGate">How the voice gate decides, or null to let everything through.</param>
+    /// <param name="isEchoCancellationEnabled">
+    /// Whether what is played back is taken out of the microphone, as the voices of a session are.
+    /// </param>
     /// <returns>Null when capturing started.</returns>
     MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression);
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled);
     void Stop();
     
     void SetVolume(double volume);
     void SetLoopbackEnabled(bool isEnabled);
+
+    /// <summary>Changes the voice gate of the running test, null turns it off.</summary>
+    void SetVoiceGate(VoiceGateOptions? voiceGate);
 }
