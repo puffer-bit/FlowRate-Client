@@ -15,7 +15,7 @@ public partial class ActiveHybridSessionVM
 {
     // What the running microphone captures from and with, null while it is not started. Settings
     // are saved on every move of a slider, and the capture is rebuilt only when these change.
-    private (string? DeviceId, NoiseSuppressionLevel NoiseSuppression)? _microphoneInput;
+    private (string? DeviceId, NoiseSuppressionLevel NoiseSuppression, bool IsEchoCancellationEnabled)? _microphoneInput;
     private readonly System.Threading.Lock _microphoneInputLock = new();
 
     /// <summary>
@@ -37,12 +37,12 @@ public partial class ActiveHybridSessionVM
         var isMuted = _hybridSession.IsSoundMuted || _hybridSession.IsAfk
                       || await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId);
         var result = await _hybridSession.StartVoiceShareAsync(device?.Id, settings.InputVolume,
-            settings.ActiveVoiceGate, settings.NoiseSuppression, isMuted);
+            settings.ActiveVoiceGate, settings.NoiseSuppression, settings.IsEchoCancellationEnabled, isMuted);
 
         if (result == StartVoiceShareResult.NoError)
         {
             lock (_microphoneInputLock)
-                _microphoneInput = (device?.Id, settings.NoiseSuppression);
+                _microphoneInput = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled);
 
             StatusBar.IsMicrophoneOn = !_hybridSession.IsMicrophoneMuted;
             return;
@@ -194,13 +194,13 @@ public partial class ActiveHybridSessionVM
     }
 
     /// <summary>
-    /// Switches the running microphone to the device and the noise suppression of the settings,
-    /// when either differs from what it runs with.
+    /// Switches the running microphone to the device, the noise suppression and the echo cancelling
+    /// of the settings, when any differs from what it runs with.
     /// </summary>
     private async Task ApplyMicrophoneInputAsync(AudioSettings settings)
     {
         var device = await _audioService.ResolveInputDeviceAsync();
-        var input = (device?.Id, settings.NoiseSuppression);
+        var input = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled);
 
         lock (_microphoneInputLock)
         {
@@ -210,6 +210,6 @@ public partial class ActiveHybridSessionVM
             _microphoneInput = input;
         }
 
-        _hybridSession.SetMicrophoneInput(input.Id, input.NoiseSuppression);
+        _hybridSession.SetMicrophoneInput(input.Id, input.NoiseSuppression, input.IsEchoCancellationEnabled);
     }
 }

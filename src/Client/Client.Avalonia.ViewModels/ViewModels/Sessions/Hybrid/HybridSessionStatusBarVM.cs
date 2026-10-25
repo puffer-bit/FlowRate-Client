@@ -81,6 +81,15 @@ public class HybridSessionStatusBarVM : ReactiveObject
     }
     
     /// <summary>
+    /// Our own voice is heard by the session right now.
+    /// </summary>
+    public bool IsSpeaking
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// The session is heard. Off while the user silenced all of it, which the others see.
     /// </summary>
     public bool IsSoundOn

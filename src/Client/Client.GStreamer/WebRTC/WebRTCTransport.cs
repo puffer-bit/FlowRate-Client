@@ -246,13 +246,13 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public void SetInboundVoiceMuted(bool isMuted) => _incoming.SetVoiceMuted(isMuted);
 
     public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
-        NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, input, volume, voiceGate, noiseSuppression);
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled) =>
+        _outgoing.Start(outbound, input, volume, voiceGate, noiseSuppression, isEchoCancellationEnabled);
 
-    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, VoiceGateOptions?, NoiseSuppressionLevel)"/>
+    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, VoiceGateOptions?, NoiseSuppressionLevel, bool)"/>
     public bool StartOutbound(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGate, noiseSuppression);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled) =>
+        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGate, noiseSuppression, isEchoCancellationEnabled);
 
     public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings) =>
         _outgoing.Start(outbound, input, settings);
@@ -263,8 +263,9 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
     public void SetOutboundVolume(string outboundId, double volume) => _outgoing.SetVolume(outboundId, volume);
 
-    public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.SetInput(outboundId, input, noiseSuppression);
+    public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
+        bool isEchoCancellationEnabled) =>
+        _outgoing.SetInput(outboundId, input, noiseSuppression, isEchoCancellationEnabled);
 
     public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate) =>
         _outgoing.SetVoiceGate(outboundId, voiceGate);

@@ -301,7 +301,7 @@ public partial class MainWindowVM : ReactiveObject
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
-            OpenServerSettingsCommand, DisconnectCommand, notifications, Access);
+            OpenServerSettingsCommand, DisconnectCommand, Access);
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(

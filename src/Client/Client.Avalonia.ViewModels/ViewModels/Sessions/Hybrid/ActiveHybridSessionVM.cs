@@ -618,7 +618,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (sessionId != Model.Id)
             return;
 
-        Dispatcher.UIThread.Post(() => ParticipantsListVM.UpdateSpeaking(userId, isSpeaking));
+        Dispatcher.UIThread.Post(() =>
+        {
+            ParticipantsListVM.UpdateSpeaking(userId, isSpeaking);
+            if (userId == _coordinatorSession.GetCurrentUser().Id)
+                StatusBar.IsSpeaking = isSpeaking;
+        });
     }
 
     private void ToggleUserList(bool isToggled)

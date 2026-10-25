@@ -5,7 +5,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
-             xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Sessions.List.HybridSessionPeerFlyout"
              x:DataType="listVm:PeerVM">
@@ -38,24 +37,11 @@
         <!-- Nothing to adjust or moderate about ourselves -->
         <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
 
-            <!-- Only a peer of the session we are in; the message is optional -->
+            <!-- Only a peer of the session we are in; the message is asked in a card of its own -->
             <StackPanel Spacing="2" IsVisible="{Binding CanPoke}">
-                <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}">
-                    <menus:MenuItemButton.Flyout>
-                        <Flyout Placement="RightEdgeAlignedTop">
-                            <StackPanel Spacing="6" Width="240">
-                                <TextBox Text="{Binding PokeMessage}"
-                                         PlaceholderText="{l:Text peer.poke.message.placeholder}"
-                                         MaxLength="{x:Static validation:Limits.PokeMessageMaxLength}"/>
-                                <Button HorizontalAlignment="Right"
-                                        Content="{l:Text peer.poke.send}"
-                                        IsDefault="True"
-                                        menus:FlyoutMenu.CloseOnClick="True"
-                                        Command="{Binding Poke}"/>
-                            </StackPanel>
-                        </Flyout>
-                    </menus:MenuItemButton.Flyout>
-                </menus:MenuItemButton>
+                <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      Click="OnPokeClick"/>
 
                 <Separator/>
             </StackPanel>

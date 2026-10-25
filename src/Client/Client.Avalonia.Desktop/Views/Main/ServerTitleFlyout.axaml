@@ -86,13 +86,7 @@
                               menus:FlyoutMenu.CloseOnClick="True"
                               Click="CopyAddress_Click"/>
 
-        <!-- Stays open, so several notifications can be called in a row -->
-        <menus:MenuItemButton Icon="{StaticResource DebugIcon}" Content="{l:Text main.server.testNotification}"
-                              Command="{Binding TestNotificationCommand}"/>
-
         <Separator/>
-
-        <menus:MenuItemButton Icon="{StaticResource ResetIcon}" Content="{l:Text main.server.reconnect}"/>
 
         <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text main.menu.disconnect.plain}"
                               menus:FlyoutMenu.CloseOnClick="True"
