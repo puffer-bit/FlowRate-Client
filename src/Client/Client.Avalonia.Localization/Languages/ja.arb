@@ -636,6 +636,7 @@
   "hybrid.kicked.text": "{user} があなたをセッション「{session}」から退出させました",
   "hybrid.kickedByServer.text": "サーバーがあなたをセッション「{session}」から退出させました: {reason}",
   "peer.ban": "BAN",
+  "peer.ban.failed.title": "ユーザーをBANできませんでした",
   "peer.suspend": "一時停止",
   "peer.report": "報告",
   "peer.viewProfile": "プロフィールを表示",
