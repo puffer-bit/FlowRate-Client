@@ -2,7 +2,9 @@
 using System;
 using Client.Avalonia.Icons;
 using Client.GStreamer.Loader;
+using Client.Tools.Logging;
 using ReactiveUI.Avalonia;
+using Serilog;
 using Velopack;
 
 namespace Client;
@@ -19,9 +21,25 @@ sealed class Program
         // exits right after them. A downloaded update the user did not restart into is applied here too
         VelopackApp.Build().Run();
 
-        GstNativeLibraryResolver.Register();
-        BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args);
+        // Before Avalonia, so that a crash at any point of the start is written to the log files too
+        Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = true });
+        ClientLogging.LogUnhandledExceptions();
+
+        try
+        {
+            GstNativeLibraryResolver.Register();
+            BuildAvaloniaApp()
+                .StartWithClassicDesktopLifetime(args);
+        }
+        catch (Exception e)
+        {
+            Log.Fatal(e, "The application crashed");
+            throw;
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.
