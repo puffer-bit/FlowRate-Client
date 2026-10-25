@@ -1,5 +1,7 @@
 using Client.Avalonia.Localization;
 using System;
+using System.Collections.Generic;
+using Shared.Validation;
 using ReactiveUI;
 using Client.Core.Sessions.Hybrid;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -88,6 +90,61 @@ public class HybridSessionStatusBarVM : ReactiveObject
     } = true;
 
     /// <summary>
+    /// We told the others that we are away from the keyboard.
+    /// </summary>
+    public bool IsAfk
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(AfkHint));
+        }
+    }
+
+    /// <summary>The reason we gave for being away, null without one.</summary>
+    public string? AfkReason
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(AfkHint));
+        }
+    }
+
+    /// <summary>The hint of the button that brings us back, with the reason others see.</summary>
+    public string AfkHint => string.IsNullOrEmpty(AfkReason)
+        ? Strings.Get("hybrid.afk.back")
+        : Strings.Format("hybrid.afk.backWithReason", ("reason", AfkReason));
+
+    /// <summary>The reason typed before going away; optional.</summary>
+    public string AfkReasonDraft
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(AfkReasonCounter));
+        }
+    } = string.Empty;
+
+    /// <summary>How much of the reason is typed, out of how much fits.</summary>
+    public string AfkReasonCounter => $"{AfkReasonDraft.Length}/{Limits.ReasonMaxLength}";
+
+    /// <summary>Reasons offered with one press, in the language of the interface.</summary>
+    public IReadOnlyList<string> AfkPresets { get; } =
+    [
+        Strings.Get("hybrid.afk.preset.brb"),
+        Strings.Get("hybrid.afk.preset.break"),
+        Strings.Get("hybrid.afk.preset.food"),
+        Strings.Get("hybrid.afk.preset.call")
+    ];
+
+    /// <summary>Goes away at once with one of <see cref="AfkPresets"/> as the reason.</summary>
+    public ReactiveCommand<string, RxVoid> GoAfkWithPresetCommand { get; }
+
+    /// <summary>
     /// Our screen is being sent to the session.
     /// </summary>
     public bool IsScreenShareOn
@@ -99,6 +156,9 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleMicrophoneCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleSoundCommand { get; }
+
+    /// <summary>Goes away from the keyboard with <see cref="AfkReasonDraft"/>, or comes back.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ToggleAfkCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleScreenShareCommand { get; }
 
     /// <summary>
@@ -115,6 +175,7 @@ public class HybridSessionStatusBarVM : ReactiveObject
         ReactiveCommand<RxVoid, RxVoid> closeSessionCommand,
         ReactiveCommand<RxVoid, RxVoid> toggleMicrophoneCommand,
         ReactiveCommand<RxVoid, RxVoid> toggleSoundCommand,
+        ReactiveCommand<RxVoid, RxVoid> toggleAfkCommand,
         ReactiveCommand<RxVoid, RxVoid> toggleScreenShareCommand,
         ReactiveCommand<RxVoid, RxVoid> changeScreenShareCommand)
     {
@@ -123,6 +184,12 @@ public class HybridSessionStatusBarVM : ReactiveObject
         SessionName = sessionName;
         ToggleMicrophoneCommand = toggleMicrophoneCommand;
         ToggleSoundCommand = toggleSoundCommand;
+        ToggleAfkCommand = toggleAfkCommand;
+        GoAfkWithPresetCommand = ReactiveCommand.CreateFromObservable<string, RxVoid>(reason =>
+        {
+            AfkReasonDraft = reason;
+            return toggleAfkCommand.Execute();
+        }, toggleAfkCommand.CanExecute);
         
         CloseCommand = closeSessionCommand;
         ToggleFullscreenCommand = toggleFullscreenCommand;

@@ -124,4 +124,20 @@ internal partial class CoordinatorGateway
 
         return muteResponse.Result;
     }
+
+    public async Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason)
+    {
+        var request = new HybridSessionSetAfkRequest(sessionId, isAfk, isAfk ? reason : null);
+        var response = await SendRequestAsync<HybridSessionSetAfkResponse>(request);
+
+        return response.Result;
+    }
+
+    public async Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message)
+    {
+        var request = new HybridSessionPokeRequest(sessionId, userId, message);
+        var response = await SendRequestAsync<HybridSessionPokeResponse>(request);
+
+        return response.Result;
+    }
 }

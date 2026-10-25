@@ -109,7 +109,7 @@
             </Button>
             </Grid>
 
-            <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
+            <UniformGrid Grid.Row="1" Rows="1" Columns="4" ColumnSpacing="6">
                 <Button Classes="hybridAction"
                         Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}"
                         ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
@@ -131,6 +131,26 @@
                                IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsSoundOn, FallbackValue=False}"/>
                     </Panel>
                 </Button>
+
+                <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
+                <Panel>
+                    <Button Classes="hybridAction"
+                            IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=True}"
+                            ToolTip.Tip="{l:Text hybrid.afk.go}">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedRight">
+                                <hybrid:AfkReasonCard DataContext="{Binding OpenedSessions.HybridPanelSession.StatusBar, FallbackValue={x:Null}}"/>
+                            </Flyout>
+                        </Button.Flyout>
+                        <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
+                    </Button>
+                    <Button Classes="hybridAction sharing"
+                            IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=False}"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"
+                            ToolTip.Tip="{Binding OpenedSessions.HybridPanelSession.StatusBar.AfkHint, FallbackValue={x:Null}}">
+                        <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
+                    </Button>
+                </Panel>
 
                 <Panel>
                     <Button Classes="hybridAction"
