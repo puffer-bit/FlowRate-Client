@@ -26,6 +26,8 @@ public static class SoundFiles
         SoundEvent.CallIncoming => "call_incoming",
         SoundEvent.Mention => "mention",
         SoundEvent.UserKicked => "user_kicked",
+        SoundEvent.Poke => "poke",
+        SoundEvent.Afk => "afk",
         _ => throw new ArgumentOutOfRangeException(nameof(soundEvent), soundEvent, null),
     };
 

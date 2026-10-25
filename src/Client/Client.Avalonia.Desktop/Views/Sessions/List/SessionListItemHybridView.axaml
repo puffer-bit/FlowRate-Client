@@ -88,7 +88,7 @@
                     </StackPanel>
                 </Flyout>
             </Border.ContextFlyout>
-            <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                     <Image Source="{StaticResource HybridSessionIcon}"
                            Opacity="{Binding IsCorrupted, Converter={StaticResource BoolToOpacityConverter}}"/>
@@ -105,12 +105,8 @@
                            Text="{Binding Model.Name}"
                            ToolTip.Tip="{Binding Model.Name}"/>
                 
-                <Image Grid.Column="2" Width="14" Height="14" VerticalAlignment="Center"
-                       IsVisible="{Binding IsHost}"
-                       ToolTip.Tip="{l:Text sessions.youAreHost}"
-                       Source="{StaticResource CrownIcon}"/>
-                
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
                             IsVisible="{Binding !!Peers.Count}"
                             ToolTip.Tip="{l:Text sessions.participants}">
                     <Image Width="12" Height="12" Opacity="0.7" Source="{StaticResource BaseUserIcon}"/>

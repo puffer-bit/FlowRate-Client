@@ -91,7 +91,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
-        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression"]),
+        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression", "echoCancellation"]),
         ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
@@ -119,6 +119,12 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = (int)NoiseSuppressionLevel.Moderate;
+
+    public bool IsEchoCancellationEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
 
     public bool IsVoiceGateEnabled
     {
@@ -304,6 +310,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
 
+        var echoCancellationChanges = this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
         var soundsEnabledChanges = this.WatchProperty(nameof(AreSoundsEnabled), x => x.AreSoundsEnabled)
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
@@ -326,6 +336,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _disposables.Add(deviceChanges
             .Merge(volumeChanges)
             .Merge(noiseSuppressionChanges)
+            .Merge(echoCancellationChanges)
             .Merge(gateChanges)
             .Merge(voiceDetectionChanges)
             .Merge(adaptiveThresholdChanges)
@@ -531,6 +542,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         IsVoiceDetectionEnabled = settings.IsVoiceDetectionEnabled;
         IsAdaptiveThresholdEnabled = settings.IsAdaptiveThresholdEnabled;
         NoiseSuppressionIndex = (int)settings.NoiseSuppression;
+        IsEchoCancellationEnabled = settings.IsEchoCancellationEnabled;
         AreSoundsEnabled = settings.AreSoundsEnabled;
         SoundsVolumePercent = settings.SoundsVolume * 100;
         _savedSoundPack = settings.SoundPack;
@@ -611,6 +623,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         IsVoiceDetectionEnabled = IsVoiceDetectionEnabled,
         IsAdaptiveThresholdEnabled = IsAdaptiveThresholdEnabled,
         NoiseSuppression = NoiseSuppression,
+        IsEchoCancellationEnabled = IsEchoCancellationEnabled,
         AreSoundsEnabled = AreSoundsEnabled,
         SoundsVolume = SoundsVolumePercent / 100,
         SoundPack = _savedSoundPack,

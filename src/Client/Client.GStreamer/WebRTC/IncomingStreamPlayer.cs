@@ -42,8 +42,20 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private const string OutputDescription =
         "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " +
         "capsfilter caps=\"audio/x-raw,format=F32LE,rate=48000,channels=2\" ! " +
-        "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! " +
-        "audioconvert ! audioresample ! ";
+        "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! ";
+
+    // The mixed voices pass the probe the echo cancelling of the microphone reads them from, as late
+    // as possible, so the delay it measures to the speakers is that of the sink alone. The
+    // compressor has bent the peaks below full scale, so the 16-bit samples it takes cut off nothing
+    private const string EchoProbeDescription =
+        "audioconvert ! " + MicrophoneProcessing.EchoProbeCaps + " ! " +
+        MicrophoneProcessing.EchoProbeElementName + " name={0} ! ";
+
+    private const string ConversionDescription = "audioconvert ! audioresample ! ";
+
+    // The probes are found by name across the whole process, and one an old microphone branch still
+    // holds must not be mistaken for the probe of a new output
+    private static int _echoProbeCount;
 
     private const string MixerName = "voices";
 
@@ -81,6 +93,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private readonly Lock _outputLock = new();
     private Bin? _output;
     private Element? _mixer;
+    private string? _echoProbe;
 
     private readonly bool _isPlaybackEnabled;
     private readonly Func<uint, double> _resolveVolume;
@@ -582,6 +595,20 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         mixerPad.Dispose();
     }
 
+    /// <summary>
+    /// The name of the echo probe the voices are played through, building the output for it if it
+    /// is not there yet, so a microphone started before anyone speaks has it to start with. Null
+    /// without playback, or with a runtime that lacks the probe.
+    /// </summary>
+    public string? EnsureEchoProbe()
+    {
+        if (!_isPlaybackEnabled)
+            return null;
+
+        lock (_outputLock)
+            return EnsureOutput() == null ? null : _echoProbe;
+    }
+
     private Element? EnsureOutput()
     {
         lock (_outputLock)
@@ -589,7 +616,13 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             if (_mixer != null || _isDisposed)
                 return _mixer;
 
-            var output = Global.ParseBinFromDescription(OutputDescription + VoicePlaybackSink.Description, false);
+            var echoProbe = ElementFactory.Find(MicrophoneProcessing.EchoProbeElementName) != null
+                ? $"echo_probe_{_sessionId}_{Interlocked.Increment(ref _echoProbeCount)}"
+                : null;
+
+            var output = Global.ParseBinFromDescription(OutputDescription +
+                (echoProbe == null ? "" : string.Format(EchoProbeDescription, echoProbe)) +
+                ConversionDescription + VoicePlaybackSink.Description, false);
 
             if (output?.GetByName(MixerName) is not { } mixer)
             {
@@ -608,6 +641,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
             _output = output;
             _mixer = mixer;
+            _echoProbe = echoProbe;
             return mixer;
         }
     }
@@ -782,6 +816,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             _output?.Dispose();
             _mixer = null;
             _output = null;
+            _echoProbe = null;
         }
     }
 }

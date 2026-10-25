@@ -59,6 +59,9 @@
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.neuralAndWebRtc}"/>
                 </ComboBox>
             </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.echoCancellation">
+                <CheckBox IsChecked="{Binding IsEchoCancellationEnabled}"/>
+            </ui:SettingsRow>
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
@@ -74,6 +77,44 @@
                 <CheckBox IsChecked="{Binding IsAdaptiveThresholdEnabled}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="audio.microphoneTest"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="audio.testMicrophone">
+                <Button MinWidth="140" HorizontalContentAlignment="Center"
+                        Content="{Binding TestButtonText}"
+                        Command="{Binding ToggleTestCommand}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
+                <StackPanel Spacing="6">
+                    <ProgressBar Height="10" MinHeight="10" MinWidth="0"
+                                 Minimum="0" Maximum="1"
+                                 Value="{Binding InputLevel}"
+                                 IsEnabled="{Binding IsTestRunning}"
+                                 Classes.voiceDetected="{Binding IsVoiceDetected}"/>
+                    <!-- The threshold slider is as wide as the meter, so both use one scale -->
+                    <StackPanel Spacing="0" Margin="0,6,0,0" IsVisible="{Binding IsVoiceGateEnabled}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       Text="{l:Text settings.audio.voiceThreshold.title}"/>
+                            <TextBlock Grid.Column="1" FontSize="12"
+                                       Text="{Binding VoiceGateThresholdDb, StringFormat={}{0:0} dB}"/>
+                        </Grid>
+                        <Slider Minimum="{Binding MinVoiceGateThresholdDb}"
+                                Maximum="{Binding MaxVoiceGateThresholdDb}"
+                                Value="{Binding VoiceGateThresholdDb}"
+                                TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.hearMyself">
+                <CheckBox IsChecked="{Binding IsLoopbackEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                   Text="{Binding TestError}"
+                   IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
         <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
         <ui:SettingsCard>
@@ -132,43 +173,5 @@
                 </ItemsControl>
             </ui:SettingsRow>
         </ui:SettingsCard>
-
-        <controls:SettingsHeader services:SettingText.Section="audio.microphoneTest"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="audio.testMicrophone">
-                <Button MinWidth="140" HorizontalContentAlignment="Center"
-                        Content="{Binding TestButtonText}"
-                        Command="{Binding ToggleTestCommand}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
-                <StackPanel Spacing="6">
-                    <ProgressBar Height="10" MinHeight="10" MinWidth="0"
-                                 Minimum="0" Maximum="1"
-                                 Value="{Binding InputLevel}"
-                                 IsEnabled="{Binding IsTestRunning}"
-                                 Classes.voiceDetected="{Binding IsVoiceDetected}"/>
-                    <!-- The threshold slider is as wide as the meter, so both use one scale -->
-                    <StackPanel Spacing="0" Margin="0,6,0,0" IsVisible="{Binding IsVoiceGateEnabled}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" FontSize="12"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="{l:Text settings.audio.voiceThreshold.title}"/>
-                            <TextBlock Grid.Column="1" FontSize="12"
-                                       Text="{Binding VoiceGateThresholdDb, StringFormat={}{0:0} dB}"/>
-                        </Grid>
-                        <Slider Minimum="{Binding MinVoiceGateThresholdDb}"
-                                Maximum="{Binding MaxVoiceGateThresholdDb}"
-                                Value="{Binding VoiceGateThresholdDb}"
-                                TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    </StackPanel>
-                </StackPanel>
-            </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.hearMyself">
-                <CheckBox IsChecked="{Binding IsLoopbackEnabled}"/>
-            </ui:SettingsRow>
-        </ui:SettingsCard>
-        <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
-                   Text="{Binding TestError}"
-                   IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
     </ui:SettingsPage>
 </UserControl>

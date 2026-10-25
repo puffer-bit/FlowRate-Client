@@ -34,14 +34,14 @@ public partial class MainWindowVM
     private bool _isRejectionMessageShown;
     private DateTime _nextRejectionMessageTime;
 
-    private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(Strings.Get(key), isActive);
+    private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(() => Strings.Get(key), isActive);
 
     private async Task AutoConnectToCoordinator(SavedCoordinatorModel coordinator, SavedUserModel user)
     {
-        var connecting = Strings.Format("main.status.connecting", ("host", coordinator.Address),
+        string Connecting() => Strings.Format("main.status.connecting", ("host", coordinator.Address),
             ("port", coordinator.Port), ("user", user.Username));
 
-        await StatusLine.SetAsync(connecting, true);
+        await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
         await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password);
 
@@ -54,7 +54,7 @@ public partial class MainWindowVM
                 return;
             }
 
-            await StatusLine.SetAsync(connecting, true);
+            await StatusLine.SetAsync(Connecting, true);
             await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password);
         }
 
@@ -140,6 +140,7 @@ public partial class MainWindowVM
 
         var restoreId = ++_restoreId;
         IsConnected = true;
+        ConnectionInfo.Attach(session.ConnectedAddress, session.IsCertificateVerified);
         User = session.GetCurrentUser();
         Access.Update(session.Permissions);
         _avatars.Attach(session);
@@ -287,12 +288,13 @@ public partial class MainWindowVM
         if (attempt == 1)
             return;
 
-        _ = StatusLine.SetAsync(Strings.Format("main.status.reconnectAttempt", ("attempt", attempt)), true);
+        _ = StatusLine.SetAsync(() => Strings.Format("main.status.reconnectAttempt", ("attempt", attempt)), true);
     }
 
     private void DetachUser()
     {
         IsConnected = false;
+        ConnectionInfo.Detach();
         User = null;
         UserCard.DetachUser();
     }
