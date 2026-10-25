@@ -17,7 +17,7 @@ namespace Client.GStreamer.Audio;
 /// <para>The gate compares peak levels, like the microphone test meter the threshold is set against.</para>
 /// <para>The gate learns of a loud interval only after it has passed the valve, so it opens one
 /// <see cref="LevelInterval"/> late and the very start of a word is lost.</para>
-/// <para>The threshold changes from the settings while the level messages arrive on the bus watcher,
+/// <para>The options change from the settings while the level messages arrive on the bus watcher,
 /// so both run under one lock: otherwise turning the gate off could open the valve just before a
 /// level message closes it again.</para>
 /// <para>The valve ramps open and closed, see <see cref="VoiceGateFade"/>: switched at once, the voice
@@ -38,20 +38,20 @@ internal sealed class VoiceGate
     private readonly Lock _lock = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly VoiceGateDecision _decision;
-    private double? _thresholdDb;
+    private VoiceGateOptions? _options;
 
     /// <param name="level">Posts the level messages; silenced while the gate is off.</param>
     /// <param name="valve">The gate valve, closed when the branch is built.</param>
-    /// <param name="thresholdDb">Peak level in dBFS from which the gate opens, null keeps it open.</param>
-    public VoiceGate(string outboundId, Element level, Element valve, double? thresholdDb)
+    /// <param name="options">How the gate decides, null keeps it open.</param>
+    public VoiceGate(string outboundId, Element level, Element valve, VoiceGateOptions? options)
     {
         OutboundId = outboundId;
         _level = level;
         _valve = new VoiceGateFade(valve);
 
-        // Any threshold will do while the gate is off, the one that turns it on replaces it
-        _decision = new VoiceGateDecision(thresholdDb ?? AudioSettings.MaxVoiceGateThresholdDb);
-        SetThreshold(thresholdDb);
+        // Anything will do while the gate is off, the options that turn it on replace these
+        _decision = new VoiceGateDecision(options ?? new VoiceGateOptions(AudioSettings.MaxVoiceGateThresholdDb));
+        SetOptions(options);
     }
 
     public string OutboundId { get; }
@@ -59,26 +59,26 @@ internal sealed class VoiceGate
     public bool IsOpen { get; private set; }
 
     /// <summary>
-    /// Changes the threshold of a running gate. Null turns the gate off and opens it. A new
-    /// threshold is applied by the next level message, an open gate first waits out its hold time,
-    /// so raising the threshold does not cut a word in half.
+    /// Changes how a running gate decides. Null turns the gate off and opens it. New options are
+    /// applied by the next level message, an open gate first waits out its hold time, so raising
+    /// the threshold does not cut a word in half.
     /// </summary>
-    public void SetThreshold(double? thresholdDb)
+    public void SetOptions(VoiceGateOptions? options)
     {
         lock (_lock)
         {
-            _thresholdDb = thresholdDb;
+            _options = options;
 
             // Levels are measured only while they are needed
-            _level.SetProperty("post-messages", thresholdDb != null);
+            _level.SetProperty("post-messages", options != null);
 
-            if (thresholdDb is not { } threshold)
+            if (options == null)
             {
                 SetOpen(true);
                 return;
             }
 
-            _decision.SetThreshold(threshold, _clock.Elapsed, IsOpen);
+            _decision.SetOptions(options, _clock.Elapsed, IsOpen);
         }
     }
 
@@ -94,7 +94,7 @@ internal sealed class VoiceGate
         lock (_lock)
         {
             // A message posted just before the gate was turned off
-            if (_thresholdDb == null || !_decision.OnLevel(peak, _clock.Elapsed))
+            if (_options == null || !_decision.OnLevel(peak, _clock.Elapsed))
                 return false;
 
             SetOpen(_decision.IsOpen);
@@ -108,7 +108,7 @@ internal sealed class VoiceGate
     public VoiceGateSummary? TakeSummary()
     {
         lock (_lock)
-            return _thresholdDb == null ? null : _decision.TakeSummary();
+            return _options == null ? null : _decision.TakeSummary();
     }
 
     private void SetOpen(bool isOpen)

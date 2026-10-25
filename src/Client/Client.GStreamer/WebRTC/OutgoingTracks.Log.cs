@@ -84,6 +84,6 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to change the outbound input")]
     private partial void LogOutboundInputChangeFailed(Exception exception, int sessionId);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Voice gate threshold changed to {ThresholdDb} dB (null: off)")]
-    private partial void LogVoiceGateThresholdChanged(int sessionId, double? thresholdDb);
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Voice gate changed to {Options} (null: off)")]
+    private partial void LogVoiceGateOptionsChanged(int sessionId, VoiceGateOptions? options);
 }
