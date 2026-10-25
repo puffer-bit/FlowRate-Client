@@ -284,8 +284,26 @@ public class VoiceGateDecisionTests
         Feed(gate, -20, TimeSpan.FromSeconds(10));
 
         Assert.True(gate.IsOpen);
-        Assert.InRange(gate.NoiseFloorDb!.Value, floor + 4, floor + 5.5);
+        Assert.InRange(gate.NoiseFloorDb!.Value, floor + 9, floor + 10.5);
         Assert.Equal(Threshold, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void AdaptiveFloorStaysWithTheRoomThroughSpeechWithPauses()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        FeedNoise(gate, -70, TimeSpan.FromSeconds(5));
+        var floor = gate.NoiseFloorDb!.Value;
+
+        // A minute of talking: words of 400 ms with the room between them a tenth of the time
+        for (var word = 0; word < 135; word++)
+        {
+            Feed(gate, -20, TimeSpan.FromMilliseconds(400));
+            FeedNoise(gate, -70, TimeSpan.FromMilliseconds(50));
+        }
+
+        Assert.InRange(gate.NoiseFloorDb!.Value, floor - 3, floor + 3);
     }
 
     [Fact]
