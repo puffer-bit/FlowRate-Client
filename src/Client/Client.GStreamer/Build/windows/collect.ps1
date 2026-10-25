@@ -40,7 +40,7 @@ $plugins = @(
     "coreelements", "app", "audioconvert", "audioresample", "audiomixer", "audiofx", "audiotestsrc", "volume", "level", "rawparse",
     "audiobuffersplit", "webrtcdsp", "autodetect", "videoconvertscale", "videorate",
     "opus", "rtp", "rtpmanager", "udp", "nice", "webrtc", "dtls", "srtp", "sctp", "sdpelem",
-    "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp",
+    "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp", "rsaudiofx",
     "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
 )
 
