@@ -563,7 +563,6 @@
   "sessions.retrieving": "セッションを取得しています...",
   "sessions.empty": "セッションがありません。{icon} ボタンで作成してください。",
   "sessions.empty.plain": "セッションはまだありません。",
-  "sessions.youAreHost": "あなたがホストです",
   "sessions.muteNotifications": "通知をミュート",
   "sessions.unmuteNotifications": "通知のミュートを解除",
   "sessions.notificationsMuted": "通知はミュートされています",
