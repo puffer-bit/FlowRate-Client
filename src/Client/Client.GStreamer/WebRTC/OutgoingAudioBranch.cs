@@ -48,6 +48,12 @@ internal static class OutgoingAudioBranch
     public const string GateValveName = "gate";
 
     /// <summary>
+    /// Name of the queue that holds the audio back by <see cref="VoiceGate.PreRoll"/> between the
+    /// level element and the valve of the gate.
+    /// </summary>
+    private const string GateDelayName = "gate_delay";
+
+    /// <summary>
     /// Name of the part that captures: the source and what its sound goes through before the input
     /// gain. It is the only part that depends on the device and on the noise suppression, so it is
     /// replaced when either changes, see <see cref="ReplaceCapture"/>.
@@ -99,9 +105,15 @@ internal static class OutgoingAudioBranch
         "rtpopuspay pt={1} ssrc={2} ! " +
         "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
-    // Starts closed, that is silent.
+    // Starts closed, that is silent. The queue lets nothing out until it holds the pre-roll, so the
+    // valve gets the audio that much later than level measures it. It adds the pre-roll to the
+    // latency it reports, lets out all it holds at the end of the stream and empties on a flush.
+    // Its upper limit only guards against a stalled valve: the queue behind the encoder is leaky,
+    // so it never fills.
     private const string GateDescription =
         "level name=" + GateLevelName + " interval={0} ! " +
+        "queue name=" + GateDelayName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 " +
+        "min-threshold-time={1} ! " +
         "volume name=" + GateValveName + " mute=true ! ";
 
     /// <summary>
@@ -137,7 +149,8 @@ internal static class OutgoingAudioBranch
         var isGated = isMicrophone && !isScreen && ElementFactory.Find("level") != null;
 
         var gate = isGated
-            ? string.Format(CultureInfo.InvariantCulture, GateDescription, (ulong)VoiceGate.LevelInterval.TotalNanoseconds)
+            ? string.Format(CultureInfo.InvariantCulture, GateDescription, (ulong)VoiceGate.LevelInterval.TotalNanoseconds,
+                (ulong)VoiceGate.PreRoll.TotalNanoseconds)
             : "";
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,

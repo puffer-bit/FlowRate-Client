@@ -15,8 +15,9 @@ namespace Client.GStreamer.Audio;
 /// <para>When to open and close is up to <see cref="VoiceGateDecision"/>; this class feeds it the
 /// level messages and moves the valve.</para>
 /// <para>The gate compares peak levels, like the microphone test meter the threshold is set against.</para>
-/// <para>The gate learns of a loud interval only after it has passed the valve, so it opens one
-/// <see cref="LevelInterval"/> late and the very start of a word is lost.</para>
+/// <para>The gate learns of a loud interval only once level has measured all of it, so without a
+/// delay the start of a word would have passed the closed valve by the time it opens. The branch
+/// holds the audio back by <see cref="PreRoll"/> between the level element and the valve instead.</para>
 /// <para>The options change from the settings while the level messages arrive on the bus watcher,
 /// so both run under one lock: otherwise turning the gate off could open the valve just before a
 /// level message closes it again.</para>
@@ -29,6 +30,17 @@ internal sealed class VoiceGate
     /// How often the level element reports. Shorter clips less of the first word.
     /// </summary>
     public static readonly TimeSpan LevelInterval = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>
+    /// How long the audio is held back in front of the valve, so the gate opens before the sound
+    /// that opened it reaches the valve. A loud interval is known once level has measured all of it,
+    /// <see cref="LevelInterval"/>, and the message has reached the bus watcher, a few milliseconds
+    /// more; measured on the branch, the gate opened 5 to 30 ms after the sound started. With 20 ms
+    /// the valve is open in time for most onsets and ramps up over the quiet just before them, and
+    /// the latest ones lose a few milliseconds where they used to lose all of it. The voice is 20 ms
+    /// later for it.
+    /// </summary>
+    public static readonly TimeSpan PreRoll = TimeSpan.FromMilliseconds(20);
 
     private const string LevelMessageName = "level";
     private const string PeakField = "peak";
