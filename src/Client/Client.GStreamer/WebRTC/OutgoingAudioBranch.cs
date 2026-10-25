@@ -136,6 +136,14 @@ internal static class OutgoingAudioBranch
         "rtpopuspay pt={1} ssrc={2} ! " +
         "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
+    // What the encoding of a voice has in front of the encoder, the meter split off after the gain.
+    // The trailing identity gives the bin its src pad once the gate is left out.
+    private const string MonitorDescription =
+        "volume name=" + InputVolumeName + " volume={0} ! tee name=" + MonitorSplitName + " ! {1}identity" +
+        " {2} " + MonitorSplitName + ". ! {3}";
+
+    private const string MonitorSplitName = "monitor_split";
+
     // Starts closed, that is silent. The queue lets nothing out until it holds the pre-roll, so the
     // valve gets the audio that much later than level measures it. It adds the pre-roll to the
     // latency it reports, lets out all it holds at the end of the stream and empties on a flush.
@@ -176,27 +184,7 @@ internal static class OutgoingAudioBranch
     {
         var payloadType = outbound.PayloadType > 0 ? outbound.PayloadType : DefaultOpusPayloadType;
         var isScreen = outbound.SourceType == MediaSourceType.Screen;
-
-        // A runtime built before the gate has no level element; the voice still goes out, just ungated
-        var isGated = isMicrophone && !isScreen && ElementFactory.Find("level") != null;
-
-        // Built along with the gate even while voice detection is off, so it can be turned on in a call
-        var hasVoiceDetection = isGated && MicrophoneProcessing.HasNeural;
-        var interval = (ulong)VoiceGate.LevelInterval.TotalNanoseconds;
-
-        // The delay is fixed with the branch: changed while the voice flows, it would leave a hole
-        // or a burst in it
-        var gate = isGated
-            ? string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
-                (ulong)(hasVoiceDetection ? VoiceGate.PreRoll + VoiceGate.VoiceDetectionDelay : VoiceGate.PreRoll)
-                .TotalNanoseconds,
-                hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "")
-            : "";
-
-        var voiceDetection = hasVoiceDetection
-            ? string.Format(CultureInfo.InvariantCulture, VoiceDetectionDescription, interval,
-                VoiceGate.VoiceActivityThreshold)
-            : "";
+        var (gate, voiceDetection) = DescribeGate(isMicrophone && !isScreen);
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
             isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
@@ -230,6 +218,86 @@ internal static class OutgoingAudioBranch
         encoding.Dispose();
 
         if (!ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression, echoProbe))
+        {
+            branch.Dispose();
+            return null;
+        }
+
+        return branch;
+    }
+
+    /// <summary>
+    /// The gate of a microphone and the voice detection beside it, empty when the track has none.
+    /// </summary>
+    private static (string Gate, string VoiceDetection) DescribeGate(bool isMicrophone)
+    {
+        // A runtime built before the gate has no level element; the voice still goes out, just ungated
+        if (!isMicrophone || ElementFactory.Find("level") == null)
+            return ("", "");
+
+        // Built along with the gate even while voice detection is off, so it can be turned on in a call
+        var hasVoiceDetection = MicrophoneProcessing.HasNeural;
+        var interval = (ulong)VoiceGate.LevelInterval.TotalNanoseconds;
+
+        // The delay is fixed with the branch: changed while the voice flows, it would leave a hole
+        // or a burst in it
+        var gate = string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
+            (ulong)(hasVoiceDetection ? VoiceGate.PreRoll + VoiceGate.VoiceDetectionDelay : VoiceGate.PreRoll)
+            .TotalNanoseconds,
+            hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "");
+
+        var voiceDetection = hasVoiceDetection
+            ? string.Format(CultureInfo.InvariantCulture, VoiceDetectionDescription, interval,
+                VoiceGate.VoiceActivityThreshold)
+            : "";
+
+        return (gate, voiceDetection);
+    }
+
+    /// <summary>
+    /// Builds what a microphone track runs before its encoder, around <paramref name="source"/>,
+    /// which it takes ownership of: the capture with its processing, the input gain and the gate
+    /// with its voice detection. The microphone test plays it back, so the user hears what the
+    /// others would.
+    /// </summary>
+    /// <param name="meter">
+    /// A description fed with the sound in front of the gate, as the gate measures it, ending in a sink.
+    /// </param>
+    /// <returns>A bin with a single src pad carrying raw audio, or null when an element is missing.</returns>
+    public static Bin? BuildMonitor(Element source, double volume, NoiseSuppressionLevel noiseSuppression,
+        string? echoProbe, string meter)
+    {
+        var (gate, voiceDetection) = DescribeGate(true);
+
+        var processing = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
+            MonitorDescription, volume, gate, voiceDetection, meter), true);
+
+        if (processing == null)
+        {
+            source.Dispose();
+            return null;
+        }
+
+        processing.SetProperty("name", EncodingName);
+
+        var branch = Bin.New("microphone_monitor");
+        branch.Add(processing);
+
+        using (var output = processing.GetStaticPad("src"))
+        using (var ghost = output == null ? null : GhostPad.New("src", output))
+        {
+            if (ghost == null || !branch.AddPad(ghost))
+            {
+                processing.Dispose();
+                source.Dispose();
+                branch.Dispose();
+                return null;
+            }
+        }
+
+        processing.Dispose();
+
+        if (!ReplaceCapture(branch, source, true, false, noiseSuppression, echoProbe))
         {
             branch.Dispose();
             return null;
