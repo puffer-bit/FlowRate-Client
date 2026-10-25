@@ -90,7 +90,9 @@ internal sealed class VoiceGate
         // Anything will do while the gate is off, the options that turn it on replace these
         _decision = new VoiceGateDecision(options ?? new VoiceGateOptions(AudioSettings.MaxVoiceGateThresholdDb),
             detector != null);
-        SetOptions(options);
+
+        lock (_lock)
+            Apply(options);
     }
 
     public string OutboundId { get; }
@@ -102,28 +104,41 @@ internal sealed class VoiceGate
     /// applied by the next level message, an open gate first waits out its hold time, so raising
     /// the threshold does not cut a word in half.
     /// </summary>
-    public void SetOptions(VoiceGateOptions? options)
+    /// <returns>
+    /// Whether the options differ from the ones the gate has. Every save of the audio settings
+    /// passes them, and the same ones again would restart the hold of an open gate for nothing.
+    /// </returns>
+    public bool SetOptions(VoiceGateOptions? options)
     {
         lock (_lock)
         {
-            _options = options;
+            if (options == _options)
+                return false;
 
-            // Levels are measured only while they are needed. RNNoise runs whenever the gate is on, even
-            // without voice detection: it takes well under one percent of a core, and it tells a voice
-            // from a key far better once it has heard the room for a while than right after it starts,
-            // so voice detection turned on in a call works at once.
-            _level.SetProperty("post-messages", options != null);
-            _detector?.Valve.SetProperty("drop", options == null);
-            _detector?.Level.SetProperty("post-messages", options is { IsVoiceDetectionEnabled: true });
-
-            if (options == null)
-            {
-                SetOpen(true);
-                return;
-            }
-
-            _decision.SetOptions(options, _clock.Elapsed, IsOpen);
+            Apply(options);
+            return true;
         }
+    }
+
+    private void Apply(VoiceGateOptions? options)
+    {
+        _options = options;
+
+        // Levels are measured only while they are needed. RNNoise runs whenever the gate is on, even
+        // without voice detection: it takes well under one percent of a core, and it tells a voice
+        // from a key far better once it has heard the room for a while than right after it starts,
+        // so voice detection turned on in a call works at once.
+        _level.SetProperty("post-messages", options != null);
+        _detector?.Valve.SetProperty("drop", options == null);
+        _detector?.Level.SetProperty("post-messages", options is { IsVoiceDetectionEnabled: true });
+
+        if (options == null)
+        {
+            SetOpen(true);
+            return;
+        }
+
+        _decision.SetOptions(options, _clock.Elapsed, IsOpen);
     }
 
     /// <summary>
