@@ -60,6 +60,8 @@ public interface ICoordinatorSession : IDisposable
     event Action<PeerStateChangedEvent>? HybridSessionPeerStateChanged;
     event Action<PeerMicrophoneMuteChangedEvent>? HybridSessionPeerMicrophoneMuteChanged;
     event Action<PeerSoundMuteChangedEvent>? HybridSessionPeerSoundMuteChanged;
+    event Action<PeerAfkChangedEvent>? HybridSessionPeerAfkChanged;
+    event Action<PeerPokedEvent>? HybridSessionPeerPoked;
     
     event Action<int, ChatMessageModel>? TextMessageAdded;
     event Action<int, ChatMessageModel>? TextMessageEdited;
@@ -223,6 +225,12 @@ public interface ICoordinatorSession : IDisposable
     /// The sound itself is silenced on this side.
     /// </summary>
     Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
+
+    /// <summary>Tells the others of the session that we are away from the keyboard, and why, or that we are back.</summary>
+    Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
+
+    /// <summary>Pokes another peer of the session; only they see it, with the message if there is one.</summary>
+    Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message);
     Task<(PeerListRequestResult Result, Dictionary<int, PeerModel>? Peers)> GetAllHybridSessionPeers(int sessionId);
     Task<LeaveSessionResult> LeaveSession(int sessionId);
 
