@@ -46,7 +46,7 @@ public partial class ActiveHybridSessionVM
             return;
         }
 
-        var request = await SelectScreenShareAsync();
+        var (request, _) = await SelectScreenShareAsync(null, await _screenShareSettings.GetAsync());
 
         if (request == null)
             return;
@@ -68,17 +68,88 @@ public partial class ActiveHybridSessionVM
     }
 
     /// <summary>
+    /// Changes what the running share shows and how, in the same dialog that started it. The
+    /// viewers keep watching it through the change.
+    /// </summary>
+    private async Task ChangeScreenShare()
+    {
+        if (_screenInput is not { } sharedInput || _screenSettings is not { } sharedSettings)
+            return;
+
+        var (request, isSharedInputLost) = await SelectScreenShareAsync(sharedInput, sharedSettings);
+
+        // Stopped or changed meanwhile, by the system or by a reconnect that failed to bring it back
+        if (_screenInput != sharedInput)
+        {
+            if (request != null && request.Input != sharedInput)
+                ReleaseInput(request.Input, closeCast: _screenInput == null);
+
+            return;
+        }
+
+        if (request == null)
+        {
+            // The system took the source away for a new pick that was given up
+            if (isSharedInputLost)
+                await StopScreenShareAsync();
+
+            return;
+        }
+
+        if (IsClosed)
+        {
+            if (request.Input != sharedInput)
+                ReleaseInput(request.Input, closeCast: false);
+
+            return;
+        }
+
+        _screenInput = request.Input;
+        _screenSettings = request.Settings;
+        _screenAudioInput = request.AudioInput;
+
+        var result = await _hybridSession.ChangeScreenShareAsync(request.Input, request.Settings, request.AudioInput);
+
+        // The track was rebuilt on the new source, so the old one can go; the system has closed it already
+        if (request.Input != sharedInput)
+            ReleaseInput(sharedInput, closeCast: false);
+
+        if (IsClosed)
+            return;
+
+        if (result == StartScreenShareResult.NoError)
+            StatusBar.IsScreenShareOn = true;
+        else
+        {
+            // The session has stopped the share already
+            _sounds.Play(SoundEvent.ScreenShareStop);
+            StatusBar.IsScreenShareOn = false;
+            ReleaseScreenInput();
+
+            if (result != StartScreenShareResult.Rejected)
+                NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
+        }
+
+        await _screenShareSettings.SaveAsync(request.Settings);
+    }
+
+    /// <summary>
     /// Asks what to show and how, in the dialog of the session.
     /// </summary>
-    /// <returns>Null when the user changed their mind or nothing can be captured.</returns>
-    private async Task<ScreenShareRequest?> SelectScreenShareAsync()
+    /// <param name="sharedInput">What the running share shows, when the dialog changes it.</param>
+    /// <returns>
+    /// Null when the user changed their mind or nothing can be captured, and whether the system
+    /// closed the source of the running share on the way.
+    /// </returns>
+    private async Task<(ScreenShareRequest? Request, bool IsSharedInputLost)> SelectScreenShareAsync(
+        VideoInput? sharedInput, ScreenShareSettings settings)
     {
         if (_screenCastClient == null && _screenSourceProvider == null)
-            return null;
+            return (null, false);
 
         var dialog = new VideoSourceSelectWindowVM(_screenSourceProvider, _screenCastClient,
             _mediaCapabilities.CanCaptureScreenAudio ? _audioApps : null, _mediaCapabilities.CanCaptureScreenAudio,
-            await _screenShareSettings.GetAsync(), _dismissedPrompts);
+            settings, _dismissedPrompts, sharedInput);
         ScreenShareRequest? request = null;
 
         _sourceSelect = dialog;
@@ -99,7 +170,7 @@ public partial class ActiveHybridSessionVM
         if (request == null)
             dialog.Abandon();
 
-        return request;
+        return (request, dialog.IsSharedInputLost);
     }
 
     private async Task StartScreenShareAsync(VideoInput input, ScreenShareSettings settings, AudioInput? audioInput)
@@ -146,10 +217,17 @@ public partial class ActiveHybridSessionVM
         _screenSettings = null;
         _screenAudioInput = null;
 
+        if (input != null)
+            ReleaseInput(input, closeCast: true);
+    }
+
+    /// <param name="closeCast">Ends the capture of the system as well, which holds one source at a time.</param>
+    private void ReleaseInput(VideoInput input, bool closeCast)
+    {
         if (input is PipeWireVideoInput pipeWire)
             pipeWire.Remote.Dispose();
 
-        if (input != null && _screenCastClient != null)
+        if (closeCast && _screenCastClient != null)
             _ = _screenCastClient.CloseAsync();
     }
 

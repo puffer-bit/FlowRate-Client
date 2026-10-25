@@ -153,6 +153,11 @@
                                                       IsVisible="{Binding !StatusBar.IsScreenShareOn}"
                                                       menus:FlyoutMenu.CloseOnClick="True"
                                                       Command="{Binding StatusBar.ToggleScreenShareCommand}"/>
+                                <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                      Content="{l:Text hybrid.screen.change}"
+                                                      IsVisible="{Binding StatusBar.IsScreenShareOn}"
+                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                      Command="{Binding StatusBar.ChangeScreenShareCommand}"/>
                                 <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
                                                       Content="{l:Text hybrid.screen.stop}"
                                                       IsVisible="{Binding StatusBar.IsScreenShareOn}"
