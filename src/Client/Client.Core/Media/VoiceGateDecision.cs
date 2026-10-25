@@ -5,13 +5,15 @@ namespace Client.Core.Media;
 /// <summary>
 /// What a voice gate did over a period, for the log.
 /// </summary>
-/// <param name="ThresholdDb">The level the gate opens from.</param>
+/// <param name="ThresholdDb">The level the gate opens from, as set.</param>
+/// <param name="EffectiveThresholdDb">The level it opens from at the end of the period, raised above the noise.</param>
+/// <param name="NoiseFloorDb">The noise of the room it measured, or null without the adaptive threshold.</param>
 /// <param name="OpenPercent">The share of the period the gate was open.</param>
 /// <param name="Openings">How many times it opened.</param>
 /// <param name="LoudestDb">The loudest peak of the period.</param>
 /// <param name="AverageOpenPeakDb">The average peak while the gate was open.</param>
-public sealed record VoiceGateSummary(double ThresholdDb, double OpenPercent, int Openings, double LoudestDb,
-    double AverageOpenPeakDb);
+public sealed record VoiceGateSummary(double ThresholdDb, double EffectiveThresholdDb, double? NoiseFloorDb,
+    double OpenPercent, int Openings, double LoudestDb, double AverageOpenPeakDb);
 
 /// <summary>
 /// Decides from the measured loudness whether the voice gate of a microphone is open. It knows
@@ -25,6 +27,14 @@ public sealed record VoiceGateSummary(double ThresholdDb, double OpenPercent, in
 /// hold grows with how long the gate has been speaking: a knock or a cough that opened it is cut
 /// short after <see cref="MinHoldTime"/>, while a sentence keeps up to <see cref="MaxHoldTime"/>
 /// between its words, so its end is not chopped.</para>
+/// <para>With the adaptive threshold the gate follows the noise of the room while it is closed and
+/// opens only <see cref="NoiseMarginDb"/> above it. The follower falls fast and rises slowly: it
+/// settles near the quiet end of the noise, a voice or a knock pulls it up by a fraction of a
+/// decibel, and a room that gets quieter is followed down within a second. While the gate is open
+/// the follower may still fall, and creep up at a quarter of the speed: a noise loud enough to open
+/// the gate before it was learned would otherwise hold it open through the hysteresis for good,
+/// never to be heard by a closed gate. It never goes below the threshold of the user and never more
+/// than <see cref="MaxAdaptiveRiseDb"/> above it, so a long loud noise cannot shut the gate.</para>
 /// <para>Not thread-safe: the caller runs every call under one lock.</para>
 /// </remarks>
 public sealed class VoiceGateDecision
@@ -55,6 +65,34 @@ public sealed class VoiceGateDecision
     /// </summary>
     public const double AudioFloorDb = -100;
 
+    /// <summary>
+    /// How far above the noise of the room the adaptive threshold opens. The peaks of a steady
+    /// noise spread over about 6 dB from one 10 ms interval to the next, and the follower sits near
+    /// their quiet end; this keeps the louder ones below where an open gate closes, which is
+    /// <see cref="HysteresisDb"/> lower still. Speech is 20 dB and more above the room.
+    /// </summary>
+    public const double NoiseMarginDb = 12;
+
+    /// <summary>
+    /// How far the adaptive threshold may rise above the one the user set.
+    /// </summary>
+    public const double MaxAdaptiveRiseDb = 15;
+
+    // The follower settles where the noise is below it r / (r + f) of the time, here a tenth: near the
+    // quiet end. Rising by 2 dB a second, a fan that starts is caught up with in a few seconds, while a
+    // word below the threshold moves it by less than a decibel.
+    private const double FloorRiseDbPerSecond = 2;
+    private const double FloorFallDbPerSecond = 18;
+
+    // An open gate hears mostly the voice; ten seconds of speech without a pause move the follower
+    // by 5 dB, and every pause pulls it down again
+    private const double OpenFloorRiseDbPerSecond = FloorRiseDbPerSecond / 4;
+
+    // A step longer than this, after the gate was open a while, moves the follower as far as this
+    private static readonly TimeSpan MaxFloorStep = TimeSpan.FromMilliseconds(100);
+
+    private double? _floorDb;
+    private TimeSpan _lastFloorReading;
     private TimeSpan? _lastLoud;
     private TimeSpan _lastSpeech;
     private TimeSpan _openedAt;
@@ -78,6 +116,20 @@ public sealed class VoiceGateDecision
     /// </summary>
     public double ThresholdDb => Options.ThresholdDb;
 
+    /// <summary>
+    /// The noise of the room the adaptive threshold follows, or null while it is off or has not
+    /// measured yet.
+    /// </summary>
+    public double? NoiseFloorDb => Options.IsAdaptiveThresholdEnabled ? _floorDb : null;
+
+    /// <summary>
+    /// Peak level in dBFS from which the gate opens now: the threshold as set, raised above the
+    /// noise of the room by the adaptive threshold.
+    /// </summary>
+    public double EffectiveThresholdDb => NoiseFloorDb is { } floor
+        ? Math.Max(ThresholdDb, Math.Min(floor + NoiseMarginDb, Math.Min(ThresholdDb + MaxAdaptiveRiseDb, 0)))
+        : ThresholdDb;
+
     public bool IsOpen { get; private set; }
 
     /// <summary>
@@ -98,6 +150,10 @@ public sealed class VoiceGateDecision
     /// </param>
     public void SetOptions(VoiceGateOptions options, TimeSpan now, bool isOpen)
     {
+        // The room may have changed since the adaptive threshold was last on
+        if (options.IsAdaptiveThresholdEnabled && !Options.IsAdaptiveThresholdEnabled)
+            _floorDb = null;
+
         Options = options;
         _lastSpeech = now;
 
@@ -118,10 +174,16 @@ public sealed class VoiceGateDecision
 
         Count(peak);
 
-        if (peak >= (IsOpen ? ThresholdDb - HysteresisDb : ThresholdDb))
+        if (peak >= (IsOpen ? EffectiveThresholdDb - HysteresisDb : EffectiveThresholdDb))
             _lastLoud = now;
 
-        return Evaluate(now);
+        var isChanged = Evaluate(now);
+
+        // After deciding, so the reading that opens the gate already counts as one of an open gate
+        if (Options.IsAdaptiveThresholdEnabled)
+            FollowFloor(peak, now);
+
+        return isChanged;
     }
 
     /// <summary>
@@ -132,7 +194,8 @@ public sealed class VoiceGateDecision
         if (_intervals == 0)
             return null;
 
-        var summary = new VoiceGateSummary(ThresholdDb, 100.0 * _openIntervals / _intervals, _openings, _loudestDb,
+        var summary = new VoiceGateSummary(ThresholdDb, EffectiveThresholdDb, NoiseFloorDb,
+            100.0 * _openIntervals / _intervals, _openings, _loudestDb,
             _openIntervals > 0 ? _openPeakSumDb / _openIntervals : double.NegativeInfinity);
 
         _intervals = 0;
@@ -165,6 +228,27 @@ public sealed class VoiceGateDecision
 
         IsOpen = false;
         return true;
+    }
+
+    private void FollowFloor(double peak, TimeSpan now)
+    {
+        if (_floorDb is not { } floor)
+        {
+            // Starts where it raises nothing: a first reading that happens to be loud must not shut the gate
+            _floorDb = Math.Min(peak, ThresholdDb - NoiseMarginDb);
+            _lastFloorReading = now;
+            return;
+        }
+
+        var seconds = (now - _lastFloorReading < MaxFloorStep ? now - _lastFloorReading : MaxFloorStep).TotalSeconds;
+        _lastFloorReading = now;
+
+        // Only the closed gate hears the room alone
+        var rise = IsOpen ? OpenFloorRiseDbPerSecond : FloorRiseDbPerSecond;
+
+        _floorDb = peak > floor
+            ? Math.Min(peak, floor + rise * seconds)
+            : Math.Max(peak, floor - FloorFallDbPerSecond * seconds);
     }
 
     // Silence is counted at the floor, as minus infinity would make the average of the open

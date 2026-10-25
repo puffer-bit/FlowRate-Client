@@ -13,7 +13,23 @@ public class VoiceGateDecisionTests
 
     private TimeSpan _now = TimeSpan.FromSeconds(1);
 
-    private static VoiceGateDecision CreateGate() => new(new VoiceGateOptions(Threshold));
+    private static VoiceGateDecision CreateGate(bool isAdaptive = false) =>
+        new(new VoiceGateOptions(Threshold, IsAdaptiveThresholdEnabled: isAdaptive));
+
+    // A steady noise: peaks that wander a few decibels around a level, as those of a fan do
+    private TimeSpan? FeedNoise(VoiceGateDecision gate, double levelDb, TimeSpan duration)
+    {
+        TimeSpan? changedAt = null;
+        var random = new Random(7);
+
+        for (var end = _now + duration; _now < end; _now += Interval)
+        {
+            if (gate.OnLevel(levelDb + random.NextDouble() * 6 - 3, _now))
+                changedAt = _now;
+        }
+
+        return changedAt;
+    }
 
     // Feeds the same peak for a while, one reading per interval, and tells when the gate last changed
     private TimeSpan? Feed(VoiceGateDecision gate, double peakDb, TimeSpan duration)
@@ -163,5 +179,125 @@ public class VoiceGateDecisionTests
         Assert.Equal(-20, summary.LoudestDb);
         Assert.InRange(summary.OpenPercent, 40, 50);
         Assert.Null(gate.TakeSummary());
+    }
+
+    [Fact]
+    public void AdaptiveThresholdStartsAtTheOneSet()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        // A first reading that is loud but stays below the threshold must not raise it
+        gate.OnLevel(Threshold - 1, _now);
+
+        Assert.Equal(Threshold - VoiceGateDecision.NoiseMarginDb, gate.NoiseFloorDb);
+        Assert.Equal(Threshold, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void AdaptiveThresholdRisesAboveASteadyNoise()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        // A fan around the threshold, whose louder peaks open a plain gate. The adaptive one opens on
+        // them too until it has learned the room.
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(60));
+        gate.TakeSummary();
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(10));
+
+        var summary = gate.TakeSummary()!;
+        Assert.Equal(0, summary.Openings);
+        Assert.Equal(0, summary.OpenPercent);
+        Assert.InRange(gate.NoiseFloorDb!.Value, Threshold - 6, Threshold - 2);
+        Assert.InRange(gate.EffectiveThresholdDb, Threshold + 6, Threshold + 10);
+
+        // A voice well above the noise still opens it
+        Assert.True(gate.OnLevel(-20, _now));
+    }
+
+    [Fact]
+    public void PlainGateIsHeldOpenByTheSameNoise()
+    {
+        var gate = CreateGate();
+
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(60));
+        gate.TakeSummary();
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(10));
+
+        Assert.Equal(100, gate.TakeSummary()!.OpenPercent);
+        Assert.Null(gate.NoiseFloorDb);
+    }
+
+    [Fact]
+    public void AdaptiveThresholdIsCapped()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        // A noise that grows louder and louder, which the threshold follows up to the cap
+        for (var level = Threshold - 9; level < -5; level += 0.5)
+            FeedNoise(gate, level, TimeSpan.FromSeconds(1));
+
+        Assert.Equal(Threshold + VoiceGateDecision.MaxAdaptiveRiseDb, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void AdaptiveFloorIsRobustToSpeech()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        FeedNoise(gate, -70, TimeSpan.FromSeconds(10));
+        var quiet = gate.NoiseFloorDb!.Value;
+
+        // Quiet words below the threshold, between pauses of the room
+        for (var word = 0; word < 5; word++)
+        {
+            Feed(gate, Threshold - 2, TimeSpan.FromMilliseconds(300));
+            FeedNoise(gate, -70, TimeSpan.FromMilliseconds(500));
+        }
+
+        Assert.False(gate.IsOpen);
+        Assert.InRange(gate.NoiseFloorDb!.Value, quiet - 3, quiet + 3);
+        Assert.Equal(Threshold, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void AdaptiveFloorFallsQuicklyWhenTheRoomGetsQuieter()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(60));
+        Assert.True(gate.EffectiveThresholdDb > Threshold);
+
+        Feed(gate, -90, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(Threshold, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void AdaptiveFloorOnlyCreepsUpWhileTheGateIsOpen()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        FeedNoise(gate, -70, TimeSpan.FromSeconds(5));
+        var floor = gate.NoiseFloorDb!.Value;
+
+        // Ten seconds of speech without a single pause
+        Feed(gate, -20, TimeSpan.FromSeconds(10));
+
+        Assert.True(gate.IsOpen);
+        Assert.InRange(gate.NoiseFloorDb!.Value, floor + 4, floor + 5.5);
+        Assert.Equal(Threshold, gate.EffectiveThresholdDb);
+    }
+
+    [Fact]
+    public void SummaryReportsTheFloorAndTheEffectiveThreshold()
+    {
+        var gate = CreateGate(isAdaptive: true);
+
+        FeedNoise(gate, Threshold - 2, TimeSpan.FromSeconds(30));
+        var summary = gate.TakeSummary()!;
+
+        Assert.Equal(Threshold, summary.ThresholdDb);
+        Assert.Equal(gate.EffectiveThresholdDb, summary.EffectiveThresholdDb);
+        Assert.Equal(gate.NoiseFloorDb, summary.NoiseFloorDb);
     }
 }
