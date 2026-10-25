@@ -549,6 +549,12 @@ public partial class HybridSession : IHybridSession
         _isSoundMuted = isMuted;
         _webRTCService.SetInboundVoiceMuted(isMuted);
 
+        lock (_speakingLock)
+        {
+            foreach (var userId in _speakingUsers)
+                PublishSpeaking(userId);
+        }
+
         return await _coordinatorSession.SetSoundMuteInHybridSession(Model.Id, isMuted);
     }
 
@@ -569,12 +575,12 @@ public partial class HybridSession : IHybridSession
     }
 
     /// <summary>
-    /// Shows a user as speaking unless we muted them: a muted user is not heard, so the indicator
-    /// would point at nothing. Called under <see cref="_speakingLock"/>.
+    /// Shows a user as speaking unless we muted them or all the voices: a muted user is not heard,
+    /// so the indicator would point at nothing. Called under <see cref="_speakingLock"/>.
     /// </summary>
     private void PublishSpeaking(int userId)
     {
-        var isMuted = _peerPlayback?.Get(userId, PeerAudioChannel.Voice).IsMuted == true;
+        var isMuted = _isSoundMuted || _peerPlayback?.Get(userId, PeerAudioChannel.Voice).IsMuted == true;
 
         _voiceActivity?.Set(Model.Id, userId, _speakingUsers.Contains(userId) && !isMuted);
     }
