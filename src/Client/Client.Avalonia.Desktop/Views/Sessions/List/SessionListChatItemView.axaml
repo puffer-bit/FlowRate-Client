@@ -82,7 +82,7 @@
                     </StackPanel>
                 </Flyout>
             </Border.ContextFlyout>
-            <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Image Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
                        Source="{StaticResource HashIcon}"/>
 
@@ -90,14 +90,10 @@
                            Classes.unread="{Binding HasUnread}"
                            ToolTip.Tip="{Binding Model.Name}"/>
                 
-                <Image Grid.Column="2" Width="14" Height="14" VerticalAlignment="Center"
-                       IsVisible="{Binding IsHost}"
-                       ToolTip.Tip="{l:Text sessions.youAreHost}"
-                       Source="{StaticResource CrownIcon}"/>
 
                 <!-- Mentions take the place of the plain counter. A muted chat shows its crossed bell in
                      the same place: it has no plain counter, and a mention outranks the bell -->
-                <Panel Grid.Column="3" VerticalAlignment="Center">
+                <Panel Grid.Column="2" VerticalAlignment="Center">
                     <Image Width="18" Height="18"
                            IsVisible="{Binding ShowsMutedMark}"
                            ToolTip.Tip="{l:Text sessions.notificationsMuted}"
