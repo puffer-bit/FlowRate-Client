@@ -10,6 +10,7 @@
             <indicators:PingIndicator RoundTrip="0:0:0.15"/>
             <indicators:PingIndicator RoundTrip="0:0:0.3"/>
             <indicators:PingIndicator RoundTrip="0:0:0.6"/>
+            <indicators:PingIndicator RoundTrip="0:0:0.05" IsTextVisible="False"/>
         </StackPanel>
     </Design.PreviewWith>
 
@@ -33,6 +34,7 @@
                             <Border Classes="bar b4" Height="14"/>
                         </StackPanel>
                         <TextBlock Text="{TemplateBinding Text}"
+                                   IsVisible="{TemplateBinding IsTextVisible}"
                                    Foreground="{TemplateBinding Foreground}"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
@@ -43,7 +45,7 @@
     </Style>
 
     <Style Selector="indicators|PingIndicator /template/ Border.bar">
-        <Setter Property="Width" Value="3.5"/>
+        <Setter Property="Width" Value="4"/>
         <Setter Property="CornerRadius" Value="1"/>
         <Setter Property="VerticalAlignment" Value="Bottom"/>
         <!-- Only the bars take the quality color; the text keeps Foreground -->

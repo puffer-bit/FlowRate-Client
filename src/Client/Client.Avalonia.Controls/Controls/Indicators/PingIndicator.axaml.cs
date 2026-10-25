@@ -17,6 +17,12 @@ public class PingIndicator : TemplatedControl
     public static readonly StyledProperty<TimeSpan?> RoundTripProperty =
         AvaloniaProperty.Register<PingIndicator, TimeSpan?>(nameof(RoundTrip));
 
+    /// <summary>
+    /// Shows the milliseconds next to the bars; without them only the bars tell the quality.
+    /// </summary>
+    public static readonly StyledProperty<bool> IsTextVisibleProperty =
+        AvaloniaProperty.Register<PingIndicator, bool>(nameof(IsTextVisible), true);
+
     public static readonly DirectProperty<PingIndicator, string> TextProperty =
         AvaloniaProperty.RegisterDirect<PingIndicator, string>(nameof(Text), indicator => indicator.Text);
 
@@ -29,6 +35,12 @@ public class PingIndicator : TemplatedControl
     {
         get => GetValue(RoundTripProperty);
         set => SetValue(RoundTripProperty, value);
+    }
+
+    public bool IsTextVisible
+    {
+        get => GetValue(IsTextVisibleProperty);
+        set => SetValue(IsTextVisibleProperty, value);
     }
 
     public string Text

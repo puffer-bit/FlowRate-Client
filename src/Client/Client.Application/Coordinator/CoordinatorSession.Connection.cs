@@ -68,6 +68,8 @@ public partial class CoordinatorSession
 
     public string? ConnectedAddress => _address is { } address ? $"{address}:{_port}" : null;
 
+    public bool IsCertificateVerified { get; private set; }
+
     // Everything below belongs to the loop
     private ConnectionPhase _phase = ConnectionPhase.Idle;
     private bool _isInFront = true;
@@ -642,6 +644,7 @@ public partial class CoordinatorSession
 
         UntrustedCertificate = null;
         CoordinatorMismatch = null;
+        IsCertificateVerified = connectResult.IsCertificateVerified;
 
         try
         {

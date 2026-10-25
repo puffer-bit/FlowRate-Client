@@ -45,6 +45,9 @@ public partial class MainWindowVM : ReactiveObject
 {
     public StatusLineVM StatusLine { get; } = new();
 
+    /// <summary>The connection to the server, for the flyout of the status bar.</summary>
+    public ConnectionInfoVM ConnectionInfo { get; } = new();
+
     public IMainWindowContentVM? CurrentContent
     {
         get;
@@ -181,7 +184,11 @@ public partial class MainWindowVM : ReactiveObject
     public TimeSpan? ServerRoundTrip
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            ConnectionInfo.RoundTrip = value;
+        }
     }
 
     // UI Interactions
@@ -341,7 +348,7 @@ public partial class MainWindowVM : ReactiveObject
 
     public async Task Initialize()
     {
-        await StatusLine.SetAsync(Strings.Get("main.status.loading"), true);
+        await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
         var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog));
 
@@ -361,7 +368,7 @@ public partial class MainWindowVM : ReactiveObject
             return;
         }
 
-        await StatusLine.SetAsync(Strings.Get("main.status.offline"), false);
+        await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
         GridOpacity = true;
