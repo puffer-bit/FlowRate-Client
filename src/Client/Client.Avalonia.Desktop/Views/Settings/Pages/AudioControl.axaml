@@ -55,6 +55,8 @@
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.moderate}"/>
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.high}"/>
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.veryHigh}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.neural}"/>
+                    <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.neuralAndWebRtc}"/>
                 </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>

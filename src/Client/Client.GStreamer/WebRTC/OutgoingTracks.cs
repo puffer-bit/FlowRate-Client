@@ -256,7 +256,8 @@ internal sealed partial class OutgoingTracks
     public bool Start(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
         double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression)
     {
-        var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone, noiseSuppression);
+        var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone,
+            isMicrophone ? Resolve(noiseSuppression) : noiseSuppression);
 
         if (branch == null)
         {
@@ -531,8 +532,13 @@ internal sealed partial class OutgoingTracks
                     if (_audioResources.TryRemove(outboundId, out var previous))
                         previous.Dispose();
 
-                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, input is DeviceAudioInput && !isScreen,
-                            isScreen, noiseSuppression))
+                    var isMicrophone = input is DeviceAudioInput && !isScreen;
+
+                    if (isMicrophone)
+                        noiseSuppression = Resolve(noiseSuppression);
+
+                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, isMicrophone, isScreen,
+                            noiseSuppression))
                     {
                         if (source.Resource != null)
                             _audioResources[outboundId] = source.Resource;
@@ -551,6 +557,20 @@ internal sealed partial class OutgoingTracks
                 LogOutboundInputChangeFailed(exception, _core.SessionId);
             }
         });
+    }
+
+    /// <summary>
+    /// The noise suppression a microphone really gets: a runtime without RNNoise runs the neural
+    /// levels as the moderate one, which is reported, since the user chose otherwise.
+    /// </summary>
+    private NoiseSuppressionLevel Resolve(NoiseSuppressionLevel requested)
+    {
+        var applied = MicrophoneProcessing.Resolve(requested);
+
+        if (applied != requested)
+            LogNoiseSuppressionReplaced(_core.SessionId, requested, applied);
+
+        return applied;
     }
 
     /// <summary>
