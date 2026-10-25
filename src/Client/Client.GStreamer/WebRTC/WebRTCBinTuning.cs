@@ -154,6 +154,12 @@ internal sealed partial class WebRTCBinTuning
 
                     jitterBuffer.SetProperty("do-retransmission", track.IsNackEnabled);
 
+                    // A voice with DTX sends nothing for up to 400 ms, while the buffer would ask
+                    // for the next packet after 20 ms, declare it lost and drop it when it came:
+                    // a concealed frame and a click each time. A gap in the seqnums is still asked for.
+                    if (track.MediaType == MediaType.Audio)
+                        jitterBuffer.SetProperty("rtx-next-seqnum", false);
+
                     if (LatencyOf(track) is { } latency)
                         jitterBuffer.SetProperty("latency", latency);
 
