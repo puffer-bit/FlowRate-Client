@@ -659,6 +659,13 @@
   "hybrid.afk.go": "Away from keyboard",
   "hybrid.afk.reason.placeholder": "Reason (optional)",
   "hybrid.afk.confirm": "Go AFK",
+  "hybrid.afk.title": "Step away",
+  "hybrid.afk.subtitle": "Your microphone turns off, and others see that you are away and why.",
+  "hybrid.afk.presets": "Quick reasons",
+  "hybrid.afk.preset.brb": "Be right back",
+  "hybrid.afk.preset.break": "Short break",
+  "hybrid.afk.preset.food": "Eating",
+  "hybrid.afk.preset.call": "On a call",
   "hybrid.afk.back": "Back from AFK",
   "hybrid.afk.backWithReason": "Back from AFK (away: {reason})",
   "@hybrid.afk.backWithReason": {
