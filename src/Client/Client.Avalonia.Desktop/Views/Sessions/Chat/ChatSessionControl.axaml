@@ -2,6 +2,7 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -84,7 +85,8 @@
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 
-        <!-- An image of a message opened over the chat; a click beside it or Esc closes it -->
+        <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag
+             moves the zoomed one, a click beside it or Esc closes it -->
         <ContentControl Grid.Row="0" Grid.RowSpan="3"
                         x:Name="ImageViewerHost"
                         Focusable="True"
@@ -96,10 +98,8 @@
                         <Button Grid.Row="0" Grid.RowSpan="2" Classes="image-viewer-backdrop"
                                 Command="{Binding CloseCommand}"/>
 
-                        <Image Grid.Row="1" Margin="24"
-                               Source="{Binding Picture}"
-                               Stretch="Uniform" StretchDirection="DownOnly"
-                               IsHitTestVisible="False"/>
+                        <images:ZoomableImage Grid.Row="1" Padding="24"
+                                              Source="{Binding Picture}"/>
 
                         <Border Grid.Row="0" Classes="image-viewer-bar">
                             <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">

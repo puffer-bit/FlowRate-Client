@@ -4,6 +4,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -127,7 +128,9 @@ internal sealed class ChatSelectionController
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed)
+        // The scroll bar is dragged, not selected through; taking the pointer from its thumb would stop the drag
+        if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
+            || (e.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) != null)
             return;
 
         Clear();

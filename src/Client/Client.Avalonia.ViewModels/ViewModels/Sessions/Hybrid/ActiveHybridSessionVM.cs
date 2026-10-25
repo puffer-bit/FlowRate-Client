@@ -191,6 +191,10 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             ReactiveCommand.CreateFromTask(ToggleScreenShare,
                 Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
                         nameof(CanShareVideo)),
+                    vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo)),
+            ReactiveCommand.CreateFromTask(ChangeScreenShare,
+                Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
+                        nameof(CanShareVideo)),
                     vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo)));
         // Corrected by our own peer as soon as the server reports it
         IsAdmitted = !hybridSessionModel.IsApprovalRequested

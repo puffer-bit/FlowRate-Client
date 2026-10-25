@@ -86,6 +86,11 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ToggleMicrophoneCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleSoundCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleScreenShareCommand { get; }
+
+    /// <summary>
+    /// Changes what the running share shows and how.
+    /// </summary>
+    public ReactiveCommand<RxVoid, RxVoid> ChangeScreenShareCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<bool, RxVoid> ToggleUserListCommand { get; }
     
@@ -96,9 +101,11 @@ public class HybridSessionStatusBarVM : ReactiveObject
         ReactiveCommand<RxVoid, RxVoid> closeSessionCommand,
         ReactiveCommand<RxVoid, RxVoid> toggleMicrophoneCommand,
         ReactiveCommand<RxVoid, RxVoid> toggleSoundCommand,
-        ReactiveCommand<RxVoid, RxVoid> toggleScreenShareCommand)
+        ReactiveCommand<RxVoid, RxVoid> toggleScreenShareCommand,
+        ReactiveCommand<RxVoid, RxVoid> changeScreenShareCommand)
     {
         ToggleScreenShareCommand = toggleScreenShareCommand;
+        ChangeScreenShareCommand = changeScreenShareCommand;
         SessionName = sessionName;
         ToggleMicrophoneCommand = toggleMicrophoneCommand;
         ToggleSoundCommand = toggleSoundCommand;

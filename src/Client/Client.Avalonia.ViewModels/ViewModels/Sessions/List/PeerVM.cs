@@ -143,6 +143,7 @@ public class PeerVM : ReactiveObject
     private readonly IPeerPlaybackService _playbackService;
     private readonly Action<PeerVM> _toggleScreenWatch;
     private readonly Action<PeerVM> _kick;
+    private readonly Action<PeerVM> _ban;
     private readonly Action<PeerVM, bool> _admit;
 
     // Set while the settings come from the service, so they are not sent back to it
@@ -150,10 +151,11 @@ public class PeerVM : ReactiveObject
 
     public PeerVM(PeerModel peerData, bool isCurrentUser, IPeerPlaybackService playbackService,
         ReactiveCommand<int, RxVoid> viewProfileCommand, Action<PeerVM> toggleScreenWatch, Action<PeerVM> kick,
-        Action<PeerVM, bool> admit, UserModel? userData = null)
+        Action<PeerVM> ban, Action<PeerVM, bool> admit, UserModel? userData = null)
     {
         _toggleScreenWatch = toggleScreenWatch;
         _kick = kick;
+        _ban = ban;
         _admit = admit;
         ViewProfileCommand = viewProfileCommand;
         PeerData = peerData;
@@ -222,6 +224,24 @@ public class PeerVM : ReactiveObject
     {
         if (CanKick)
             _kick(this);
+    }
+
+    /// <summary>
+    /// The roles of the current user let it ban this user from the coordinator. Never for ourselves.
+    /// </summary>
+    public bool CanBan
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// Bans the user from the coordinator, which takes it out of every session. Offered only when <see cref="CanBan"/>.
+    /// </summary>
+    public void Ban()
+    {
+        if (CanBan)
+            _ban(this);
     }
 
     /// <summary>

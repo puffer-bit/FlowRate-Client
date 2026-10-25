@@ -109,6 +109,11 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     }
 
     /// <summary>
+    /// The dialog changes a running share rather than starting one.
+    /// </summary>
+    public bool IsChangingShare => _sharedInput != null;
+
+    /// <summary>
     /// The system shows its own dialog and decides what may be captured.
     /// </summary>
     public bool UsesSystemPicker => _screenCastClient != null;
@@ -254,16 +259,29 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     // The dialog is gone, so a source the system returns from now on has nobody to take it
     private bool _isAbandoned;
 
+    // What the running share shows, while the dialog changes it; owned by the share
+    private readonly VideoInput? _sharedInput;
+
+    /// <summary>
+    /// The system closed the source of the running share, as it does before it lets another one be picked.
+    /// </summary>
+    public bool IsSharedInputLost { get; private set; }
+
     /// <param name="audioApps">The applications the sound is taken from, where it is chosen by its application.</param>
     /// <param name="canShareAudio">The sound of a share can be captured on this system.</param>
     /// <param name="settings">The options the dialog opens with, as they were chosen the last time.</param>
+    /// <param name="sharedInput">What the running share shows, when the dialog changes it, offered again.</param>
     public VideoSourceSelectWindowVM(IScreenSourceProvider? screenSourceProvider, IScreenCastClient? screenCastClient,
         IAudioAppProvider? audioApps, bool canShareAudio, ScreenShareSettings settings,
-        IDismissedPromptsRepository dismissedPrompts)
+        IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null)
     {
         _dismissedPrompts = dismissedPrompts;
         _screenSourceProvider = screenSourceProvider;
         _screenCastClient = screenCastClient;
+        _sharedInput = sharedInput;
+
+        if (screenCastClient != null)
+            SystemInput = sharedInput;
 
         settings = settings.Normalize();
 
@@ -369,6 +387,19 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
         foreach (var monitor in _screenSourceProvider.GetMonitors())
             Monitors.Add(monitor);
+
+        // The running share is offered again
+        switch (_sharedInput)
+        {
+            case MonitorVideoInput monitor:
+                SelectedMonitor = Monitors.FirstOrDefault(source => source.Handle == monitor.Handle);
+                IsMonitorsMode = true;
+                break;
+            case WindowVideoInput window:
+                SelectedWindow = Windows.FirstOrDefault(source => source.Handle == window.Handle);
+                IsMonitorsMode = false;
+                break;
+        }
     }
 
     // Raised on any thread
@@ -421,7 +452,8 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         _isAbandoned = true;
         StopWatchingAudioApps();
 
-        if (SystemInput == null)
+        // Nothing new was picked, and the running share goes on with its own
+        if (SystemInput == null || SystemInput == _sharedInput)
             return;
 
         DropSystemInput();
@@ -433,7 +465,10 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     /// </summary>
     public void DropSystemInput()
     {
-        if (SystemInput is PipeWireVideoInput pipeWire)
+        // The share gives its source back itself
+        if (SystemInput != null && SystemInput == _sharedInput)
+            IsSharedInputLost = true;
+        else if (SystemInput is PipeWireVideoInput pipeWire)
             pipeWire.Remote.Dispose();
 
         SystemInput = null;
