@@ -32,6 +32,8 @@ internal sealed class VoiceGate
     // Covers the pauses between words, so a sentence goes out in one piece
     private static readonly TimeSpan HoldTime = TimeSpan.FromMilliseconds(300);
 
+    private const double AudioFloorDb = -100;
+
     private const string LevelMessageName = "level";
     private const string PeakField = "peak";
 
@@ -40,6 +42,13 @@ internal sealed class VoiceGate
     private readonly Lock _lock = new();
     private double? _thresholdDb;
     private long _lastLoudTimestamp;
+
+    // What the level messages of the current period showed, see TakeSummary
+    private int _intervals;
+    private int _openIntervals;
+    private int _openings;
+    private double _loudestDb = double.NegativeInfinity;
+    private double _openPeakSumDb;
 
     /// <param name="level">Posts the level messages; silenced while the gate is off.</param>
     /// <param name="valve">The gate valve, closed when the branch is built.</param>
@@ -93,6 +102,8 @@ internal sealed class VoiceGate
 
             var now = Stopwatch.GetTimestamp();
 
+            Count(peak);
+
             if (peak >= (IsOpen ? openThresholdDb - HysteresisDb : openThresholdDb))
             {
                 _lastLoudTimestamp = now;
@@ -100,6 +111,7 @@ internal sealed class VoiceGate
                 if (IsOpen)
                     return false;
 
+                _openings++;
                 SetOpen(true);
                 return true;
             }
@@ -110,6 +122,44 @@ internal sealed class VoiceGate
             SetOpen(false);
             return true;
         }
+    }
+
+    /// <summary>
+    /// What the gate did since the previous call, or null when it measured nothing, as while it is off.
+    /// </summary>
+    public Summary? TakeSummary()
+    {
+        lock (_lock)
+        {
+            if (_intervals == 0 || _thresholdDb is not { } thresholdDb)
+                return null;
+
+            var summary = new Summary(thresholdDb, 100.0 * _openIntervals / _intervals, _openings, _loudestDb,
+                _openIntervals > 0 ? _openPeakSumDb / _openIntervals : double.NegativeInfinity);
+
+            _intervals = 0;
+            _openIntervals = 0;
+            _openings = 0;
+            _loudestDb = double.NegativeInfinity;
+            _openPeakSumDb = 0;
+
+            return summary;
+        }
+    }
+
+    // Silence reads as minus infinity, which would make the average of the open intervals one too
+    private void Count(double peakDb)
+    {
+        var peak = Math.Max(peakDb, AudioFloorDb);
+
+        _intervals++;
+        _loudestDb = Math.Max(_loudestDb, peak);
+
+        if (!IsOpen)
+            return;
+
+        _openIntervals++;
+        _openPeakSumDb += peak;
     }
 
     private void SetOpen(bool isOpen)
@@ -132,4 +182,12 @@ internal sealed class VoiceGate
 
         return GstNative.ReadLargestDouble(value);
     }
+
+    /// <param name="ThresholdDb">The level the gate opens from.</param>
+    /// <param name="OpenPercent">The share of the period the gate was open.</param>
+    /// <param name="Openings">How many times it opened.</param>
+    /// <param name="LoudestDb">The loudest peak of the period.</param>
+    /// <param name="AverageOpenPeakDb">The average peak while the gate was open.</param>
+    public sealed record Summary(double ThresholdDb, double OpenPercent, int Openings, double LoudestDb,
+        double AverageOpenPeakDb);
 }
