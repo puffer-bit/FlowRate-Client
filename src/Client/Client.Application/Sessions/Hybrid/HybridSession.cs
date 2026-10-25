@@ -366,6 +366,45 @@ public partial class HybridSession : IHybridSession
         return StartScreenShareResult.NoError;
     }
 
+    public async Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+        AudioInput? audioInput = null)
+    {
+        var outbound = _screenOutbound;
+        var audioOutbound = _screenAudioOutbound;
+
+        // Only a sound that has a producer already can be switched in place, a new one needs the server
+        if (outbound == null || (audioInput != null && audioOutbound == null))
+        {
+            await StopScreenShareAsync();
+            return await StartScreenShareAsync(input, settings, audioInput);
+        }
+
+        var transport = _webRTCService;
+
+        // The branch is built anew on the same producer, so the viewers keep receiving it
+        transport.StopOutbound(outbound.Id);
+
+        if (!transport.StartOutbound(outbound, input, settings))
+        {
+            LogScreenShareStartFailed(Model.Id, input);
+            await StopScreenShareAsync();
+            return StartScreenShareResult.UnsupportedMedia;
+        }
+
+        LogScreenShareChanged(Model.Id, outbound.SSRC);
+
+        // A sound that is dropped stays muted on its producer until the share ends
+        if (audioOutbound != null)
+        {
+            if (audioInput != null)
+                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off);
+
+            transport.SetOutboundMuted(audioOutbound.Id, audioInput == null);
+        }
+
+        return StartScreenShareResult.NoError;
+    }
+
     public async Task<StopScreenShareResult> StopScreenShareAsync()
     {
         var outbound = _screenOutbound;

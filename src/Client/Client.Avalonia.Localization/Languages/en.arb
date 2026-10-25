@@ -673,6 +673,7 @@
   "hybrid.screen.empty": "Nobody is sharing a screen. Be the first!",
   "hybrid.screen.start": "Start sharing",
   "hybrid.screen.stop": "Stop sharing",
+  "hybrid.screen.change": "Change sharing",
   "hybrid.screen.watchFailed": "Failed to open the screen: {reason}",
   "@hybrid.screen.watchFailed": {
     "placeholders": {
@@ -860,6 +861,7 @@
   "source.system.pick": "Choose",
   "source.system.pickAnother": "Change",
   "source.start": "Start",
+  "source.apply": "Apply",
   "source.field.resolution": "Resolution:",
   "source.field.framerate": "Frame rate:",
   "source.resolution.value": "{height}p",

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -36,9 +37,6 @@
         <!-- A screen that is being shared stays visible at a glance -->
         <Style Selector="Button.barAction.sharing /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-        </Style>
-        <Style Selector="Button.barAction.leave:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
         </Style>
         <Style Selector=":is(Button).barAction Image">
             <Setter Property="Width" Value="22"/>
@@ -93,33 +91,40 @@
             </Button>
 
             <Button Classes="barAction"
-                    Classes.sharing="{Binding IsScreenShareOn}"
+                    IsVisible="{Binding !IsScreenShareOn}"
                     Command="{Binding ToggleScreenShareCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                <Image Source="{StaticResource ScreenShareIcon}"/>
+            </Button>
+
+            <!-- A running share is changed or stopped from a menu -->
+            <Button Classes="barAction sharing"
+                    IsVisible="{Binding IsScreenShareOn}"
+                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Spacing="2">
+                            <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                  Content="{l:Text hybrid.screen.change}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                  Command="{Binding ChangeScreenShareCommand}"/>
+                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
+                                                  Content="{l:Text hybrid.screen.stop}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                  Command="{Binding ToggleScreenShareCommand}"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
                 <Image Source="{StaticResource ScreenShareIcon}"/>
             </Button>
 
             <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
 
             <!-- How the session is shown -->
-            <ToggleButton Classes="barAction"
-                          IsChecked="{Binding IsUserListVisible}"
-                          ToolTip.Tip="{l:Text hybrid.participants}">
-                <Image Source="{StaticResource BaseUsersIcon}"/>
-            </ToggleButton>
-
             <Button Classes="barAction"
                     Command="{Binding ToggleFullscreenCommand}"
                     ToolTip.Tip="{l:Text hybrid.fullscreen}">
                 <Image Source="{StaticResource FullscreenIcon}"/>
-            </Button>
-
-            <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
-
-            <Button Classes="barAction leave"
-                    Command="{Binding CloseCommand}"
-                    ToolTip.Tip="{l:Text main.voice.leave}">
-                <Image Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
             </Button>
         </StackPanel>
     </Grid>
