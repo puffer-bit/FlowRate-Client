@@ -193,6 +193,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                     vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanSpeak)),
             ReactiveCommand.CreateFromTask(ToggleSound,
                 this.WatchProperty(nameof(IsTransportConnected), vm => vm.IsTransportConnected)),
+            ReactiveCommand.CreateFromTask(ToggleAfk,
+                this.WatchProperty(nameof(IsTransportConnected), vm => vm.IsTransportConnected)),
             ReactiveCommand.CreateFromTask(ToggleScreenShare,
                 Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
                         nameof(CanShareVideo)),
@@ -252,7 +254,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                     .Add(() => session.HybridSessionPeerLeft += OnPeerLeft, () => session.HybridSessionPeerLeft -= OnPeerLeft)
                     .Add(() => session.HybridSessionPeerStateChanged += OnPeerStateChanged,
                         () => session.HybridSessionPeerStateChanged -= OnPeerStateChanged)
-                    .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
+                    .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated)
+                    .Add(() => session.HybridSessionPeerPoked += OnPoked, () => session.HybridSessionPeerPoked -= OnPoked);
                 _isJoined = true;
                 _sounds.Play(SoundEvent.Join);
 
@@ -370,6 +373,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         if (!IsAdmitted)
             return;
+
+        await RestoreAfkAsync();
 
         if (CanSpeak)
             await StartVoiceAsync();

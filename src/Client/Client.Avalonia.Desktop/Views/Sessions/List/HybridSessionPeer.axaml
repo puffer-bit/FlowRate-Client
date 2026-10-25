@@ -109,6 +109,12 @@
                    IsVisible="{Binding IsDeafened}"
                    ToolTip.Tip="{l:Text peer.soundOff}"/>
 
+            <!-- The user stepped away from the keyboard; everyone sees it, with the reason in the hint -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource AfkIcon}"
+                   IsVisible="{Binding IsAfk}"
+                   ToolTip.Tip="{Binding AfkHint}"/>
+
             <!-- We turned this user's sound off; only here, the others still hear them -->
             <Image Width="20" Height="20"
                    Source="{StaticResource CrossedNoVolumeIcon}"

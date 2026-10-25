@@ -269,6 +269,12 @@
                                                     <Image Width="20" Height="20"
                                                            Source="{StaticResource CrossedHeadphonesIcon}"
                                                            IsVisible="{Binding IsDeafened}"/>
+
+                                                    <!-- The user stepped away from the keyboard -->
+                                                    <Image Width="20" Height="20"
+                                                           Source="{StaticResource AfkIcon}"
+                                                           IsVisible="{Binding IsAfk}"
+                                                           ToolTip.Tip="{Binding AfkHint}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>

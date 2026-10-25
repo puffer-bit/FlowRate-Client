@@ -18,8 +18,8 @@ using Result = Client.ViewModels.Dialogs.Result;
 namespace Client.ViewModels.Main;
 
 /// <summary>
-/// What can be done to users of the connected coordinator: the profiles, the status, kicking
-/// a peer out of a hybrid session and banning a user.
+/// What can be done to users of the connected coordinator: the profiles, the status, poking a peer of
+/// a hybrid session or kicking it out, and banning a user.
 /// </summary>
 public sealed class UserActions
 {
@@ -33,6 +33,9 @@ public sealed class UserActions
 
     /// <summary>Lets a peer waiting for the host into a hybrid session, or turns it away, which takes it out.</summary>
     public ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> AdmitPeerCommand { get; }
+
+    /// <summary>Pokes a peer of the hybrid session we are in, with a message if there is one.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> PokePeerCommand { get; }
 
     private readonly ReactiveCommand<string, ChangeUsernameResult> _changeUsernameCommand;
     private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUserUsernameCommand;
@@ -73,6 +76,8 @@ public sealed class UserActions
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
         BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);
         AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
+            isConnected);
+        PokePeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, string? Message)>(PokePeer,
             isConnected);
 
         _changeUsernameCommand = ReactiveCommand.CreateFromTask<string, ChangeUsernameResult>(
@@ -141,6 +146,18 @@ public sealed class UserActions
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+    }
+
+    private async Task PokePeer((int SessionId, int UserId, string? Message) target)
+    {
+        var result = await Session.PokeInHybridSession(target.SessionId, target.UserId, target.Message);
+
+        // A rejection is reported on its own; a peer that is already gone needs no word
+        if (result is PokeResult.NoError or PokeResult.Rejected or PokeResult.PeerNotExists)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.poke.failed.title"),
+            Strings.Format("peer.poke.failed.text", ("code", (int)result)));
     }
 
     // The user leaves its sessions and the coordinator with the ban, as from the server settings
