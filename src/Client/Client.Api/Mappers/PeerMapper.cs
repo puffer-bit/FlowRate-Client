@@ -21,6 +21,8 @@ internal static class PeerMapper
             IsRejected = dto.IsRejected,
             IsMicrophoneMuted = dto.IsMicrophoneMuted,
             IsSoundMuted = dto.IsSoundMuted,
+            IsAfk = dto.IsAfk,
+            AfkReason = dto.IsAfk ? dto.AfkMessage : null,
             IsScreenShareActive = dto.IsScreenShareActive,
             IsScreenAudioActive = dto.IsScreenAudioActive
         };

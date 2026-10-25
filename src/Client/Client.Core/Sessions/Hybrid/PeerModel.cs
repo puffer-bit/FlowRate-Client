@@ -24,6 +24,12 @@ public class PeerModel
     public bool IsSoundMuted { get; set; }
 
     /// <summary>
+    /// Set while the user is away from the keyboard, with the reason they gave; the server sends it to everyone.
+    /// </summary>
+    public bool IsAfk { get; set; }
+    public string? AfkReason { get; set; }
+
+    /// <summary>
     /// Set while the user shows a screen; the server tells everyone, the track goes only to those
     /// who receive it.
     /// </summary>

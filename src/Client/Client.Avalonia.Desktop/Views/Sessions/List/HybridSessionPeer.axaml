@@ -15,7 +15,8 @@
              Background="Transparent"
              Padding="4,3"
              anim:Presence.Leave="Fold"
-             anim:Presence.IsLeaving="{Binding IsLeaving}">
+             anim:Presence.IsLeaving="{Binding IsLeaving}"
+             Classes.afk="{Binding IsAfk}">
     <UserControl.ContextFlyout>
         <Flyout Placement="BottomEdgeAlignedRight">
             <listViews:HybridSessionPeerFlyout/>
@@ -23,6 +24,17 @@
     </UserControl.ContextFlyout>
     
     <UserControl.Styles>
+        <!-- A user away from the keyboard fades out, all but the AFK mark -->
+        <Style Selector="listViews|HybridSessionPeer :is(Control).afkDim">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="listViews|HybridSessionPeer.afk :is(Control).afkDim">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
         <Style Selector="Button.screenWatch">
             <Setter Property="Width" Value="24"/>
             <Setter Property="Height" Value="24"/>
@@ -41,7 +53,7 @@
     </UserControl.Styles>
 
     <Grid ColumnDefinitions="28, *, Auto" VerticalAlignment="Center" ColumnSpacing="6">
-        <Panel Grid.Column="0" Width="28" Height="28">
+        <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
             <avatars:UserAvatar UserName="{Binding UserData.Username}"
                                 IsAnimated="True"
                                 AvatarUrl="{Binding UserData.AvatarUrl}"
@@ -72,15 +84,22 @@
             </loadingIndicators:ProgressRing>
         </Panel>
 
-        <text:MarqueeTextBlock Grid.Column="1"
-                   Classes="peerName"
-                   Classes.connecting="{Binding !IsConnected}"
-                   Text="{Binding DisplayedName}"/>
+        <!-- The reason of an away user goes under the name, and stays readable while the rest fades -->
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <text:MarqueeTextBlock Classes="peerName afkDim"
+                                   Classes.connecting="{Binding !IsConnected}"
+                                   Text="{Binding DisplayedName}"/>
+            <text:MarqueeTextBlock Text="{Binding AfkReason}"
+                                   IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
             <!-- The user shows a screen; everyone sees the mark, in the session or not. Inside the
                  session it starts and stops watching that screen, outside it is only a mark -->
-            <Button Classes="screenWatch"
+            <Button Classes="screenWatch afkDim"
                     Classes.watching="{Binding IsWatchingScreen}"
                     IsVisible="{Binding IsSharingScreen}"
                     IsHitTestVisible="{Binding CanWatchScreen}"
@@ -97,20 +116,27 @@
                 </ToolTip.Tip>
             </Button>
 
+            <!-- The user stepped away from the keyboard: no microphone and no sound, so the mark stands
+                 for both of theirs; everyone sees it, with the reason in the hint -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource AfkIcon}"
+                   IsVisible="{Binding IsAfk}"
+                   ToolTip.Tip="{Binding AfkHint}"/>
+
             <!-- The user turned their own microphone off; everyone sees it -->
             <Image Width="20" Height="20"
                    Source="{StaticResource CrossedMicrophoneIcon}"
-                   IsVisible="{Binding IsMicrophoneMuted}"
+                   IsVisible="{Binding ShowsMicrophoneOff}"
                    ToolTip.Tip="{l:Text peer.microphoneOff}"/>
 
             <!-- The user turned the sound of the session off and hears nobody; everyone sees it -->
             <Image Width="20" Height="20"
                    Source="{StaticResource CrossedHeadphonesIcon}"
-                   IsVisible="{Binding IsDeafened}"
+                   IsVisible="{Binding ShowsSoundOff}"
                    ToolTip.Tip="{l:Text peer.soundOff}"/>
 
             <!-- We turned this user's sound off; only here, the others still hear them -->
-            <Image Width="20" Height="20"
+            <Image Width="20" Height="20" Classes="afkDim"
                    Source="{StaticResource CrossedNoVolumeIcon}"
                    IsVisible="{Binding IsMuted}"
                    ToolTip.Tip="{l:Text peer.soundMuted}"/>

@@ -141,6 +141,8 @@ public interface ICoordinatorGateway : IDisposable
     Task<ResumeInboundsResult> ResumeInboundsInHybridSession(int sessionId, IReadOnlyList<string> inboundIds);
     Task<SetMicrophoneMuteResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted);
     Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
+    Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
+    Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message);
     Task<DeleteSessionResult> DeleteSession(int sessionId);
 
     /// <summary>

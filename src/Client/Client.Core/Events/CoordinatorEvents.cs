@@ -120,6 +120,14 @@ public sealed record PeerMicrophoneMuteChangedEvent(int SessionId, int UserId, b
 public sealed record PeerSoundMuteChangedEvent(int SessionId, int UserId, bool IsMuted)
     : HybridSessionPeerEvent(SessionId, UserId);
 
+/// <param name="Reason">What the user said about being away; null when back or when they gave none.</param>
+public sealed record PeerAfkChangedEvent(int SessionId, int UserId, bool IsAfk, string? Reason)
+    : HybridSessionPeerEvent(SessionId, UserId);
+
+/// <summary>Someone poked us; <paramref name="UserId"/> is always the current user.</summary>
+public sealed record PeerPokedEvent(int SessionId, int UserId, int InitiatorUserId, string? Message)
+    : HybridSessionPeerEvent(SessionId, UserId);
+
 /// <param name="HasAudio">The share carries the sound of the shared application or system.</param>
 public sealed record PeerScreenShareStartedEvent(int SessionId, int UserId, bool HasAudio = false)
     : HybridSessionPeerEvent(SessionId, UserId);

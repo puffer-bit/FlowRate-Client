@@ -53,6 +53,28 @@ internal sealed class CoordinatorStateRepository : ICoordinatorStateRepository
             """, new { coordinatorInstanceId, isMuted });
     }
 
+    public async Task<(bool IsAfk, string? Reason)> GetAfkAsync(string coordinatorInstanceId)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        var row = await connection.QueryFirstOrDefaultAsync<AfkRow>(
+            "SELECT IsAfk, AfkReason FROM CoordinatorStates WHERE CoordinatorInstanceId = @coordinatorInstanceId",
+            new { coordinatorInstanceId });
+
+        return row is { IsAfk: true } ? (true, row.AfkReason) : (false, null);
+    }
+
+    public async Task SetAfkAsync(string coordinatorInstanceId, bool isAfk, string? reason)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            INSERT INTO CoordinatorStates (CoordinatorInstanceId, IsAfk, AfkReason)
+            VALUES (@coordinatorInstanceId, @isAfk, @reason)
+            ON CONFLICT (CoordinatorInstanceId) DO UPDATE SET IsAfk = excluded.IsAfk, AfkReason = excluded.AfkReason
+            """, new { coordinatorInstanceId, isAfk, reason = isAfk ? reason : null });
+    }
+
     public async Task<LastSession?> GetLastSessionAsync(string coordinatorInstanceId)
     {
         await using var connection = await _database.OpenAsync();
@@ -91,3 +113,5 @@ internal sealed class CoordinatorStateRepository : ICoordinatorStateRepository
 }
 
 internal sealed record LastSessionRow(int? ShownChatId, bool IsHybridSessionShown, int? HybridSessionId);
+
+internal sealed record AfkRow(bool IsAfk, string? AfkReason);

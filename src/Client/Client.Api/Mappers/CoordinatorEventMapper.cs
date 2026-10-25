@@ -70,6 +70,13 @@ internal static class CoordinatorEventMapper
         HybridSessionPeerUnmuteSoundNotification unmuted =>
             new PeerSoundMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
 
+        HybridSessionPeerAfkNotification afk =>
+            new PeerAfkChangedEvent(afk.SessionId, afk.UserId, true, afk.Reason),
+        HybridSessionPeerNotAfkNotification back =>
+            new PeerAfkChangedEvent(back.SessionId, back.UserId, false, null),
+        HybridSessionPeerPokedNotification poked =>
+            new PeerPokedEvent(poked.SessionId, poked.UserId, poked.InitiatorUserId, poked.Message),
+
         HybridSessionPeerStartedVoiceShareNotification started =>
             new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
         HybridSessionPeerStartedVideoShareNotification started =>
