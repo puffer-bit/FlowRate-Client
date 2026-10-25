@@ -18,11 +18,30 @@ public partial class ActiveHybridSessionVM
     private (string? DeviceId, NoiseSuppressionLevel NoiseSuppression, bool IsEchoCancellationEnabled)? _microphoneInput;
     private readonly System.Threading.Lock _microphoneInputLock = new();
 
+    // Set while the microphone starts: a press that retries it must not ask for a second producer
+    // while the connection starts it
+    private int _isVoiceStarting;
+
     /// <summary>
     /// Starts the microphone on a new transport. The voices and the microphone stay the way the user
-    /// left them on this coordinator.
+    /// left them on this coordinator. Does nothing while it is already starting.
     /// </summary>
     private async Task StartVoiceAsync()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _isVoiceStarting, 1) == 1)
+            return;
+
+        try
+        {
+            await StartVoiceCoreAsync();
+        }
+        finally
+        {
+            System.Threading.Volatile.Write(ref _isVoiceStarting, 0);
+        }
+    }
+
+    private async Task StartVoiceCoreAsync()
     {
         // The server has to be told again: it forgets it with the connection
         if (_hybridSession.IsSoundMuted || await _coordinatorStates.IsSoundMutedAsync(CoordinatorInstanceId))
@@ -75,8 +94,15 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task ToggleMicrophone()
     {
+        // A microphone that failed to start is tried again, otherwise it would stay off for the rest
+        // of the session. It comes back muted or not as the user left it, like after a reconnect
         if (!_hybridSession.IsVoiceStarted)
+        {
+            if (CanSpeak)
+                await StartVoiceAsync();
+
             return;
+        }
 
         // With the voices off the microphone is off because of them, so the press asks to talk
         // again: both come back
