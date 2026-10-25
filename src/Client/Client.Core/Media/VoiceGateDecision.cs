@@ -35,9 +35,9 @@ public sealed record VoiceGateSummary(double ThresholdDb, double EffectiveThresh
 /// opens only <see cref="NoiseMarginDb"/> above it. The follower falls fast and rises slowly: it
 /// settles near the quiet end of the noise, a voice or a knock pulls it up by a fraction of a
 /// decibel, and a room that gets quieter is followed down within a second. While the gate is open
-/// the follower may still fall, and creep up at a quarter of the speed: a noise loud enough to open
-/// the gate before it was learned would otherwise hold it open through the hysteresis for good,
-/// never to be heard by a closed gate. It never goes below the threshold of the user and never more
+/// the follower may still fall, and rise at half the speed: a noise loud enough to open the gate
+/// before it was learned would otherwise hold it open through the hysteresis for good, never to be
+/// heard by a closed gate. It never goes below the threshold of the user and never more
 /// than <see cref="MaxAdaptiveRiseDb"/> above it, so a long loud noise cannot shut the gate.</para>
 /// <para>With voice detection the gate opens, and holds, only while the readings are loud enough
 /// and the detector hears a voice, so a key or a knock as loud as the voice stays out. The two come
@@ -93,9 +93,11 @@ public sealed class VoiceGateDecision
     private const double FloorRiseDbPerSecond = 2;
     private const double FloorFallDbPerSecond = 18;
 
-    // An open gate hears mostly the voice; ten seconds of speech without a pause move the follower
-    // by 5 dB, and every pause pulls it down again
-    private const double OpenFloorRiseDbPerSecond = FloorRiseDbPerSecond / 4;
+    // An open gate hears mostly the voice, but speech pauses a tenth of the time and more, and at
+    // this speed every pause pulls the follower back down to the room: it settles where the
+    // readings are below it a nineteenth of the time. A noise that held the gate open from the
+    // start is learned in about ten seconds.
+    private const double OpenFloorRiseDbPerSecond = FloorRiseDbPerSecond / 2;
 
     /// <summary>
     /// How far apart a loud reading and a voice reading may be and still count together. A
