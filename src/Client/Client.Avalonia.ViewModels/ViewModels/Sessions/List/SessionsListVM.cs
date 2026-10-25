@@ -131,6 +131,7 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<int, RxVoid> _deleteSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
+    private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<int, RxVoid> _toggleChatMuteCommand;
     
@@ -156,6 +157,7 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid> banUserCommand,
         ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand,
         ReactiveCommand<int?, RxVoid> createSessionCommand,
         IPeerPlaybackService playbackService, IVoiceActivityService voiceActivity, IScreenWatchService screenWatch,
@@ -173,6 +175,7 @@ public partial class SessionsListVM : ReactiveObject
         _editPermissionsCommand = editPermissionsCommand;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
+        _banUserCommand = banUserCommand;
         _admitPeerCommand = admitPeerCommand;
         _createSessionCommand = createSessionCommand;
         _playbackService = playbackService;
@@ -517,7 +520,7 @@ public partial class SessionsListVM : ReactiveObject
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
             _screenWatch, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
-            _admitPeerCommand);
+            _banUserCommand, _admitPeerCommand);
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);

@@ -29,7 +29,15 @@
                     <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
                                Classes.deleted-user="{Binding IsSenderDeleted}"
                                Text="{Binding SenderName}"
-                               Foreground="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                               Classes.role-colored="{Binding SenderColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <!-- A local value would hide the usual color of the style whenever the author has no colored role -->
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock.role-colored">
+                                <Setter Property="Foreground"
+                                        Value="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
                     <TextBlock Classes="msg-time"
                                Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>

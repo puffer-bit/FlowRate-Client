@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
@@ -111,12 +112,35 @@
                     </Panel>
                 </Button>
 
-                <Button Classes="hybridAction"
-                        Classes.sharing="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=False}"
-                        Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
-                        ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
-                    <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
-                </Button>
+                <Panel>
+                    <Button Classes="hybridAction"
+                            IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=True}"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                    </Button>
+
+                    <!-- A running share is changed or stopped from a menu -->
+                    <Button Classes="hybridAction sharing"
+                            IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=False}"
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedRight">
+                                <StackPanel Spacing="2">
+                                    <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                          Content="{l:Text hybrid.screen.change}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ChangeScreenShareCommand, FallbackValue={x:Null}}"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
+                                                          Content="{l:Text hybrid.screen.stop}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                    </Button>
+                </Panel>
             </UniformGrid>
         </Grid>
     </Border>

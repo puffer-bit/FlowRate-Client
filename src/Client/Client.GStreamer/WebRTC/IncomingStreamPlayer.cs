@@ -62,7 +62,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // would leave the picture late for good. The gap that leaves is repaired like a loss
     private const string H264Description =
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
-        "rtph264depay request-keyframe=true ! " +
+        "rtph264depay request-keyframe=true wait-for-keyframe=true ! " +
         "h264parse ! {0} ! {1}";
 
     // The same for VP8, whose depayloader drops what it has until the next keyframe
@@ -187,9 +187,18 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             meter.Attach(pad);
         }
 
+        VoiceArrivalMeter? arrival = null;
+
+        if (mixerPad != null && _mixer is { } mixer)
+        {
+            arrival = new VoiceArrivalMeter(mixer);
+            arrival.Attach(mixerPad);
+        }
+
         _branches[padName] = new Branch(branch, mline, meter, video?.Pump, pad)
         {
             MixerPad = mixerPad,
+            Arrival = arrival,
             Codec = video == null ? null : codec,
             Output = video?.Output.Kind,
             Chain = video?.Output.Chain
@@ -255,6 +264,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             }
 
             PipelineBranch.Shutdown(branch.Bin);
+            DetachArrival(branch);
             UnlinkFromOutput(branch.Bin, branch.MixerPad);
             _pipeline.Remove(branch.Bin);
             branch.Bin.Dispose();
@@ -609,6 +619,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             // Stopped first: the pump must not pull from a sink that is shutting down
             branch.Pump?.Dispose();
             PipelineBranch.Shutdown(branch.Bin);
+            DetachArrival(branch);
 
             if (!_isDisposed)
             {
@@ -666,6 +677,49 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             .Select(branch => branch.Mline!.Value)
             .ToList();
 
+    /// <summary>
+    /// Logs how late the buffers of every played voice reached the mixer since the previous call,
+    /// against the latency the mixer gives them. Called by a timer of the transport.
+    /// </summary>
+    /// <param name="userOfSection">The user whose voice the section with the given mline carries.</param>
+    public void ReportVoiceArrival(Func<uint, int?> userOfSection)
+    {
+        Element? mixer;
+
+        lock (_outputLock)
+            mixer = _mixer;
+
+        if (mixer == null || _isDisposed)
+            return;
+
+        long? deadline;
+
+        using (var output = mixer.GetStaticPad("src"))
+            deadline = output == null ? null : GstTimingNative.QueryMinLatency(output.Handle);
+
+        foreach (var branch in _branches.Values)
+        {
+            if (branch.Arrival?.TakeSummary(deadline) is not { } summary)
+                continue;
+
+            var userId = branch.Mline is { } mline ? userOfSection(mline) ?? 0 : 0;
+
+            if (summary.Late > 0)
+                LogVoiceArrivedLate(_sessionId, userId, branch.Mline ?? 0, summary.Late, summary.Buffers,
+                    summary.MinMs, summary.AverageMs, summary.MaxMs, summary.LastMs, (deadline ?? 0) / 1e6);
+            else
+                LogVoiceArrival(_sessionId, userId, branch.Mline ?? 0, summary.Buffers,
+                    summary.MinMs, summary.AverageMs, summary.MaxMs, summary.LastMs, (deadline ?? 0) / 1e6);
+        }
+    }
+
+    // Before the mixer pad goes: its wrapper is disposed with it
+    private static void DetachArrival(Branch branch)
+    {
+        if (branch.MixerPad != null)
+            branch.Arrival?.Detach(branch.MixerPad);
+    }
+
     /// <param name="Mline">Null when the section could not be resolved; such a branch keeps its volume.</param>
     /// <param name="Meter">Null for a stream that is not audio.</param>
     /// <param name="Pump">Null for a stream that is not decoded video.</param>
@@ -673,6 +727,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     {
         /// <summary>The pad of the mixer a played voice is linked to.</summary>
         public Pad? MixerPad { get; init; }
+
+        /// <summary>Measures how late the voice reaches the mixer; null where it is not played.</summary>
+        public VoiceArrivalMeter? Arrival { get; init; }
 
         /// <summary>The codec a video branch decodes.</summary>
         public VideoCodec? Codec { get; init; }
