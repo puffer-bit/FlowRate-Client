@@ -1,5 +1,7 @@
 using Client.Avalonia.Localization;
 using System;
+using System.Collections.Generic;
+using Shared.Validation;
 using ReactiveUI;
 using Client.Core.Sessions.Hybrid;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -120,8 +122,27 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public string AfkReasonDraft
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(AfkReasonCounter));
+        }
     } = string.Empty;
+
+    /// <summary>How much of the reason is typed, out of how much fits.</summary>
+    public string AfkReasonCounter => $"{AfkReasonDraft.Length}/{Limits.ReasonMaxLength}";
+
+    /// <summary>Reasons offered with one press, in the language of the interface.</summary>
+    public IReadOnlyList<string> AfkPresets { get; } =
+    [
+        Strings.Get("hybrid.afk.preset.brb"),
+        Strings.Get("hybrid.afk.preset.break"),
+        Strings.Get("hybrid.afk.preset.food"),
+        Strings.Get("hybrid.afk.preset.call")
+    ];
+
+    /// <summary>Goes away at once with one of <see cref="AfkPresets"/> as the reason.</summary>
+    public ReactiveCommand<string, RxVoid> GoAfkWithPresetCommand { get; }
 
     /// <summary>
     /// Our screen is being sent to the session.
@@ -164,6 +185,11 @@ public class HybridSessionStatusBarVM : ReactiveObject
         ToggleMicrophoneCommand = toggleMicrophoneCommand;
         ToggleSoundCommand = toggleSoundCommand;
         ToggleAfkCommand = toggleAfkCommand;
+        GoAfkWithPresetCommand = ReactiveCommand.CreateFromObservable<string, RxVoid>(reason =>
+        {
+            AfkReasonDraft = reason;
+            return toggleAfkCommand.Execute();
+        }, toggleAfkCommand.CanExecute);
         
         CloseCommand = closeSessionCommand;
         ToggleFullscreenCommand = toggleFullscreenCommand;

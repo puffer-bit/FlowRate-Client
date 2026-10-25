@@ -2,7 +2,6 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
-             xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
@@ -140,16 +139,7 @@
                             ToolTip.Tip="{l:Text hybrid.afk.go}">
                         <Button.Flyout>
                             <Flyout Placement="TopEdgeAlignedRight">
-                                <StackPanel Spacing="6" Width="240">
-                                    <TextBox Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.AfkReasonDraft, FallbackValue={x:Null}}"
-                                             PlaceholderText="{l:Text hybrid.afk.reason.placeholder}"
-                                             MaxLength="{x:Static validation:Limits.ReasonMaxLength}"/>
-                                    <Button HorizontalAlignment="Right"
-                                            Content="{l:Text hybrid.afk.confirm}"
-                                            IsDefault="True"
-                                            menus:FlyoutMenu.CloseOnClick="True"
-                                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"/>
-                                </StackPanel>
+                                <hybrid:AfkReasonCard DataContext="{Binding OpenedSessions.HybridPanelSession.StatusBar, FallbackValue={x:Null}}"/>
                             </Flyout>
                         </Button.Flyout>
                         <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>

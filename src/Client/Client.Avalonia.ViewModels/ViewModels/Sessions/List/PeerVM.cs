@@ -53,9 +53,18 @@ public class PeerVM : ReactiveObject
     public bool IsDeafened => PeerData.IsSoundMuted;
 
     /// <summary>
-    /// The user is away from the keyboard.
+    /// The user is away from the keyboard, which always means no microphone and no sound.
     /// </summary>
     public bool IsAfk => PeerData.IsAfk;
+
+    /// <summary>The reason the away user gave, shown under their name; null without one.</summary>
+    public string? AfkReason => IsAfk && !string.IsNullOrEmpty(PeerData.AfkReason) ? PeerData.AfkReason : null;
+
+    /// <summary>The microphone mark shows only outside AFK, whose mark stands for it.</summary>
+    public bool ShowsMicrophoneOff => IsMicrophoneMuted && !IsAfk;
+
+    /// <summary>The sound mark shows only outside AFK, whose mark stands for it.</summary>
+    public bool ShowsSoundOff => IsDeafened && !IsAfk;
 
     /// <summary>What the away user said about it, for the hint of the mark; the bare word without a reason.</summary>
     public string AfkHint => string.IsNullOrEmpty(PeerData.AfkReason)
@@ -332,12 +341,14 @@ public class PeerVM : ReactiveObject
     {
         PeerData.IsMicrophoneMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsMicrophoneMuted));
+        this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
     }
 
     public void UpdateSoundMuted(bool isMuted)
     {
         PeerData.IsSoundMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsDeafened));
+        this.RaisePropertyChanged(nameof(ShowsSoundOff));
     }
 
     public void UpdateAfk(bool isAfk, string? reason)
@@ -346,6 +357,9 @@ public class PeerVM : ReactiveObject
         PeerData.AfkReason = isAfk ? reason : null;
         this.RaisePropertyChanged(nameof(IsAfk));
         this.RaisePropertyChanged(nameof(AfkHint));
+        this.RaisePropertyChanged(nameof(AfkReason));
+        this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
+        this.RaisePropertyChanged(nameof(ShowsSoundOff));
     }
 
     public void UpdateScreenShare(bool isActive)

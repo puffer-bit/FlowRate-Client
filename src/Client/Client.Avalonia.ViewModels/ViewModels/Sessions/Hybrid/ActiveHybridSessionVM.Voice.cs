@@ -80,18 +80,19 @@ public partial class ActiveHybridSessionVM
 
         // With the voices off the microphone is off because of them, so the press asks to talk
         // again: both come back
+        // Away the microphone is always off, so the press brings the user back to talk, and to hear
+        if (_hybridSession.IsAfk)
+        {
+            await _coordinatorStates.SetMicrophoneMutedAsync(CoordinatorInstanceId, false);
+            await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, false);
+            await ToggleAfk();
+            return;
+        }
+
         if (_hybridSession.IsSoundMuted)
         {
             await _coordinatorStates.SetMicrophoneMutedAsync(CoordinatorInstanceId, false);
             await ToggleSound();
-            return;
-        }
-
-        // Away the microphone is off because of it, so the press brings the user back to talk
-        if (_hybridSession.IsAfk)
-        {
-            await _coordinatorStates.SetMicrophoneMutedAsync(CoordinatorInstanceId, false);
-            await ToggleAfk();
             return;
         }
 
@@ -126,21 +127,19 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task ToggleSound()
     {
+        // Away nothing is heard, so the press brings the user back to hear
+        if (_hybridSession.IsAfk)
+        {
+            await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, false);
+            await ToggleAfk();
+            return;
+        }
+
         var mute = !_hybridSession.IsSoundMuted;
 
-        StatusBar.IsSoundOn = !mute;
         _sounds.Play(mute ? SoundEvent.Deafen : SoundEvent.Undeafen);
-
-        var result = await _hybridSession.SetSoundMutedAsync(mute);
-
+        await SetSoundMutedAsync(mute);
         await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, mute);
-
-        // The sound is switched here anyway; a rejection is reported by the main window
-        if (result is not (SetSoundMuteResult.NoError or SetSoundMuteResult.Rejected))
-        {
-            ShowPopUp(NotificationPopUpVM.PopUpType.Error,
-                Strings.Format("hybrid.sound.muteFailed", ("reason", result)), "SoundMuteFailed");
-        }
 
         if (!_hybridSession.IsVoiceStarted)
             return;
@@ -151,9 +150,24 @@ public partial class ActiveHybridSessionVM
             if (!_hybridSession.IsMicrophoneMuted)
                 await SetMicrophoneMutedAsync(true);
         }
-        else if (!_hybridSession.IsAfk)
+        else
         {
             await RestoreMicrophoneAsync();
+        }
+    }
+
+    /// <summary>Silences the voices of the session or brings them back, here whatever the server answers.</summary>
+    private async Task SetSoundMutedAsync(bool mute)
+    {
+        StatusBar.IsSoundOn = !mute;
+
+        var result = await _hybridSession.SetSoundMutedAsync(mute);
+
+        // A rejection is reported by the main window
+        if (result is not (SetSoundMuteResult.NoError or SetSoundMuteResult.Rejected))
+        {
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error,
+                Strings.Format("hybrid.sound.muteFailed", ("reason", result)), "SoundMuteFailed");
         }
     }
 
