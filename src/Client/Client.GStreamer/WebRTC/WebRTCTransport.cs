@@ -210,14 +210,14 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
     public void SetInboundVoiceMuted(bool isMuted) => _incoming.SetVoiceMuted(isMuted);
 
-    public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, double? voiceGateThresholdDb,
+    public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
         NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, input, volume, voiceGateThresholdDb, noiseSuppression);
+        _outgoing.Start(outbound, input, volume, voiceGate, noiseSuppression);
 
-    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, double?, NoiseSuppressionLevel)"/>
+    /// <inheritdoc cref="OutgoingTracks.Start(OutboundTrack, Element, double, bool, VoiceGateOptions?, NoiseSuppressionLevel)"/>
     public bool StartOutbound(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression) =>
-        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGateThresholdDb, noiseSuppression);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression) =>
+        _outgoing.Start(outbound, source, volume, isMicrophone, voiceGate, noiseSuppression);
 
     public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings) =>
         _outgoing.Start(outbound, input, settings);
@@ -231,8 +231,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression) =>
         _outgoing.SetInput(outboundId, input, noiseSuppression);
 
-    public void SetVoiceGateThreshold(string outboundId, double? thresholdDb) =>
-        _outgoing.SetVoiceGateThreshold(outboundId, thresholdDb);
+    public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate) =>
+        _outgoing.SetVoiceGate(outboundId, voiceGate);
 
     /// <summary>
     /// Hands a decoded frame to whoever draws it. Runs on the pump thread of the section.
