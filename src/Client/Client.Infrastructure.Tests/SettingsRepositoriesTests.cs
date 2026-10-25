@@ -284,6 +284,18 @@ public class SettingsRepositoriesTests
         await repository.SetSoundMutedAsync("coordinator-a", false);
 
         Assert.False(await repository.IsSoundMutedAsync("coordinator-a"));
+
+        // Being away is remembered with its reason, which goes once the user is back
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-a"));
+
+        await repository.SetAfkAsync("coordinator-a", true, "lunch");
+
+        Assert.Equal((true, "lunch"), await repository.GetAfkAsync("coordinator-a"));
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-b"));
+
+        await repository.SetAfkAsync("coordinator-a", false, "lunch");
+
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-a"));
     }
 
     [Fact]
