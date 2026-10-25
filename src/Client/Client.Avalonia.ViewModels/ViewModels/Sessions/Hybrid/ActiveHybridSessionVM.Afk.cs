@@ -16,7 +16,8 @@ public partial class ActiveHybridSessionVM
 {
     /// <summary>
     /// Tells the server again that we are away, on a new transport: it forgets it with the connection.
-    /// Away stays the way the user left it on this coordinator.
+    /// Away stays the way the user left it on this coordinator. Runs before the voice starts, which then
+    /// starts with the microphone off, since the voices are.
     /// </summary>
     private async Task RestoreAfkAsync()
     {
@@ -28,12 +29,13 @@ public partial class ActiveHybridSessionVM
             return;
 
         await _hybridSession.SetAfkAsync(true, reason);
+        await SilenceForAfkAsync();
         ShowAfk();
     }
 
     /// <summary>
     /// Goes away with the reason typed in the bar, or comes back. Remembered on this coordinator, as the mutes are.
-    /// The microphone goes off while away and returns to what the user chose for it, unless the voices keep it off.
+    /// Away nothing is heard and the microphone is always off; back, both return to what the user chose for them.
     /// </summary>
     private async Task ToggleAfk()
     {
@@ -48,21 +50,31 @@ public partial class ActiveHybridSessionVM
             ShowPopUp(NotificationPopUpVM.PopUpType.Error, Strings.Format("hybrid.afk.failed", ("reason", result)),
                 "AfkFailed");
 
-        if (!_hybridSession.IsVoiceStarted)
-            return;
+        _sounds.Play(isAfk ? SoundEvent.Deafen : SoundEvent.Undeafen);
 
-        // Not remembered as the choice of the user: the microphone is only off for as long as the user is away
         if (isAfk)
-        {
-            if (!_hybridSession.IsMicrophoneMuted && await SetMicrophoneMutedAsync(true))
-                _sounds.Play(SoundEvent.Mute);
-        }
-        else if (!_hybridSession.IsSoundMuted && _hybridSession.IsMicrophoneMuted)
-        {
+            await SilenceForAfkAsync();
+        else
+            await RestoreAfterAfkAsync();
+    }
+
+    // Not remembered as the choice of the user: the voices and the microphone are only off for as long as the user is away
+    private async Task SilenceForAfkAsync()
+    {
+        if (!_hybridSession.IsSoundMuted)
+            await SetSoundMutedAsync(true);
+
+        if (_hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
+            await SetMicrophoneMutedAsync(true);
+    }
+
+    private async Task RestoreAfterAfkAsync()
+    {
+        if (_hybridSession.IsSoundMuted && !await _coordinatorStates.IsSoundMutedAsync(CoordinatorInstanceId))
+            await SetSoundMutedAsync(false);
+
+        if (_hybridSession.IsVoiceStarted && !_hybridSession.IsSoundMuted)
             await RestoreMicrophoneAsync();
-            if (!_hybridSession.IsMicrophoneMuted)
-                _sounds.Play(SoundEvent.Unmute);
-        }
     }
 
     private void ShowAfk()
