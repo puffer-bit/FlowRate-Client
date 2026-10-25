@@ -1,0 +1,129 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:controls="clr-namespace:Client.Avalonia.Controls">
+    <Design.PreviewWith>
+        <StackPanel Width="400" Spacing="10" Margin="20">
+            <controls:ExpandableSection Title="Folded section" Description="What lies inside">
+                <TextBlock Text="Content"/>
+            </controls:ExpandableSection>
+            <controls:ExpandableSection Title="Open section" Description="What lies inside" IsExpanded="True">
+                <TextBlock Text="Content"/>
+            </controls:ExpandableSection>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <Style Selector="controls|ExpandableSection">
+        <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,4,14,14"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        ClipToBounds="True">
+                    <StackPanel>
+                        <!-- A plain border, not a button: the button themes would outline, color and shrink it -->
+                        <Border Name="PART_Header" Focusable="True">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Name="iconTile" Grid.Column="0"
+                                        Width="34" Height="34" CornerRadius="8"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Image Width="18" Height="18" Source="{TemplateBinding Icon}"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{TemplateBinding Title}" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{TemplateBinding Description}"
+                                               FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               IsVisible="{TemplateBinding Description, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </StackPanel>
+
+                                <!-- Turns over as the section opens -->
+                                <Border Name="chevronTile" Grid.Column="2"
+                                        Width="26" Height="26" CornerRadius="13"
+                                        VerticalAlignment="Center">
+                                    <Path Name="chevron"
+                                          Width="10" Height="6" Stretch="None"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                          Stroke="{DynamicResource SecondaryTextBrush}"
+                                          StrokeThickness="1.5"
+                                          StrokeLineCap="Round"
+                                          StrokeJoin="Round"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Panel Name="PART_Clip" ClipToBounds="True">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              VerticalAlignment="Top"
+                                              Padding="{TemplateBinding Padding}"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                        </Panel>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="controls|ExpandableSection /template/ Border#PART_Header">
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="controls|ExpandableSection /template/ Border#PART_Header:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+    <Style Selector="controls|ExpandableSection /template/ Border#PART_Header:focus-visible">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+
+    <Style Selector="controls|ExpandableSection /template/ Border#iconTile">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+
+    <Style Selector="controls|ExpandableSection /template/ Border#chevronTile">
+        <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                <BrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="controls|ExpandableSection /template/ Border#PART_Header:pointerover Border#chevronTile">
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+    </Style>
+    <Style Selector="controls|ExpandableSection /template/ Border#PART_Header:pointerover Path#chevron">
+        <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+    <Style Selector="controls|ExpandableSection:expanded /template/ Border#chevronTile">
+        <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+    </Style>
+
+    <!-- The content fades in as it unfolds and out as it folds -->
+    <Style Selector="controls|ExpandableSection /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="controls|ExpandableSection:expanded /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+</Styles>
