@@ -92,7 +92,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
         ("microphone", ["inputDevice", "inputVolume", "noiseSuppression"]),
-        ("voiceActivity", ["voiceGate"]),
+        ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
 
@@ -125,6 +125,18 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = true;
+
+    public bool IsVoiceDetectionEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsAdaptiveThresholdEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public double MinVoiceGateThresholdDb => AudioSettings.MinVoiceGateThresholdDb;
     public double MaxVoiceGateThresholdDb => AudioSettings.MaxVoiceGateThresholdDb;
@@ -275,6 +287,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
 
+        var voiceDetectionChanges = this.WatchProperty(nameof(IsVoiceDetectionEnabled), x => x.IsVoiceDetectionEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
+        var adaptiveThresholdChanges = this.WatchProperty(nameof(IsAdaptiveThresholdEnabled), x => x.IsAdaptiveThresholdEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
         var thresholdChanges = this.WatchProperty(nameof(VoiceGateThresholdDb), x => x.VoiceGateThresholdDb)
             .Where(_ => !_isUpdating)
             .Throttle(TimeSpan.FromMilliseconds(300))
@@ -307,6 +327,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Merge(volumeChanges)
             .Merge(noiseSuppressionChanges)
             .Merge(gateChanges)
+            .Merge(voiceDetectionChanges)
+            .Merge(adaptiveThresholdChanges)
             .Merge(thresholdChanges)
             .Merge(soundsEnabledChanges)
             .Merge(soundsVolumeChanges)
@@ -458,10 +480,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
         var now = _testClock.Elapsed;
 
+        // The test has no voice detection: it would need RNNoise in the test pipeline, and the meter
+        // shows the loudness the threshold is set against
+        var options = new VoiceGateOptions(VoiceGateThresholdDb, IsAdaptiveThresholdEnabled: IsAdaptiveThresholdEnabled);
+
         if (_testGate == null)
-            _testGate = new VoiceGateDecision(VoiceGateThresholdDb);
-        else if (_testGate.ThresholdDb != VoiceGateThresholdDb)
-            _testGate.SetThreshold(VoiceGateThresholdDb, now, _testGate.IsOpen);
+            _testGate = new VoiceGateDecision(options);
+        else if (_testGate.Options != options)
+            _testGate.SetOptions(options, now, _testGate.IsOpen);
 
         // The meter shows the peak level on the same decibel scale the threshold is set on
         var peakDb = InputLevel > 0
@@ -502,6 +528,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         InputVolumePercent = settings.InputVolume * 100;
         IsVoiceGateEnabled = settings.IsVoiceGateEnabled;
         VoiceGateThresholdDb = settings.VoiceGateThresholdDb;
+        IsVoiceDetectionEnabled = settings.IsVoiceDetectionEnabled;
+        IsAdaptiveThresholdEnabled = settings.IsAdaptiveThresholdEnabled;
         NoiseSuppressionIndex = (int)settings.NoiseSuppression;
         AreSoundsEnabled = settings.AreSoundsEnabled;
         SoundsVolumePercent = settings.SoundsVolume * 100;
@@ -580,6 +608,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         InputVolume = InputVolumePercent / 100,
         IsVoiceGateEnabled = IsVoiceGateEnabled,
         VoiceGateThresholdDb = VoiceGateThresholdDb,
+        IsVoiceDetectionEnabled = IsVoiceDetectionEnabled,
+        IsAdaptiveThresholdEnabled = IsAdaptiveThresholdEnabled,
         NoiseSuppression = NoiseSuppression,
         AreSoundsEnabled = AreSoundsEnabled,
         SoundsVolume = SoundsVolumePercent / 100,

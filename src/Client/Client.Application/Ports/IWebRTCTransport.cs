@@ -81,14 +81,14 @@ public interface IWebRTCTransport : IDisposable
     /// Starts sending an audio track from <paramref name="input"/> to a producer the SFU created for it.
     /// </summary>
     /// <param name="volume">Gain applied before encoding.</param>
-    /// <param name="voiceGateThresholdDb">
-    /// Peak level in dBFS from which a microphone is sent, or null to send it all the time. Other
-    /// inputs are never gated.
+    /// <param name="voiceGate">
+    /// How the voice gate of a microphone decides, or null to send it all the time. Other inputs are
+    /// never gated.
     /// </param>
     /// <param name="noiseSuppression">
     /// How much background noise is taken out of a microphone. Other inputs are sent as they are.
     /// </param>
-    bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, double? voiceGateThresholdDb,
+    bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
         NoiseSuppressionLevel noiseSuppression);
 
     /// <summary>
@@ -112,7 +112,7 @@ public interface IWebRTCTransport : IDisposable
     /// <summary>
     /// Changes the voice gate of a running microphone track, null sends it all the time.
     /// </summary>
-    void SetVoiceGateThreshold(string outboundId, double? thresholdDb);
+    void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate);
 
     /// <summary>
     /// Stops sending a track. Its section stays as inactive.

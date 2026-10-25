@@ -1,4 +1,5 @@
 using Client.Core.Media;
+using Client.Core.Settings;
 using Xunit;
 
 namespace Client.Application.Tests;
@@ -12,7 +13,7 @@ public class VoiceGateDecisionTests
 
     private TimeSpan _now = TimeSpan.FromSeconds(1);
 
-    private VoiceGateDecision CreateGate() => new(Threshold);
+    private static VoiceGateDecision CreateGate() => new(new VoiceGateOptions(Threshold));
 
     // Feeds the same peak for a while, one reading per interval, and tells when the gate last changed
     private TimeSpan? Feed(VoiceGateDecision gate, double peakDb, TimeSpan duration)
@@ -124,7 +125,7 @@ public class VoiceGateDecisionTests
         var gate = CreateGate();
 
         Feed(gate, -20, TimeSpan.FromSeconds(1));
-        gate.SetThreshold(-5, _now, isOpen: true);
+        gate.SetOptions(new VoiceGateOptions(-5), _now, isOpen: true);
 
         Assert.False(gate.OnLevel(-20, _now + Interval));
         Assert.True(gate.IsOpen);
@@ -139,7 +140,7 @@ public class VoiceGateDecisionTests
     {
         var gate = CreateGate();
 
-        gate.SetThreshold(Threshold, _now, isOpen: true);
+        gate.SetOptions(new VoiceGateOptions(Threshold), _now, isOpen: true);
 
         Assert.True(gate.IsOpen);
         Assert.NotNull(Feed(gate, -80, TimeSpan.FromSeconds(1)));

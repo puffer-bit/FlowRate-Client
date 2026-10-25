@@ -1,3 +1,5 @@
+using Client.Core.Settings;
+
 namespace Client.Core.Media;
 
 /// <summary>
@@ -64,13 +66,17 @@ public sealed class VoiceGateDecision
     private double _loudestDb = double.NegativeInfinity;
     private double _openPeakSumDb;
 
-    /// <param name="thresholdDb">Peak level in dBFS from which the gate opens.</param>
-    public VoiceGateDecision(double thresholdDb)
+    public VoiceGateDecision(VoiceGateOptions options)
     {
-        ThresholdDb = thresholdDb;
+        Options = options;
     }
 
-    public double ThresholdDb { get; private set; }
+    public VoiceGateOptions Options { get; private set; }
+
+    /// <summary>
+    /// Peak level in dBFS from which the gate opens, as set.
+    /// </summary>
+    public double ThresholdDb => Options.ThresholdDb;
 
     public bool IsOpen { get; private set; }
 
@@ -83,16 +89,16 @@ public sealed class VoiceGateDecision
             MinHoldTime.Ticks, MaxHoldTime.Ticks));
 
     /// <summary>
-    /// Changes the threshold. An open gate first waits out its hold, so raising the threshold above
-    /// the voice does not cut a word in half.
+    /// Changes how the gate decides. An open gate first waits out its hold, so raising the threshold
+    /// above the voice does not cut a word in half.
     /// </summary>
     /// <param name="isOpen">
     /// Whether the valve is open now. It may be open while the decision is not, when the gate was
     /// turned off and is turned on again; it then closes after the hold like any open gate.
     /// </param>
-    public void SetThreshold(double thresholdDb, TimeSpan now, bool isOpen)
+    public void SetOptions(VoiceGateOptions options, TimeSpan now, bool isOpen)
     {
-        ThresholdDb = thresholdDb;
+        Options = options;
         _lastSpeech = now;
 
         if (isOpen && !IsOpen)

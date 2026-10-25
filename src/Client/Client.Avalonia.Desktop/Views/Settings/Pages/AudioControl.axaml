@@ -66,6 +66,13 @@
             <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
                 <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"/>
             </ui:SettingsRow>
+            <!-- Both only refine the gate, so they mean nothing while it is off -->
+            <ui:SettingsRow services:SettingText.Key="audio.voiceDetection" IsEnabled="{Binding IsVoiceGateEnabled}">
+                <CheckBox IsChecked="{Binding IsVoiceDetectionEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.adaptiveThreshold" IsEnabled="{Binding IsVoiceGateEnabled}">
+                <CheckBox IsChecked="{Binding IsAdaptiveThresholdEnabled}"/>
+            </ui:SettingsRow>
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
