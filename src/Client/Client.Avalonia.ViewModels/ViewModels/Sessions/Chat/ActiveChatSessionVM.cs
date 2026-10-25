@@ -215,6 +215,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         // Subscribe before the first page so nothing sent meanwhile is missed; duplicates are dropped by id
         _subscriptions
+            .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
             .Add(() => coordinatorSession.TextMessageAdded += OnTextMessageAdded,
                 () => coordinatorSession.TextMessageAdded -= OnTextMessageAdded)
             .Add(() => coordinatorSession.TextMessageEdited += OnTextMessageEdited,

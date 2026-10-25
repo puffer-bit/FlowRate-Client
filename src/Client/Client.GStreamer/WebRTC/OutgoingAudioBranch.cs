@@ -169,9 +169,10 @@ internal static class OutgoingAudioBranch
     /// Each is left out when the runtime lacks its element.
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
+    /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
     public static Bin? Build(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        NoiseSuppressionLevel noiseSuppression)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
     {
         var payloadType = outbound.PayloadType > 0 ? outbound.PayloadType : DefaultOpusPayloadType;
         var isScreen = outbound.SourceType == MediaSourceType.Screen;
@@ -228,7 +229,7 @@ internal static class OutgoingAudioBranch
         // alive until it is collected and the release queue of the binding is drained.
         encoding.Dispose();
 
-        if (!ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression))
+        if (!ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression, echoProbe))
         {
             branch.Dispose();
             return null;
@@ -248,9 +249,9 @@ internal static class OutgoingAudioBranch
     /// <param name="isStereo">The capture keeps two channels, as the sound of a screen does.</param>
     /// <returns>False when the part could not be built or linked; the branch is then left without one.</returns>
     public static bool ReplaceCapture(Bin branch, Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
     {
-        var capture = BuildCapture(source, isMicrophone, isStereo, noiseSuppression);
+        var capture = BuildCapture(source, isMicrophone, isStereo, noiseSuppression, echoProbe);
 
         if (capture == null)
             return false;
@@ -288,11 +289,11 @@ internal static class OutgoingAudioBranch
     }
 
     private static Bin? BuildCapture(Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
     {
         // The fragment ends with a link, and without it the description would
         var description = string.Format(CaptureDescription,
-            isMicrophone ? MicrophoneProcessing.Fragment(noiseSuppression) : "",
+            isMicrophone ? MicrophoneProcessing.Fragment(noiseSuppression, echoProbe) : "",
             isStereo ? ScreenCaps : MicrophoneProcessing.Caps).TrimEnd(' ', '!');
 
         var processing = Global.ParseBinFromDescription(description, true);

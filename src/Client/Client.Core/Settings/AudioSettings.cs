@@ -53,6 +53,12 @@ public class AudioSettings
     public NoiseSuppressionLevel NoiseSuppression { get; set; } = NoiseSuppressionLevel.Moderate;
 
     /// <summary>
+    /// Whether the voices played on the speakers are taken out of the microphone, so the others do
+    /// not hear themselves back. Headphones need none, but it does them no harm.
+    /// </summary>
+    public bool IsEchoCancellationEnabled { get; set; } = true;
+
+    /// <summary>
     /// Whether the interface makes sounds: someone joining, the microphone being muted and the like.
     /// </summary>
     public bool AreSoundsEnabled { get; set; } = true;

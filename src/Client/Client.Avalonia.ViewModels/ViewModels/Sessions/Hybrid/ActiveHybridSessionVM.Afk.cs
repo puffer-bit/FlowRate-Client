@@ -50,7 +50,7 @@ public partial class ActiveHybridSessionVM
             ShowPopUp(NotificationPopUpVM.PopUpType.Error, Strings.Format("hybrid.afk.failed", ("reason", result)),
                 "AfkFailed");
 
-        _sounds.Play(isAfk ? SoundEvent.Deafen : SoundEvent.Undeafen);
+        _sounds.Play(isAfk ? SoundEvent.Afk : SoundEvent.Undeafen);
 
         if (isAfk)
             await SilenceForAfkAsync();
@@ -102,7 +102,7 @@ public partial class ActiveHybridSessionVM
         var initiator = await _coordinatorSession.GetUser(poked.InitiatorUserId);
         var name = initiator?.Username ?? poked.InitiatorUserId.ToString();
 
-        _sounds.Play(SoundEvent.Mention);
+        _sounds.Play(SoundEvent.Poke);
         _notifications.Show(NotificationType.Info, Strings.Format("hybrid.poked.title", ("user", name)),
             poked.Message ?? Strings.Get("hybrid.poked.noMessage"));
     }

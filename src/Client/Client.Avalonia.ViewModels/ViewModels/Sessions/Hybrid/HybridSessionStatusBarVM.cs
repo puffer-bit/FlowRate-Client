@@ -81,6 +81,15 @@ public class HybridSessionStatusBarVM : ReactiveObject
     }
     
     /// <summary>
+    /// Our own voice is heard by the session right now.
+    /// </summary>
+    public bool IsSpeaking
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// The session is heard. Off while the user silenced all of it, which the others see.
     /// </summary>
     public bool IsSoundOn
@@ -133,7 +142,13 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public string AfkReasonCounter => $"{AfkReasonDraft.Length}/{Limits.ReasonMaxLength}";
 
     /// <summary>Reasons offered with one press, in the language of the interface.</summary>
-    public IReadOnlyList<string> AfkPresets { get; } =
+    public IReadOnlyList<string> AfkPresets
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = GetAfkPresets();
+
+    private static IReadOnlyList<string> GetAfkPresets() =>
     [
         Strings.Get("hybrid.afk.preset.brb"),
         Strings.Get("hybrid.afk.preset.break"),
@@ -205,6 +220,24 @@ public class HybridSessionStatusBarVM : ReactiveObject
 
         if (_state is HybridSessionState.Connected or HybridSessionState.Failed)
             ChangeStatus(_state.Value);
+    }
+
+    /// <summary>
+    /// Puts the texts into the language that has just been chosen.
+    /// </summary>
+    public void UpdateTexts()
+    {
+        AfkPresets = GetAfkPresets();
+        this.RaisePropertyChanged(nameof(AfkHint));
+
+        if (_state != null)
+        {
+            ChangeStatus(_state.Value);
+            return;
+        }
+
+        StatusBarText = Strings.Get("hybrid.status.preparingServices");
+        ShortStatusText = Strings.Get("hybrid.status.preparing");
     }
 
     public void ChangeStatus(HybridSessionState newState)
