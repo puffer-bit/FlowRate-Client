@@ -499,7 +499,8 @@ internal sealed partial class OutgoingTracks
     {
         using var element = FindOutgoingBranch(outboundId)?.GetByName(OutgoingAudioBranch.InputVolumeName);
 
-        if (element == null)
+        // Every save of the audio settings passes the volume, whatever was changed
+        if (element == null || element.GetProperty<double>("volume") == volume)
             return;
 
         element.SetProperty("volume", volume);
@@ -508,10 +509,11 @@ internal sealed partial class OutgoingTracks
 
     public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate)
     {
-        foreach (var gate in _gates.Values.Where(gate => gate.OutboundId == outboundId))
+        // A gate with voice detection is held under both of its level elements
+        foreach (var gate in _gates.Values.Distinct().Where(gate => gate.OutboundId == outboundId))
         {
-            gate.SetOptions(voiceGate);
-            LogVoiceGateOptionsChanged(_core.SessionId, voiceGate);
+            if (gate.SetOptions(voiceGate))
+                LogVoiceGateOptionsChanged(_core.SessionId, voiceGate);
         }
     }
 
@@ -737,7 +739,7 @@ internal sealed partial class OutgoingTracks
     /// </summary>
     public void ReportGates()
     {
-        foreach (var gate in _gates.Values)
+        foreach (var gate in _gates.Values.Distinct())
         {
             if (gate.TakeSummary() is { } summary)
                 LogVoiceGateSummary(_core.SessionId, summary.ThresholdDb, summary.EffectiveThresholdDb,
