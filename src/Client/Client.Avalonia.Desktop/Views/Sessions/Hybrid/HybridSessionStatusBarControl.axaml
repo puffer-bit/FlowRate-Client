@@ -5,6 +5,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:hybrid="clr-namespace:Client.Views.Sessions.Hybrid"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
@@ -47,15 +49,33 @@
     <Grid Background="{DynamicResource GeneralBrush}" ColumnDefinitions="*, Auto" ColumnSpacing="12">
 
         <!-- The session and the state of its connection -->
-        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,0,0,0">
-            <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
-                <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
-                                                IsIndeterminate="True"
-                                                BorderThickness="3"
-                                                Foreground="{DynamicResource ProgressRingBrush}"
-                                                IsVisible="{Binding IsLoading}"/>
-                <Image Width="20" Height="20" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}" IsVisible="{Binding !IsLoading}"/>
-            </Panel>
+        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="6" Margin="8,0,0,0">
+            <!-- Opens the statistics of the connection -->
+            <Button Grid.Column="0" Classes="ghost" Padding="4" VerticalAlignment="Center"
+                    ToolTip.Tip="{l:Text hybrid.stats.open}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding Stats}"/>
+                    </Flyout>
+                </Button.Flyout>
+                <Panel Width="24" Height="24">
+                    <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                    IsIndeterminate="True"
+                                                    BorderThickness="3"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"
+                                                    IsVisible="{Binding IsLoading}"/>
+                    <indicators:SignalIndicator Width="22" Height="22" Level="{Binding Stats.SignalLevel}"
+                                                IsVisible="{Binding IsConnected}"/>
+                    <Image Width="20" Height="20" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                        <Image.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsLoading"/>
+                                <Binding Path="!IsConnected"/>
+                            </MultiBinding>
+                        </Image.IsVisible>
+                    </Image>
+                </Panel>
+            </Button>
 
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <text:MarqueeTextBlock Text="{Binding SessionName}"

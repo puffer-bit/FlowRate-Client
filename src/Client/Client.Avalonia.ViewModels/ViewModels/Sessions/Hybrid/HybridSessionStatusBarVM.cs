@@ -36,6 +36,20 @@ public class HybridSessionStatusBarVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = "IInCircleIcon";
 
+    /// <summary>
+    /// The media goes through. The connection then shows its quality instead of an icon.
+    /// </summary>
+    public bool IsConnected
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// The quality of the connection and its history.
+    /// </summary>
+    public HybridSessionStatsVM Stats { get; } = new();
+
     // The last state shown, to put the new name into its text
     private HybridSessionState? _state;
 
@@ -129,6 +143,10 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public void ChangeStatus(HybridSessionState newState)
     {
         _state = newState;
+        IsConnected = newState == HybridSessionState.Connected;
+
+        if (!IsConnected)
+            Stats.ResetQuality();
 
         switch (newState)
         {
