@@ -12,6 +12,9 @@ internal enum VideoOutputKind
     /// <summary>BGRA pixels in memory, shown by copying.</summary>
     Memory,
 
+    /// <summary>NV12 or I420 planes in memory, uploaded by an OpenGL presenter.</summary>
+    MemoryYuv,
+
     /// <summary>DMA-BUF descriptors of a VA-API decoder.</summary>
     DmaBuf,
 
@@ -33,13 +36,17 @@ internal sealed record VideoOutput(string Decoder, VideoOutputKind Kind, string 
 /// </summary>
 /// <remarks>
 /// Whatever cannot be used falls back to the plain path: the decoder hands its frames over in
-/// memory and videoconvert turns them into BGRA, the way frames were always shown. Converting on
+/// memory, as NV12 or I420 when an OpenGL presenter uploads the planes (videoconvert passes them
+/// through untouched), or turned into BGRA by videoconvert for the bitmap. Converting on
 /// the GPU first and downloading BGRA is not faster: on AMD with VA-API, reading BGRA back from
 /// vapostproc gave 28 frames per second at 1080p, the plain path 144.
 /// </remarks>
 internal static class VideoOutputSelector
 {
     private const string MemoryCaps = "video/x-raw,format=BGRA";
+
+    // What decoders output anyway; anything else (10-bit, 4:4:4) is converted by videoconvert
+    private const string YuvCaps = "video/x-raw,format=(string){NV12,I420}";
 
     private static readonly string[] SoftwareDecoders = ["openh264dec", "dav1ddec", "vp8dec", "vp9dec"];
 
@@ -110,9 +117,14 @@ internal static class VideoOutputSelector
             $"{head} ! d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA");
     }
 
-    /// <summary>The path frames always took: decoded, converted by the CPU and copied.</summary>
+    /// <summary>
+    /// Frames in memory: the YUV planes as decoded when the screen uploads them, otherwise
+    /// converted to BGRA by the CPU and copied, the path frames always took.
+    /// </summary>
     public static VideoOutput Plain(string decoder) =>
-        new(decoder, VideoOutputKind.Memory, $"{decoder} ! videoconvert ! {MemoryCaps}");
+        VideoSurfaceSupport.Supports(VideoSurfaceKinds.YuvMemory)
+            ? new VideoOutput(decoder, VideoOutputKind.MemoryYuv, $"{decoder} ! videoconvert ! {YuvCaps}")
+            : new VideoOutput(decoder, VideoOutputKind.Memory, $"{decoder} ! videoconvert ! {MemoryCaps}");
 
     private static bool IsSoftware(string decoder) => SoftwareDecoders.Contains(decoder);
 

@@ -48,6 +48,7 @@ public partial class HybridScreenTile : UserControl
         {
             _stream.FrameReady -= OnFrame;
             _stream.Cleared -= Picture.Clear;
+            _stream.ReadFrameStats = null;
         }
 
         _stream = stream;
@@ -58,6 +59,7 @@ public partial class HybridScreenTile : UserControl
 
         stream.FrameReady += OnFrame;
         stream.Cleared += Picture.Clear;
+        stream.ReadFrameStats = () => Picture.Stats;
     }
 
     private void OnPictureDoubleTapped(object? sender, TappedEventArgs e)

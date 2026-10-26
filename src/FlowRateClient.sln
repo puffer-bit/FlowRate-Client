@@ -70,6 +70,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mobile", "Mobile", "{A9972D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.Avalonia.ViewModels", "Client\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj", "{815EF5B1-68BE-4690-A4FD-27B4ECBB0593}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.Avalonia.Desktop.VideoAnalyzersTest", "Client\Client.Avalonia.Desktop.VideoAnalyzersTest\Client.Avalonia.Desktop.VideoAnalyzersTest.csproj", "{41F2A906-6885-4796-8626-FEFC8802B490}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -380,6 +382,18 @@ Global
 		{815EF5B1-68BE-4690-A4FD-27B4ECBB0593}.Release|x64.Build.0 = Release|Any CPU
 		{815EF5B1-68BE-4690-A4FD-27B4ECBB0593}.Release|x86.ActiveCfg = Release|Any CPU
 		{815EF5B1-68BE-4690-A4FD-27B4ECBB0593}.Release|x86.Build.0 = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|x64.Build.0 = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Debug|x86.Build.0 = Debug|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|x64.ActiveCfg = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|x64.Build.0 = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|x86.ActiveCfg = Release|Any CPU
+		{41F2A906-6885-4796-8626-FEFC8802B490}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -417,5 +431,6 @@ Global
 		{815EF5B1-68BE-4690-A4FD-27B4ECBB0593} = {E0F23821-8CBC-4B41-B0C7-CE8FEF852830}
 		{BDBECE3D-1572-4796-83A6-11624882EDE0} = {E0F23821-8CBC-4B41-B0C7-CE8FEF852830}
 		{A9972DDD-AC3B-417B-9BF0-67BCE03332AD} = {E0F23821-8CBC-4B41-B0C7-CE8FEF852830}
+		{41F2A906-6885-4796-8626-FEFC8802B490} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

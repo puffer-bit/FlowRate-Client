@@ -15,7 +15,13 @@ public enum VideoSurfaceKinds
     CudaGl = 2,
 
     /// <summary>Direct3D 11 textures shared with the compositor (Windows).</summary>
-    D3D11Shared = 4
+    D3D11Shared = 4,
+
+    /// <summary>
+    /// YUV planes in memory, uploaded as they are and turned into RGB by a shader (any OpenGL
+    /// presenter); they still pass through memory, but are neither converted nor copied by the CPU.
+    /// </summary>
+    YuvMemory = 8
 }
 
 /// <summary>

@@ -42,7 +42,8 @@ internal sealed class VideoFramePump : IDisposable
         _kind = kind;
         _onFrame = onFrame;
 
-        // The plane layout of GPU frames is only in their video meta
+        // The plane layout of GPU frames is only in their video meta; planes in memory may have one
+        // too, which saves the decoder from copying them into the default layout
         if (kind != VideoOutputKind.Memory)
             GstVideoNative.AcceptVideoMeta(sink);
 
@@ -92,6 +93,9 @@ internal sealed class VideoFramePump : IDisposable
             case VideoOutputKind.D3D11:
                 DeliverD3D11(buffer, timestamp);
                 break;
+            case VideoOutputKind.MemoryYuv:
+                DeliverMemoryYuv(sample, buffer, timestamp);
+                break;
             default:
                 DeliverMemory(buffer, timestamp);
                 break;
@@ -117,6 +121,19 @@ internal sealed class VideoFramePump : IDisposable
         {
             buffer.Unmap(map);
         }
+    }
+
+    private void DeliverMemoryYuv(Sample sample, Gst.Buffer buffer, long timestamp)
+    {
+        var frame = GstMemoryYuvFrame.TryCreate(sample, buffer.Handle, _capsInfo);
+
+        if (frame == null)
+        {
+            _onSurfaceFailed(_kind);
+            return;
+        }
+
+        Hand(frame, timestamp);
     }
 
     private void DeliverDmaBuf(Sample sample, Gst.Buffer buffer, long timestamp)
@@ -188,8 +205,8 @@ internal sealed class VideoFramePump : IDisposable
 /// <summary>
 /// What the caps of a video stream say about its frames.
 /// </summary>
-internal readonly record struct VideoCapsInfo(int Width, int Height, uint DrmFourcc, ulong DrmModifier,
-    VideoColorMatrix Matrix, bool IsFullRange)
+internal readonly record struct VideoCapsInfo(int Width, int Height, string? Format, uint DrmFourcc,
+    ulong DrmModifier, VideoColorMatrix Matrix, bool IsFullRange)
 {
     public static VideoCapsInfo Read(Caps caps)
     {
@@ -201,7 +218,7 @@ internal readonly record struct VideoCapsInfo(int Width, int Height, uint DrmFou
         var (fourcc, modifier) = ParseDrmFormat(structure.GetString("drm-format"));
         var (matrix, isFullRange) = ParseColorimetry(structure.GetString("colorimetry"));
 
-        return new VideoCapsInfo(width, height, fourcc, modifier, matrix, isFullRange);
+        return new VideoCapsInfo(width, height, structure.GetString("format"), fourcc, modifier, matrix, isFullRange);
     }
 
     // "NV12:0x0200000000000004", or "NV12" for a linear layout

@@ -76,6 +76,9 @@ public class GlVideoPresenter : Control, IVideoPresenter
     {
         _isBroken = true;
         _queue.Clear();
+
+        // Every kind needs this presenter, so streams that deliver one are rebuilt for the bitmap
+        VideoSurfaceSupport.ReportFailure(VideoSurfaceSupport.Kinds);
         Dispatcher.UIThread.Post(() => IsVisible = false);
     }
 }
