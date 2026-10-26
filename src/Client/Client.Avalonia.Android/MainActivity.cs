@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Android;
 using Android.App;
 using Android.Content;
@@ -25,6 +26,53 @@ namespace Client.Droid;
 public class MainActivity : AvaloniaMainActivity
 {
     private const int NotificationPermissionRequest = 1001;
+    private const int MicrophonePermissionRequest = 7001;
+    private TaskCompletionSource<bool>? _microphonePermission;
+
+    internal Task<bool> RequestMicrophonePermissionAsync()
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        RunOnUiThread(() =>
+        {
+            if (!ReferenceEquals(Current, this))
+            {
+                completion.TrySetResult(false);
+                return;
+            }
+
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.RecordAudio) == Permission.Granted)
+            {
+                completion.TrySetResult(true);
+                return;
+            }
+
+            if (_microphonePermission is { } pending)
+            {
+                ForwardPermissionAsync(pending.Task, completion);
+                return;
+            }
+
+            _microphonePermission = completion;
+            ActivityCompat.RequestPermissions(this, [Manifest.Permission.RecordAudio], MicrophonePermissionRequest);
+        });
+
+        return completion.Task;
+    }
+
+    private static async void ForwardPermissionAsync(Task<bool> pending, TaskCompletionSource<bool> completion) =>
+        completion.TrySetResult(await pending);
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode != MicrophonePermissionRequest)
+            return;
+
+        _microphonePermission?.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
+        _microphonePermission = null;
+    }
 
     /// <summary>
     /// The activity that shows the application, for the root view to close it once the user has agreed to.
@@ -89,6 +137,9 @@ public class MainActivity : AvaloniaMainActivity
 
     protected override void OnDestroy()
     {
+        _microphonePermission?.TrySetResult(false);
+        _microphonePermission = null;
+
         if (ReferenceEquals(Current, this))
             Current = null;
 
