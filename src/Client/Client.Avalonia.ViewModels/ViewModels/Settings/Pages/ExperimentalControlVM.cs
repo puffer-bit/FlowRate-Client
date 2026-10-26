@@ -20,7 +20,8 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("experimental",
         ("general", ["enable"]),
-        ("window", ["customTitleBar"]));
+        ("window", ["customTitleBar"]),
+        ("voice", ["libWebRTC"]));
 
     /// <summary>
     /// The experimental features as a whole: while off, none of them works and their settings cannot
@@ -47,6 +48,15 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>
+    /// Whether the voice of a session goes over libwebrtc instead of GStreamer.
+    /// </summary>
+    public bool UseLibWebRTC
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IAppearanceService _appearanceService;
@@ -61,10 +71,10 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
             .CreateFromTask(LoadAsync);
 
         // Apply and persist only on user changes, not on initial load
-        this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar))
+        this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar), nameof(UseLibWebRTC))
             .Where(_ => _isLoaded)
-            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar))
-            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2)))
+            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar, vm.UseLibWebRTC))
+            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2, values.Item3)))
             .Concat()
             .Subscribe();
 
@@ -81,14 +91,16 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     {
         IsExperimentalEnabled = await _appearanceService.GetIsExperimentalEnabledAsync();
         UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
+        UseLibWebRTC = await _appearanceService.GetUseLibWebRTCAsync();
         _isLoaded = true;
     }
 
-    private async Task ChangeAsync(bool isEnabled, bool useCustomTitleBar)
+    private async Task ChangeAsync(bool isEnabled, bool useCustomTitleBar, bool useLibWebRTC)
     {
-        ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar);
+        ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar, useLibWebRTC);
         await _appearanceService.UpdateIsExperimentalEnabledAsync(isEnabled);
         await _appearanceService.UpdateUseCustomTitleBarAsync(useCustomTitleBar);
+        await _appearanceService.UpdateUseLibWebRTCAsync(useLibWebRTC);
     }
 
     public async Task ResetAllAsync()
@@ -97,8 +109,9 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         _isLoaded = false;
         IsExperimentalEnabled = false;
         UseCustomTitleBar = false;
+        UseLibWebRTC = false;
         _isLoaded = true;
 
-        await ChangeAsync(false, false);
+        await ChangeAsync(false, false, false);
     }
 }
