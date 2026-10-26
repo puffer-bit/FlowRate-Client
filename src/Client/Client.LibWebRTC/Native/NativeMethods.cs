@@ -30,6 +30,18 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library, EntryPoint = "fr_set_recording_device")]
     public static partial int SetRecordingDevice(int index);
 
+    [LibraryImport(Library, EntryPoint = "fr_playout_device_count")]
+    public static partial int PlayoutDeviceCount();
+
+    [LibraryImport(Library, EntryPoint = "fr_playout_device")]
+    public static partial int PlayoutDevice(int index, byte* name, int nameSize, byte* guid, int guidSize);
+
+    [LibraryImport(Library, EntryPoint = "fr_set_playout_device")]
+    public static partial int SetPlayoutDevice(int index);
+
+    [LibraryImport(Library, EntryPoint = "fr_default_device")]
+    public static partial int DefaultDevice(int isRecording, byte* guid, int guidSize);
+
     [LibraryImport(Library, EntryPoint = "fr_set_capture_volume")]
     public static partial void SetCaptureVolume(double volume);
 
