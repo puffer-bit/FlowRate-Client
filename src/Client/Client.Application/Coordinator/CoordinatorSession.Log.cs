@@ -75,6 +75,15 @@ public partial class CoordinatorSession
     [LoggerMessage(LogLevel.Debug, "[{Coordinator}] Connected to coordinator {CoordinatorId}")]
     private partial void LogConnected(string coordinator, string coordinatorId);
 
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The second login stage was refused, try {Try}")]
+    private partial void LogSecondStageRefused(string coordinator, int @try);
+
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The second login stage was given up by the user")]
+    private partial void LogSecondStageGivenUp(string coordinator);
+
+    [LoggerMessage(LogLevel.Warning, "[{Coordinator}] The account logs in with passkeys alone, which this client cannot use")]
+    private partial void LogPasskeyLoginUnsupported(string coordinator);
+
     [LoggerMessage(LogLevel.Debug, "[{Coordinator}] Auth attempt timed out")]
     private partial void LogAuthTimedOut(string coordinator);
 
