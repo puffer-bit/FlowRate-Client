@@ -49,6 +49,7 @@ internal sealed partial class TransportStats
     private readonly Dictionary<uint, Counters> _previous = [];
     private double _previousTimestamp;
     private string? _selectedPair;
+    private bool _isOverTcp;
 
     // The counters at the start of the current summary, by SSRC, and when it started
     private readonly Dictionary<uint, Counters> _summaryStart = [];
@@ -326,6 +327,10 @@ internal sealed partial class TransportStats
         if (local == null || remote == null)
             return;
 
+        // The description starts with the protocol of the candidate
+        _isOverTcp = local.StartsWith("tcp", StringComparison.OrdinalIgnoreCase)
+                     || remote.StartsWith("tcp", StringComparison.OrdinalIgnoreCase);
+
         var description = $"{local} -> {remote}";
 
         if (description == _selectedPair)
@@ -351,14 +356,16 @@ internal sealed partial class TransportStats
     }
 
     /// <summary>
-    /// The loss of all the streams together since the previous reading, and the round trip of the
-    /// streams we send. Called before the counters of this reading replace the previous ones.
+    /// The loss of all the streams together since the previous reading, the round trip of the
+    /// streams we send, and what every stream we receive did. Called before the counters of this
+    /// reading replace the previous ones.
     /// </summary>
     private TransportStatsSample Sample(List<Counters> inbound, List<Counters> outbound,
         Dictionary<uint, RemoteReport> remote)
     {
         long received = 0;
         long lost = 0;
+        var streams = new List<InboundStreamSample>();
 
         foreach (var current in inbound.Where(stream => stream.Packets > 0))
         {
@@ -368,6 +375,10 @@ internal sealed partial class TransportStats
             var delta = current - last;
             received += Math.Max(0, delta.Packets);
             lost += Math.Max(0, delta.Lost);
+
+            if (_findInbound(current.Ssrc) is { } track)
+                streams.Add(new InboundStreamSample(track.UserId, track.SourceType, track.MediaType,
+                    Math.Max(0, delta.Packets), LossPercent(delta), current.JitterMs, delta.Plis));
         }
 
         var inboundLoss = received + lost > 0 ? 100.0 * lost / (received + lost) : 0;
@@ -383,7 +394,8 @@ internal sealed partial class TransportStats
         var outboundLoss = reports.Count > 0 ? reports.Max(report => report.FractionLost) * 100 : 0;
         var roundTrips = reports.Where(report => report.RoundTripMs > 0).Select(report => report.RoundTripMs).ToList();
 
-        return new TransportStatsSample(roundTrips.Count > 0 ? roundTrips.Average() : null, inboundLoss, outboundLoss);
+        return new TransportStatsSample(roundTrips.Count > 0 ? roundTrips.Average() : null, inboundLoss, outboundLoss,
+            streams, _isOverTcp);
     }
 
     private static double LossPercent(Counters delta)

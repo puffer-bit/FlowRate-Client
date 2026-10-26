@@ -78,30 +78,40 @@
 
             <Separator/>
 
-            <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
-            <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
-                                  menus:FlyoutMenu.CloseOnClick="True"
-                                  IsVisible="{Binding CanApprove}"
-                                  Command="{Binding Approve}"/>
-            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
-                                  menus:FlyoutMenu.CloseOnClick="True"
-                                  IsVisible="{Binding CanApprove}"
-                                  Command="{Binding Reject}"/>
-            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
-                                  menus:FlyoutMenu.CloseOnClick="True"
-                                  IsVisible="{Binding CanKick}"
-                                  Command="{Binding Kick}"/>
-            <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"
-                                  menus:FlyoutMenu.CloseOnClick="True"
-                                  IsVisible="{Binding CanBan}"
-                                  Command="{Binding Ban}"/>
-            <!-- Hidden until suspending and reporting are implemented -->
-            <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"
-                                  IsVisible="False"/>
-            <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"
-                                  IsVisible="False"/>
+            <!-- Hidden with its separator when the current user may do nothing to this one -->
+            <StackPanel Spacing="2">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding Path="CanApprove"/>
+                        <Binding Path="CanKick"/>
+                        <Binding Path="CanBan"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
+                <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Approve}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Reject}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanKick}"
+                                      Command="{Binding Kick}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanBan}"
+                                      Command="{Binding Ban}"/>
+                <!-- Hidden until suspending and reporting are implemented -->
+                <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"
+                                      IsVisible="False"/>
+                <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"
+                                      IsVisible="False"/>
 
-            <Separator/>
+                <Separator/>
+            </StackPanel>
         </StackPanel>
 
         <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"

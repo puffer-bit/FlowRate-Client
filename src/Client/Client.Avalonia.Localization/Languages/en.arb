@@ -702,6 +702,55 @@
   "hybrid.screen.stopWatching": "Stop watching",
   "hybrid.screen.expand": "Expand",
   "hybrid.screen.collapse": "Collapse",
+  "hybrid.screen.issues.network": "Network",
+  "hybrid.screen.issues.transport": "Connection type",
+  "hybrid.screen.issues.source": "Streamer",
+  "hybrid.screen.issues.audio": "Sound",
+  "hybrid.screen.issues.performance": "Decoding and drawing",
+  "hybrid.screen.issues.packetLoss": "{percent}% of the packets are lost",
+  "@hybrid.screen.issues.packetLoss": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "hybrid.screen.issues.highJitter": "Packets come unevenly, jitter {ms} ms",
+  "@hybrid.screen.issues.highJitter": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
+  "hybrid.screen.issues.waitingForKeyframe": "The picture broke, waiting for a keyframe for {seconds} s",
+  "@hybrid.screen.issues.waitingForKeyframe": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.tcpTransport": "The connection goes over TCP: a lost packet holds back the ones after it",
+  "hybrid.screen.issues.noSourceFrames": "Nothing comes from the streamer for {seconds} s",
+  "@hybrid.screen.issues.noSourceFrames": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.noAudio": "The screen is shared with sound, but none comes for {seconds} s",
+  "@hybrid.screen.issues.noAudio": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.decoderStalled": "Packets come, but the decoder gives no frames for {seconds} s",
+  "@hybrid.screen.issues.decoderStalled": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.rendererBehind": "{dropped} of {received} frames per second are dropped before drawing",
+  "@hybrid.screen.issues.rendererBehind": {
+    "placeholders": {
+      "dropped": {},
+      "received": {}
+    }
+  },
   "hybrid.screen.empty": "Nobody is sharing a screen. Be the first!",
   "hybrid.screen.start": "Start sharing",
   "hybrid.screen.stop": "Stop sharing",

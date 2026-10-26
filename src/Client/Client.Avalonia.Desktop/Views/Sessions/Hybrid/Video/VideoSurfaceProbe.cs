@@ -46,6 +46,10 @@ internal static class VideoSurfaceProbe
             kinds = VideoSurfaceKinds.None;
         }
 
+        // Any OpenGL presenter uploads YUV planes and converts them itself
+        if (UsesGl)
+            kinds |= VideoSurfaceKinds.YuvMemory;
+
         VideoSurfaceSupport.Set(kinds);
         logger?.LogInformation("Video presenter: {Presenter}, frames without copying: {Kinds}",
             UsesGl ? "OpenGL" : "bitmap", kinds);
