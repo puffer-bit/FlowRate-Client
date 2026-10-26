@@ -15,14 +15,33 @@ public partial class ActiveHybridSessionVM
 {
     // What the running microphone captures from and with, null while it is not started. Settings
     // are saved on every move of a slider, and the capture is rebuilt only when these change.
-    private (string? DeviceId, NoiseSuppressionLevel NoiseSuppression)? _microphoneInput;
+    private (string? DeviceId, NoiseSuppressionLevel NoiseSuppression, bool IsEchoCancellationEnabled)? _microphoneInput;
     private readonly System.Threading.Lock _microphoneInputLock = new();
+
+    // Set while the microphone starts: a press that retries it must not ask for a second producer
+    // while the connection starts it
+    private int _isVoiceStarting;
 
     /// <summary>
     /// Starts the microphone on a new transport. The voices and the microphone stay the way the user
-    /// left them on this coordinator.
+    /// left them on this coordinator. Does nothing while it is already starting.
     /// </summary>
     private async Task StartVoiceAsync()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _isVoiceStarting, 1) == 1)
+            return;
+
+        try
+        {
+            await StartVoiceCoreAsync();
+        }
+        finally
+        {
+            System.Threading.Volatile.Write(ref _isVoiceStarting, 0);
+        }
+    }
+
+    private async Task StartVoiceCoreAsync()
     {
         // The server has to be told again: it forgets it with the connection
         if (_hybridSession.IsSoundMuted || await _coordinatorStates.IsSoundMutedAsync(CoordinatorInstanceId))
@@ -33,16 +52,16 @@ public partial class ActiveHybridSessionVM
 
         var settings = await _audioService.GetSettingsAsync();
         var device = await _audioService.ResolveInputDeviceAsync();
-        // The microphone stays off while the voices are: who hears nobody is not heard either
-        var isMuted = _hybridSession.IsSoundMuted
+        // The microphone stays off while the voices are: who hears nobody is not heard either. Nor is who is away
+        var isMuted = _hybridSession.IsSoundMuted || _hybridSession.IsAfk
                       || await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId);
         var result = await _hybridSession.StartVoiceShareAsync(device?.Id, settings.InputVolume,
-            settings.ActiveVoiceGateThresholdDb, settings.NoiseSuppression, isMuted);
+            settings.ActiveVoiceGate, settings.NoiseSuppression, settings.IsEchoCancellationEnabled, isMuted);
 
         if (result == StartVoiceShareResult.NoError)
         {
             lock (_microphoneInputLock)
-                _microphoneInput = (device?.Id, settings.NoiseSuppression);
+                _microphoneInput = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled);
 
             StatusBar.IsMicrophoneOn = !_hybridSession.IsMicrophoneMuted;
             return;
@@ -75,11 +94,27 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task ToggleMicrophone()
     {
+        // A microphone that failed to start is tried again, otherwise it would stay off for the rest
+        // of the session. It comes back muted or not as the user left it, like after a reconnect
         if (!_hybridSession.IsVoiceStarted)
+        {
+            if (CanSpeak)
+                await StartVoiceAsync();
+
             return;
+        }
 
         // With the voices off the microphone is off because of them, so the press asks to talk
         // again: both come back
+        // Away the microphone is always off, so the press brings the user back to talk, and to hear
+        if (_hybridSession.IsAfk)
+        {
+            await _coordinatorStates.SetMicrophoneMutedAsync(CoordinatorInstanceId, false);
+            await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, false);
+            await ToggleAfk();
+            return;
+        }
+
         if (_hybridSession.IsSoundMuted)
         {
             await _coordinatorStates.SetMicrophoneMutedAsync(CoordinatorInstanceId, false);
@@ -118,21 +153,19 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task ToggleSound()
     {
+        // Away nothing is heard, so the press brings the user back to hear
+        if (_hybridSession.IsAfk)
+        {
+            await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, false);
+            await ToggleAfk();
+            return;
+        }
+
         var mute = !_hybridSession.IsSoundMuted;
 
-        StatusBar.IsSoundOn = !mute;
         _sounds.Play(mute ? SoundEvent.Deafen : SoundEvent.Undeafen);
-
-        var result = await _hybridSession.SetSoundMutedAsync(mute);
-
+        await SetSoundMutedAsync(mute);
         await _coordinatorStates.SetSoundMutedAsync(CoordinatorInstanceId, mute);
-
-        // The sound is switched here anyway; a rejection is reported by the main window
-        if (result is not (SetSoundMuteResult.NoError or SetSoundMuteResult.Rejected))
-        {
-            ShowPopUp(NotificationPopUpVM.PopUpType.Error,
-                Strings.Format("hybrid.sound.muteFailed", ("reason", result)), "SoundMuteFailed");
-        }
 
         if (!_hybridSession.IsVoiceStarted)
             return;
@@ -143,11 +176,35 @@ public partial class ActiveHybridSessionVM
             if (!_hybridSession.IsMicrophoneMuted)
                 await SetMicrophoneMutedAsync(true);
         }
-        else if (_hybridSession.IsMicrophoneMuted
-                 && !await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId))
+        else
         {
-            await SetMicrophoneMutedAsync(false);
+            await RestoreMicrophoneAsync();
         }
+    }
+
+    /// <summary>Silences the voices of the session or brings them back, here whatever the server answers.</summary>
+    private async Task SetSoundMutedAsync(bool mute)
+    {
+        StatusBar.IsSoundOn = !mute;
+
+        var result = await _hybridSession.SetSoundMutedAsync(mute);
+
+        // A rejection is reported by the main window
+        if (result is not (SetSoundMuteResult.NoError or SetSoundMuteResult.Rejected))
+        {
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error,
+                Strings.Format("hybrid.sound.muteFailed", ("reason", result)), "SoundMuteFailed");
+        }
+    }
+
+    /// <summary>
+    /// Turns the microphone back on once nothing keeps it off but the choice of the user, which may be off too.
+    /// </summary>
+    private async Task RestoreMicrophoneAsync()
+    {
+        if (_hybridSession.IsMicrophoneMuted
+            && !await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId))
+            await SetMicrophoneMutedAsync(false);
     }
 
     private string CoordinatorInstanceId => _coordinatorSession.GetCurrentUser().CoordinatorInstanceId;
@@ -158,18 +215,18 @@ public partial class ActiveHybridSessionVM
     private void OnAudioSettingsChanged(AudioSettings settings)
     {
         _hybridSession.SetInputVolume(settings.InputVolume);
-        _hybridSession.SetVoiceGateThreshold(settings.ActiveVoiceGateThresholdDb);
+        _hybridSession.SetVoiceGate(settings.ActiveVoiceGate);
         _ = ApplyMicrophoneInputAsync(settings);
     }
 
     /// <summary>
-    /// Switches the running microphone to the device and the noise suppression of the settings,
-    /// when either differs from what it runs with.
+    /// Switches the running microphone to the device, the noise suppression and the echo cancelling
+    /// of the settings, when any differs from what it runs with.
     /// </summary>
     private async Task ApplyMicrophoneInputAsync(AudioSettings settings)
     {
         var device = await _audioService.ResolveInputDeviceAsync();
-        var input = (device?.Id, settings.NoiseSuppression);
+        var input = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled);
 
         lock (_microphoneInputLock)
         {
@@ -179,6 +236,6 @@ public partial class ActiveHybridSessionVM
             _microphoneInput = input;
         }
 
-        _hybridSession.SetMicrophoneInput(input.Id, input.NoiseSuppression);
+        _hybridSession.SetMicrophoneInput(input.Id, input.NoiseSuppression, input.IsEchoCancellationEnabled);
     }
 }

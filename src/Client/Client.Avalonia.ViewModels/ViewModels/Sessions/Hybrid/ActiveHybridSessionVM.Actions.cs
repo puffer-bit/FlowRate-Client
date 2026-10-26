@@ -1,4 +1,5 @@
 using Client.Avalonia.Styles.Animation;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,6 +39,13 @@ public partial class ActiveHybridSessionVM
     // Whose screens the user asked to watch, kept across a reconnect of the transport. UI thread only
     private readonly HashSet<int> _wantedScreens = [];
 
+    // Screens that were watched when the media settings changed. They stop and come back on new
+    // tracks, and are watched again then without a sound. UI thread only
+    private readonly HashSet<int> _restartingScreens = [];
+
+    // How long a screen may take to come back on its new track before it is no longer waited for
+    private static readonly TimeSpan ScreenRestartTimeout = TimeSpan.FromSeconds(30);
+
     private async Task ToggleScreenShare()
     {
         if (_screenInput != null)
@@ -46,7 +54,7 @@ public partial class ActiveHybridSessionVM
             return;
         }
 
-        var request = await SelectScreenShareAsync();
+        var (request, _) = await SelectScreenShareAsync(null, await _screenShareSettings.GetAsync());
 
         if (request == null)
             return;
@@ -68,17 +76,88 @@ public partial class ActiveHybridSessionVM
     }
 
     /// <summary>
+    /// Changes what the running share shows and how, in the same dialog that started it. The
+    /// viewers keep watching it through the change.
+    /// </summary>
+    private async Task ChangeScreenShare()
+    {
+        if (_screenInput is not { } sharedInput || _screenSettings is not { } sharedSettings)
+            return;
+
+        var (request, isSharedInputLost) = await SelectScreenShareAsync(sharedInput, sharedSettings);
+
+        // Stopped or changed meanwhile, by the system or by a reconnect that failed to bring it back
+        if (_screenInput != sharedInput)
+        {
+            if (request != null && request.Input != sharedInput)
+                ReleaseInput(request.Input, closeCast: _screenInput == null);
+
+            return;
+        }
+
+        if (request == null)
+        {
+            // The system took the source away for a new pick that was given up
+            if (isSharedInputLost)
+                await StopScreenShareAsync();
+
+            return;
+        }
+
+        if (IsClosed)
+        {
+            if (request.Input != sharedInput)
+                ReleaseInput(request.Input, closeCast: false);
+
+            return;
+        }
+
+        _screenInput = request.Input;
+        _screenSettings = request.Settings;
+        _screenAudioInput = request.AudioInput;
+
+        var result = await _hybridSession.ChangeScreenShareAsync(request.Input, request.Settings, request.AudioInput);
+
+        // The track was rebuilt on the new source, so the old one can go; the system has closed it already
+        if (request.Input != sharedInput)
+            ReleaseInput(sharedInput, closeCast: false);
+
+        if (IsClosed)
+            return;
+
+        if (result == StartScreenShareResult.NoError)
+            StatusBar.IsScreenShareOn = true;
+        else
+        {
+            // The session has stopped the share already
+            _sounds.Play(SoundEvent.ScreenShareStop);
+            StatusBar.IsScreenShareOn = false;
+            ReleaseScreenInput();
+
+            if (result != StartScreenShareResult.Rejected)
+                NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
+        }
+
+        await _screenShareSettings.SaveAsync(request.Settings);
+    }
+
+    /// <summary>
     /// Asks what to show and how, in the dialog of the session.
     /// </summary>
-    /// <returns>Null when the user changed their mind or nothing can be captured.</returns>
-    private async Task<ScreenShareRequest?> SelectScreenShareAsync()
+    /// <param name="sharedInput">What the running share shows, when the dialog changes it.</param>
+    /// <returns>
+    /// Null when the user changed their mind or nothing can be captured, and whether the system
+    /// closed the source of the running share on the way.
+    /// </returns>
+    private async Task<(ScreenShareRequest? Request, bool IsSharedInputLost)> SelectScreenShareAsync(
+        VideoInput? sharedInput, ScreenShareSettings settings)
     {
         if (_screenCastClient == null && _screenSourceProvider == null)
-            return null;
+            return (null, false);
 
         var dialog = new VideoSourceSelectWindowVM(_screenSourceProvider, _screenCastClient,
             _mediaCapabilities.CanCaptureScreenAudio ? _audioApps : null, _mediaCapabilities.CanCaptureScreenAudio,
-            await _screenShareSettings.GetAsync(), _dismissedPrompts);
+            settings, _dismissedPrompts, sharedInput);
         ScreenShareRequest? request = null;
 
         _sourceSelect = dialog;
@@ -99,10 +178,12 @@ public partial class ActiveHybridSessionVM
         if (request == null)
             dialog.Abandon();
 
-        return request;
+        return (request, dialog.IsSharedInputLost);
     }
 
-    private async Task StartScreenShareAsync(VideoInput input, ScreenShareSettings settings, AudioInput? audioInput)
+    /// <param name="isSilent">Starts it without the sound, as when the share only moves to a new track.</param>
+    private async Task StartScreenShareAsync(VideoInput input, ScreenShareSettings settings, AudioInput? audioInput,
+        bool isSilent = false)
     {
         var result = await _hybridSession.StartScreenShareAsync(input, settings, audioInput);
 
@@ -112,7 +193,10 @@ public partial class ActiveHybridSessionVM
         if (result == StartScreenShareResult.NoError)
         {
             StatusBar.IsScreenShareOn = true;
-            _sounds.Play(SoundEvent.ScreenShareStart);
+
+            if (!isSilent)
+                _sounds.Play(SoundEvent.ScreenShareStart);
+
             return;
         }
 
@@ -146,10 +230,17 @@ public partial class ActiveHybridSessionVM
         _screenSettings = null;
         _screenAudioInput = null;
 
+        if (input != null)
+            ReleaseInput(input, closeCast: true);
+    }
+
+    /// <param name="closeCast">Ends the capture of the system as well, which holds one source at a time.</param>
+    private void ReleaseInput(VideoInput input, bool closeCast)
+    {
         if (input is PipeWireVideoInput pipeWire)
             pipeWire.Remote.Dispose();
 
-        if (input != null && _screenCastClient != null)
+        if (closeCast && _screenCastClient != null)
             _ = _screenCastClient.CloseAsync();
     }
 
@@ -171,15 +262,43 @@ public partial class ActiveHybridSessionVM
 
         ParticipantsListVM.UpdateScreenShare(userId, isSharing);
 
+        var isRestarting = _restartingScreens.Contains(userId);
+
         // Our own share sounds where it is started and stopped; a repeated report changes nothing
-        if (userId != _coordinatorSession.GetCurrentUser().Id && _screenStreamsByUser.ContainsKey(userId) != isSharing)
+        if (!isRestarting && userId != _coordinatorSession.GetCurrentUser().Id
+                          && _screenStreamsByUser.ContainsKey(userId) != isSharing)
             _sounds.Play(isSharing ? SoundEvent.ScreenShareStart : SoundEvent.ScreenShareStop);
 
-        if (isSharing)
-            AddScreenStream(userId);
-        else
+        if (!isSharing)
+        {
             RemoveScreenStream(userId);
+            return;
+        }
+
+        AddScreenStream(userId);
+
+        if (isRestarting && _restartingScreens.Remove(userId))
+            _ = SetScreenWatchedAsync(userId, true);
     });
+
+    /// <summary>
+    /// Remembers the screens watched now, ours among them, to watch them again once they are back
+    /// on the tracks that follow new media settings.
+    /// </summary>
+    private void RememberRestartingScreens()
+    {
+        var watched = _screenStreamsByUser.Keys.Where(_hybridSession.IsWatchingScreen).ToArray();
+
+        foreach (var userId in watched)
+            _restartingScreens.Add(userId);
+
+        // A sharer whose client does not restart its screen keeps it, and is not waited for
+        DispatcherTimer.RunOnce(() =>
+        {
+            foreach (var userId in watched)
+                _restartingScreens.Remove(userId);
+        }, ScreenRestartTimeout);
+    }
 
     private void AddScreenStream(int userId)
     {
@@ -208,18 +327,20 @@ public partial class ActiveHybridSessionVM
         if (!_screenStreamsByUser.TryRemove(userId, out var stream))
             return;
 
-        if (stream.IsExpanded)
-            ToggleExpanded(stream);
-
-        UpdateCanExpand();
-
-        // Nothing to fade while another screen covers this one
+        // Nothing to fade while another screen covers this one. It is taken out before the last
+        // screen is brought back from being expanded, which would show it again for its fade
         if (stream.IsHidden)
         {
             stream.Clear();
             ScreenStreams.Remove(stream);
+            UpdateCanExpand();
             return;
         }
+
+        if (stream.IsExpanded)
+            ToggleExpanded(stream);
+
+        UpdateCanExpand();
 
         // The tile fades away with its last frame still on it, and is only taken out after that
         stream.IsLeaving = true;

@@ -55,6 +55,8 @@ internal static class CoordinatorEventMapper
             new PeerLeftEvent(kicked.SessionId, kicked.UserId),
         HybridSessionPeerKickedNotification kicked =>
             new PeerKickedEvent(kicked.SessionId, kicked.UserId, kicked.InitiatorUserId, kicked.Reason),
+        HybridSessionPeerRejectedNotification rejected =>
+            new PeerRejectedEvent(rejected.SessionId, rejected.UserId, rejected.InitiatorUserId),
         HybridSessionPeerStateChangedNotification changed =>
             new PeerStateChangedEvent(changed.SessionId, changed.UserId, changed.State),
 
@@ -67,6 +69,13 @@ internal static class CoordinatorEventMapper
             new PeerSoundMuteChangedEvent(muted.SessionId, muted.UserId, true),
         HybridSessionPeerUnmuteSoundNotification unmuted =>
             new PeerSoundMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
+
+        HybridSessionPeerAfkNotification afk =>
+            new PeerAfkChangedEvent(afk.SessionId, afk.UserId, true, afk.Reason),
+        HybridSessionPeerNotAfkNotification back =>
+            new PeerAfkChangedEvent(back.SessionId, back.UserId, false, null),
+        HybridSessionPeerPokedNotification poked =>
+            new PeerPokedEvent(poked.SessionId, poked.UserId, poked.InitiatorUserId, poked.Message),
 
         HybridSessionPeerStartedVoiceShareNotification started =>
             new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),

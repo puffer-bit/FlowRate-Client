@@ -72,7 +72,7 @@ public sealed partial class GlobalHotKeys : IDisposable
         try
         {
             if (OperatingSystem.IsLinux())
-                listener = EvdevKeyListener.TryStart(OnKey) ?? (IGlobalKeyListener?)XInputKeyListener.TryStart(OnKey);
+                listener = EvdevKeyListener.TryStart(OnKey) ?? (IGlobalKeyListener?)XInputKeyListener.TryStart(OnKey, OnModifierSync);
             else if (OperatingSystem.IsWindows())
                 listener = WindowsKeyListener.TryStart(OnKey);
         }
@@ -90,27 +90,37 @@ public sealed partial class GlobalHotKeys : IDisposable
 
     private void OnKey(PhysicalKey key, bool isDown, bool isRepeat)
     {
-        if (HotKeyGesture.IsModifier(key))
+        if (!isDown)
         {
-            if (isDown)
-                _modifiersDown.Add(key);
-            else
-                _modifiersDown.Remove(key);
+            _modifiersDown.Remove(key);
             return;
         }
 
-        if (!isDown || isRepeat || key == PhysicalKey.None)
+        if (isRepeat || key == PhysicalKey.None)
             return;
 
+        // The modifiers held before the key; a modifier is a hot key of its own as well
         var modifiers = KeyModifiers.None;
         foreach (var modifier in _modifiersDown)
             modifiers |= HotKeyGesture.ModifierOf(modifier);
+        if (HotKeyGesture.IsModifier(key))
+            _modifiersDown.Add(key);
 
+        var pressed = HotKeyGesture.Of(modifiers, key);
         foreach (var (gesture, action) in _bindings)
         {
-            if (gesture.Key == key && gesture.Modifiers == modifiers)
+            if (gesture == pressed)
                 Dispatcher.UIThread.Post(() => _service.Raise(action));
         }
+    }
+
+    /// <summary>The state of a modifier as the system sees it, for a release that never came.</summary>
+    private void OnModifierSync(PhysicalKey key, bool isDown)
+    {
+        if (isDown)
+            _modifiersDown.Add(key);
+        else
+            _modifiersDown.Remove(key);
     }
 
     public void Dispose()

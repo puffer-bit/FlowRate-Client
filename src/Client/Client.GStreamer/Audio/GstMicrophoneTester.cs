@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.Core.Settings;
+using Client.GStreamer.Interop;
+using Client.GStreamer.WebRTC;
 using Gst;
 using Gst.App;
 using Microsoft.Extensions.Logging;
@@ -10,8 +12,10 @@ using Microsoft.Extensions.Logging;
 namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// Runs the selected input device through the same conversion, processing and gain the voice
-/// pipeline will use, measures the peak level and can play the sound back to the default output.
+/// Runs the selected input device through what a voice of a session runs before its encoder: the
+/// conversion, the processing with the echo cancelling, the gain and the voice gate with its voice
+/// detection. It measures the peak level in front of the gate and can play the sound back a second
+/// late, shaped as the voices of a session are, so the user hears what the others would.
 /// </summary>
 /// <remarks>
 /// Samples, buffers and messages each own a reference and are disposed as soon as they are read.
@@ -24,15 +28,27 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     // The voice gate threshold is set against this meter, so both share the scale
     private const double MeterFloorDb = AudioSettings.MinVoiceGateThresholdDb;
     
-    // The leaky queues keep the meter and the loopback from stalling each other or the capture
-    private static string DescribeProcessing(NoiseSuppressionLevel noiseSuppression) =>
-        "queue ! audioconvert ! audioresample ! " + MicrophoneProcessing.Caps + " ! " +
-        MicrophoneProcessing.Fragment(noiseSuppression) + "volume name=input_volume ! tee name=split " +
-        "split. ! queue leaky=downstream max-size-time=200000000 ! audioconvert ! audioresample " +
-        $"! audio/x-raw,format=S16LE,channels=1,rate={MeterRate} " +
-        "! appsink name=meter sync=false max-buffers=4 drop=true " +
-        "split. ! queue leaky=downstream max-size-time=200000000 ! volume name=loopback_volume " +
-        "! audioconvert ! audioresample ! autoaudiosink sync=false";
+    // The leaky queue keeps the meter from stalling the capture
+    private const string MeterDescription =
+        "queue leaky=downstream max-size-time=200000000 ! audioconvert ! audioresample " +
+        "! audio/x-raw,format=S16LE,channels=1,rate=48000 " +
+        "! appsink name=meter sync=false max-buffers=4 drop=true";
+
+    // The loopback runs a second behind the capture: its pad shifts the running time, and the
+    // queue holds what the sink is not due to play yet. The echo probe is behind the delay, so the
+    // echo cancelling takes out what is really played and when.
+    private const string LoopbackDescription =
+        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! audioconvert ! audioresample ! " +
+        IncomingStreamPlayer.ShapingDescription + "volume name=loopback_volume ! {0}audioconvert ! audioresample ! ";
+
+    private const string EchoProbeDescription =
+        "audioconvert ! " + MicrophoneProcessing.EchoProbeCaps + " ! " +
+        MicrophoneProcessing.EchoProbeElementName + " name={0} ! ";
+
+    private static readonly TimeSpan LoopbackDelay = TimeSpan.FromSeconds(1);
+
+    // Probes are found by name across the whole process, the ones of sessions among them
+    private static int _echoProbeCount;
 
     // Also how long stopping may wait for the worker to notice
     private static readonly ClockTime PullTimeout = ClockTime.FromNanoseconds(100_000_000);
@@ -46,6 +62,9 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     private Pipeline? _pipeline;
     private Element? _inputVolume;
     private Element? _loopbackVolume;
+    private VoiceGate? _gate;
+    private IntPtr _gateLevel;
+    private IntPtr _voiceLevel;
     private Worker? _worker;
 
     // Every wrapper the test made, the pipeline last. The binding keeps an element alive for as
@@ -59,6 +78,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     
     public event Action<double>? LevelChanged;
     public event Action<string>? Failed;
+    public event Action<bool>? GateChanged;
 
     public bool IsRunning
     {
@@ -76,7 +96,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     }
 
     public MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression)
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled)
     {
         lock (_lock)
         {
@@ -84,7 +104,8 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
 
             try
             {
-                var source = Track(_deviceProvider.CreateInputElement(deviceId));
+                // Not tracked: the monitor takes it over, also when it fails
+                var source = _deviceProvider.CreateInputElement(deviceId);
 
                 if (source == null)
                     return MicrophoneTestError.DeviceNotConnected;
@@ -93,32 +114,65 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
 
                 // From here on StopPipeline cleans up, also after a failure below
                 _pipeline = pipeline;
-                pipeline.Add(source);
 
-                if (Track(Global.ParseBinFromDescription(DescribeProcessing(noiseSuppression), true)) is not Bin processing)
+                // The test goes through what a call would, and a call without RNNoise runs a neural level as the moderate one
+                var applied = MicrophoneProcessing.Resolve(noiseSuppression);
+
+                if (applied != noiseSuppression)
+                    LogNoiseSuppressionReplaced(noiseSuppression, applied);
+
+                var echoProbe = isEchoCancellationEnabled &&
+                                ElementFactory.Find(MicrophoneProcessing.EchoProbeElementName) != null
+                    ? $"echo_probe_test_{Interlocked.Increment(ref _echoProbeCount)}"
+                    : null;
+
+                // Before the monitor: the echo cancelling looks its probe up when it starts
+                var loopback = Track(Global.ParseBinFromDescription(string.Format(LoopbackDescription,
+                    echoProbe == null ? "" : string.Format(EchoProbeDescription, echoProbe)) +
+                    VoicePlaybackSink.Description, true));
+
+                if (loopback == null)
                 {
+                    source.Dispose();
                     StopPipeline();
                     return MicrophoneTestError.Unexpected;
                 }
 
-                pipeline.Add(processing);
+                pipeline.Add(loopback);
 
-                if (!source.Link(processing))
+                // The sound server may restore a mute an earlier version left for the client name
+                VoicePlaybackSink.SetMuted(loopback, false);
+
+                if (Track(OutgoingAudioBranch.BuildMonitor(source, volume, applied, echoProbe,
+                        MeterDescription)) is not { } monitor)
                 {
                     StopPipeline();
                     return MicrophoneTestError.DeviceLinkFailed;
                 }
 
-                if (Track(processing.GetByName("meter")) is not AppSink meter)
+                pipeline.Add(monitor);
+
+                using (var input = loopback.GetStaticPad("sink"))
+                {
+                    input?.SetOffset((long)LoopbackDelay.TotalNanoseconds);
+
+                    if (input == null || !monitor.Link(loopback))
+                    {
+                        StopPipeline();
+                        return MicrophoneTestError.Unexpected;
+                    }
+                }
+
+                if (Track(monitor.GetByName("meter")) is not AppSink meter)
                 {
                     StopPipeline();
                     return MicrophoneTestError.Unexpected;
                 }
 
-                _inputVolume = Track(processing.GetByName("input_volume"));
-                _loopbackVolume = Track(processing.GetByName("loopback_volume"));
-                _inputVolume?.SetProperty("volume", volume);
+                _inputVolume = Track(monitor.GetByName(OutgoingAudioBranch.InputVolumeName));
+                _loopbackVolume = Track(loopback.GetByName("loopback_volume"));
                 _loopbackVolume?.SetProperty("mute", !isLoopbackEnabled);
+                StartGate(monitor, voiceGate);
 
                 _peak = 0;
                 _samplesSinceReport = 0;
@@ -146,6 +200,26 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
         }
     }
 
+    /// <summary>
+    /// Puts the gate of the monitor in the hands of a <see cref="VoiceGate"/>, as a call does.
+    /// A runtime without the level element has no gate, and the sound then always passes.
+    /// </summary>
+    private void StartGate(Bin monitor, VoiceGateOptions? voiceGate)
+    {
+        if (Track(monitor.GetByName(OutgoingAudioBranch.GateLevelName)) is not { } level ||
+            Track(monitor.GetByName(OutgoingAudioBranch.GateValveName)) is not { } valve)
+            return;
+
+        var detector = Track(monitor.GetByName(OutgoingAudioBranch.VoiceLevelName)) is { } voiceLevel &&
+                       Track(monitor.GetByName(OutgoingAudioBranch.VoiceValveName)) is { } voiceValve
+            ? new VoiceGate.VoiceDetector(voiceLevel, voiceValve)
+            : null;
+
+        _gate = new VoiceGate("microphone-test", level, valve, detector, voiceGate);
+        _gateLevel = level.Handle;
+        _voiceLevel = detector?.Level.Handle ?? IntPtr.Zero;
+    }
+
     public void Stop()
     {
         lock (_lock)
@@ -170,6 +244,14 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
         }
     }
 
+    public void SetVoiceGate(VoiceGateOptions? voiceGate)
+    {
+        lock (_lock)
+        {
+            _gate?.SetOptions(voiceGate);
+        }
+    }
+
     private void StopPipeline()
     {
         var pipeline = _pipeline;
@@ -186,6 +268,9 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
         
         _inputVolume = null;
         _loopbackVolume = null;
+        _gate = null;
+        _gateLevel = IntPtr.Zero;
+        _voiceLevel = IntPtr.Zero;
 
         foreach (var wrapper in _wrappers)
             wrapper.Dispose();
@@ -249,6 +334,21 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
         
         var decibels = 20 * Math.Log10(peak / 32768.0);
         return Math.Clamp((decibels - MeterFloorDb) / -MeterFloorDb, 0, 1);
+    }
+
+    /// <summary>
+    /// Passes a level message of the gate or of the voice detection to the gate. Runs on the worker,
+    /// which stops before the gate is dropped.
+    /// </summary>
+    private void OnElementMessage(Message message)
+    {
+        var source = GstNative.GetMessageSource(message);
+
+        if (_gate is not { } gate || source == IntPtr.Zero || (source != _gateLevel && source != _voiceLevel))
+            return;
+
+        if (gate.Update(source, message))
+            GateChanged?.Invoke(gate.IsOpen);
     }
 
     private void OnBusError(Pipeline pipeline, Message message)
@@ -319,10 +419,16 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                         }
                     }
 
-                    using (var message = _bus.PopFiltered(MessageType.Error))
+                    // The gate hears a level every 10 ms, so all that came are taken
+                    while (!_isStopped && _bus.PopFiltered(MessageType.Error | MessageType.Element) is { } message)
                     {
-                        if (message != null && !_isStopped)
-                            _owner.OnBusError(_pipeline, message);
+                        using (message)
+                        {
+                            if (message.Type == MessageType.Error)
+                                _owner.OnBusError(_pipeline, message);
+                            else
+                                _owner.OnElementMessage(message);
+                        }
                     }
 
                     // The binding queues the releases of collected wrappers for a main loop, and the

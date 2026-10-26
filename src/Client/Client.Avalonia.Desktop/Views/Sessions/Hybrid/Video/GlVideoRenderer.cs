@@ -54,14 +54,18 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     private uint _rgbProgram;
     private int _yuvMatrix;
     private int _yuvOffset;
+    private int _yuvPlanar;
     private int _rgbSwap;
 
-    // Inputs: a frame in memory, a copied YUV frame, imported planes, an imported Direct3D 11 frame
+    // Inputs: a BGRA frame in memory, YUV planes copied or uploaded (V apart for I420), imported
+    // planes, an imported Direct3D 11 frame
     private uint _rgbTexture;
     private PixelSize _rgbSize;
     private uint _lumaTexture;
     private uint _chromaTexture;
+    private uint _chromaVTexture;
     private PixelSize _yuvSize;
+    private bool _isYuvPlanar;
     private uint _importedLuma;
     private uint _importedChroma;
     private uint _importedRgb;
@@ -199,6 +203,8 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
         _gl.UseProgram(_yuvProgram);
         _gl.Uniform1i(_gl.Uniform(_yuvProgram, "luma"), 0);
         _gl.Uniform1i(_gl.Uniform(_yuvProgram, "chroma"), 1);
+        _gl.Uniform1i(_gl.Uniform(_yuvProgram, "chromaV"), 2);
+        _yuvPlanar = _gl.Uniform(_yuvProgram, "planarChroma");
         _yuvMatrix = _gl.Uniform(_yuvProgram, "yuvToRgb");
         _yuvOffset = _gl.Uniform(_yuvProgram, "yuvOffset");
         _gl.UseProgram(_rgbProgram);
@@ -238,6 +244,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
             DmaBufVideoFrame dmaBuf => Import(dmaBuf),
             GlCopyVideoFrame copy => CopyYuv(copy),
             D3D11SharedVideoFrame shared => ImportD3D11(shared),
+            MemoryYuvVideoFrame yuv => UploadYuv(yuv),
             null => UploadRgb(frame),
             _ => false
         };
@@ -326,27 +333,84 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
     private bool CopyYuv(GlCopyVideoFrame frame)
     {
-        var gl = _gl!;
-        var size = new PixelSize(frame.Width, frame.Height);
-
-        if (size != _yuvSize)
-        {
-            DeleteYuvTextures();
-
-            _lumaTexture = gl.CreateTexture();
-            gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.R8, size.Width, size.Height, 0,
-                GlFunctions.Red, GlFunctions.UnsignedByte, null);
-            _chromaTexture = gl.CreateTexture();
-            gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.Rg8, (size.Width + 1) / 2, (size.Height + 1) / 2, 0,
-                GlFunctions.Rg, GlFunctions.UnsignedByte, null);
-            _yuvSize = size;
-        }
+        EnsureYuvTextures(new PixelSize(frame.Width, frame.Height), false);
 
         if (frame.CopyTo(_lumaTexture, _chromaTexture))
             return true;
 
         VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.CudaGl);
         return false;
+    }
+
+    private bool UploadYuv(MemoryYuvVideoFrame frame)
+    {
+        var gl = _gl!;
+        var size = new PixelSize(frame.Width, frame.Height);
+        var chromaSize = new PixelSize((size.Width + 1) / 2, (size.Height + 1) / 2);
+        var isPlanar = frame.Layout == YuvPlaneLayout.I420;
+
+        EnsureYuvTextures(size, isPlanar);
+        gl.PixelStorei(GlFunctions.UnpackAlignment, 1);
+
+        // The rows are read straight from the buffer of the decoder, padding and all
+        Upload(_lumaTexture, frame.Planes[0], size, GlFunctions.Red, 1);
+
+        if (isPlanar)
+        {
+            Upload(_chromaTexture, frame.Planes[1], chromaSize, GlFunctions.Red, 1);
+            Upload(_chromaVTexture, frame.Planes[2], chromaSize, GlFunctions.Red, 1);
+        }
+        else
+        {
+            Upload(_chromaTexture, frame.Planes[1], chromaSize, GlFunctions.Rg, 2);
+        }
+
+        gl.PixelStorei(GlFunctions.UnpackRowLength, 0);
+        gl.PixelStorei(GlFunctions.UnpackAlignment, 4);
+        return true;
+
+        void Upload(uint texture, VideoPlane plane, PixelSize planeSize, int format, int bytesPerPixel)
+        {
+            gl.ActiveTexture(GlFunctions.Texture0);
+            gl.BindTexture(GlFunctions.Texture2D, texture);
+            gl.PixelStorei(GlFunctions.UnpackRowLength, plane.Stride / bytesPerPixel);
+            gl.TexSubImage2D(GlFunctions.Texture2D, 0, 0, 0, planeSize.Width, planeSize.Height, format,
+                GlFunctions.UnsignedByte, (void*)plane.Data);
+        }
+    }
+
+    // Luma, and chroma as RG8 or, for planar frames, U and V as R8 each
+    private void EnsureYuvTextures(PixelSize size, bool isPlanar)
+    {
+        if (size == _yuvSize && isPlanar == _isYuvPlanar && _lumaTexture != 0)
+            return;
+
+        var gl = _gl!;
+        var (width, height) = ((size.Width + 1) / 2, (size.Height + 1) / 2);
+
+        DeleteYuvTextures();
+
+        _lumaTexture = gl.CreateTexture();
+        gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.R8, size.Width, size.Height, 0,
+            GlFunctions.Red, GlFunctions.UnsignedByte, null);
+        _chromaTexture = gl.CreateTexture();
+
+        if (isPlanar)
+        {
+            gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.R8, width, height, 0,
+                GlFunctions.Red, GlFunctions.UnsignedByte, null);
+            _chromaVTexture = gl.CreateTexture();
+            gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.R8, width, height, 0,
+                GlFunctions.Red, GlFunctions.UnsignedByte, null);
+        }
+        else
+        {
+            gl.TexImage2D(GlFunctions.Texture2D, 0, GlFunctions.Rg8, width, height, 0,
+                GlFunctions.Rg, GlFunctions.UnsignedByte, null);
+        }
+
+        _yuvSize = size;
+        _isYuvPlanar = isPlanar;
     }
 
     private bool ImportD3D11(D3D11SharedVideoFrame frame)
@@ -426,6 +490,9 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
             case GlCopyVideoFrame:
                 DrawYuv(frame.Gpu, _lumaTexture, _chromaTexture);
                 break;
+            case MemoryYuvVideoFrame:
+                DrawYuv(frame.Gpu, _lumaTexture, _chromaTexture, _isYuvPlanar ? _chromaVTexture : 0);
+                break;
             case D3D11SharedVideoFrame:
                 DrawRgb(_importedRgb, false);
                 break;
@@ -439,16 +506,25 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
         return true;
     }
 
-    private void DrawYuv(GpuVideoFrame frame, uint luma, uint chroma)
+    /// <param name="chromaV">The V plane when U and V come apart, otherwise 0.</param>
+    private void DrawYuv(GpuVideoFrame frame, uint luma, uint chroma, uint chromaV = 0)
     {
         var gl = _gl!;
 
         gl.UseProgram(_yuvProgram);
         SetColorConversion(frame.Matrix, frame.IsFullRange);
+        gl.Uniform1i(_yuvPlanar, chromaV != 0 ? 1 : 0);
         gl.ActiveTexture(GlFunctions.Texture0);
         gl.BindTexture(GlFunctions.Texture2D, luma);
         gl.ActiveTexture(GlFunctions.Texture0 + 1);
         gl.BindTexture(GlFunctions.Texture2D, chroma);
+
+        if (chromaV != 0)
+        {
+            gl.ActiveTexture(GlFunctions.Texture0 + 2);
+            gl.BindTexture(GlFunctions.Texture2D, chromaV);
+        }
+
         DrawQuad();
     }
 
@@ -533,7 +609,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
     private void DeleteYuvTextures()
     {
-        foreach (var texture in (ReadOnlySpan<uint>)[_lumaTexture, _chromaTexture])
+        foreach (var texture in (ReadOnlySpan<uint>)[_lumaTexture, _chromaTexture, _chromaVTexture])
         {
             if (texture == 0)
                 continue;
@@ -542,7 +618,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
             _gl?.DeleteTexture(texture);
         }
 
-        _lumaTexture = _chromaTexture = 0;
+        _lumaTexture = _chromaTexture = _chromaVTexture = 0;
         _yuvSize = default;
     }
 
@@ -555,7 +631,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
                 Orphans.Enqueue((texture, 0));
         }
 
-        foreach (var texture in (ReadOnlySpan<uint>)[_lumaTexture, _chromaTexture])
+        foreach (var texture in (ReadOnlySpan<uint>)[_lumaTexture, _chromaTexture, _chromaVTexture])
         {
             if (texture == 0)
                 continue;
@@ -576,7 +652,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
         _angle?.Dispose();
         _angle = null;
         _rgbTexture = _importedLuma = _importedChroma = _importedRgb = _outputTexture = _outputFramebuffer = 0;
-        _lumaTexture = _chromaTexture = _yuvProgram = _rgbProgram = 0;
+        _lumaTexture = _chromaTexture = _chromaVTexture = _yuvProgram = _rgbProgram = 0;
         _rgbSize = _yuvSize = _outputSize = default;
         _hasPicture = false;
         _gl = null;
@@ -611,13 +687,18 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     private const string YuvShader = """
         uniform sampler2D luma;
         uniform sampler2D chroma;
+        uniform sampler2D chromaV;
+        uniform int planarChroma;
         uniform mat3 yuvToRgb;
         uniform vec3 yuvOffset;
         in vec2 uv;
         out vec4 color;
         void main()
         {
-            vec3 yuv = vec3(texture(luma, uv).r, texture(chroma, uv).rg) - yuvOffset;
+            vec2 uvValues = planarChroma != 0
+                ? vec2(texture(chroma, uv).r, texture(chromaV, uv).r)
+                : texture(chroma, uv).rg;
+            vec3 yuv = vec3(texture(luma, uv).r, uvValues) - yuvOffset;
             color = vec4(clamp(yuvToRgb * yuv, 0.0, 1.0), 1.0);
         }
         """;

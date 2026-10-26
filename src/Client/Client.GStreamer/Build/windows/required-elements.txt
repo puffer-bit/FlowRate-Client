@@ -24,6 +24,8 @@ volume
 valve
 level
 ?webrtcdsp
+# RNNoise of gst-plugins-rs, see Audio/MicrophoneProcessing.cs; an older runtime lacks it
+?audiornnoise
 autoaudiosrc
 autoaudiosink
 wasapi2src

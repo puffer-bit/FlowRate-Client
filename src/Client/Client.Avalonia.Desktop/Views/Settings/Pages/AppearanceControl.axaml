@@ -44,20 +44,6 @@
              of the OS is not implemented, so the card cannot be picked -->
         <settingsPages:ThemePresetPicker ui:SettingsPage.SearchKey="appearance.theme"/>
 
-        <controls:SettingsHeader services:SettingText.Section="appearance.scale"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="appearance.scale">
-                <ComboBox MinWidth="180" ItemsSource="{Binding InterfaceScales}"
-                          SelectedItem="{Binding SelectedInterfaceScale}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="x:Int32">
-                            <TextBlock Text="{Binding StringFormat='{}{0}%'}"/>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </ui:SettingsRow>
-        </ui:SettingsCard>
-
         <controls:SettingsHeader services:SettingText.Section="appearance.buttonColors"/>
         <!-- The colors are the same in both themes; the buttons below show them as they are picked -->
         <ui:SettingsCard>
@@ -67,11 +53,11 @@
             <ui:SettingsRow services:SettingText.Key="appearance.secondaryColor">
                 <pickers:ColorPicker Color="{Binding SecondaryColor}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="appearance.dangerColor">
-                <pickers:ColorPicker Color="{Binding DangerColor}"/>
-            </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="appearance.saveColor">
                 <pickers:ColorPicker Color="{Binding SaveColor}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="appearance.dangerColor">
+                <pickers:ColorPicker Color="{Binding DangerColor}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="appearance.successColor">
                 <pickers:ColorPicker Color="{Binding SuccessColor}"/>
@@ -84,6 +70,27 @@
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="appearance.resetColors">
                 <Button Content="{l:Text common.reset}" Command="{Binding ResetColorsCommand}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.preview"/>
+        <!-- A piece of a chat built from the styles of the real one, so it changes with the theme and
+             the colors above; the messages are texts of the interface, not view models -->
+        <settingsPages:ChatPreview/>
+        
+        <hints:HintBlock Text="{l:Text settings.appearance.preview.hint}"/>
+
+        <controls:SettingsHeader services:SettingText.Section="appearance.scale"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.scale">
+                <ComboBox MinWidth="180" ItemsSource="{Binding InterfaceScales}"
+                          SelectedItem="{Binding SelectedInterfaceScale}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="x:Int32">
+                            <TextBlock Text="{Binding StringFormat='{}{0}%'}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>
 
@@ -103,12 +110,5 @@
                 </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>
-
-        <controls:SettingsHeader services:SettingText.Section="appearance.preview"/>
-        <!-- A piece of a chat built from the styles of the real one, so it changes with the theme and
-             the colors above; the messages are texts of the interface, not view models -->
-        <settingsPages:ChatPreview/>
-        
-        <hints:HintBlock Text="{l:Text settings.appearance.preview.hint}"/>
     </ui:SettingsPage>
 </UserControl>

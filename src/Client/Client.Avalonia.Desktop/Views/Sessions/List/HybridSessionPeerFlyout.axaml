@@ -37,9 +37,14 @@
         <!-- Nothing to adjust or moderate about ourselves -->
         <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
 
-            <menus:MenuItemButton Content="{l:Text peer.poke}"/>
+            <!-- Only a peer of the session we are in; the message is asked in a card of its own -->
+            <StackPanel Spacing="2" IsVisible="{Binding CanPoke}">
+                <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      Click="OnPokeClick"/>
 
-            <Separator/>
+                <Separator/>
+            </StackPanel>
 
             <Grid ColumnDefinitions="*, Auto" Margin="8,4,8,0">
                 <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
@@ -73,15 +78,40 @@
 
             <Separator/>
 
-            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
-                                  menus:FlyoutMenu.CloseOnClick="True"
-                                  IsVisible="{Binding CanKick}"
-                                  Command="{Binding Kick}"/>
-            <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"/>
-            <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"/>
-            <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"/>
+            <!-- Hidden with its separator when the current user may do nothing to this one -->
+            <StackPanel Spacing="2">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding Path="CanApprove"/>
+                        <Binding Path="CanKick"/>
+                        <Binding Path="CanBan"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
+                <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Approve}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Reject}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanKick}"
+                                      Command="{Binding Kick}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanBan}"
+                                      Command="{Binding Ban}"/>
+                <!-- Hidden until suspending and reporting are implemented -->
+                <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"
+                                      IsVisible="False"/>
+                <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"
+                                      IsVisible="False"/>
 
-            <Separator/>
+                <Separator/>
+            </StackPanel>
         </StackPanel>
 
         <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"

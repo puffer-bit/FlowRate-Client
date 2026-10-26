@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Main.ConnectionInfoFlyout"
+             x:DataType="mainVm:ConnectionInfoVM"
+             Width="300">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="TextBlock.figure">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="10" Margin="4">
+
+        <!-- Where the connection goes -->
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <indicators:PingIndicator Grid.Column="0" VerticalAlignment="Center"
+                                      Foreground="{DynamicResource SecondaryTextBrush}"
+                                      IsTextVisible="False"
+                                      RoundTrip="{Binding RoundTrip}"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="{l:Text main.connection.server}" Classes="caption"/>
+                <TextBlock Text="{Binding Address}" Classes="figure" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+            <StackPanel Grid.Column="0" Spacing="1">
+                <TextBlock Text="{l:Text main.connection.ping}" Classes="caption"/>
+                <TextBlock Text="{Binding RoundTripText}" Classes="figure"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{l:Text main.connection.since}" Classes="caption"/>
+                <TextBlock Text="{Binding ConnectedAtText}" Classes="figure"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="1">
+                <TextBlock Text="{l:Text main.connection.duration}" Classes="caption"/>
+                <TextBlock Text="{Binding DurationText}" Classes="figure"/>
+            </StackPanel>
+        </Grid>
+
+        <Separator/>
+
+        <!-- Always TLS; the shield tells whether the system or the user vouches for the server -->
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <Panel Grid.Column="0" Width="22" Height="22" VerticalAlignment="Center">
+                <Image Source="{StaticResource GreenShieldIcon}" IsVisible="{Binding IsCertificateVerified}"/>
+                <Image Source="{StaticResource OrangeShieldIcon}" IsVisible="{Binding !IsCertificateVerified}"/>
+            </Panel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="{l:Text main.connection.secure}" Classes="figure"/>
+                <TextBlock Text="{l:Text main.connection.certificateVerified}" Classes="caption"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding IsCertificateVerified}"/>
+                <TextBlock Text="{l:Text main.connection.certificateTrusted}" Classes="caption"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding !IsCertificateVerified}"/>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</UserControl>

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -27,7 +28,16 @@
                 <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
                     <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
                                Classes.deleted-user="{Binding IsSenderDeleted}"
-                               Text="{Binding SenderName}"/>
+                               Text="{Binding SenderName}"
+                               Classes.role-colored="{Binding SenderColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <!-- A local value would hide the usual color of the style whenever the author has no colored role -->
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock.role-colored">
+                                <Setter Property="Foreground"
+                                        Value="{Binding SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
                     <TextBlock Classes="msg-time"
                                Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
@@ -54,7 +64,8 @@
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <TextBlock Classes="msg-body" chatVm:ChatMessageText.Body="{Binding Body}"
+                    <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                               chatVm:ChatMessageText.Body="{Binding Body}"
                                chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
@@ -77,6 +88,36 @@
                                     <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
                                            IsVisible="{Binding IsFailed}"/>
                                 </Panel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Files that are not shown; a tap saves one where the user picks -->
+                <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatFileVM">
+                            <Button Classes="msg-file" Classes.error="{Binding HasError}"
+                                    Command="{Binding DownloadCommand}">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <Border Grid.Column="0" Classes="msg-file-icon">
+                                        <Panel>
+                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding !IsDownloading}"/>
+                                            <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Classes="msg-file-name" Text="{Binding FileName}"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !HasError}">
+                                            <TextBlock Classes="msg-file-size" Text="{Binding SizeText}"/>
+                                            <TextBlock Classes="msg-file-size" Text="{l:Text chat.file.saved}"
+                                                       IsVisible="{Binding IsSaved}"/>
+                                        </StackPanel>
+                                        <TextBlock Classes="msg-file-error" Text="{Binding Error}"
+                                                   IsVisible="{Binding HasError}"/>
+                                        <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
+                                    </StackPanel>
+                                </Grid>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
