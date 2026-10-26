@@ -17,6 +17,11 @@
 #include <string>
 #include <vector>
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <mmdeviceapi.h>
+#endif
+
 #include "libwebrtc.h"
 #include "rtc_audio_device.h"
 #include "rtc_audio_processing.h"
@@ -443,6 +448,41 @@ int fr_set_recording_device(int index) {
 int fr_set_playout_device(int index) {
   auto device = AudioDevice();
   return device != nullptr && device->SetPlayoutDevice(index) == 0;
+}
+
+int fr_default_device(int is_recording, char* guid, int guid_size) {
+#if defined(_WIN32)
+  // Without an index libwebrtc opens the default device for communications, which may be another
+  // one than where the rest of the sound of the system goes. COM may be on already, in another mode.
+  const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  IMMDeviceEnumerator* enumerator = nullptr;
+  IMMDevice* device = nullptr;
+  LPWSTR id = nullptr;
+  int result = 0;
+
+  if (SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator))) &&
+      SUCCEEDED(enumerator->GetDefaultAudioEndpoint(is_recording ? eCapture : eRender, eConsole, &device)) &&
+      SUCCEEDED(device->GetId(&id)))
+    result = WideCharToMultiByte(CP_UTF8, 0, id, -1, guid, guid_size, nullptr, nullptr) > 0;
+
+  CoTaskMemFree(id);
+
+  if (device != nullptr)
+    device->Release();
+
+  if (enumerator != nullptr)
+    enumerator->Release();
+
+  if (SUCCEEDED(com))
+    CoUninitialize();
+
+  return result;
+#else
+  (void)is_recording;
+  (void)guid;
+  (void)guid_size;
+  return 0;
+#endif
 }
 
 void fr_set_capture_volume(double volume) { g_capture.SetVolume(volume); }
