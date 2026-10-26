@@ -24,6 +24,9 @@ namespace Client.ViewModels.Main;
 public sealed class UserActions
 {
     public ReactiveCommand<RxVoid, RxVoid> EditProfileCommand { get; }
+
+    /// <summary>Opens what the current user logs in with: the password, one-time codes and passkeys.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ManageSecurityCommand { get; }
     public ReactiveCommand<int, RxVoid> ViewProfileCommand { get; }
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
@@ -52,6 +55,7 @@ public sealed class UserActions
     private readonly Interaction<MessageBoxVM, Result> _showMessageBox;
     private readonly Interaction<EditProfileWindowVM, RxVoid> _showEditProfile;
     private readonly Interaction<UserProfileWindowVM, RxVoid> _showUserProfile;
+    private readonly Interaction<AccountSecurityVM, RxVoid> _showAccountSecurity;
 
     /// <param name="session">The connected coordinator session; the commands run only while there is one.</param>
     /// <param name="isConnected">Whether the commands that open something can run.</param>
@@ -59,7 +63,8 @@ public sealed class UserActions
         IAvatarService avatars, INotificationService notifications, AccessVM access,
         Interaction<MessageBoxVM, Result> showMessageBox,
         Interaction<EditProfileWindowVM, RxVoid> showEditProfile,
-        Interaction<UserProfileWindowVM, RxVoid> showUserProfile)
+        Interaction<UserProfileWindowVM, RxVoid> showUserProfile,
+        Interaction<AccountSecurityVM, RxVoid> showAccountSecurity)
     {
         _session = session;
         _currentUser = currentUser;
@@ -69,6 +74,7 @@ public sealed class UserActions
         _showMessageBox = showMessageBox;
         _showEditProfile = showEditProfile;
         _showUserProfile = showUserProfile;
+        _showAccountSecurity = showAccountSecurity;
 
         EditProfileCommand = ReactiveCommand.CreateFromTask(EditProfile, isConnected);
         ViewProfileCommand = ReactiveCommand.CreateFromTask<int>(ViewProfile, isConnected);
@@ -90,6 +96,7 @@ public sealed class UserActions
                 var (result, user) = await Session.SetAvatar(avatar.Encoded, avatar.MimeType);
                 return (result, user?.AvatarUrl);
             });
+        ManageSecurityCommand = ReactiveCommand.CreateFromTask(ManageSecurity, isConnected);
         _resetAvatarCommand = ReactiveCommand.CreateFromTask<int, SetAvatarResult>(
             userId => Session.ResetAvatar(userId));
         _setUserRoleCommand = ReactiveCommand
@@ -121,6 +128,14 @@ public sealed class UserActions
         using var vm = new UserProfileWindowVM(user, user.Id == _currentUser()?.Id, _avatars, _changeUserUsernameCommand,
             _setAvatarCommand, _resetAvatarCommand, _access.Permissions, _setUserRoleCommand);
         await _showUserProfile.Handle(vm);
+    }
+
+    // What the user logs in with; loaded as the dialog opens
+    private async Task ManageSecurity()
+    {
+        var vm = new AccountSecurityVM(Session);
+        ObservableExtensions.Subscribe(vm.LoadCommand.Execute());
+        await _showAccountSecurity.Handle(vm);
     }
 
     // The card follows the current user, which the server sends back once the status is set
