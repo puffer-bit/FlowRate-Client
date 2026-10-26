@@ -21,6 +21,7 @@ internal partial class ConnectView : ViewControl<ConnectWindowVM>
             {
                 ViewModel!.CloseWindow.RegisterCloseHandler(this).DisposeWith(disposables);
                 ViewModel!.ShowMessageBox.RegisterMessageBoxHandler(this).DisposeWith(disposables);
+                ViewModel!.AskLogin.RegisterLoginPromptHandler(this).DisposeWith(disposables);
             });
 
             // Once the user is done with the address, a port typed into it moves to the port field

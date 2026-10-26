@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Hybrid.HybridSessionStatsFlyout"
+             x:DataType="hybridVm:HybridSessionStatsVM"
+             Width="320">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="TextBlock.figure">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="indicators|LineChart">
+            <Setter Property="Height" Value="72"/>
+            <Setter Property="Capacity" Value="{x:Static hybridVm:HybridSessionStatsVM.HistoryLength}"/>
+            <Setter Property="GridBrush" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="Ellipse.legend">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="10" Margin="4">
+
+        <!-- The verdict, then the figures it comes from -->
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <indicators:SignalIndicator Grid.Column="0" Width="28" Height="28" Level="{Binding SignalLevel}"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.title}" Classes="caption"/>
+                <TextBlock Text="{Binding QualityText}" Classes="figure"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+            <StackPanel Grid.Column="0" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.ping}" Classes="caption"/>
+                <TextBlock Text="{Binding RoundTripText}" Classes="figure"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.lossIn}" Classes="caption"/>
+                <TextBlock Text="{Binding InboundLossText}" Classes="figure"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.lossOut}" Classes="caption"/>
+                <TextBlock Text="{Binding OutboundLossText}" Classes="figure"/>
+            </StackPanel>
+        </Grid>
+
+        <Separator/>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{l:Text hybrid.stats.pingGraph}" Classes="caption"/>
+            <indicators:LineChart Values="{Binding RoundTripHistory}"
+                                  Stroke="{DynamicResource ButtonMainBrush}"
+                                  MinimumMaximum="100" Unit="ms"/>
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{l:Text hybrid.stats.lossGraph}" Classes="caption"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <Ellipse Classes="legend" Fill="{DynamicResource ButtonMainBrush}"/>
+                    <TextBlock Text="{l:Text hybrid.stats.lossIn}" Classes="caption"/>
+                    <Ellipse Classes="legend" Margin="6,0,0,0" Fill="{DynamicResource WarningBrush}"/>
+                    <TextBlock Text="{l:Text hybrid.stats.lossOut}" Classes="caption"/>
+                </StackPanel>
+            </Grid>
+            <indicators:LineChart Values="{Binding InboundLossHistory}"
+                                  Stroke="{DynamicResource ButtonMainBrush}"
+                                  SecondaryValues="{Binding OutboundLossHistory}"
+                                  SecondaryStroke="{DynamicResource WarningBrush}"
+                                  MinimumMaximum="5" Unit="%"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

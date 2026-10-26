@@ -4,7 +4,6 @@ using Client.Avalonia.Localization;
 using ReactiveUI;
 using Client.Core.Coordinator;
 using Client.Application.Coordinator;
-using Client.Services;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
@@ -100,33 +99,21 @@ public class ServerTitleVM : ReactiveObject
 
     public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
 
-    /// <summary>
-    /// Shows a made-up notification, of the next kind on each call: a way to look at them until real ones come.
-    /// </summary>
-    public ReactiveCommand<RxVoid, RxVoid> TestNotificationCommand { get; }
-
-    private static readonly NotificationType[] TestNotificationTypes =
-        [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error];
-
-    private int _testNotificationCount;
+    /// <summary>What the current user logs in with on this server: the password, one-time codes and passkeys.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ManageSecurityCommand { get; }
 
     public ServerTitleVM(ReactiveCommand<RxVoid, RxVoid> createSessionCommand,
         ReactiveCommand<RxVoid, RxVoid> createCategoryCommand,
         ReactiveCommand<RxVoid, RxVoid> openSettingsCommand,
-        ReactiveCommand<RxVoid, RxVoid> disconnectCommand, INotificationService notificationService,
-        AccessVM access)
+        ReactiveCommand<RxVoid, RxVoid> disconnectCommand,
+        ReactiveCommand<RxVoid, RxVoid> manageSecurityCommand, AccessVM access)
     {
+        ManageSecurityCommand = manageSecurityCommand;
         Access = access;
         OpenSettingsCommand = openSettingsCommand;
         CreateSessionCommand = createSessionCommand;
         CreateCategoryCommand = createCategoryCommand;
         DisconnectCommand = disconnectCommand;
-        TestNotificationCommand = ReactiveCommand.Create(() =>
-        {
-            var type = TestNotificationTypes[_testNotificationCount++ % TestNotificationTypes.Length];
-            notificationService.Show(type, Strings.Get("notification.test.title"),
-                Strings.Get("notification.test.message"));
-        });
 
         // The title lives as long as the main window, so the subscription is never dropped
         Strings.LanguageChanged += () =>

@@ -1,0 +1,70 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators">
+    <Design.PreviewWith>
+        <StackPanel Spacing="6" Margin="8" Orientation="Horizontal">
+            <indicators:SignalIndicator Width="24" Height="24"/>
+            <indicators:SignalIndicator Width="24" Height="24" Level="1"/>
+            <indicators:SignalIndicator Width="24" Height="24" Level="2"/>
+            <indicators:SignalIndicator Width="24" Height="24" Level="3"/>
+        </StackPanel>
+    </Design.PreviewWith>
+
+    <Style Selector="indicators|SignalIndicator">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- A mast that broadcasts waves to both sides, on a grid of 24 -->
+                <Viewbox Stretch="Uniform">
+                    <Canvas Width="24" Height="24">
+                        <Path Classes="mast" Data="M12,11 L8.5,21 M12,11 L15.5,21 M9.55,18 H14.45"/>
+                        <Ellipse Classes="mast" Canvas.Left="10.5" Canvas.Top="7.5" Width="3" Height="3"/>
+                        <Path Classes="arc a1" Data="M9.32,6.75 A3.5,3.5 0 0 0 9.32,11.25 M14.68,6.75 A3.5,3.5 0 0 1 14.68,11.25"/>
+                        <Path Classes="arc a2" Data="M7.02,4.82 A6.5,6.5 0 0 0 7.02,13.18 M16.98,4.82 A6.5,6.5 0 0 1 16.98,13.18"/>
+                        <Path Classes="arc a3" Data="M4.72,2.89 A9.5,9.5 0 0 0 4.72,15.11 M19.28,2.89 A9.5,9.5 0 0 1 19.28,15.11"/>
+                    </Canvas>
+                </Viewbox>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="indicators|SignalIndicator /template/ Path">
+        <Setter Property="StrokeThickness" Value="2"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"/>
+    </Style>
+    <Style Selector="indicators|SignalIndicator /template/ Ellipse.mast">
+        <Setter Property="Fill" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"/>
+    </Style>
+    <Style Selector="indicators|SignalIndicator /template/ Path.arc">
+        <!-- Dimmed is unlit; with no measurement yet every arc stays unlit -->
+        <Setter Property="Opacity" Value="0.3"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="indicators|SignalIndicator:good">
+        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
+    <Style Selector="indicators|SignalIndicator:good /template/ Path.arc">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <Style Selector="indicators|SignalIndicator:fair">
+        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+    </Style>
+    <Style Selector="indicators|SignalIndicator:fair /template/ Path.a1, indicators|SignalIndicator:fair /template/ Path.a2">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <Style Selector="indicators|SignalIndicator:poor">
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="indicators|SignalIndicator:poor /template/ Path.a1">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+</Styles>

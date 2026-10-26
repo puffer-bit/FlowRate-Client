@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             x:DataType="listVm:PeerVM"
+             x:Class="Client.Views.Sessions.List.PokeCard">
+
+    <!-- Poking a peer, laid out as going away from the keyboard is: who, an optional message and the send -->
+    <UserControl.Styles>
+        <Style Selector="TextBlock.pokeCaption">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Width="300" Margin="10" Spacing="14">
+
+        <!-- Who is poked -->
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+            <Panel Width="44" Height="44" VerticalAlignment="Top">
+                <Ellipse Fill="{DynamicResource ButtonMainBrush}" Opacity="0.18"/>
+                <Ellipse Stroke="{DynamicResource ButtonMainBrush}" StrokeThickness="1.5" Opacity="0.6"/>
+                <Image Width="24" Height="24" Source="{StaticResource PokeIcon}"/>
+            </Panel>
+            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="{Binding PokeTitle}"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{l:Text peer.poke.subtitle}"
+                           TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Spacing="4">
+            <TextBox Text="{Binding PokeMessage}"
+                     PlaceholderText="{l:Text peer.poke.message.placeholder}"
+                     MaxLength="{x:Static validation:Limits.PokeMessageMaxLength}"/>
+            <TextBlock Classes="pokeCaption" HorizontalAlignment="Right" Text="{Binding PokeMessageCounter}"/>
+        </StackPanel>
+
+        <Button Classes="primary"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Padding="10,8"
+                IsDefault="True"
+                menus:FlyoutMenu.CloseOnClick="True"
+                Command="{Binding Poke}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="18" Height="18" Source="{StaticResource PokeIcon}"/>
+                <TextBlock Text="{l:Text peer.poke.send}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+    </StackPanel>
+</UserControl>

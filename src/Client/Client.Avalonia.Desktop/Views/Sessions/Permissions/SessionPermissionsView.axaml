@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:permissionsVm="clr-namespace:Client.ViewModels.Sessions.Permissions;assembly=Client.Avalonia.ViewModels"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
+        x:Class="Client.Views.Sessions.Permissions.SessionPermissionsView"
+        x:DataType="permissionsVm:SessionPermissionsWindowVM"
+        Background="{DynamicResource GeneralBrush}"
+        Width="640"
+        Height="480">
+
+    <Grid RowDefinitions="Auto, 1, *, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource GearIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text sessionPermissions.title}"/>
+                <TextBlock FontSize="18" VerticalAlignment="Center" Text="{Binding SessionName}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionPermissions.hint}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <Grid Grid.Row="2" ColumnDefinitions="180, 1, *" IsEnabled="{Binding !IsBusy}">
+            <!-- Roles, highest first -->
+            <ListBox Grid.Column="0" ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="permissionsVm:SessionRoleOverrideVM">
+                        <TextBlock Text="{Binding Name}" Classes.hint="{Binding !IsEditable}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Column="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+            <!-- Permissions of the selected role -->
+            <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl Margin="16,12" ItemsSource="{Binding SelectedRole.Permissions, FallbackValue={x:Null}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="permissionsVm:SessionPermissionStateVM">
+                            <Grid ColumnDefinitions="*, Auto" Margin="0,6" IsEnabled="{Binding IsEditable}">
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Title}"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <RadioButton Content="{l:Text sessionPermissions.deny}" IsChecked="{Binding IsDenied}"/>
+                                    <RadioButton Content="{l:Text sessionPermissions.inherit}" IsChecked="{Binding IsInherited}"/>
+                                    <RadioButton Content="{l:Text sessionPermissions.allow}" IsChecked="{Binding IsAllowed}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto" ColumnSpacing="12">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13"
+                       Foreground="{DynamicResource ErrorBrush}" Text="{Binding GeneralError}"
+                       IsVisible="{Binding GeneralError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text common.cancel}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
+                                    IsVisible="{Binding !IsBusy}">
+                            <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource DisketteIcon}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:Text common.save}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                    IsVisible="{Binding IsBusy}">
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"/>
+                            <TextBlock Text="{l:Text common.saving}"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

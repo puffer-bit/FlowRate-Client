@@ -12,4 +12,10 @@ public sealed partial class WebRTCTransport
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Incoming stream on {Pad} ended")]
     private partial void LogIncomingStreamEnded(int sessionId, string pad);
+
+    [LoggerMessage(LogLevel.Error, "[Session {SessionId}] {Element} failed: {Message} ({Debug})")]
+    private partial void LogPipelineError(int sessionId, string element, string message, string? debug);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] {Element} warns: {Message} ({Debug})")]
+    private partial void LogPipelineWarning(int sessionId, string element, string message, string? debug);
 }

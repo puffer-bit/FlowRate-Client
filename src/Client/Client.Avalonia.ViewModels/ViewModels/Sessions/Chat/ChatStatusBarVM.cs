@@ -24,13 +24,19 @@ public class ChatStatusBarVM : ReactiveObject
     /// <summary>
     /// The line under the chat name: what is going on right now, otherwise what the chat is about.
     /// </summary>
-    public string StatusText => IsLoading ? Strings.Get("chat.loadingMessages") : _description;
+    public string StatusText => IsLoading ? Strings.Get("chat.loadingMessages") : _description ?? Strings.Get("session.type.chat");
 
-    private readonly string _description;
+    // Null without a description, then the type of the session is shown in the current language
+    private readonly string? _description;
 
     public ChatStatusBarVM(ChatSessionModel sessionModel)
     {
         Name = sessionModel.Name;
-        _description = string.IsNullOrWhiteSpace(sessionModel.Description) ? Strings.Get("session.type.chat") : sessionModel.Description.Trim();
+        _description = string.IsNullOrWhiteSpace(sessionModel.Description) ? null : sessionModel.Description.Trim();
     }
+
+    /// <summary>
+    /// Puts the texts into the language that has just been chosen.
+    /// </summary>
+    public void UpdateTexts() => this.RaisePropertyChanged(nameof(StatusText));
 }

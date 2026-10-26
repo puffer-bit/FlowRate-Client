@@ -10,7 +10,7 @@ using Shared.Models.Media;
 namespace Client.Api.Transport.HTTP;
 
 /// <summary>
-/// The HTTP side of a coordinator: uploads by the tus protocol and downloads of message images and avatars.
+/// The HTTP side of a coordinator: uploads by the tus protocol and downloads of message images, files and avatars.
 /// It talks to the address of the web socket and trusts the same certificate.
 /// </summary>
 internal sealed partial class MediaHttpClient : IDisposable
@@ -107,6 +107,11 @@ internal sealed partial class MediaHttpClient : IDisposable
             destination, progress, cancellationToken);
     }
 
+    public Task<MediaTransferResult> DownloadFileAsync(int fileId, Stream destination, IProgress<long>? progress,
+        CancellationToken cancellationToken) =>
+        DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.Files}/{fileId}"),
+            destination, progress, cancellationToken);
+
     public Task<MediaTransferResult> DownloadAvatarAsync(string avatarId, Stream destination,
         CancellationToken cancellationToken) =>
         DownloadAsync($"{MediaEndpoints.Avatars}/{Uri.EscapeDataString(avatarId)}", destination, null,
@@ -172,6 +177,7 @@ internal sealed partial class MediaHttpClient : IDisposable
             Metadata(MediaUploadMetadata.Kind, upload.Kind switch
             {
                 MediaUploadKind.ImagePreview => MediaUploadMetadata.KindImagePreview,
+                MediaUploadKind.File => MediaUploadMetadata.KindFile,
                 MediaUploadKind.Avatar => MediaUploadMetadata.KindAvatar,
                 _ => MediaUploadMetadata.KindImage
             })

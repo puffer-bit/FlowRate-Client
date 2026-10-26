@@ -83,26 +83,41 @@ public sealed record RtpCodec
 
     /// <summary>
     /// The codec the SFU announced for an inbound track. Falls back to the presets when the server
-    /// does not report codecs yet.
+    /// does not report codecs yet. Lost packets are asked for again only where the SFU keeps them.
     /// </summary>
     public static RtpCodec FromInbound(InboundTrack inbound) =>
-        FromParameters(inbound.MediaType, inbound.MimeType, inbound.PayloadType, inbound.ClockRate, inbound.Channels);
+        FromParameters(inbound.MediaType, inbound.MimeType, inbound.PayloadType, inbound.ClockRate, inbound.Channels,
+            inbound.IsNackEnabled);
 
     /// <summary>
-    /// The codec the SFU expects on an outbound track.
+    /// The codec the SFU expects on an outbound track. The SFU asks for lost packets again only
+    /// where the track has an RTX stream to resend them on.
     /// </summary>
     public static RtpCodec FromOutbound(OutboundTrack outbound) =>
-        FromParameters(outbound.MediaType, outbound.MimeType, outbound.PayloadType, outbound.ClockRate, outbound.Channels);
+        FromParameters(outbound.MediaType, outbound.MimeType, outbound.PayloadType, outbound.ClockRate, outbound.Channels,
+            outbound.RtxPayloadType != 0);
 
-    private static RtpCodec FromParameters(MediaType mediaType, string mimeType, int payloadType, int clockRate, int channels)
+    /// <summary>The encoding name of a MIME type such as video/VP8, or the whole of it without a slash.</summary>
+    public static string EncodingNameOf(string mimeType)
+    {
+        var slash = mimeType.IndexOf('/');
+        return slash >= 0 ? mimeType[(slash + 1)..] : mimeType;
+    }
+
+    /// <summary>Whether the codec has lost packets asked for again.</summary>
+    public bool IsNackEnabled => RtcpFeedback.Contains(NackFeedback);
+
+    private const string NackFeedback = "nack";
+
+    private static RtpCodec FromParameters(MediaType mediaType, string mimeType, int payloadType, int clockRate, int channels,
+        bool nack)
     {
         var preset = mediaType == MediaType.Audio ? Opus() : H264();
 
         if (string.IsNullOrWhiteSpace(mimeType) || payloadType <= 0 || clockRate <= 0)
             return preset;
 
-        var slash = mimeType.IndexOf('/');
-        var encodingName = slash >= 0 ? mimeType[(slash + 1)..] : mimeType;
+        var encodingName = EncodingNameOf(mimeType);
 
         if (mediaType == MediaType.Audio)
         {
@@ -111,7 +126,8 @@ public sealed record RtpCodec
                 PayloadType = payloadType,
                 EncodingName = encodingName,
                 ClockRate = clockRate,
-                Channels = channels > 0 ? channels : preset.Channels
+                Channels = channels > 0 ? channels : preset.Channels,
+                RtcpFeedback = nack ? [NackFeedback, ..preset.RtcpFeedback] : preset.RtcpFeedback
             };
         }
 
@@ -125,7 +141,8 @@ public sealed record RtpCodec
             FormatParameters = encodingName.Equals("H264", StringComparison.OrdinalIgnoreCase)
                 ? H264().FormatParameters
                 : null,
-            RtcpFeedback = ["nack", "nack pli", "ccm fir"]
+            // Key frames are asked for either way
+            RtcpFeedback = nack ? [NackFeedback, "nack pli", "ccm fir"] : ["nack pli", "ccm fir"]
         };
     }
 

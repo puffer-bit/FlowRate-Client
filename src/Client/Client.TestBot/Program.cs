@@ -38,12 +38,14 @@ GstNativeLibraryResolver.Register(useInstalledRuntime: true);
 // Branches are built for these kinds whenever the decoder can deliver them
 if (options.GpuFrames)
     Client.Core.Media.VideoSurfaceSupport.Set(Client.Core.Media.VideoSurfaceKinds.DmaBuf |
-        Client.Core.Media.VideoSurfaceKinds.CudaGl | Client.Core.Media.VideoSurfaceKinds.D3D11Shared);
+        Client.Core.Media.VideoSurfaceKinds.CudaGl | Client.Core.Media.VideoSurfaceKinds.D3D11Shared |
+        Client.Core.Media.VideoSurfaceKinds.YuvMemory);
 
 if (options.GpuFramesFailAfter is { } failAfter)
     _ = Task.Delay(failAfter).ContinueWith(_ =>
         Client.Core.Media.VideoSurfaceSupport.ReportFailure(Client.Core.Media.VideoSurfaceKinds.DmaBuf |
-            Client.Core.Media.VideoSurfaceKinds.CudaGl | Client.Core.Media.VideoSurfaceKinds.D3D11Shared));
+            Client.Core.Media.VideoSurfaceKinds.CudaGl | Client.Core.Media.VideoSurfaceKinds.D3D11Shared |
+            Client.Core.Media.VideoSurfaceKinds.YuvMemory));
 
 Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
 {

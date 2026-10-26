@@ -188,6 +188,31 @@ public class MediaHttpClientTests
     }
 
     [Fact]
+    public async Task Upload_OfAFile_IsDescribedAsOne()
+    {
+        var outcome = await UploadAsync(Upload() with { Kind = MediaUploadKind.File, MimeType = "application/pdf" });
+
+        Assert.Equal(MediaTransferResult.NoError, outcome.Result);
+        Assert.Equal(MediaUploadMetadata.KindFile, _server.Metadata[MediaUploadMetadata.Kind]);
+        Assert.Equal("application/pdf", _server.Metadata[MediaUploadMetadata.MimeType]);
+    }
+
+    [Fact]
+    public async Task Download_WritesTheFile()
+    {
+        _server.Images["/media/files/31"] = _content;
+        using var destination = new MemoryStream();
+        var reported = new List<long>();
+
+        var result = await _client.DownloadFileAsync(31, destination, new Collector(reported),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(MediaTransferResult.NoError, result);
+        Assert.Equal(_content, destination.ToArray());
+        Assert.Equal(_content.Length, reported[^1]);
+    }
+
+    [Fact]
     public async Task Download_WritesTheAvatar()
     {
         _server.Images["/media/avatars/0a1b"] = _content;

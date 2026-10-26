@@ -1,5 +1,6 @@
 ﻿using Client.Application.Push;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
+using Shared.Permissions;
 using Client.Core.Push;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
@@ -30,6 +32,7 @@ using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Create;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
+using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
 
 namespace Client.ViewModels.Main;
@@ -41,6 +44,9 @@ namespace Client.ViewModels.Main;
 public partial class MainWindowVM : ReactiveObject
 {
     public StatusLineVM StatusLine { get; } = new();
+
+    /// <summary>The connection to the server, for the flyout of the status bar.</summary>
+    public ConnectionInfoVM ConnectionInfo { get; } = new();
 
     public IMainWindowContentVM? CurrentContent
     {
@@ -178,7 +184,11 @@ public partial class MainWindowVM : ReactiveObject
     public TimeSpan? ServerRoundTrip
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            ConnectionInfo.RoundTrip = value;
+        }
     }
 
     // UI Interactions
@@ -190,7 +200,12 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<CreateSessionWindowVM, RxVoid> ShowCreateSessionWindow { get; } = new();
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
     public Interaction<UserProfileWindowVM, RxVoid> ShowUserProfileWindow { get; } = new();
+    public Interaction<AccountSecurityVM, RxVoid> ShowAccountSecurityWindow { get; } = new();
+
+    /// <summary>Asks for the account password or a one-time code when a login or a reconnect needs them.</summary>
+    public Interaction<LoginPromptVM, LoginAnswer?> AskLogin { get; } = new();
     public Interaction<HybridSessionSettingsWindowVM, RxVoid> ShowHybridSessionSettingsWindow { get; } = new();
+    public Interaction<SessionPermissionsWindowVM, RxVoid> ShowSessionPermissionsWindow { get; } = new();
 
     // Reactive Commands
     public ReactiveCommand<RxVoid, RxVoid> OpenSettingsCommand { get; }
@@ -201,8 +216,10 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
-    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>
-        _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+        ChangeSessionSettingsResult> _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>
+        _changeSessionPermissionsCommand;
 
     private readonly UserActions _users;
     private readonly ChatPushReporter _pushReporter;
@@ -212,6 +229,7 @@ public partial class MainWindowVM : ReactiveObject
     private readonly ICoordinatorFactory _coordinatorFactory;
     private readonly ApplicationLoader _applicationLoader;
     private readonly IBehaviorService _behaviorService;
+    private readonly IAccountingService _accounting;
     private readonly IAvatarService _avatars;
     private readonly PushRegistration _pushRegistration;
     private readonly ChatSessionServices _chatServices;
@@ -222,6 +240,7 @@ public partial class MainWindowVM : ReactiveObject
 
     public MainWindowVM(
         IBehaviorService behaviorService,
+        IAccountingService accounting,
         ICoordinatorFactory coordinatorFactory,
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
@@ -241,6 +260,7 @@ public partial class MainWindowVM : ReactiveObject
         Func<SettingsWindowVM> createSettings)
     {
         _behaviorService = behaviorService;
+        _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
         _avatars = avatars;
@@ -257,7 +277,7 @@ public partial class MainWindowVM : ReactiveObject
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
-            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow);
+            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
@@ -267,9 +287,13 @@ public partial class MainWindowVM : ReactiveObject
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeHybridSessionSettingsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove), ChangeSessionSettingsResult>(
+            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+                ChangeSessionSettingsResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
-                    change.Capacity, change.IsHostMustApprove));
+                    change.Capacity, change.IsHostMustApprove, change.Media));
+        _changeSessionPermissionsCommand = ReactiveCommand
+            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>(
+                change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
         // Leaves only the session asked for: the menu may have been opened before we moved to another one
         var leaveHybridSessionCommand = ReactiveCommand.Create<int>(sessionId =>
@@ -282,14 +306,16 @@ public partial class MainWindowVM : ReactiveObject
             ReactiveCommand.Create<SessionModel>(OpenSession),
             leaveHybridSessionCommand,
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
-            _users.ViewProfileCommand, _users.KickPeerCommand,
+            ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
+            _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
+            _users.PokePeerCommand,
             ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
             playback, voiceActivity, screenWatch, listPreferences,
             ChatReads,
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
-            OpenServerSettingsCommand, DisconnectCommand, notifications, Access);
+            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access);
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(
@@ -329,7 +355,7 @@ public partial class MainWindowVM : ReactiveObject
 
     public async Task Initialize()
     {
-        await StatusLine.SetAsync(Strings.Get("main.status.loading"), true);
+        await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
         var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog));
 
@@ -349,7 +375,7 @@ public partial class MainWindowVM : ReactiveObject
             return;
         }
 
-        await StatusLine.SetAsync(Strings.Get("main.status.offline"), false);
+        await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
         GridOpacity = true;
@@ -382,7 +408,8 @@ public partial class MainWindowVM : ReactiveObject
     }
 
     private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
-        new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand);
+        new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,
+            _users.AdmitPeerCommand);
 
     private void OnSessionClosed(IMainWindowContentVM session)
     {
@@ -420,6 +447,16 @@ public partial class MainWindowVM : ReactiveObject
 
         using var vm = new HybridSessionSettingsWindowVM(hybridSession, _changeHybridSessionSettingsCommand);
         await ShowHybridSessionSettingsWindow.Handle(vm);
+    }
+
+    private async Task EditSessionPermissions(SessionModel session)
+    {
+        if (_coordinatorSession == null)
+            return;
+
+        using var vm = new SessionPermissionsWindowVM(session, _coordinatorSession.Permissions,
+            _changeSessionPermissionsCommand);
+        await ShowSessionPermissionsWindow.Handle(vm);
     }
 
     private void OpenSession(SessionModel sessionModel)

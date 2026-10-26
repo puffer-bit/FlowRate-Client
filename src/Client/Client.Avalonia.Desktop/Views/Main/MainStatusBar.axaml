@@ -5,6 +5,7 @@
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
              xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
+             xmlns:mainViews="clr-namespace:Client.Views.Main"
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              x:DataType="mainVm:MainWindowVM"
@@ -14,33 +15,34 @@
             Background="{DynamicResource GeneralBrush}"
             BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
             IsVisible="{Binding !IsContentFullScreen}">
-        <Border.Styles>
-            <Style Selector="Ellipse.connection">
-                <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>
-                <Setter Property="Transitions">
-                    <Transitions>
-                        <BrushTransition Property="Fill" Duration="{anim:Motion Short}"/>
-                    </Transitions>
-                </Setter>
-            </Style>
-            <Style Selector="Ellipse.connection.online">
-                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
-            </Style>
-        </Border.Styles>
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
 
-        <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="8">
-
-            <Panel Grid.Column="0" VerticalAlignment="Center">
-                <loadingIndicators:ProgressRing x:Name="LoadingIcon"
-                                                Width="14" Height="14" MinWidth="14" MinHeight="14"
-                                                IsIndeterminate="True"
-                                                IsVisible="{Binding StatusLine.IsActive}"
-                                                BorderThickness="2"
-                                                Foreground="{DynamicResource ProgressRingBrush}"/>
-                <Ellipse Classes="connection" Classes.online="{Binding IsConnected}"
-                         Width="8" Height="8"
-                         IsVisible="{Binding !StatusLine.IsActive}"/>
-            </Panel>
+            <!-- The quality of the connection; opens what is known about it -->
+            <Button Grid.Column="0" Classes="borderless"
+                    Width="24" Height="24" Margin="-2,0,0,0"
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="{Binding IsConnected}"
+                    ToolTip.Tip="{l:Text main.connection.open}">
+                <Button.Flyout>
+                    <Flyout Placement="TopEdgeAlignedLeft">
+                        <mainViews:ConnectionInfoFlyout DataContext="{Binding ConnectionInfo}"/>
+                    </Flyout>
+                </Button.Flyout>
+                <Panel>
+                    <loadingIndicators:ProgressRing x:Name="LoadingIcon"
+                                                    Width="14" Height="14" MinWidth="14" MinHeight="14"
+                                                    IsIndeterminate="True"
+                                                    IsVisible="{Binding StatusLine.IsActive}"
+                                                    BorderThickness="2"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"/>
+                    <!-- Unlit bars while there is no connection to measure -->
+                    <indicators:PingIndicator HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Foreground="{DynamicResource SecondaryTextBrush}"
+                                              IsTextVisible="False"
+                                              RoundTrip="{Binding ServerRoundTrip}"
+                                              IsVisible="{Binding !StatusLine.IsActive}"/>
+                </Panel>
+            </Button>
 
             <TextBlock Grid.Column="1"
                        Text="{Binding StatusLine.Text}"
@@ -57,10 +59,9 @@
                 </TextBlock.Transitions>
             </TextBlock>
 
-            <!-- The bar is not filled with the accent color any more, so the ping takes the text color of the theme -->
             <!-- The notification center: everything the corner of the window has shown. The dot tells
                  that something came since it was last opened -->
-            <Button Grid.Column="3" Classes="borderless"
+            <Button Grid.Column="2" Classes="borderless"
                     Width="24" Height="24"
                     VerticalAlignment="Center"
                     DataContext="{Binding Notifications}"
@@ -81,13 +82,6 @@
                 </Panel>
             </Button>
 
-            <indicators:PingIndicator Grid.Column="2"
-                                      VerticalAlignment="Center"
-                                      FontSize="12"
-                                      Foreground="{DynamicResource SecondaryTextBrush}"
-                                      RoundTrip="{Binding ServerRoundTrip}"
-                                      IsVisible="{Binding ServerRoundTrip, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                      ToolTip.Tip="{l:Text main.ping.tooltip}"/>
         </Grid>
     </Border>
 </UserControl>

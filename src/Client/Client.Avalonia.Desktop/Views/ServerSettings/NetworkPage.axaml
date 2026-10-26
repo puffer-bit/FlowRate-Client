@@ -35,44 +35,5 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
-        <!-- The ICE servers clients are given for their media -->
-        <controls:SettingsHeader Text="{l:Text serverSettings.network.section.ice}"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.stun}"
-                            Description="{l:Text serverSettings.network.stun.description}">
-                <CheckBox IsChecked="{Binding Form.IsStunEnabled}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.address}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsStunEnabled}">
-                <TextBox Width="200" Text="{Binding Form.StunAddress}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.port}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsStunEnabled}">
-                <NumericUpDown MinWidth="140" Minimum="1" Maximum="65535" Increment="1" FormatString="0"
-                               Value="{Binding Form.StunPort}"/>
-            </ui:SettingsRow>
-
-            <ui:SettingsRow Title="{l:Text serverSettings.network.turn}"
-                            Description="{l:Text serverSettings.network.turn.description}">
-                <CheckBox IsChecked="{Binding Form.IsTurnEnabled}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.address}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsTurnEnabled}">
-                <TextBox Width="200" Text="{Binding Form.TurnAddress}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.port}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsTurnEnabled}">
-                <NumericUpDown MinWidth="140" Minimum="1" Maximum="65535" Increment="1" FormatString="0"
-                               Value="{Binding Form.TurnPort}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.turn.username}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsTurnEnabled}">
-                <TextBox Width="200" Text="{Binding Form.TurnUsername}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.network.turn.password}" IndentLevel="1"
-                            IsExpanded="{Binding Form.IsTurnEnabled}">
-                <TextBox Width="200" Classes="password" Text="{Binding Form.TurnPassword}"/>
-            </ui:SettingsRow>
-        </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

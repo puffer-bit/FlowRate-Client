@@ -7,10 +7,12 @@ namespace Client.GStreamer.Audio;
 
 /// <summary>
 /// Tells from the RTP packets of an audio track whether someone speaks in it, for the speaking
-/// indicator. A packet counts as speech by the size of its payload: opusenc with DTX keeps sending a
-/// packet every 20 ms in silence too, but with one to three bytes of payload, while a speech frame
-/// carries tens of bytes. This works for senders with a voice gate, which send nothing in silence,
-/// and without one alike.
+/// indicator. A packet of the SILK or hybrid mode carries the voice activity flag of the encoder,
+/// which the meter reads; the size alone does not tell: with FEC the encoder stays in the hybrid
+/// mode and spends tens of bytes on every frame of silence too. A packet of the CELT mode has no
+/// such flag and counts as speech by its size: a CELT frame of silence takes one to three bytes,
+/// while a speech frame carries tens. This works for senders with a voice gate, which send silence
+/// or nothing while it is closed, and without one alike.
 /// </summary>
 /// <remarks>
 /// The probe runs on a streaming thread for every packet, so it only parses the header and stores a
@@ -20,6 +22,13 @@ internal sealed class SpeechActivityMeter
 {
     // DTX and comfort noise frames carry up to three bytes, speech at 32 kbit/s about eighty
     private const int MinSpeechPayloadBytes = 10;
+
+    // The TOC configurations from this one on are CELT only, the ones before SILK or hybrid
+    private const int FirstCeltConfig = 16;
+
+    // The TOC configurations before this one are SILK only, in fours of 10, 20, 40 and 60 ms; a
+    // frame of 40 or 60 ms holds two or three SILK frames, a hybrid frame always one
+    private const int FirstHybridConfig = 12;
 
     // Covers the jitter between packets, so a steady talker does not flicker
     private static readonly TimeSpan HoldTime = TimeSpan.FromMilliseconds(250);
@@ -79,7 +88,7 @@ internal sealed class SpeechActivityMeter
         {
             var packet = new ReadOnlySpan<byte>((void*)map.DataPtr, (int)map.Size);
 
-            if (GetPayloadLength(packet) >= MinSpeechPayloadBytes)
+            if (IsSpeech(GetPayload(packet)))
             {
                 var rtpTimestamp = BinaryPrimitives.ReadUInt32BigEndian(packet[4..]);
 
@@ -102,14 +111,37 @@ internal sealed class SpeechActivityMeter
     }
 
     /// <summary>
-    /// Length of the payload of an RTP packet, past the CSRC list, the header extensions and before
-    /// the padding. The SFU adds header extensions, so the header length varies.
+    /// Whether an Opus packet carries speech. The voice activity flags of a SILK or hybrid packet are
+    /// the first symbols of its range coder, coded at even odds, so they are the leading bits of the
+    /// first byte of the frame: one per SILK frame, that is one for up to 20 ms and two or three for
+    /// 40 and 60 ms. Packets of several Opus frames with lengths in front of them are judged by size.
     /// </summary>
-    /// <returns>The length, or 0 for anything that is not a valid RTP packet.</returns>
-    internal static int GetPayloadLength(ReadOnlySpan<byte> packet)
+    internal static bool IsSpeech(ReadOnlySpan<byte> payload)
+    {
+        // Also too short to hold a frame after the TOC
+        if (payload.Length < MinSpeechPayloadBytes)
+            return false;
+
+        var config = payload[0] >> 3;
+        var frameCount = payload[0] & 0x03;
+
+        if (config >= FirstCeltConfig || frameCount >= 2)
+            return true;
+
+        var silkFrames = config < FirstHybridConfig ? Math.Max(config % 4, 1) : 1;
+
+        return payload[1] >> (8 - silkFrames) != 0;
+    }
+
+    /// <summary>
+    /// The payload of an RTP packet, past the CSRC list, the header extensions and before the
+    /// padding. The SFU adds header extensions, so the header length varies.
+    /// </summary>
+    /// <returns>The payload, empty for anything that is not a valid RTP packet.</returns>
+    internal static ReadOnlySpan<byte> GetPayload(ReadOnlySpan<byte> packet)
     {
         if (packet.Length < RtpHeaderBytes || packet[0] >> 6 != 2)
-            return 0;
+            return [];
 
         var hasPadding = (packet[0] & 0x20) != 0;
         var hasExtension = (packet[0] & 0x10) != 0;
@@ -120,7 +152,7 @@ internal sealed class SpeechActivityMeter
         if (hasExtension)
         {
             if (packet.Length < headerLength + 4)
-                return 0;
+                return [];
 
             var extensionWords = BinaryPrimitives.ReadUInt16BigEndian(packet[(headerLength + 2)..]);
             headerLength += 4 + extensionWords * 4;
@@ -129,6 +161,6 @@ internal sealed class SpeechActivityMeter
         var paddingLength = hasPadding && packet.Length > headerLength ? packet[^1] : 0;
         var payloadLength = packet.Length - headerLength - paddingLength;
 
-        return Math.Max(payloadLength, 0);
+        return payloadLength > 0 ? packet.Slice(headerLength, payloadLength) : [];
     }
 }

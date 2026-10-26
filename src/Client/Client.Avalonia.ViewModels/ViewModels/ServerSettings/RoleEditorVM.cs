@@ -197,7 +197,14 @@ public sealed class RoleEditorVM : ReactiveObject
         (Permission.BanMembers, "roles.permission.ban", "roles.permission.ban.description"),
         (Permission.ApproveMembers, "roles.permission.approve", "roles.permission.approve.description"),
         (Permission.ManageMessages, "roles.permission.manageMessages", "roles.permission.manageMessages.description"),
-        (Permission.ManageUsers, "roles.permission.manageUsers", "roles.permission.manageUsers.description")
+        (Permission.ManageUsers, "roles.permission.manageUsers", "roles.permission.manageUsers.description"),
+        (Permission.ViewSessions, "roles.permission.viewSessions", "roles.permission.viewSessions.description"),
+        (Permission.SendMessages, "roles.permission.sendMessages", "roles.permission.sendMessages.description"),
+        (Permission.AttachFiles, "roles.permission.attachFiles", "roles.permission.attachFiles.description"),
+        (Permission.JoinSessions, "roles.permission.joinSessions", "roles.permission.joinSessions.description"),
+        (Permission.Speak, "roles.permission.speak", "roles.permission.speak.description"),
+        (Permission.ShareVideo, "roles.permission.shareVideo", "roles.permission.shareVideo.description"),
+        (Permission.PokeMembers, "roles.permission.poke", "roles.permission.poke.description")
     ];
 }
 

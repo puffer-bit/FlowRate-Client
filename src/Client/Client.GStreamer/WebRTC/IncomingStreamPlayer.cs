@@ -30,9 +30,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream ! rtpopusdepay ! opusdec plc=true use-inband-fec=true ! audioconvert ! audioresample ! " +
         "capsfilter caps=\"audio/x-raw,format=F32LE\" ! volume name=volume";
 
-    // One output for all voices, running on the clock whether packets come or not: DTX sends nothing
-    // in a pause, and a sink fed by the packets alone runs dry, resyncs and replays a piece of the
-    // voice. The mixer fills what is missing with silence on time. It starts at the first input
+    // One output for all voices, running on the clock whether packets come or not: packets stop
+    // with a loss or a muted sender, and a sink fed by the packets alone runs dry, resyncs and
+    // replays a piece of the voice. The mixer fills what is missing with silence on time. It starts at the first input
     // rather than at running time zero, which would make it catch up the whole session first. It
     // waits 20 ms, one Opus frame, for a late buffer: without that wait a voice arriving a little
     // unevenly is cut into pieces of silence, which crackles, and every millisecond more is heard
@@ -40,10 +40,28 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // yet; the soft knee then bends the peaks under it instead of the hard clipping of integer
     // samples, which a loud voice in overdrive crackles with.
     private const string OutputDescription =
-        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " +
+        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " + ShapingDescription;
+
+    /// <summary>
+    /// What the mixed voices go through on their way to the sink, ending with a link. The microphone
+    /// test plays the user back through it too.
+    /// </summary>
+    internal const string ShapingDescription =
         "capsfilter caps=\"audio/x-raw,format=F32LE,rate=48000,channels=2\" ! " +
-        "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! " +
-        "audioconvert ! audioresample ! ";
+        "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! ";
+
+    // The mixed voices pass the probe the echo cancelling of the microphone reads them from, as late
+    // as possible, so the delay it measures to the speakers is that of the sink alone. The
+    // compressor has bent the peaks below full scale, so the 16-bit samples it takes cut off nothing
+    private const string EchoProbeDescription =
+        "audioconvert ! " + MicrophoneProcessing.EchoProbeCaps + " ! " +
+        MicrophoneProcessing.EchoProbeElementName + " name={0} ! ";
+
+    private const string ConversionDescription = "audioconvert ! audioresample ! ";
+
+    // The probes are found by name across the whole process, and one an old microphone branch still
+    // holds must not be mistaken for the probe of a new output
+    private static int _echoProbeCount;
 
     private const string MixerName = "voices";
 
@@ -57,10 +75,18 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private const string VideoSinkName = "frames";
 
     // A lost packet breaks every frame up to the next keyframe, so the depayloader asks the sender
-    // for one and holds the broken frames back meanwhile
+    // for one and holds the broken frames back meanwhile. The queue drops the oldest packets past
+    // half a second: with the default room a decoder that fell behind, or a stalled drawing,
+    // would leave the picture late for good. The gap that leaves is repaired like a loss
     private const string H264Description =
-        "queue ! rtph264depay request-keyframe=true ! " +
+        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
+        "rtph264depay request-keyframe=true wait-for-keyframe=true ! " +
         "h264parse ! {0} ! {1}";
+
+    // The same for VP8, whose depayloader drops what it has until the next keyframe
+    private const string Vp8Description =
+        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
+        "rtpvp8depay request-keyframe=true wait-for-keyframe=true ! {0} ! {1}";
 
     private const string VolumeElementName = "volume";
 
@@ -73,6 +99,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private readonly Lock _outputLock = new();
     private Bin? _output;
     private Element? _mixer;
+    private string? _echoProbe;
 
     private readonly bool _isPlaybackEnabled;
     private readonly Func<uint, double> _resolveVolume;
@@ -117,7 +144,8 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         var mline = GetMline(pad);
 
         // Frames of a section that cannot be resolved would belong to nobody
-        var video = !isOpus && mline != null && IsH264(caps) ? BuildVideoBranch(padName, mline.Value, true) : null;
+        var codec = isOpus ? null : VideoCodecOf(caps);
+        var video = codec != null && mline != null ? BuildVideoBranch(padName, mline.Value, codec.Value, true) : null;
 
         var description = !isOpus ? DrainDescription
             : _isPlaybackEnabled ? OpusPlaybackDescription
@@ -178,9 +206,19 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             meter.Attach(pad);
         }
 
+        VoiceArrivalMeter? arrival = null;
+
+        if (mixerPad != null && _mixer is { } mixer)
+        {
+            arrival = new VoiceArrivalMeter(mixer);
+            arrival.Attach(mixerPad);
+        }
+
         _branches[padName] = new Branch(branch, mline, meter, video?.Pump, pad)
         {
             MixerPad = mixerPad,
+            Arrival = arrival,
+            Codec = video == null ? null : codec,
             Output = video?.Output.Kind,
             Chain = video?.Output.Chain
         };
@@ -245,6 +283,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             }
 
             PipelineBranch.Shutdown(branch.Bin);
+            DetachArrival(branch);
             UnlinkFromOutput(branch.Bin, branch.MixerPad);
             _pipeline.Remove(branch.Bin);
             branch.Bin.Dispose();
@@ -281,27 +320,28 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     }
 
     /// <summary>
-    /// A branch that decodes H.264 into frames.
+    /// A branch that decodes H.264 or VP8 into frames.
     /// </summary>
     /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
     /// <returns>Null when the runtime has no decoder or an element is missing.</returns>
     private (Bin Bin, VideoFramePump Pump, VideoOutput Output)? BuildVideoBranch(string padName, uint mline,
-        bool allowGpuSurfaces)
+        VideoCodec codec, bool allowGpuSurfaces)
     {
-        var output = VideoOutputSelector.Select(VideoCodec.H264, allowGpuSurfaces);
+        var output = VideoOutputSelector.Select(codec, allowGpuSurfaces);
 
         if (output == null)
             return null;
 
+        var description = codec == VideoCodec.VP8 ? Vp8Description : H264Description;
         var branch = Global.ParseBinFromDescription(
-            string.Format(H264Description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
+            string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
 
         // An element of the chosen chain is missing after all: the plain chain needs none of them
         if (branch == null && output.Kind != VideoOutputKind.Memory)
         {
             output = VideoOutputSelector.Plain(output.Decoder);
             branch = Global.ParseBinFromDescription(
-                string.Format(H264Description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
+                string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
         }
 
         if (branch?.GetByName(VideoSinkName) is not { } sink)
@@ -344,6 +384,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         VideoOutputKind.DmaBuf => VideoSurfaceKinds.DmaBuf,
         VideoOutputKind.Cuda => VideoSurfaceKinds.CudaGl,
         VideoOutputKind.D3D11 => VideoSurfaceKinds.D3D11Shared,
+        VideoOutputKind.MemoryYuv => VideoSurfaceKinds.YuvMemory,
         _ => VideoSurfaceKinds.None
     };
 
@@ -374,7 +415,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         {
             branch.Pump?.Dispose();
 
-            if (_isDisposed || branch.Mline is not { } mline)
+            if (_isDisposed || branch.Mline is not { } mline || branch.Codec is not { } codec)
                 return;
 
             using (var input = branch.Bin.GetStaticPad("sink"))
@@ -387,7 +428,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             _pipeline.Remove(branch.Bin);
             branch.Bin.Dispose();
 
-            var video = BuildVideoBranch(padName, mline, allowGpuSurfaces);
+            var video = BuildVideoBranch(padName, mline, codec, allowGpuSurfaces);
 
             if (video == null || _isDisposed)
             {
@@ -418,6 +459,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             video.Value.Bin.SyncStateWithParent();
             _branches[padName] = new Branch(video.Value.Bin, branch.Mline, null, video.Value.Pump, branch.Pad)
             {
+                Codec = codec,
                 Output = video.Value.Output.Kind,
                 Chain = video.Value.Output.Chain
             };
@@ -560,6 +602,20 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         mixerPad.Dispose();
     }
 
+    /// <summary>
+    /// The name of the echo probe the voices are played through, building the output for it if it
+    /// is not there yet, so a microphone started before anyone speaks has it to start with. Null
+    /// without playback, or with a runtime that lacks the probe.
+    /// </summary>
+    public string? EnsureEchoProbe()
+    {
+        if (!_isPlaybackEnabled)
+            return null;
+
+        lock (_outputLock)
+            return EnsureOutput() == null ? null : _echoProbe;
+    }
+
     private Element? EnsureOutput()
     {
         lock (_outputLock)
@@ -567,7 +623,13 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             if (_mixer != null || _isDisposed)
                 return _mixer;
 
-            var output = Global.ParseBinFromDescription(OutputDescription + VoicePlaybackSink.Description, false);
+            var echoProbe = ElementFactory.Find(MicrophoneProcessing.EchoProbeElementName) != null
+                ? $"echo_probe_{_sessionId}_{Interlocked.Increment(ref _echoProbeCount)}"
+                : null;
+
+            var output = Global.ParseBinFromDescription(OutputDescription +
+                (echoProbe == null ? "" : string.Format(EchoProbeDescription, echoProbe)) +
+                ConversionDescription + VoicePlaybackSink.Description, false);
 
             if (output?.GetByName(MixerName) is not { } mixer)
             {
@@ -578,6 +640,11 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
             output.SetName($"voices_{_sessionId}");
 
+            // The output is built before anyone speaks when the microphone wants its echo probe, and
+            // its sink cannot preroll from a mixer without inputs. Left to the pipeline, that waiting
+            // held the whole transport out of PLAYING, and the microphone sent nothing
+            output.SetProperty("async-handling", true);
+
             // The sound server may restore a mute an earlier version left for the client name
             VoicePlaybackSink.SetMuted(output, false);
 
@@ -586,6 +653,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
             _output = output;
             _mixer = mixer;
+            _echoProbe = echoProbe;
             return mixer;
         }
     }
@@ -597,6 +665,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             // Stopped first: the pump must not pull from a sink that is shutting down
             branch.Pump?.Dispose();
             PipelineBranch.Shutdown(branch.Bin);
+            DetachArrival(branch);
 
             if (!_isDisposed)
             {
@@ -625,15 +694,23 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
                string.Equals(structure.GetString("encoding-name"), "OPUS", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsH264(Caps caps)
+    /// <summary>The codec of a video stream this player decodes, or null for any other stream.</summary>
+    private static VideoCodec? VideoCodecOf(Caps caps)
     {
         if (caps.GetSize() == 0)
-            return false;
+            return null;
 
         using var structure = caps.GetStructure(0);
 
-        return structure.GetString("media") == "video" &&
-               string.Equals(structure.GetString("encoding-name"), "H264", StringComparison.OrdinalIgnoreCase);
+        if (structure.GetString("media") != "video")
+            return null;
+
+        return structure.GetString("encoding-name")?.ToUpperInvariant() switch
+        {
+            "H264" => VideoCodec.H264,
+            "VP8" => VideoCodec.VP8,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -646,6 +723,49 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             .Select(branch => branch.Mline!.Value)
             .ToList();
 
+    /// <summary>
+    /// Logs how late the buffers of every played voice reached the mixer since the previous call,
+    /// against the latency the mixer gives them. Called by a timer of the transport.
+    /// </summary>
+    /// <param name="userOfSection">The user whose voice the section with the given mline carries.</param>
+    public void ReportVoiceArrival(Func<uint, int?> userOfSection)
+    {
+        Element? mixer;
+
+        lock (_outputLock)
+            mixer = _mixer;
+
+        if (mixer == null || _isDisposed)
+            return;
+
+        long? deadline;
+
+        using (var output = mixer.GetStaticPad("src"))
+            deadline = output == null ? null : GstTimingNative.QueryMinLatency(output.Handle);
+
+        foreach (var branch in _branches.Values)
+        {
+            if (branch.Arrival?.TakeSummary(deadline) is not { } summary)
+                continue;
+
+            var userId = branch.Mline is { } mline ? userOfSection(mline) ?? 0 : 0;
+
+            if (summary.Late > 0)
+                LogVoiceArrivedLate(_sessionId, userId, branch.Mline ?? 0, summary.Late, summary.Buffers,
+                    summary.MinMs, summary.AverageMs, summary.MaxMs, summary.LastMs, (deadline ?? 0) / 1e6);
+            else
+                LogVoiceArrival(_sessionId, userId, branch.Mline ?? 0, summary.Buffers,
+                    summary.MinMs, summary.AverageMs, summary.MaxMs, summary.LastMs, (deadline ?? 0) / 1e6);
+        }
+    }
+
+    // Before the mixer pad goes: its wrapper is disposed with it
+    private static void DetachArrival(Branch branch)
+    {
+        if (branch.MixerPad != null)
+            branch.Arrival?.Detach(branch.MixerPad);
+    }
+
     /// <param name="Mline">Null when the section could not be resolved; such a branch keeps its volume.</param>
     /// <param name="Meter">Null for a stream that is not audio.</param>
     /// <param name="Pump">Null for a stream that is not decoded video.</param>
@@ -653,6 +773,12 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     {
         /// <summary>The pad of the mixer a played voice is linked to.</summary>
         public Pad? MixerPad { get; init; }
+
+        /// <summary>Measures how late the voice reaches the mixer; null where it is not played.</summary>
+        public VoiceArrivalMeter? Arrival { get; init; }
+
+        /// <summary>The codec a video branch decodes.</summary>
+        public VideoCodec? Codec { get; init; }
 
         /// <summary>The form the frames of a video branch are delivered in.</summary>
         public VideoOutputKind? Output { get; init; }
@@ -702,6 +828,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             _output?.Dispose();
             _mixer = null;
             _output = null;
+            _echoProbe = null;
         }
     }
 }

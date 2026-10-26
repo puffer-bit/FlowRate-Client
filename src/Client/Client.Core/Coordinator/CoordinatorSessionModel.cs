@@ -6,20 +6,7 @@ public class CoordinatorSessionModel
     public string Name { get; init; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public int Port { get; init; }
-    
-    public bool IsStunServerAvailable { get; init; }
-    public bool IsTurnServerAvailable { get; init; }
-    
-    public bool IsTurnEnabled { get; init; }
-    public string? TurnAddress { get; init; }
-    public ushort? TurnPort { get; init; }
-    public string? TurnUsername { get; init; }
-    public string? TurnPassword { get; init; }
-        
-    public bool IsStunEnabled { get; init; }
-    public string? StunAddress { get; init; }
-    public ushort? StunPort { get; init; }
-    
+
     /// <summary>Kept up to date while connected, as users come and go.</summary>
     public int ConnectedUsersCount { get; set; }
     

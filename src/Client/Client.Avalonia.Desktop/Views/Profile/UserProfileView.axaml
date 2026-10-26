@@ -103,7 +103,7 @@
                                           CommandParameter="{Binding}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <Ellipse Width="10" Height="10" VerticalAlignment="Center"
-                                                 Fill="{DynamicResource SecondaryTextBrush}"
+                                                 Fill="{DynamicResource PrimaryTextBrush}"
                                                  IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
                                         <Ellipse Width="10" Height="10" VerticalAlignment="Center"
                                                  Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"

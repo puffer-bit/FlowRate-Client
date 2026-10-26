@@ -19,8 +19,6 @@ internal static class RequestMapper
     {
         NewHybridSessionOptions hybrid => new HybridSessionCreateData(
             hybrid.EngineType,
-            hybrid.VideoCodecs,
-            hybrid.AudioCodecs,
             hybrid.Resolution,
             hybrid.VideoBitrate,
             hybrid.IsAudioTransferEnabled,
@@ -28,8 +26,7 @@ internal static class RequestMapper
             hybrid.IsSimulcastEnabled,
             hybrid.IsTunnelingEnabled,
             hybrid.IsProxyActive,
-            hybrid.DisableStun,
-            hybrid.DisableTurn),
+            hybrid.Media?.ToDto()),
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
             chat.Description,
@@ -63,7 +60,11 @@ internal static class RequestMapper
             Height = image.Height
         }).ToList(),
         Video = model.Video.Select(ChatMessageMapper.MapVideoContentDto).ToList(),
-        Files = model.Files.Select(ChatMessageMapper.MapFileContentDto).ToList(),
+        Files = model.Files.Select(file => new NewChatFileModel
+        {
+            UploadId = file.UploadId,
+            FileName = file.FileName
+        }).ToList(),
 
         IsDelayed = model.IsDelayed,
         IsDisposable = model.IsDisposable

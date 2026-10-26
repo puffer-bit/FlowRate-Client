@@ -4,6 +4,8 @@ public enum MediaUploadKind
 {
     Image,
     ImagePreview,
+    /// <summary>A file of any type, which a message carries to be downloaded.</summary>
+    File,
     /// <summary>A picture for the profile of the user; it belongs to no chat.</summary>
     Avatar
 }
@@ -32,7 +34,7 @@ public enum MediaTransferResult
     /// <summary>The server could not be reached, also after the retries.</summary>
     ConnectionFailed,
     Unauthorized,
-    /// <summary>The image, the chat or the upload being continued does not exist anymore.</summary>
+    /// <summary>The image or file, the chat or the upload being continued does not exist anymore.</summary>
     NotFound,
     /// <summary>The chat does not take attachments.</summary>
     NotAllowed,

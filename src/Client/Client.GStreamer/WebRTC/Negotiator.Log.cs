@@ -40,4 +40,8 @@ internal sealed partial class Negotiator
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to handle a WebRTC promise")]
     private partial void LogPromiseFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] Failed to have section {Mline} ask for lost packets, its losses wait for a keyframe")]
+    private partial void LogRetransmissionRequestsFailed(Exception exception, int sessionId, int mline);
 }

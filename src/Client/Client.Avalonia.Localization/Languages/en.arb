@@ -108,6 +108,9 @@
   },
   "tray.open": "Open",
   "tray.exit": "Exit",
+  "tray.microphone": "Microphone",
+  "tray.sound": "Sound of the session",
+  "tray.afk": "Away from keyboard",
   "closeApp.title": "Closing application",
   "closeApp.remember": "Remember my choice",
   "closeApp.hint": "It can be changed later in Settings → Application behavior.",
@@ -254,6 +257,12 @@
       "size": {}
     }
   },
+  "profile.avatar.animationTooLarge": "An animated image can be at most {size} MB",
+  "@profile.avatar.animationTooLarge": {
+    "placeholders": {
+      "size": {}
+    }
+  },
   "profile.avatar.notAnImage": "The file could not be read as an image",
   "profile.avatar.fileType": "Images",
   "profile.avatar.pickerTitle": "Choose an avatar",
@@ -359,14 +368,6 @@
   "serverSettings.network.heartbeat.interval.description": "How often the server checks that a client is still there.",
   "serverSettings.network.heartbeat.timeout": "Timeout, seconds",
   "serverSettings.network.heartbeat.timeout.description": "A client silent for longer is disconnected.",
-  "serverSettings.network.section.ice": "STUN and TURN",
-  "serverSettings.network.stun": "STUN server",
-  "serverSettings.network.stun.description": "Helps clients find their public address for voice and video.",
-  "serverSettings.network.address": "IP address",
-  "serverSettings.network.turn": "TURN server",
-  "serverSettings.network.turn.description": "Relays voice and video for clients that cannot reach each other.",
-  "serverSettings.network.turn.username": "Username",
-  "serverSettings.network.turn.password": "Password",
   "serverSettings.users.section.limits": "Limits",
   "serverSettings.users.maxOnline": "Users online at once",
   "serverSettings.users.maxOnline.description": "Further sign-ins wait while this many users are online.",
@@ -409,6 +410,13 @@
   "serverSettings.storage.maxFileSize": "Largest file, MB",
   "serverSettings.storage.quota": "Storage quota, MB",
   "serverSettings.storage.quota.description": "0 leaves the storage unlimited.",
+  "serverSettings.storage.section.uploads": "Uploads",
+  "serverSettings.storage.unattachedUploads": "Uploads kept per user",
+  "serverSettings.storage.unattachedUploads.description": "Files uploaded but not yet sent in a message.",
+  "serverSettings.storage.unattachedLifetime": "Unsent upload kept, hours",
+  "serverSettings.storage.unattachedLifetime.description": "Then it is removed.",
+  "serverSettings.storage.mediaTokenLifetime": "Media link valid, minutes",
+  "serverSettings.storage.mediaTokenLifetime.description": "How long a link to a file or an image works.",
   "serverSettings.sfu.disabled": "Disabled",
   "serverSettings.sfu.hint": "Voice sessions of this server go through the checked nodes. Running sessions keep their node.",
   "serverSettings.sfu.state.connected": "Connected",
@@ -444,11 +452,7 @@
   "serverSettings.info.firstStarted": "First started",
   "serverSettings.info.lastStarted": "Last started",
   "serverSettings.sfu.section.nodes": "Nodes",
-  "main.server.reconnect": "Reconnect",
   "main.server.copyAddress": "Copy address",
-  "main.server.testNotification": "Test notification",
-  "notification.test.title": "Test notification",
-  "notification.test.message": "This is how notifications of the application look.",
   "notification.center.title": "Notifications",
   "notification.center.clear": "Delete all",
   "notification.center.mute": "Mute notification sound",
@@ -460,10 +464,6 @@
   "main.menu.connect": "_Connect",
   "main.menu.disconnect": "_Disconnect",
   "main.menu.disconnect.plain": "Disconnect",
-  "main.menu.profiles": "_Profiles",
-  "main.menu.profiles.new": "New",
-  "main.menu.profiles.edit": "Edit list",
-  "main.menu.server": "_Server",
   "main.menu.updater": "_Updater",
   "main.menu.updater.check": "Check for updates",
   "main.menu.updater.github": "Open GitHub repository",
@@ -491,7 +491,14 @@
   "main.noSession.text": "Pick a session in the list on the left to open it.",
   "main.noSession.text.menu": "Pick a session in the menu to open it.",
   "main.voice.toggleScreenShare": "Share your screen or stop sharing",
-  "main.ping.tooltip": "Round trip to the server",
+  "main.connection.open": "Connection details",
+  "main.connection.server": "Server",
+  "main.connection.ping": "Ping",
+  "main.connection.since": "Connected at",
+  "main.connection.duration": "Duration",
+  "main.connection.secure": "Secure connection",
+  "main.connection.certificateVerified": "The certificate of the server is verified by the system",
+  "main.connection.certificateTrusted": "You trusted the certificate of the server by hand",
   "profile.change": "Change name and avatar",
   "profile.edit.hint": "How other people on the server see you.",
   "profile.view.hint": "How this user is seen on the server.",
@@ -544,18 +551,17 @@
     }
   },
   "chat.attach.turnedOff": "Attachments are turned off in this chat",
-  "chat.attach.limit": "At most {limit} images per message",
+  "chat.attach.limit": "At most {limit} files per message",
   "@chat.attach.limit": {
     "placeholders": {
       "limit": {}
     }
   },
-  "chat.attach.tooltip": "Attach images",
-  "chat.attach.imagesOnly": "Only images can be attached for now",
+  "chat.attach.tooltip": "Attach files",
   "chat.attach.filter.images": "Images",
   "chat.attach.error.notAnImage": "Not an image the chat can show",
   "chat.attach.error.tooLarge": "Too large for this server",
-  "chat.attach.error.tooMany": "Too many unsent images, try later",
+  "chat.attach.error.tooMany": "Too many unsent files, try later",
   "chat.attach.error.storageFull": "The server is out of space",
   "chat.attach.error.connection": "No connection to the server",
   "chat.attach.error.failed": "The server did not take the file",
@@ -566,10 +572,17 @@
       "reason": {}
     }
   },
-  "chat.send.imagesLost": "The server no longer holds the uploaded images. Send the message again.",
+  "chat.send.imagesLost": "The server no longer holds the uploaded files. Send the message again.",
   "chat.image.gone": "The image was deleted.",
   "chat.image.loadFailed": "The image could not be loaded.",
   "chat.image.saveFailed": "The image could not be saved.",
+  "chat.attach.filter.all": "All files",
+  "chat.attach.error.empty": "The file is empty",
+  "chat.file.download": "Download",
+  "chat.file.cancel": "Stop downloading",
+  "chat.file.saved": "Saved",
+  "chat.file.gone": "The file was deleted",
+  "chat.file.downloadFailed": "The file could not be downloaded",
   "chat.attachment": "Attachment",
   "chat.unknownUser": "Unknown user",
   "chat.deletedUser": "Deleted user",
@@ -645,6 +658,36 @@
       "reason": {}
     }
   },
+  "hybrid.afk.go": "Away from keyboard",
+  "hybrid.afk.reason.placeholder": "Reason (optional)",
+  "hybrid.afk.confirm": "Go AFK",
+  "hybrid.afk.title": "Step away",
+  "hybrid.afk.subtitle": "Your microphone turns off, and others see that you are away and why.",
+  "hybrid.afk.presets": "Quick reasons",
+  "hybrid.afk.preset.brb": "Be right back",
+  "hybrid.afk.preset.break": "Short break",
+  "hybrid.afk.preset.food": "Eating",
+  "hybrid.afk.preset.call": "On a call",
+  "hybrid.afk.back": "Back from AFK",
+  "hybrid.afk.backWithReason": "Back from AFK (away: {reason})",
+  "@hybrid.afk.backWithReason": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "hybrid.afk.failed": "Failed to switch AFK: {reason}",
+  "@hybrid.afk.failed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "hybrid.poked.title": "{user} poked you",
+  "@hybrid.poked.title": {
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "hybrid.poked.noMessage": "No message",
   "hybrid.screen.startFailed": "Failed to share the screen: {reason}",
   "@hybrid.screen.startFailed": {
     "placeholders": {
@@ -659,9 +702,70 @@
   "hybrid.screen.stopWatching": "Stop watching",
   "hybrid.screen.expand": "Expand",
   "hybrid.screen.collapse": "Collapse",
+  "hybrid.screen.issues.network": "Network",
+  "hybrid.screen.issues.transport": "Connection type",
+  "hybrid.screen.issues.source": "Streamer",
+  "hybrid.screen.issues.audio": "Sound",
+  "hybrid.screen.issues.performance": "Decoding and drawing",
+  "hybrid.screen.issues.packetLoss": "{percent}% of the packets are lost",
+  "@hybrid.screen.issues.packetLoss": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "hybrid.screen.issues.highJitter": "Packets come unevenly, jitter {ms} ms",
+  "@hybrid.screen.issues.highJitter": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
+  "hybrid.screen.issues.waitingForKeyframe": "The picture broke, waiting for a keyframe for {seconds} s",
+  "@hybrid.screen.issues.waitingForKeyframe": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.tcpTransport": "The connection goes over TCP: a lost packet holds back the ones after it",
+  "hybrid.screen.issues.noSourceFrames": "Nothing comes from the streamer for {seconds} s",
+  "@hybrid.screen.issues.noSourceFrames": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.noAudio": "The screen is shared with sound, but none comes for {seconds} s",
+  "@hybrid.screen.issues.noAudio": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.decoderStalled": "Packets come, but the decoder gives no frames for {seconds} s",
+  "@hybrid.screen.issues.decoderStalled": {
+    "placeholders": {
+      "seconds": {}
+    }
+  },
+  "hybrid.screen.issues.rendererBehind": "{dropped} of {received} frames per second are dropped before drawing",
+  "@hybrid.screen.issues.rendererBehind": {
+    "placeholders": {
+      "dropped": {},
+      "received": {}
+    }
+  },
   "hybrid.screen.empty": "Nobody is sharing a screen. Be the first!",
   "hybrid.screen.start": "Start sharing",
   "hybrid.screen.stop": "Stop sharing",
+  "hybrid.stats.open": "Connection statistics",
+  "hybrid.stats.title": "Connection",
+  "hybrid.stats.quality.good": "Good",
+  "hybrid.stats.quality.fair": "Fair",
+  "hybrid.stats.quality.poor": "Poor",
+  "hybrid.stats.quality.unknown": "Not measured yet",
+  "hybrid.stats.ping": "Ping",
+  "hybrid.stats.lossIn": "Loss in",
+  "hybrid.stats.lossOut": "Loss out",
+  "hybrid.stats.pingGraph": "Ping over the last 2 minutes",
+  "hybrid.stats.lossGraph": "Packet loss",
+  "hybrid.screen.change": "Change sharing",
   "hybrid.screen.watchFailed": "Failed to open the screen: {reason}",
   "@hybrid.screen.watchFailed": {
     "placeholders": {
@@ -721,15 +825,43 @@
   },
   "createSession.description.controlCharacters": "The description cannot contain control characters",
   "peer.poke": "Poke",
+  "peer.poke.message.placeholder": "Message (optional)",
+  "peer.poke.send": "Poke",
+  "peer.poke.title": "Poke {user}",
+  "@peer.poke.title": {
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "peer.poke.subtitle": "They hear a sound and see your message, even while away.",
+  "peer.afk": "Away from keyboard",
+  "peer.afk.reason": "Away from keyboard: {reason}",
+  "@peer.afk.reason": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
   "peer.volume": "Volume",
   "peer.muteSound": "Mute sound",
   "peer.unmuteSound": "Unmute sound",
   "peer.enableOverdrive": "Enable overdrive",
   "peer.disableOverdrive": "Disable overdrive",
   "peer.kick": "Kick",
+  "peer.approve": "Let in",
+  "peer.reject": "Turn away",
+  "peer.approve.failed": "Could not answer the request to join",
+  "hybrid.rejected.title": "Not let in",
+  "hybrid.rejected.text": "{user} did not let you into the session \"{session}\"",
   "peer.kick.failed.title": "Could not kick the user",
   "peer.kick.failed.text": "Error code: {code}",
   "@peer.kick.failed.text": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "peer.poke.failed.title": "Could not poke the user",
+  "peer.poke.failed.text": "Error code: {code}",
+  "@peer.poke.failed.text": {
     "placeholders": {
       "code": {}
     }
@@ -750,6 +882,7 @@
     }
   },
   "peer.ban": "Ban",
+  "peer.ban.failed.title": "Could not ban the user",
   "peer.suspend": "Suspend",
   "peer.report": "Report",
   "peer.viewProfile": "View profile",
@@ -768,7 +901,6 @@
     }
   },
   "sessions.empty.plain": "No sessions yet.",
-  "sessions.youAreHost": "You are the host",
   "sessions.muteNotifications": "Mute notifications",
   "sessions.unmuteNotifications": "Unmute notifications",
   "sessions.notificationsMuted": "Notifications are muted",
@@ -800,6 +932,24 @@
   "sessionSettings.capacity.notAccepted": "The server does not accept this number of participants. It cannot be below the number of participants in the session now.",
   "sessionSettings.sessionGone": "The session no longer exists.",
   "sessionSettings.notSaved": "The settings were not saved: {reason}.",
+  "sessionSettings.media": "Media",
+  "sessionSettings.media.hint": "Codecs and recovery of lost packets. Bitrate, frame rate and resolution are picked when a stream starts.",
+  "sessionSettings.media.cameraCodec": "Camera",
+  "sessionSettings.media.screenCodec": "Screen share",
+  "sessionSettings.media.audioCodec": "Audio",
+  "sessionSettings.media.video": "Video losses",
+  "sessionSettings.media.nack": "Ask for lost packets again (NACK)",
+  "sessionSettings.media.videoRtx": "Resend them on a stream of their own (RTX)",
+  "sessionSettings.media.keyFrameDelay": "Keyframe requests at most every, ms",
+  "sessionSettings.media.audio": "Audio losses",
+  "sessionSettings.media.audioNack.hint": "Helps with bursts of loss when the server is close. FEC already covers single losses.",
+  "sessionSettings.media.opusFec": "Restore single losses (Opus FEC)",
+  "sessionSettings.media.opusLoss": "Expected loss, %",
+  "sessionSettings.media.voiceDtx": "Send next to nothing in silence (DTX)",
+  "sessionSettings.media.buffers": "Receive buffers",
+  "sessionSettings.media.voiceBuffer": "Voice, ms",
+  "sessionSettings.media.videoBuffer": "Video, ms",
+  "sessionSettings.media.buffers.hint": "A longer buffer rides out more jitter and waits longer for resent packets, at the cost of delay.",
   "sessions.moveTo": "Move to category",
   "sessions.moveUp": "Move up",
   "sessions.moveDown": "Move down",
@@ -825,6 +975,7 @@
   "source.system.pick": "Choose",
   "source.system.pickAnother": "Change",
   "source.start": "Start",
+  "source.apply": "Apply",
   "source.field.resolution": "Resolution:",
   "source.field.framerate": "Frame rate:",
   "source.resolution.value": "{height}p",
@@ -895,6 +1046,10 @@
   "chat.menu.copySelected": "Copy selected text",
   "chat.menu.copyAll": "Copy all text",
   "chat.menu.copyLink": "Copy link",
+  "chat.input.cut": "Cut",
+  "chat.input.copy": "Copy",
+  "chat.input.paste": "Paste",
+  "chat.input.selectAll": "Select all",
   "chat.openLink.title": "Open link?",
   "chat.openLink.message": "Open this link in the browser?",
   "chat.goToMessage": "Go to message",
@@ -960,15 +1115,23 @@
   "settings.audio.inputDevice.title": "Input device",
   "settings.audio.inputVolume.title": "Input volume",
   "settings.audio.noiseSuppression.title": "Noise suppression",
-  "settings.audio.noiseSuppression.description": "Removes background noise from the microphone. Stronger levels may distort the voice.",
+  "settings.audio.noiseSuppression.description": "Removes background noise from the microphone. Stronger levels may distort the voice. The neural levels also take out keys, clicks and other short noises.",
   "settings.audio.noiseSuppression.off": "Off",
   "settings.audio.noiseSuppression.low": "Low",
   "settings.audio.noiseSuppression.moderate": "Moderate",
   "settings.audio.noiseSuppression.high": "High",
   "settings.audio.noiseSuppression.veryHigh": "Very high",
+  "settings.audio.noiseSuppression.neural": "Neural (RNNoise)",
+  "settings.audio.noiseSuppression.neuralAndWebRtc": "Neural + moderate",
+  "settings.audio.echoCancellation.title": "Echo cancellation",
+  "settings.audio.echoCancellation.description": "Takes the voices from your speakers out of the microphone, so the others do not hear themselves. Not needed with headphones.",
   "settings.audio.section.voiceActivity": "Voice activity",
   "settings.audio.voiceGate.title": "Send the microphone only while I speak",
   "settings.audio.voiceGate.description": "Set the threshold under the meter while testing the microphone: the meter turns green while your voice would be sent.",
+  "settings.audio.voiceDetection.title": "Open only for a voice",
+  "settings.audio.voiceDetection.description": "RNNoise tells speech from keys, clicks and knocks, so these do not open the gate. Works with any noise suppression level.",
+  "settings.audio.adaptiveThreshold.title": "Raise the threshold above the room noise",
+  "settings.audio.adaptiveThreshold.description": "Follows the noise of the room while you are silent and keeps the threshold above it, never below the one you set.",
   "settings.audio.section.sounds": "Interface sounds",
   "settings.audio.soundsEnabled.title": "Play interface sounds",
   "settings.audio.soundsEnabled.description": "Someone joining or leaving, the microphone being muted, a screen share starting",
@@ -996,6 +1159,8 @@
   "settings.audio.sound.call_incoming": "Incoming call",
   "settings.audio.sound.mention": "You were mentioned",
   "settings.audio.sound.user_kicked": "User kicked",
+  "settings.audio.sound.poke": "Someone poked you",
+  "settings.audio.sound.afk": "You went AFK",
   "settings.audio.section.microphoneTest": "Microphone test",
   "settings.audio.testMicrophone.title": "Test microphone",
   "settings.audio.testMicrophone.description": "Speak to see the input level on the meter",
@@ -1250,5 +1415,134 @@
       "name": {}
     }
   },
-  "language.name": "English"
+  "language.name": "English",
+  "roles.permission.viewSessions": "View sessions",
+  "roles.permission.viewSessions.description": "See sessions and the messages of chats.",
+  "roles.permission.sendMessages": "Send messages",
+  "roles.permission.sendMessages.description": "Write in chats.",
+  "roles.permission.attachFiles": "Attach files",
+  "roles.permission.attachFiles.description": "Attach files and images to messages.",
+  "roles.permission.joinSessions": "Join sessions",
+  "roles.permission.joinSessions.description": "Join voice sessions.",
+  "roles.permission.speak": "Speak",
+  "roles.permission.speak.description": "Turn on the microphone in voice sessions.",
+  "roles.permission.shareVideo": "Share the screen",
+  "roles.permission.shareVideo.description": "Share the screen in voice sessions.",
+  "roles.permission.poke": "Poke members",
+  "roles.permission.poke.description": "Poke other members of voice sessions.",
+  "sessionPermissions.title": "Permissions",
+  "sessionPermissions.hint": "What roles may do in this session. A setting left as on the server follows the role.",
+  "sessionPermissions.allow": "Allow",
+  "sessionPermissions.deny": "Deny",
+  "sessionPermissions.inherit": "As on the server",
+  "sessionPermissions.roleGone": "A role was deleted meanwhile. Open the dialog again.",
+  "sessionPermissions.notAllowed": "You cannot change this role or grant a permission you do not have.",
+  "chat.input.noPermission": "You cannot write in this chat",
+  "chat.attach.noPermission": "You cannot attach files in this chat",
+
+  "loginPrompt.title": "Log in",
+  "loginPrompt.text.password": "The account on {server} is protected with a password.",
+  "@loginPrompt.text.password": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.text.code": "Enter a one-time code from your authenticator app to log in to {server}.",
+  "@loginPrompt.text.code": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.text.both": "The account on {server} is protected with a password and one-time codes.",
+  "@loginPrompt.text.both": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.password": "Password:",
+  "loginPrompt.remember": "Remember the password on this device",
+  "loginPrompt.code": "One-time code:",
+  "loginPrompt.code.hint": "6 digits from the authenticator app",
+  "loginPrompt.confirm": "Log in",
+  "loginPrompt.refused": "The server did not accept the password or the code. Check them and try again.",
+  "connect.failed.passkeyRequired": "Connection to server failed.\n\nThe account logs in with passkeys only, which this application does not support yet. Add a password or one-time codes in the control panel of the server.",
+  "main.reconnect.loginGivenUp": "Disconnected: the login was canceled.",
+  "main.reconnect.passkeyRequired": "Disconnected: the account logs in with passkeys only, which this application does not support yet.",
+  "accountSecurity.title": "Login and security",
+  "accountSecurity.hint": "How your account on this server logs in",
+  "accountSecurity.open": "Password and one-time codes",
+  "accountSecurity.retry": "Try again",
+  "accountSecurity.next": "Next",
+  "accountSecurity.back": "Back",
+  "accountSecurity.password": "Password",
+  "accountSecurity.password.set": "Asked at every login",
+  "accountSecurity.password.notSet": "Not set",
+  "accountSecurity.password.change": "Change",
+  "accountSecurity.password.add": "Set password",
+  "accountSecurity.password.remove": "Remove the password",
+  "accountSecurity.password.hint": "From {min} to {max} characters",
+  "@accountSecurity.password.hint": {
+    "placeholders": {
+      "min": {},
+      "max": {}
+    }
+  },
+  "accountSecurity.codes": "One-time codes",
+  "accountSecurity.codes.on": "On: a code from the authenticator app is asked at every login",
+  "accountSecurity.codes.off": "Off",
+  "accountSecurity.codes.enable": "Turn on",
+  "accountSecurity.codes.disable": "Turn off",
+  "accountSecurity.codes.enableConfirm": "Turn on",
+  "accountSecurity.codes.disableConfirm": "Turn off",
+  "accountSecurity.codes.setup": "Scan the QR code with an authenticator app (Aegis, Google Authenticator, 2FAS...) or type the key into it, then enter the code it shows.",
+  "accountSecurity.codes.secret": "Key:",
+  "accountSecurity.codes.uri": "Link for the app:",
+  "accountSecurity.codes.firstCode": "Code from the app:",
+  "accountSecurity.passkeys": "Passkeys",
+  "accountSecurity.passkeys.hint": "Passkeys are added in the control panel of the server.",
+  "accountSecurity.passkeys.unavailable": "Passkeys are not set up on this server.",
+  "accountSecurity.passkeys.delete": "Delete the passkey \"{name}\"",
+  "@accountSecurity.passkeys.delete": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "accountSecurity.passkeys.unnamed": "Passkey",
+  "accountSecurity.passkeys.createdAt": "Added {created}",
+  "@accountSecurity.passkeys.createdAt": {
+    "placeholders": {
+      "created": {}
+    }
+  },
+  "accountSecurity.passkeys.usedAt": "Added {created}, last used {used}",
+  "@accountSecurity.passkeys.usedAt": {
+    "placeholders": {
+      "created": {},
+      "used": {}
+    }
+  },
+  "accountSecurity.proof.hint": "Confirm that it is you:",
+  "accountSecurity.proof.password": "Current password:",
+  "accountSecurity.proof.code": "One-time code:",
+  "accountSecurity.newPassword": "New password:",
+  "accountSecurity.repeatPassword": "Repeat password:",
+  "accountSecurity.error.proof": "The current password or code is wrong.",
+  "accountSecurity.error.codeRefused": "The code is wrong. Check the time on the device and try again.",
+  "accountSecurity.error.invalid": "The server did not accept the change. Close the window and open it again.",
+  "accountSecurity.error.passkeyNotFound": "This passkey is already gone.",
+  "accountSecurity.error.failed": "The server could not make the change (code {code}).",
+  "@accountSecurity.error.failed": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "accountSecurity.error.unexpected": "Unexpected error: {error}",
+  "@accountSecurity.error.unexpected": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "accountSecurity.error.proofPassword": "Enter the current password",
+  "accountSecurity.error.codeFormat": "A code is 6 digits",
+  "accountSecurity.error.mismatch": "The passwords do not match"
 }

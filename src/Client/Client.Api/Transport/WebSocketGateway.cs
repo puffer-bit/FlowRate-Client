@@ -36,12 +36,16 @@ internal partial class WebSocketGateway : IWebSocketGateway
         await CloseConnectionAsync();
 
         ServerCertificateModel? rejectedCertificate = null;
+        var isCertificateVerified = false;
 
         // Runs during the TLS handshake, so an untrusted server never receives the login data
         bool ValidateCertificate(object _, X509Certificate? certificate, X509Chain? __, SslPolicyErrors errors)
         {
             if (ServerCertificateCheck.IsTrusted(certificate, errors, trustedFingerprint, out var fingerprint))
+            {
+                isCertificateVerified = errors == SslPolicyErrors.None;
                 return true;
+            }
             if (certificate == null || fingerprint == null)
                 return false;
 
@@ -84,7 +88,7 @@ internal partial class WebSocketGateway : IWebSocketGateway
         // Subscribed only once connected, so a failed attempt is reported by its result, not as a lost connection
         connection.Disconnected += ProcessDisconnection;
         Connection = connection;
-        return new TransportConnectResult(true);
+        return new TransportConnectResult(true, IsCertificateVerified: isCertificateVerified);
     }
 
     public Task DisconnectAsync() => CloseConnectionAsync();

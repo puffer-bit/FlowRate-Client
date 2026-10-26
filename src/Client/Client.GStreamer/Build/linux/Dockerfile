@@ -117,10 +117,11 @@ RUN git clone --depth 1 --branch "${PIPEWIRE_MODERN_VERSION}" https://gitlab.fre
     && mkdir -p "$PREFIX/lib/gstreamer-1.0-pipewire-modern" \
     && install -m 755 pipewire-modern/build/src/gst/libgstpipewire.so "$PREFIX/lib/gstreamer-1.0-pipewire-modern/"
 
-# dav1ddec and rtpav1pay/rtpav1depay live in gst-plugins-rs only
+# dav1ddec, rtpav1pay/rtpav1depay and audiornnoise live in gst-plugins-rs only. audiornnoise (audiofx,
+# MPL-2.0) is RNNoise in pure Rust (nnnoiseless): it links nothing beyond GStreamer itself.
 RUN git clone --depth 1 --branch "gstreamer-${GST_VERSION}" https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git \
     && cd gst-plugins-rs \
-    && cargo cinstall --release -p gst-plugin-dav1d -p gst-plugin-rtp \
+    && cargo cinstall --release -p gst-plugin-dav1d -p gst-plugin-rtp -p gst-plugin-audiofx \
         --prefix="$PREFIX" --libdir=lib \
     && rm -rf target /root/.cargo/registry
 

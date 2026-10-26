@@ -151,3 +151,40 @@ public abstract class D3D11SharedVideoFrame : GpuVideoFrame
 
     private int _isRead;
 }
+
+/// <summary>
+/// How the planes of a <see cref="MemoryYuvVideoFrame"/> hold the colors.
+/// </summary>
+public enum YuvPlaneLayout
+{
+    /// <summary>Luma, then U and V interleaved in one plane of half the size.</summary>
+    Nv12,
+
+    /// <summary>Luma, then U and V in a plane each, of half the size.</summary>
+    I420
+}
+
+/// <summary>
+/// One plane of a frame in memory: where its first row starts and how many bytes a row takes.
+/// </summary>
+public readonly record struct VideoPlane(IntPtr Data, int Stride);
+
+/// <summary>
+/// A frame whose 8-bit YUV planes stay in the memory of the decoder. Its pixels are not on the GPU,
+/// but it is held the same way: the buffer stays mapped until the last reference is given back, so
+/// the renderer uploads the planes without a copy before.
+/// </summary>
+public abstract class MemoryYuvVideoFrame : GpuVideoFrame
+{
+    protected MemoryYuvVideoFrame(int width, int height, YuvPlaneLayout layout, IReadOnlyList<VideoPlane> planes)
+        : base(width, height)
+    {
+        Layout = layout;
+        Planes = planes;
+    }
+
+    public YuvPlaneLayout Layout { get; }
+
+    /// <summary>Luma first, then the chroma plane of NV12, or U and V of I420.</summary>
+    public IReadOnlyList<VideoPlane> Planes { get; }
+}

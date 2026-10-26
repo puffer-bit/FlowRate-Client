@@ -4,6 +4,7 @@ using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Client.Avalonia.Controls.Icons;
+using Client.Avalonia.Controls.Images;
 
 namespace Client.Avalonia.Controls.Avatars;
 
@@ -13,10 +14,11 @@ namespace Client.Avalonia.Controls.Avatars;
 /// 32px profile slot. A <see cref="Status"/> puts its badge at the lower right corner. A deleted user
 /// gets a ghost in place of the initial.
 /// </summary>
-[PseudoClasses(SpeakingPseudoClass, DeletedPseudoClass)]
+[PseudoClasses(SpeakingPseudoClass, WaitingPseudoClass, DeletedPseudoClass)]
 public class UserAvatar : TemplatedControl
 {
     private const string SpeakingPseudoClass = ":speaking";
+    private const string WaitingPseudoClass = ":waiting";
     private const string DeletedPseudoClass = ":deleted";
 
     public static readonly StyledProperty<bool> IsDeletedProperty =
@@ -25,8 +27,14 @@ public class UserAvatar : TemplatedControl
     public static readonly StyledProperty<bool> IsSpeakingProperty =
         AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsSpeaking));
 
+    public static readonly StyledProperty<bool> IsWaitingProperty =
+        AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsWaiting));
+
     public static readonly StyledProperty<string?> UserNameProperty =
         AvaloniaProperty.Register<UserAvatar, string?>(nameof(UserName));
+
+    public static readonly StyledProperty<bool> IsAnimatedProperty =
+        AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsAnimated));
 
     public static readonly StyledProperty<IImage?> SourceProperty =
         AvaloniaProperty.Register<UserAvatar, IImage?>(nameof(Source));
@@ -126,6 +134,25 @@ public class UserAvatar : TemplatedControl
     }
 
     /// <summary>
+    /// Whether an animated picture moves; otherwise it holds still on its first frame, so a screen full
+    /// of avatars does not flicker.
+    /// </summary>
+    public bool IsAnimated
+    {
+        get => GetValue(IsAnimatedProperty);
+        set => SetValue(IsAnimatedProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the user waits for the host to let them in; keeps the ring lit in the warning color.
+    /// </summary>
+    public bool IsWaiting
+    {
+        get => GetValue(IsWaitingProperty);
+        set => SetValue(IsWaitingProperty, value);
+    }
+
+    /// <summary>
     /// The status of the user, shown as the icon "Status{name}Icon" of the assets, so a value of any enum
     /// with the names of the icons will do. No badge when null.
     /// </summary>
@@ -175,17 +202,18 @@ public class UserAvatar : TemplatedControl
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == SourceProperty)
-            Picture = Source ?? _loaded;
+        if (change.Property == SourceProperty || change.Property == IsAnimatedProperty)
+            Picture = Shown(Source ?? _loaded);
         else if (change.Property == AvatarUrlProperty || change.Property == CoordinatorProperty)
             _ = LoadAsync();
-
         else if (change.Property == UserNameProperty)
             Initial = string.IsNullOrWhiteSpace(UserName) ? "?" : UserName.Trim()[..1].ToUpperInvariant();
         else if (change.Property == StatusProperty)
             StatusIcon = Status == null ? null : IconResources.Get($"Status{Status}Icon");
         else if (change.Property == IsSpeakingProperty)
             PseudoClasses.Set(SpeakingPseudoClass, IsSpeaking);
+        else if (change.Property == IsWaitingProperty)
+            PseudoClasses.Set(WaitingPseudoClass, IsWaiting);
         else if (change.Property == IsDeletedProperty)
             PseudoClasses.Set(DeletedPseudoClass, IsDeleted);
     }
@@ -211,6 +239,9 @@ public class UserAvatar : TemplatedControl
         }
 
         _loaded = loaded;
-        Picture = Source ?? loaded;
+        Picture = Shown(Source ?? loaded);
     }
+
+    private IImage? Shown(IImage? picture) =>
+        !IsAnimated && picture is AnimatedImage animated ? animated.FirstFrame : picture;
 }

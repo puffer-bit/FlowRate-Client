@@ -83,11 +83,14 @@ public partial class HybridSession : IHybridSession
     public event Action<int, bool>? ScreenShareChanged;
 
     // Users whose screen we watch, ourselves included; read for every frame on the threads of the tracks
+    // The screens we watch, each with whether it comes with its sound
     private readonly ConcurrentDictionary<int, bool> _watchedScreens = new();
 
     public event Action<int, bool>? ScreenWatchChanged;
 
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
+
+    public event Action<TransportStatsSample>? StatsSampled;
 
     private static readonly TimeSpan ReconnectConnectTimeout = TimeSpan.FromSeconds(15);
 
@@ -158,6 +161,11 @@ public partial class HybridSession : IHybridSession
         transport.LocalDtlsParametersReady += parameters => SendLocalDtlsParameters(transport, parameters);
         transport.InboundsReady += inboundIds => ResumeInbounds(transport, inboundIds);
         transport.SpeakingChanged += (userId, isSpeaking) => OnSpeakingChanged(transport, userId, isSpeaking);
+        transport.StatsSampled += sample =>
+        {
+            if (transport == _webRTCService && !IsDisposed)
+                StatsSampled?.Invoke(sample);
+        };
         transport.VideoFrameReady += (userId, source, frame) =>
         {
             if (transport != _webRTCService || IsDisposed)
@@ -253,17 +261,18 @@ public partial class HybridSession : IHybridSession
     }
 
     public Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression, bool isMuted = false) =>
-        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGateThresholdDb, noiseSuppression,
-            isMuted);
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isMuted = false) =>
+        StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression,
+            isEchoCancellationEnabled, isMuted);
 
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending <paramref name="input"/> to it. Besides the
     /// microphone this takes a looped file or a tone, which is what the test bot sends.
     /// </summary>
     public async Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
-        double? voiceGateThresholdDb = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
-        bool isMuted = false)
+        VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
+        bool isEchoCancellationEnabled = false, bool isMuted = false)
     {
         if (_voiceOutbound != null)
             return StartVoiceShareResult.NoError;
@@ -281,7 +290,8 @@ public partial class HybridSession : IHybridSession
         if (transport != _webRTCService)
             return StartVoiceShareResult.InternalError;
 
-        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGateThresholdDb, noiseSuppression))
+        if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression,
+                isEchoCancellationEnabled))
         {
             LogStartSendingFailed(Model.Id, input);
             await _coordinatorSession.StopVoiceShareInHybridSession(Model.Id);
@@ -351,17 +361,80 @@ public partial class HybridSession : IHybridSession
 
         // The picture goes out without the sound rather than not at all
         if (outbounds.Audio is { } audioOutbound && audioInput != null)
-        {
-            if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off))
-            {
-                _screenAudioOutbound = audioOutbound;
-                LogScreenAudioStarted(Model.Id, audioOutbound.SSRC);
-            }
-            else
-                LogScreenAudioStartFailed(Model.Id, audioInput);
-        }
+            StartScreenAudio(transport, audioOutbound, audioInput);
 
         ScreenShareChanged?.Invoke(outbound.UserId, true);
+
+        return StartScreenShareResult.NoError;
+    }
+
+    private void StartScreenAudio(IWebRTCTransport transport, OutboundTrack audioOutbound, AudioInput audioInput)
+    {
+        if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off, false))
+        {
+            _screenAudioOutbound = audioOutbound;
+            LogScreenAudioStarted(Model.Id, audioOutbound.SSRC);
+        }
+        else
+            LogScreenAudioStartFailed(Model.Id, audioInput);
+    }
+
+    /// <summary>
+    /// Gives a running share the sound it was started without. The server adds the producer to the
+    /// share and hands it to those who watch, so the picture goes on meanwhile.
+    /// </summary>
+    private async Task AddScreenAudioAsync(OutboundTrack outbound, AudioInput audioInput)
+    {
+        var transport = _webRTCService;
+        var (result, outbounds) = await _coordinatorSession.StartScreenShareInHybridSession(Model.Id, true);
+
+        // Stopped, or moved to a new transport that starts it anew, in the meantime
+        if (_screenOutbound != outbound || transport != _webRTCService || _screenAudioOutbound != null)
+            return;
+
+        // A server that cannot add it leaves the share silent rather than restarting it under its viewers
+        if (result != StartScreenShareResult.NoError || outbounds?.Audio is not { } audioOutbound)
+        {
+            LogScreenAudioStartFailed(Model.Id, audioInput);
+            return;
+        }
+
+        StartScreenAudio(transport, audioOutbound, audioInput);
+    }
+
+    public async Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+        AudioInput? audioInput = null)
+    {
+        var outbound = _screenOutbound;
+        var audioOutbound = _screenAudioOutbound;
+
+        if (outbound == null)
+            return await StartScreenShareAsync(input, settings, audioInput);
+
+        var transport = _webRTCService;
+
+        // The branch is built anew on the same producer, so the viewers keep receiving it
+        transport.StopOutbound(outbound.Id);
+
+        if (!transport.StartOutbound(outbound, input, settings))
+        {
+            LogScreenShareStartFailed(Model.Id, input);
+            await StopScreenShareAsync();
+            return StartScreenShareResult.UnsupportedMedia;
+        }
+
+        LogScreenShareChanged(Model.Id, outbound.SSRC);
+
+        // A sound that is dropped stays muted on its producer until the share ends
+        if (audioOutbound != null)
+        {
+            if (audioInput != null)
+                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off, false);
+
+            transport.SetOutboundMuted(audioOutbound.Id, audioInput == null);
+        }
+        else if (audioInput != null)
+            await AddScreenAudioAsync(outbound, audioInput);
 
         return StartScreenShareResult.NoError;
     }
@@ -387,6 +460,8 @@ public partial class HybridSession : IHybridSession
     }
 
     public bool IsWatchingScreen(int userId) => _watchedScreens.ContainsKey(userId);
+
+    public bool HasWatchedScreenAudio(int userId) => _watchedScreens.TryGetValue(userId, out var hasAudio) && hasAudio;
 
     public Task<SetScreenShareWatchResult> SetScreenWatchAsync(int userId, bool isWatching)
     {
@@ -441,15 +516,15 @@ public partial class HybridSession : IHybridSession
         if (inbounds.Audio != null)
             transport.RegisterInbound(inbounds.Audio, volume);
 
-        SetScreenWatched(userId, true);
+        SetScreenWatched(userId, true, inbounds.Audio != null);
         LogScreenWatchChanged(Model.Id, userId, true);
 
         return SetScreenShareWatchResult.NoError;
     }
 
-    private void SetScreenWatched(int userId, bool isWatched)
+    private void SetScreenWatched(int userId, bool isWatched, bool hasAudio = false)
     {
-        var isChanged = isWatched ? _watchedScreens.TryAdd(userId, true) : _watchedScreens.TryRemove(userId, out _);
+        var isChanged = isWatched ? _watchedScreens.TryAdd(userId, hasAudio) : _watchedScreens.TryRemove(userId, out _);
 
         if (!isChanged)
             return;
@@ -499,10 +574,31 @@ public partial class HybridSession : IHybridSession
 
     public bool IsSoundMuted => _isSoundMuted;
 
+    public bool IsAfk { get; private set; }
+    public string? AfkReason { get; private set; }
+
+    public async Task<SetAfkResult> SetAfkAsync(bool isAfk, string? reason)
+    {
+        IsAfk = isAfk;
+        AfkReason = isAfk && !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : null;
+
+        return await _coordinatorSession.SetAfkInHybridSession(Model.Id, isAfk, AfkReason);
+    }
+
+    public Task<PokeResult> PokeAsync(int userId, string? message) =>
+        _coordinatorSession.PokeInHybridSession(Model.Id, userId,
+            string.IsNullOrWhiteSpace(message) ? null : message.Trim());
+
     public async Task<SetSoundMuteResult> SetSoundMutedAsync(bool isMuted)
     {
         _isSoundMuted = isMuted;
         _webRTCService.SetInboundVoiceMuted(isMuted);
+
+        lock (_speakingLock)
+        {
+            foreach (var userId in _speakingUsers)
+                PublishSpeaking(userId);
+        }
 
         return await _coordinatorSession.SetSoundMuteInHybridSession(Model.Id, isMuted);
     }
@@ -524,12 +620,12 @@ public partial class HybridSession : IHybridSession
     }
 
     /// <summary>
-    /// Shows a user as speaking unless we muted them: a muted user is not heard, so the indicator
-    /// would point at nothing. Called under <see cref="_speakingLock"/>.
+    /// Shows a user as speaking unless we muted them or all the voices: a muted user is not heard,
+    /// so the indicator would point at nothing. Called under <see cref="_speakingLock"/>.
     /// </summary>
     private void PublishSpeaking(int userId)
     {
-        var isMuted = _peerPlayback?.Get(userId, PeerAudioChannel.Voice).IsMuted == true;
+        var isMuted = _isSoundMuted || _peerPlayback?.Get(userId, PeerAudioChannel.Voice).IsMuted == true;
 
         _voiceActivity?.Set(Model.Id, userId, _speakingUsers.Contains(userId) && !isMuted);
     }
@@ -552,16 +648,18 @@ public partial class HybridSession : IHybridSession
             _webRTCService.SetOutboundVolume(outbound.Id, volume);
     }
 
-    public void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression)
+    public void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression,
+        bool isEchoCancellationEnabled)
     {
         if (_voiceOutbound is { } outbound)
-            _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression);
+            _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression,
+                isEchoCancellationEnabled);
     }
 
-    public void SetVoiceGateThreshold(double? thresholdDb)
+    public void SetVoiceGate(VoiceGateOptions? voiceGate)
     {
         if (_voiceOutbound is { } outbound)
-            _webRTCService.SetVoiceGateThreshold(outbound.Id, thresholdDb);
+            _webRTCService.SetVoiceGate(outbound.Id, voiceGate);
     }
 
     private void HandleConnectionStatus(IWebRTCTransport transport, WebRTCConnectionState state)

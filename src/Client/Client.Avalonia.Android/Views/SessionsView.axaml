@@ -67,6 +67,17 @@
         <Style Selector="Border.categoryHeader TextBlock.categoryName">
             <Setter Property="FontSize" Value="13"/>
         </Style>
+        <!-- A user away from the keyboard fades out, all but the AFK mark -->
+        <Style Selector="Grid.peerRow :is(Control).afkDim">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.peerRow.afk :is(Control).afkDim">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, 1, *, 1, Auto">
@@ -185,18 +196,15 @@
                               anim:Presence.Leave="Fold"
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
                             <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}">
-                                <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                                     <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
                                            Source="{StaticResource HybridSessionIcon}"/>
 
                                     <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
                                                Text="{Binding Model.Name}"/>
 
-                                    <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsHost}"
-                                           Source="{StaticResource CrownIcon}"/>
 
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4"
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                                                 VerticalAlignment="Center"
                                                 IsVisible="{Binding !!Peers.Count}">
                                         <Image Width="14" Height="14" Source="{StaticResource BaseUserIcon}"/>
@@ -219,42 +227,72 @@
                                                   ClipToBounds="True"
                                                   anim:Presence.Appear="Unfold"
                                                   anim:Presence.Leave="Fold"
-                                                  anim:Presence.IsLeaving="{Binding IsLeaving}">
-                                                <Panel Grid.Column="0" Width="28" Height="28">
+                                                  anim:Presence.IsLeaving="{Binding IsLeaving}"
+                                                  Classes="peerRow"
+                                                  Classes.afk="{Binding IsAfk}">
+                                                <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
                                                     <avatars:UserAvatar UserName="{Binding UserData.Username}"
+                                                                        IsAnimated="True"
                                                                         AvatarUrl="{Binding UserData.AvatarUrl}"
                                                                         IsSpeaking="{Binding IsSpeaking}"
-                                                                        IsVisible="{Binding IsConnected}"/>
+                                                                        IsWaiting="{Binding IsWaiting}">
+                                                        <avatars:UserAvatar.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                                <Binding Path="IsConnected"/>
+                                                                <Binding Path="IsWaiting"/>
+                                                            </MultiBinding>
+                                                        </avatars:UserAvatar.IsVisible>
+                                                    </avatars:UserAvatar>
 
                                                     <loadingIndicators:ProgressRing Width="16" Height="16"
                                                                                     MinWidth="0" MinHeight="0"
                                                                                     IsIndeterminate="True"
-                                                                                    IsVisible="{Binding !IsConnected}"
                                                                                     BorderThickness="2"
-                                                                                    Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                                                    Foreground="{DynamicResource PrimaryTextBrush}">
+                                                        <loadingIndicators:ProgressRing.IsVisible>
+                                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                <Binding Path="!IsConnected"/>
+                                                                <Binding Path="!IsWaiting"/>
+                                                            </MultiBinding>
+                                                        </loadingIndicators:ProgressRing.IsVisible>
+                                                    </loadingIndicators:ProgressRing>
                                                 </Panel>
 
-                                                <TextBlock Grid.Column="1"
-                                                           Classes="peerName"
-                                                           Classes.connecting="{Binding !IsConnected}"
-                                                           Text="{Binding DisplayedName}"/>
+                                                <!-- The reason of an away user goes under the name, and stays readable -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Classes="peerName afkDim"
+                                                               Classes.connecting="{Binding !IsConnected}"
+                                                               Text="{Binding DisplayedName}"/>
+                                                    <TextBlock Text="{Binding AfkReason}"
+                                                               IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
 
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
                                                             VerticalAlignment="Center">
                                                     <!-- The user shows a screen -->
-                                                    <Image Width="20" Height="20"
+                                                    <Image Width="20" Height="20" Classes="afkDim"
                                                            Source="{StaticResource ScreenShareIcon}"
                                                            IsVisible="{Binding IsSharingScreen}"/>
+
+                                                    <!-- The user stepped away from the keyboard: the mark stands for their microphone and sound -->
+                                                    <Image Width="20" Height="20"
+                                                           Source="{StaticResource AfkIcon}"
+                                                           IsVisible="{Binding IsAfk}"
+                                                           ToolTip.Tip="{Binding AfkHint}"/>
 
                                                     <!-- The user turned their own microphone off -->
                                                     <Image Width="20" Height="20"
                                                            Source="{StaticResource CrossedMicrophoneIcon}"
-                                                           IsVisible="{Binding IsMicrophoneMuted}"/>
+                                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
 
                                                     <!-- The user turned the sound of the session off -->
                                                     <Image Width="20" Height="20"
                                                            Source="{StaticResource CrossedHeadphonesIcon}"
-                                                           IsVisible="{Binding IsDeafened}"/>
+                                                           IsVisible="{Binding ShowsSoundOff}"/>
+
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>
@@ -302,7 +340,7 @@
                         <Grid anim:Presence.Leave="Fold"
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
                             <Border Classes="sessionHeader" Classes.shown="{Binding IsShown}">
-                                <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                                     <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
                                            Source="{StaticResource HashIcon}"/>
 
@@ -310,12 +348,9 @@
                                                Classes.unread="{Binding HasUnread}"
                                                Text="{Binding Model.Name}"/>
 
-                                    <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsHost}"
-                                           Source="{StaticResource CrownIcon}"/>
 
                                     <!-- Mentions take the place of the plain counter; a muted chat shows its bell there -->
-                                    <Panel Grid.Column="3" VerticalAlignment="Center">
+                                    <Panel Grid.Column="2" VerticalAlignment="Center">
                                         <Image Width="20" Height="20"
                                                IsVisible="{Binding ShowsMutedMark}"
                                                Source="{StaticResource CrossedBellIcon}"/>

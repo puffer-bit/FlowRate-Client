@@ -20,18 +20,18 @@ public static class WindowHotKeys
         window.AddHandler(InputElement.KeyDownEvent, (_, e) =>
         {
             // The window repeats a held key as more presses
-            if (e.PhysicalKey == PhysicalKey.None || HotKeyGesture.IsModifier(e.PhysicalKey) || !down.Add(e.PhysicalKey))
+            if (e.PhysicalKey == PhysicalKey.None || !down.Add(e.PhysicalKey))
                 return;
 
             var settings = service.Current;
             if (!settings.IsEnabled)
                 return;
 
-            var modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Shift | KeyModifiers.Alt | KeyModifiers.Meta);
+            var pressed = HotKeyGesture.Of(e.KeyModifiers, e.PhysicalKey);
             foreach (var binding in settings.Bindings)
             {
                 if (HotKeyGesture.TryParse(binding.Gesture, out var gesture)
-                    && gesture.Key == e.PhysicalKey && gesture.Modifiers == modifiers
+                    && gesture == pressed
                     && !service.IsHeardGlobally(binding.Action))
                 {
                     service.Raise(binding.Action);

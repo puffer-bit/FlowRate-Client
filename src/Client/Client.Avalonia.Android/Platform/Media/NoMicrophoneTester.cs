@@ -21,10 +21,17 @@ internal sealed class NoMicrophoneTester : IMicrophoneTester
         remove { }
     }
 
+    public event Action<bool>? GateChanged
+    {
+        add { }
+        remove { }
+    }
+
     public bool IsRunning => false;
 
     public MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression) => MicrophoneTestError.Unexpected;
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled) =>
+        MicrophoneTestError.Unexpected;
 
     public void Stop()
     {
@@ -35,6 +42,10 @@ internal sealed class NoMicrophoneTester : IMicrophoneTester
     }
 
     public void SetLoopbackEnabled(bool isEnabled)
+    {
+    }
+
+    public void SetVoiceGate(VoiceGateOptions? voiceGate)
     {
     }
 

@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="420"
+             x:Class="Client.Views.Profile.AccountSecurityView"
+             x:DataType="profileVm:AccountSecurityVM"
+             Background="{DynamicResource GeneralBrush}"
+             Width="480">
+
+    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource KeyIcon}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text accountSecurity.title}"/>
+            </StackPanel>
+            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.hint}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <Panel Grid.Row="2" Margin="20,18" MinHeight="120">
+
+            <!-- Loading, or what failed before anything was shown -->
+            <loadingIndicators:ProgressRing Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            IsIndeterminate="True">
+                <loadingIndicators:ProgressRing.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsBusy"/>
+                        <Binding Path="Security" Converter="{x:Static ObjectConverters.IsNull}"/>
+                    </MultiBinding>
+                </loadingIndicators:ProgressRing.IsVisible>
+            </loadingIndicators:ProgressRing>
+
+            <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsBusy"/>
+                        <Binding Path="Security" Converter="{x:Static ObjectConverters.IsNull}"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <TextBlock Classes="fieldError" TextWrapping="Wrap" TextAlignment="Center" Text="{Binding Error}"/>
+                <Button HorizontalAlignment="Center" Content="{l:Text accountSecurity.retry}" Command="{Binding LoadCommand}"/>
+            </StackPanel>
+
+            <!-- What the user has -->
+            <StackPanel Spacing="16">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsOverview"/>
+                        <Binding Path="Security" Converter="{x:Static ObjectConverters.IsNotNull}"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.password}"/>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding PasswordState}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Command="{Binding RemovePasswordCommand}" IsVisible="{Binding HasPassword}"
+                                Content="{l:Text common.delete}"/>
+                        <Button Command="{Binding SetPasswordCommand}">
+                            <Panel>
+                                <TextBlock Text="{l:Text accountSecurity.password.change}" IsVisible="{Binding HasPassword}"/>
+                                <TextBlock Text="{l:Text accountSecurity.password.add}" IsVisible="{Binding !HasPassword}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes}"/>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding CodesState}"/>
+                    </StackPanel>
+                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                        <Button Command="{Binding DisableCodesCommand}" IsVisible="{Binding IsTwoFactorEnabled}"
+                                Content="{l:Text accountSecurity.codes.disable}"/>
+                        <Button Command="{Binding EnableCodesCommand}" IsVisible="{Binding !IsTwoFactorEnabled}"
+                                Content="{l:Text accountSecurity.codes.enable}"/>
+                    </Panel>
+                </Grid>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.passkeys}"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding PasskeysState}"/>
+                    <ItemsControl ItemsSource="{Binding Passkeys}" IsVisible="{Binding HasPasskeys}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="profileVm:AccountPasskeyVM">
+                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Label}"/>
+                                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Content="{l:Text common.delete}"
+                                            Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).DeletePasskeyCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
+                           IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+
+            <!-- A change -->
+            <StackPanel Spacing="12" IsVisible="{Binding IsChanging}" IsEnabled="{Binding !IsBusy}">
+                <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding ChangeTitle}"/>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsProofAsked}">
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.proof.hint}"/>
+                    <StackPanel Spacing="6" IsVisible="{Binding IsPasswordProofAsked}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.proof.password}"/>
+                        <TextBox Classes="password" Text="{Binding ProofPassword}"
+                                 RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"/>
+                    </StackPanel>
+                    <StackPanel Spacing="6" IsVisible="{Binding IsCodeProofAsked}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.proof.code}"/>
+                        <TextBox Text="{Binding ProofCode}" MaxLength="12" PlaceholderText="000000"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsNewPasswordAsked}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.newPassword}"/>
+                    <TextBox Classes="password" Text="{Binding NewPassword}" MaxLength="{Binding PasswordMaxLength}"
+                             RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.repeatPassword}"/>
+                    <TextBox Classes="password" Text="{Binding RepeatPassword}" MaxLength="{Binding PasswordMaxLength}"
+                             RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding NewPasswordHint}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsSetupShown}">
+                    <TextBlock TextWrapping="Wrap" Text="{l:Text accountSecurity.codes.setup}"/>
+                    <!-- Scanned by the authenticator app; the key below is for typing it in by hand -->
+                    <images:QrCode Width="200" Height="200" Margin="0,6" HorizontalAlignment="Center"
+                                   Text="{Binding Setup.Uri, FallbackValue={x:Null}}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes.secret}"/>
+                    <SelectableTextBlock FontFamily="monospace" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"
+                                         Text="{Binding Setup.Secret, FallbackValue=''}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes.uri}"/>
+                    <SelectableTextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Setup.Uri, FallbackValue=''}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes.firstCode}"/>
+                    <TextBox Text="{Binding SetupCode}" MaxLength="12" PlaceholderText="000000"/>
+                </StackPanel>
+
+                <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
+                           IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+        </Panel>
+
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <!-- Footer -->
+        <Panel Grid.Row="4" Margin="20,12">
+            <Button HorizontalAlignment="Right" Command="{Binding CloseCommand}" IsCancel="{Binding IsOverview}"
+                    IsVisible="{Binding IsOverview}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.close}"/>
+                </StackPanel>
+            </Button>
+
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsChanging}">
+                <Button Command="{Binding BackCommand}" IsCancel="{Binding IsChanging}" Content="{l:Text accountSecurity.back}"/>
+                <Button Classes="primary" Command="{Binding ConfirmCommand}" IsDefault="{Binding IsChanging}" MinWidth="110">
+                    <Panel>
+                        <TextBlock Text="{Binding ConfirmText}" HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}"/>
+                        <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                        IsIndeterminate="True" BorderThickness="2"
+                                                        Foreground="{DynamicResource OnAccentTextBrush}"
+                                                        IsVisible="{Binding IsBusy}"/>
+                    </Panel>
+                </Button>
+            </StackPanel>
+        </Panel>
+    </Grid>
+</UserControl>

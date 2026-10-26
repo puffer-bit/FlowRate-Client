@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using SkiaSharp;
 
@@ -13,6 +14,13 @@ internal static class SkiaImages
     // A format that cannot be decoded reduced is decoded whole; more than this is not attempted
     private const long MaxDecodedPixels = 64L * 1024 * 1024;
 
+    // All the frames of one animation together, 64 MB; a longer one is reduced further to fit
+    private const double MaxAnimationPixels = 16.0 * 1024 * 1024;
+    private const int MaxFrames = 2000;
+
+    // An animation that would have to be reduced below this is shown still instead
+    private const int MinAnimationSide = 48;
+
     /// <param name="Width">Of the whole image, as it is shown.</param>
     public sealed record Decoded(SKBitmap Bitmap, SKEncodedImageFormat Format, int Width, int Height) : IDisposable
     {
@@ -25,7 +33,13 @@ internal static class SkiaImages
     public static Decoded? Decode(Stream content, int maxSide)
     {
         using var codec = SKCodec.Create(content);
-        if (codec == null || codec.Info.Width <= 0 || codec.Info.Height <= 0)
+        return codec == null ? null : Decode(codec, maxSide);
+    }
+
+    /// <inheritdoc cref="Decode(Stream, int)"/>
+    public static Decoded? Decode(SKCodec codec, int maxSide)
+    {
+        if (codec.Info.Width <= 0 || codec.Info.Height <= 0)
             return null;
 
         var origin = codec.EncodedOrigin;
@@ -58,6 +72,97 @@ internal static class SkiaImages
             bitmap.Dispose();
             throw;
         }
+    }
+
+    /// <param name="Width">Of the whole image, as it is shown.</param>
+    public sealed record Animation(SKBitmap[] Frames, TimeSpan[] Delays, int Width, int Height) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var frame in Frames)
+                frame.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Every frame of an animated image, each one whole and reduced as <see cref="Decode"/> would.
+    /// The frames together are kept within a memory budget, so a long animation is reduced further.
+    /// </summary>
+    /// <returns>Null when the image is not animated, or too large to decode.</returns>
+    public static Animation? DecodeAnimation(SKCodec codec, int maxSide)
+    {
+        if (codec.FrameCount < 2 || codec.FrameCount > MaxFrames)
+            return null;
+
+        int width = codec.Info.Width, height = codec.Info.Height;
+        if (width <= 0 || height <= 0 || (long)width * height > MaxDecodedPixels)
+            return null;
+
+        var scale = Math.Min(1.0, (double)maxSide / Math.Max(width, height));
+        var reducedPixels = width * scale * height * scale * codec.FrameCount;
+        if (reducedPixels > MaxAnimationPixels)
+            scale *= Math.Sqrt(MaxAnimationPixels / reducedPixels);
+
+        var target = new SKImageInfo(Math.Max(1, (int)Math.Round(width * scale)),
+            Math.Max(1, (int)Math.Round(height * scale)), SKColorType.Bgra8888, SKAlphaType.Premul);
+        if (Math.Max(target.Width, target.Height) < MinAnimationSide)
+            return null;
+
+        var infos = codec.FrameInfo;
+        var whole = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+
+        // A frame is drawn over the one it requires; one that is not just before it is kept for that
+        var keep = new HashSet<int>();
+        for (var i = 0; i < infos.Length; i++)
+            if (infos[i].RequiredFrame >= 0 && infos[i].RequiredFrame != i - 1)
+                keep.Add(infos[i].RequiredFrame);
+
+        var kept = new Dictionary<int, SKBitmap>();
+        var frames = new List<SKBitmap>(infos.Length);
+        var delays = new List<TimeSpan>(infos.Length);
+        using var canvas = new SKBitmap(whole);
+        try
+        {
+            for (var i = 0; i < infos.Length; i++)
+            {
+                var required = infos[i].RequiredFrame;
+                if (required < 0)
+                    canvas.Erase(SKColors.Transparent);
+                else if (required != i - 1)
+                    kept[required].GetPixelSpan().CopyTo(canvas.GetPixelSpan());
+
+                var result = codec.GetPixels(whole, canvas.GetPixels(), new SKCodecOptions(i, required));
+                if (result is not (SKCodecResult.Success or SKCodecResult.IncompleteInput))
+                    break;
+
+                if (keep.Contains(i))
+                    kept[i] = canvas.Copy();
+
+                frames.Add(target.Width == width && target.Height == height
+                    ? canvas.Copy()
+                    : canvas.Resize(target, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear))
+                      ?? throw new InvalidOperationException("The image could not be resized."));
+                delays.Add(TimeSpan.FromMilliseconds(infos[i].Duration));
+            }
+        }
+        catch
+        {
+            foreach (var frame in frames)
+                frame.Dispose();
+            throw;
+        }
+        finally
+        {
+            foreach (var bitmap in kept.Values)
+                bitmap.Dispose();
+        }
+
+        if (frames.Count >= 2)
+            return new Animation(frames.ToArray(), delays.ToArray(), width, height);
+
+        foreach (var frame in frames)
+            frame.Dispose();
+        return null;
     }
 
     /// <summary>
