@@ -38,13 +38,14 @@
 # (dotnet workload install android), the Android SDK and a JDK. With no keystore given the .apk is signed
 # with the debug key: it installs, but a store does not take it. A release key goes in the variables
 # ANDROID_KEYSTORE (the file), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD.
-# Needs the .NET 10 SDK, Docker for the linux-x64 runtime and python3.
+# Needs the .NET 10 SDK, Docker for the linux-x64 runtime, python3, and curl, unzip and g++ for libwebrtc.
 set -euo pipefail
 script=$(readlink -f "$0")
 cd "$(dirname "$script")/../../.."
 
 PROJECT=src/Client/Client.Avalonia.Desktop/Client.Avalonia.Desktop.csproj
 GSTREAMER_DIR=src/Client/Client.GStreamer/Build
+LIBWEBRTC_DIR=src/Client/Client.LibWebRTC
 PUBLISH_ROOT=src/Client/Client.Avalonia.Desktop/bin/publish
 ANDROID_PROJECT=src/Client/Client.Avalonia.Android/Client.Avalonia.Android.csproj
 ANDROID_PUBLISH_DIR=src/Client/Client.Avalonia.Android/bin/publish/android
@@ -145,6 +146,19 @@ prepare_gstreamer() {
         "$GSTREAMER_DIR/linux/build.sh"
     else
         echo "######## Using the existing Linux GStreamer runtime ($runtime), --gstreamer rebuilds it"
+    fi
+}
+
+# Puts the libwebrtc runtime into the build of <rid>: the voice of the experimental setting. Optional,
+# the client falls back to GStreamer without it. The Linux one takes seconds, so it is built every time
+prepare_libwebrtc() {
+    local rid=$1
+
+    if [[ "$rid" == linux-x64 ]]; then
+        echo "######## Building the libwebrtc runtime"
+        "$LIBWEBRTC_DIR/Native/build.sh"
+    elif [[ ! -d "$LIBWEBRTC_DIR/Build/artifacts/$rid/libwebrtc" ]]; then
+        echo "Note: no libwebrtc runtime for $rid, its voice goes over GStreamer only"
     fi
 }
 
@@ -326,6 +340,7 @@ for rid in "${targets[@]}"; do
 
     echo "######## FlowRate client $version for $rid ($mode)"
     prepare_gstreamer "$rid"
+    prepare_libwebrtc "$rid"
 
     # dotnet publish ignores a missing profile and publishes elsewhere
     profile="$(dirname "$PROJECT")/Properties/PublishProfiles/$rid-$mode.pubxml"

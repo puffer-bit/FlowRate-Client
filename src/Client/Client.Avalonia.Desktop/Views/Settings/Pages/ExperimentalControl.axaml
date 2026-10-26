@@ -21,5 +21,13 @@
                 <CheckBox IsChecked="{Binding UseCustomTitleBar}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="experimental.voice"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="experimental.libWebRTC"
+                            IsEnabled="{Binding IsExperimentalEnabled}">
+                <CheckBox IsChecked="{Binding UseLibWebRTC}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

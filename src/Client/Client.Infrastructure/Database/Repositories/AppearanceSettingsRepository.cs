@@ -166,6 +166,24 @@ internal sealed class AppearanceSettingsRepository : IAppearanceSettingsReposito
             """, new { useCustomTitleBar });
     }
 
+    public async Task<bool> GetUseLibWebRTCAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+
+        return await connection.QueryFirstOrDefaultAsync<bool?>(
+            "SELECT UseLibWebRTC FROM AppearanceSettings WHERE Id = 1") ?? false;
+    }
+
+    public async Task UpdateUseLibWebRTCAsync(bool useLibWebRTC)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            INSERT INTO AppearanceSettings (Id, UseLibWebRTC) VALUES (1, @useLibWebRTC)
+            ON CONFLICT (Id) DO UPDATE SET UseLibWebRTC = excluded.UseLibWebRTC
+            """, new { useLibWebRTC });
+    }
+
     public async Task<bool> GetIsExperimentalEnabledAsync()
     {
         await using var connection = await _database.OpenAsync();

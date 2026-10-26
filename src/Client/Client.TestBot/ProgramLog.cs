@@ -10,6 +10,9 @@ internal static partial class ProgramLog
     [LoggerMessage(LogLevel.Error, "Failed to initialize GStreamer")]
     public static partial void GStreamerInitFailed(ILogger logger);
 
+    [LoggerMessage(LogLevel.Error, "libwebrtc is not next to the executable; build it with Client.LibWebRTC/Native/build.sh")]
+    public static partial void LibWebRTCMissing(ILogger logger);
+
     [LoggerMessage(LogLevel.Error, "Failed to prepare the audio input: {Error}")]
     public static partial void InputFailed(ILogger logger, string error);
 

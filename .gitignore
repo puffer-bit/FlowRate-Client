@@ -25,6 +25,10 @@ Thumbs.db
 # GStreamer runtime produced by Client.GStreamer/Build scripts
 src/Client/Client.GStreamer/Build/artifacts/
 
+# libwebrtc runtime and its download, produced by Client.LibWebRTC/Native/build.sh
+src/Client/Client.LibWebRTC/Build/artifacts/
+src/Client/Client.LibWebRTC/Build/downloads/
+
 # Release archives produced by the publish scripts in src/Scripts
 dist/
 

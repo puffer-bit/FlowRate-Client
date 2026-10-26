@@ -18,6 +18,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
         <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
+        <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
     </ItemGroup>
 
 </Project>
