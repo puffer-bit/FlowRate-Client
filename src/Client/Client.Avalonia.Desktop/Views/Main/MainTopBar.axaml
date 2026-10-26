@@ -100,8 +100,7 @@
                             <menus:MenuItemButton Icon="{StaticResource DownloadIcon}"
                                                   Content="{Binding DownloadText}"
                                                   Command="{Binding DownloadCommand}"
-                                                  IsVisible="{Binding IsAvailable}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                                                  IsVisible="{Binding IsAvailable}"/>
                             <menus:MenuItemButton Icon="{StaticResource ResetIcon}"
                                                   Content="{l:Text main.menu.updater.restart}"
                                                   Command="{Binding RestartCommand}"
@@ -109,8 +108,7 @@
                                                   menus:FlyoutMenu.CloseOnClick="True"/>
                             <menus:MenuItemButton Icon="{StaticResource FindIcon}"
                                                   Content="{l:Text main.menu.updater.check}"
-                                                  Command="{Binding CheckCommand}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                                                  Command="{Binding CheckCommand}"/>
                             <Separator/>
                             <menus:MenuItemButton Icon="{StaticResource GitHubIcon}"
                                                   Content="{l:Text main.menu.updater.github}"
