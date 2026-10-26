@@ -780,6 +780,9 @@
   "settings.experimental.section.window": "Ventana",
   "settings.experimental.customTitleBar.title": "Barra de título propia",
   "settings.experimental.customTitleBar.description": "Los botones de la ventana están en la barra superior de la aplicación y la barra de título del sistema se oculta. Desactívalo para recuperar la barra de título del sistema. Se aplica al instante",
+  "settings.experimental.section.voice": "Voz",
+  "settings.experimental.libWebRTC.title": "Voz con libwebrtc",
+  "settings.experimental.libWebRTC.description": "La voz pasa por el motor de Chrome en lugar de GStreamer: su búfer de jitter, su supresión de ruido y su cancelación de eco. Con él no se comparten ni se ven pantallas. Se aplica a la próxima sesión a la que te unas",
 
   "settings.accounting.name": "Perfiles, servidores y seguridad",
   "settings.accounting.section.database": "Base de datos e identidades",

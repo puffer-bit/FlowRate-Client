@@ -72,6 +72,16 @@ public class AppearanceService : IAppearanceService
         await _appearanceSettingsRepository.UpdateUseCustomTitleBarAsync(useCustomTitleBar);
     }
 
+    public async Task<bool> GetUseLibWebRTCAsync()
+    {
+        return await _appearanceSettingsRepository.GetUseLibWebRTCAsync();
+    }
+
+    public async Task UpdateUseLibWebRTCAsync(bool useLibWebRTC)
+    {
+        await _appearanceSettingsRepository.UpdateUseLibWebRTCAsync(useLibWebRTC);
+    }
+
     public async Task<bool> GetIsExperimentalEnabledAsync()
     {
         return await _appearanceSettingsRepository.GetIsExperimentalEnabledAsync();

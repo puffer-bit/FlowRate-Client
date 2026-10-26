@@ -1,0 +1,111 @@
+using System.Globalization;
+using System.Text.Json;
+using Client.LibWebRTC.Voice;
+
+namespace Client.LibWebRTC.Native;
+
+/// <summary>
+/// Reads the levels and the counters out of a report of the statistics of libwebrtc: a JSON array
+/// of the RTCStats objects of the WebRTC specification, and of the levels flowrate_webrtc adds.
+/// </summary>
+/// <remarks>
+/// The levels of the voices are the ones of flowrate_webrtc, not the audioLevel of the statistics:
+/// libwebrtc takes that one after the playback volume, so a voice turned down would read quieter
+/// and a muted one would never read as speaking.
+/// </remarks>
+internal static class StatsReader
+{
+    public static VoiceStats Read(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        var levels = new List<VoiceLevel>();
+        var inbound = new List<InboundCounters>();
+        var sent = new Dictionary<uint, long>();
+        var remote = new Dictionary<uint, (double? FractionLost, double? RoundTripMs)>();
+        var candidates = new Dictionary<string, string>();
+        var pairs = new Dictionary<string, (string? Local, string? Remote)>();
+        string? selectedPair = null;
+
+        foreach (var stats in document.RootElement.EnumerateArray())
+        {
+            var kind = String(stats, "kind");
+
+            switch (String(stats, "type"))
+            {
+                case "flowrate-voice-level":
+                    if (Number(stats, "peak") is { } peak && String(stats, "mid") is { } mid)
+                        levels.Add(new VoiceLevel(mid, Math.Min(1, peak / short.MaxValue)));
+                    break;
+
+                case "inbound-rtp" when kind == "audio":
+                    if (Number(stats, "ssrc") is { } ssrc)
+                        inbound.Add(new InboundCounters((uint)ssrc, (long)(Number(stats, "packetsReceived") ?? 0),
+                            (long)(Number(stats, "packetsLost") ?? 0), (Number(stats, "jitter") ?? 0) * 1000));
+                    break;
+
+                case "media-source" when kind == "audio":
+                    if (Number(stats, "audioLevel") is { } localLevel)
+                        levels.Add(new VoiceLevel(null, localLevel));
+                    break;
+
+                case "outbound-rtp" when kind == "audio":
+                    if (Number(stats, "ssrc") is { } sentSsrc)
+                        sent[(uint)sentSsrc] = (long)(Number(stats, "packetsSent") ?? 0);
+                    break;
+
+                case "remote-inbound-rtp":
+                    if (Number(stats, "ssrc") is { } reportedSsrc)
+                        remote[(uint)reportedSsrc] = (Number(stats, "fractionLost"),
+                            Number(stats, "roundTripTime") is { } roundTrip ? roundTrip * 1000 : null);
+                    break;
+
+                case "transport":
+                    selectedPair = String(stats, "selectedCandidatePairId") ?? selectedPair;
+                    break;
+
+                case "candidate-pair":
+                    if (String(stats, "id") is { } pairId)
+                        pairs[pairId] = (String(stats, "localCandidateId"), String(stats, "remoteCandidateId"));
+                    break;
+
+                case "local-candidate" or "remote-candidate":
+                    if (String(stats, "id") is { } candidateId)
+                        candidates[candidateId] = String(stats, "protocol") ?? string.Empty;
+                    break;
+            }
+        }
+
+        var outbound = sent
+            .Select(stream => remote.TryGetValue(stream.Key, out var report)
+                ? new OutboundCounters(stream.Key, stream.Value, report.FractionLost, report.RoundTripMs)
+                : new OutboundCounters(stream.Key, stream.Value, null, null))
+            .ToList();
+
+        var isOverTcp = selectedPair != null && pairs.TryGetValue(selectedPair, out var pair) &&
+                        (IsTcp(pair.Local) || IsTcp(pair.Remote));
+
+        return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp));
+
+        bool IsTcp(string? candidateId) =>
+            candidateId != null && candidates.GetValueOrDefault(candidateId) == "tcp";
+    }
+
+    private static string? String(JsonElement stats, string name) =>
+        stats.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    // The counters of 64 bits come as numbers or, in some versions, as strings
+    private static double? Number(JsonElement stats, string name)
+    {
+        if (!stats.TryGetProperty(name, out var value))
+            return null;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number => value.GetDouble(),
+            JsonValueKind.String when double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture,
+                out var number) => number,
+            _ => null
+        };
+    }
+}
