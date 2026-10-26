@@ -29,7 +29,25 @@ src/Client/Client.LibWebRTC/Native/build.sh
 Downloads the pinned release of webrtc-sdk/libwebrtc (checked by its SHA-256) and builds
 `libflowrate_webrtc.so` against it with the g++ of the system, into `Build/artifacts/linux-x64/libwebrtc/`.
 Takes seconds; `publish.sh` runs it for every linux-x64 build. Without it the client builds and runs,
-and the setting falls back to GStreamer. A Windows build is not there yet.
+and the setting falls back to GStreamer.
+
+On Windows x64, install Visual Studio 2022 or later with **Desktop development with C++** and a Windows
+SDK, then run from 64-bit PowerShell:
+
+```powershell
+& src\Client\Client.LibWebRTC\Native\build.ps1
+```
+
+Downloads the Windows x64 SDK of the same pinned release, verifies its SHA-256 and builds
+`flowrate_webrtc.dll` with MSVC against `libwebrtc.dll.lib`. The script finds the x64 compiler through
+`vswhere`, so a developer shell is not required. Both DLLs and the license go into
+`Build/artifacts/win-x64/libwebrtc/`; the shim uses the static C++ runtime, so it does not require a
+Visual C++ redistributable. `publish.ps1` runs this for every win-x64 build, JIT or NativeAOT.
+
+`Native/test-runtime.ps1 -RuntimeDirectory <directory>` checks that the Windows DLLs load and that every
+C export in the header is present, without opening audio devices. The build script checks the native
+output; CI also checks the published folder before uploading release artifacts. A voice call on a
+Windows machine is still needed to verify the audio devices and negotiation.
 
 ## What differs from the GStreamer voice
 
