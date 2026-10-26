@@ -1,4 +1,6 @@
+using Client.Core.Sessions;
 using Shared.Enums;
+using Shared.Permissions;
 
 namespace Client.Core.Coordinator;
 
@@ -34,6 +36,23 @@ public sealed class CoordinatorPermissions
     public RoleModel? Everyone => Roles.FirstOrDefault(role => role.IsEveryone);
 
     public bool Has(Permission permission) => (Granted & permission) == permission;
+
+    /// <summary>What the current user may do in the session, after its overrides.</summary>
+    public Permission InSession(SessionModel session) =>
+        Everyone is { } everyone
+            ? SessionPermissions.Resolve(Granted, session.PermissionOverrides, everyone.Id, RoleIds)
+            : Granted;
+
+    public bool HasIn(SessionModel session, Permission permission) =>
+        (InSession(session) & permission) == permission;
+
+    /// <summary>
+    /// Whether the current user may change the override of the role in a session: a role below its own, and only
+    /// permissions it has.
+    /// </summary>
+    public bool CanOverride(RoleModel role, Permission allow, Permission deny) =>
+        Has(Permission.ManageSessions | Permission.ManageRoles) && role.Position < HighestPosition
+                                                                && CanGrant(allow | deny);
 
     public Permission PermissionsOf(IEnumerable<int> roleIds)
     {

@@ -32,6 +32,7 @@ public partial class App : global::Avalonia.Application
             // Before the container, so that every service gets a working logger from the start.
             // The console ends up in logcat
             Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions());
+            ClientLogging.LogUnhandledExceptions();
 
             var services = InitDependencies()
                 .AddClientLogging(Log.Logger)

@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.Services;
 using Shared.Enums.User;
@@ -13,7 +15,7 @@ namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
 /// The users a chat shows: messages carry only the author id, so names, avatars and statuses are
-/// looked up and kept here, together with the users mentioned in the texts.
+/// looked up and kept here, with the roles that color the names, together with the users mentioned in the texts.
 /// Touched only on the UI thread.
 /// </summary>
 public sealed class ChatSenderDirectory : IDisposable
@@ -26,6 +28,7 @@ public sealed class ChatSenderDirectory : IDisposable
     private readonly Dictionary<int, string> _names = new();
     private readonly Dictionary<int, string?> _avatars = new();
     private readonly Dictionary<int, UserStatus> _statuses = new();
+    private readonly Dictionary<int, IReadOnlyList<int>> _roleIds = new();
     private readonly HashSet<int> _resolving = new();
     private readonly HashSet<int> _deleted = new();
     private readonly ICoordinatorSession _session;
@@ -43,7 +46,9 @@ public sealed class ChatSenderDirectory : IDisposable
         _currentUserId = currentUserId;
         _subscriptions
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated)
-            .Add(() => session.UserDeleted += OnUserDeleted, () => session.UserDeleted -= OnUserDeleted);
+            .Add(() => session.UserDeleted += OnUserDeleted, () => session.UserDeleted -= OnUserDeleted)
+            .Add(() => session.PermissionsChanged += OnPermissionsChanged,
+                () => session.PermissionsChanged -= OnPermissionsChanged);
     }
 
     /// <summary>
@@ -100,7 +105,8 @@ public sealed class ChatSenderDirectory : IDisposable
     {
         if (!_names.TryGetValue(user.Id, out var name)
             || (name == user.Username && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
-                && _statuses.GetValueOrDefault(user.Id) == user.Status))
+                && _statuses.GetValueOrDefault(user.Id) == user.Status
+                && _roleIds.GetValueOrDefault(user.Id, []).SequenceEqual(user.RoleIds)))
             return;
 
         Remember(user);
@@ -115,11 +121,16 @@ public sealed class ChatSenderDirectory : IDisposable
         Changed?.Invoke();
     });
 
+    // Raised on the transport thread; the names, colors or order of the roles may have changed
+    private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
+        Dispatcher.UIThread.Post(() => Changed?.Invoke());
+
     private void Remember(UserModel user)
     {
         _names[user.Id] = user.Username;
         _avatars[user.Id] = user.AvatarUrl;
         _statuses[user.Id] = user.Status;
+        _roleIds[user.Id] = user.RoleIds;
     }
 
     private void MarkDeleted(int userId)
@@ -128,6 +139,7 @@ public sealed class ChatSenderDirectory : IDisposable
         _names[userId] = DeletedName;
         _avatars.Remove(userId);
         _statuses.Remove(userId);
+        _roleIds.Remove(userId);
     }
 
     public void Apply(ChatMessageVM messageVm)
@@ -137,6 +149,7 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.IsSenderDeleted = _deleted.Contains(senderId);
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
         messageVm.SenderStatus = _statuses.TryGetValue(senderId, out var status) ? status : null;
+        messageVm.SenderColor = GetColor(senderId);
         messageVm.Body = messageVm.Message.TextContent is { } text ? RenderBody(text.Text) : null;
 
         if (messageVm.Reply != null)
@@ -159,6 +172,19 @@ public sealed class ChatSenderDirectory : IDisposable
     /// The name as it is known, or null.
     /// </summary>
     public string? FindName(int userId) => _names.GetValueOrDefault(userId);
+
+    /// <summary>
+    /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.
+    /// </summary>
+    private int? GetColor(int userId)
+    {
+        if (!_roleIds.TryGetValue(userId, out var roleIds))
+            return null;
+
+        // The roles are ordered from the lowest
+        return _session.Permissions.Roles
+            .LastOrDefault(role => role.Color != null && roleIds.Contains(role.Id))?.Color;
+    }
 
     private string? GetMentionName(int userId) =>
         _names.TryGetValue(userId, out var name) ? name

@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Client.Avalonia.Icons;
 using Client.Core.Chat;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -19,6 +20,8 @@ namespace Client.ViewModels.Sessions.Chat;
 /// has links; the text as it was given is read back with <see cref="GetText"/>.
 /// <see cref="BodyProperty"/> sets the text together with its mentions, each a <see cref="Run"/>
 /// with the class "mention", and "self" when it calls the current user.
+/// An emoji the text font would draw in black and white (❤️, ☀️) gets a run of its own in
+/// <see cref="EmojiFont"/>.
 /// </summary>
 public static class ChatMessageText
 {
@@ -78,18 +81,19 @@ public static class ChatMessageText
     private static void Apply(TextBlock textBlock, string? text, IReadOnlyList<ChatMentionSpan> mentions)
     {
         var links = WithoutMentions(ChatLinks.Find(text), mentions);
+        var emoji = ChatEmoji.FindPresentation(text);
         var state = textBlock.GetValue(StateProperty);
 
-        if (mentions.Count > 0 && links.Count == 0)
+        if (links.Count == 0 && (mentions.Count > 0 || emoji.Count > 0))
         {
-            // Mentions alone need no pointer handling
+            // Mentions and emoji alone need no pointer handling
             if (state != null)
             {
                 state.Reset([], []);
                 textBlock.ClearValue(InputElement.CursorProperty);
             }
             textBlock.Inlines!.Clear();
-            textBlock.Inlines.AddRange(BuildInlines(text!, links, mentions, out _));
+            textBlock.Inlines.AddRange(BuildInlines(text!, links, mentions, emoji, out _));
             return;
         }
 
@@ -112,7 +116,7 @@ public static class ChatMessageText
             Watch(textBlock);
         }
 
-        var inlines = BuildInlines(text!, links, mentions, out var runs);
+        var inlines = BuildInlines(text!, links, mentions, emoji, out var runs);
 
         state.Reset(links, runs);
         textBlock.ClearValue(InputElement.CursorProperty);
@@ -120,9 +124,10 @@ public static class ChatMessageText
         textBlock.Inlines.AddRange(inlines);
     }
 
-    // Links and mentions in the order of the text; the runs of the links are given out for the hover
+    // Links and mentions in the order of the text; the runs of the links are given out for the hover.
+    // A link stays one run for its hover, so an emoji inside it keeps the text font
     private static List<Inline> BuildInlines(string text, IReadOnlyList<ChatLink> links,
-        IReadOnlyList<ChatMentionSpan> mentions, out Run[] linkRuns)
+        IReadOnlyList<ChatMentionSpan> mentions, IReadOnlyList<ChatEmojiSpan> emoji, out Run[] linkRuns)
     {
         var inlines = new List<Inline>((links.Count + mentions.Count) * 2 + 1);
         linkRuns = new Run[links.Count];
@@ -143,30 +148,61 @@ public static class ChatMessageText
             }
 
             if (start > position)
-                inlines.Add(new Run(text[position..start]));
+                AddRuns(inlines, text, position, start, emoji);
 
-            var run = new Run(text[start..end]);
             if (isLink)
             {
+                var run = new Run(text[start..end]);
                 run.Classes.Add("link");
                 linkRuns[link++] = run;
+                inlines.Add(run);
             }
             else
             {
-                run.Classes.Add("mention");
-                if (mentions[mention].IsSelf)
-                    run.Classes.Add("self");
+                AddRuns(inlines, text, start, end, emoji,
+                    mentions[mention].IsSelf ? ["mention", "self"] : ["mention"]);
                 mention++;
             }
 
-            inlines.Add(run);
             position = end;
         }
 
         if (position < text.Length)
-            inlines.Add(new Run(text[position..]));
+            AddRuns(inlines, text, position, text.Length, emoji);
 
         return inlines;
+    }
+
+    // The text from start to end as runs with the given classes, each emoji in a run of its own
+    private static void AddRuns(List<Inline> inlines, string text, int start, int end,
+        IReadOnlyList<ChatEmojiSpan> emoji, params string[] classes)
+    {
+        foreach (var span in emoji)
+        {
+            if (span.End <= start)
+                continue;
+            if (span.Start >= end)
+                break;
+
+            int emojiStart = Math.Max(span.Start, start), emojiEnd = Math.Min(span.End, end);
+            if (emojiStart > start)
+                inlines.Add(NewRun(text[start..emojiStart], classes));
+
+            var run = NewRun(text[emojiStart..emojiEnd], classes);
+            run.FontFamily = EmojiFont.Family;
+            inlines.Add(run);
+            start = emojiEnd;
+        }
+
+        if (end > start)
+            inlines.Add(NewRun(text[start..end], classes));
+    }
+
+    private static Run NewRun(string text, string[] classes)
+    {
+        var run = new Run(text);
+        run.Classes.AddRange(classes);
+        return run;
     }
 
     // A name may look like an address; inside a mention it is the name

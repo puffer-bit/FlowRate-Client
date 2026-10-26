@@ -1,5 +1,7 @@
+using Shared.Permissions;
 using Client.Api.Mappers;
 using Shared.Enums;
+using Shared.Enums.Auth;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using Shared.Models;
@@ -20,6 +22,7 @@ using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Push;
 using Client.Core.Sessions;
+using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Ports;
 
@@ -36,7 +39,18 @@ internal partial class CoordinatorGateway
         return new AuthenticationResult(
             authResponse.AuthResult,
             authResponse.UserDTO?.ToModel(),
-            authResponse.UserIdentity);
+            authResponse.UserIdentity,
+            authResponse.AuthResult == AuthResult.SecondStageRequeried
+                ? AccountSecurityMapper.ToLoginChallenge(authResponse.ServerMessage, authResponse.FIDO2LoginOptionsDTO)
+                : null);
+    }
+
+    public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode)
+    {
+        var request = new TwoFactorUserAuthRequest(password, twoFactorCode);
+        var response = await SendRequestAsync<TwoFactorUserAuthResponse>(request);
+
+        return new AuthenticationResult(response.AuthResult, response.UserDTO?.ToModel(), null);
     }
 
     public async Task<CoordinatorSessionModel?> GetCoordinatorInfo()
@@ -384,12 +398,38 @@ internal partial class CoordinatorGateway
 
         return kickResponse.Result;
     }
+
+    public async Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId)
+    {
+        var request = new ApproveUserRequest(sessionId, userId, SessionType.Hybrid);
+        var response = await SendRequestAsync<ApproveUserResponse>(request);
+
+        return response.Result;
+    }
+
+    public async Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId)
+    {
+        var request = new RejectUserRequest(sessionId, userId, SessionType.Hybrid, null);
+        var response = await SendRequestAsync<RejectUserResponse>(request);
+
+        return response.Result;
+    }
     
     public async Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name,
-        int capacity, bool isHostMustApprove)
+        int capacity, bool isHostMustApprove, MediaSettings media)
     {
-        var request = new ChangeHybridSessionSettingsRequest(sessionId, name, capacity, isHostMustApprove);
+        var request = new ChangeHybridSessionSettingsRequest(sessionId, name, capacity, isHostMustApprove,
+            media.ToDto());
         var response = await SendRequestAsync<ChangeSessionSettingsResponse>(request);
+
+        return response.Result;
+    }
+
+    public async Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides)
+    {
+        var request = new ChangeSessionPermissionsRequest(sessionId, overrides.ToDTO());
+        var response = await SendRequestAsync<ChangeSessionPermissionsResponse>(request);
 
         return response.Result;
     }

@@ -2,6 +2,7 @@ using Client.Services;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -147,6 +148,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public Interaction<RxVoid, RxVoid> ScrollToEndInteraction { get; } = new();
     public Interaction<int, RxVoid> ScrollToMessageIndexInteraction { get; } = new();
 
+    /// <summary>
+    /// Asks the view where to save a file of a message: it is given the suggested file name and returns
+    /// the stream to write into, or null when the user changed their mind.
+    /// </summary>
+    public Interaction<string, Stream?> PickFileSaveTarget { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> ScrollToEndCommand { get; }
 
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _setReplyMessageCommand;
@@ -159,6 +166,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private const int MaxPagesPerJump = 20;
 
     private readonly ICoordinatorSession _coordinatorSession;
+    // The chat as last sent, for its permission overrides
+    private ChatSessionModel _model;
     private readonly IChatImageService _images;
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly EventSubscriptions _subscriptions = new();
@@ -176,6 +185,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _coordinatorSession = coordinatorSession;
         _images = services.Images;
         _viewProfileCommand = viewProfileCommand;
+        _model = sessionModel;
         Id = sessionModel.Id;
         Name = sessionModel.Name;
         var currentUser = coordinatorSession.GetCurrentUser();
@@ -187,6 +197,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
             services.MediaUploader, services.Images, _senders, JumpToMessage);
 
+        ApplyAccess(coordinatorSession.Permissions);
         IsConnected = coordinatorSession.ConnectionStatus == CoordinatorState.Connected;
 
         _setReplyMessageCommand = ReactiveCommand.Create<ChatMessageModel>(Composer.SetReply);
@@ -204,6 +215,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         // Subscribe before the first page so nothing sent meanwhile is missed; duplicates are dropped by id
         _subscriptions
+            .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
             .Add(() => coordinatorSession.TextMessageAdded += OnTextMessageAdded,
                 () => coordinatorSession.TextMessageAdded -= OnTextMessageAdded)
             .Add(() => coordinatorSession.TextMessageEdited += OnTextMessageEdited,
@@ -214,6 +226,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 () => coordinatorSession.StateChanged -= OnCoordinatorStateChanged)
             .Add(() => coordinatorSession.PermissionsChanged += OnPermissionsChanged,
                 () => coordinatorSession.PermissionsChanged -= OnPermissionsChanged)
+            .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
+                () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
 
         _ = LoadInitialPage(fromCache: true);
@@ -229,6 +243,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             ? []
             : model.Images.Select(image => new ChatImageVM(image, model.Images.Count == 1, _coordinatorSession, _images, OpenImage))
             .ToList();
+
+    private IReadOnlyList<ChatFileVM> CreateFiles(ChatMessageModel model) =>
+        model.Files.Count == 0
+            ? []
+            : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
+                async fileName => await PickFileSaveTarget.Handle(fileName))).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.
@@ -271,46 +291,79 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     }
 
     /// <summary>
-    /// Applies the current state of a message by its id: removes, replaces or adds it.
+    /// Applies the current state of messages by their ids: removes, replaces or adds them. The list is
+    /// rebuilt once for all of them, so a long run of changes after a gap does not rebuild it for each.
     /// </summary>
-    private void ApplyChange(ChatMessageModel message)
+    private void ApplyChanges(IReadOnlyList<ChatMessageModel> changes)
     {
-        if (message.IsDeleted)
-        {
-            RemoveMessage(message.Id);
+        if (changes.Count == 0)
             return;
-        }
 
-        // The message itself may be older than what is loaded, while replies to it are on screen
+        // Changes come in the order of their revisions, so a later state of a message replaces an earlier one
+        var latest = new Dictionary<int, ChatMessageModel>();
+        foreach (var message in changes)
+            latest[message.Id] = message;
+
+        // The messages themselves may be older than what is loaded, while replies to them are on screen.
+        // Quotes of a removed message stay in place but can no longer lead to it
         foreach (var messageVm in _messageVms.Values)
         {
-            if (messageVm.Reply?.MessageId == message.Id)
-                messageVm.Reply.Update(message);
+            if (messageVm.Reply is not { } reply || !latest.TryGetValue(reply.MessageId, out var quoted))
+                continue;
+
+            if (quoted.IsDeleted)
+                reply.IsDeleted = true;
+            else
+                reply.Update(quoted);
         }
 
-        Composer.OnMessageChanged(message);
-
-        if (_messageVms.TryGetValue(message.Id, out var loaded))
+        int? oldestLoaded = _messageVms.Count > 0 ? _messageVms.Keys.Min() : null;
+        var added = new List<ChatMessageModel>();
+        var edited = new List<ChatMessageVM>();
+        bool removed = false;
+        foreach (var message in latest.Values)
         {
-            // A notification can arrive after a page that already had a newer state
-            if (message.Revision > loaded.Message.Revision)
+            if (message.IsDeleted)
             {
-                loaded.Message = message;
-                // The edit may mention someone not looked up yet
-                _ = ResolveSendersAsync([loaded]);
-                _senders.Apply(loaded);
+                Composer.OnMessageRemoved(message.Id);
+                removed |= _messageVms.Remove(message.Id);
+                continue;
             }
-            return;
+
+            Composer.OnMessageChanged(message);
+
+            if (_messageVms.TryGetValue(message.Id, out var loaded))
+            {
+                // A notification can arrive after a page that already had a newer state
+                if (message.Revision > loaded.Message.Revision)
+                {
+                    loaded.Message = message;
+                    edited.Add(loaded);
+                }
+                continue;
+            }
+
+            // Only what continues the loaded messages is added; older history comes with its page
+            if (_pager.IsFullyLoaded || oldestLoaded == null || message.Id > oldestLoaded)
+                added.Add(message);
         }
 
-        // Only what continues the loaded messages is added; older history comes with its page
-        if (_pager.IsFullyLoaded || _messageVms.Count == 0 || message.Id > _messageVms.Keys.Min())
-            AddMessages([message]);
+        if (edited.Count > 0)
+        {
+            // The edits may mention someone not looked up yet
+            _ = ResolveSendersAsync(edited);
+            foreach (var messageVm in edited)
+                _senders.Apply(messageVm);
+        }
+
+        // Adding rebuilds the list, which then takes the removals too
+        if (AddMessages(added) == 0 && removed)
+            RebuildTimeline();
     }
 
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
     {
-        var canManage = _coordinatorSession.Permissions.Has(Permission.ManageMessages);
+        var canManage = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages);
         var addedVms = new List<ChatMessageVM>();
         foreach (var model in models)
         {
@@ -319,7 +372,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
             var messageVm = new ChatMessageVM(model, _currentUserId, _setReplyMessageCommand,
                 _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
-                ConfirmOpenLinkAsync, CreateImages(model))
+                ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model))
             {
                 IsNew = isNew,
                 CanManageMessages = canManage
@@ -463,12 +516,33 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     }
 
     // Raised on the transport thread
-    private void OnPermissionsChanged(CoordinatorPermissions permissions) => Dispatcher.UIThread.Post(() =>
+    private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
+        Dispatcher.UIThread.Post(() => ApplyAccess(permissions));
+
+    // Raised on the transport thread
+    private void OnChatSessionReconfigured(ChatSessionModel session)
     {
-        var canManage = permissions.Has(Permission.ManageMessages);
+        if (session.Id != Id)
+            return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _model = session;
+            ApplyAccess(_coordinatorSession.Permissions);
+        });
+    }
+
+    /// <summary>Shows what the current user may do in the chat, after their roles and its overrides.</summary>
+    private void ApplyAccess(CoordinatorPermissions permissions)
+    {
+        var granted = permissions.InSession(_model);
+        Composer.CanWrite = granted.HasFlag(Permission.SendMessages);
+        Composer.CanAttachFiles = granted.HasFlag(Permission.AttachFiles);
+
+        var canManage = granted.HasFlag(Permission.ManageMessages);
         foreach (var message in _messageVms.Values)
             message.CanManageMessages = canManage;
-    });
+    }
 
     public void Dispose()
     {

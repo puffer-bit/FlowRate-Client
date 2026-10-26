@@ -69,7 +69,10 @@ public class SettingsRepositoriesTests
         Assert.Equal(1.0, settings.InputVolume);
         Assert.True(settings.IsVoiceGateEnabled);
         Assert.Equal(-32.0, settings.VoiceGateThresholdDb);
+        Assert.False(settings.IsVoiceDetectionEnabled);
+        Assert.False(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.Moderate, settings.NoiseSuppression);
+        Assert.False(settings.IsEchoCancellationEnabled);
         Assert.True(settings.AreSoundsEnabled);
         Assert.Equal(0.7, settings.SoundsVolume);
         Assert.Null(settings.SoundPack);
@@ -86,7 +89,8 @@ public class SettingsRepositoriesTests
         {
             InputDeviceId = "device", InputDeviceName = "Microphone", InputVolume = 1.5,
             IsVoiceGateEnabled = false, VoiceGateThresholdDb = -32.5,
-            NoiseSuppression = NoiseSuppressionLevel.VeryHigh,
+            IsVoiceDetectionEnabled = true, IsAdaptiveThresholdEnabled = true,
+            NoiseSuppression = NoiseSuppressionLevel.NeuralAndWebRtc, IsEchoCancellationEnabled = true,
             AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
             DisabledSounds = ["join", "message_sent"]
         });
@@ -97,7 +101,10 @@ public class SettingsRepositoriesTests
         Assert.Equal(1.5, settings.InputVolume);
         Assert.False(settings.IsVoiceGateEnabled);
         Assert.Equal(-32.5, settings.VoiceGateThresholdDb);
-        Assert.Equal(NoiseSuppressionLevel.VeryHigh, settings.NoiseSuppression);
+        Assert.True(settings.IsVoiceDetectionEnabled);
+        Assert.True(settings.IsAdaptiveThresholdEnabled);
+        Assert.Equal(NoiseSuppressionLevel.NeuralAndWebRtc, settings.NoiseSuppression);
+        Assert.True(settings.IsEchoCancellationEnabled);
         Assert.False(settings.AreSoundsEnabled);
         Assert.Equal(0.35, settings.SoundsVolume);
         Assert.Equal("Retro", settings.SoundPack);
@@ -279,6 +286,18 @@ public class SettingsRepositoriesTests
         await repository.SetSoundMutedAsync("coordinator-a", false);
 
         Assert.False(await repository.IsSoundMutedAsync("coordinator-a"));
+
+        // Being away is remembered with its reason, which goes once the user is back
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-a"));
+
+        await repository.SetAfkAsync("coordinator-a", true, "lunch");
+
+        Assert.Equal((true, "lunch"), await repository.GetAfkAsync("coordinator-a"));
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-b"));
+
+        await repository.SetAfkAsync("coordinator-a", false, "lunch");
+
+        Assert.Equal((false, null), await repository.GetAfkAsync("coordinator-a"));
     }
 
     [Fact]

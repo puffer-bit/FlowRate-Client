@@ -177,6 +177,9 @@ public class ConnectWindowVM : ReactiveObject
     public Interaction<ICoordinatorSession?, RxVoid> CloseWindow { get; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
 
+    /// <summary>Asks for the account password or a one-time code when the login needs them.</summary>
+    public Interaction<LoginPromptVM, LoginAnswer?> AskLogin { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
     private ReactiveCommand<RxVoid, RxVoid> FindIdentitiesCommand { get; }
@@ -242,6 +245,7 @@ public class ConnectWindowVM : ReactiveObject
         if (!IsFormValid) 
             return;
         var session = _coordinatorFactory.CreateCoordinatorSession();
+        LoginPromptVM.Attach(session, AskLogin);
 
         // Only the reason of a rejected login is needed, the main window takes over the session after
         RequestRejectedException? rejection = null;
@@ -253,7 +257,8 @@ public class ConnectWindowVM : ReactiveObject
             ConnectionStatus = Strings.Get("main.status.waitingForServer");
 
             string? identity = SelectedIdentity?.UserIdentity;
-            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password);
+            var accountPassword = SelectedIdentity?.AccountPassword;
+            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword);
 
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -266,7 +271,7 @@ public class ConnectWindowVM : ReactiveObject
                 }
 
                 ConnectionStatus = Strings.Get("main.status.waitingForServer");
-                await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password);
+                await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword);
 
                 _cancellationTokenSource.Token.ThrowIfCancellationRequested();
             }
@@ -279,12 +284,20 @@ public class ConnectWindowVM : ReactiveObject
                 return;
             }
 
+            // Given up by the user, who knows it
+            if (session.ConnectionStatus == CoordinatorState.AuthenticationNeeded)
+            {
+                session.Dispose();
+                return;
+            }
+
             if (session.ConnectionStatus is CoordinatorState.AuthenticationFailed or CoordinatorState.Denied
-                or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated)
+                or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated or CoordinatorState.PasskeyRequired)
             {
                 var message = Strings.Get(session.ConnectionStatus switch
                 {
                     CoordinatorState.Denied => "connect.failed.banned",
+                    CoordinatorState.PasskeyRequired => "connect.failed.passkeyRequired",
                     CoordinatorState.ClientOutdated => "connect.failed.clientOutdated",
                     CoordinatorState.ServerOutdated => "connect.failed.serverOutdated",
                     _ => "connect.failed.authFailed"
@@ -306,7 +319,8 @@ public class ConnectWindowVM : ReactiveObject
 
             // Set by the successful login above. A saved identity is stored again as well, so it becomes
             // the last one and is offered first next time instead of "New*"
-            await SaveCoordinatorAsync(session.CoordinatorModel!, session.GetCurrentUserCredentials());
+            await SaveCoordinatorAsync(session.CoordinatorModel!, session.GetCurrentUserCredentials(),
+                session.AccountPasswordToSave);
 
             await CloseWindow.Handle(session);
         }
@@ -337,7 +351,8 @@ public class ConnectWindowVM : ReactiveObject
         return CertificateTrustMessages.ConfirmTrustAsync(session, ShowMessageBox);
     }
 
-    private async Task SaveCoordinatorAsync(CoordinatorSessionModel coordinatorSessionModel, SavedUserModel userModel)
+    private async Task SaveCoordinatorAsync(CoordinatorSessionModel coordinatorSessionModel, SavedUserModel userModel,
+        string? accountPassword)
     {
         coordinatorSessionModel.Address = _parsedAddress!;
 
@@ -356,6 +371,7 @@ public class ConnectWindowVM : ReactiveObject
                     Id = userModel.Id,
                     UserIdentity = userModel.UserIdentity,
                     Password = this.Password,
+                    AccountPassword = accountPassword,
                     Username = userModel.Username,
                     CoordinatorId = coordinatorSessionModel.Id
                 });

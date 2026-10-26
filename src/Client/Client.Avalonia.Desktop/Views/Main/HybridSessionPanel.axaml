@@ -1,10 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:hybrid="clr-namespace:Client.Views.Sessions.Hybrid"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              x:DataType="mainVm:MainWindowVM"
              x:Class="Client.Views.Main.HybridSessionPanel"
@@ -50,45 +53,63 @@
 
         <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
 
-            <!-- The session, and the way out of it across from its name -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-            <Button Grid.Column="0" Classes="ghost"
+            <!-- The state of the connection, which opens its statistics, the session, and the way out
+                 of it across from its name. No spacing between the first two, so the texts start where
+                 those of the user card below do -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+            <Button Grid.Column="0" Classes="ghost" Padding="6"
+                    ToolTip.Tip="{l:Text hybrid.stats.open}">
+                <Button.Flyout>
+                    <Flyout Placement="TopEdgeAlignedLeft">
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding OpenedSessions.HybridPanelSession.StatusBar.Stats, FallbackValue={x:Null}}"/>
+                    </Flyout>
+                </Button.Flyout>
+                <!-- As wide as the avatar of the user card below -->
+                <Panel Width="32" Height="32" VerticalAlignment="Center">
+                    <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                    IsIndeterminate="True"
+                                                    BorderThickness="3"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"
+                                                    IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsLoading, FallbackValue=False}"/>
+                    <indicators:SignalIndicator Width="22" Height="22"
+                                                Level="{Binding OpenedSessions.HybridPanelSession.StatusBar.Stats.SignalLevel, FallbackValue=0}"
+                                                IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsConnected, FallbackValue=False}"/>
+                    <Image Width="20" Height="20"
+                           Source="{Binding OpenedSessions.HybridPanelSession.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}">
+                        <Image.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsLoading" FallbackValue="False"/>
+                                <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsConnected" FallbackValue="False"/>
+                            </MultiBinding>
+                        </Image.IsVisible>
+                    </Image>
+                </Panel>
+            </Button>
+
+            <Button Grid.Column="1" Classes="ghost" Padding="2,6,6,6"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                     Command="{Binding ShowHybridSessionCommand}"
                     ToolTip.Tip="{l:Text sessions.return}">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                    <!-- As wide as the avatar of the user card below, so the texts of both start at the same place -->
-                    <Panel Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center">
-                        <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
-                                                        IsIndeterminate="True"
-                                                        BorderThickness="3"
-                                                        Foreground="{DynamicResource ProgressRingBrush}"
-                                                        IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsLoading, FallbackValue=False}"/>
-                        <Image Width="20" Height="20"
-                               Source="{Binding OpenedSessions.HybridPanelSession.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}"
-                               IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsLoading, FallbackValue=False}"/>
-                    </Panel>
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <text:MarqueeTextBlock Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.SessionName, FallbackValue={x:Null}}"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"/>
-                        <text:MarqueeTextBlock Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.ShortStatusText, FallbackValue={x:Null}}"
-                                               Foreground="{DynamicResource SecondaryTextBrush}"
-                                               FontSize="11"
-                                               TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                </Grid>
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <text:MarqueeTextBlock Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.SessionName, FallbackValue={x:Null}}"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"/>
+                    <text:MarqueeTextBlock Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.ShortStatusText, FallbackValue={x:Null}}"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
             </Button>
 
-            <Button Grid.Column="1" Classes="hybridAction leave"
-                    Width="32" VerticalAlignment="Center"
+            <Button Grid.Column="2" Classes="hybridAction leave"
+                    Width="32" Margin="6,0,0,0" VerticalAlignment="Center"
                     Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.CloseCommand, FallbackValue={x:Null}}"
                     ToolTip.Tip="{l:Text main.voice.leave}">
                 <Image Width="20" Height="20" Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
             </Button>
             </Grid>
 
-            <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
+            <UniformGrid Grid.Row="1" Rows="1" Columns="4" ColumnSpacing="6">
                 <Button Classes="hybridAction"
                         Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}"
                         ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
@@ -111,12 +132,55 @@
                     </Panel>
                 </Button>
 
-                <Button Classes="hybridAction"
-                        Classes.sharing="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=False}"
-                        Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
-                        ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
-                    <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
-                </Button>
+                <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
+                <Panel>
+                    <Button Classes="hybridAction"
+                            IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=True}"
+                            ToolTip.Tip="{l:Text hybrid.afk.go}">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedRight">
+                                <hybrid:AfkReasonCard DataContext="{Binding OpenedSessions.HybridPanelSession.StatusBar, FallbackValue={x:Null}}"/>
+                            </Flyout>
+                        </Button.Flyout>
+                        <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
+                    </Button>
+                    <Button Classes="hybridAction sharing"
+                            IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=False}"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"
+                            ToolTip.Tip="{Binding OpenedSessions.HybridPanelSession.StatusBar.AfkHint, FallbackValue={x:Null}}">
+                        <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
+                    </Button>
+                </Panel>
+
+                <Panel>
+                    <Button Classes="hybridAction"
+                            IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=True}"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                    </Button>
+
+                    <!-- A running share is changed or stopped from a menu -->
+                    <Button Classes="hybridAction sharing"
+                            IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsScreenShareOn, FallbackValue=False}"
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedRight">
+                                <StackPanel Spacing="2">
+                                    <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                          Content="{l:Text hybrid.screen.change}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ChangeScreenShareCommand, FallbackValue={x:Null}}"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
+                                                          Content="{l:Text hybrid.screen.stop}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                    </Button>
+                </Panel>
             </UniformGrid>
         </Grid>
     </Border>

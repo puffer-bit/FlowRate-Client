@@ -4,6 +4,7 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -147,6 +148,10 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="TextBox.composer-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:disabled /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
@@ -404,7 +409,12 @@
                                 <Border Classes="chat-attachment" Classes.error="{Binding HasError}">
                                     <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                                         <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
-                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                            <Panel>
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                                       IsVisible="{Binding IsImage}"/>
+                                                <Image Classes="chat-attachment-file" Source="{StaticResource ClipIcon}"
+                                                       IsVisible="{Binding IsFile}"/>
+                                            </Panel>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                             <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
@@ -451,7 +461,8 @@
                              PlaceholderText="{Binding Composer.InputWatermark}"
                              Text="{Binding Composer.InputtedText}"
                              MaxLength="{Binding Composer.MaxMessageLength}"
-                             IsReadOnly="{Binding Composer.IsMessageSending}"/>
+                             IsReadOnly="{Binding Composer.IsMessageSending}"
+                             IsEnabled="{Binding Composer.CanWrite}"/>
 
                     <!-- Characters left; appears only near the limit -->
                     <TextBlock Grid.Column="2"
@@ -500,7 +511,8 @@
             </Grid>
         </StackPanel>
 
-        <!-- An image of a message opened over the whole chat; a tap beside it or back closes it -->
+        <!-- An image of a message opened over the whole chat; two fingers or a double tap zoom it, a
+             finger moves the zoomed one, a tap beside it or back closes it -->
         <ContentControl Grid.Row="0" Grid.RowSpan="4"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
@@ -511,10 +523,8 @@
                                 Focusable="False"
                                 Command="{Binding CloseCommand}"/>
 
-                        <Image Grid.Row="1" Margin="8"
-                               Source="{Binding Picture}"
-                               Stretch="Uniform" StretchDirection="DownOnly"
-                               IsHitTestVisible="False"/>
+                        <images:ZoomableImage Grid.Row="1" Padding="8"
+                                              Source="{Binding Picture}"/>
 
                         <Border Grid.Row="0" Classes="image-viewer-bar">
                             <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">

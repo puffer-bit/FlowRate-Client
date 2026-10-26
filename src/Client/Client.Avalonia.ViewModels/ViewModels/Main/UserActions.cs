@@ -18,15 +18,27 @@ using Result = Client.ViewModels.Dialogs.Result;
 namespace Client.ViewModels.Main;
 
 /// <summary>
-/// What can be done to users of the connected coordinator: the profiles, the status and kicking
-/// a peer out of a hybrid session.
+/// What can be done to users of the connected coordinator: the profiles, the status, poking a peer of
+/// a hybrid session or kicking it out, and banning a user.
 /// </summary>
 public sealed class UserActions
 {
     public ReactiveCommand<RxVoid, RxVoid> EditProfileCommand { get; }
+
+    /// <summary>Opens what the current user logs in with: the password, one-time codes and passkeys.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ManageSecurityCommand { get; }
     public ReactiveCommand<int, RxVoid> ViewProfileCommand { get; }
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
+
+    /// <summary>Bans a user from the coordinator, once the user agrees to it.</summary>
+    public ReactiveCommand<(int UserId, string Name), RxVoid> BanUserCommand { get; }
+
+    /// <summary>Lets a peer waiting for the host into a hybrid session, or turns it away, which takes it out.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> AdmitPeerCommand { get; }
+
+    /// <summary>Pokes a peer of the hybrid session we are in, with a message if there is one.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> PokePeerCommand { get; }
 
     private readonly ReactiveCommand<string, ChangeUsernameResult> _changeUsernameCommand;
     private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUserUsernameCommand;
@@ -43,6 +55,7 @@ public sealed class UserActions
     private readonly Interaction<MessageBoxVM, Result> _showMessageBox;
     private readonly Interaction<EditProfileWindowVM, RxVoid> _showEditProfile;
     private readonly Interaction<UserProfileWindowVM, RxVoid> _showUserProfile;
+    private readonly Interaction<AccountSecurityVM, RxVoid> _showAccountSecurity;
 
     /// <param name="session">The connected coordinator session; the commands run only while there is one.</param>
     /// <param name="isConnected">Whether the commands that open something can run.</param>
@@ -50,7 +63,8 @@ public sealed class UserActions
         IAvatarService avatars, INotificationService notifications, AccessVM access,
         Interaction<MessageBoxVM, Result> showMessageBox,
         Interaction<EditProfileWindowVM, RxVoid> showEditProfile,
-        Interaction<UserProfileWindowVM, RxVoid> showUserProfile)
+        Interaction<UserProfileWindowVM, RxVoid> showUserProfile,
+        Interaction<AccountSecurityVM, RxVoid> showAccountSecurity)
     {
         _session = session;
         _currentUser = currentUser;
@@ -60,11 +74,17 @@ public sealed class UserActions
         _showMessageBox = showMessageBox;
         _showEditProfile = showEditProfile;
         _showUserProfile = showUserProfile;
+        _showAccountSecurity = showAccountSecurity;
 
         EditProfileCommand = ReactiveCommand.CreateFromTask(EditProfile, isConnected);
         ViewProfileCommand = ReactiveCommand.CreateFromTask<int>(ViewProfile, isConnected);
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
+        BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);
+        AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
+            isConnected);
+        PokePeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, string? Message)>(PokePeer,
+            isConnected);
 
         _changeUsernameCommand = ReactiveCommand.CreateFromTask<string, ChangeUsernameResult>(
             name => Session.ChangeUsername(name));
@@ -76,6 +96,7 @@ public sealed class UserActions
                 var (result, user) = await Session.SetAvatar(avatar.Encoded, avatar.MimeType);
                 return (result, user?.AvatarUrl);
             });
+        ManageSecurityCommand = ReactiveCommand.CreateFromTask(ManageSecurity, isConnected);
         _resetAvatarCommand = ReactiveCommand.CreateFromTask<int, SetAvatarResult>(
             userId => Session.ResetAvatar(userId));
         _setUserRoleCommand = ReactiveCommand
@@ -109,6 +130,14 @@ public sealed class UserActions
         await _showUserProfile.Handle(vm);
     }
 
+    // What the user logs in with; loaded as the dialog opens
+    private async Task ManageSecurity()
+    {
+        var vm = new AccountSecurityVM(Session);
+        ObservableExtensions.Subscribe(vm.LoadCommand.Execute());
+        await _showAccountSecurity.Handle(vm);
+    }
+
     // The card follows the current user, which the server sends back once the status is set
     private async Task SetStatus(UserStatus status)
     {
@@ -132,5 +161,57 @@ public sealed class UserActions
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+    }
+
+    private async Task PokePeer((int SessionId, int UserId, string? Message) target)
+    {
+        var result = await Session.PokeInHybridSession(target.SessionId, target.UserId, target.Message);
+
+        // A rejection is reported on its own; a peer that is already gone needs no word
+        if (result is PokeResult.NoError or PokeResult.Rejected or PokeResult.PeerNotExists)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.poke.failed.title"),
+            Strings.Format("peer.poke.failed.text", ("code", (int)result)));
+    }
+
+    // The user leaves its sessions and the coordinator with the ban, as from the server settings
+    private async Task BanUser((int UserId, string Name) target)
+    {
+        if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
+                Strings.Format("serverSettings.users.ban.question", ("name", target.Name)),
+                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+            return;
+
+        var result = await Session.SetUserState(target.UserId, UserState.Banned);
+
+        // A rejection is reported on its own
+        if (result is ModerateUserResult.NoError or ModerateUserResult.Rejected)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.ban.failed.title"),
+            Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+    }
+
+    private async Task AdmitPeer((int SessionId, int UserId, bool IsApproved) target)
+    {
+        // A peer that is gone, or was decided on by someone else meanwhile, needs no word
+        var code = target.IsApproved
+            ? await Session.ApproveInHybridSession(target.SessionId, target.UserId) switch
+            {
+                ApproveUserSessionResult.NoError or ApproveUserSessionResult.PeerNotExists => (int?)null,
+                var result => (int)result
+            }
+            : await Session.RejectInHybridSession(target.SessionId, target.UserId) switch
+            {
+                RejectUserSessionResult.NoError or RejectUserSessionResult.PeerNotExists
+                    or RejectUserSessionResult.AlreadyApproved => (int?)null,
+                var result => (int)result
+            };
+        if (code is not { } failure)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.approve.failed"),
+            Strings.Format("peer.kick.failed.text", ("code", failure)));
     }
 }

@@ -13,8 +13,7 @@
     xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
     mc:Ignorable="d"
     x:DataType="hybridVm:ActiveHybridSessionVM"
-    x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl"
-    Background="{DynamicResource SessionBackdropBrush}">
+    x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl">
 
     <Control.Styles>
         <!-- Each glow wanders along its own closed path and comes back to where it started, so the
@@ -106,8 +105,9 @@
             Grid.Column="0"
             Content="{Binding StatusBar}"/>
 
-        <!-- MAIN AREA -->
-        <Grid Grid.Row="1" ColumnDefinitions="4*,1,Auto">
+        <!-- MAIN AREA. The backdrop lies only under it: under the header it would show through
+             the header while the session fades, which tints it -->
+        <Grid Grid.Row="1" ColumnDefinitions="4*,1,Auto" Background="{DynamicResource SessionBackdropBrush}">
             
             <!-- The glows of the backdrop. They are laid out on a canvas of a fixed size that is
                  stretched to fill the area, so the picture and the paths of the glows grow with
@@ -153,6 +153,11 @@
                                                       IsVisible="{Binding !StatusBar.IsScreenShareOn}"
                                                       menus:FlyoutMenu.CloseOnClick="True"
                                                       Command="{Binding StatusBar.ToggleScreenShareCommand}"/>
+                                <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                      Content="{l:Text hybrid.screen.change}"
+                                                      IsVisible="{Binding StatusBar.IsScreenShareOn}"
+                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                      Command="{Binding StatusBar.ChangeScreenShareCommand}"/>
                                 <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
                                                       Content="{l:Text hybrid.screen.stop}"
                                                       IsVisible="{Binding StatusBar.IsScreenShareOn}"

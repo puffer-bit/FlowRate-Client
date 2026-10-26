@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Avalonia.Media.Imaging;
+using Avalonia.Media;
 using Client.Application.Coordinator;
 using Client.Core.Chat;
 using Client.Services;
@@ -19,14 +19,18 @@ public class ChatImageVM : ReactiveObject
     private const double SingleMinSide = 96;
     private const double TileSide = 152;
 
+    // A GIF moves only in the file itself, which is downloaded for the tile up to this size
+    private const long MaxAnimatedSize = 16 * 1024 * 1024;
+
     public ChatImageContent Image { get; }
     public double TileWidth { get; }
     public double TileHeight { get; }
 
     /// <summary>
-    /// Null until the reduced copy is loaded, and again once no view shows the image.
+    /// Null until the reduced copy is loaded, and again once no view shows the image. An animated
+    /// image is still until its file is downloaded.
     /// </summary>
-    public Bitmap? Preview
+    public IImage? Preview
     {
         get;
         private set
@@ -75,7 +79,16 @@ public class ChatImageVM : ReactiveObject
     public void Hide()
     {
         if (_viewers > 0 && --_viewers == 0)
+            Release(Preview);
+    }
+
+    // The bitmap is native memory the collector does not count, so it is freed at once rather than
+    // when the collector comes around to it; a render still drawing it holds a reference of its own
+    private void Release(IImage? picture)
+    {
+        if (Preview == picture)
             Preview = null;
+        (picture as IDisposable)?.Dispose();
     }
 
     private async Task Load()
@@ -88,17 +101,39 @@ public class ChatImageVM : ReactiveObject
         {
             IsFailed = false;
             var bitmap = await _images.LoadPreviewAsync(_session, Image.Id);
+            IsFailed = bitmap == null;
 
             // Scrolled away while it loaded
-            if (_viewers > 0)
-                Preview = bitmap;
-            IsFailed = bitmap == null;
+            if (_viewers == 0)
+            {
+                Release(bitmap);
+                return;
+            }
+
+            Preview = bitmap;
+
+            if (bitmap != null && IsAnimatable && await _images.LoadAnimationAsync(_session, Image.Id) is { } animation)
+            {
+                if (_viewers == 0)
+                {
+                    Release(animation);
+                    return;
+                }
+
+                // The still copy was let go of already if the image was hidden and shown again meanwhile
+                var still = Preview;
+                Preview = animation;
+                Release(still);
+            }
         }
         finally
         {
             _isLoading = false;
         }
     }
+
+    private bool IsAnimatable =>
+        Image.MimeType == "image/gif" && Image.Size <= MaxAnimatedSize;
 
     private static (double Width, double Height) FitSingle(int width, int height)
     {

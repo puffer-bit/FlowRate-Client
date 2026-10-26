@@ -1,9 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:hybrid="clr-namespace:Client.Views.Sessions.Hybrid"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
@@ -37,9 +40,6 @@
         <Style Selector="Button.barAction.sharing /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
         </Style>
-        <Style Selector="Button.barAction.leave:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
-        </Style>
         <Style Selector=":is(Button).barAction Image">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
@@ -49,15 +49,33 @@
     <Grid Background="{DynamicResource GeneralBrush}" ColumnDefinitions="*, Auto" ColumnSpacing="12">
 
         <!-- The session and the state of its connection -->
-        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,0,0,0">
-            <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
-                <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
-                                                IsIndeterminate="True"
-                                                BorderThickness="3"
-                                                Foreground="{DynamicResource ProgressRingBrush}"
-                                                IsVisible="{Binding IsLoading}"/>
-                <Image Width="20" Height="20" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}" IsVisible="{Binding !IsLoading}"/>
-            </Panel>
+        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="6" Margin="8,0,0,0">
+            <!-- Opens the statistics of the connection -->
+            <Button Grid.Column="0" Classes="ghost" Padding="4" VerticalAlignment="Center"
+                    ToolTip.Tip="{l:Text hybrid.stats.open}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding Stats}"/>
+                    </Flyout>
+                </Button.Flyout>
+                <Panel Width="24" Height="24">
+                    <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                    IsIndeterminate="True"
+                                                    BorderThickness="3"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"
+                                                    IsVisible="{Binding IsLoading}"/>
+                    <indicators:SignalIndicator Width="22" Height="22" Level="{Binding Stats.SignalLevel}"
+                                                IsVisible="{Binding IsConnected}"/>
+                    <Image Width="20" Height="20" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                        <Image.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsLoading"/>
+                                <Binding Path="!IsConnected"/>
+                            </MultiBinding>
+                        </Image.IsVisible>
+                    </Image>
+                </Panel>
+            </Button>
 
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <text:MarqueeTextBlock Text="{Binding SessionName}"
@@ -92,34 +110,59 @@
                 </Panel>
             </Button>
 
+            <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
             <Button Classes="barAction"
-                    Classes.sharing="{Binding IsScreenShareOn}"
+                    IsVisible="{Binding !IsAfk}"
+                    ToolTip.Tip="{l:Text hybrid.afk.go}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <hybrid:AfkReasonCard/>
+                    </Flyout>
+                </Button.Flyout>
+                <Image Source="{StaticResource AfkIcon}"/>
+            </Button>
+            <Button Classes="barAction sharing"
+                    IsVisible="{Binding IsAfk}"
+                    Command="{Binding ToggleAfkCommand}"
+                    ToolTip.Tip="{Binding AfkHint}">
+                <Image Source="{StaticResource AfkIcon}"/>
+            </Button>
+
+            <Button Classes="barAction"
+                    IsVisible="{Binding !IsScreenShareOn}"
                     Command="{Binding ToggleScreenShareCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                <Image Source="{StaticResource ScreenShareIcon}"/>
+            </Button>
+
+            <!-- A running share is changed or stopped from a menu -->
+            <Button Classes="barAction sharing"
+                    IsVisible="{Binding IsScreenShareOn}"
+                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Spacing="2">
+                            <menus:MenuItemButton Icon="{StaticResource GearIcon}"
+                                                  Content="{l:Text hybrid.screen.change}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                  Command="{Binding ChangeScreenShareCommand}"/>
+                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
+                                                  Content="{l:Text hybrid.screen.stop}"
+                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                  Command="{Binding ToggleScreenShareCommand}"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
                 <Image Source="{StaticResource ScreenShareIcon}"/>
             </Button>
 
             <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
 
             <!-- How the session is shown -->
-            <ToggleButton Classes="barAction"
-                          IsChecked="{Binding IsUserListVisible}"
-                          ToolTip.Tip="{l:Text hybrid.participants}">
-                <Image Source="{StaticResource BaseUsersIcon}"/>
-            </ToggleButton>
-
             <Button Classes="barAction"
                     Command="{Binding ToggleFullscreenCommand}"
                     ToolTip.Tip="{l:Text hybrid.fullscreen}">
                 <Image Source="{StaticResource FullscreenIcon}"/>
-            </Button>
-
-            <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
-
-            <Button Classes="barAction leave"
-                    Command="{Binding CloseCommand}"
-                    ToolTip.Tip="{l:Text main.voice.leave}">
-                <Image Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
             </Button>
         </StackPanel>
     </Grid>

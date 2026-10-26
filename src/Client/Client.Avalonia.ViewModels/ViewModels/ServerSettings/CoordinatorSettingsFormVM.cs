@@ -139,54 +139,6 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool IsStunEnabled
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public string StunAddress
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
-    public decimal? StunPort
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public bool IsTurnEnabled
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public string TurnAddress
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
-    public decimal? TurnPort
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public string TurnUsername
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
-    public string TurnPassword
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
     public decimal? MaxFileSizeMegabytes
     {
         get;
@@ -195,6 +147,24 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
 
     /// <summary>0 leaves the storage unlimited.</summary>
     public decimal? StorageQuotaMegabytes
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? MaxUnattachedUploadsPerUser
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? UnattachedUploadLifetimeHours
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public decimal? MediaTokenLifetimeMinutes
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -233,16 +203,11 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         BannedIps = string.Join(Environment.NewLine, settings.BannedIps);
         HeartbeatIntervalSeconds = settings.HeartbeatIntervalSeconds;
         HeartbeatTimeoutSeconds = settings.HeartbeatTimeoutSeconds;
-        IsStunEnabled = settings.Stun.IsEnabled;
-        StunAddress = settings.Stun.Address ?? string.Empty;
-        StunPort = settings.Stun.Port;
-        IsTurnEnabled = settings.Turn.IsEnabled;
-        TurnAddress = settings.Turn.Address ?? string.Empty;
-        TurnPort = settings.Turn.Port;
-        TurnUsername = settings.Turn.Username ?? string.Empty;
-        TurnPassword = settings.Turn.Password ?? string.Empty;
         MaxFileSizeMegabytes = Math.Round(settings.MaxFileSizeBytes / Megabyte);
         StorageQuotaMegabytes = Math.Round(settings.StorageQuotaBytes / Megabyte);
+        MaxUnattachedUploadsPerUser = settings.MaxUnattachedUploadsPerUser;
+        UnattachedUploadLifetimeHours = settings.UnattachedUploadLifetimeHours;
+        MediaTokenLifetimeMinutes = settings.MediaTokenLifetimeMinutes;
 
         // Nodes the coordinator names but the server no longer has are kept, so saving does not drop them unseen
         var nodes = sfuNodes.Select(node => new SfuNodeOptionVM(node, settings.SfuNodeIds.Contains(node.Id))).ToList();
@@ -274,11 +239,12 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         BannedIps = ToLines(BannedIps),
         HeartbeatIntervalSeconds = ToInt(HeartbeatIntervalSeconds),
         HeartbeatTimeoutSeconds = ToInt(HeartbeatTimeoutSeconds),
-        Stun = new IceServerSettings(IsStunEnabled, OrNull(StunAddress), StunPort is { } stunPort ? (int)stunPort : null),
-        Turn = new IceServerSettings(IsTurnEnabled, OrNull(TurnAddress), TurnPort is { } turnPort ? (int)turnPort : null,
-            OrNull(TurnUsername), OrNull(TurnPassword)),
         MaxFileSizeBytes = (long)((MaxFileSizeMegabytes ?? 0) * Megabyte),
         StorageQuotaBytes = (long)((StorageQuotaMegabytes ?? 0) * Megabyte),
+        MaxUnattachedUploadsPerUser = ToInt(MaxUnattachedUploadsPerUser),
+        UnattachedUploadLifetimeHours = ToInt(UnattachedUploadLifetimeHours),
+        MediaTokenLifetimeMinutes = ToInt(MediaTokenLifetimeMinutes),
+        RateLimits = Loaded?.RateLimits ?? new CoordinatorRateLimits(),
         SfuNodeIds = SfuNodes.Where(node => node.IsSelected).Select(node => node.Id).ToList()
     };
 

@@ -68,6 +68,25 @@ public static class ClientLogging
         return config.CreateLogger();
     }
 
+    /// <summary>
+    /// Writes the exception that brings the process down to the static <see cref="Log.Logger"/>
+    /// and flushes it, so that the reason of a crash stays in the log.
+    /// </summary>
+    public static void LogUnhandledExceptions()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            Log.Fatal(e.ExceptionObject as Exception, "Unhandled exception, terminating: {Terminating}",
+                e.IsTerminating);
+            if (e.IsTerminating)
+                Log.CloseAndFlush();
+        };
+
+        // Does not end the process, but the error would be lost otherwise
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+            Log.Error(e.Exception, "Unobserved task exception");
+    }
+
     /// <remarks>The caller owns the logger: flush it with <c>Log.CloseAndFlush</c> on exit.</remarks>
     public static IServiceCollection AddClientLogging(this IServiceCollection services, Serilog.ILogger logger)
     {

@@ -23,6 +23,7 @@ internal sealed partial class OutgoingTracks
     private readonly MediaSections _sections;
     private readonly GstAudioDeviceProvider? _devices;
     private readonly Func<bool> _negotiate;
+    private readonly OutgoingRetransmission _retransmission;
     private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
     private readonly ILogger _logger;
 
@@ -39,8 +40,9 @@ internal sealed partial class OutgoingTracks
     private readonly ConcurrentDictionary<int, Pad> _sendPads = new();
 
     // The voice gates of the outgoing tracks. A level message tells only which element posted it, so
-    // each gate is found by the native handle of its level element: the handle stays the same, while
-    // the binding may hand out a new wrapper object for the element every time.
+    // each gate is found by the native handle of its level elements, the one of the gate and the one
+    // of the voice detection: the handle stays the same, while the binding may hand out a new
+    // wrapper object for the element every time.
     private readonly ConcurrentDictionary<IntPtr, VoiceGate> _gates = new();
 
     // What the outgoing video tracks hold besides their branch, keyed by the outbound id
@@ -68,19 +70,57 @@ internal sealed partial class OutgoingTracks
 
     /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
     /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
+    /// <param name="retransmission">Resends the lost packets of the tracks that have an RTX stream.</param>
     /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
     public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
-        Func<bool> negotiate, Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
+        Func<bool> negotiate, OutgoingRetransmission retransmission,
+        Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
     {
         _core = core;
         _sections = sections;
         _devices = devices;
         _negotiate = negotiate;
+        _retransmission = retransmission;
         _onVideoFrame = onVideoFrame;
         _logger = logger;
     }
 
     public OutboundTrack? Find(string outboundId) => _outbounds.GetValueOrDefault(outboundId);
+
+    public OutboundTrack? FindBySsrc(uint ssrc) => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc);
+
+    /// <summary>
+    /// What the last queue of every running track holds: the time in ms and the packets.
+    /// </summary>
+    public List<(OutboundTrack Track, double LevelMs, uint Packets)> ReadSendQueues()
+    {
+        var levels = new List<(OutboundTrack, double, uint)>();
+
+        foreach (var (outboundId, outgoing) in _outgoing)
+        {
+            if (Find(outboundId) is not { } track)
+                continue;
+
+            try
+            {
+                using var queue = outgoing.Branch.GetByName(PipelineBranch.SendQueueName);
+
+                if (queue == null)
+                    continue;
+
+                var packets = queue.GetProperty<uint>("current-level-buffers");
+                var levelMs = packets == 0 ? 0 : queue.GetProperty<ulong>("current-level-time") / 1_000_000.0;
+
+                levels.Add((track, levelMs, packets));
+            }
+            catch (ObjectDisposedException)
+            {
+                // The track stopped meanwhile
+            }
+        }
+
+        return levels;
+    }
 
     /// <summary>
     /// Adds the users whose outgoing tracks carry speech at the moment.
@@ -154,8 +194,8 @@ internal sealed partial class OutgoingTracks
     /// device chosen in the settings may be unplugged by now, so the default one is used instead
     /// of sending silence.
     /// </summary>
-    public bool Start(OutboundTrack outbound, AudioInput input, double volume, double? voiceGateThresholdDb,
-        NoiseSuppressionLevel noiseSuppression)
+    public bool Start(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
     {
         if (_outbounds.ContainsKey(outbound.Id))
             return true;
@@ -169,7 +209,8 @@ internal sealed partial class OutgoingTracks
         }
 
         // Only a microphone is processed and gated: a file or a tone is meant to be heard as it is
-        if (!Start(outbound, source.Element, volume, input is DeviceAudioInput, voiceGateThresholdDb, noiseSuppression))
+        if (!Start(outbound, source.Element, volume, input is DeviceAudioInput, voiceGate, noiseSuppression,
+                isEchoCancellationEnabled))
         {
             source.Resource?.Dispose();
             return false;
@@ -210,14 +251,17 @@ internal sealed partial class OutgoingTracks
     /// Whether the track gets the microphone processing and a voice gate. The gate can be turned on
     /// and off later, but not added.
     /// </param>
-    /// <param name="voiceGateThresholdDb">
-    /// Peak level in dBFS from which a gated track is sent, or null to send it all the time.
+    /// <param name="voiceGate">
+    /// How the gate of a gated track decides, or null to send it all the time.
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
+    /// <param name="isEchoCancellationEnabled">Whether the played voices are taken out of a microphone.</param>
     public bool Start(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        double? voiceGateThresholdDb, NoiseSuppressionLevel noiseSuppression)
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
     {
-        var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone, noiseSuppression);
+        var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone,
+            isMicrophone ? Resolve(noiseSuppression) : noiseSuppression,
+            isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null);
 
         if (branch == null)
         {
@@ -233,7 +277,21 @@ internal sealed partial class OutgoingTracks
 
         if (branch.GetByName(OutgoingAudioBranch.GateLevelName) is { } level &&
             branch.GetByName(OutgoingAudioBranch.GateValveName) is { } valve)
-            _gates[level.Handle] = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), voiceGateThresholdDb);
+        {
+            var detector = branch.GetByName(OutgoingAudioBranch.VoiceLevelName) is { } voiceLevel &&
+                           branch.GetByName(OutgoingAudioBranch.VoiceValveName) is { } voiceValve
+                ? new VoiceGate.VoiceDetector(_heldWrappers.Hold(voiceLevel), _heldWrappers.Hold(voiceValve))
+                : null;
+
+            var gate = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), detector,
+                voiceGate);
+
+            // Both level elements post to the same gate
+            _gates[level.Handle] = gate;
+
+            if (detector != null)
+                _gates[detector.Level.Handle] = gate;
+        }
 
         // Watches what really leaves: nothing while muted or gated. The sound of a screen is not
         // speech, and would show us speaking for as long as a film plays.
@@ -266,7 +324,7 @@ internal sealed partial class OutgoingTracks
             return true;
 
         // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
-        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf();
+        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf(OutgoingVideoBranch.CodecOf(outbound));
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(exception, _core.SessionId),
             (rate, caps) => LogCaptureRate(_core.SessionId, rate, settings.Framerate, caps), isDmaBuf);
@@ -314,11 +372,13 @@ internal sealed partial class OutgoingTracks
     /// </summary>
     private bool RegisterOutgoing(OutboundTrack outbound, Bin branch)
     {
+        // Before the branch is linked: the RTX stream of a track is set up by its first packet
+        _retransmission.Track(outbound);
         _pendingOutgoing[outbound.Id] = branch;
 
         using (_sections.Enter())
         {
-            _sections.ClaimSending(outbound.MediaType).OutboundId = outbound.Id;
+            _sections.ClaimSending(outbound.MediaType, outbound.MimeType).OutboundId = outbound.Id;
         }
 
         LogOutboundRegistered(_core.SessionId, outbound.MediaType, outbound.SSRC);
@@ -333,6 +393,8 @@ internal sealed partial class OutgoingTracks
     {
         if (!_outbounds.TryRemove(outboundId, out _))
             return;
+
+        _retransmission.Untrack(outboundId);
 
         _outgoingVideo.TryRemove(outboundId, out var video);
 
@@ -440,19 +502,21 @@ internal sealed partial class OutgoingTracks
     {
         using var element = FindOutgoingBranch(outboundId)?.GetByName(OutgoingAudioBranch.InputVolumeName);
 
-        if (element == null)
+        // Every save of the audio settings passes the volume, whatever was changed
+        if (element == null || element.GetProperty<double>("volume") == volume)
             return;
 
         element.SetProperty("volume", volume);
         LogOutboundVolumeChanged(_core.SessionId, volume);
     }
 
-    public void SetVoiceGateThreshold(string outboundId, double? thresholdDb)
+    public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate)
     {
-        foreach (var gate in _gates.Values.Where(gate => gate.OutboundId == outboundId))
+        // A gate with voice detection is held under both of its level elements
+        foreach (var gate in _gates.Values.Distinct().Where(gate => gate.OutboundId == outboundId))
         {
-            gate.SetThreshold(thresholdDb);
-            LogVoiceGateThresholdChanged(_core.SessionId, thresholdDb);
+            if (gate.SetOptions(voiceGate))
+                LogVoiceGateOptionsChanged(_core.SessionId, voiceGate);
         }
     }
 
@@ -461,7 +525,8 @@ internal sealed partial class OutgoingTracks
     /// while its section, its producer and its RTP stream stay. Done off the calling thread: stopping
     /// a capture device may take a while.
     /// </summary>
-    public void SetInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression)
+    public void SetInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
+        bool isEchoCancellationEnabled)
     {
         Task.Run(() =>
         {
@@ -488,8 +553,13 @@ internal sealed partial class OutgoingTracks
                     if (_audioResources.TryRemove(outboundId, out var previous))
                         previous.Dispose();
 
-                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, input is DeviceAudioInput && !isScreen,
-                            isScreen, noiseSuppression))
+                    var isMicrophone = input is DeviceAudioInput && !isScreen;
+
+                    if (isMicrophone)
+                        noiseSuppression = Resolve(noiseSuppression);
+
+                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, isMicrophone, isScreen,
+                            noiseSuppression, isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null))
                     {
                         if (source.Resource != null)
                             _audioResources[outboundId] = source.Resource;
@@ -508,6 +578,20 @@ internal sealed partial class OutgoingTracks
                 LogOutboundInputChangeFailed(exception, _core.SessionId);
             }
         });
+    }
+
+    /// <summary>
+    /// The noise suppression a microphone really gets: a runtime without RNNoise runs the neural
+    /// levels as the moderate one, which is reported, since the user chose otherwise.
+    /// </summary>
+    private NoiseSuppressionLevel Resolve(NoiseSuppressionLevel requested)
+    {
+        var applied = MicrophoneProcessing.Resolve(requested);
+
+        if (applied != requested)
+            LogNoiseSuppressionReplaced(_core.SessionId, requested, applied);
+
+        return applied;
     }
 
     /// <summary>
@@ -650,13 +734,34 @@ internal sealed partial class OutgoingTracks
     private sealed record OutgoingMeter(int UserId, SpeechActivityMeter Meter, Pad Pad);
 
     /// <summary>
+    /// Logs what every running voice gate did since the previous call: how much of the time it let
+    /// the voice through, how loud the voice was against its threshold, with the adaptive threshold
+    /// how loud the room was and where that put the threshold, and with voice detection how much
+    /// of the time RNNoise heard a voice. A voice that grows
+    /// quieter over a session, as the automatic gain of the processing may make it, shows here as
+    /// a gate that opens less and less. Called by a timer of the transport.
+    /// </summary>
+    public void ReportGates()
+    {
+        foreach (var gate in _gates.Values.Distinct())
+        {
+            if (gate.TakeSummary() is { } summary)
+                LogVoiceGateSummary(_core.SessionId, summary.ThresholdDb, summary.EffectiveThresholdDb,
+                    summary.NoiseFloorDb, summary.OpenPercent, summary.Openings, summary.LoudestDb,
+                    summary.AverageOpenPeakDb, summary.VoicePercent);
+        }
+    }
+
+    /// <summary>
     /// Passes the level messages of the capture branches to their gates. Runs on the bus watcher.
     /// </summary>
     public void OnElementMessage(Message message)
     {
         // Read without a wrapper: one made here for an element nobody else wraps, such as the RTP
         // manager inside webrtcbin, would never be disposed and would keep that element for good
-        if (!_gates.TryGetValue(GstNative.GetMessageSource(message), out var gate) || !gate.Update(message))
+        var source = GstNative.GetMessageSource(message);
+
+        if (!_gates.TryGetValue(source, out var gate) || !gate.Update(source, message))
             return;
 
         LogVoiceGateChanged(_core.SessionId, gate.IsOpen);

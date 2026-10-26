@@ -28,6 +28,12 @@ below, each under its own license.
 | Xamarin.Firebase.Core, Xamarin.Firebase.Messaging (Android) | MIT and Apache-2.0 |
 | Xaml.Behaviors.Avalonia | MIT |
 
+## Fonts
+
+| Component | License |
+|---|---|
+| [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (`src/Client/Client.Avalonia.Assets/Fonts/NotoColorEmoji.ttf`) | SIL Open Font License 1.1, text in `NotoColorEmoji-LICENSE.txt` next to the font |
+
 ## GStreamer runtime
 
 The desktop builds ship their own GStreamer runtime in the `gstreamer/` folder next to the

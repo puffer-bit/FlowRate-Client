@@ -20,6 +20,7 @@
     <ItemGroup>
       <AvaloniaResource Include="Icons\**" />
       <AvaloniaResource Include="Sounds\*.wav" />
+      <AvaloniaResource Include="Fonts\*.ttf" />
     </ItemGroup>
     
     <ItemGroup>

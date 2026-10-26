@@ -49,10 +49,13 @@
                         </Border>
                     </Viewbox>
 
-                    <!-- Laid out at full size rather than in the Viewbox, so the picture is not scaled up from 20px -->
+                    <!-- Laid out at full size rather than in the Viewbox, so the picture is not scaled up from 20px.
+                         The picture is kept at 256px: reduced to a small avatar without mipmaps, its details
+                         run together into noise -->
                     <Border CornerRadius="9999" ClipToBounds="True"
                             IsVisible="{Binding Picture, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Image Source="{TemplateBinding Picture}" Stretch="UniformToFill"/>
+                        <Image Source="{TemplateBinding Picture}" Stretch="UniformToFill"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     </Border>
 
                     <!-- Drawn at 20px and scaled as the initial is, so the badge keeps its share of the avatar.
@@ -102,5 +105,11 @@
 
     <Style Selector="avatars|UserAvatar:speaking /template/ Border#PART_SpeakingRing">
         <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- A user waiting for approval sends no sound, so the ring only tells that they wait -->
+    <Style Selector="avatars|UserAvatar:waiting /template/ Border#PART_SpeakingRing">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
     </Style>
 </Styles>

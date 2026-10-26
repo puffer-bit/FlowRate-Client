@@ -4,6 +4,8 @@ using Shared.Enums;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator.Users;
+using Client.Avalonia.Localization;
+using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -22,6 +24,12 @@ public class PeerVM : ReactiveObject
     public bool IsConnected
     {
         get => PeerData.State == HybridSessionPeerState.Connected;
+    }
+
+    /// <summary>The user waits for the host to let them in.</summary>
+    public bool IsWaiting
+    {
+        get => PeerData.State == HybridSessionPeerState.WaitingForApprove;
     }
 
     public bool IsCurrentUser { get; }
@@ -44,6 +52,25 @@ public class PeerVM : ReactiveObject
     /// The user turned the sound of the session off and hears nobody.
     /// </summary>
     public bool IsDeafened => PeerData.IsSoundMuted;
+
+    /// <summary>
+    /// The user is away from the keyboard, which always means no microphone and no sound.
+    /// </summary>
+    public bool IsAfk => PeerData.IsAfk;
+
+    /// <summary>The reason the away user gave, shown under their name; null without one.</summary>
+    public string? AfkReason => IsAfk && !string.IsNullOrEmpty(PeerData.AfkReason) ? PeerData.AfkReason : null;
+
+    /// <summary>The microphone mark shows only outside AFK, whose mark stands for it.</summary>
+    public bool ShowsMicrophoneOff => IsMicrophoneMuted && !IsAfk;
+
+    /// <summary>The sound mark shows only outside AFK, whose mark stands for it.</summary>
+    public bool ShowsSoundOff => IsDeafened && !IsAfk;
+
+    /// <summary>What the away user said about it, for the hint of the mark; the bare word without a reason.</summary>
+    public string AfkHint => string.IsNullOrEmpty(PeerData.AfkReason)
+        ? Strings.Get("peer.afk")
+        : Strings.Format("peer.afk.reason", ("reason", PeerData.AfkReason));
 
     /// <summary>
     /// The user shows a screen right now.
@@ -74,6 +101,7 @@ public class PeerVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanWatchScreen));
+            this.RaisePropertyChanged(nameof(CanPoke));
         }
     }
 
@@ -137,16 +165,22 @@ public class PeerVM : ReactiveObject
     private readonly IPeerPlaybackService _playbackService;
     private readonly Action<PeerVM> _toggleScreenWatch;
     private readonly Action<PeerVM> _kick;
+    private readonly Action<PeerVM> _ban;
+    private readonly Action<PeerVM, bool> _admit;
+    private readonly Action<PeerVM, string?> _poke;
 
     // Set while the settings come from the service, so they are not sent back to it
     private bool _isApplyingPlayback;
 
     public PeerVM(PeerModel peerData, bool isCurrentUser, IPeerPlaybackService playbackService,
         ReactiveCommand<int, RxVoid> viewProfileCommand, Action<PeerVM> toggleScreenWatch, Action<PeerVM> kick,
-        UserModel? userData = null)
+        Action<PeerVM> ban, Action<PeerVM, bool> admit, Action<PeerVM, string?> poke, UserModel? userData = null)
     {
+        _poke = poke;
         _toggleScreenWatch = toggleScreenWatch;
         _kick = kick;
+        _ban = ban;
+        _admit = admit;
         ViewProfileCommand = viewProfileCommand;
         PeerData = peerData;
         IsCurrentUser = isCurrentUser;
@@ -216,6 +250,92 @@ public class PeerVM : ReactiveObject
             _kick(this);
     }
 
+    /// <summary>
+    /// The roles of the current user let it poke this user. Never ourselves.
+    /// </summary>
+    public bool IsPokeAllowed
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanPoke));
+        }
+    }
+
+    /// <summary>Only a peer of the session we are in can be poked: the server wants both inside.</summary>
+    public bool CanPoke => IsPokeAllowed && IsInEnteredSession;
+
+    /// <summary>The message typed for the next poke; optional.</summary>
+    public string PokeMessage
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(PokeMessageCounter));
+        }
+    } = string.Empty;
+
+    /// <summary>How much of the message is typed, out of how much fits.</summary>
+    public string PokeMessageCounter => $"{PokeMessage.Length}/{Limits.PokeMessageMaxLength}";
+
+    /// <summary>Who is poked, at the head of the card.</summary>
+    public string PokeTitle => Strings.Format("peer.poke.title", ("user", DisplayedName));
+
+    /// <summary>
+    /// Pokes the user with <see cref="PokeMessage"/>, which is cleared then. Offered only when <see cref="CanPoke"/>.
+    /// </summary>
+    public void Poke()
+    {
+        if (!CanPoke)
+            return;
+
+        _poke(this, string.IsNullOrWhiteSpace(PokeMessage) ? null : PokeMessage.Trim());
+        PokeMessage = string.Empty;
+    }
+
+    /// <summary>
+    /// The roles of the current user let it ban this user from the coordinator. Never for ourselves.
+    /// </summary>
+    public bool CanBan
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// Bans the user from the coordinator, which takes it out of every session. Offered only when <see cref="CanBan"/>.
+    /// </summary>
+    public void Ban()
+    {
+        if (CanBan)
+            _ban(this);
+    }
+
+    /// <summary>
+    /// The user waits to be let in, and the roles of the current user, or hosting the session, let it decide.
+    /// </summary>
+    public bool CanApprove
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Lets the waiting user in. Offered only when <see cref="CanApprove"/>.</summary>
+    public void Approve()
+    {
+        if (CanApprove)
+            _admit(this, true);
+    }
+
+    /// <summary>Turns the waiting user away, which takes them out. Offered only when <see cref="CanApprove"/>.</summary>
+    public void Reject()
+    {
+        if (CanApprove)
+            _admit(this, false);
+    }
+
     public void ToggleOverdrive()
     {
         IsOverdriveEnabled = !IsOverdriveEnabled;
@@ -225,6 +345,7 @@ public class PeerVM : ReactiveObject
     {
         UserData = userModel;
         this.RaisePropertyChanged(nameof(DisplayedName));
+        this.RaisePropertyChanged(nameof(PokeTitle));
         this.RaisePropertyChanged(nameof(UserData));
     }
 
@@ -232,12 +353,25 @@ public class PeerVM : ReactiveObject
     {
         PeerData.IsMicrophoneMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsMicrophoneMuted));
+        this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
     }
 
     public void UpdateSoundMuted(bool isMuted)
     {
         PeerData.IsSoundMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsDeafened));
+        this.RaisePropertyChanged(nameof(ShowsSoundOff));
+    }
+
+    public void UpdateAfk(bool isAfk, string? reason)
+    {
+        PeerData.IsAfk = isAfk;
+        PeerData.AfkReason = isAfk ? reason : null;
+        this.RaisePropertyChanged(nameof(IsAfk));
+        this.RaisePropertyChanged(nameof(AfkHint));
+        this.RaisePropertyChanged(nameof(AfkReason));
+        this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
+        this.RaisePropertyChanged(nameof(ShowsSoundOff));
     }
 
     public void UpdateScreenShare(bool isActive)
@@ -256,10 +390,12 @@ public class PeerVM : ReactiveObject
         {
             UpdateMicrophoneMuted(false);
             UpdateSoundMuted(false);
+            UpdateAfk(false, null);
             UpdateScreenShare(false);
         }
 
         this.RaisePropertyChanged(nameof(PeerData));
         this.RaisePropertyChanged(nameof(IsConnected));
+        this.RaisePropertyChanged(nameof(IsWaiting));
     }
 }

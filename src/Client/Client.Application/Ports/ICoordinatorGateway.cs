@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
@@ -51,8 +52,32 @@ public interface ICoordinatorGateway : IDisposable
     Task<bool> CheckConnectionAsync(TimeSpan timeout);
     
     // Requests 
+    /// <param name="password">The password of the server, not of the user.</param>
+    /// <returns>
+    /// <see cref="Shared.Enums.Auth.AuthResult.SecondStageRequeried"/> with the challenge set when the user has a
+    /// password, one-time codes or passkeys; <see cref="FinishLoginAsync"/> completes the login then.
+    /// </returns>
     Task<AuthenticationResult> AuthenticateAsync(
         string? password, string? userIdentity);
+
+    /// <summary>
+    /// The second login stage: the password and the one-time code of the user, each when the challenge asks for it.
+    /// A wrong answer may be tried again until the server closes the connection.
+    /// </summary>
+    Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode);
+
+    // The login of the current user: each change answers with what the user has now
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity();
+
+    /// <summary>Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null.</summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+        string? newPassword);
+
+    /// <summary>Offers a new secret for an authenticator app; codes are on once <see cref="EnableTwoFactor"/> confirms it.</summary>
+    Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof, int passkeyId);
     Task<CoordinatorSessionModel?> GetCoordinatorInfo();
 
     /// <summary>The stored settings of the coordinator and the SFU nodes they may name.</summary>
@@ -140,6 +165,8 @@ public interface ICoordinatorGateway : IDisposable
     Task<ResumeInboundsResult> ResumeInboundsInHybridSession(int sessionId, IReadOnlyList<string> inboundIds);
     Task<SetMicrophoneMuteResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted);
     Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
+    Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
+    Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message);
     Task<DeleteSessionResult> DeleteSession(int sessionId);
 
     /// <summary>
@@ -167,8 +194,12 @@ public interface ICoordinatorGateway : IDisposable
         int messageId);
     Task<LeaveSessionResult> LeaveSession(int sessionId);
     Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId);
+    Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
+    Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove);
+        bool isHostMustApprove, MediaSettings media);
+    Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides);
 
     /// <summary>
     /// Puts a file on the server over HTTP, in parts, and continues after a break in the connection.
@@ -185,6 +216,14 @@ public interface ICoordinatorGateway : IDisposable
     /// <param name="progress">Reports how many bytes were received.</param>
     Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
         IProgress<long>? progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes a file of a message into <paramref name="destination"/>.
+    /// Failures come back as a result, never as an exception.
+    /// </summary>
+    /// <param name="progress">Reports how many bytes were received.</param>
+    Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination, IProgress<long>? progress,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Writes the avatar with the id from <see cref="Client.Core.Users.AvatarAddress.IdOf"/> into

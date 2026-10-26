@@ -104,6 +104,11 @@
                 <Border Background="Transparent" DoubleTapped="OnPictureDoubleTapped">
                     <video:VideoView x:Name="Picture" Stretch="Uniform"/>
                 </Border>
+                <!-- Under the bar at the top edge, out of its way -->
+                <video:StreamIssuesOverlay Issues="{Binding Issues}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           Margin="8"/>
             </Panel>
 
             <!-- The controls over the top edge, the same on the card and on the picture; only the eye
