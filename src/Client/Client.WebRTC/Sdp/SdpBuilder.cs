@@ -1,7 +1,7 @@
 using System.Text;
 using Client.Core.Sessions.Hybrid;
 
-namespace Client.GStreamer.WebRTC.Sdp;
+namespace Client.WebRTC.Sdp;
 
 /// <summary>
 /// Builds the remote session description for webrtcbin out of the ORTC style parameters the SFU
