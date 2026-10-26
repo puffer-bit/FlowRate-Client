@@ -1,6 +1,6 @@
 using Client.Core.Sessions.Hybrid;
 using Client.GStreamer.Interop;
-using Client.GStreamer.WebRTC.Sdp;
+using Client.WebRTC.Sdp;
 using Gst.Sdp;
 using Gst.WebRTC;
 using Gst;
