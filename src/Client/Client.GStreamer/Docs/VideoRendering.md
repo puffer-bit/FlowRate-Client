@@ -4,8 +4,9 @@ How a shared screen gets from the decoder onto the screen of the viewer, and how
 high frame rate. The goal is a smooth picture at any rate, up to 1080p at 144 fps, without copying
 every frame through memory when the GPU can avoid it.
 
-Without hardware acceleration nothing changes: the software decoder delivers BGRA frames in memory
-and they are drawn from a bitmap, the way they always were.
+Without zero copy the frames come in memory. With OpenGL they stay NV12 or I420 as the decoder
+wrote them and the shader turns them into RGB; only without OpenGL are they converted to BGRA and
+drawn from a bitmap, the way they always were.
 
 ## Where it lives
 
@@ -13,6 +14,7 @@ and they are drawn from a bitmap, the way they always were.
 |------|------|
 | `Video/VideoOutputSelector.cs` | Picks the decoder and the chain after it from the settings, the GPU and what the screen supports |
 | `Video/VideoFramePump.cs` | Takes samples out of the appsink and hands them over as `RawVideoFrame`, per output kind; `VideoCapsInfo` reads size, DRM format and colorimetry |
+| `Video/GstMemoryYuvFrame.cs` | An NV12 or I420 frame in memory; holds the sample with the buffer mapped |
 | `Video/GstDmaBufFrame.cs` | A DMA-BUF frame of a VA-API decoder; holds the sample |
 | `Video/CudaGlFrame.cs` | A CUDA frame of an NVIDIA decoder, copied into OpenGL textures on the GPU |
 | `Video/D3D11SharedTextureWriter.cs` | Copies Direct3D 11 frames into shared textures the compositor opens |
@@ -21,7 +23,7 @@ and they are drawn from a bitmap, the way they always were.
 | `WebRTC/OutgoingVideoBranch.cs` | The sending branch: scaling on the GPU for VA-API encoders, preview capped at 30 fps |
 | `Video/VideoEncoderSelector.cs` | The encoder, with the one picked in the settings first |
 | `Client.Core/Media/RawVideoFrame.cs` | A frame: pixels in memory, or `Gpu`; `Timestamp` in nanoseconds |
-| `Client.Core/Media/GpuVideoFrame.cs` | Reference-counted GPU frames: `DmaBufVideoFrame`, `GlCopyVideoFrame`, `D3D11SharedVideoFrame` |
+| `Client.Core/Media/GpuVideoFrame.cs` | Reference-counted frames: `DmaBufVideoFrame`, `GlCopyVideoFrame`, `D3D11SharedVideoFrame`, and `MemoryYuvVideoFrame` (in memory, held the same way) |
 | `Client.Core/Media/VideoSurfaceSupport.cs` | What the screen can show without copying; failures reported back |
 | `Client.Core/Media/FramePacer.cs` | Which frame is shown on a refresh |
 | `Client.Core/Settings/VideoSettings.cs` | The Video tab of the settings; `VideoSettings.Current` is read when a branch is built |
@@ -58,6 +60,7 @@ the screen reads it.
 | `va*` (AMD, Intel, Linux) | `DmaBuf` | `vah264dec ! video/x-raw(memory:DMABuf),format=DMA_DRM` | `GstDmaBufFrame` |
 | `nv*` on Linux | `CudaGl` | `nvh264dec ! video/x-raw(memory:CUDAMemory),format=NV12` | `CudaGlFrame` |
 | `d3d11*`, `nv*` on Windows | `D3D11Shared` | `… ! d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA` | `D3D11SharedTextureWriter` frames |
+| anything else, or zero copy off | `YuvMemory` | `<decoder> ! videoconvert ! video/x-raw,format={NV12,I420}` | `GstMemoryYuvFrame` |
 | anything else, or zero copy off | — | `<decoder> ! videoconvert ! video/x-raw,format=BGRA` | pixels in memory |
 
 Hardware decoding off in the settings picks the software decoder (`openh264dec`). A decoder picked
@@ -67,6 +70,20 @@ change; a stream that plays keeps its branch (the settings tab says to watch it 
 The memory path is always the plain one. Converting on the GPU first and downloading BGRA is not
 faster: on AMD with VA-API, `vah264dec ! vapostproc ! BGRA` read back into memory gave 28 fps at
 1080p, `vah264dec ! videoconvert` 144.
+
+### YUV in memory
+
+With an OpenGL presenter (`YuvMemory`, independent of the zero copy setting) the plain path asks for
+NV12 or I420, what decoders output anyway: `videoconvert` passes them through untouched and only
+converts anything else (10-bit, 4:4:4). `GstMemoryYuvFrame` keeps the buffer mapped while the frame
+is held, so nothing is copied before the upload; the renderer uploads the planes with
+`GL_UNPACK_ROW_LENGTH` set to their stride (luma `R8`, chroma `RG8` for NV12 or `R8` twice for I420)
+and draws them through the YUV shader. Compared with BGRA the CPU neither converts colors nor copies
+the frame, and 1.5 bytes a pixel are uploaded instead of 4 (3.1 MB instead of 8.3 at 1080p).
+
+The pump accepts a video meta on this path too, so a decoder with padded planes hands them over
+without copying them into the default layout; without a meta the planes are where
+`gst_video_info_set_format` puts them.
 
 ### What the screen supports
 
@@ -79,7 +96,8 @@ faster: on AMD with VA-API, `vah264dec ! vapostproc ! BGRA` read back into memor
   `glEGLImageTargetTexture2DOES`; `CudaGl` when `libcuda.so.1` loads.
 - **Windows:** `D3D11Shared` when the context is ANGLE on Direct3D 11 with
   `EGL_ANGLE_image_d3d11_texture` (Avalonia renders with ANGLE there by default).
-- Otherwise nothing; frames come in memory and `BitmapVideoPresenter` draws them.
+- Any OpenGL presenter adds `YuvMemory`.
+- Otherwise nothing; frames come in memory as BGRA and `BitmapVideoPresenter` draws them.
 
 Only an EGL context can import DMA-BUF, so on X11 the desktop starts with
 `X11RenderingMode.Egl` first, then GLX and the framebuffer (`Program.cs`).
@@ -98,6 +116,9 @@ back after about a second. While the branches are swapped a probe drops the buff
 (`GstVideoNative.DropBuffers`): a push into an unlinked pad fails with not-linked and stops the
 streaming thread of webrtcbin for good, which a slow swap (to `openh264dec`) did. Streams opened later use the memory chain from the start.
 `--gpu-frames-fail <sec>` of the test bot triggers this on purpose.
+
+When OpenGL breaks altogether, `GlVideoPresenter` reports every kind still supported, since all of
+them need it; `YuvMemory` streams are then rebuilt as BGRA for the bitmap.
 
 ## Drawing on the render thread
 
@@ -231,6 +252,7 @@ On an AMD RX 7700/7800 with a 165 Hz monitor, KDE:
 
 - NVIDIA (CUDA) and Windows (Direct3D 11 receiving and sending): compiled, never run.
 - P010 (10-bit) frames.
+- YUV in memory (written 2026-10-26): compiles, never run.
 - The desktop client in a real session; the parts were checked separately.
 - The SFU announces H.264 `profile-level-id 42e01f` (level 3.1). 1080p144 needs level 5.2 on paper;
   decoders ignore the level today. Changing it needs the server and `WebRTC/Sdp/RtpCodec.cs` together.
