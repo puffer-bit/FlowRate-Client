@@ -63,6 +63,12 @@ FR_API int fr_set_recording_device(int index);
 FR_API int fr_set_playout_device(int index);
 
 /*
+ * The id of the device the system plays to or records from by default (its WASAPI endpoint id, as
+ * the device list gives it); 0 where there is none to ask, as on Linux, whose list starts with it.
+ */
+FR_API int fr_default_device(int is_recording, char* guid, int guid_size);
+
+/*
  * What happens to the microphone after the processing of libwebrtc: the input volume, then the voice
  * gate, which asks on_level whether it is open while it is on. Shared by every peer, as the
  * microphone is.
