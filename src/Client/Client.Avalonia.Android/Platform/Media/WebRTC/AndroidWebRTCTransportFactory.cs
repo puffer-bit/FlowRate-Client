@@ -3,6 +3,7 @@ using Android.Content.PM;
 using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Client.Application.Ports;
+using Client.LibWebRTC.Voice;
 using Com.Flowrate.Rtc;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +25,7 @@ internal sealed class AndroidWebRTCTransportFactory(ILoggerFactory loggerFactory
             MainActivity.Current is { } activity)
             ActivityCompat.RequestPermissions(activity, [Manifest.Permission.RecordAudio], MicrophonePermissionRequest);
 
-        return new AndroidWebRTCTransport(sessionId, loggerFactory.CreateLogger<AndroidWebRTCTransport>());
+        return new VoiceTransport(sessionId, listener => new AndroidVoicePeer(listener),
+            loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled);
     }
 }
