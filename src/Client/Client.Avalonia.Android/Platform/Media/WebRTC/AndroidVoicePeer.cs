@@ -21,6 +21,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
 
     public AndroidVoicePeer(IVoicePeerListener listener)
     {
+        VoicePeer.Initialize(global::Android.App.Application.Context);
         _peer = new VoicePeer(new PeerListener(listener));
         VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, true);
     }
@@ -47,9 +48,15 @@ internal sealed class AndroidVoicePeer : IVoicePeer
 
     public void Dispose()
     {
-        _peer.Close();
-        _peer.Dispose();
-        VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, false);
+        try
+        {
+            _peer.Close();
+        }
+        finally
+        {
+            _peer.Dispose();
+            VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, false);
+        }
     }
 
     private sealed class PeerListener(IVoicePeerListener listener) : Java.Lang.Object, VoicePeer.IListener
