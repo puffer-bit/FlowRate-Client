@@ -1438,5 +1438,111 @@
   "sessionPermissions.roleGone": "A role was deleted meanwhile. Open the dialog again.",
   "sessionPermissions.notAllowed": "You cannot change this role or grant a permission you do not have.",
   "chat.input.noPermission": "You cannot write in this chat",
-  "chat.attach.noPermission": "You cannot attach files in this chat"
+  "chat.attach.noPermission": "You cannot attach files in this chat",
+
+  "loginPrompt.title": "Log in",
+  "loginPrompt.text.password": "The account on {server} is protected with a password.",
+  "@loginPrompt.text.password": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.text.code": "Enter a one-time code from your authenticator app to log in to {server}.",
+  "@loginPrompt.text.code": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.text.both": "The account on {server} is protected with a password and one-time codes.",
+  "@loginPrompt.text.both": {
+    "placeholders": {
+      "server": {}
+    }
+  },
+  "loginPrompt.password": "Password:",
+  "loginPrompt.remember": "Remember the password on this device",
+  "loginPrompt.code": "One-time code:",
+  "loginPrompt.code.hint": "6 digits from the authenticator app",
+  "loginPrompt.confirm": "Log in",
+  "loginPrompt.refused": "The server did not accept the password or the code. Check them and try again.",
+  "connect.failed.passkeyRequired": "Connection to server failed.\n\nThe account logs in with passkeys only, which this application does not support yet. Add a password or one-time codes in the control panel of the server.",
+  "main.reconnect.loginGivenUp": "Disconnected: the login was canceled.",
+  "main.reconnect.passkeyRequired": "Disconnected: the account logs in with passkeys only, which this application does not support yet.",
+  "accountSecurity.title": "Login and security",
+  "accountSecurity.hint": "How your account on this server logs in",
+  "accountSecurity.open": "Password and one-time codes",
+  "accountSecurity.retry": "Try again",
+  "accountSecurity.next": "Next",
+  "accountSecurity.back": "Back",
+  "accountSecurity.password": "Password",
+  "accountSecurity.password.set": "Asked at every login",
+  "accountSecurity.password.notSet": "Not set",
+  "accountSecurity.password.change": "Change",
+  "accountSecurity.password.add": "Set password",
+  "accountSecurity.password.remove": "Remove the password",
+  "accountSecurity.password.hint": "From {min} to {max} characters",
+  "@accountSecurity.password.hint": {
+    "placeholders": {
+      "min": {},
+      "max": {}
+    }
+  },
+  "accountSecurity.codes": "One-time codes",
+  "accountSecurity.codes.on": "On: a code from the authenticator app is asked at every login",
+  "accountSecurity.codes.off": "Off",
+  "accountSecurity.codes.enable": "Turn on",
+  "accountSecurity.codes.disable": "Turn off",
+  "accountSecurity.codes.enableConfirm": "Turn on",
+  "accountSecurity.codes.disableConfirm": "Turn off",
+  "accountSecurity.codes.setup": "Scan the QR code with an authenticator app (Aegis, Google Authenticator, 2FAS...) or type the key into it, then enter the code it shows.",
+  "accountSecurity.codes.secret": "Key:",
+  "accountSecurity.codes.uri": "Link for the app:",
+  "accountSecurity.codes.firstCode": "Code from the app:",
+  "accountSecurity.passkeys": "Passkeys",
+  "accountSecurity.passkeys.hint": "Passkeys are added in the control panel of the server.",
+  "accountSecurity.passkeys.unavailable": "Passkeys are not set up on this server.",
+  "accountSecurity.passkeys.delete": "Delete the passkey \"{name}\"",
+  "@accountSecurity.passkeys.delete": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "accountSecurity.passkeys.unnamed": "Passkey",
+  "accountSecurity.passkeys.createdAt": "Added {created}",
+  "@accountSecurity.passkeys.createdAt": {
+    "placeholders": {
+      "created": {}
+    }
+  },
+  "accountSecurity.passkeys.usedAt": "Added {created}, last used {used}",
+  "@accountSecurity.passkeys.usedAt": {
+    "placeholders": {
+      "created": {},
+      "used": {}
+    }
+  },
+  "accountSecurity.proof.hint": "Confirm that it is you:",
+  "accountSecurity.proof.password": "Current password:",
+  "accountSecurity.proof.code": "One-time code:",
+  "accountSecurity.newPassword": "New password:",
+  "accountSecurity.repeatPassword": "Repeat password:",
+  "accountSecurity.error.proof": "The current password or code is wrong.",
+  "accountSecurity.error.codeRefused": "The code is wrong. Check the time on the device and try again.",
+  "accountSecurity.error.invalid": "The server did not accept the change. Close the window and open it again.",
+  "accountSecurity.error.passkeyNotFound": "This passkey is already gone.",
+  "accountSecurity.error.failed": "The server could not make the change (code {code}).",
+  "@accountSecurity.error.failed": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "accountSecurity.error.unexpected": "Unexpected error: {error}",
+  "@accountSecurity.error.unexpected": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "accountSecurity.error.proofPassword": "Enter the current password",
+  "accountSecurity.error.codeFormat": "A code is 6 digits",
+  "accountSecurity.error.mismatch": "The passwords do not match"
 }

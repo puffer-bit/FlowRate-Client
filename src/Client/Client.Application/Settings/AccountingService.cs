@@ -42,6 +42,9 @@ public class AccountingService : IAccountingService
         return await _accountingSettingsRepository.GetAllCoordinatorsAsync();
     }
     
+    public Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword) =>
+        _accountingSettingsRepository.SetAccountPasswordAsync(coordinatorId, userId, accountPassword);
+
     public async Task RemoveCoordinatorInstanceAsync(string coordinatorId)
     {
         await _accountingSettingsRepository.DeleteCoordinatorAsync(coordinatorId);

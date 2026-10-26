@@ -52,8 +52,32 @@ public interface ICoordinatorGateway : IDisposable
     Task<bool> CheckConnectionAsync(TimeSpan timeout);
     
     // Requests 
+    /// <param name="password">The password of the server, not of the user.</param>
+    /// <returns>
+    /// <see cref="Shared.Enums.Auth.AuthResult.SecondStageRequeried"/> with the challenge set when the user has a
+    /// password, one-time codes or passkeys; <see cref="FinishLoginAsync"/> completes the login then.
+    /// </returns>
     Task<AuthenticationResult> AuthenticateAsync(
         string? password, string? userIdentity);
+
+    /// <summary>
+    /// The second login stage: the password and the one-time code of the user, each when the challenge asks for it.
+    /// A wrong answer may be tried again until the server closes the connection.
+    /// </summary>
+    Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode);
+
+    // The login of the current user: each change answers with what the user has now
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity();
+
+    /// <summary>Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null.</summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+        string? newPassword);
+
+    /// <summary>Offers a new secret for an authenticator app; codes are on once <see cref="EnableTwoFactor"/> confirms it.</summary>
+    Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof, int passkeyId);
     Task<CoordinatorSessionModel?> GetCoordinatorInfo();
 
     /// <summary>The stored settings of the coordinator and the SFU nodes they may name.</summary>
