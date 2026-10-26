@@ -27,7 +27,9 @@ if ($env:VSCMD_ARG_TGT_ARCH -ne "x64" -or -not (Get-Command cl.exe -ErrorAction 
     $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
     if ($LASTEXITCODE -ne 0 -or -not $installation) { throw "No Visual Studio x64 C++ build tools found" }
     $devCmd = Join-Path $installation "Common7\Tools\VsDevCmd.bat"
-    $environment = & $env:ComSpec /d /s /c "`"`"$devCmd`" -no_logo -arch=x64 -host_arch=x64 >nul && set`""
+    # Start with call, not a quoted path: Windows PowerShell's native argument quoting otherwise
+    # leaves cmd.exe with an extra leading quote when Visual Studio lives under Program Files.
+    $environment = & $env:ComSpec /d /c "call `"$devCmd`" -no_logo -arch=x64 -host_arch=x64 >nul && set"
     if ($LASTEXITCODE -ne 0) { throw "Could not initialize the Visual Studio x64 environment" }
     foreach ($line in $environment) {
         if ($line -match '^([^=]+)=(.*)$') {
