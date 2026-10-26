@@ -71,7 +71,7 @@ $arguments = @('/nologo', '/std:c++17', '/O2', '/EHsc', '/MT', '/LD', '/W3',
     '/DWIN32', '/DNOMINMAX', '/DLIB_WEBRTC_API_DLL',
     "/I$sdk\include", (Join-Path $PSScriptRoot 'flowrate_webrtc.cc'),
     "/Fo$out\flowrate_webrtc.obj", "/Fe$out\flowrate_webrtc.dll",
-    '/link', '/MACHINE:X64', (Join-Path $sdk 'lib\libwebrtc.dll.lib'),
+    '/link', '/MACHINE:X64', (Join-Path $sdk 'lib\libwebrtc.dll.lib'), 'ole32.lib',
     "/IMPLIB:$out\flowrate_webrtc.lib")
 # /MT keeps the shim independent of a Visual C++ redistributable, like the prebuilt DLL.
 $ErrorActionPreference = "Continue"
