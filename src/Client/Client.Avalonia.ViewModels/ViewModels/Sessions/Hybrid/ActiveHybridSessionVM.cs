@@ -455,8 +455,15 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private void OnStatsSampled(TransportStatsSample sample) =>
         Dispatcher.UIThread.Post(() =>
         {
-            if (!IsClosed)
-                StatusBar.Stats.Add(sample);
+            if (IsClosed)
+                return;
+
+            StatusBar.Stats.Add(sample);
+
+            var now = TimeSpan.FromMilliseconds(Environment.TickCount64);
+
+            foreach (var stream in ScreenStreams)
+                stream.Analyze(sample, _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
         });
 
     private void OnSessionStateChanged(HybridSessionState state) =>

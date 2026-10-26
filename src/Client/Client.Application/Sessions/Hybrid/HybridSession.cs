@@ -83,6 +83,7 @@ public partial class HybridSession : IHybridSession
     public event Action<int, bool>? ScreenShareChanged;
 
     // Users whose screen we watch, ourselves included; read for every frame on the threads of the tracks
+    // The screens we watch, each with whether it comes with its sound
     private readonly ConcurrentDictionary<int, bool> _watchedScreens = new();
 
     public event Action<int, bool>? ScreenWatchChanged;
@@ -460,6 +461,8 @@ public partial class HybridSession : IHybridSession
 
     public bool IsWatchingScreen(int userId) => _watchedScreens.ContainsKey(userId);
 
+    public bool HasWatchedScreenAudio(int userId) => _watchedScreens.TryGetValue(userId, out var hasAudio) && hasAudio;
+
     public Task<SetScreenShareWatchResult> SetScreenWatchAsync(int userId, bool isWatching)
     {
         if (userId != _coordinatorSession.GetCurrentUser().Id)
@@ -513,15 +516,15 @@ public partial class HybridSession : IHybridSession
         if (inbounds.Audio != null)
             transport.RegisterInbound(inbounds.Audio, volume);
 
-        SetScreenWatched(userId, true);
+        SetScreenWatched(userId, true, inbounds.Audio != null);
         LogScreenWatchChanged(Model.Id, userId, true);
 
         return SetScreenShareWatchResult.NoError;
     }
 
-    private void SetScreenWatched(int userId, bool isWatched)
+    private void SetScreenWatched(int userId, bool isWatched, bool hasAudio = false)
     {
-        var isChanged = isWatched ? _watchedScreens.TryAdd(userId, true) : _watchedScreens.TryRemove(userId, out _);
+        var isChanged = isWatched ? _watchedScreens.TryAdd(userId, hasAudio) : _watchedScreens.TryRemove(userId, out _);
 
         if (!isChanged)
             return;

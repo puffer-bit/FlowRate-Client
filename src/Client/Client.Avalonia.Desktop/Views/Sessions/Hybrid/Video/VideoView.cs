@@ -79,6 +79,7 @@ public class VideoView : Panel
             DmaBufVideoFrame => "DMA-BUF",
             GlCopyVideoFrame => "CUDA",
             D3D11SharedVideoFrame => "D3D11",
+            MemoryYuvVideoFrame => "memory YUV",
             _ => "memory"
         };
 
@@ -95,6 +96,11 @@ public class VideoView : Panel
     }
 
     /// <summary>Stops showing the last frame, once the stream it came from is over.</summary>
+    /// <summary>
+    /// The counters of the frames since the picture started, or null while nothing draws it.
+    /// </summary>
+    public FrameStats? Stats => _active?.Stats;
+
     public void Clear()
     {
         _fast?.Clear();

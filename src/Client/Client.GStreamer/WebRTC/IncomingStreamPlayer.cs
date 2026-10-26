@@ -384,6 +384,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         VideoOutputKind.DmaBuf => VideoSurfaceKinds.DmaBuf,
         VideoOutputKind.Cuda => VideoSurfaceKinds.CudaGl,
         VideoOutputKind.D3D11 => VideoSurfaceKinds.D3D11Shared,
+        VideoOutputKind.MemoryYuv => VideoSurfaceKinds.YuvMemory,
         _ => VideoSurfaceKinds.None
     };
 
