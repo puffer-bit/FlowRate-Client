@@ -11,16 +11,19 @@ namespace Client.Droid.Platform.Media;
 internal sealed class AndroidSoundPlayer : ISoundPlayer
 {
     private readonly System.Threading.Lock _lock = new();
-    private readonly Dictionary<SoundClip, AudioTrack> _tracks = new();
+    // Keyed by whether a call was on when the track was made, see CreateTrack
+    private readonly Dictionary<(SoundClip Clip, bool IsInCall), AudioTrack> _tracks = new();
 
     public void Play(SoundClip clip, float volume)
     {
+        var isInCall = IsInCall();
+
         lock (_lock)
         {
-            if (!_tracks.TryGetValue(clip, out var track))
+            if (!_tracks.TryGetValue((clip, isInCall), out var track))
             {
-                track = CreateTrack(clip);
-                _tracks.Add(clip, track);
+                track = CreateTrack(clip, isInCall);
+                _tracks.Add((clip, isInCall), track);
             }
             else
             {
@@ -38,21 +41,35 @@ internal sealed class AndroidSoundPlayer : ISoundPlayer
     {
         lock (_lock)
         {
-            if (!_tracks.Remove(clip, out var track))
-                return;
+            foreach (var isInCall in (bool[])[false, true])
+            {
+                if (!_tracks.Remove((clip, isInCall), out var track))
+                    continue;
 
-            track.Release();
-            track.Dispose();
+                track.Release();
+                track.Dispose();
+            }
         }
     }
 
-    private static AudioTrack CreateTrack(SoundClip clip)
+    // A voice session puts the device into a call, see VoicePeer.setCommunicationMode
+    private static bool IsInCall() =>
+        global::Android.App.Application.Context.GetSystemService(global::Android.Content.Context.AudioService) is AudioManager
+        {
+            Mode: Mode.InCommunication
+        };
+
+    /// <param name="isInCall">
+    /// Whether a call is on. A notification sound is then cut and ducked by the system, so the sound
+    /// goes as a signal of the call instead, the way the tones of a call do.
+    /// </param>
+    private static AudioTrack CreateTrack(SoundClip clip, bool isInCall)
     {
         // As a notification the sound follows the notification volume of the system and is silent in
         // the silent mode. The volume of interface sounds, which sonification goes by, is not the one
         // the user sets on most devices
         var attributes = new AudioAttributes.Builder()
-            .SetUsage(AudioUsageKind.Notification)!
+            .SetUsage(isInCall ? AudioUsageKind.VoiceCommunicationSignalling : AudioUsageKind.Notification)!
             .SetContentType(AudioContentType.Sonification)!
             .Build()!;
         var format = new AudioFormat.Builder()

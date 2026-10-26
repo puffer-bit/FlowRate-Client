@@ -1,4 +1,4 @@
-namespace Client.GStreamer.WebRTC.Sdp;
+namespace Client.WebRTC.Sdp;
 
 /// <summary>
 /// Direction of an m-section as seen by the remote side.

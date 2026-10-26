@@ -26,6 +26,7 @@ using Client.ViewModels.Main;
 using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Create;
+using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
@@ -43,9 +44,11 @@ public partial class MainView : UserControl
 {
     private readonly MainWindowVM? _viewModel;
     private readonly ChatView _chatView = new();
+    private readonly HybridSessionView _hybridView = new();
 
     // The chat on screen asks for its message boxes itself; the registration follows the chat
     private readonly SerialDisposable _chatDialogs = new();
+    private readonly SerialDisposable _hybridDialogs = new();
 
     // The message boxes on screen, the topmost one last, each with what the back button answers it
     private readonly List<(TaskCompletionSource<Result> Answer, Result BackAnswer)> _messageBoxes = [];
@@ -315,6 +318,20 @@ public partial class MainView : UserControl
             }
 
             Screen.Content = _chatView;
+            Home.IsVisible = false;
+            return;
+        }
+
+        if (_viewModel?.CurrentContent is ActiveHybridSessionVM hybrid)
+        {
+            if (!ReferenceEquals(_hybridView.DataContext, hybrid))
+            {
+                _hybridView.DataContext = hybrid;
+                _hybridDialogs.Disposable = hybrid.ShowMessageBox.RegisterHandler(async context =>
+                    context.SetOutput(await ShowMessageBoxAsync(context.Input)));
+            }
+
+            Screen.Content = _hybridView;
             Home.IsVisible = false;
             return;
         }

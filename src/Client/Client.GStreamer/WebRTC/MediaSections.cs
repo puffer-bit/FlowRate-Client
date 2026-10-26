@@ -1,5 +1,5 @@
 using Client.Core.Sessions.Hybrid;
-using Client.GStreamer.WebRTC.Sdp;
+using Client.WebRTC.Sdp;
 using Shared.Models.Media;
 
 namespace Client.GStreamer.WebRTC;

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Client.Core.Sessions.Hybrid;
 using Microsoft.Extensions.Logging;
 using Shared.Models.Media;
-using Client.GStreamer.WebRTC.Sdp;
+using Client.WebRTC.Sdp;
 
 namespace Client.GStreamer.WebRTC;
 

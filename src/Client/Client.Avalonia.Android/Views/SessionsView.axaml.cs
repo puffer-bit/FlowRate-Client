@@ -158,6 +158,14 @@ public partial class SessionsView : UserControl
 
     private void OnSessionsTapped(object? sender, TappedEventArgs e) => SessionTapped?.Invoke();
 
+    private void OnHybridSessionTapped(object? sender, TappedEventArgs e)
+    {
+        if (_isMenuPress || sender is not StyledElement { DataContext: HybridSessionVM hybrid })
+            return;
+
+        hybrid.Connect();
+    }
+
     private void OnUserCardContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         e.Handled = true;
