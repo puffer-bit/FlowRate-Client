@@ -1,9 +1,9 @@
-using System;
 using Microsoft.Extensions.Logging;
+using Shared.Enums.WebRTC;
 
-namespace Client.Droid.Platform.Media.WebRTC;
+namespace Client.LibWebRTC.Voice;
 
-internal sealed partial class AndroidWebRTCTransport
+public sealed partial class VoiceTransport
 {
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Remote description:\n{Sdp}")]
     private partial void LogRemoteDescription(int sessionId, string sdp);
@@ -18,13 +18,18 @@ internal sealed partial class AndroidWebRTCTransport
     private partial void LogLocalFingerprintMissing(int sessionId);
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Peer connection {State}")]
-    private partial void LogConnectionState(int sessionId, string state);
+    private partial void LogConnectionState(int sessionId, WebRTCConnectionState state);
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Inbound voice of user {UserId}, ssrc {Ssrc}")]
     private partial void LogInboundRegistered(int sessionId, int userId, uint ssrc);
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Microphone sent on ssrc {Ssrc}")]
     private partial void LogOutboundStarted(int sessionId, uint ssrc);
+
+    [LoggerMessage(LogLevel.Debug,
+        "[Session {SessionId}] Stats: rtt {RoundTripMs:F0} ms, loss in {InboundLoss:F1}%, out {OutboundLoss:F1}%, tcp {IsOverTcp}, received {Streams}")]
+    private partial void LogStatsSample(int sessionId, double roundTripMs, double inboundLoss, double outboundLoss,
+        bool isOverTcp, string streams);
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] A callback of libwebrtc failed")]
     private partial void LogCallbackFailed(Exception exception, int sessionId);

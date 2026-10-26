@@ -1,37 +1,38 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Client.Application.Ports;
 using Client.Core.Media;
-using Client.Core.Settings;
 using Client.Core.Sessions.Hybrid;
+using Client.Core.Settings;
 using Client.WebRTC.Sdp;
-using Com.Flowrate.Rtc;
 using Microsoft.Extensions.Logging;
 using Shared.Enums.WebRTC;
 using Shared.Models.Media;
 
-namespace Client.Droid.Platform.Media.WebRTC;
+namespace Client.LibWebRTC.Voice;
 
 /// <summary>
-/// Voice of a hybrid session over libwebrtc, see VoicePeer.java. The description of the SFU is built
-/// the way the desktop builds it for webrtcbin; libwebrtc answers it, captures the microphone and
-/// plays the voices. Screens are neither shown nor watched.
+/// Voice of a hybrid session over libwebrtc, through the <see cref="IVoicePeer"/> of the platform.
+/// The description of the SFU is built the way the GStreamer transport builds it for webrtcbin;
+/// libwebrtc answers it, captures the microphone and plays the voices. Screens are neither shown
+/// nor watched.
 /// </summary>
-internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
+public sealed partial class VoiceTransport : IWebRTCTransport
 {
-    // How often the levels of the voices are read for the speaking indicator
-    private static readonly TimeSpan LevelsInterval = TimeSpan.FromMilliseconds(200);
+    // How often the statistics are read: often enough for the speaking indicator, which goes by
+    // the levels in them
+    private static readonly TimeSpan StatsInterval = TimeSpan.FromMilliseconds(200);
 
     // The audio level, 0..1, above which a voice counts as speech, and how long it is held after it falls
     private const double SpeakingLevel = 0.02;
     private static readonly TimeSpan SpeakingHold = TimeSpan.FromMilliseconds(400);
 
+    // The bitrate of the voice, the same as the one of the GStreamer transport
+    private const int VoiceBitrate = 64000;
+
     private readonly int _sessionId;
-    private readonly ILogger<AndroidWebRTCTransport> _logger;
+    private readonly bool _isPlaybackEnabled;
+    private readonly Func<IVoicePeerListener, IVoicePeer> _createPeer;
+    private readonly ILogger<VoiceTransport> _logger;
     private readonly Lock _lock = new();
 
     // The m-sections by m-line index; never removed, only emptied and reused, which keeps every mid stable
@@ -42,11 +43,15 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     private readonly Dictionary<(int UserId, MediaSourceType SourceType), double> _volumes = [];
     private readonly Dictionary<int, long> _speakingUntil = [];
     private readonly TaskCompletionSource<bool> _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly VoiceStatsSampler _sampler = new();
 
-    private VoicePeer? _peer;
+    private IVoicePeer? _peer;
     private TransportParameters? _transportParameters;
-    private Timer? _levelsTimer;
+    private Timer? _statsTimer;
     private bool _isVoiceMuted;
+
+    // libwebrtc measures the microphone before the track that mutes it, so a muted one still reads loud
+    private bool _isMicrophoneMuted;
     private bool _isDisposed;
     private bool _isNegotiating;
     private bool _isNegotiationPending;
@@ -56,15 +61,29 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     public event Action<DtlsParameters>? LocalDtlsParametersReady;
     public event Action<WebRTCConnectionState>? ConnectionStateChanged;
     public event Action<int, bool>? SpeakingChanged;
-    public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
+    // No screen is watched, so no frame ever comes
+    public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady
+    {
+        add { }
+        remove { }
+    }
+
     public event Action<IReadOnlyList<string>>? InboundsReady;
     public event Action<TransportStatsSample>? StatsSampled;
 
     public WebRTCConnectionState ConnectionState { get; private set; } = WebRTCConnectionState.New;
 
-    public AndroidWebRTCTransport(int sessionId, ILogger<AndroidWebRTCTransport> logger)
+    /// <param name="createPeer">Creates the peer of the platform, which reports to the listener it is given.</param>
+    /// <param name="isPlaybackEnabled">
+    /// Whether the voices are heard. libwebrtc plays every voice it receives, so without playback they
+    /// are played silent.
+    /// </param>
+    public VoiceTransport(int sessionId, Func<IVoicePeerListener, IVoicePeer> createPeer, ILogger<VoiceTransport> logger,
+        bool isPlaybackEnabled = true)
     {
         _sessionId = sessionId;
+        _isPlaybackEnabled = isPlaybackEnabled;
+        _createPeer = createPeer;
         _logger = logger;
     }
 
@@ -76,18 +95,17 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
                 return false;
 
             _transportParameters = transportParameters;
-            _peer = new VoicePeer(new PeerListener(this));
+            _peer = _createPeer(new PeerListener(this));
         }
 
-        VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, true);
-        _levelsTimer = new Timer(_ => RequestLevels(), null, LevelsInterval, LevelsInterval);
+        _statsTimer = new Timer(_ => RequestStats(), null, StatsInterval, StatsInterval);
 
         return Negotiate();
     }
 
     public void Disconnect()
     {
-        VoicePeer? peer;
+        IVoicePeer? peer;
 
         lock (_lock)
         {
@@ -100,7 +118,7 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
 
     public void Dispose()
     {
-        VoicePeer? peer;
+        IVoicePeer? peer;
 
         lock (_lock)
         {
@@ -115,18 +133,16 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
         Close(peer);
     }
 
-    private void Close(VoicePeer? peer)
+    private void Close(IVoicePeer? peer)
     {
-        _levelsTimer?.Dispose();
-        _levelsTimer = null;
+        _statsTimer?.Dispose();
+        _statsTimer = null;
         _connected.TrySetResult(false);
 
         if (peer == null)
             return;
 
-        peer.Close();
         peer.Dispose();
-        VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, false);
         ReportEveryoneSilent();
     }
 
@@ -223,7 +239,7 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     private void ApplyVolumes()
     {
         List<(string Mid, double Volume)> volumes;
-        VoicePeer? peer;
+        IVoicePeer? peer;
 
         lock (_lock)
         {
@@ -242,20 +258,39 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     }
 
     private double GetVolume(InboundTrack inbound) =>
-        _isVoiceMuted && inbound.SourceType == MediaSourceType.Microphone
+        !_isPlaybackEnabled || (_isVoiceMuted && inbound.SourceType == MediaSourceType.Microphone)
             ? 0
             : _volumes.GetValueOrDefault((inbound.UserId, inbound.SourceType), 1.0);
 
     public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
         NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
     {
-        // Only the microphone: there is nothing else to capture sound from here
+        // Only the microphone: the sound of a screen goes with the screen
         if (outbound.MediaType != MediaType.Audio || outbound.SourceType != MediaSourceType.Microphone)
             return false;
 
+        IVoicePeer? peer;
+
         lock (_lock)
         {
-            if (_peer == null || !_outbounds.TryAdd(outbound.Id, outbound))
+            peer = _peer;
+
+            if (peer == null || _outbounds.ContainsKey(outbound.Id))
+                return false;
+        }
+
+        // Never inside the lock: the peer waits for the threads of libwebrtc, and its callbacks on
+        // them wait for the lock
+        if (!peer.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled))
+            return false;
+
+        peer.SetMicrophoneVolume(volume);
+        peer.SetVoiceGate(voiceGate);
+        peer.SetMicrophoneEnabled(true);
+
+        lock (_lock)
+        {
+            if (_peer != peer || !_outbounds.TryAdd(outbound.Id, outbound))
                 return false;
 
             var slot = _slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Carries(outbound.MimeType));
@@ -264,7 +299,7 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
                 _slots.Add(slot = new Slot { IsSend = true });
 
             slot.OutboundId = outbound.Id;
-            _peer.SetMicrophoneEnabled(true);
+            _isMicrophoneMuted = false;
         }
 
         LogOutboundStarted(_sessionId, outbound.SSRC);
@@ -276,6 +311,9 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
 
     public void StopOutbound(string outboundId)
     {
+        IVoicePeer? peer;
+        bool isLast;
+
         lock (_lock)
         {
             if (!_outbounds.Remove(outboundId))
@@ -283,35 +321,44 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
 
             foreach (var slot in _slots.Where(slot => slot.OutboundId == outboundId))
                 slot.OutboundId = null;
+
+            peer = _peer;
+            isLast = _outbounds.Count == 0;
         }
+
+        if (isLast)
+            peer?.SetVoiceGate(null);
 
         Negotiate();
     }
 
     public bool SetOutboundMuted(string outboundId, bool isMuted)
     {
+        if (FindOutboundPeer(outboundId) is not { } peer)
+            return false;
+
         lock (_lock)
-        {
-            if (_peer == null || !_outbounds.ContainsKey(outboundId))
-                return false;
+            _isMicrophoneMuted = isMuted;
 
-            _peer.SetMicrophoneEnabled(!isMuted);
-            return true;
-        }
+        peer.SetMicrophoneEnabled(!isMuted);
+        return true;
     }
 
-    // libwebrtc processes the microphone itself: its own gain control, noise suppression and echo cancelling
-    public void SetOutboundVolume(string outboundId, double volume)
-    {
-    }
+    public void SetOutboundVolume(string outboundId, double volume) =>
+        FindOutboundPeer(outboundId)?.SetMicrophoneVolume(volume);
 
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled)
-    {
-    }
+        bool isEchoCancellationEnabled) =>
+        FindOutboundPeer(outboundId)?.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled);
 
-    public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate)
+    public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate) =>
+        FindOutboundPeer(outboundId)?.SetVoiceGate(voiceGate);
+
+    /// <summary>The peer, while it sends the track.</summary>
+    private IVoicePeer? FindOutboundPeer(string outboundId)
     {
+        lock (_lock)
+            return _outbounds.ContainsKey(outboundId) ? _peer : null;
     }
 
     /// <summary>
@@ -320,10 +367,10 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     /// </summary>
     private bool Negotiate()
     {
-        VoicePeer peer;
+        IVoicePeer peer;
         string offer;
-        string[] sendMids;
-        long[] sendSsrcs;
+        List<string> sendMids;
+        List<uint> sendSsrcs;
 
         lock (_lock)
         {
@@ -347,8 +394,8 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
 
             _roundSections = sections;
             offer = SdpBuilder.Build(_transportParameters, sections);
-            sendMids = sends.Select(item => item.section.Mid).ToArray();
-            sendSsrcs = sends.Select(item => (long)_outbounds[item.Outbound!].SSRC).ToArray();
+            sendMids = sends.Select(item => item.section.Mid).ToList();
+            sendSsrcs = sends.Select(item => _outbounds[item.Outbound!].SSRC).ToList();
         }
 
         LogRemoteDescription(_sessionId, offer);
@@ -386,7 +433,7 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
             {
                 if (slot.OutboundId != null && _outbounds.TryGetValue(slot.OutboundId, out var outbound))
                 {
-                    slot.LastCodec = RtpCodec.FromOutbound(outbound);
+                    slot.LastCodec = SendCodec(outbound);
                     return new SdpMediaSection { Mid = mid, Kind = "audio", Direction = SdpDirection.RecvOnly, Codec = slot.LastCodec };
                 }
             }
@@ -413,6 +460,17 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
             };
         }).ToList();
     }
+
+    /// <summary>
+    /// The codec of a section we send in. libwebrtc encodes by what the receiver asks for in its
+    /// description, and the receiver here is the SFU, described by us: so the format parameters of
+    /// the section are what sets FEC, DTX and the bitrate of our voice.
+    /// </summary>
+    private static RtpCodec SendCodec(OutboundTrack outbound) => RtpCodec.FromOutbound(outbound) with
+    {
+        FormatParameters = string.Create(CultureInfo.InvariantCulture,
+            $"minptime=10;useinbandfec={(outbound.IsFecEnabled ? 1 : 0)};usedtx={(outbound.IsDtxEnabled ? 1 : 0)};maxaveragebitrate={VoiceBitrate}")
+    };
 
     private void OnNegotiated(string localSdp)
     {
@@ -520,46 +578,36 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
         return new DtlsParameters(role, [new DtlsFingerprint(algorithm, fingerprint)]);
     }
 
-    private void OnConnectionChanged(string state)
+    private void OnConnectionChanged(WebRTCConnectionState state)
     {
-        var mapped = state switch
-        {
-            "NEW" => WebRTCConnectionState.New,
-            "CONNECTING" => WebRTCConnectionState.Connecting,
-            "CONNECTED" => WebRTCConnectionState.Connected,
-            "DISCONNECTED" => WebRTCConnectionState.Disconnected,
-            "FAILED" => WebRTCConnectionState.Failed,
-            _ => WebRTCConnectionState.Closed
-        };
-
         LogConnectionState(_sessionId, state);
 
-        if (mapped == ConnectionState)
+        if (state == ConnectionState)
             return;
 
-        ConnectionState = mapped;
+        ConnectionState = state;
 
-        if (mapped == WebRTCConnectionState.Connected)
+        if (state == WebRTCConnectionState.Connected)
             _connected.TrySetResult(true);
-        else if (mapped is WebRTCConnectionState.Failed or WebRTCConnectionState.Closed)
+        else if (state is WebRTCConnectionState.Failed or WebRTCConnectionState.Closed)
             _connected.TrySetResult(false);
 
-        if (mapped != WebRTCConnectionState.Connected)
+        if (state != WebRTCConnectionState.Connected)
             ReportEveryoneSilent();
 
-        ConnectionStateChanged?.Invoke(mapped);
+        ConnectionStateChanged?.Invoke(state);
     }
 
-    private void RequestLevels()
+    private void RequestStats()
     {
-        VoicePeer? peer;
+        IVoicePeer? peer;
 
         lock (_lock)
             peer = _peer;
 
         try
         {
-            peer?.RequestLevels();
+            peer?.RequestStats();
         }
         catch (Exception)
         {
@@ -567,11 +615,37 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
         }
     }
 
+    private void OnStats(VoiceStats stats)
+    {
+        UpdateSpeaking(stats.Levels);
+
+        TransportStatsSample? sample;
+
+        lock (_lock)
+        {
+            sample = stats.Streams is { } streams
+                ? _sampler.Read(streams, FindInbound, ssrc => _outbounds.Values.Any(outbound => outbound.SSRC == ssrc))
+                : null;
+        }
+
+        if (sample is { } reading)
+        {
+            if (_logger.IsEnabled(LogLevel.Debug))
+                LogStatsSample(_sessionId, reading.RoundTripMs ?? 0, reading.InboundLossPercent, reading.OutboundLossPercent,
+                    reading.IsOverTcp, string.Join(", ", reading.Inbound?.Select(stream =>
+                        $"user {stream.UserId}: {stream.Packets} packets, jitter {stream.JitterMs:F0} ms") ?? []));
+            StatsSampled?.Invoke(reading);
+        }
+    }
+
+    // Only inside the lock
+    private InboundTrack? FindInbound(uint ssrc) => _inbounds.Values.FirstOrDefault(inbound => inbound.SSRC == ssrc);
+
     /// <summary>
     /// Turns the levels of the sections into who speaks: the others by the sections of their voices,
     /// ourselves by the microphone.
     /// </summary>
-    private void OnLevels(string levels)
+    private void UpdateSpeaking(IReadOnlyList<VoiceLevel> levels)
     {
         var now = Environment.TickCount64;
         var holdUntil = now + (long)SpeakingHold.TotalMilliseconds;
@@ -579,17 +653,14 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
 
         lock (_lock)
         {
-            foreach (var item in levels.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var (mid, level) in levels)
             {
-                var parts = item.Split('=', 2);
-
-                if (parts.Length != 2 || !double.TryParse(parts[1], CultureInfo.InvariantCulture, out var level) ||
-                    level < SpeakingLevel)
+                if (level < SpeakingLevel)
                     continue;
 
-                int? userId = parts[0] == "local"
-                    ? _outbounds.Values.FirstOrDefault()?.UserId
-                    : int.TryParse(parts[0], CultureInfo.InvariantCulture, out var mline) && mline < _slots.Count &&
+                int? userId = mid == null
+                    ? _isMicrophoneMuted ? null : _outbounds.Values.FirstOrDefault()?.UserId
+                    : int.TryParse(mid, CultureInfo.InvariantCulture, out var mline) && mline < _slots.Count &&
                       _slots[mline].InboundId is { } inboundId && _inbounds.TryGetValue(inboundId, out var inbound) &&
                       inbound.SourceType == MediaSourceType.Microphone
                         ? inbound.UserId
@@ -633,18 +704,18 @@ internal sealed partial class AndroidWebRTCTransport : IWebRTCTransport
     }
 
     /// <summary>
-    /// Passes the calls of VoicePeer on; they come on the threads of libwebrtc, where an exception
+    /// Passes the calls of the peer on; they come on the threads of libwebrtc, where an exception
     /// would tear the process down.
     /// </summary>
-    private sealed class PeerListener(AndroidWebRTCTransport transport) : Java.Lang.Object, VoicePeer.IListener
+    private sealed class PeerListener(VoiceTransport transport) : IVoicePeerListener
     {
-        public void OnConnectionChanged(string? state) => Run(() => transport.OnConnectionChanged(state ?? string.Empty));
+        public void OnConnectionChanged(WebRTCConnectionState state) => Run(() => transport.OnConnectionChanged(state));
 
-        public void OnNegotiated(string? localSdp) => Run(() => transport.OnNegotiated(localSdp ?? string.Empty));
+        public void OnNegotiated(string localSdp) => Run(() => transport.OnNegotiated(localSdp));
 
-        public void OnFailed(string? error) => Run(() => transport.OnNegotiationFailed(error ?? "unknown"));
+        public void OnFailed(string error) => Run(() => transport.OnNegotiationFailed(error));
 
-        public void OnLevels(string? levels) => Run(() => transport.OnLevels(levels ?? string.Empty));
+        public void OnStats(VoiceStats stats) => Run(() => transport.OnStats(stats));
 
         private void Run(Action action)
         {
