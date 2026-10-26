@@ -40,6 +40,12 @@ public partial class ActiveHybridSessionVM
     private async Task ToggleAfk()
     {
         var isAfk = !_hybridSession.IsAfk;
+
+        // Back, the voices and the microphone return while the mark of being away still stands for them,
+        // so neither we nor the others see them blink off between the answers of the server
+        if (!isAfk)
+            await RestoreAfterAfkAsync();
+
         var result = await _hybridSession.SetAfkAsync(isAfk, isAfk ? StatusBar.AfkReasonDraft : null);
 
         ShowAfk();
@@ -54,8 +60,6 @@ public partial class ActiveHybridSessionVM
 
         if (isAfk)
             await SilenceForAfkAsync();
-        else
-            await RestoreAfterAfkAsync();
     }
 
     // Not remembered as the choice of the user: the voices and the microphone are only off for as long as the user is away
