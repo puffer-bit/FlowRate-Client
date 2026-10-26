@@ -133,6 +133,11 @@ public interface IHybridSession : IDisposable
     bool IsWatchingScreen(int userId);
 
     /// <summary>
+    /// The screen of the user is watched and comes with its sound.
+    /// </summary>
+    bool HasWatchedScreenAudio(int userId);
+
+    /// <summary>
     /// Raised with a user id when we start or stop watching the screen of the user. Watching ends on
     /// its own when the user stops showing, leaves, or our transport is rebuilt. Raised on any thread.
     /// </summary>

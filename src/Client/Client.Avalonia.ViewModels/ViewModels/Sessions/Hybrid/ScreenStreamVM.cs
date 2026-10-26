@@ -1,7 +1,9 @@
 using Client.Services;
 using System;
+using System.Collections.Generic;
 using Client.Application.Coordinator.Users;
 using Client.Core.Media;
+using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -41,8 +43,33 @@ public sealed class ScreenStreamVM : ReactiveObject
     public bool IsWatched
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            if (field == value)
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+
+            // What was wrong with the stream before tells nothing about it once watched again
+            _analyzer = null;
+            Issues = [];
+        }
     }
+
+    /// <summary>
+    /// What is wrong with the watched stream, one badge per area over the picture.
+    /// </summary>
+    public IReadOnlyList<StreamIssue> Issues
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
+    /// <summary>
+    /// Reads the counters of the frames the picture got, or null while nothing draws it. Set by the
+    /// view that draws the stream, which alone knows how many of them it dropped.
+    /// </summary>
+    public Func<FrameStats?>? ReadFrameStats { get; set; }
 
     /// <summary>
     /// The server was asked to start or stop the stream and has not answered yet.
@@ -138,6 +165,9 @@ public sealed class ScreenStreamVM : ReactiveObject
 
     private readonly IPeerPlaybackService _playbackService;
 
+    // Started with the first reading of the transport after watching starts
+    private StreamHealthAnalyzer? _analyzer;
+
     // Set while the settings come from the service, so they are not sent back to it
     private bool _isApplyingPlayback;
 
@@ -209,6 +239,26 @@ public sealed class ScreenStreamVM : ReactiveObject
     public void ToggleOverdrive() => IsOverdriveEnabled = !IsOverdriveEnabled;
 
     public void PushFrame(RawVideoFrame frame) => FrameReady?.Invoke(frame);
+
+    /// <summary>
+    /// Takes a reading of the transport statistics into what is wrong with the stream.
+    /// </summary>
+    /// <param name="isAudioExpected">The screen is watched with its sound.</param>
+    /// <param name="now">The time of the reading, on a clock that only goes forward.</param>
+    public void Analyze(TransportStatsSample sample, bool isAudioExpected, TimeSpan now)
+    {
+        if (!IsWatched || IsSelf)
+            return;
+
+        if (_analyzer == null)
+        {
+            _analyzer = new StreamHealthAnalyzer(UserId, now);
+            return;
+        }
+
+        if (_analyzer.Update(sample, ReadFrameStats?.Invoke(), isAudioExpected, now))
+            Issues = _analyzer.Issues;
+    }
 
     public void Clear() => Cleared?.Invoke();
 }
