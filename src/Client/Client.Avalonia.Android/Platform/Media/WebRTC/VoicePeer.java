@@ -41,6 +41,9 @@ public final class VoicePeer {
     }
 
     private static PeerConnectionFactory factory;
+    private static int communicationUsers;
+    private static int previousMode;
+    private static boolean previousSpeakerphone;
 
     private final Listener listener;
     private final PeerConnection connection;
@@ -64,17 +67,36 @@ public final class VoicePeer {
                 .setUseHardwareNoiseSuppressor(true)
                 .createAudioDeviceModule();
 
-        factory = PeerConnectionFactory.builder()
-                .setAudioDeviceModule(audioDevices)
-                .createPeerConnectionFactory();
+        try {
+            factory = PeerConnectionFactory.builder()
+                    .setAudioDeviceModule(audioDevices)
+                    .createPeerConnectionFactory();
+        } finally {
+            // The factory holds its own native reference.
+            audioDevices.release();
+        }
     }
 
     /** Routes the sound for a call, on the loudspeaker, or gives it back to the media. */
-    public static void setCommunicationMode(Context context, boolean isOn) {
+    public static synchronized void setCommunicationMode(Context context, boolean isOn) {
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 
-        audio.setMode(isOn ? AudioManager.MODE_IN_COMMUNICATION : AudioManager.MODE_NORMAL);
-        audio.setSpeakerphoneOn(isOn);
+        if (isOn) {
+            if (communicationUsers++ != 0)
+                return;
+
+            previousMode = audio.getMode();
+            previousSpeakerphone = audio.isSpeakerphoneOn();
+            audio.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audio.setSpeakerphoneOn(true);
+        } else {
+            // A replacement peer can start before the previous one finishes closing.
+            if (communicationUsers == 0 || --communicationUsers != 0)
+                return;
+
+            audio.setSpeakerphoneOn(previousSpeakerphone);
+            audio.setMode(previousMode);
+        }
     }
 
     public VoicePeer(Listener listener) {
