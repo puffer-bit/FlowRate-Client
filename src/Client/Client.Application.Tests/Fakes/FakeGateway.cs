@@ -47,6 +47,18 @@ public class FakeGateway : DispatchProxy
     /// <summary>The users banned, frozen, reinstated or deleted, with the state asked; null for a deletion.</summary>
     public List<(int UserId, UserState? State)> ModerationRequests { get; } = [];
 
+    /// <summary>What the server asks for after the identity; null lets the user in at once.</summary>
+    public LoginChallenge? Challenge { get; set; }
+
+    /// <summary>The account password the second login stage takes.</summary>
+    public string? AccountPassword { get; set; }
+
+    /// <summary>The one-time code the second login stage takes.</summary>
+    public string? TwoFactorCode { get; set; }
+
+    /// <summary>The answers to the second login stage, as they came.</summary>
+    public List<(string? Password, string? Code)> SecondStageAnswers { get; } = [];
+
     /// <summary>The roles of the user who logs in.</summary>
     public IReadOnlyList<int> UserRoleIds { get; set; } = [];
 
@@ -136,6 +148,22 @@ public class FakeGateway : DispatchProxy
         return new MediaUploadOutcome(MediaTransferResult.NoError, id);
     }
 
+    private UserModel LoggedInUser() =>
+        new() { Id = 1, CoordinatorInstanceId = CoordinatorId, Username = "alice", RoleIds = UserRoleIds };
+
+    private AuthenticationResult FinishLogin(string? password, string? code)
+    {
+        SecondStageAnswers.Add((password, code));
+
+        var isProven = Challenge != null
+                       && (!Challenge.AsksPassword || password == AccountPassword)
+                       && (!Challenge.AsksTwoFactorCode || code == TwoFactorCode);
+
+        return isProven
+            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null)
+            : new AuthenticationResult(AuthResult.AuthFailed, null, null);
+    }
+
     private void Enter()
     {
         if (Interlocked.Increment(ref _runningCalls) > 1)
@@ -181,10 +209,17 @@ public class FakeGateway : DispatchProxy
                 return CheckAsync((TimeSpan)args![0]!);
             case nameof(ICoordinatorGateway.AuthenticateAsync) when LoginResult != AuthResult.Success:
                 return Task.FromResult(new AuthenticationResult(LoginResult, null, null));
+            case nameof(ICoordinatorGateway.AuthenticateAsync) when Challenge != null:
+                return Task.FromResult(new AuthenticationResult(AuthResult.SecondStageRequeried, null, null, Challenge));
             case nameof(ICoordinatorGateway.AuthenticateAsync):
-                return Task.FromResult(new AuthenticationResult(AuthResult.Success,
-                    new UserModel { Id = 1, CoordinatorInstanceId = CoordinatorId, Username = "alice", RoleIds = UserRoleIds },
-                    "#identity"));
+                return Task.FromResult(new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity"));
+            case nameof(ICoordinatorGateway.FinishLoginAsync):
+                return Task.FromResult(FinishLogin((string?)args![0], (string?)args[1]));
+            case nameof(ICoordinatorGateway.SetAccountPassword):
+                AccountPassword = (string?)args![1];
+                Challenge = AccountPassword == null ? null : new LoginChallenge(true, false, false);
+                return Task.FromResult<(UserSecurityResult, AccountSecurity?)>((UserSecurityResult.NoError,
+                    new AccountSecurity(AccountPassword != null, false, false, false, [])));
             case nameof(ICoordinatorGateway.GetCoordinatorInfo):
                 return Task.FromResult<CoordinatorSessionModel?>(new CoordinatorSessionModel { Id = CoordinatorId, Name = "Test" });
             case nameof(ICoordinatorGateway.RegisterPushToken):

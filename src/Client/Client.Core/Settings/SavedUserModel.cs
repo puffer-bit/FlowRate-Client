@@ -6,7 +6,11 @@ public class SavedUserModel
     public string UserIdentity { get; init; } = string.Empty;
     public string Username { get; init; } = string.Empty;
     
+    /// <summary>The password of the server.</summary>
     public string? Password { get; init; }
+
+    /// <summary>The password of the user's account, kept when the user asked to remember it.</summary>
+    public string? AccountPassword { get; init; }
     public string CoordinatorId { get; init; } = string.Empty;
 
     /// <summary>

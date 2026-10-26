@@ -200,6 +200,10 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<CreateSessionWindowVM, RxVoid> ShowCreateSessionWindow { get; } = new();
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
     public Interaction<UserProfileWindowVM, RxVoid> ShowUserProfileWindow { get; } = new();
+    public Interaction<AccountSecurityVM, RxVoid> ShowAccountSecurityWindow { get; } = new();
+
+    /// <summary>Asks for the account password or a one-time code when a login or a reconnect needs them.</summary>
+    public Interaction<LoginPromptVM, LoginAnswer?> AskLogin { get; } = new();
     public Interaction<HybridSessionSettingsWindowVM, RxVoid> ShowHybridSessionSettingsWindow { get; } = new();
     public Interaction<SessionPermissionsWindowVM, RxVoid> ShowSessionPermissionsWindow { get; } = new();
 
@@ -225,6 +229,7 @@ public partial class MainWindowVM : ReactiveObject
     private readonly ICoordinatorFactory _coordinatorFactory;
     private readonly ApplicationLoader _applicationLoader;
     private readonly IBehaviorService _behaviorService;
+    private readonly IAccountingService _accounting;
     private readonly IAvatarService _avatars;
     private readonly PushRegistration _pushRegistration;
     private readonly ChatSessionServices _chatServices;
@@ -235,6 +240,7 @@ public partial class MainWindowVM : ReactiveObject
 
     public MainWindowVM(
         IBehaviorService behaviorService,
+        IAccountingService accounting,
         ICoordinatorFactory coordinatorFactory,
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
@@ -254,6 +260,7 @@ public partial class MainWindowVM : ReactiveObject
         Func<SettingsWindowVM> createSettings)
     {
         _behaviorService = behaviorService;
+        _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
         _avatars = avatars;
@@ -270,7 +277,7 @@ public partial class MainWindowVM : ReactiveObject
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
-            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow);
+            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
@@ -308,7 +315,7 @@ public partial class MainWindowVM : ReactiveObject
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
-            OpenServerSettingsCommand, DisconnectCommand, Access);
+            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access);
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(

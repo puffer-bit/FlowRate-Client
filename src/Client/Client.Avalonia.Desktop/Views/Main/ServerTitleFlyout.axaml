@@ -82,6 +82,10 @@
                               IsVisible="{Binding Access.CanOpenServerSettings}"
                               Command="{Binding OpenSettingsCommand}"/>
 
+        <menus:MenuItemButton Icon="{StaticResource KeyIcon}" Content="{l:Text accountSecurity.open}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding ManageSecurityCommand}"/>
+
         <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
                               menus:FlyoutMenu.CloseOnClick="True"
                               Click="CopyAddress_Click"/>

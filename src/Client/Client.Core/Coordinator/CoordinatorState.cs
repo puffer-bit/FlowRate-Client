@@ -8,6 +8,7 @@ public enum CoordinatorState
     Connected = 3,
     Disconnected = 4,
     Canceled = 5,
+    /// <summary>The login needs the password or a one-time code, and the user gave it up.</summary>
     AuthenticationNeeded = 6,
     AuthenticationFailed = 7,
     /// <summary>The user is banned from the coordinator.</summary>
@@ -30,5 +31,8 @@ public enum CoordinatorState
     ClientOutdated = 18,
 
     /// <summary>The server speaks an older protocol than this client; the server needs an update.</summary>
-    ServerOutdated = 19
+    ServerOutdated = 19,
+
+    /// <summary>The account logs in with passkeys alone, which this client cannot use.</summary>
+    PasskeyRequired = 20
 }

@@ -99,11 +99,16 @@ public class ServerTitleVM : ReactiveObject
 
     public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
 
+    /// <summary>What the current user logs in with on this server: the password, one-time codes and passkeys.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ManageSecurityCommand { get; }
+
     public ServerTitleVM(ReactiveCommand<RxVoid, RxVoid> createSessionCommand,
         ReactiveCommand<RxVoid, RxVoid> createCategoryCommand,
         ReactiveCommand<RxVoid, RxVoid> openSettingsCommand,
-        ReactiveCommand<RxVoid, RxVoid> disconnectCommand, AccessVM access)
+        ReactiveCommand<RxVoid, RxVoid> disconnectCommand,
+        ReactiveCommand<RxVoid, RxVoid> manageSecurityCommand, AccessVM access)
     {
+        ManageSecurityCommand = manageSecurityCommand;
         Access = access;
         OpenSettingsCommand = openSettingsCommand;
         CreateSessionCommand = createSessionCommand;
