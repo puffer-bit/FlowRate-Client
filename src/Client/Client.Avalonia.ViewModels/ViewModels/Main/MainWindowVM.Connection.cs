@@ -11,7 +11,9 @@ using Client.Core.Coordinator;
 using Client.Core.Settings;
 using Client.Core.Users;
 using Client.Services;
+using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
+using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
@@ -43,7 +45,9 @@ public partial class MainWindowVM
 
         await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
-        await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password);
+        LoginPromptVM.Attach(session, AskLogin);
+        await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
+            user.AccountPassword);
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -55,19 +59,28 @@ public partial class MainWindowVM
             }
 
             await StatusLine.SetAsync(Connecting, true);
-            await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password);
+            await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
+                user.AccountPassword);
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)
         {
             await SetStatus("main.status.connectionFailed", false);
-            await ShowMessageBox.Handle(session.ConnectionStatus == CoordinatorState.CoordinatorMismatch
-                ? CertificateTrustMessages.CreateMismatchMessage(session.CoordinatorMismatch)
-                : new MessageBoxVM(Icon.Error, Buttons.Ok,
-                    Strings.Get("main.autoConnect.failed"), Strings.Get("main.autoConnect.failedTitle")));
+            // Given up by the user: there is nothing to tell them
+            if (session.ConnectionStatus != CoordinatorState.AuthenticationNeeded)
+                await ShowMessageBox.Handle(session.ConnectionStatus == CoordinatorState.CoordinatorMismatch
+                    ? CertificateTrustMessages.CreateMismatchMessage(session.CoordinatorMismatch)
+                    : new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get(session.ConnectionStatus == CoordinatorState.PasskeyRequired
+                            ? "connect.failed.passkeyRequired"
+                            : "main.autoConnect.failed"), Strings.Get("main.autoConnect.failedTitle")));
             session.Dispose();
             return;
         }
+
+        // The password may have been typed, or found changed, on the way
+        if (session.AccountPasswordToSave != user.AccountPassword)
+            await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
 
         _coordinatorSession = session;
         await FinalizeCoordinatorConnection();
@@ -112,7 +125,10 @@ public partial class MainWindowVM
     private async Task FinalizeCoordinatorConnection()
     {
         var session = _coordinatorSession!;
+        LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
+            .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
+                () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
@@ -132,6 +148,28 @@ public partial class MainWindowVM
     }
 
     private void UnsubscribeFromCoordinator() => _coordinatorSubscriptions.Clear();
+
+    // Raised on the thread of a login or of a change in the profile
+    private void OnAccountPasswordToSaveChanged(string? password)
+    {
+        if (_coordinatorSession is not { CoordinatorModel.Id: var coordinatorId } session)
+            return;
+
+        var userId = session.GetCurrentUser().Id;
+        _ = SaveAccountPasswordAsync(coordinatorId, userId, password);
+    }
+
+    private async Task SaveAccountPasswordAsync(string coordinatorId, int userId, string? password)
+    {
+        try
+        {
+            await _accounting.SetAccountPasswordAsync(coordinatorId, userId, password);
+        }
+        catch (Exception e)
+        {
+            LogAccountPasswordSaveFailed(e, coordinatorId);
+        }
+    }
 
     private async Task RestoreCoordinatorData()
     {
@@ -440,6 +478,13 @@ public partial class MainWindowVM
             // Only a reconnect reports it here, after the server rejected the credentials
             case CoordinatorState.AuthenticationFailed:
                 PostDisconnect(Strings.Get("main.reconnect.loginRejected"));
+                return;
+            // Only a reconnect reports it here: the user gave up the password or code it asked for
+            case CoordinatorState.AuthenticationNeeded:
+                PostDisconnect(Strings.Get("main.reconnect.loginGivenUp"));
+                return;
+            case CoordinatorState.PasskeyRequired:
+                PostDisconnect(Strings.Get("main.reconnect.passkeyRequired"));
                 return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:

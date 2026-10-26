@@ -145,7 +145,46 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     event Action<int, TimeSpan>? ReconnectScheduled;
 
-    Task Connect(string address, int port, string? userIdentity, string? password);
+    /// <param name="password">The password of the server.</param>
+    /// <param name="accountPassword">
+    /// The password of the user's account kept with the saved identity; it finishes the login without asking.
+    /// </param>
+    Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null);
+
+    /// <summary>
+    /// Asks the user for the account password or a one-time code when a login, a reconnect too, needs them.
+    /// Without it such a login ends with <see cref="CoordinatorState.AuthenticationNeeded"/>. Called on a thread
+    /// of the pool.
+    /// </summary>
+    LoginPromptHandler? LoginPrompt { get; set; }
+
+    /// <summary>
+    /// The account password to keep with the saved identity: the one the user logs in with, when they asked
+    /// to remember it. Null when nothing is to be kept.
+    /// </summary>
+    string? AccountPasswordToSave { get; }
+
+    /// <summary>
+    /// Raised when <see cref="AccountPasswordToSave"/> changes: a login with another password, the password
+    /// changed or removed in the profile. Raised on any thread.
+    /// </summary>
+    event Action<string?>? AccountPasswordToSaveChanged;
+
+    /// <summary>What the current user logs in with.</summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity();
+
+    /// <summary>
+    /// Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null. The
+    /// next reconnect logs in with the new one.
+    /// </summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+        string? newPassword);
+
+    /// <summary>Offers a secret for an authenticator app; <see cref="EnableTwoFactor"/> turns the codes on with it.</summary>
+    Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof, int passkeyId);
 
     /// <summary>
     /// The certificate that stopped the last connect or reconnect with

@@ -81,6 +81,10 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
                 ViewModel!.ShowUserProfileWindow
                     .RegisterDialogHandler(this, () => new UserProfileView())
                     .DisposeWith(disposables);
+                ViewModel!.ShowAccountSecurityWindow
+                    .RegisterDialogHandler(this, () => new AccountSecurityView())
+                    .DisposeWith(disposables);
+                ViewModel!.AskLogin.RegisterLoginPromptHandler(this).DisposeWith(disposables);
                 ViewModel!.ShowHybridSessionSettingsWindow
                     .RegisterDialogHandler(this, () => new HybridSessionSettingsView())
                     .DisposeWith(disposables);
