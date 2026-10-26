@@ -185,6 +185,8 @@
 
                     <Separator/>
 
+                    <menus:MenuItemButton Icon="{StaticResource KeyIcon}" Content="{l:Text accountSecurity.open}"
+                                          Click="OnManageSecurityClick"/>
                     <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
                                           Click="OnCopyAddressClick"/>
 

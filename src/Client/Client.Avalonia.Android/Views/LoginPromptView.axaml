@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:connectVm="clr-namespace:Client.ViewModels.Connections;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Droid.Views.LoginPromptView"
+             x:DataType="connectVm:LoginPromptVM"
+             Background="{DynamicResource DialogBackdropBrush}"
+             anim:Presence.Appear="Fade"
+             anim:Presence.Duration="Short">
+
+    <UserControl.Styles>
+        <Style Selector="TextBox">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Modal like a message box: the backdrop takes the pointer input -->
+    <Border Margin="20"
+            MaxWidth="480"
+            VerticalAlignment="Center"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DialogBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            BoxShadow="{DynamicResource DialogShadow}"
+            anim:Presence.Appear="Grow"
+            anim:Presence.Duration="Short">
+        <Grid RowDefinitions="Auto, *, Auto">
+            <TextBlock Grid.Row="0" Text="{l:Text loginPrompt.title}" FontSize="17" FontWeight="SemiBold"
+                       TextWrapping="Wrap" Margin="20,16,20,0"/>
+
+            <ScrollViewer Grid.Row="1" Margin="0,12,0,0">
+                <StackPanel Margin="20,0" Spacing="12">
+                    <TextBlock TextWrapping="Wrap" Text="{Binding Text}"/>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding IsPasswordAsked}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text loginPrompt.password}"/>
+                        <TextBox Classes="password"
+                                 Text="{Binding Password}"
+                                 RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"
+                                 Classes.invalid="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <CheckBox IsChecked="{Binding RememberPassword}" Content="{l:Text loginPrompt.remember}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding IsCodeAsked}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text loginPrompt.code}"/>
+                        <TextBox Text="{Binding Code}"
+                                 MaxLength="12"
+                                 PlaceholderText="000000"
+                                 TextInputOptions.ContentType="Digits"
+                                 Classes.invalid="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text loginPrompt.code.hint}"/>
+                    </StackPanel>
+
+                    <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
+                               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- The answer asked for is the filled button and stands last, under the right thumb -->
+            <UniformGrid Grid.Row="2" Rows="1" Margin="12,20,12,16">
+                <Button Command="{Binding CancelCommand}" Margin="4,0" MinHeight="46" CornerRadius="8"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                    <TextBlock Text="{l:Text common.cancel}" FontSize="15" FontWeight="SemiBold"/>
+                </Button>
+                <Button Classes="primary" Command="{Binding ConfirmCommand}" Margin="4,0" MinHeight="46" CornerRadius="8"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                    <TextBlock Text="{l:Text loginPrompt.confirm}" FontSize="15" FontWeight="SemiBold"/>
+                </Button>
+            </UniformGrid>
+        </Grid>
+    </Border>
+</UserControl>
