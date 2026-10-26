@@ -40,7 +40,10 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
             }
 
             if (_isLoaded == true)
+            {
                 LogLoaded();
+                SelectPlayoutDevice();
+            }
 
             return _isLoaded.Value;
         }
@@ -59,13 +62,13 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
             if (_isLoaded != true || (deviceId == _recordingDeviceId && deviceId != null))
                 return;
 
-            var available = ReadRecordingDevices();
-            var index = deviceId == null ? 0 : FindDevice(available, deviceId);
+            var available = ReadDevices(isRecording: true);
+            var index = deviceId == null ? FindDefault(available, isRecording: true) : FindDevice(available, deviceId);
 
             if (index < 0)
             {
                 LogDeviceMissing(deviceId!, string.Join(", ", available.Select(device => device.Name)));
-                index = 0;
+                index = FindDefault(available, isRecording: true);
             }
 
             NativeMethods.SetRecordingDevice(index);
@@ -74,6 +77,41 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
             if (index < available.Count)
                 LogDeviceSelected(available[index].Name);
         }
+    }
+
+    /// <summary>
+    /// Plays to the default device of the system. libwebrtc left alone plays to the default one for
+    /// communications on Windows, which may be another one: the voices are received, light their
+    /// speaking indicators and go where nobody listens. Chosen before any peer plays.
+    /// </summary>
+    private void SelectPlayoutDevice()
+    {
+        var available = ReadDevices(isRecording: false);
+        var index = FindDefault(available, isRecording: false);
+
+        if (index >= available.Count)
+            return;
+
+        if (NativeMethods.SetPlayoutDevice(index) != 0)
+            LogPlayoutDeviceSelected(available[index].Name);
+        else
+            LogPlayoutDeviceFailed(available[index].Name);
+    }
+
+    // The default device of the system: where libwebrtc gives its id (WASAPI), the device of that id,
+    // and the first one otherwise, which is the default one of PulseAudio
+    private static unsafe int FindDefault(List<(string Name, string Guid)> available, bool isRecording)
+    {
+        const int size = 512;
+        var guid = stackalloc byte[size];
+
+        if (NativeMethods.DefaultDevice(isRecording ? 1 : 0, guid, size) == 0)
+            return 0;
+
+        var id = Marshal.PtrToStringUTF8((nint)guid);
+        var index = available.FindIndex(device => device.Guid == id);
+
+        return index >= 0 ? index : 0;
     }
 
     private int FindDevice(List<(string Name, string Guid)> available, string deviceId)
@@ -94,17 +132,21 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
                 : available.FindIndex(device => device.Name == DefaultPrefix + name);
     }
 
-    private static unsafe List<(string Name, string Guid)> ReadRecordingDevices()
+    private static unsafe List<(string Name, string Guid)> ReadDevices(bool isRecording)
     {
         const int size = 512;
         var name = stackalloc byte[size];
         var guid = stackalloc byte[size];
         var devices = new List<(string, string)>();
-        var count = NativeMethods.RecordingDeviceCount();
+        var count = isRecording ? NativeMethods.RecordingDeviceCount() : NativeMethods.PlayoutDeviceCount();
 
         for (var index = 0; index < count; index++)
         {
-            if (NativeMethods.RecordingDevice(index, name, size, guid, size) == 0)
+            var isRead = isRecording
+                ? NativeMethods.RecordingDevice(index, name, size, guid, size)
+                : NativeMethods.PlayoutDevice(index, name, size, guid, size);
+
+            if (isRead == 0)
                 continue;
 
             devices.Add((Marshal.PtrToStringUTF8((nint)name) ?? string.Empty,
@@ -125,4 +167,10 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
 
     [LoggerMessage(LogLevel.Information, "Microphone of libwebrtc: {Name}")]
     private partial void LogDeviceSelected(string name);
+
+    [LoggerMessage(LogLevel.Information, "Speakers of libwebrtc: {Name}")]
+    private partial void LogPlayoutDeviceSelected(string name);
+
+    [LoggerMessage(LogLevel.Warning, "libwebrtc could not play to {Name}, it keeps its own default")]
+    private partial void LogPlayoutDeviceFailed(string name);
 }
