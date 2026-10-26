@@ -52,6 +52,8 @@ public partial class MainView : UserControl
 
     private ConnectView? _connectView;
     private ProfileView? _profileView;
+    private AccountSecurityView? _securityView;
+    private readonly List<LoginPromptVM> _loginPrompts = [];
     private SettingsView? _settingsView;
     private CreateSessionView? _createSessionView;
     private readonly IServiceProvider? _services;
@@ -117,6 +119,13 @@ public partial class MainView : UserControl
             await ShowProfileAsync(context.Input);
             context.SetOutput(RxVoid.Default);
         });
+        viewModel.ShowAccountSecurityWindow.RegisterHandler(async context =>
+        {
+            await ShowAccountSecurityAsync(context.Input);
+            context.SetOutput(RxVoid.Default);
+        });
+        viewModel.AskLogin.RegisterHandler(async context =>
+            context.SetOutput(await ShowLoginPromptAsync(context.Input)));
 
         // A session that ends is taken off the screen from the thread its event came on
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
@@ -287,7 +296,8 @@ public partial class MainView : UserControl
     {
         UpdateChatOnScreen();
 
-        var overlay = (Control?)_connectView ?? (Control?)_profileView ?? (Control?)_createSessionView ?? _settingsView;
+        var overlay = (Control?)_connectView ?? (Control?)_securityView ?? (Control?)_profileView
+                      ?? (Control?)_createSessionView ?? _settingsView;
         if (!ReferenceEquals(Overlay.Content, overlay))
         {
             // A form that closes leaves the way it came
@@ -490,6 +500,12 @@ public partial class MainView : UserControl
         _viewModel?.ServerTitle.CreateSessionCommand.Execute().Subscribe();
     }
 
+    private void OnManageSecurityClick(object? sender, RoutedEventArgs e)
+    {
+        TryCloseServerMenu();
+        _viewModel?.ServerTitle.ManageSecurityCommand.Execute().Subscribe();
+    }
+
     private void OnDisconnectClick(object? sender, RoutedEventArgs e)
     {
         TryCloseServerMenu();
@@ -511,6 +527,8 @@ public partial class MainView : UserControl
         });
         using var messageBoxes = connect.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await ShowMessageBoxAsync(context.Input)));
+        using var loginPrompts = connect.AskLogin.RegisterHandler(async context =>
+            context.SetOutput(await ShowLoginPromptAsync(context.Input)));
 
         _connectView = new ConnectView { DataContext = connect };
         ShowCurrentScreen();
@@ -603,6 +621,55 @@ public partial class MainView : UserControl
         }
     }
 
+    /// <summary>
+    /// Shows what the user logs in with, opened from the menu of the server, until it is closed.
+    /// </summary>
+    private async Task ShowAccountSecurityAsync(AccountSecurityVM security)
+    {
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using var close = security.CloseWindow.RegisterHandler(context =>
+        {
+            closed.TrySetResult();
+            context.SetOutput(RxVoid.Default);
+        });
+
+        _securityView = new AccountSecurityView { DataContext = security };
+        ShowCurrentScreen();
+
+        try
+        {
+            await closed.Task;
+        }
+        finally
+        {
+            _securityView = null;
+            ShowCurrentScreen();
+        }
+    }
+
+    /// <summary>Asks for what finishes a login over everything else, like a message box.</summary>
+    private async Task<LoginAnswer?> ShowLoginPromptAsync(LoginPromptVM prompt)
+    {
+        var view = new LoginPromptView { DataContext = prompt };
+        var answer = new TaskCompletionSource<LoginAnswer?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using var answers = prompt.Answers.Subscribe(given => answer.TrySetResult(given));
+
+        _loginPrompts.Add(prompt);
+        DialogLayer.Children.Add(view);
+
+        try
+        {
+            return await answer.Task;
+        }
+        finally
+        {
+            DialogLayer.Children.Remove(view);
+            _loginPrompts.Remove(prompt);
+        }
+    }
+
     private Task<Result> ShowMessageBoxAsync(MessageBoxVM messageBox) => ShowMessageBoxAsync(messageBox, Result.Cancel);
 
     /// <param name="backAnswer">What the system back button answers while the box is the topmost one.</param>
@@ -643,11 +710,28 @@ public partial class MainView : UserControl
             return;
         }
 
+        if (_loginPrompts.Count > 0)
+        {
+            _loginPrompts[^1].CancelCommand.Execute().Subscribe();
+            e.Handled = true;
+            return;
+        }
+
         if (_connectView?.DataContext is ConnectWindowVM connect)
         {
             // While it connects the form stays: it closes itself or tells why it could not connect
             if (!connect.IsBusy)
                 connect.CloseCommand.Execute().Subscribe();
+
+            e.Handled = true;
+            return;
+        }
+
+        if (_securityView?.DataContext is AccountSecurityVM security)
+        {
+            // Back leaves a change first, then the screen; a change being made is waited for
+            if (!security.IsBusy)
+                (security.IsChanging ? security.BackCommand : security.CloseCommand).Execute().Subscribe();
 
             e.Handled = true;
             return;

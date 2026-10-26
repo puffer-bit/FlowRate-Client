@@ -1,5 +1,6 @@
 using Shared.Enums;
 using Shared.Enums.WebRTC;
+using Client.Core.Sessions.Hybrid;
 
 namespace Client.Core.Sessions;
 
@@ -17,8 +18,6 @@ public abstract record NewSessionOptions
 
 public sealed record NewHybridSessionOptions(
     WebRTCEngine EngineType,
-    WebRTCVideoCodecs VideoCodecs = WebRTCVideoCodecs.H264,
-    WebRTCAudioCodecs AudioCodecs = WebRTCAudioCodecs.Opus,
     VideoResolutions Resolution = VideoResolutions.FHD,
     int? VideoBitrate = 2500,
     bool IsAudioTransferEnabled = false,
@@ -26,8 +25,7 @@ public sealed record NewHybridSessionOptions(
     bool IsSimulcastEnabled = false,
     bool IsTunnelingEnabled = false,
     bool IsProxyActive = false,
-    bool DisableStun = false,
-    bool DisableTurn = false
+    MediaSettings? Media = null
 ) : NewSessionOptions
 {
     public override SessionType SessionType => SessionType.Hybrid;

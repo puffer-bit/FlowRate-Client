@@ -1,3 +1,4 @@
+using Client.Core.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace Client.GStreamer.Audio;
@@ -6,6 +7,10 @@ public sealed partial class GstMicrophoneTester
 {
     [LoggerMessage(LogLevel.Debug, "Microphone test started on '{Device}'")]
     private partial void LogStarted(string device);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Noise suppression {Requested} needs audiornnoise, which the GStreamer runtime lacks; the test uses {Applied}")]
+    private partial void LogNoiseSuppressionReplaced(NoiseSuppressionLevel requested, NoiseSuppressionLevel applied);
 
     [LoggerMessage(LogLevel.Error, "Failed to start the microphone test")]
     private partial void LogStartFailed(Exception exception);

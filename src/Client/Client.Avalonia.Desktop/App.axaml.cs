@@ -55,9 +55,7 @@ public partial class App : global::Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // Before the container, so that every service gets a working logger from the start
-        Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = true });
-
+        // Program.Main has created the logger already, so every service gets a working one from the start
         Services = InitDependencies()
             .AddClientLogging(Log.Logger)
             .BuildServiceProvider();
@@ -87,7 +85,6 @@ public partial class App : global::Avalonia.Application
             {
                 globalHotKeys.Dispose();
                 _trayService.Dispose();
-                Log.CloseAndFlush();
             };
         }
 

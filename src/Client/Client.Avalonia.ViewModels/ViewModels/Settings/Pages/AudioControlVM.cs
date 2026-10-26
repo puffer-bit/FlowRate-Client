@@ -90,8 +90,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
-        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression"]),
-        ("voiceActivity", ["voiceGate"]),
+        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression", "echoCancellation"]),
+        ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
 
@@ -119,11 +119,29 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = (int)NoiseSuppressionLevel.Moderate;
 
+    public bool IsEchoCancellationEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
     public bool IsVoiceGateEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = true;
+
+    public bool IsVoiceDetectionEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsAdaptiveThresholdEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public double MinVoiceGateThresholdDb => AudioSettings.MinVoiceGateThresholdDb;
     public double MaxVoiceGateThresholdDb => AudioSettings.MaxVoiceGateThresholdDb;
@@ -233,10 +251,6 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     // Set while the view model changes its own properties, so that only user changes get saved
     private bool _isUpdating = true;
 
-    // Same as the hold time of the gate, so the meter shows the pauses between words as the gate does
-    private static readonly TimeSpan VoiceHoldTime = TimeSpan.FromMilliseconds(300);
-    private DateTime _lastVoiceTime;
-    
     public AudioControlVM(IAudioService audioService, IMicrophoneTester microphoneTester, ISoundService soundService,
         ISoundPackCatalog soundPackCatalog)
     {
@@ -273,12 +287,24 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
 
+        var voiceDetectionChanges = this.WatchProperty(nameof(IsVoiceDetectionEnabled), x => x.IsVoiceDetectionEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
+        var adaptiveThresholdChanges = this.WatchProperty(nameof(IsAdaptiveThresholdEnabled), x => x.IsAdaptiveThresholdEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
         var thresholdChanges = this.WatchProperty(nameof(VoiceGateThresholdDb), x => x.VoiceGateThresholdDb)
             .Where(_ => !_isUpdating)
             .Throttle(TimeSpan.FromMilliseconds(300))
             .Select(_ => RxVoid.Default);
 
         var noiseSuppressionChanges = this.WatchProperty(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
+        var echoCancellationChanges = this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
 
@@ -304,7 +330,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _disposables.Add(deviceChanges
             .Merge(volumeChanges)
             .Merge(noiseSuppressionChanges)
+            .Merge(echoCancellationChanges)
             .Merge(gateChanges)
+            .Merge(voiceDetectionChanges)
+            .Merge(adaptiveThresholdChanges)
             .Merge(thresholdChanges)
             .Merge(soundsEnabledChanges)
             .Merge(soundsVolumeChanges)
@@ -330,6 +359,15 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _disposables.Add(this.WatchProperty(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex)
             .Where(_ => !_isUpdating && IsTestRunning)
             .Subscribe(_ => StartTest()));
+
+        _disposables.Add(this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
+            .Where(_ => !_isUpdating && IsTestRunning)
+            .Subscribe(_ => StartTest()));
+
+        // The gate of the test decides as the one of a call, with the same options
+        _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(VoiceGateThresholdDb),
+                nameof(IsVoiceDetectionEnabled), nameof(IsAdaptiveThresholdEnabled))
+            .Subscribe(_ => _microphoneTester.SetVoiceGate(TestVoiceGate)));
         
         _disposables.Add(this.WatchProperty(nameof(InputVolumePercent), x => x.InputVolumePercent)
             .Subscribe(percent => _microphoneTester.SetVolume(percent / 100)));
@@ -338,10 +376,11 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Subscribe(_microphoneTester.SetLoopbackEnabled));
 
         _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(IsTestRunning))
-            .Subscribe(_ => UpdateVoiceDetected()));
+            .Subscribe(_ => ResetVoiceDetected()));
         
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
+        _microphoneTester.GateChanged += OnTestGateChanged;
         _microphoneTester.Failed += OnTestFailed;
     }
 
@@ -414,7 +453,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void StartTest()
     {
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
-            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression));
+            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled));
         IsTestRunning = TestError == null;
         InputLevel = 0;
     }
@@ -436,27 +475,21 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
                 return;
 
             InputLevel = level;
-            UpdateVoiceDetected();
         });
     }
 
-    private void UpdateVoiceDetected()
+    private void OnTestGateChanged(bool isOpen)
     {
-        if (!IsVoiceGateEnabled || !IsTestRunning)
-        {
-            IsVoiceDetected = false;
-            return;
-        }
+        Dispatcher.UIThread.Post(() => IsVoiceDetected = isOpen && IsVoiceGateEnabled && IsTestRunning);
+    }
 
-        // The meter shows the peak level on the same decibel scale the threshold is set on
-        var thresholdLevel = (VoiceGateThresholdDb - MinVoiceGateThresholdDb) /
-                             (MaxVoiceGateThresholdDb - MinVoiceGateThresholdDb);
-        var now = DateTime.UtcNow;
+    private VoiceGateOptions? TestVoiceGate => IsVoiceGateEnabled
+        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled)
+        : null;
 
-        if (InputLevel > 0 && InputLevel >= thresholdLevel)
-            _lastVoiceTime = now;
-
-        IsVoiceDetected = now - _lastVoiceTime < VoiceHoldTime;
+    private void ResetVoiceDetected()
+    {
+        IsVoiceDetected = false;
     }
 
     private void OnTestFailed(string error)
@@ -489,7 +522,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         InputVolumePercent = settings.InputVolume * 100;
         IsVoiceGateEnabled = settings.IsVoiceGateEnabled;
         VoiceGateThresholdDb = settings.VoiceGateThresholdDb;
+        IsVoiceDetectionEnabled = settings.IsVoiceDetectionEnabled;
+        IsAdaptiveThresholdEnabled = settings.IsAdaptiveThresholdEnabled;
         NoiseSuppressionIndex = (int)settings.NoiseSuppression;
+        IsEchoCancellationEnabled = settings.IsEchoCancellationEnabled;
         AreSoundsEnabled = settings.AreSoundsEnabled;
         SoundsVolumePercent = settings.SoundsVolume * 100;
         _savedSoundPack = settings.SoundPack;
@@ -567,7 +603,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         InputVolume = InputVolumePercent / 100,
         IsVoiceGateEnabled = IsVoiceGateEnabled,
         VoiceGateThresholdDb = VoiceGateThresholdDb,
+        IsVoiceDetectionEnabled = IsVoiceDetectionEnabled,
+        IsAdaptiveThresholdEnabled = IsAdaptiveThresholdEnabled,
         NoiseSuppression = NoiseSuppression,
+        IsEchoCancellationEnabled = IsEchoCancellationEnabled,
         AreSoundsEnabled = AreSoundsEnabled,
         SoundsVolume = SoundsVolumePercent / 100,
         SoundPack = _savedSoundPack,
@@ -583,6 +622,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public void Dispose()
     {
         _microphoneTester.LevelChanged -= OnInputLevelChanged;
+        _microphoneTester.GateChanged -= OnTestGateChanged;
         _microphoneTester.Failed -= OnTestFailed;
         _microphoneTester.Stop();
         

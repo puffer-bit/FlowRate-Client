@@ -34,8 +34,17 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public ChatMessageBody? Body
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsJumboEmoji));
+        }
     }
+
+    /// <summary>
+    /// The text is a few emoji alone and is shown large.
+    /// </summary>
+    public bool IsJumboEmoji => ChatEmoji.IsJumbo(Body?.Text);
 
     /// <summary>
     /// A message that calls the current user, by name or as one of everyone; the user's own included.
@@ -98,6 +107,15 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     }
 
     /// <summary>
+    /// The color of the highest colored role of the author, 0xRRGGBB; null keeps the usual one.
+    /// </summary>
+    public int? SenderColor
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// The message this one answers, or null when it is not a reply.
     /// </summary>
     public ChatReplyPreviewVM? Reply { get; }
@@ -105,6 +123,10 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public IReadOnlyList<ChatImageVM> Images { get; }
     public bool HasImages => Images.Count > 0;
+
+    /// <summary>The files of the message that are downloaded rather than shown.</summary>
+    public IReadOnlyList<ChatFileVM> Files { get; }
+    public bool HasFiles => Files.Count > 0;
     public bool HasText => Message.TextContent != null;
 
     public bool IsSequenceStart
@@ -201,12 +223,14 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         ReactiveCommand<ChatMessageModel, RxVoid> deleteCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         Func<Uri, Task<bool>> confirmOpenLink,
-        IReadOnlyList<ChatImageVM>? images = null)
+        IReadOnlyList<ChatImageVM>? images = null,
+        IReadOnlyList<ChatFileVM>? files = null)
     {
         ConfirmOpenLink = confirmOpenLink;
         _currentUserId = currentUserId;
         Message = messageModel;
         Images = images ?? [];
+        Files = files ?? [];
         Reply = messageModel.ReplyContent != null ? new ChatReplyPreviewVM(messageModel.ReplyContent) : null;
         _replyCommand = replyCommand;
         _editCommand = editCommand;

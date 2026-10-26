@@ -4,13 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+        xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
         xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
-        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="420"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="740"
         x:Class="Client.Views.Sessions.Hybrid.HybridSessionSettingsView"
         x:DataType="hybridVm:HybridSessionSettingsWindowVM"
         Background="{DynamicResource GeneralBrush}"
         Width="440"
-        MaxHeight="620">
+        MaxHeight="760">
 
     <Grid RowDefinitions="Auto, 1, *, 1, Auto">
 
@@ -27,7 +28,8 @@
 
         <!-- Form -->
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
+            <!-- A fixed width: the scroll bar, once the media section opens, takes its room from the gap on the right, not from the form -->
+            <StackPanel Width="384" HorizontalAlignment="Left" Margin="20,16,0,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
 
                 <!-- Name -->
                 <StackPanel Spacing="6">
@@ -63,6 +65,79 @@
                     <CheckBox Content="{l:Text sessionSettings.approval}" IsChecked="{Binding IsApprovalRequested}"/>
                     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.approval.hint}"/>
                 </StackPanel>
+
+                <!-- Media: the advanced part, folded until asked for -->
+                <controls:ExpandableSection Title="{l:Text sessionSettings.media}"
+                                            Description="{l:Text sessionSettings.media.hint}"
+                                            Icon="{StaticResource VideoCameraIcon}">
+                    <StackPanel Spacing="18">
+
+                        <!-- Codecs -->
+                        <Grid ColumnDefinitions="*, 160" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="8">
+                            <TextBlock Grid.Row="0" Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.cameraCodec}"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding VideoCodecs}" SelectedItem="{Binding CameraCodec}"/>
+                            <TextBlock Grid.Row="1" Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.screenCodec}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding VideoCodecs}" SelectedItem="{Binding ScreenCodec}"/>
+                            <TextBlock Grid.Row="2" Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.audioCodec}"/>
+                            <ComboBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding AudioCodecs}" SelectedItem="{Binding AudioCodec}"/>
+                        </Grid>
+
+                        <!-- Video losses -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text sessionSettings.media.video}"/>
+                            <CheckBox Content="{l:Text sessionSettings.media.nack}" IsChecked="{Binding IsVideoNackEnabled}"/>
+                            <CheckBox Margin="24,0,0,0" Content="{l:Text sessionSettings.media.videoRtx}"
+                                      IsChecked="{Binding IsVideoRtxEnabled}" IsEnabled="{Binding IsVideoNackEnabled}"/>
+                            <Grid ColumnDefinitions="*, 160" ColumnSpacing="12">
+                                <TextBlock Classes="hint" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.keyFrameDelay}"/>
+                                <NumericUpDown Grid.Column="1"
+                                               Value="{Binding KeyFrameRequestDelayMs}"
+                                               Minimum="{Binding KeyFrameRequestDelayMin}"
+                                               Maximum="{Binding KeyFrameRequestDelayMax}"
+                                               Increment="100" FormatString="0" ParsingNumberStyle="Integer"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Audio losses -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text sessionSettings.media.audio}"/>
+                            <CheckBox Content="{l:Text sessionSettings.media.opusFec}" IsChecked="{Binding IsOpusFecEnabled}"/>
+                            <Grid Margin="24,0,0,0" ColumnDefinitions="*, 160" ColumnSpacing="12" IsEnabled="{Binding IsOpusFecEnabled}">
+                                <TextBlock Classes="hint" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.opusLoss}"/>
+                                <NumericUpDown Grid.Column="1"
+                                               Value="{Binding OpusPacketLossPercent}"
+                                               Minimum="0" Maximum="100"
+                                               Increment="5" FormatString="0" ParsingNumberStyle="Integer"/>
+                            </Grid>
+                            <CheckBox Content="{l:Text sessionSettings.media.nack}" IsChecked="{Binding IsAudioNackEnabled}"/>
+                            <TextBlock Margin="24,0,0,0" Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.audioNack.hint}"/>
+                            <CheckBox Content="{l:Text sessionSettings.media.voiceDtx}" IsChecked="{Binding IsVoiceDtxEnabled}"/>
+                        </StackPanel>
+
+                        <!-- Receive buffers -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text sessionSettings.media.buffers}"/>
+                            <Grid ColumnDefinitions="*, 160" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="8">
+                                <TextBlock Grid.Row="0" Classes="hint" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.voiceBuffer}"/>
+                                <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                               Value="{Binding VoiceJitterBufferMs}"
+                                               Minimum="{Binding JitterBufferMin}"
+                                               Maximum="{Binding JitterBufferMax}"
+                                               Increment="10" FormatString="0" ParsingNumberStyle="Integer"/>
+                                <TextBlock Grid.Row="1" Classes="hint" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.videoBuffer}"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                               Value="{Binding VideoJitterBufferMs}"
+                                               Minimum="{Binding JitterBufferMin}"
+                                               Maximum="{Binding JitterBufferMax}"
+                                               Increment="10" FormatString="0" ParsingNumberStyle="Integer"/>
+                            </Grid>
+                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.buffers.hint}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </controls:ExpandableSection>
 
                 <!-- A failure that belongs to no single field -->
                 <Border Padding="10,8" CornerRadius="6" BorderThickness="1"

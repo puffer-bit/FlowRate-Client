@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
@@ -26,6 +27,11 @@ public interface ICoordinatorSession : IDisposable
     /// The address and port given to <see cref="Connect"/>, or null before the first call.
     /// </summary>
     string? ConnectedAddress { get; }
+
+    /// <summary>
+    /// The system verified the certificate of the last connection; false when the user trusted it by hand.
+    /// </summary>
+    bool IsCertificateVerified { get; }
 
     event Action<CoordinatorState>? StateChanged; 
 
@@ -59,6 +65,8 @@ public interface ICoordinatorSession : IDisposable
     event Action<PeerStateChangedEvent>? HybridSessionPeerStateChanged;
     event Action<PeerMicrophoneMuteChangedEvent>? HybridSessionPeerMicrophoneMuteChanged;
     event Action<PeerSoundMuteChangedEvent>? HybridSessionPeerSoundMuteChanged;
+    event Action<PeerAfkChangedEvent>? HybridSessionPeerAfkChanged;
+    event Action<PeerPokedEvent>? HybridSessionPeerPoked;
     
     event Action<int, ChatMessageModel>? TextMessageAdded;
     event Action<int, ChatMessageModel>? TextMessageEdited;
@@ -137,7 +145,46 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     event Action<int, TimeSpan>? ReconnectScheduled;
 
-    Task Connect(string address, int port, string? userIdentity, string? password);
+    /// <param name="password">The password of the server.</param>
+    /// <param name="accountPassword">
+    /// The password of the user's account kept with the saved identity; it finishes the login without asking.
+    /// </param>
+    Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null);
+
+    /// <summary>
+    /// Asks the user for the account password or a one-time code when a login, a reconnect too, needs them.
+    /// Without it such a login ends with <see cref="CoordinatorState.AuthenticationNeeded"/>. Called on a thread
+    /// of the pool.
+    /// </summary>
+    LoginPromptHandler? LoginPrompt { get; set; }
+
+    /// <summary>
+    /// The account password to keep with the saved identity: the one the user logs in with, when they asked
+    /// to remember it. Null when nothing is to be kept.
+    /// </summary>
+    string? AccountPasswordToSave { get; }
+
+    /// <summary>
+    /// Raised when <see cref="AccountPasswordToSave"/> changes: a login with another password, the password
+    /// changed or removed in the profile. Raised on any thread.
+    /// </summary>
+    event Action<string?>? AccountPasswordToSaveChanged;
+
+    /// <summary>What the current user logs in with.</summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity();
+
+    /// <summary>
+    /// Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null. The
+    /// next reconnect logs in with the new one.
+    /// </summary>
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+        string? newPassword);
+
+    /// <summary>Offers a secret for an authenticator app; <see cref="EnableTwoFactor"/> turns the codes on with it.</summary>
+    Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof);
+    Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof, int passkeyId);
 
     /// <summary>
     /// The certificate that stopped the last connect or reconnect with
@@ -222,6 +269,12 @@ public interface ICoordinatorSession : IDisposable
     /// The sound itself is silenced on this side.
     /// </summary>
     Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
+
+    /// <summary>Tells the others of the session that we are away from the keyboard, and why, or that we are back.</summary>
+    Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
+
+    /// <summary>Pokes another peer of the session; only they see it, with the message if there is one.</summary>
+    Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message);
     Task<(PeerListRequestResult Result, Dictionary<int, PeerModel>? Peers)> GetAllHybridSessionPeers(int sessionId);
     Task<LeaveSessionResult> LeaveSession(int sessionId);
 
@@ -230,12 +283,25 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId);
 
+    /// <summary>Lets a user waiting for the host into the hybrid session.</summary>
+    Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
+
+    /// <summary>Turns away a user waiting for the host; they cannot join the session again while it runs.</summary>
+    Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
+
     /// <summary>
     /// Replaces the settings of the hybrid session. A saved change comes back to every client, this one too,
     /// as <see cref="HybridSessionReconfigured"/>.
     /// </summary>
     Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove);
+        bool isHostMustApprove, MediaSettings media);
+
+    /// <summary>
+    /// Replaces the permission overrides of the session. A saved change comes back as the session reconfigured,
+    /// or removed for a client that may no longer see it.
+    /// </summary>
+    Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides);
     bool ValidateSession(NewSessionModel newSession);
     
     Task<UserModel?> GetUser(int userId);
@@ -315,6 +381,10 @@ public interface ICoordinatorSession : IDisposable
 
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatImage"/>
     Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
+        IProgress<long>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFile"/>
+    Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
     Task<DeleteMessageResult> DeleteChatMessage(int chatId, int messageId);
 

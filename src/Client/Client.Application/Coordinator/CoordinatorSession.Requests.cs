@@ -1,3 +1,4 @@
+using Shared.Permissions;
 using Shared.Enums;
 using Shared.Enums.Coordinator;
 using Shared.Validation;
@@ -82,10 +83,24 @@ public partial class CoordinatorSession
             : SendAsync(() => _gateway.KickFromHybridSession(sessionId, userId),
                 LeaveSessionResult.Rejected, LeaveSessionResult.TimedOut);
 
+    // Neither result has a value of its own for a request the server refused unread
+    public Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.ApproveInHybridSession(sessionId, userId),
+            ApproveUserSessionResult.InternalError, ApproveUserSessionResult.TimedOut);
+
+    public Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId),
+            RejectUserSessionResult.InternalError, RejectUserSessionResult.TimedOut);
+
     public Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove) =>
-        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove),
+        bool isHostMustApprove, MediaSettings media) =>
+        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove, media),
             ChangeSessionSettingsResult.Rejected, ChangeSessionSettingsResult.TimedOut);
+
+    public Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+        IReadOnlyList<PermissionOverride> overrides) =>
+        SendAsync(() => _gateway.ChangeSessionPermissions(sessionId, overrides),
+            ChangeSessionPermissionsResult.Rejected, ChangeSessionPermissionsResult.TimedOut);
 
     public Task<(HybridSessionJoinResult Result, TransportParameters? Transport)> JoinHybridSession(int sessionId,
         string clientEpoch) =>
@@ -144,6 +159,14 @@ public partial class CoordinatorSession
     public Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted) =>
         SendAsync(() => _gateway.SetSoundMuteInHybridSession(sessionId, isMuted),
             SetSoundMuteResult.Rejected, SetSoundMuteResult.TimedOut);
+
+    public Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason) =>
+        SendAsync(() => _gateway.SetAfkInHybridSession(sessionId, isAfk, reason),
+            SetAfkResult.Rejected, SetAfkResult.TimedOut);
+
+    public Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message) =>
+        SendAsync(() => _gateway.PokeInHybridSession(sessionId, userId, message),
+            PokeResult.Rejected, PokeResult.TimedOut);
 
     public async Task<(FetchMessagesResult Result, ChatHistoryPage? Page)> RequestChatHistoryPage(
         int sessionId, int? beforeMessageId, int take)
@@ -221,6 +244,10 @@ public partial class CoordinatorSession
     public Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
         _gateway.DownloadChatImage(imageId, preview, destination, progress, cancellationToken);
+
+    public Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
+        IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
+        _gateway.DownloadChatFile(fileId, destination, progress, cancellationToken);
 
     public Task<(PushTokenResult Result, string? ReplyToken)> RegisterPushToken(string token, PushPlatform platform,
         PushKey key) =>

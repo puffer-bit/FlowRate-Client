@@ -38,9 +38,25 @@ public class AudioSettings
     public double VoiceGateThresholdDb { get; set; } = -32.0;
 
     /// <summary>
+    /// Whether the voice gate opens only for what RNNoise takes for a voice, not for any loud enough sound.
+    /// </summary>
+    public bool IsVoiceDetectionEnabled { get; set; }
+
+    /// <summary>
+    /// Whether the voice gate raises its threshold above the noise of the room it measures.
+    /// </summary>
+    public bool IsAdaptiveThresholdEnabled { get; set; }
+
+    /// <summary>
     /// How much background noise is taken out of the microphone.
     /// </summary>
     public NoiseSuppressionLevel NoiseSuppression { get; set; } = NoiseSuppressionLevel.Moderate;
+
+    /// <summary>
+    /// Whether the voices played on the speakers are taken out of the microphone, so the others do
+    /// not hear themselves back. Headphones need none, but it does them no harm.
+    /// </summary>
+    public bool IsEchoCancellationEnabled { get; set; }
 
     /// <summary>
     /// Whether the interface makes sounds: someone joining, the microphone being muted and the like.
@@ -64,7 +80,9 @@ public class AudioSettings
     public string[] DisabledSounds { get; set; } = [];
 
     /// <summary>
-    /// The threshold the voice gate works with, or null when it is off and the microphone is sent all the time.
+    /// What the voice gate works with, or null when it is off and the microphone is sent all the time.
     /// </summary>
-    public double? ActiveVoiceGateThresholdDb => IsVoiceGateEnabled ? VoiceGateThresholdDb : null;
+    public VoiceGateOptions? ActiveVoiceGate => IsVoiceGateEnabled
+        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled)
+        : null;
 }
