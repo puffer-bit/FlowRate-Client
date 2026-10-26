@@ -27,6 +27,10 @@ public interface IAppearanceSettingsRepository
     Task<bool> GetUseCustomTitleBarAsync();
     Task UpdateUseCustomTitleBarAsync(bool useCustomTitleBar);
 
+    /// <returns>Whether the voice of a session goes over libwebrtc instead of GStreamer.</returns>
+    Task<bool> GetUseLibWebRTCAsync();
+    Task UpdateUseLibWebRTCAsync(bool useLibWebRTC);
+
     /// <returns>Whether the experimental features are enabled as a whole.</returns>
     Task<bool> GetIsExperimentalEnabledAsync();
     Task UpdateIsExperimentalEnabledAsync(bool isEnabled);
