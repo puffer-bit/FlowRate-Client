@@ -780,6 +780,9 @@
   "settings.experimental.section.window": "ウィンドウ",
   "settings.experimental.customTitleBar.title": "独自のタイトルバー",
   "settings.experimental.customTitleBar.description": "ウィンドウのボタンをアプリの上部バーに表示し、システムのタイトルバーを隠します。オフにするとシステムのタイトルバーに戻ります。すぐに適用されます",
+  "settings.experimental.section.voice": "音声",
+  "settings.experimental.libWebRTC.title": "libwebrtc で音声を送受信",
+  "settings.experimental.libWebRTC.description": "音声を GStreamer ではなく Chrome のエンジンで処理します。ジッターバッファ、ノイズ抑制、エコーキャンセルもそのエンジンのものを使います。この方式では画面の共有も視聴もできません。次に参加するセッションから適用されます",
 
   "settings.accounting.name": "プロファイル、サーバー、セキュリティ",
   "settings.accounting.section.database": "データベースと ID",
