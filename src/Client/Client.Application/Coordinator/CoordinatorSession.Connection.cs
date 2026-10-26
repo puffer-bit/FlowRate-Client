@@ -25,7 +25,7 @@ public partial class CoordinatorSession
     private abstract record ConnectionMessage(TaskCompletionSource? Completion = null);
 
     private sealed record ConnectRequested(string Address, int Port, string? UserIdentity, string? Password,
-        TaskCompletionSource Completion) : ConnectionMessage(Completion);
+        string? AccountPassword, TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
     private sealed record DisconnectRequested(TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
@@ -102,8 +102,10 @@ public partial class CoordinatorSession
     // Canceled when the session is disposed; never disposed itself, the loop still reads it afterwards
     private readonly CancellationTokenSource _lifetime = new();
 
-    public Task Connect(string address, int port, string? userIdentity, string? password) =>
-        PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, completion));
+    public Task Connect(string address, int port, string? userIdentity, string? password,
+        string? accountPassword = null) =>
+        PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, accountPassword,
+            completion));
 
     public Task Disconnect() => PostAndWait(completion => new DisconnectRequested(completion));
 
@@ -190,6 +192,11 @@ public partial class CoordinatorSession
 
         _isInFront = true;
         _pendingConnect = connect;
+
+        // A password kept with the saved identity stays remembered while it is still the one
+        _accountPassword = connect.AccountPassword;
+        _isAccountPasswordRemembered = connect.AccountPassword != null;
+        _accountPasswordToSave = connect.AccountPassword;
         ConnectionStatus = CoordinatorState.Connecting;
         LogConnectStarted(LogName, connect.Address, connect.Port);
 
@@ -446,9 +453,10 @@ public partial class CoordinatorSession
             return;
         }
 
-        // Retrying cannot fix credentials the server rejected, a ban, a server only the user can trust
+        // Retrying cannot fix credentials the server rejected, a login the user gave up, a ban, a server only the user can trust
         // or a protocol only an update of one side can match
-        if (state is CoordinatorState.AuthenticationFailed or CoordinatorState.Denied
+        if (state is CoordinatorState.AuthenticationFailed or CoordinatorState.AuthenticationNeeded
+            or CoordinatorState.PasskeyRequired or CoordinatorState.Denied
             or CoordinatorState.CertificateNotTrusted or CoordinatorState.CoordinatorMismatch
             or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated)
         {
@@ -652,6 +660,21 @@ public partial class CoordinatorSession
 
             LogAuthStarted(LogName);
             var response = await _gateway.AuthenticateAsync(password, userIdentity).WaitAsync(cancellationToken);
+
+            if (response is { Result: AuthResult.SecondStageRequeried, Challenge: { } challenge })
+            {
+                if (await PassSecondStageAsync(address, port, challenge, cancellationToken) is not { } finished)
+                {
+                    await _gateway.DisconnectWebSocketAsync();
+                    return challenge.AcceptsCodes ? CoordinatorState.AuthenticationNeeded : CoordinatorState.PasskeyRequired;
+                }
+
+                // The identity stays the one the login started with
+                response = finished with { UserIdentity = userIdentity };
+            }
+            // Let in at once: the user has no password, whatever was kept for them
+            else if (response.Result == AuthResult.Success)
+                KeepAccountPassword(null, false);
 
             if (response is { Result: AuthResult.Banned })
             {

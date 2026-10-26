@@ -1,6 +1,7 @@
 using Shared.Permissions;
 using Client.Api.Mappers;
 using Shared.Enums;
+using Shared.Enums.Auth;
 using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using Shared.Models;
@@ -38,7 +39,18 @@ internal partial class CoordinatorGateway
         return new AuthenticationResult(
             authResponse.AuthResult,
             authResponse.UserDTO?.ToModel(),
-            authResponse.UserIdentity);
+            authResponse.UserIdentity,
+            authResponse.AuthResult == AuthResult.SecondStageRequeried
+                ? AccountSecurityMapper.ToLoginChallenge(authResponse.ServerMessage, authResponse.FIDO2LoginOptionsDTO)
+                : null);
+    }
+
+    public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode)
+    {
+        var request = new TwoFactorUserAuthRequest(password, twoFactorCode);
+        var response = await SendRequestAsync<TwoFactorUserAuthResponse>(request);
+
+        return new AuthenticationResult(response.AuthResult, response.UserDTO?.ToModel(), null);
     }
 
     public async Task<CoordinatorSessionModel?> GetCoordinatorInfo()
