@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Droid.Views.HybridSessionView"
+             x:DataType="hybridVm:ActiveHybridSessionVM"
+             Background="{DynamicResource GeneralBrush}"
+             anim:Presence.Appear="Fade"
+             anim:Presence.Duration="Medium">
+
+    <UserControl.Styles>
+        <!-- Round buttons of the bar, sized for a finger -->
+        <Style Selector="Button.voice-action">
+            <Setter Property="Width" Value="56"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="28"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The voice of the session we are in: who is in it, and the microphone, the sound and the way out.
+         Screens are not shown here -->
+    <Grid RowDefinitions="Auto, *, Auto">
+        <StackPanel Grid.Row="0" Margin="16,12" Spacing="2">
+            <TextBlock FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                       Text="{Binding StatusBar.SessionName}"/>
+            <TextBlock FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}"
+                       Text="{Binding StatusBar.StatusBarText}"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1">
+            <ItemsControl Margin="8,0" ItemsSource="{Binding ParticipantsListVM.Participants}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="hybridVm:HybridSessionParticipantVM">
+                        <Grid ColumnDefinitions="40, *" ColumnSpacing="12" Margin="8,6">
+                            <avatars:UserAvatar Grid.Column="0" Width="40" Height="40"
+                                                UserName="{Binding UserData.Username, FallbackValue={x:Null}}"
+                                                AvatarUrl="{Binding UserData.AvatarUrl, FallbackValue={x:Null}}"
+                                                IsAnimated="True"
+                                                IsSpeaking="{Binding IsSpeaking}"
+                                                IsWaiting="{Binding IsWaiting}"/>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding DisplayedName}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,12,0,20">
+            <Button Classes="voice-action" Command="{Binding StatusBar.ToggleMicrophoneCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
+                <Panel>
+                    <Image Width="24" Height="24" Source="{StaticResource MicrophoneIcon}"
+                           IsVisible="{Binding StatusBar.IsMicrophoneOn}"/>
+                    <Image Width="24" Height="24" Source="{StaticResource CrossedMicrophoneIcon}"
+                           IsVisible="{Binding !StatusBar.IsMicrophoneOn}"/>
+                </Panel>
+            </Button>
+
+            <Button Classes="voice-action" Command="{Binding StatusBar.ToggleSoundCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleSound}">
+                <Panel>
+                    <Image Width="24" Height="24" Source="{StaticResource HeadphonesIcon}"
+                           IsVisible="{Binding StatusBar.IsSoundOn}"/>
+                    <Image Width="24" Height="24" Source="{StaticResource CrossedHeadphonesIcon}"
+                           IsVisible="{Binding !StatusBar.IsSoundOn}"/>
+                </Panel>
+            </Button>
+
+            <Button Classes="voice-action" Command="{Binding StatusBar.CloseCommand}"
+                    ToolTip.Tip="{l:Text main.voice.leave}">
+                <Image Width="24" Height="24" Source="{StaticResource DoorWithRedArrowIcon}"/>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

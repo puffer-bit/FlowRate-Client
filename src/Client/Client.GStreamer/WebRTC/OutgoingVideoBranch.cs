@@ -3,7 +3,7 @@ using Gst;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.GStreamer.Video;
-using Client.GStreamer.WebRTC.Sdp;
+using Client.WebRTC.Sdp;
 
 namespace Client.GStreamer.WebRTC;
 

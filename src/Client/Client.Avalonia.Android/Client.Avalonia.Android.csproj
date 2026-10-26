@@ -38,6 +38,14 @@
         <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
         <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
         <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+        <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
+    </ItemGroup>
+
+    <!-- Voice: libwebrtc as Google builds it, unbound. Only the small class of ours in front of it is
+         bound, which keeps the bindings clear of its whole API -->
+    <ItemGroup>
+        <AndroidMavenLibrary Include="io.github.webrtc-sdk:android" Version="144.7559.15" Bind="false" />
+        <AndroidJavaSource Include="Platform\Media\WebRTC\*.java" Bind="true" />
     </ItemGroup>
 
     <ItemGroup>

@@ -13,6 +13,7 @@
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+      <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
     </ItemGroup>
 
     <!-- The GStreamer runtime in Build/artifacts is not part of this library: the executable imports

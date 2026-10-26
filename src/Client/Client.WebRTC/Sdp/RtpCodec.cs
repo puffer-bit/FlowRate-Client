@@ -1,7 +1,7 @@
 using Shared.Models.Media;
 using Client.Core.Sessions.Hybrid;
 
-namespace Client.GStreamer.WebRTC.Sdp;
+namespace Client.WebRTC.Sdp;
 
 /// <summary>
 /// Codec description of a single m-section.
