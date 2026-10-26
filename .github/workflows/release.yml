@@ -1,15 +1,19 @@
-# Builds a dev release of the desktop client for Linux and Windows and publishes it as the GitHub
-# pre-release v<version>-dev.<UTC yyMMddHHmm>, run by hand from the Actions tab. Clients set to the dev
-# builds update to it.
+# Builds the desktop client for Linux and Windows and publishes it as a GitHub release, run by hand from the
+# Actions tab: by default the pre-release v<version>-dev.<UTC yyMMddHHmm>, which clients set to the dev builds
+# update to; with prerelease off the release v<version>, which becomes the latest one and reaches every client.
 #
 # The build is build.yml; both platforms go to one release under one tag, on the commit that was built.
 # The description is the one GitHub generates (the changes since the previous release); nothing goes
 # into the packages.
-name: Pre-release
+name: Release
 
 on:
   workflow_dispatch:
     inputs:
+      prerelease:
+        description: Pre-release (v<version>-dev.<date>); off publishes v<version> as the latest release
+        type: boolean
+        default: true
       aot:
         description: Compile ahead of time (NativeAOT) instead of the JIT build
         type: boolean
@@ -28,7 +32,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       aot: ${{ inputs.aot }}
-      dev: true
+      dev: ${{ inputs.prerelease }}
 
   release:
     name: Publish
@@ -44,12 +48,14 @@ jobs:
           path: assets
           merge-multiple: true
 
-      - name: Pre-release
+      - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ inputs.prerelease }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
+          if [[ $PRERELEASE == true ]]; then kind=--prerelease; else kind=--latest; fi
           ls -l assets
           gh release create "v$VERSION" assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-              --prerelease --title "FlowRate $VERSION" --generate-notes
+              "$kind" --title "FlowRate $VERSION" --generate-notes
           echo "### [FlowRate $VERSION]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION)" >> "$GITHUB_STEP_SUMMARY"
