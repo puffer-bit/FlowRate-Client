@@ -42,22 +42,12 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Sending video on section {Section}")]
     private partial void LogSendingVideo(int sessionId, int section);
 
-    [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to create the video source for {Input}")]
+    [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to create the capture of {Input}")]
     private partial void LogVideoSourceCreateFailed(int sessionId, VideoInput input);
 
     [LoggerMessage(LogLevel.Information,
-        "[Session {SessionId}] Encoding the outgoing video with {Encoder}, scaled on the {Scaler}")]
-    private partial void LogVideoEncoder(int sessionId, string encoder, string scaler);
-
-    [LoggerMessage(LogLevel.Information,
-        "[Session {SessionId}] Capture delivers {Rate:0.0} fps of {Wanted}: {Caps}")]
-    private partial void LogCaptureRate(int sessionId, double rate, int wanted, string caps);
-
-    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to hand over a captured frame")]
-    private partial void LogCaptureFailed(Exception exception, int sessionId);
-
-    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to hand over a preview frame")]
-    private partial void LogVideoFrameFailed(Exception exception, int sessionId);
+        "[Session {SessionId}] Capturing the outgoing video, encoded with {Encoder}")]
+    private partial void LogVideoEncoder(int sessionId, string encoder);
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to release the capture branch")]
     private partial void LogCaptureBranchReleaseFailed(Exception exception, int sessionId);

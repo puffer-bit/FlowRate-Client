@@ -19,8 +19,11 @@ drawn from a bitmap, the way they always were.
 | `Video/CudaGlFrame.cs` | A CUDA frame of an NVIDIA decoder, copied into OpenGL textures on the GPU |
 | `Video/D3D11SharedTextureWriter.cs` | Copies Direct3D 11 frames into shared textures the compositor opens |
 | `Interop/GstVideoNative.cs` | Native reads of a video buffer: PTS, video meta, DMA-BUF fds; the allocation probe |
-| `WebRTC/IncomingStreamPlayer.cs` | Builds the decoding branch of a stream and rebuilds it in memory when GPU frames fail |
-| `WebRTC/OutgoingVideoBranch.cs` | The sending branch: scaling on the GPU for VA-API encoders, preview capped at 30 fps |
+| `Interop/GstEncodedNative.cs` | Encoded frames in and out of a pipeline, and the keyframe requests that travel upstream |
+| `Video/GstVideoMedia.cs` | `IVideoMedia`: what a transport asks for a capture or a decoder |
+| `Video/GstVideoDecoder.cs` | The decoding pipeline of a stream, rebuilt in memory when GPU frames fail |
+| `Video/GstScreenCapture.cs` | The capture pipeline of a shown screen: its source and `ScreenEncodingBranch` |
+| `Video/ScreenEncodingBranch.cs` | Scaling on the GPU for VA-API encoders, the encoder, the preview capped at 30 fps |
 | `Video/VideoEncoderSelector.cs` | The encoder, with the one picked in the settings first |
 | `Client.Core/Media/RawVideoFrame.cs` | A frame: pixels in memory, or `Gpu`; `Timestamp` in nanoseconds |
 | `Client.Core/Media/GpuVideoFrame.cs` | Reference-counted frames: `DmaBufVideoFrame`, `GlCopyVideoFrame`, `D3D11SharedVideoFrame`, and `MemoryYuvVideoFrame` (in memory, held the same way) |
@@ -31,12 +34,19 @@ drawn from a bitmap, the way they always were.
 
 ## Path of a frame
 
+The transport gives the decoder encoded frames and nothing else (`IVideoDecoder`), so the decoding
+does not depend on how the stream arrived. With the GStreamer transport:
+
 ```
-webrtcbin pad ─ queue ─ rtph264depay ─ h264parse ─ <chain of VideoOutputSelector> ─ appsink
-                                                                                       │
-                       VideoFramePump (thread of the sink) ── RawVideoFrame ───────────┘
+webrtcbin pad ─ queue ─ rtph264depay ─ h264parse ─ appsink          (Client.GStreamer.WebRTC)
+                                                      │
+                     IncomingVideo (reader thread) ── EncodedVideoFrame
+                                                      │
+appsrc ─ h264parse ─ <chain of VideoOutputSelector> ─ appsink        (GstVideoDecoder)
+                                                         │
+                       VideoFramePump (thread of the sink) ── RawVideoFrame
                                 │
-   WebRTCTransport → HybridSession → ActiveHybridSessionVM → ScreenStreamVM → HybridScreenTile
+   transport → HybridSession → ActiveHybridSessionVM → ScreenStreamVM → HybridScreenTile
                                 │
                             VideoView ── GlVideoPresenter, or BitmapVideoPresenter
                                 │
@@ -108,13 +118,12 @@ frames to exercise those branches.
 ### When GPU frames fail
 
 A pump that cannot make a GPU frame, or a presenter that cannot import one, calls
-`VideoSurfaceSupport.ReportFailure`. The kind is taken out of the supported ones for good, and
-`IncomingStreamPlayer` rebuilds every branch of that kind with the memory chain
-(`RebuildInMemory`): the old branch is unlinked and shut down, the new one is linked to the same pad
-of webrtcbin. Its depayloader waits for a keyframe and asks the sender for one, so the picture comes
-back after about a second. While the branches are swapped a probe drops the buffers of the pad
-(`GstVideoNative.DropBuffers`): a push into an unlinked pad fails with not-linked and stops the
-streaming thread of webrtcbin for good, which a slow swap (to `openh264dec`) did. Streams opened later use the memory chain from the start.
+`VideoSurfaceSupport.ReportFailure`. The kind is taken out of the supported ones for good, and every
+`GstVideoDecoder` of that kind builds its pipeline anew with the memory chain. The new decoder drops
+what comes until a keyframe and raises `KeyFrameNeeded`; the transport asks the sender for one (the
+GStreamer one sends the request upstream from its sink, and the RTP session turns it into a PLI), so
+the picture comes back after about a second. The pipeline of webrtcbin is not touched, so nothing has
+to hold its pad meanwhile. Streams opened later use the memory chain from the start.
 `--gpu-frames-fail <sec>` of the test bot triggers this on purpose.
 
 When OpenGL breaks altogether, `GlVideoPresenter` reports every kind still supported, since all of
@@ -219,6 +228,11 @@ The pacer does not fix a frame rate that does not divide the refresh rate (60 fp
 frames for 2 and 3 refreshes in turn); that needs a monitor with variable refresh.
 
 ## Sending
+
+The capture is a pipeline of its own (`GstScreenCapture`): the source, then `ScreenEncodingBranch`,
+which ends in a sink of encoded frames and one of preview frames. The transport pushes the encoded
+frames into an appsrc in front of its payloader, stamped with the clock of its own pipeline, and
+passes the keyframe requests that reach that appsrc on to `IScreenCapture.RequestKeyFrame`.
 
 - The rate comes from the dialog (`ScreenShareSettings.Framerates`: 15, 30, 60, 144). Above 60 the
   dialog warns once; it remembers that in `DismissedPrompts` (`screen.highFramerate`).

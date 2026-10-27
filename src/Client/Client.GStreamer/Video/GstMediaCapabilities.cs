@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Client.Application.Ports;
 using Client.GStreamer.Audio;
 

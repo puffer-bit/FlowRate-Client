@@ -1,4 +1,4 @@
-using Client.GStreamer.Video;
+using Client.Core.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 
@@ -22,12 +22,8 @@ internal sealed partial class IncomingStreamPlayer
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Receiving incoming audio from {Pad} without playback")]
     private partial void LogReceivingSilently(int sessionId, string pad);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Decoding incoming video from {Pad}: {Chain}, frames as {Kind}")]
-    private partial void LogDecodingVideo(int sessionId, string pad, string chain, VideoOutputKind kind);
-
-    [LoggerMessage(LogLevel.Warning,
-        "[Session {SessionId}] Frames of {Pad} cannot reach the screen as {Kind}, the branch is rebuilt to deliver them in memory ({Reason})")]
-    private partial void LogVideoSurfaceFailed(int sessionId, string pad, VideoOutputKind kind, string? reason);
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Decoding incoming {Codec} video from {Pad}")]
+    private partial void LogDecodingVideo(int sessionId, string pad, VideoCodec codec);
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Incoming stream from {Pad} is over, its branch is released")]
     private partial void LogRetired(int sessionId, string pad);

@@ -10,7 +10,7 @@ namespace Client.GStreamer.Interop;
 /// The sink is polled rather than watched through its new-sample signal, which would run managed
 /// code on a streaming thread.
 /// </remarks>
-internal sealed class AppSinkReader : IDisposable
+public sealed class AppSinkReader : IDisposable
 {
     // Also how long disposing may wait for the thread to notice
     private const ulong PullTimeoutNanoseconds = 100_000_000;
