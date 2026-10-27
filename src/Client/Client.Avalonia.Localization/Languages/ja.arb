@@ -782,8 +782,8 @@
   "settings.experimental.customTitleBar.description": "ウィンドウのボタンをアプリの上部バーに表示し、システムのタイトルバーを隠します。オフにするとシステムのタイトルバーに戻ります。すぐに適用されます",
   "settings.experimental.section.voice": "音声",
   "settings.experimental.libWebRTC.title": "libwebrtc で音声と画面を送受信",
-  "settings.experimental.libWebRTC.description": "音声と画面を GStreamer ではなく Chrome のエンジンで送受信します。ジッターバッファ、ノイズ抑制、エコーキャンセルもそのエンジンのものを使います。画面のキャプチャ、エンコード、デコードは引き続き GStreamer が行います。共有画面の音声はまだ送信されません。次に参加するセッションから適用されます",
-  "settings.experimental.libWebRTC.failed": "libwebrtc を読み込めませんでした。音声は GStreamer のままです: {reason}",
+  "settings.experimental.libWebRTC.description": "音声と画面を GStreamer ではなく Chrome のエンジンで送受信します。ジッターバッファ、ノイズ抑制、エコーキャンセルもそのエンジンのものを使います。画面のキャプチャ、エンコード、デコードは引き続き GStreamer が行います。共有画面の音声もこのエンジンで送信され、マイクの処理は適用されません。次に参加するセッションから適用されます",
+  "settings.experimental.libWebRTC.failed": "libwebrtc を読み込めませんでした。音声と画面は GStreamer のままです: {reason}",
 
   "settings.accounting.name": "プロファイル、サーバー、セキュリティ",
   "settings.accounting.section.database": "データベースと ID",

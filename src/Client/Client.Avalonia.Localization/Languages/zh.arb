@@ -782,8 +782,8 @@
   "settings.experimental.customTitleBar.description": "窗口按钮位于应用的顶部栏中，系统标题栏被隐藏。关闭后恢复系统标题栏。立即生效",
   "settings.experimental.section.voice": "语音",
   "settings.experimental.libWebRTC.title": "通过 libwebrtc 传输语音和屏幕",
-  "settings.experimental.libWebRTC.description": "语音和屏幕改由 Chrome 的引擎传输，而不是 GStreamer：使用它的抖动缓冲、降噪和回声消除。屏幕的采集、编码和解码仍由 GStreamer 完成。共享屏幕的声音暂时不会随之发送。从下一次加入的会话开始生效",
-  "settings.experimental.libWebRTC.failed": "无法加载 libwebrtc，语音继续使用 GStreamer：{reason}",
+  "settings.experimental.libWebRTC.description": "语音和屏幕改由 Chrome 的引擎传输，而不是 GStreamer：使用它的抖动缓冲、降噪和回声消除。屏幕的采集、编码和解码仍由 GStreamer 完成。共享屏幕的声音也由它传输，不经过麦克风的处理。从下一次加入的会话开始生效",
+  "settings.experimental.libWebRTC.failed": "无法加载 libwebrtc，语音和屏幕继续使用 GStreamer：{reason}",
 
   "settings.accounting.name": "配置文件、服务器与安全",
   "settings.accounting.section.database": "数据库与身份",
