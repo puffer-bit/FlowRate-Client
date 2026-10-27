@@ -46,6 +46,9 @@ public sealed record SdpMediaSection
 
     public string Cname { get; init; } = "sfu";
 
+    /// <summary>The RTP header extensions of the section, by the id they are sent with.</summary>
+    public IReadOnlyList<SdpHeaderExtension> HeaderExtensions { get; init; } = [];
+
     /// <summary>
     /// Id of the consumer the section carries, null for a section the SFU sends nothing in. Not
     /// a part of the description.
@@ -58,4 +61,11 @@ public sealed record SdpMediaSection
         SdpDirection.RecvOnly => "recvonly",
         _ => "inactive"
     };
+}
+
+/// <summary>An RTP header extension of a section, the extmap attribute.</summary>
+public sealed record SdpHeaderExtension(int Id, string Uri)
+{
+    /// <summary>The sequence numbers of every packet of the transport, which transport-cc feedback reports on.</summary>
+    public const string TransportWideCcUri = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01";
 }

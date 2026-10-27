@@ -10,11 +10,19 @@ public class LibWebRTCStatsTests
 {
     private const uint VoiceSsrc = 555;
     private const uint MicrophoneSsrc = 123456789;
+    private const uint ScreenSsrc = 9;
+    private const uint OurScreenSsrc = 77;
 
     private static readonly InboundTrack Voice = new()
     {
         Id = "in1", UserId = 8, SSRC = VoiceSsrc, SourceType = MediaSourceType.Microphone, MediaType = MediaType.Audio,
         MimeType = "audio/opus", PayloadType = 100, ClockRate = 48000
+    };
+
+    private static readonly InboundTrack Screen = new()
+    {
+        Id = "in2", UserId = 8, SSRC = ScreenSsrc, SourceType = MediaSourceType.Screen, MediaType = MediaType.Video,
+        MimeType = "video/H264", PayloadType = 102, ClockRate = 90000
     };
 
     [Fact]
@@ -26,8 +34,10 @@ public class LibWebRTCStatsTests
         Assert.Equal([new VoiceLevel(null, 0.125), new VoiceLevel("2", 16384.0 / short.MaxValue)], stats.Levels);
 
         var streams = Assert.IsType<VoiceStreamCounters>(stats.Streams);
-        Assert.Equal(new InboundCounters(VoiceSsrc, 500, 3, 20), Assert.Single(streams.Inbound));
-        Assert.Equal(new OutboundCounters(MicrophoneSsrc, 400, 0.25, 40), Assert.Single(streams.Outbound));
+        Assert.Equal([new InboundCounters(VoiceSsrc, 500, 3, 20), new InboundCounters(ScreenSsrc, 7, 1, 0, 2)],
+            streams.Inbound);
+        Assert.Equal([new OutboundCounters(MicrophoneSsrc, 400, 0.25, 40), new OutboundCounters(OurScreenSsrc, 900, null, null)],
+            streams.Outbound);
         Assert.True(streams.IsOverTcp);
     }
 
@@ -65,6 +75,30 @@ public class LibWebRTCStatsTests
     }
 
     [Fact]
+    public void ScreenIsSampledWithItsKeyframeRequests()
+    {
+        var sampler = new VoiceStatsSampler();
+        sampler.Read(ScreenCounters(100, 0, 1), FindScreen, _ => false);
+
+        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+            sampler.Read(ScreenCounters(300, 2, 2), FindScreen, _ => false);
+
+        var sample = Assert.IsType<TransportStatsSample>(sampler.Read(ScreenCounters(500, 5, 4), FindScreen, _ => false));
+
+        var screen = Assert.Single(sample.Inbound!);
+        Assert.Equal(MediaType.Video, screen.MediaType);
+        Assert.Equal(MediaSourceType.Screen, screen.SourceType);
+        Assert.Equal(400, screen.Packets);
+        Assert.Equal(3u, screen.KeyframeRequests);
+        Assert.Equal(100.0 * 5 / 405, screen.LossPercent, 3);
+
+        static VoiceStreamCounters ScreenCounters(long received, long lost, long plis) =>
+            new([new InboundCounters(ScreenSsrc, received, lost, 1, plis)], [], false);
+
+        static InboundTrack? FindScreen(uint ssrc) => ssrc == ScreenSsrc ? Screen : null;
+    }
+
+    [Fact]
     public void StoppedStreamDoesNotReportItsLastLoss()
     {
         var sampler = new VoiceStatsSampler();
@@ -96,9 +130,10 @@ public class LibWebRTCStatsTests
     private static string Report(long received, long lost, long sent, double fractionLost, bool overTcp) => $$"""
         [
           {"type":"inbound-rtp","id":"IT01A555","kind":"audio","mid":"2","ssrc":{{VoiceSsrc}},"packetsReceived":"{{received}}","packetsLost":{{lost}},"jitter":0.02,"audioLevel":0.01},
-          {"type":"inbound-rtp","id":"IT01V9","kind":"video","mid":"3","ssrc":9,"packetsReceived":7,"packetsLost":0,"jitter":0},
+          {"type":"inbound-rtp","id":"IT01V9","kind":"video","mid":"3","ssrc":{{ScreenSsrc}},"packetsReceived":7,"packetsLost":1,"jitter":0,"pliCount":2},
           {"type":"media-source","id":"SA1","kind":"audio","audioLevel":0.125},
           {"type":"outbound-rtp","id":"OT01A1","kind":"audio","ssrc":{{MicrophoneSsrc}},"packetsSent":{{sent}}},
+          {"type":"outbound-rtp","id":"OT01V77","kind":"video","ssrc":{{OurScreenSsrc}},"packetsSent":900},
           {"type":"remote-inbound-rtp","id":"RI01A1","kind":"audio","ssrc":{{MicrophoneSsrc}},"fractionLost":{{fractionLost.ToString(System.Globalization.CultureInfo.InvariantCulture)}},"roundTripTime":0.04},
           {"type":"transport","id":"T01","selectedCandidatePairId":"CP1"},
           {"type":"candidate-pair","id":"CP1","localCandidateId":"L1","remoteCandidateId":"R1"},

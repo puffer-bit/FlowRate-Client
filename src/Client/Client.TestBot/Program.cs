@@ -91,7 +91,8 @@ if (options.LibWebRTC)
 {
     var libWebRTC = new LibWebRTCTransportFactory(
         new LibWebRTCRuntime(devices, services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
-        new NativeVideoReceiver(), services.GetRequiredService<ILoggerFactory>());
+        new GstAudioMedia(services.GetRequiredService<ILoggerFactory>()), new NativeVideoReceiver(),
+        services.GetRequiredService<ILoggerFactory>());
 
     if (!libWebRTC.IsAvailable)
     {

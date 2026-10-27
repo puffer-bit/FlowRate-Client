@@ -34,6 +34,7 @@ internal static class SfuMapper
         Channels = outbound.Channels,
         RtxPayloadType = outbound.RtxPayloadType,
         RtxSSRC = outbound.RtxSSRC,
+        TransportCcExtensionId = outbound.TransportCcExtensionId,
         IsFecEnabled = outbound.IsFecEnabled,
         FecLossPercent = outbound.FecLossPercent,
         IsDtxEnabled = outbound.IsDtxEnabled

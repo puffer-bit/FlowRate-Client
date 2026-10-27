@@ -17,7 +17,8 @@ public sealed record VoiceStreamCounters(IReadOnlyList<InboundCounters> Inbound,
     bool IsOverTcp);
 
 /// <summary>The counters of a stream we receive since it started.</summary>
-public readonly record struct InboundCounters(uint Ssrc, long Packets, long Lost, double JitterMs);
+/// <param name="KeyframeRequests">The keyframes we asked the sender of a picture for (PLI).</param>
+public readonly record struct InboundCounters(uint Ssrc, long Packets, long Lost, double JitterMs, long KeyframeRequests = 0);
 
 /// <summary>
 /// The counters of a stream we send since it started, and what the SFU last reported of it.

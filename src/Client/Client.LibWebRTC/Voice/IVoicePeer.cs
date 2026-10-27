@@ -28,6 +28,13 @@ public interface IVoicePeer : IDisposable
     /// <returns>Null where the platform sends no screens.</returns>
     IVideoSendSource? CreateVideoSource(int width, int height, int maxFramerate, IVideoSendListener listener) => null;
 
+    /// <summary>
+    /// A sound to send besides the microphone, as the one of a shown screen: it goes into a section
+    /// through <see cref="Negotiate"/>.
+    /// </summary>
+    /// <returns>Null where the platform sends no such sound.</returns>
+    IAudioSendSource? CreateAudioSource() => null;
+
     /// <summary>Stops or resumes sending the microphone, without touching its section.</summary>
     void SetMicrophoneEnabled(bool isEnabled);
 

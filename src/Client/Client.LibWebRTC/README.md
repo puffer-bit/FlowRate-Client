@@ -3,8 +3,7 @@
 The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
 buffer (NetEq), the processing of the microphone (APM) and the estimate of the network. On the desktop
 it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
-has no other engine. On the desktop it also carries the screens, shown and watched; the sound of a
-shown screen does not go with it yet.
+has no other engine. On the desktop it also carries the screens, shown and watched, with their sound.
 
 ## Layout
 
@@ -13,6 +12,7 @@ shown screen does not go with it yet.
 | `Voice/VoiceTransport.cs` | `IWebRTCTransport` of every platform: the sections of the SFU, the offer/answer rounds, the volumes, the speaking indicator, the statistics |
 | `Voice/IVoicePeer.cs` | What a platform gives it: one peer connection that answers the offer of the SFU |
 | `Voice/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
+| `Voice/OutgoingSound.cs` | The sound of the screen we show: captured by `IAudioMedia`, pushed into libwebrtc 10 ms at a time |
 | `Voice/OutgoingVideo.cs` | The screen we show: the capture of `IVideoMedia` encodes it, libwebrtc sends it and asks for keyframes and the bitrate |
 | `Native/` | The peer of the desktop: `flowrate_webrtc.h`/`.cc`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), `flowrate_video.cc`, the video codecs that pass the pictures through and the source of encoded ones, and the P/Invoke bindings |
 | `Build/` | The scripts that build libwebrtc with that interface into one library, the committed libraries (`prebuilt/<rid>/`) and `LibWebRTCRuntime.targets`, which copies them next to the executable |
@@ -59,8 +59,24 @@ the one of the setting (144 goes through). The track is not marked as a screen: 
 repeat the last frame of a still screen, which an encoder that only passes pictures on cannot do. A
 picture it gives again is dropped.
 
+Lost packets are resent as RTX, on the payload type and SSRC the SFU gave the producer: the section
+offers the RTX codec, and the answer gets the SSRC of the SFU in its group FID next to the one of the
+stream. Where the SFU reads the transport-wide sequence number (it says so with each outbound track),
+every section we send in carries it, and libwebrtc estimates the bandwidth by the delays of its
+transport-cc feedback; an SFU that reads none is offered none, as libwebrtc would take the missing
+feedback for a network that delivers nothing. A screen that starts after the voice is probed up to its
+bitrate within a second or so; one that starts in the very round of the microphone is measured while
+only the voice is allocated and climbs slowly.
+
+`FLOWRATE_WEBRTC_LOG=verbose|info|warning|error` prints the log of libwebrtc to stderr.
+
 A screen that stops keeps its section, which goes on sending, nothing: the SFU only pauses its
 producer, and the stream goes on with the next sequence number when it is back.
+
+The sound of a shown screen is captured by `IAudioMedia` (GStreamer: the process loopback of Windows,
+the streams of an application on PipeWire), cut into 10 ms and pushed into an `fr_audio_source` of its
+own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX,
+as the GStreamer transport does; nothing of the processing of the microphone touches it.
 
 H.264 and VP8 go both ways, which are what the clients send. Android neither shows nor watches screens,
 as it has no `IVideoMedia`.

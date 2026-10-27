@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddSingleton<IMicrophoneTester, GstMicrophoneTester>();
         services.AddSingleton<IMediaCapabilities, GstMediaCapabilities>();
         services.AddSingleton<IVideoMedia, GstVideoMedia>();
+        services.AddSingleton<IAudioMedia, GstAudioMedia>();
 
         return services;
     }

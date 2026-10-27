@@ -22,7 +22,23 @@ public interface IVideoSendListener
     void OnKeyFrameRequested();
 }
 
+/// <summary>
+/// A sound we send that is not the microphone, as the sound of a shown screen: libwebrtc encodes what
+/// is pushed into it, and nothing of the processing of the microphone touches it.
+/// </summary>
+public interface IAudioSendSource : IDisposable
+{
+    /// <summary>
+    /// The next 10 ms, in 16-bit samples, interleaved when there are two channels. Any thread, one at
+    /// a time.
+    /// </summary>
+    void Push(ReadOnlySpan<short> samples, int sampleRate, int channels);
+}
+
 /// <summary>A section we send in, and what goes into it.</summary>
 /// <param name="Ssrc">The SSRC the SFU expects there.</param>
-/// <param name="Video">The screen of the section, or null for the microphone.</param>
-public sealed record SendSection(string Mid, uint Ssrc, IVideoSendSource? Video = null);
+/// <param name="Video">The screen of a video section.</param>
+/// <param name="RtxSsrc">The SSRC the SFU expects the resent packets on, or 0 where it gave none.</param>
+/// <param name="Audio">The sound of an audio section, or null for the microphone.</param>
+public sealed record SendSection(string Mid, uint Ssrc, IVideoSendSource? Video = null, uint RtxSsrc = 0,
+    IAudioSendSource? Audio = null);

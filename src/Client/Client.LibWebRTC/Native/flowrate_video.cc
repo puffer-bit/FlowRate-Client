@@ -6,6 +6,7 @@
 #include "flowrate_video.h"
 
 #include <atomic>
+#include <cstdlib>
 #include <map>
 #include <mutex>
 #include <string>
@@ -27,6 +28,7 @@
 #include "modules/video_coding/include/video_codec_interface.h"
 #include "modules/video_coding/include/video_error_codes.h"
 #include "pc/video_track_source.h"
+#include "rtc_base/logging.h"
 #include "rtc_base/numerics/sequence_number_unwrapper.h"
 #include "rtc_base/time_utils.h"
 #include "src/rtc_peerconnection_factory_impl.h"
@@ -419,6 +421,23 @@ std::unique_ptr<webrtc::VideoEncoderFactory> CreateVideoEncoderFactory() {
 
 webrtc::scoped_refptr<VideoSource> SourceOf(fr_video_source* source) {
   return webrtc::scoped_refptr<VideoSource>(reinterpret_cast<VideoSource*>(source));
+}
+
+void ConfigureLogging() {
+  const char* level = std::getenv("FLOWRATE_WEBRTC_LOG");
+
+  if (level == nullptr)
+    return;
+
+  std::string name = level;
+  auto severity = name == "verbose" ? webrtc::LS_VERBOSE
+                  : name == "info"  ? webrtc::LS_INFO
+                  : name == "error" ? webrtc::LS_ERROR
+                                    : webrtc::LS_WARNING;
+
+  webrtc::LogMessage::LogToDebug(severity);
+  webrtc::LogMessage::LogTimestamps();
+  webrtc::LogMessage::LogThreads();
 }
 
 void SetPeerConnectionFactory(libwebrtc::RTCPeerConnectionFactory* factory) {

@@ -25,6 +25,16 @@ internal static unsafe partial class NativeMethods
         public delegate* unmanaged<nint, void> KeyFrame;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SendSection
+    {
+        public byte* Mid;
+        public uint Ssrc;
+        public uint RtxSsrc;
+        public nint Video;
+        public nint Audio;
+    }
+
     [LibraryImport(Library, EntryPoint = "fr_initialize")]
     public static partial int Initialize();
 
@@ -60,8 +70,7 @@ internal static unsafe partial class NativeMethods
         int noiseSuppression, int autoGainControl);
 
     [LibraryImport(Library, EntryPoint = "fr_peer_negotiate", StringMarshalling = StringMarshalling.Utf8)]
-    public static partial void PeerNegotiate(nint peer, string offer, byte** sendMids, uint* sendSsrcs, nint* sendVideos,
-        int sendCount);
+    public static partial void PeerNegotiate(nint peer, string offer, SendSection* sends, int sendCount);
 
     [LibraryImport(Library, EntryPoint = "fr_peer_set_microphone_enabled")]
     public static partial void PeerSetMicrophoneEnabled(nint peer, int isEnabled);
@@ -98,4 +107,13 @@ internal static unsafe partial class NativeMethods
 
     [LibraryImport(Library, EntryPoint = "fr_video_source_destroy")]
     public static partial void VideoSourceDestroy(nint source);
+
+    [LibraryImport(Library, EntryPoint = "fr_audio_source_create")]
+    public static partial nint AudioSourceCreate();
+
+    [LibraryImport(Library, EntryPoint = "fr_audio_source_push")]
+    public static partial void AudioSourcePush(nint source, short* samples, int frames, int sampleRate, int channels);
+
+    [LibraryImport(Library, EntryPoint = "fr_audio_source_destroy")]
+    public static partial void AudioSourceDestroy(nint source);
 }

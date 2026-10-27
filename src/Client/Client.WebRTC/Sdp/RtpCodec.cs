@@ -37,6 +37,12 @@ public sealed record RtpCodec
     /// </summary>
     public IReadOnlyList<string> RtcpFeedback { get; init; } = [];
 
+    /// <summary>
+    /// Payload type of the RTX stream lost packets are resent on, announced with the codec as its
+    /// associated payload type; null for a codec without one.
+    /// </summary>
+    public int? RtxPayloadType { get; init; }
+
     public static RtpCodec H264(int payloadType = 96) => new()
     {
         PayloadType = payloadType,
