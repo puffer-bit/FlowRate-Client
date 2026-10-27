@@ -89,7 +89,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
         _core = new TransportCore(sessionId, logger);
         _incoming = new IncomingTracks(_core, _sections, Negotiate,
-            inboundIds => InboundsReady?.Invoke(inboundIds), logger);
+            inboundIds => InboundsReady?.Invoke(inboundIds), ssrc => _tuning.ForgetSource(ssrc), logger);
         _retransmission = new OutgoingRetransmission(_core, logger);
         _video = video;
         _outgoing = new OutgoingTracks(_core, _sections, devices, video, Negotiate, _retransmission,
