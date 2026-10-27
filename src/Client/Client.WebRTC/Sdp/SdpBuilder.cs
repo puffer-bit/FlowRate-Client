@@ -64,7 +64,9 @@ public static class SdpBuilder
     {
         var codec = section.Codec;
 
-        sdp.Append($"m={section.Kind} {transportData.Port} UDP/TLS/RTP/SAVPF {codec.PayloadType}").Append(LineBreak);
+        var payloadTypes = codec.RtxPayloadType is { } rtx ? $"{codec.PayloadType} {rtx}" : $"{codec.PayloadType}";
+
+        sdp.Append($"m={section.Kind} {transportData.Port} UDP/TLS/RTP/SAVPF {payloadTypes}").Append(LineBreak);
         sdp.Append($"c=IN IP4 {transportData.Host}").Append(LineBreak);
 
         // The transport is rtcp-mux only, so RTCP shares the RTP port.
@@ -85,6 +87,9 @@ public static class SdpBuilder
         sdp.Append($"a=mid:{section.Mid}").Append(LineBreak);
         sdp.Append($"a={section.ToDirectionAttribute()}").Append(LineBreak);
 
+        foreach (var extension in section.HeaderExtensions)
+            sdp.Append($"a=extmap:{extension.Id} {extension.Uri}").Append(LineBreak);
+
         sdp.Append($"a=rtpmap:{codec.ToRtpMap()}").Append(LineBreak);
 
         if (!string.IsNullOrWhiteSpace(codec.FormatParameters))
@@ -92,6 +97,12 @@ public static class SdpBuilder
 
         foreach (var feedback in codec.RtcpFeedback)
             sdp.Append($"a=rtcp-fb:{codec.PayloadType} {feedback}").Append(LineBreak);
+
+        if (codec.RtxPayloadType is { } rtxPayloadType)
+        {
+            sdp.Append($"a=rtpmap:{rtxPayloadType} rtx/{codec.ClockRate}").Append(LineBreak);
+            sdp.Append($"a=fmtp:{rtxPayloadType} apt={codec.PayloadType}").Append(LineBreak);
+        }
 
         // The SSRC is only announced for streams the SFU sends.
         if (section.Direction == SdpDirection.SendOnly && section.SSRC.HasValue)

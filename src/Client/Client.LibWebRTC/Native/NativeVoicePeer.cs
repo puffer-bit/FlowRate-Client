@@ -58,22 +58,33 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
     {
         var mids = sends.Select(send => Marshal.StringToCoTaskMemUTF8(send.Mid)).ToArray();
-        var ssrcs = sends.Select(send => send.Ssrc).ToArray();
-        var sources = sends.Select(send => send.Video as NativeVideoSource).ToArray();
+        var videoSources = sends.Select(send => send.Video as NativeVideoSource).ToArray();
+        var audioSources = sends.Select(send => send.Audio as NativeAudioSource).ToArray();
 
-        // A source disposed in the meantime leaves its section without a picture until the next round
-        var videos = sources.Select(source => source?.Acquire() ?? 0).ToArray();
+        // A source disposed in the meantime leaves its section empty until the next round
+        var videos = videoSources.Select(source => source?.Acquire() ?? 0).ToArray();
+        var audios = audioSources.Select(source => source?.Acquire() ?? 0).ToArray();
 
         try
         {
-            fixed (nint* midPointers = mids)
-            fixed (uint* ssrcPointers = ssrcs)
-            fixed (nint* videoPointers = videos)
+            var sections = new NativeMethods.SendSection[sends.Count];
+
+            for (var index = 0; index < sections.Length; index++)
             {
-                var midArray = (byte**)midPointers;
-                var ssrcArray = ssrcPointers;
-                var videoArray = videoPointers;
-                Run(peer => NativeMethods.PeerNegotiate(peer, offer, midArray, ssrcArray, videoArray, mids.Length));
+                sections[index] = new NativeMethods.SendSection
+                {
+                    Mid = (byte*)mids[index],
+                    Ssrc = sends[index].Ssrc,
+                    RtxSsrc = sends[index].RtxSsrc,
+                    Video = videos[index],
+                    Audio = audios[index]
+                };
+            }
+
+            fixed (NativeMethods.SendSection* sectionPointers = sections)
+            {
+                var sectionArray = sectionPointers;
+                Run(peer => NativeMethods.PeerNegotiate(peer, offer, sectionArray, sections.Length));
             }
         }
         finally
@@ -81,16 +92,21 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
             foreach (var mid in mids)
                 Marshal.FreeCoTaskMem(mid);
 
-            for (var index = 0; index < sources.Length; index++)
+            for (var index = 0; index < sends.Count; index++)
             {
                 if (videos[index] != 0)
-                    sources[index]!.Release();
+                    videoSources[index]!.Release();
+
+                if (audios[index] != 0)
+                    audioSources[index]!.Release();
             }
         }
     }
 
     public IVideoSendSource? CreateVideoSource(int width, int height, int maxFramerate, IVideoSendListener listener) =>
         NativeVideoSource.Create(width, height, maxFramerate, listener);
+
+    public IAudioSendSource? CreateAudioSource() => NativeAudioSource.Create();
 
     public void SetMicrophoneEnabled(bool isEnabled) => Run(peer => NativeMethods.PeerSetMicrophoneEnabled(peer, isEnabled ? 1 : 0));
 

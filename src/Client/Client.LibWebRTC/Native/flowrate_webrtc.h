@@ -23,6 +23,7 @@ extern "C" {
 
 typedef struct fr_peer fr_peer;
 typedef struct fr_video_source fr_video_source;
+typedef struct fr_audio_source fr_audio_source;
 
 /* The values of RTCPeerConnectionState: new, connecting, connected, disconnected, failed, closed. */
 typedef void (*fr_state_callback)(void* context, int state);
@@ -81,14 +82,23 @@ FR_API void fr_set_voice_gate(fr_level_callback on_level, void* context);
 FR_API fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context,
                                int echo_cancellation, int noise_suppression, int auto_gain_control);
 
+/* A section we send in, and what goes into it. */
+typedef struct fr_send_section {
+    const char* mid;
+    /* The SSRC the SFU expects there, and the one of the RTX stream (0 keeps the one of libwebrtc) */
+    uint32_t ssrc;
+    uint32_t rtx_ssrc;
+    /* The picture of a video section; null sends nothing in one */
+    fr_video_source* video;
+    /* The sound of an audio section; null sends the microphone */
+    fr_audio_source* audio;
+} fr_send_section;
+
 /*
  * Runs one offer/answer round: applies the offer of the SFU, puts what we send into the sections we
- * send in (the video source of send_videos where it has one; where it is null, nothing into a video
- * section and the microphone into an audio one), answers, and gives each of those sections the SSRC
- * the SFU expects there.
+ * send in, answers, and gives each of those sections the SSRCs the SFU expects there.
  */
-FR_API void fr_peer_negotiate(fr_peer* peer, const char* offer, const char* const* send_mids,
-                              const uint32_t* send_ssrcs, fr_video_source* const* send_videos, int send_count);
+FR_API void fr_peer_negotiate(fr_peer* peer, const char* offer, const fr_send_section* sends, int send_count);
 
 FR_API void fr_peer_set_microphone_enabled(fr_peer* peer, int is_enabled);
 
@@ -159,6 +169,22 @@ FR_API void fr_video_source_push(fr_video_source* source, const uint8_t* data, i
 
 /* Stops the source; no callback comes once it returns. A section that still sends it sends nothing. */
 FR_API void fr_video_source_destroy(fr_video_source* source);
+
+/*
+ * A sound we send whose samples come from outside, as the sound of a shown screen: no processing of
+ * the microphone touches it. Goes into a section through fr_peer_negotiate.
+ */
+FR_API fr_audio_source* fr_audio_source_create(void);
+
+/*
+ * The next 10 ms of the sound: 16-bit samples, interleaved when there are two channels. Any thread,
+ * one at a time.
+ */
+FR_API void fr_audio_source_push(fr_audio_source* source, const int16_t* samples, int frames, int sample_rate,
+                                 int channels);
+
+/* Stops the source. A section that still sends it sends nothing. */
+FR_API void fr_audio_source_destroy(fr_audio_source* source);
 
 #ifdef __cplusplus
 }
