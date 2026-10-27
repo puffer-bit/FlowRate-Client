@@ -330,6 +330,12 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             return null;
         }
 
+        using (var input = branch.GetStaticPad("sink"))
+        {
+            if (input != null)
+                GstEncodedNative.RequestKeyFramesWithPli(input);
+        }
+
         var video = new IncomingVideo(() =>
             {
                 var decoder = _video.CreateDecoder(codec, $"{_sessionId}_{padName}");

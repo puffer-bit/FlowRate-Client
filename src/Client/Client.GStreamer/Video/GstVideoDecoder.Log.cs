@@ -9,6 +9,9 @@ internal sealed partial class GstVideoDecoder
     [LoggerMessage(LogLevel.Information, "[Decoder {Name}] Decoding: {Chain}, frames as {Kind}")]
     private static partial void LogDecoding(ILogger logger, string name, string chain, VideoOutputKind kind);
 
+    [LoggerMessage(LogLevel.Information, "[Decoder {Name}] First frame decoded, {Width}x{Height} as {Kind}")]
+    private static partial void LogFirstFrame(ILogger logger, string name, int width, int height, VideoOutputKind kind);
+
     [LoggerMessage(LogLevel.Error, "[Decoder {Name}] No decoder of {Codec} in the runtime")]
     private static partial void LogNoDecoder(ILogger logger, string name, VideoCodec codec);
 
