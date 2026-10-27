@@ -4,6 +4,9 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
              x:Class="Client.Droid.Views.HybridSessionView"
              x:DataType="hybridVm:ActiveHybridSessionVM"
              Background="{DynamicResource GeneralBrush}"
@@ -20,10 +23,31 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <!-- Small round buttons over and under a screen -->
+        <Style Selector="Button.screen-action">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- A user away from the keyboard fades out, all but the AFK mark, as in the list of sessions -->
+        <Style Selector="Grid.peerRow :is(Control).afkDim">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.peerRow.afk :is(Control).afkDim">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
     </UserControl.Styles>
 
-    <!-- The voice of the session we are in: who is in it, and the microphone, the sound and the way out.
-         Screens are not shown here -->
+    <!-- The session we are in: the screens shown in it, who is in it, and the microphone, the sound and
+         the way out. Screens are only watched from here, not shared -->
     <Grid RowDefinitions="Auto, *, Auto">
         <StackPanel Grid.Row="0" Margin="16,12" Spacing="2">
             <TextBlock FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
@@ -33,23 +57,147 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1">
-            <ItemsControl Margin="8,0" ItemsSource="{Binding ParticipantsListVM.Participants}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="hybridVm:HybridSessionParticipantVM">
-                        <Grid ColumnDefinitions="40, *" ColumnSpacing="12" Margin="8,6">
-                            <avatars:UserAvatar Grid.Column="0" Width="40" Height="40"
-                                                UserName="{Binding UserData.Username, FallbackValue={x:Null}}"
-                                                AvatarUrl="{Binding UserData.AvatarUrl, FallbackValue={x:Null}}"
-                                                IsAnimated="True"
-                                                IsSpeaking="{Binding IsSpeaking}"
-                                                IsWaiting="{Binding IsWaiting}"/>
-                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16"
-                                       TextTrimming="CharacterEllipsis"
-                                       Text="{Binding DisplayedName}"/>
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel>
+                <!-- A card per screen: who shows it and a button to watch it, then its picture and the
+                     volume of its sound. Our own screen is not shared from Android, so it never shows -->
+                <ItemsControl Margin="8,0" ItemsSource="{Binding ScreenStreams}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="hybridVm:ScreenStreamVM">
+                            <Border Margin="0,4" CornerRadius="12" ClipToBounds="True"
+                                    Background="{DynamicResource DarkBackgroundBrush}"
+                                    IsVisible="{Binding !IsSelf}"
+                                    anim:Presence.Appear="Fade"
+                                    anim:Presence.Leave="Fade"
+                                    anim:Presence.IsLeaving="{Binding IsLeaving}">
+                                <StackPanel>
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10" Margin="12,8">
+                                        <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
+                                                            UserName="{Binding DisplayedName}"
+                                                            AvatarUrl="{Binding AvatarUrl}"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock FontSize="15" TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DisplayedName}"/>
+                                            <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                       Text="{l:Text hybrid.screen.sharing}"/>
+                                        </StackPanel>
+
+                                        <Panel Grid.Column="2">
+                                            <Button Classes="screen-action" Command="{Binding WatchCommand}"
+                                                    IsVisible="{Binding !IsWatched}"
+                                                    ToolTip.Tip="{l:Text hybrid.screen.watch}">
+                                                <Image Width="20" Height="20" Source="{StaticResource EyeIcon}"/>
+                                            </Button>
+                                            <Button Classes="screen-action" Command="{Binding StopWatchingCommand}"
+                                                    IsVisible="{Binding IsWatched}"
+                                                    ToolTip.Tip="{l:Text hybrid.screen.stopWatching}">
+                                                <Image Width="20" Height="20" Source="{StaticResource CrossedEyeIcon}"/>
+                                            </Button>
+                                        </Panel>
+                                    </Grid>
+
+                                    <StackPanel IsVisible="{Binding IsWatched}">
+                                        <!-- A tap opens the picture over the whole display -->
+                                        <Panel Background="Black" Tapped="OnPictureTapped">
+                                            <views:PictureView Stream="{Binding}"/>
+                                        </Panel>
+
+                                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8" Margin="8,4">
+                                            <Button Grid.Column="0" Classes="screen-action" Command="{Binding ToggleMute}">
+                                                <Panel>
+                                                    <Image Width="20" Height="20" Source="{StaticResource HighVolumeIcon}"
+                                                           IsVisible="{Binding !IsMuted}"/>
+                                                    <Image Width="20" Height="20" Source="{StaticResource CrossedNoVolumeIcon}"
+                                                           IsVisible="{Binding IsMuted}"/>
+                                                </Panel>
+                                            </Button>
+                                            <Slider Grid.Column="1" VerticalAlignment="Center"
+                                                    Minimum="0"
+                                                    Maximum="{Binding MaxVolume}"
+                                                    Value="{Binding Volume}"
+                                                    IsEnabled="{Binding !IsMuted}"/>
+                                            <Button Grid.Column="2" Classes="screen-action" Click="OnFullscreenClick"
+                                                    ToolTip.Tip="{l:Text hybrid.screen.expand}">
+                                                <Image Width="20" Height="20" Source="{StaticResource FullscreenIcon}"/>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- The peers of the list of sessions, which know the microphone, the sound and AFK of
+                     each; set from code. A tap on someone opens their menu: their screen and the volume
+                     of their voice -->
+                <ItemsControl x:Name="Participants" Margin="8,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="listVm:PeerVM">
+                            <Grid ColumnDefinitions="40, *, Auto" ColumnSpacing="12" Margin="8,6"
+                                  ClipToBounds="True"
+                                  anim:Presence.Appear="Unfold"
+                                  anim:Presence.Leave="Fold"
+                                  anim:Presence.IsLeaving="{Binding IsLeaving}"
+                                  Classes="peerRow"
+                                  Classes.afk="{Binding IsAfk}"
+                                  Background="Transparent" Tapped="OnParticipantTapped">
+                                <Panel Grid.Column="0" Classes="afkDim" Width="40" Height="40">
+                                    <avatars:UserAvatar UserName="{Binding UserData.Username, FallbackValue={x:Null}}"
+                                                        AvatarUrl="{Binding UserData.AvatarUrl, FallbackValue={x:Null}}"
+                                                        IsAnimated="True"
+                                                        IsSpeaking="{Binding IsSpeaking}"
+                                                        IsWaiting="{Binding IsWaiting}">
+                                        <avatars:UserAvatar.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="IsConnected"/>
+                                                <Binding Path="IsWaiting"/>
+                                            </MultiBinding>
+                                        </avatars:UserAvatar.IsVisible>
+                                    </avatars:UserAvatar>
+                                    <loadingIndicators:ProgressRing Width="20" Height="20"
+                                                                    MinWidth="0" MinHeight="0"
+                                                                    IsIndeterminate="True"
+                                                                    BorderThickness="2"
+                                                                    Foreground="{DynamicResource PrimaryTextBrush}">
+                                        <loadingIndicators:ProgressRing.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="!IsConnected"/>
+                                                <Binding Path="!IsWaiting"/>
+                                            </MultiBinding>
+                                        </loadingIndicators:ProgressRing.IsVisible>
+                                    </loadingIndicators:ProgressRing>
+                                </Panel>
+                                <!-- The reason of an away user goes under the name, and stays readable -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Classes="afkDim" FontSize="16" TextTrimming="CharacterEllipsis"
+                                               Text="{Binding DisplayedName}"/>
+                                    <TextBlock Text="{Binding AfkReason}"
+                                               IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <Image Width="20" Height="20" Classes="afkDim"
+                                           Source="{StaticResource ScreenShareIcon}"
+                                           IsVisible="{Binding IsSharingScreen}"/>
+                                    <!-- The AFK mark stands for the microphone and the sound -->
+                                    <Image Width="20" Height="20"
+                                           Source="{StaticResource AfkIcon}"
+                                           IsVisible="{Binding IsAfk}"/>
+                                    <Image Width="20" Height="20"
+                                           Source="{StaticResource CrossedMicrophoneIcon}"
+                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
+                                    <Image Width="20" Height="20"
+                                           Source="{StaticResource CrossedHeadphonesIcon}"
+                                           IsVisible="{Binding ShowsSoundOff}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,12,0,20">
@@ -78,5 +226,15 @@
                 <Image Width="24" Height="24" Source="{StaticResource DoorWithRedArrowIcon}"/>
             </Button>
         </StackPanel>
+
+        <!-- One screen over the whole display; back or the button closes it -->
+        <Panel Grid.Row="0" Grid.RowSpan="3" x:Name="FullscreenLayer" Background="Black" IsVisible="False">
+            <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            <Button Classes="screen-action" Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Opacity="0.7" Click="OnCloseFullscreenClick"
+                    ToolTip.Tip="{l:Text hybrid.screen.collapse}">
+                <Image Width="20" Height="20" Source="{StaticResource CollapseIcon}"/>
+            </Button>
+        </Panel>
     </Grid>
 </UserControl>

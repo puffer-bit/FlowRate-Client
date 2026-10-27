@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Client.Application.Ports;
+using Client.Core.Media;
 using Client.Core.Settings;
 using Client.LibWebRTC.Voice;
 using Com.Flowrate.Rtc;
@@ -14,6 +15,7 @@ namespace Client.Droid.Platform.Media.WebRTC;
 /// The voice peer of Android, over VoicePeer.java. The system chooses the microphone and processes
 /// it, with the echo canceller and the noise suppressor of the device, so the settings of the
 /// microphone are kept as they are. The sound is routed as for a call while the peer lives.
+/// Screens are decoded here, by MediaCodec where the device can, and handed out as I420 pictures.
 /// </summary>
 internal sealed class AndroidVoicePeer : IVoicePeer
 {
@@ -90,6 +92,43 @@ internal sealed class AndroidVoicePeer : IVoicePeer
             }
 
             listener.OnStats(new VoiceStats(parsed));
+        }
+
+        // On the decoding thread of the stream, where an exception would reach libwebrtc
+        public void OnPicture(string? mid, VoicePeer.Picture? picture)
+        {
+            if (picture == null)
+                return;
+
+            AndroidPictureFrame frame;
+
+            try
+            {
+                frame = AndroidPictureFrame.Wrap(picture);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            try
+            {
+                if (mid != null)
+                    listener.OnVideoFrame(mid, new RawVideoFrame(IntPtr.Zero, frame.Width, frame.Height, 0)
+                    {
+                        Timestamp = picture.TimestampNs,
+                        Gpu = frame
+                    });
+            }
+            catch (Exception)
+            {
+                // The picture is dropped
+            }
+            finally
+            {
+                // A view that keeps the picture took a reference of its own
+                frame.Dispose();
+            }
         }
     }
 }

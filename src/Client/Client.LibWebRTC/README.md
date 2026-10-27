@@ -3,7 +3,8 @@
 The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
 buffer (NetEq), the processing of the microphone (APM) and the estimate of the network. On the desktop
 it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
-has no other engine. On the desktop it also carries the screens, shown and watched, with their sound.
+has no other engine. On the desktop it also carries the screens, shown and watched, with their sound;
+Android watches them only, decoded by libwebrtc itself (see below).
 
 ## Layout
 
@@ -42,6 +43,12 @@ stream starts at a keyframe and has no gaps. A decoder that needs a keyframe any
 `fr_video_request_keyframe`: the next picture returns `WEBRTC_VIDEO_CODEC_OK_REQUEST_KEYFRAME`, and
 libwebrtc sends a PLI. The pictures are told apart by the SSRC of their packets, which the SFU gives
 each consumer of its own.
+
+On Android the Java libwebrtc decodes the screens itself, with MediaCodec where the device can
+(`DefaultVideoDecoderFactory` without an EGL context, so the pictures come into memory). `VoicePeer.java`
+hands each picture out as I420 planes, `AndroidVoicePeer` wraps them in a `MemoryYuvVideoFrame` that
+gives them back with its last reference, and the transport (`isVideoDecodedByPeer`) passes them on by
+the mid of their section. `Views/PictureView` of Android draws them with a Skia shader.
 
 ### Shown
 

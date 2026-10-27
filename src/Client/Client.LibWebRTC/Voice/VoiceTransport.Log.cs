@@ -49,6 +49,10 @@ public sealed partial class VoiceTransport
     private partial void LogStatsSample(int sessionId, double roundTripMs, double inboundLoss, double outboundLoss,
         bool isOverTcp, string streams);
 
+    [LoggerMessage(LogLevel.Debug,
+        "[Session {SessionId}] Counters: available out {AvailableKbps:F0} kbit/s; sent {Sent}; received {Received}")]
+    private partial void LogStatsCounters(int sessionId, double availableKbps, string sent, string received);
+
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] A callback of libwebrtc failed")]
     private partial void LogCallbackFailed(Exception exception, int sessionId);
 
