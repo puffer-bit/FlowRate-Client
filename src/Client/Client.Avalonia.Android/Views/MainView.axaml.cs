@@ -18,6 +18,7 @@ using Client.Application.Sounds;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using Client.Core.Push;
+using Client.Droid.Platform.Calls;
 using Client.Droid.Platform.Notifications;
 using Client.Services;
 using Client.ViewModels.Connections;
@@ -164,6 +165,9 @@ public partial class MainView : UserControl
         viewModel.ChatMessageReceived += OnChatMessageReceived;
         viewModel.IsWindowActive = MainActivity.IsInFront;
         viewModel.ChatReads.StateChanged += OnChatReadStateChanged;
+
+        // The voice session goes on off the screen, with a notification of its own
+        _ = new CallTracker(viewModel);
 
         ShowCurrentScreen();
     }
