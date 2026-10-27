@@ -26,13 +26,14 @@ internal sealed class AndroidVoicePeer : IVoicePeer
         VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, true);
     }
 
-    public void Negotiate(string offer, IReadOnlyList<string> sendMids, IReadOnlyList<uint> sendSsrcs) =>
-        _peer.Negotiate(offer, sendMids.ToArray(), sendSsrcs.Select(ssrc => (long)ssrc).ToArray());
+    // Only the microphone: no screen is sent from here
+    public void Negotiate(string offer, IReadOnlyList<SendSection> sends) =>
+        _peer.Negotiate(offer, sends.Select(send => send.Mid).ToArray(), sends.Select(send => (long)send.Ssrc).ToArray());
 
     public void SetMicrophoneEnabled(bool isEnabled) => _peer.SetMicrophoneEnabled(isEnabled);
 
-    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled) =>
-        true;
+    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled) => true;
 
     public void SetMicrophoneVolume(double volume)
     {

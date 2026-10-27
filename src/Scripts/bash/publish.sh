@@ -149,15 +149,13 @@ prepare_gstreamer() {
     fi
 }
 
-# Puts the libwebrtc runtime into the build of <rid>: the voice of the experimental setting. Optional,
-# the client falls back to GStreamer without it. The Linux one takes seconds, so it is built every time
+# Checks the libwebrtc runtime of <rid>: the voice of the experimental setting. Optional, the client
+# falls back to GStreamer without it. It is committed (Client.LibWebRTC/Build builds it by hand), so
+# nothing is built here
 prepare_libwebrtc() {
     local rid=$1
 
-    if [[ "$rid" == linux-x64 ]]; then
-        echo "######## Building the libwebrtc runtime"
-        "$LIBWEBRTC_DIR/Native/build.sh"
-    elif [[ ! -d "$LIBWEBRTC_DIR/Build/artifacts/$rid/libwebrtc" ]]; then
+    if [[ ! -d "$LIBWEBRTC_DIR/Build/prebuilt/$rid" ]]; then
         echo "Note: no libwebrtc runtime for $rid, its voice goes over GStreamer only"
     fi
 }

@@ -150,11 +150,13 @@ jobs:
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
 
+      # Only once the Windows library is committed: until then the client falls back to GStreamer
       - name: Check published libwebrtc runtime
+        if: hashFiles('src/Client/Client.LibWebRTC/Build/prebuilt/win-x64/flowrate_webrtc.dll') != ''
         shell: powershell
         run: |
           $suffix = if ("${{ inputs.aot }}" -eq "true") { "-aot" } else { "" }
-          & src\Client\Client.LibWebRTC\Native\test-runtime.ps1 `
+          & src\Client\Client.LibWebRTC\Build\windows\verify.ps1 `
               -RuntimeDirectory "src\Client\Client.Avalonia.Desktop\bin\publish\win-x64$suffix"
 
       - uses: actions/upload-artifact@v7

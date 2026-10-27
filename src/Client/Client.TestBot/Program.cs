@@ -90,8 +90,8 @@ IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, video, 
 if (options.LibWebRTC)
 {
     var libWebRTC = new LibWebRTCTransportFactory(
-        new LibWebRTCRuntime(devices, services.GetRequiredService<ILogger<LibWebRTCRuntime>>()),
-        services.GetRequiredService<ILoggerFactory>());
+        new LibWebRTCRuntime(devices, services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
+        new NativeVideoReceiver(), services.GetRequiredService<ILoggerFactory>());
 
     if (!libWebRTC.IsAvailable)
     {

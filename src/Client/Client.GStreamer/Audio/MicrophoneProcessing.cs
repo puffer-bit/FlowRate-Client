@@ -7,7 +7,7 @@ namespace Client.GStreamer.Audio;
 /// What a microphone goes through before the input gain: a high-pass filter, noise suppression and
 /// automatic gain, which brings a quiet microphone up to the level speech is expected at. Without
 /// it the voice is exactly as loud as the device delivers it, which is far below what other
-/// applications send.
+/// applications send; the gain can still be turned off for a microphone that is loud enough.
 /// </summary>
 public static class MicrophoneProcessing
 {
@@ -43,7 +43,7 @@ public static class MicrophoneProcessing
     // it. It needs the played sound from a webrtcechoprobe, and the element refuses to start without
     // one, so it is only turned on with a probe to name.
     private const string Cleanup =
-        ElementName + " {1} high-pass-filter=true {0} gain-control=true limiter=true ! ";
+        ElementName + " {1} high-pass-filter=true {0} gain-control={2} limiter=true ! ";
 
     // The element does not pass its gain mode on to the library, so whatever compression-gain-db
     // says, one instance raises quiet speech by about 10 dB and no more. A second one takes speech
@@ -84,7 +84,9 @@ public static class MicrophoneProcessing
     /// The name of the <see cref="EchoProbeElementName"/> the voices are played through, or null to
     /// leave the echo in.
     /// </param>
-    public static string Fragment(NoiseSuppressionLevel noiseSuppression, string? echoProbe = null)
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
+    public static string Fragment(NoiseSuppressionLevel noiseSuppression, string? echoProbe = null,
+        bool isAutoGainControlEnabled = true)
     {
         noiseSuppression = Resolve(noiseSuppression);
 
@@ -95,7 +97,8 @@ public static class MicrophoneProcessing
 
         var echoCancel = echoProbe == null ? "echo-cancel=false" : $"echo-cancel=true probe={echoProbe}";
 
-        return neural + string.Format(Cleanup, DescribeNoiseSuppression(noiseSuppression), echoCancel) + Gain;
+        return neural + string.Format(Cleanup, DescribeNoiseSuppression(noiseSuppression), echoCancel,
+            isAutoGainControlEnabled ? "true" : "false") + (isAutoGainControlEnabled ? Gain : "");
     }
 
     private static bool IsNeural(NoiseSuppressionLevel level) =>

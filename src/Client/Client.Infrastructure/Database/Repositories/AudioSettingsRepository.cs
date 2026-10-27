@@ -18,7 +18,7 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<AudioSettingsRow>(
-            "SELECT InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled, VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled, NoiseSuppression, IsEchoCancellationEnabled, AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds FROM AudioSettings WHERE Id = 1");
+            "SELECT InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled, VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled, NoiseSuppression, IsEchoCancellationEnabled, IsAutoGainControlEnabled, AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds FROM AudioSettings WHERE Id = 1");
 
         if (row == null)
             return new AudioSettings();
@@ -34,6 +34,7 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
             IsAdaptiveThresholdEnabled = row.IsAdaptiveThresholdEnabled,
             NoiseSuppression = (NoiseSuppressionLevel)row.NoiseSuppression,
             IsEchoCancellationEnabled = row.IsEchoCancellationEnabled,
+            IsAutoGainControlEnabled = row.IsAutoGainControlEnabled,
             AreSoundsEnabled = row.AreSoundsEnabled,
             SoundsVolume = row.SoundsVolume,
             SoundPack = row.SoundPack,
@@ -48,11 +49,11 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
         await connection.ExecuteAsync("""
             INSERT INTO AudioSettings (Id, InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled,
                                        VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled,
-                                       NoiseSuppression, IsEchoCancellationEnabled, AreSoundsEnabled, SoundsVolume,
-                                       SoundPack, DisabledSounds)
+                                       NoiseSuppression, IsEchoCancellationEnabled, IsAutoGainControlEnabled,
+                                       AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds)
             VALUES (1, @InputDeviceId, @InputDeviceName, @InputVolume, @IsVoiceGateEnabled, @VoiceGateThresholdDb,
                     @IsVoiceDetectionEnabled, @IsAdaptiveThresholdEnabled, @NoiseSuppression, @IsEchoCancellationEnabled,
-                    @AreSoundsEnabled, @SoundsVolume, @SoundPack, @DisabledSounds)
+                    @IsAutoGainControlEnabled, @AreSoundsEnabled, @SoundsVolume, @SoundPack, @DisabledSounds)
             ON CONFLICT (Id) DO UPDATE SET
                 InputDeviceId = excluded.InputDeviceId,
                 InputDeviceName = excluded.InputDeviceName,
@@ -63,6 +64,7 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
                 IsAdaptiveThresholdEnabled = excluded.IsAdaptiveThresholdEnabled,
                 NoiseSuppression = excluded.NoiseSuppression,
                 IsEchoCancellationEnabled = excluded.IsEchoCancellationEnabled,
+                IsAutoGainControlEnabled = excluded.IsAutoGainControlEnabled,
                 AreSoundsEnabled = excluded.AreSoundsEnabled,
                 SoundsVolume = excluded.SoundsVolume,
                 SoundPack = excluded.SoundPack,
@@ -79,6 +81,7 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
                 settings.IsAdaptiveThresholdEnabled,
                 NoiseSuppression = (int)settings.NoiseSuppression,
                 settings.IsEchoCancellationEnabled,
+                settings.IsAutoGainControlEnabled,
                 settings.AreSoundsEnabled,
                 settings.SoundsVolume,
                 settings.SoundPack,
@@ -107,4 +110,4 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
 
 internal sealed record AudioSettingsRow(string? InputDeviceId, string? InputDeviceName, double InputVolume,
     bool IsVoiceGateEnabled, double VoiceGateThresholdDb, bool IsVoiceDetectionEnabled, bool IsAdaptiveThresholdEnabled,
-    int NoiseSuppression, bool IsEchoCancellationEnabled, bool AreSoundsEnabled, double SoundsVolume, string? SoundPack, string DisabledSounds);
+    int NoiseSuppression, bool IsEchoCancellationEnabled, bool IsAutoGainControlEnabled, bool AreSoundsEnabled, double SoundsVolume, string? SoundPack, string DisabledSounds);

@@ -97,8 +97,11 @@ public interface IWebRTCTransport : IDisposable
     /// <param name="isEchoCancellationEnabled">
     /// Whether the voices played on the speakers are taken out of a microphone.
     /// </param>
+    /// <param name="isAutoGainControlEnabled">
+    /// Whether a quiet microphone is brought up to the level of speech. Other inputs are sent as they are.
+    /// </param>
     bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
-        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled);
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Starts sending a video track captured from <paramref name="input"/> to a producer the SFU created for it.
@@ -112,12 +115,12 @@ public interface IWebRTCTransport : IDisposable
     void SetOutboundVolume(string outboundId, double volume);
 
     /// <summary>
-    /// Makes a running audio track capture from another input, or with another noise suppression or
-    /// echo cancelling, without touching its section or its producer. A failure is only logged, and
+    /// Makes a running audio track capture from another input, or with another noise suppression,
+    /// echo cancelling or gain control, without touching its section or its producer. A failure is only logged, and
     /// the track then sends nothing until the next change.
     /// </summary>
     void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled);
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Changes the voice gate of a running microphone track, null sends it all the time.

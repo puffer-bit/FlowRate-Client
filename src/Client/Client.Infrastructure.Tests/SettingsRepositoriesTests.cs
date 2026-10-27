@@ -73,6 +73,7 @@ public class SettingsRepositoriesTests
         Assert.False(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.Moderate, settings.NoiseSuppression);
         Assert.False(settings.IsEchoCancellationEnabled);
+        Assert.True(settings.IsAutoGainControlEnabled);
         Assert.True(settings.AreSoundsEnabled);
         Assert.Equal(0.7, settings.SoundsVolume);
         Assert.Null(settings.SoundPack);
@@ -91,7 +92,7 @@ public class SettingsRepositoriesTests
             IsVoiceGateEnabled = false, VoiceGateThresholdDb = -32.5,
             IsVoiceDetectionEnabled = true, IsAdaptiveThresholdEnabled = true,
             NoiseSuppression = NoiseSuppressionLevel.NeuralAndWebRtc, IsEchoCancellationEnabled = true,
-            AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
+            IsAutoGainControlEnabled = false, AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
             DisabledSounds = ["join", "message_sent"]
         });
         var settings = await repository.GetAsync();
@@ -105,6 +106,7 @@ public class SettingsRepositoriesTests
         Assert.True(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.NeuralAndWebRtc, settings.NoiseSuppression);
         Assert.True(settings.IsEchoCancellationEnabled);
+        Assert.False(settings.IsAutoGainControlEnabled);
         Assert.False(settings.AreSoundsEnabled);
         Assert.Equal(0.35, settings.SoundsVolume);
         Assert.Equal("Retro", settings.SoundPack);

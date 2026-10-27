@@ -262,9 +262,9 @@ public partial class HybridSession : IHybridSession
 
     public Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
         VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
-        bool isMuted = false) =>
+        bool isAutoGainControlEnabled, bool isMuted = false) =>
         StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression,
-            isEchoCancellationEnabled, isMuted);
+            isEchoCancellationEnabled, isAutoGainControlEnabled, isMuted);
 
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending <paramref name="input"/> to it. Besides the
@@ -272,7 +272,7 @@ public partial class HybridSession : IHybridSession
     /// </summary>
     public async Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
         VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
-        bool isEchoCancellationEnabled = false, bool isMuted = false)
+        bool isEchoCancellationEnabled = false, bool isAutoGainControlEnabled = true, bool isMuted = false)
     {
         if (_voiceOutbound != null)
             return StartVoiceShareResult.NoError;
@@ -291,7 +291,7 @@ public partial class HybridSession : IHybridSession
             return StartVoiceShareResult.InternalError;
 
         if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression,
-                isEchoCancellationEnabled))
+                isEchoCancellationEnabled, isAutoGainControlEnabled))
         {
             LogStartSendingFailed(Model.Id, input);
             await _coordinatorSession.StopVoiceShareInHybridSession(Model.Id);
@@ -370,7 +370,7 @@ public partial class HybridSession : IHybridSession
 
     private void StartScreenAudio(IWebRTCTransport transport, OutboundTrack audioOutbound, AudioInput audioInput)
     {
-        if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off, false))
+        if (transport.StartOutbound(audioOutbound, audioInput, 1.0, null, NoiseSuppressionLevel.Off, false, false))
         {
             _screenAudioOutbound = audioOutbound;
             LogScreenAudioStarted(Model.Id, audioOutbound.SSRC);
@@ -429,7 +429,7 @@ public partial class HybridSession : IHybridSession
         if (audioOutbound != null)
         {
             if (audioInput != null)
-                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off, false);
+                transport.SetOutboundInput(audioOutbound.Id, audioInput, NoiseSuppressionLevel.Off, false, false);
 
             transport.SetOutboundMuted(audioOutbound.Id, audioInput == null);
         }
@@ -649,11 +649,11 @@ public partial class HybridSession : IHybridSession
     }
 
     public void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled)
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled)
     {
         if (_voiceOutbound is { } outbound)
             _webRTCService.SetOutboundInput(outbound.Id, new DeviceAudioInput(inputDeviceId), noiseSuppression,
-                isEchoCancellationEnabled);
+                isEchoCancellationEnabled, isAutoGainControlEnabled);
     }
 
     public void SetVoiceGate(VoiceGateOptions? voiceGate)

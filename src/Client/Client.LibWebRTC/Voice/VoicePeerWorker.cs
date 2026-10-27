@@ -83,21 +83,21 @@ public sealed class VoicePeerWorker : IVoicePeer
         }
     }
 
-    public void Negotiate(string offer, IReadOnlyList<string> sendMids, IReadOnlyList<uint> sendSsrcs)
+    public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
     {
-        var mids = sendMids.ToArray();
-        var ssrcs = sendSsrcs.ToArray();
-        Enqueue(peer => peer.Negotiate(offer, mids, ssrcs));
+        var copy = sends.ToArray();
+        Enqueue(peer => peer.Negotiate(offer, copy));
     }
 
     public void SetMicrophoneEnabled(bool isEnabled) => Enqueue(peer => peer.SetMicrophoneEnabled(isEnabled));
 
     // This worker is for platforms where device selection is system-owned. A failure after a
     // command was accepted is reported through the listener, not by blocking the caller.
-    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled) =>
+    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled) =>
         Enqueue(peer =>
         {
-            if (!peer.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled))
+            if (!peer.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled, isAutoGainControlEnabled))
                 throw new InvalidOperationException("The microphone could not be configured.");
         });
 

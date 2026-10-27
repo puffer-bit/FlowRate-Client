@@ -18,6 +18,13 @@ internal static unsafe partial class NativeMethods
         public delegate* unmanaged<nint, byte*, void> Stats;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct VideoSourceCallbacks
+    {
+        public delegate* unmanaged<nint, int, void> Bitrate;
+        public delegate* unmanaged<nint, void> KeyFrame;
+    }
+
     [LibraryImport(Library, EntryPoint = "fr_initialize")]
     public static partial int Initialize();
 
@@ -53,7 +60,8 @@ internal static unsafe partial class NativeMethods
         int noiseSuppression, int autoGainControl);
 
     [LibraryImport(Library, EntryPoint = "fr_peer_negotiate", StringMarshalling = StringMarshalling.Utf8)]
-    public static partial void PeerNegotiate(nint peer, string offer, byte** sendMids, uint* sendSsrcs, int sendCount);
+    public static partial void PeerNegotiate(nint peer, string offer, byte** sendMids, uint* sendSsrcs, nint* sendVideos,
+        int sendCount);
 
     [LibraryImport(Library, EntryPoint = "fr_peer_set_microphone_enabled")]
     public static partial void PeerSetMicrophoneEnabled(nint peer, int isEnabled);
@@ -73,4 +81,21 @@ internal static unsafe partial class NativeMethods
 
     [LibraryImport(Library, EntryPoint = "fr_peer_destroy")]
     public static partial void PeerDestroy(nint peer);
+
+    [LibraryImport(Library, EntryPoint = "fr_set_video_receiver")]
+    public static partial void SetVideoReceiver(delegate* unmanaged<nint, uint, byte*, int, long, int, void> onFrame,
+        nint context);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_request_keyframe")]
+    public static partial void VideoRequestKeyFrame(uint ssrc);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_source_create")]
+    public static partial nint VideoSourceCreate(VideoSourceCallbacks* callbacks, nint context, int width, int height,
+        int maxFramerate);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_source_push")]
+    public static partial void VideoSourcePush(nint source, byte* data, int size, int isKeyFrame);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_source_destroy")]
+    public static partial void VideoSourceDestroy(nint source);
 }

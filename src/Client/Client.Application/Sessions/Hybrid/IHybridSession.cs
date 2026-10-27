@@ -37,17 +37,18 @@ public interface IHybridSession : IDisposable
     /// <param name="isEchoCancellationEnabled">
     /// Whether the voices played on the speakers are taken out of the microphone.
     /// </param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     /// <param name="isMuted">Starts muted, so that nothing is heard before the mute is put back.</param>
     Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
         VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
-        bool isMuted = false);
+        bool isAutoGainControlEnabled, bool isMuted = false);
 
     /// <summary>
     /// Same as the microphone overload, but sends any <paramref name="input"/>: a looped file or a tone as well.
     /// </summary>
     Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
         VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
-        bool isEchoCancellationEnabled = false, bool isMuted = false);
+        bool isEchoCancellationEnabled = false, bool isAutoGainControlEnabled = true, bool isMuted = false);
 
     Task<StopVoiceShareResult> StopVoiceShareAsync();
 
@@ -168,7 +169,7 @@ public interface IHybridSession : IDisposable
     /// </summary>
     /// <param name="inputDeviceId">Capture device, or null for the system default one.</param>
     void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled);
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Changes the voice gate of the running microphone, null turns the gate off. Without a running

@@ -9,12 +9,14 @@ namespace Client.LibWebRTC.Native;
 /// shared by every peer, so its device is chosen here.
 /// </summary>
 public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogger<LibWebRTCRuntime> logger)
+    : ILibWebRTCLoader
 {
     // libwebrtc lists the default device of the system first, under the name of the device it is now
     private const string DefaultPrefix = "default: ";
 
     private readonly Lock _lock = new();
     private bool? _isLoaded;
+    private string? _loadError;
     private string? _recordingDeviceId;
 
     /// <summary>
@@ -31,12 +33,19 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
             try
             {
                 _isLoaded = NativeMethods.Initialize() != 0;
+
+                if (_isLoaded == false)
+                {
+                    _loadError = "libwebrtc did not start its peer connection factory";
+                    LogLoadFailed(_loadError);
+                }
             }
             catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException
                                                   or BadImageFormatException)
             {
                 LogLoadFailed(exception.Message);
                 _isLoaded = false;
+                _loadError = exception.Message;
             }
 
             if (_isLoaded == true)
@@ -47,6 +56,15 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
 
             return _isLoaded.Value;
         }
+    }
+
+    public string? Load()
+    {
+        if (TryLoad())
+            return null;
+
+        lock (_lock)
+            return _loadError;
     }
 
     /// <summary>

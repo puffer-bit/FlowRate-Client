@@ -94,9 +94,10 @@ internal static class OutgoingAudioBranch
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
     /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
     public static Bin? Build(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
     {
         var payloadType = outbound.PayloadType > 0 ? outbound.PayloadType : DefaultOpusPayloadType;
         var isScreen = outbound.SourceType == MediaSourceType.Screen;
@@ -133,7 +134,8 @@ internal static class OutgoingAudioBranch
         // alive until it is collected and the release queue of the binding is drained.
         encoding.Dispose();
 
-        if (!MicrophoneChain.ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression, echoProbe))
+        if (!MicrophoneChain.ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression, echoProbe,
+                isAutoGainControlEnabled))
         {
             branch.Dispose();
             return null;

@@ -36,7 +36,7 @@ public class VoicePeerWorkerTests
             DisposeAction = () => disposed.TrySetResult()
         }, listener);
 
-        worker.Negotiate("offer", [], []);
+        worker.Negotiate("offer", []);
         await applicationCalled.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         worker.Dispose();
         await disposed.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
@@ -91,18 +91,16 @@ public class VoicePeerWorkerTests
         var releaseCreation = Completion();
         var done = Completion();
         var calls = new ConcurrentQueue<string>();
-        string[] mids = ["0"];
-        uint[] ssrcs = [123];
+        List<SendSection> sends = [new SendSection("0", 123)];
         using var worker = new VoicePeerWorker(async _ =>
         {
             await releaseCreation.Task;
             return new TestPeer
             {
                 MicrophoneAction = enabled => calls.Enqueue(enabled ? "on" : "off"),
-                NegotiateInputs = (actualMids, actualSsrcs) =>
+                NegotiateInputs = actualSends =>
                 {
-                    Assert.Equal("0", Assert.Single(actualMids));
-                    Assert.Equal(123u, Assert.Single(actualSsrcs));
+                    Assert.Equal(new SendSection("0", 123), Assert.Single(actualSends));
                     calls.Enqueue("negotiate");
                     done.TrySetResult();
                 }
@@ -111,9 +109,8 @@ public class VoicePeerWorkerTests
 
         worker.SetMicrophoneEnabled(true);
         worker.SetMicrophoneEnabled(false);
-        worker.Negotiate("offer", mids, ssrcs);
-        mids[0] = "changed";
-        ssrcs[0] = 999;
+        worker.Negotiate("offer", sends);
+        sends[0] = new SendSection("changed", 999);
         releaseCreation.TrySetResult();
         await done.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal(["on", "off", "negotiate"], calls.ToArray());
@@ -138,7 +135,7 @@ public class VoicePeerWorkerTests
             DisposeAction = () => disposed.TrySetResult()
         }, listener);
 
-        worker.Negotiate("offer", [], []);
+        worker.Negotiate("offer", []);
         await failed.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         await disposed.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal("native failure", Assert.Single(listener.Errors));
@@ -218,17 +215,18 @@ public class VoicePeerWorkerTests
     private sealed class TestPeer : IVoicePeer
     {
         public Action? NegotiateAction { get; init; }
-        public Action<IReadOnlyList<string>, IReadOnlyList<uint>>? NegotiateInputs { get; init; }
+        public Action<IReadOnlyList<SendSection>>? NegotiateInputs { get; init; }
         public Action<bool>? MicrophoneAction { get; init; }
         public Action? VolumeAction { get; init; }
         public Action? DisposeAction { get; init; }
-        public void Negotiate(string offer, IReadOnlyList<string> sendMids, IReadOnlyList<uint> sendSsrcs)
+        public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
         {
             NegotiateAction?.Invoke();
-            NegotiateInputs?.Invoke(sendMids, sendSsrcs);
+            NegotiateInputs?.Invoke(sends);
         }
         public void SetMicrophoneEnabled(bool isEnabled) => MicrophoneAction?.Invoke(isEnabled);
-        public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled) => true;
+        public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+            bool isAutoGainControlEnabled) => true;
         public void SetMicrophoneVolume(double volume) { }
         public void SetVoiceGate(VoiceGateOptions? voiceGate) { }
         public void SetVolume(string mid, double volume) => VolumeAction?.Invoke();

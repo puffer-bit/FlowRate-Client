@@ -40,7 +40,7 @@
       </None>
     </ItemGroup>
 
-    <!-- libwebrtc for the libwebrtc option, when Client.LibWebRTC/Native/build.sh made it -->
+    <!-- libwebrtc for the libwebrtc option, when Client.LibWebRTC has it for this RID -->
     <Import Project="..\Client.LibWebRTC\Build\LibWebRTCRuntime.targets" />
 
 </Project>

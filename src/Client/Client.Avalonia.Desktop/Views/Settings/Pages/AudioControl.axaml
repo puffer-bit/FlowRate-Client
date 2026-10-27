@@ -48,7 +48,8 @@
                                Text="{Binding InputVolumePercent, StringFormat={}{0:0}%}"/>
                 </StackPanel>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.noiseSuppression">
+            <!-- libwebrtc has one noise suppression of its own, so it is only switched on or off -->
+            <ui:SettingsRow services:SettingText.Key="audio.noiseSuppression" IsVisible="{Binding !IsLibWebRTC}">
                 <ComboBox MinWidth="180" SelectedIndex="{Binding NoiseSuppressionIndex}">
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.off}"/>
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.low}"/>
@@ -59,8 +60,14 @@
                     <ComboBoxItem Content="{l:Text settings.audio.noiseSuppression.neuralAndWebRtc}"/>
                 </ComboBox>
             </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.webRtcNoiseSuppression" IsVisible="{Binding IsLibWebRTC}">
+                <CheckBox IsChecked="{Binding IsWebRtcNoiseSuppressionEnabled}"/>
+            </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.echoCancellation">
                 <CheckBox IsChecked="{Binding IsEchoCancellationEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.autoGainControl">
+                <CheckBox IsChecked="{Binding IsAutoGainControlEnabled}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
 
@@ -69,8 +76,10 @@
             <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
                 <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"/>
             </ui:SettingsRow>
-            <!-- Both only refine the gate, so they mean nothing while it is off -->
-            <ui:SettingsRow services:SettingText.Key="audio.voiceDetection" IsEnabled="{Binding IsVoiceGateEnabled}">
+            <!-- Both only refine the gate, so they mean nothing while it is off. The voice detection is
+                 RNNoise, which libwebrtc does not run -->
+            <ui:SettingsRow services:SettingText.Key="audio.voiceDetection" IsEnabled="{Binding IsVoiceGateEnabled}"
+                            IsVisible="{Binding !IsLibWebRTC}">
                 <CheckBox IsChecked="{Binding IsVoiceDetectionEnabled}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.adaptiveThreshold" IsEnabled="{Binding IsVoiceGateEnabled}">
