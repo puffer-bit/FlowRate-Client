@@ -51,10 +51,10 @@ internal sealed partial class OutgoingTracks
     // What feeds the capture element of an outgoing audio track from a thread of its own, keyed by the outbound id
     private readonly ConcurrentDictionary<string, IDisposable> _audioResources = new();
 
-    // Where the RTP sequence of a stopped video track goes on when it is started again, keyed by the outbound id
-    private readonly ConcurrentDictionary<string, int> _videoSequenceNumbers = new();
+    // Where the RTP sequence of a stopped track goes on when it is started again, keyed by the outbound id
+    private readonly ConcurrentDictionary<string, int> _sequenceNumbers = new();
 
-    // More packets than a video branch sends between being told to stop and having stopped
+    // More packets than a branch sends between being told to stop and having stopped
     private const int SequenceNumberMargin = 128;
 
     // One capture part is replaced at a time, and not while its branch is being released
@@ -263,7 +263,7 @@ internal sealed partial class OutgoingTracks
         var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone,
             isMicrophone ? Resolve(noiseSuppression) : noiseSuppression,
             isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null,
-            isAutoGainControlEnabled);
+            isAutoGainControlEnabled, _sequenceNumbers.GetValueOrDefault(outbound.Id, -1));
 
         if (branch == null)
         {
@@ -330,7 +330,7 @@ internal sealed partial class OutgoingTracks
             return false;
         }
 
-        var branch = OutgoingVideoBranch.Build(outbound, codec, _videoSequenceNumbers.GetValueOrDefault(outbound.Id, -1));
+        var branch = OutgoingVideoBranch.Build(outbound, codec, _sequenceNumbers.GetValueOrDefault(outbound.Id, -1));
 
         if (branch?.GetByName(OutgoingVideoBranch.SourceName) is not { } source)
         {
@@ -416,9 +416,9 @@ internal sealed partial class OutgoingTracks
         // number that was already sent is refused by the SRTP replay check, which fails the first
         // packet of the next branch and stops it for good, hence the margin. The exact number
         // replaces it once the branch has stopped.
-        if (video != null && FindOutgoingBranch(outboundId) is { } videoBranch &&
-            OutgoingVideoBranch.ReadNextSequenceNumber(videoBranch) is { } nextSequenceNumber)
-            _videoSequenceNumbers[outboundId] = (nextSequenceNumber + SequenceNumberMargin) & 0xFFFF;
+        if (FindOutgoingBranch(outboundId) is { } stoppedBranch &&
+            PipelineBranch.ReadNextSequenceNumber(stoppedBranch) is { } nextSequenceNumber)
+            _sequenceNumbers[outboundId] = (nextSequenceNumber + SequenceNumberMargin) & 0xFFFF;
 
         _muteGenerations.TryRemove(outboundId, out _);
         _outgoingMeters.TryRemove(outboundId, out var meter);
@@ -717,9 +717,9 @@ internal sealed partial class OutgoingTracks
 
             // Nothing leaves the branch anymore, so this is the number the next one continues with,
             // unless the track was started again meanwhile and took the estimate
-            if (video != null && !_outbounds.ContainsKey(outboundId) &&
-                OutgoingVideoBranch.ReadNextSequenceNumber(outgoing.Branch) is { } nextSequenceNumber)
-                _videoSequenceNumbers[outboundId] = nextSequenceNumber;
+            if (!_outbounds.ContainsKey(outboundId) &&
+                PipelineBranch.ReadNextSequenceNumber(outgoing.Branch) is { } nextSequenceNumber)
+                _sequenceNumbers[outboundId] = nextSequenceNumber;
 
             // Removing the branch unlinks it; the pad of webrtcbin stays for the next track
             _core.Pipeline?.Remove(outgoing.Branch);
