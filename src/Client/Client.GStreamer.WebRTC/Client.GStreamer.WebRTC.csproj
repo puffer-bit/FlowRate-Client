@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The transport of hybrid sessions over webrtcbin: ICE, DTLS-SRTP, the negotiation with the SFU and
+         the RTP of the tracks. The counterpart of Client.LibWebRTC; what both engines could use, and what
+         is not about WebRTC at all (capture, codecs, frames, the loader), lives in Client.GStreamer -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+      <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+      <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+      <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+      <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="GstSharp.Net" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.App" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.Sdp" Version="1.28.17" />
+      <PackageReference Include="GstSharp.Net.WebRTC" Version="1.28.17" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    </ItemGroup>
+
+</Project>

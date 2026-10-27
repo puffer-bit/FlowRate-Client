@@ -9,7 +9,7 @@ namespace Client.GStreamer.Audio;
 /// it the voice is exactly as loud as the device delivers it, which is far below what other
 /// applications send.
 /// </summary>
-internal static class MicrophoneProcessing
+public static class MicrophoneProcessing
 {
     private const string ElementName = "webrtcdsp";
 

@@ -2,6 +2,7 @@ using Client.Api;
 using Client.Application.Coordinator.Users;
 using Client.GStreamer.Loader;
 using Client.GStreamer.Audio;
+using Client.GStreamer.Video;
 using Client.GStreamer.WebRTC;
 using Client.LibWebRTC.Native;
 using Client.TestBot;
@@ -83,7 +84,8 @@ catch (Exception exception) when (exception is IOException or InvalidOperationEx
 }
 
 using var devices = new GstAudioDeviceProvider(services.GetRequiredService<ILogger<GstAudioDeviceProvider>>());
-IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, services.GetRequiredService<ILogger<WebRTCTransport>>());
+var video = new GstVideoMedia(services.GetRequiredService<ILoggerFactory>());
+IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, video, services.GetRequiredService<ILogger<WebRTCTransport>>());
 
 if (options.LibWebRTC)
 {

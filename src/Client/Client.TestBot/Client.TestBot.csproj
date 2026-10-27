@@ -13,6 +13,7 @@
         <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
         <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
         <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+        <ProjectReference Include="..\Client.GStreamer.WebRTC\Client.GStreamer.WebRTC.csproj" />
         <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
         <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
     </ItemGroup>

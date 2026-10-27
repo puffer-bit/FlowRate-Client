@@ -1,16 +1,9 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using Gst;
+using Client.Core.Media;
 
 namespace Client.GStreamer.Video;
-
-public enum VideoCodec
-{
-    H264,
-    AV1,
-    VP8,
-    VP9
-}
 
 /// <summary>
 /// An encoder element and the properties that tune it for low-latency screen sharing.
@@ -20,8 +13,10 @@ public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Na
     /// <summary>
     /// The element as a gst-launch fragment, e.g. "openh264enc bitrate=4000000 usage-type=screen".
     /// </summary>
-    public string ToLaunchString() =>
-        Properties.Count == 0 ? Factory : $"{Factory} {string.Join(' ', Properties.Select(p => $"{p.Name}={p.Value}"))}";
+    /// <param name="name">The name the element gets, or null for the one GStreamer gives it.</param>
+    public string ToLaunchString(string? name = null) =>
+        string.Join(' ', new[] { Factory, name == null ? null : $"name={name}" }
+            .Concat(Properties.Select(p => $"{p.Name}={p.Value}")).OfType<string>());
 
     public Element? CreateElement(string? name)
     {
