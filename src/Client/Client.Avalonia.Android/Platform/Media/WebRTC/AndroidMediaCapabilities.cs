@@ -4,7 +4,8 @@ using Client.Application.Ports;
 namespace Client.Droid.Platform.Media.WebRTC;
 
 /// <summary>
-/// Screens are neither shared nor watched on Android, so there is no encoder to miss.
+/// Screens are not shared from Android, so there is no encoder to miss. The ones watched are decoded by
+/// libwebrtc, which picks MediaCodec itself: there are no decoders to choose from.
 /// </summary>
 internal sealed class AndroidMediaCapabilities : IMediaCapabilities
 {

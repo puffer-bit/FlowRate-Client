@@ -80,6 +80,7 @@ public partial class MainView : UserControl
         SessionMoveMenu.Dismissed += () => TryClose(SessionMoveMenu);
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
         StatusMenu.Dismissed += () => TryClose(StatusMenu);
+        PeerMenu.Dismissed += () => TryClose(PeerMenu);
 
         // Shown from here and not from the chat, which ends above the status bar
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
@@ -98,6 +99,8 @@ public partial class MainView : UserControl
         Sessions.CategoryMenuRequested += OpenCategoryMenu;
         Sessions.SettingsRequested += OpenSettings;
         Sessions.StatusMenuRequested += () => StatusMenu.IsOpen = true;
+        Sessions.PeerMenuRequested += OpenPeerMenu;
+        _hybridView.PeerMenuRequested += OpenPeerMenu;
 
         // A tap on the session that is already shown changes nothing in the view model, but still means "go to it"
         Sessions.SessionTapped += () => Dispatcher.UIThread.Post(() =>
@@ -129,6 +132,13 @@ public partial class MainView : UserControl
         });
         viewModel.AskLogin.RegisterHandler(async context =>
             context.SetOutput(await ShowLoginPromptAsync(context.Input)));
+
+        // The list is filled again after a lost connection, with new peers for the session on screen
+        viewModel.SessionsList.Sessions.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (viewModel.CurrentContent is ActiveHybridSessionVM shown)
+                _hybridView.ShowPeers(FindListSession(shown.Model.Id)?.Peers);
+        });
 
         // A session that ends is taken off the screen from the thread its event came on
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
@@ -331,6 +341,8 @@ public partial class MainView : UserControl
                     context.SetOutput(await ShowMessageBoxAsync(context.Input)));
             }
 
+            // Shown since it was joined, so its row is in the list already
+            _hybridView.ShowPeers(FindListSession(hybrid.Model.Id)?.Peers);
             Screen.Content = _hybridView;
             Home.IsVisible = false;
             return;
@@ -402,6 +414,20 @@ public partial class MainView : UserControl
         ChatMenu.IsOpen = false;
         return true;
     }
+
+    private void OpenPeerMenu(PeerVM peer)
+    {
+        PeerMenu.DataContext = peer;
+        PeerMenu.IsOpen = true;
+    }
+
+    /// <summary>The voice session of the list of sessions with the given id, or null.</summary>
+    private HybridSessionVM? FindListSession(int sessionId) => _viewModel?.SessionsList.Sessions
+        .OfType<HybridSessionVM>()
+        .FirstOrDefault(session => session.Model.Id == sessionId);
+
+    // Watching a screen opens it, so the sheet goes out of its way
+    private void OnPeerMenuClick(object? sender, RoutedEventArgs e) => TryClose(PeerMenu);
 
     private void OpenSessionMoveMenu(ISessionVM session)
     {
@@ -790,10 +816,17 @@ public partial class MainView : UserControl
             return;
         }
 
+        // A screen watched over the whole display covers the session
+        if (_hybridView.TryCloseFullscreen())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Over a session the menu the user opened is closed to get back to it. The menu back itself
         // led to stays, and so does the one without a session, see below
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
-            || TryClose(StatusMenu)
+            || TryClose(StatusMenu) || TryClose(PeerMenu)
             || (_viewModel?.CurrentContent != null && !_isDrawerOpenedByBack && CloseDrawer()))
         {
             e.Handled = true;

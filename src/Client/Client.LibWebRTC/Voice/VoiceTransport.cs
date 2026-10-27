@@ -16,7 +16,8 @@ namespace Client.LibWebRTC.Voice;
 /// libwebrtc answers it, captures the microphone and plays the voices. Screens are watched and shown
 /// where the platform hands the video out (<see cref="IEncodedVideoReceiver"/>) and takes it in
 /// encoded (<see cref="IVoicePeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
-/// decodes them, libwebrtc only carries them.
+/// decodes them, libwebrtc only carries them. A peer that decodes the screens itself, as the one of
+/// Android, hands their pictures out through <see cref="IVoicePeerListener.OnVideoFrame"/> instead.
 /// </summary>
 public sealed partial class VoiceTransport : IWebRTCTransport
 {
@@ -42,6 +43,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private readonly IVideoMedia? _video;
     private readonly IAudioMedia? _audio;
     private readonly IEncodedVideoReceiver? _videoReceiver;
+    private readonly bool _isVideoDecodedByPeer;
     private readonly ILogger<VoiceTransport> _logger;
     private readonly Lock _lock = new();
 
@@ -92,10 +94,15 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// <param name="video">Decodes the screens we watch; without it, or the receiver, none is watched.</param>
     /// <param name="videoReceiver">Hands out the encoded pictures of the screens libwebrtc receives.</param>
     /// <param name="audio">Captures the sound of the screens we show; without it they go out silent.</param>
+    /// <param name="isVideoDecodedByPeer">
+    /// The peer decodes the screens we watch itself and hands their pictures out, so neither the video
+    /// nor the receiver is needed for them.
+    /// </param>
     public VoiceTransport(int sessionId, Func<IVoicePeerListener, IVoicePeer> createPeer, ILogger<VoiceTransport> logger,
         bool isPlaybackEnabled = true, IVideoMedia? video = null, IEncodedVideoReceiver? videoReceiver = null,
-        IAudioMedia? audio = null)
+        IAudioMedia? audio = null, bool isVideoDecodedByPeer = false)
     {
+        _isVideoDecodedByPeer = isVideoDecodedByPeer;
         _sessionId = sessionId;
         _isPlaybackEnabled = isPlaybackEnabled;
         _createPeer = createPeer;
@@ -196,7 +203,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         if (inbound.MediaType == MediaType.Video)
         {
-            if (_video == null || _videoReceiver == null || VideoCodecOf(inbound.MimeType) is not { } videoCodec)
+            if ((!_isVideoDecodedByPeer && (_video == null || _videoReceiver == null)) ||
+                VideoCodecOf(inbound.MimeType) is not { } videoCodec)
                 return;
 
             codec = videoCodec;
@@ -232,7 +240,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
             slot.InboundId = inbound.Id;
 
-            if (codec is { } videoCodec)
+            if (codec is { } videoCodec && !_isVideoDecodedByPeer)
                 _videoStreams[inbound.Id] = CreateVideoStream(inbound, videoCodec);
         }
 
@@ -1004,8 +1012,37 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 LogStatsSample(_sessionId, reading.RoundTripMs ?? 0, reading.InboundLossPercent, reading.OutboundLossPercent,
                     reading.IsOverTcp, string.Join(", ", reading.Inbound?.Select(stream =>
                         $"user {stream.UserId}: {stream.Packets} packets, jitter {stream.JitterMs:F0} ms") ?? []));
+
+            if (_logger.IsEnabled(LogLevel.Debug) && stats.Streams is { } counters)
+                LogStatsCounters(_sessionId, counters.AvailableOutgoingKbps ?? 0,
+                    string.Join(", ", counters.Outbound.Select(stream =>
+                        $"{stream.Ssrc}: {stream.Packets} packets, target {stream.TargetKbps ?? 0:F0} kbit/s, " +
+                        $"{stream.Nacks} nacks, {stream.Retransmitted} resent, {stream.KeyframeRequests} plis")),
+                    string.Join(", ", counters.Inbound.Select(stream =>
+                        $"{stream.Ssrc}: {stream.Packets} packets, {stream.Lost} lost, {stream.Nacks} nacks, " +
+                        $"{stream.KeyframeRequests} plis, {stream.Freezes} freezes")));
+
             StatsSampled?.Invoke(reading);
         }
+    }
+
+    /// <summary>Passes a picture the peer decoded on, as one of the screen its section carries now.</summary>
+    private void OnVideoFrame(string mid, RawVideoFrame frame)
+    {
+        InboundTrack? inbound;
+
+        lock (_lock)
+        {
+            inbound = int.TryParse(mid, CultureInfo.InvariantCulture, out var mline) && mline < _slots.Count &&
+                      _slots[mline].InboundId is { } inboundId && _inbounds.TryGetValue(inboundId, out var track) &&
+                      track.MediaType == MediaType.Video
+                ? track
+                : null;
+        }
+
+        // A picture still on its way from a screen that was released is dropped
+        if (inbound != null)
+            VideoFrameReady?.Invoke(inbound.UserId, inbound.SourceType, frame);
     }
 
     // Only inside the lock
@@ -1086,6 +1123,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         public void OnFailed(string error) => Run(() => transport.OnNegotiationFailed(error));
 
         public void OnStats(VoiceStats stats) => Run(() => transport.OnStats(stats));
+
+        public void OnVideoFrame(string mid, RawVideoFrame frame) => Run(() => transport.OnVideoFrame(mid, frame));
 
         private void Run(Action action)
         {

@@ -13,16 +13,25 @@ public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCou
 public readonly record struct VoiceLevel(string? Mid, double Level);
 
 /// <param name="IsOverTcp">The media goes over a TCP candidate pair.</param>
+/// <param name="AvailableOutgoingKbps">What the bandwidth estimate lets us send, or null before there is one.</param>
 public sealed record VoiceStreamCounters(IReadOnlyList<InboundCounters> Inbound, IReadOnlyList<OutboundCounters> Outbound,
-    bool IsOverTcp);
+    bool IsOverTcp, double? AvailableOutgoingKbps = null);
 
 /// <summary>The counters of a stream we receive since it started.</summary>
 /// <param name="KeyframeRequests">The keyframes we asked the sender of a picture for (PLI).</param>
-public readonly record struct InboundCounters(uint Ssrc, long Packets, long Lost, double JitterMs, long KeyframeRequests = 0);
+/// <param name="Nacks">The NACKs we sent, each asking for lost packets again.</param>
+/// <param name="Freezes">How often a picture stood still for long, as freezeCount counts it.</param>
+public readonly record struct InboundCounters(uint Ssrc, long Packets, long Lost, double JitterMs, long KeyframeRequests = 0,
+    long Nacks = 0, long Freezes = 0);
 
 /// <summary>
 /// The counters of a stream we send since it started, and what the SFU last reported of it.
 /// </summary>
 /// <param name="FractionLost">0..1, of the last receiver report, or null before one came.</param>
 /// <param name="RoundTripMs">Of the last receiver report, or null before one came.</param>
-public readonly record struct OutboundCounters(uint Ssrc, long Packets, double? FractionLost, double? RoundTripMs);
+/// <param name="Retransmitted">The packets sent again, on the RTX stream where there is one.</param>
+/// <param name="Nacks">The NACKs the SFU sent us.</param>
+/// <param name="KeyframeRequests">The keyframes the SFU asked us for (PLI).</param>
+/// <param name="TargetKbps">What the encoder is asked for, or null for a stream without a target.</param>
+public readonly record struct OutboundCounters(uint Ssrc, long Packets, double? FractionLost, double? RoundTripMs,
+    long Retransmitted = 0, long Nacks = 0, long KeyframeRequests = 0, double? TargetKbps = null);

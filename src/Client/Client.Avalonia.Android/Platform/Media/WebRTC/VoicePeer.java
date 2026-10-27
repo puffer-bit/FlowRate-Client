@@ -3,6 +3,7 @@ package com.flowrate.rtc;
 import android.content.Context;
 import android.media.AudioManager;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
+import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
@@ -18,6 +20,9 @@ import org.webrtc.RTCStats;
 import org.webrtc.RtpTransceiver;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
+import org.webrtc.VideoFrame;
+import org.webrtc.VideoSink;
+import org.webrtc.VideoTrack;
 import org.webrtc.audio.JavaAudioDeviceModule;
 
 /**
@@ -38,6 +43,39 @@ public final class VoicePeer {
 
         /** "mid=level;..." of the voices that arrive, and "local=level" of the microphone; levels 0..1. */
         void onLevels(String levels);
+
+        /**
+         * A decoded picture of the screen of a section, on the decoding thread of its stream. The
+         * listener releases it, at once or once it has drawn it.
+         */
+        void onPicture(String mid, Picture picture);
+    }
+
+    /**
+     * A decoded picture in I420, in the memory of libwebrtc until it is released. Only the planes are
+     * handed out, so that the bindings need nothing of libwebrtc.
+     */
+    public static final class Picture {
+        private final VideoFrame.I420Buffer buffer;
+        private final long timestampNs;
+
+        Picture(VideoFrame.I420Buffer buffer, long timestampNs) {
+            this.buffer = buffer;
+            this.timestampNs = timestampNs;
+        }
+
+        public int getWidth() { return buffer.getWidth(); }
+        public int getHeight() { return buffer.getHeight(); }
+        public ByteBuffer getDataY() { return buffer.getDataY(); }
+        public ByteBuffer getDataU() { return buffer.getDataU(); }
+        public ByteBuffer getDataV() { return buffer.getDataV(); }
+        public int getStrideY() { return buffer.getStrideY(); }
+        public int getStrideU() { return buffer.getStrideU(); }
+        public int getStrideV() { return buffer.getStrideV(); }
+        public long getTimestampNs() { return timestampNs; }
+
+        /** Gives the planes back to libwebrtc; once only. */
+        public void release() { buffer.release(); }
     }
 
     private static PeerConnectionFactory factory;
@@ -54,6 +92,11 @@ public final class VoicePeer {
     // it handed out before, which breaks any other caller holding them
     private final Map<String, AudioTrack> voices = new ConcurrentHashMap<>();
 
+    // The screen each section shows, by mid, with what takes its pictures. A section keeps its
+    // transceiver and so its track when it is reused for another screen
+    private final Map<String, VideoTrack> screens = new ConcurrentHashMap<>();
+    private final Map<String, VideoSink> screenSinks = new ConcurrentHashMap<>();
+
     /** Loads libwebrtc and opens the audio devices once per process. */
     public static synchronized void initialize(Context context) {
         if (factory != null)
@@ -68,8 +111,11 @@ public final class VoicePeer {
                 .createAudioDeviceModule();
 
         try {
+            // Screens are decoded by MediaCodec where the device can, into memory: without an EGL
+            // context the pictures come as planes, which the application draws itself
             factory = PeerConnectionFactory.builder()
                     .setAudioDeviceModule(audioDevices)
+                    .setVideoDecoderFactory(new DefaultVideoDecoderFactory(null))
                     .createPeerConnectionFactory();
         } finally {
             // The factory holds its own native reference.
@@ -129,8 +175,15 @@ public final class VoicePeer {
             @Override public void onTrack(RtpTransceiver transceiver) {
                 MediaStreamTrack track = transceiver.getReceiver().track();
 
-                if (transceiver.getMid() != null && track instanceof AudioTrack)
-                    voices.put(transceiver.getMid(), (AudioTrack) track);
+                final String mid = transceiver.getMid();
+
+                if (mid == null)
+                    return;
+
+                if (track instanceof AudioTrack)
+                    voices.put(mid, (AudioTrack) track);
+                else if (track instanceof VideoTrack && !screenSinks.containsKey(mid))
+                    showScreen(mid, (VideoTrack) track);
             }
         });
 
@@ -180,6 +233,24 @@ public final class VoicePeer {
         }, new SessionDescription(SessionDescription.Type.OFFER, offer));
     }
 
+    /** Hands the pictures of the screen of a section to the listener, as I420. */
+    private void showScreen(final String mid, VideoTrack track) {
+        VideoSink sink = frame -> {
+            // A hardware decoder gives NV12, which this converts; an I420 one is only retained
+            VideoFrame.I420Buffer buffer = frame.getBuffer().toI420();
+
+            if (buffer == null)
+                return;
+
+            // The listener releases it, whatever happens to the picture there
+            listener.onPicture(mid, new Picture(buffer, frame.getTimestampNs()));
+        };
+
+        screens.put(mid, track);
+        screenSinks.put(mid, sink);
+        track.addSink(sink);
+    }
+
     /** Stops or resumes sending the microphone, without touching its section. */
     public void setMicrophoneEnabled(boolean isEnabled) {
         microphone.setEnabled(isEnabled);
@@ -221,6 +292,17 @@ public final class VoicePeer {
 
     public void close() {
         voices.clear();
+
+        // Before the tracks go with the connection, so that no picture comes after
+        for (Map.Entry<String, VideoSink> sink : screenSinks.entrySet()) {
+            VideoTrack track = screens.get(sink.getKey());
+
+            if (track != null)
+                track.removeSink(sink.getValue());
+        }
+
+        screenSinks.clear();
+        screens.clear();
         connection.close();
         connection.dispose();
         microphone.dispose();

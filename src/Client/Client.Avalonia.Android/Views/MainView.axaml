@@ -7,12 +7,21 @@
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:views="clr-namespace:Client.Droid.Views"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:user="clr-namespace:Shared.Enums.User;assembly=Shared.Core"
              x:Class="Client.Droid.Views.MainView"
              x:DataType="mainVm:MainWindowVM"
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
+        <!-- The volume of a peer, in the color of overdrive once it is louder than the original -->
+        <Style Selector="TextBlock.volumePercent">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.volumePercent.amplified">
+            <Setter Property="Foreground" Value="{DynamicResource OverdriveBrush}"/>
+        </Style>
+
         <!-- The three lines of the menu button, drawn on a 22 px grid; the header of a chat has the same button -->
         <Style Selector="Path.burger">
             <Setter Property="Width" Value="22"/>
@@ -251,6 +260,78 @@
                     <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
                                           IsVisible="{Binding CanArrange}"
                                           Click="OnMoveChatClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <!-- Menu of a peer of a voice session, tapped in the list of sessions or in the session we
+                 are in: its screen, and how loud we hear its voice. The data context is the peer -->
+            <views:BottomSheet x:Name="PeerMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:PeerVM">
+                <StackPanel Spacing="2">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12" Margin="12,8,12,10">
+                        <avatars:UserAvatar Grid.Column="0" Width="32" Height="32"
+                                            UserName="{Binding UserData.Username, FallbackValue={x:Null}}"
+                                            AvatarUrl="{Binding UserData.AvatarUrl, FallbackValue={x:Null}}"/>
+                        <TextBlock Grid.Column="1" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                   Text="{Binding DisplayedName}"/>
+                    </Grid>
+
+                    <!-- Our own screen is watched the same way, as a preview -->
+                    <menus:MenuItemButton Icon="{StaticResource EyeIcon}" Content="{l:Text hybrid.screen.watch}"
+                                          Command="{Binding ToggleScreenWatch}"
+                                          Click="OnPeerMenuClick">
+                        <menus:MenuItemButton.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="CanWatchScreen"/>
+                                <Binding Path="!IsWatchingScreen"/>
+                            </MultiBinding>
+                        </menus:MenuItemButton.IsVisible>
+                    </menus:MenuItemButton>
+                    <menus:MenuItemButton Icon="{StaticResource CrossedEyeIcon}" Content="{l:Text hybrid.screen.stopWatching}"
+                                          Command="{Binding ToggleScreenWatch}"
+                                          Click="OnPeerMenuClick">
+                        <menus:MenuItemButton.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="CanWatchScreen"/>
+                                <Binding Path="IsWatchingScreen"/>
+                            </MultiBinding>
+                        </menus:MenuItemButton.IsVisible>
+                    </menus:MenuItemButton>
+
+                    <!-- Nothing to adjust about ourselves. The sheet stays open while the volume is set -->
+                    <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+                        <Grid ColumnDefinitions="*, Auto" Margin="12,6,12,0">
+                            <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
+                            <TextBlock Grid.Column="1"
+                                       Classes="volumePercent"
+                                       Classes.amplified="{Binding IsAmplified}"
+                                       Text="{Binding VolumePercentText}"/>
+                        </Grid>
+
+                        <Slider Margin="12,0"
+                                Minimum="0"
+                                Maximum="{Binding MaxVolume}"
+                                Value="{Binding Volume}"
+                                IsEnabled="{Binding !IsMuted}"/>
+
+                        <menus:MenuItemButton Icon="{StaticResource CrossedNoVolumeIcon}" Content="{l:Text peer.muteSound}"
+                                              Command="{Binding ToggleMute}"
+                                              IsVisible="{Binding !IsMuted}"/>
+                        <menus:MenuItemButton Icon="{StaticResource HighVolumeIcon}" Content="{l:Text peer.unmuteSound}"
+                                              Command="{Binding ToggleMute}"
+                                              IsVisible="{Binding IsMuted}"/>
+
+                        <menus:MenuItemButton Icon="{StaticResource VolumeUpIcon}" Content="{l:Text peer.enableOverdrive}"
+                                              Command="{Binding ToggleOverdrive}"
+                                              IsVisible="{Binding !IsOverdriveEnabled}"
+                                              IsEnabled="{Binding !IsMuted}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CrossedVolumeUpIcon}" Content="{l:Text peer.disableOverdrive}"
+                                              Command="{Binding ToggleOverdrive}"
+                                              IsVisible="{Binding IsOverdriveEnabled}"
+                                              IsEnabled="{Binding !IsMuted}"/>
+                    </StackPanel>
                 </StackPanel>
             </views:BottomSheet>
 
