@@ -388,6 +388,7 @@
   "chat.attach.error.storageFull": "На сервере закончилось место",
   "chat.attach.error.connection": "Нет связи с сервером",
   "chat.attach.error.failed": "Сервер не принял файл",
+  "chat.attach.error.unreadable": "Не удалось прочитать файл",
   "chat.send.imageFailed": "{file}: {reason}",
   "chat.send.imagesLost": "Сервер больше не хранит загруженные файлы. Отправьте сообщение ещё раз.",
   "chat.image.gone": "Изображение удалено.",

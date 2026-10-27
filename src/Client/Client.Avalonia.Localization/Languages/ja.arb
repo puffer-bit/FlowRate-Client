@@ -441,6 +441,7 @@
   "chat.attach.error.storageFull": "サーバーの空き容量がありません",
   "chat.attach.error.connection": "サーバーに接続できません",
   "chat.attach.error.failed": "サーバーがファイルを受け付けませんでした",
+  "chat.attach.error.unreadable": "ファイルを読み取れません",
   "chat.send.imageFailed": "{file}: {reason}",
   "chat.send.imagesLost": "アップロードしたファイルはサーバーに残っていません。もう一度送信してください。",
   "chat.image.gone": "画像は削除されました。",

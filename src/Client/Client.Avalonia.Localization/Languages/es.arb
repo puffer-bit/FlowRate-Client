@@ -441,6 +441,7 @@
   "chat.attach.error.storageFull": "El servidor se ha quedado sin espacio",
   "chat.attach.error.connection": "Sin conexión con el servidor",
   "chat.attach.error.failed": "El servidor no aceptó el archivo",
+  "chat.attach.error.unreadable": "No se puede leer el archivo",
   "chat.send.imageFailed": "{file}: {reason}",
   "chat.send.imagesLost": "El servidor ya no conserva los archivos subidos. Envía el mensaje de nuevo.",
   "chat.image.gone": "La imagen fue eliminada.",
