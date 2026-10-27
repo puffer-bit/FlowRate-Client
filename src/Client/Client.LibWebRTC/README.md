@@ -3,7 +3,8 @@
 The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
 buffer (NetEq), the processing of the microphone (APM) and the estimate of the network. On the desktop
 it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
-has no other engine. Screens are neither shared nor watched with it.
+has no other engine. On the desktop it also carries the screens, shown and watched; the sound of a
+shown screen does not go with it yet.
 
 ## Layout
 
@@ -11,8 +12,10 @@ has no other engine. Screens are neither shared nor watched with it.
 |---|---|
 | `Voice/VoiceTransport.cs` | `IWebRTCTransport` of every platform: the sections of the SFU, the offer/answer rounds, the volumes, the speaking indicator, the statistics |
 | `Voice/IVoicePeer.cs` | What a platform gives it: one peer connection that answers the offer of the SFU |
-| `Native/` | The peer of the desktop: `flowrate_webrtc.h`/`.cc`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), and its P/Invoke bindings |
-| `Build/LibWebRTCRuntime.targets` | Copies the native libraries next to the executable |
+| `Voice/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
+| `Voice/OutgoingVideo.cs` | The screen we show: the capture of `IVideoMedia` encodes it, libwebrtc sends it and asks for keyframes and the bitrate |
+| `Native/` | The peer of the desktop: `flowrate_webrtc.h`/`.cc`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), `flowrate_video.cc`, the video codecs that pass the pictures through and the source of encoded ones, and the P/Invoke bindings |
+| `Build/` | The scripts that build libwebrtc with that interface into one library, the committed libraries (`prebuilt/<rid>/`) and `LibWebRTCRuntime.targets`, which copies them next to the executable |
 | `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidVoicePeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`VoicePeer.java`) |
 | `Client.Avalonia.Desktop/Services/Media/MediaEngineTransportFactory.cs` | Picks the engine of each session on the desktop |
 
@@ -20,40 +23,62 @@ The SFU is described exactly as for webrtcbin (`Client.WebRTC/Sdp`); libwebrtc a
 the SFU created each producer with is written into the answer, since mediasoup knows our streams by it
 alone. The format parameters of the sections we send in set FEC, DTX and the 64 kbit/s of the voice.
 
+## Screens
+
+libwebrtc carries the screens and codes none of them: `IVideoMedia` captures, encodes and decodes them,
+on the GPU, the same as for the GStreamer transport. Both video codec factories of libwebrtc are
+replaced (`Native/flowrate_video.cc`, put in place by `Build/patches/flowrate_target.patch`), which
+also leaves the software codecs of WebRTC out of the library.
+
+### Watched
+
+libwebrtc receives the screens we watch: the transport, the jitter buffer, the retransmissions and the
+keyframe requests. It does not decode them. Its video decoders are replaced by ones that pass the
+pictures through (`Native/flowrate_video.cc`, put in place by `Build/patches/flowrate_target.patch`):
+each hands its encoded picture to `fr_set_video_receiver`, and gives libwebrtc a blank 2×2 picture back
+so that it keeps its timing. The pictures go to the decoders of `IVideoMedia`, the same as for the
+GStreamer transport, which decode on the GPU. libwebrtc only hands on pictures it could decode, so a
+stream starts at a keyframe and has no gaps. A decoder that needs a keyframe anyway asks for it through
+`fr_video_request_keyframe`: the next picture returns `WEBRTC_VIDEO_CODEC_OK_REQUEST_KEYFRAME`, and
+libwebrtc sends a PLI. The pictures are told apart by the SSRC of their packets, which the SFU gives
+each consumer of its own.
+
+### Shown
+
+The capture pushes its encoded pictures into an `fr_video_source`, which hands each to libwebrtc as
+the native buffer of a frame. libwebrtc carries it to the encoder of the stream as it would carry a
+texture, and that encoder sends the picture as it is: libwebrtc packetizes, paces and resends it. What
+libwebrtc wants of an encoder goes back to the capture: a keyframe when the frame it asked to be one is
+not, and the bitrate of its estimate (`SetRates`), which `OutgoingVideo` passes on when it moved by a
+tenth. The estimate starts at the bitrate the user set, never goes above it and goes down on loss: the
+section carries them as `x-google-start-bitrate` and `x-google-max-bitrate`.
+
+So that libwebrtc sends every picture it gets, the encoder says it keeps to the bitrate itself (a
+trusted rate controller) and takes native frames, the sender degrades nothing, and its frame rate is
+the one of the setting (144 goes through). The track is not marked as a screen: libwebrtc would then
+repeat the last frame of a still screen, which an encoder that only passes pictures on cannot do. A
+picture it gives again is dropped.
+
+A screen that stops keeps its section, which goes on sending, nothing: the SFU only pauses its
+producer, and the stream goes on with the next sequence number when it is back.
+
+H.264 and VP8 go both ways, which are what the clients send. Android neither shows nor watches screens,
+as it has no `IVideoMedia`.
+
 ## Building
 
-```bash
-src/Client/Client.LibWebRTC/Native/build.sh
-```
-
-Downloads the pinned release of webrtc-sdk/libwebrtc (checked by its SHA-256) and builds
-`libflowrate_webrtc.so` against it with the g++ of the system, into `Build/artifacts/linux-x64/libwebrtc/`.
-Takes seconds; `publish.sh` runs it for every linux-x64 build. Without it the client builds and runs,
-and the setting falls back to GStreamer.
-
-On Windows x64, install Visual Studio 2022 or later with **Desktop development with C++** and a Windows
-SDK, then run from 64-bit PowerShell:
-
-```powershell
-& src\Client\Client.LibWebRTC\Native\build.ps1
-```
-
-Downloads the Windows x64 SDK of the same pinned release, verifies its SHA-256 and builds
-`flowrate_webrtc.dll` with MSVC against `libwebrtc.dll.lib`. The script finds the x64 compiler through
-`vswhere`, so a developer shell is not required. Both DLLs and the license go into
-`Build/artifacts/win-x64/libwebrtc/`; the shim uses the static C++ runtime, so it does not require a
-Visual C++ redistributable. `publish.ps1` runs this for every win-x64 build, JIT or NativeAOT.
-
-`Native/test-runtime.ps1 -RuntimeDirectory <directory>` checks that the Windows DLLs load and that every
-C export in the header is present, without opening audio devices. The build script checks the native
-output; CI also checks the published folder before uploading release artifacts. A voice call on a
-Windows machine is still needed to verify the audio devices and negotiation.
+The native library is built from source by hand and committed: `Build/prebuilt/<rid>/`. Neither CI nor
+the publish scripts build it. How to build it, on Linux and on Windows, is in `Build/README.md`.
 
 ## What differs from the GStreamer voice
 
 - The microphone and the speakers are the devices of libwebrtc (PulseAudio, WASAPI). The device of the
   settings is found by its name, as PulseAudio gives libwebrtc no ids.
-- Noise suppression is the one of libwebrtc, on for every level but off; RNNoise is not used.
+- Noise suppression is the one of libwebrtc, on for every level but off; RNNoise is not used. The
+  audio settings show it as a single switch while libwebrtc is chosen, and hide the voice detection;
+  their microphone test, which runs on GStreamer, then uses the high WebRTC level and no detection.
+- The automatic gain control is the one of libwebrtc, switched by the same setting as the one of
+  GStreamer.
 - The voice gate is `VoiceGateDecision` on the peaks of the processed microphone, with the pre-roll and
   the ramps of the GStreamer gate; it has no voice detection.
 - The levels of the voices we receive are taken before the playback volume, so a voice turned down or

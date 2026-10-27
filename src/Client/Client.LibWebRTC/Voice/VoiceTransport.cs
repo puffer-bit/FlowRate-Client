@@ -13,8 +13,10 @@ namespace Client.LibWebRTC.Voice;
 /// <summary>
 /// Voice of a hybrid session over libwebrtc, through the <see cref="IVoicePeer"/> of the platform.
 /// The description of the SFU is built the way the GStreamer transport builds it for webrtcbin;
-/// libwebrtc answers it, captures the microphone and plays the voices. Screens are neither shown
-/// nor watched.
+/// libwebrtc answers it, captures the microphone and plays the voices. Screens are watched and shown
+/// where the platform hands the video out (<see cref="IEncodedVideoReceiver"/>) and takes it in
+/// encoded (<see cref="IVoicePeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
+/// decodes them, libwebrtc only carries them.
 /// </summary>
 public sealed partial class VoiceTransport : IWebRTCTransport
 {
@@ -32,12 +34,16 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private readonly int _sessionId;
     private readonly bool _isPlaybackEnabled;
     private readonly Func<IVoicePeerListener, IVoicePeer> _createPeer;
+    private readonly IVideoMedia? _video;
+    private readonly IEncodedVideoReceiver? _videoReceiver;
     private readonly ILogger<VoiceTransport> _logger;
     private readonly Lock _lock = new();
 
     // The m-sections by m-line index; never removed, only emptied and reused, which keeps every mid stable
     private readonly List<Slot> _slots = [];
     private readonly Dictionary<string, InboundTrack> _inbounds = [];
+    private readonly Dictionary<string, IncomingVideoStream> _videoStreams = [];
+    private readonly Dictionary<string, OutgoingVideo> _outgoingVideos = [];
     private readonly Dictionary<string, OutboundTrack> _outbounds = [];
     private readonly HashSet<string> _readyInbounds = [];
     private readonly Dictionary<(int UserId, MediaSourceType SourceType), double> _volumes = [];
@@ -61,12 +67,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     public event Action<DtlsParameters>? LocalDtlsParametersReady;
     public event Action<WebRTCConnectionState>? ConnectionStateChanged;
     public event Action<int, bool>? SpeakingChanged;
-    // No screen is watched, so no frame ever comes
-    public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady
-    {
-        add { }
-        remove { }
-    }
+    public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     public event Action<IReadOnlyList<string>>? InboundsReady;
     public event Action<TransportStatsSample>? StatsSampled;
@@ -78,12 +79,16 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// Whether the voices are heard. libwebrtc plays every voice it receives, so without playback they
     /// are played silent.
     /// </param>
+    /// <param name="video">Decodes the screens we watch; without it, or the receiver, none is watched.</param>
+    /// <param name="videoReceiver">Hands out the encoded pictures of the screens libwebrtc receives.</param>
     public VoiceTransport(int sessionId, Func<IVoicePeerListener, IVoicePeer> createPeer, ILogger<VoiceTransport> logger,
-        bool isPlaybackEnabled = true)
+        bool isPlaybackEnabled = true, IVideoMedia? video = null, IEncodedVideoReceiver? videoReceiver = null)
     {
         _sessionId = sessionId;
         _isPlaybackEnabled = isPlaybackEnabled;
         _createPeer = createPeer;
+        _video = video;
+        _videoReceiver = videoReceiver;
         _logger = logger;
     }
 
@@ -119,6 +124,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     public void Dispose()
     {
         IVoicePeer? peer;
+        List<IncomingVideoStream> streams;
+        List<OutgoingVideo> outgoing;
 
         lock (_lock)
         {
@@ -128,9 +135,19 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             _isDisposed = true;
             peer = _peer;
             _peer = null;
+            streams = _videoStreams.Values.ToList();
+            _videoStreams.Clear();
+            outgoing = _outgoingVideos.Values.ToList();
+            _outgoingVideos.Clear();
         }
 
         Close(peer);
+
+        foreach (var stream in streams)
+            stream.Dispose();
+
+        foreach (var video in outgoing)
+            video.Dispose();
     }
 
     private void Close(IVoicePeer? peer)
@@ -155,34 +172,87 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     public void RegisterInbound(InboundTrack inbound, double volume)
     {
-        // Screens are not watched here
-        if (inbound.MediaType != MediaType.Audio)
+        // A screen only where its pictures can be had and decoded
+        VideoCodec? codec = null;
+
+        if (inbound.MediaType == MediaType.Video)
+        {
+            if (_video == null || _videoReceiver == null || VideoCodecOf(inbound.MimeType) is not { } videoCodec)
+                return;
+
+            codec = videoCodec;
+        }
+        else if (inbound.MediaType != MediaType.Audio)
+        {
             return;
+        }
+
+        var kind = inbound.MediaType == MediaType.Video ? VideoKind : AudioKind;
+        List<IncomingVideoStream> retired = [];
 
         lock (_lock)
         {
-            _volumes[(inbound.UserId, inbound.SourceType)] = volume;
+            // A picture has no volume, and must not reset the one of the sound of its screen
+            if (inbound.MediaType == MediaType.Audio)
+                _volumes[(inbound.UserId, inbound.SourceType)] = volume;
 
-            if (!_inbounds.TryAdd(inbound.Id, inbound))
+            if (_isDisposed || !_inbounds.TryAdd(inbound.Id, inbound))
                 return;
 
             // A rejoin makes the SFU create a new consumer for a track we may still hold
             foreach (var stale in _inbounds.Values.Where(item => item.Id != inbound.Id && item.UserId == inbound.UserId &&
+                                                               item.MediaType == inbound.MediaType &&
                                                                item.SourceType == inbound.SourceType).ToList())
-                ReleaseLocked(stale.Id);
+                ReleaseLocked(stale.Id, retired);
 
             var slot = _slots.FirstOrDefault(item => !item.IsPlaceholder && !item.IsSend && item.InboundId == null &&
-                                                     item.Carries(inbound.MimeType));
+                                                     item.Kind == kind && item.Carries(inbound.MimeType));
 
             if (slot == null)
-                _slots.Add(slot = new Slot());
+                _slots.Add(slot = new Slot { Kind = kind });
 
             slot.InboundId = inbound.Id;
+
+            if (codec is { } videoCodec)
+                _videoStreams[inbound.Id] = CreateVideoStream(inbound, videoCodec);
         }
 
-        LogInboundRegistered(_sessionId, inbound.UserId, inbound.SSRC);
+        foreach (var stream in retired)
+            stream.Dispose();
+
+        LogInboundRegistered(_sessionId, inbound.MediaType, inbound.UserId, inbound.SSRC);
         Negotiate();
     }
+
+    /// <summary>
+    /// The stream of a screen we watch, decoded from its first picture on. Only inside the lock, with
+    /// the video there.
+    /// </summary>
+    private IncomingVideoStream CreateVideoStream(InboundTrack inbound, VideoCodec codec)
+    {
+        var name = string.Create(CultureInfo.InvariantCulture, $"{_sessionId}_{inbound.UserId}_{inbound.SSRC}");
+
+        return new IncomingVideoStream(_videoReceiver!, inbound.SSRC, () =>
+            {
+                var decoder = _video!.CreateDecoder(codec, name);
+
+                if (decoder != null)
+                    LogDecodingVideo(_sessionId, inbound.UserId, codec);
+
+                return decoder;
+            },
+            frame => VideoFrameReady?.Invoke(inbound.UserId, inbound.SourceType, frame),
+            exception => LogVideoFrameFailed(exception, _sessionId, inbound.UserId));
+    }
+
+    /// <summary>The codec of a screen we can decode, by the MIME type the SFU gives its track.</summary>
+    private static VideoCodec? VideoCodecOf(string mimeType) =>
+        RtpCodec.EncodingNameOf(mimeType).ToUpperInvariant() switch
+        {
+            "H264" => VideoCodec.H264,
+            "VP8" => VideoCodec.VP8,
+            _ => null
+        };
 
     public void UnregisterInbound(int userId, MediaType mediaType, MediaSourceType mediaSourceType) =>
         Release(inbound => inbound.UserId == userId && inbound.MediaType == mediaType &&
@@ -192,6 +262,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     private void Release(Func<InboundTrack, bool> isReleased)
     {
+        List<IncomingVideoStream> retired = [];
+
         lock (_lock)
         {
             var released = _inbounds.Values.Where(isReleased).Select(inbound => inbound.Id).ToList();
@@ -200,16 +272,26 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 return;
 
             foreach (var inboundId in released)
-                ReleaseLocked(inboundId);
+                ReleaseLocked(inboundId, retired);
         }
+
+        foreach (var stream in retired)
+            stream.Dispose();
 
         Negotiate();
     }
 
-    private void ReleaseLocked(string inboundId)
+    /// <param name="retired">
+    /// Receives the video stream of the track, to dispose outside the lock: stopping its decoder waits
+    /// for the threads that hand its pictures on.
+    /// </param>
+    private void ReleaseLocked(string inboundId, List<IncomingVideoStream> retired)
     {
         _inbounds.Remove(inboundId);
         _readyInbounds.Remove(inboundId);
+
+        if (_videoStreams.Remove(inboundId, out var stream))
+            retired.Add(stream);
 
         foreach (var slot in _slots.Where(slot => slot.InboundId == inboundId))
             slot.InboundId = null;
@@ -248,7 +330,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
             for (var index = 0; index < _slots.Count; index++)
             {
-                if (_slots[index].InboundId is { } inboundId && _inbounds.TryGetValue(inboundId, out var inbound))
+                if (_slots[index].InboundId is { } inboundId && _inbounds.TryGetValue(inboundId, out var inbound) &&
+                    inbound.MediaType == MediaType.Audio)
                     volumes.Add((index.ToString(CultureInfo.InvariantCulture), GetVolume(inbound)));
             }
         }
@@ -263,7 +346,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             : _volumes.GetValueOrDefault((inbound.UserId, inbound.SourceType), 1.0);
 
     public bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
-        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled, bool isAutoGainControlEnabled)
     {
         // Only the microphone: the sound of a screen goes with the screen
         if (outbound.MediaType != MediaType.Audio || outbound.SourceType != MediaSourceType.Microphone)
@@ -281,7 +364,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         // Never inside the lock: the peer waits for the threads of libwebrtc, and its callbacks on
         // them wait for the lock
-        if (!peer.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled))
+        if (!peer.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled, isAutoGainControlEnabled))
             return false;
 
         peer.SetMicrophoneVolume(volume);
@@ -293,12 +376,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             if (_peer != peer || !_outbounds.TryAdd(outbound.Id, outbound))
                 return false;
 
-            var slot = _slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Carries(outbound.MimeType));
-
-            if (slot == null)
-                _slots.Add(slot = new Slot { IsSend = true });
-
-            slot.OutboundId = outbound.Id;
+            ClaimSendingSlot(outbound, AudioKind);
             _isMicrophoneMuted = false;
         }
 
@@ -307,26 +385,126 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         return Negotiate();
     }
 
-    public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings) => false;
+    /// <summary>
+    /// Shows a screen: <see cref="IVideoMedia"/> captures and encodes it, libwebrtc sends the pictures.
+    /// What is sent also comes back through <see cref="VideoFrameReady"/>, as our own screen is not
+    /// received from the SFU.
+    /// </summary>
+    public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings)
+    {
+        if (outbound.MediaType != MediaType.Video || _video == null || VideoCodecOf(outbound.MimeType) is not { } codec)
+            return false;
+
+        IVoicePeer? peer;
+
+        lock (_lock)
+        {
+            peer = _peer;
+
+            if (peer == null)
+                return false;
+
+            if (_outbounds.ContainsKey(outbound.Id))
+                return true;
+        }
+
+        var capture = _video.CreateCapture(input, settings, codec, _sessionId.ToString(CultureInfo.InvariantCulture));
+
+        if (capture == null)
+        {
+            LogCaptureFailed(_sessionId, input);
+            return false;
+        }
+
+        var video = new OutgoingVideo(capture, settings, kbps => LogScreenBitrate(_sessionId, kbps));
+
+        // The size is what libwebrtc takes the stream for: the one of the setting, as wide as a usual screen
+        var height = settings.MaxHeight;
+        var width = (height * 16 / 9 + 1) & ~1;
+
+        // Never inside the lock, like the microphone
+        if (peer.CreateVideoSource(width, height, settings.Framerate, video) is not { } source)
+        {
+            capture.Dispose();
+            LogCaptureFailed(_sessionId, input);
+            return false;
+        }
+
+        video.Source = source;
+        capture.EncodedFrameReady += source.Push;
+        capture.PreviewFrameReady += frame => VideoFrameReady?.Invoke(outbound.UserId, outbound.SourceType, frame);
+
+        lock (_lock)
+        {
+            if (_peer != peer || !_outbounds.TryAdd(outbound.Id, outbound))
+            {
+                video.Dispose();
+                return false;
+            }
+
+            _outgoingVideos[outbound.Id] = video;
+            ClaimSendingSlot(outbound, VideoKind);
+        }
+
+        // The pictures before the round that puts the source into its section go nowhere; libwebrtc
+        // asks for a keyframe with its first one
+        if (!capture.Start())
+        {
+            StopOutbound(outbound.Id);
+            LogCaptureFailed(_sessionId, input);
+            return false;
+        }
+
+        LogScreenStarted(_sessionId, outbound.SSRC, capture.Description);
+
+        return Negotiate();
+    }
+
+    /// <summary>Gives a track a section we send in, an emptied one of its kind and codec where there is one. Only inside the lock.</summary>
+    private void ClaimSendingSlot(OutboundTrack outbound, string kind)
+    {
+        var slot = _slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Kind == kind &&
+                                                 item.Carries(outbound.MimeType));
+
+        if (slot == null)
+            _slots.Add(slot = new Slot { IsSend = true, Kind = kind });
+
+        slot.OutboundId = outbound.Id;
+        slot.PausedSsrc = null;
+    }
 
     public void StopOutbound(string outboundId)
     {
         IVoicePeer? peer;
-        bool isLast;
+        OutgoingVideo? video;
+        bool isMicrophone;
+        bool isLastMicrophone;
 
         lock (_lock)
         {
-            if (!_outbounds.Remove(outboundId))
+            if (!_outbounds.Remove(outboundId, out var outbound))
                 return;
 
+            _outgoingVideos.Remove(outboundId, out video);
+
             foreach (var slot in _slots.Where(slot => slot.OutboundId == outboundId))
+            {
                 slot.OutboundId = null;
 
+                // The SFU only pauses a screen that stops, see Slot.PausedSsrc
+                if (video != null)
+                    slot.PausedSsrc = outbound.SSRC;
+            }
+
             peer = _peer;
-            isLast = _outbounds.Count == 0;
+            isMicrophone = outbound.MediaType == MediaType.Audio;
+            isLastMicrophone = !_outbounds.Values.Any(item => item.MediaType == MediaType.Audio);
         }
 
-        if (isLast)
+        // Outside the lock: stopping the capture waits for its threads
+        video?.Dispose();
+
+        if (isMicrophone && isLastMicrophone)
             peer?.SetVoiceGate(null);
 
         Negotiate();
@@ -348,17 +526,18 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         FindOutboundPeer(outboundId)?.SetMicrophoneVolume(volume);
 
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled) =>
-        FindOutboundPeer(outboundId)?.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled);
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled) =>
+        FindOutboundPeer(outboundId)?.SetMicrophone(input, noiseSuppression, isEchoCancellationEnabled,
+            isAutoGainControlEnabled);
 
     public void SetVoiceGate(string outboundId, VoiceGateOptions? voiceGate) =>
         FindOutboundPeer(outboundId)?.SetVoiceGate(voiceGate);
 
-    /// <summary>The peer, while it sends the track.</summary>
+    /// <summary>The peer, while it sends the track of the microphone.</summary>
     private IVoicePeer? FindOutboundPeer(string outboundId)
     {
         lock (_lock)
-            return _outbounds.ContainsKey(outboundId) ? _peer : null;
+            return _outbounds.TryGetValue(outboundId, out var outbound) && outbound.MediaType == MediaType.Audio ? _peer : null;
     }
 
     /// <summary>
@@ -369,8 +548,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     {
         IVoicePeer peer;
         string offer;
-        List<string> sendMids;
-        List<uint> sendSsrcs;
+        List<SendSection> sends;
 
         lock (_lock)
         {
@@ -387,22 +565,24 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             peer = _peer;
 
             var sections = BuildSections();
-            var sends = sections
-                .Select((section, index) => (section, Outbound: _slots[index].OutboundId))
-                .Where(item => item.Outbound != null && _outbounds.ContainsKey(item.Outbound))
+
+            sends = sections
+                .Select((section, index) => (section.Mid, Slot: _slots[index]))
+                .Select(item => item.Slot.OutboundId != null && _outbounds.TryGetValue(item.Slot.OutboundId, out var outbound)
+                    ? new SendSection(item.Mid, outbound.SSRC, _outgoingVideos.GetValueOrDefault(outbound.Id)?.Source)
+                    : item.Slot.PausedSsrc is { } paused ? new SendSection(item.Mid, paused) : null)
+                .OfType<SendSection>()
                 .ToList();
 
             _roundSections = sections;
             offer = SdpBuilder.Build(_transportParameters, sections);
-            sendMids = sends.Select(item => item.section.Mid).ToList();
-            sendSsrcs = sends.Select(item => _outbounds[item.Outbound!].SSRC).ToList();
         }
 
         LogRemoteDescription(_sessionId, offer);
 
         try
         {
-            peer.Negotiate(offer, sendMids, sendSsrcs);
+            peer.Negotiate(offer, sends);
             return true;
         }
         catch (Exception exception)
@@ -427,15 +607,20 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             var mid = index.ToString(CultureInfo.InvariantCulture);
 
             if (slot.IsPlaceholder)
-                return new SdpMediaSection { Mid = mid, Kind = "audio", Direction = SdpDirection.SendOnly, Codec = RtpCodec.Opus() };
+                return new SdpMediaSection { Mid = mid, Kind = AudioKind, Direction = SdpDirection.SendOnly, Codec = RtpCodec.Opus() };
 
             if (slot.IsSend)
             {
                 if (slot.OutboundId != null && _outbounds.TryGetValue(slot.OutboundId, out var outbound))
                 {
-                    slot.LastCodec = SendCodec(outbound);
-                    return new SdpMediaSection { Mid = mid, Kind = "audio", Direction = SdpDirection.RecvOnly, Codec = slot.LastCodec };
+                    slot.LastCodec = _outgoingVideos.TryGetValue(outbound.Id, out var video)
+                        ? VideoSendCodec(outbound, video)
+                        : SendCodec(outbound);
+                    return new SdpMediaSection { Mid = mid, Kind = slot.Kind, Direction = SdpDirection.RecvOnly, Codec = slot.LastCodec };
                 }
+
+                if (slot.PausedSsrc != null && slot.LastCodec != null)
+                    return new SdpMediaSection { Mid = mid, Kind = slot.Kind, Direction = SdpDirection.RecvOnly, Codec = slot.LastCodec };
             }
             else if (slot.InboundId != null && _inbounds.TryGetValue(slot.InboundId, out var inbound))
             {
@@ -443,7 +628,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 return new SdpMediaSection
                 {
                     Mid = mid,
-                    Kind = "audio",
+                    Kind = slot.Kind,
                     Direction = SdpDirection.SendOnly,
                     Codec = slot.LastCodec,
                     SSRC = inbound.SSRC,
@@ -451,12 +636,13 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 };
             }
 
+            // An m-line keeps its kind for good, so an emptied section of a picture stays a video one
             return new SdpMediaSection
             {
                 Mid = mid,
-                Kind = "audio",
+                Kind = slot.Kind,
                 Direction = SdpDirection.Inactive,
-                Codec = slot.LastCodec ?? RtpCodec.Opus()
+                Codec = slot.LastCodec ?? (slot.Kind == VideoKind ? RtpCodec.H264() : RtpCodec.Opus())
             };
         }).ToList();
     }
@@ -471,6 +657,23 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         FormatParameters = string.Create(CultureInfo.InvariantCulture,
             $"minptime=10;useinbandfec={(outbound.IsFecEnabled ? 1 : 0)};usedtx={(outbound.IsDtxEnabled ? 1 : 0)};maxaveragebitrate={VoiceBitrate}")
     };
+
+    /// <summary>
+    /// The codec of a section we send a screen in. libwebrtc takes the bitrates of the remote
+    /// description as the bounds of its estimate: it starts at the one the user set, never goes above
+    /// it, and goes down when the network loses packets.
+    /// </summary>
+    private static RtpCodec VideoSendCodec(OutboundTrack outbound, OutgoingVideo video)
+    {
+        var codec = RtpCodec.FromOutbound(outbound);
+        var bitrates = string.Create(CultureInfo.InvariantCulture,
+            $"x-google-start-bitrate={video.Settings.EffectiveBitrateKbps};x-google-max-bitrate={video.Settings.EffectiveBitrateKbps};x-google-min-bitrate={video.MinKbps}");
+
+        return codec with
+        {
+            FormatParameters = string.IsNullOrEmpty(codec.FormatParameters) ? bitrates : $"{codec.FormatParameters};{bitrates}"
+        };
+    }
 
     private void OnNegotiated(string localSdp)
     {
@@ -730,12 +933,19 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         }
     }
 
+    private const string AudioKind = "audio";
+    private const string VideoKind = "video";
+
     /// <summary>
-    /// One m-section. A sending one is only reused for sending, a receiving one for receiving.
+    /// One m-section. A sending one is only reused for sending, a receiving one for receiving, and
+    /// each only for its kind.
     /// </summary>
     private sealed class Slot
     {
         public bool IsSend { get; init; }
+
+        /// <summary>The kind of the m-line, audio or video.</summary>
+        public string Kind { get; init; } = AudioKind;
 
         /// <summary>The section of m-line 0 that only brings the transport up.</summary>
         public bool IsPlaceholder { get; init; }
@@ -748,6 +958,15 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         /// The codec of the track the section carried last; an emptied section keeps offering it.
         /// </summary>
         public RtpCodec? LastCodec { get; set; }
+
+        /// <summary>
+        /// The SSRC of the screen the section sent until it stopped, which the SFU only pauses. The
+        /// section goes on sending, nothing: emptied, libwebrtc would end the stream with an RTCP BYE
+        /// and start another one when the screen is back. Kept, the stream goes on with the next
+        /// sequence number, as the SFU wants of a paused producer: it drops the packets after a jump,
+        /// and those are the keyframe every viewer waits for.
+        /// </summary>
+        public uint? PausedSsrc { get; set; }
 
         public bool Carries(string mimeType) =>
             LastCodec == null || string.IsNullOrEmpty(mimeType) ||

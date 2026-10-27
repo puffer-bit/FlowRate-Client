@@ -7,7 +7,7 @@ namespace Client.Services.Media;
 
 /// <summary>
 /// Creates the transport of each session on the engine the experimental setting picks: GStreamer,
-/// or libwebrtc for the voice alone. Falls back to GStreamer when libwebrtc is not there.
+/// or libwebrtc for the voice and the screens. Falls back to GStreamer when libwebrtc is not there.
 /// </summary>
 internal sealed partial class MediaEngineTransportFactory(
     WebRTCTransportFactory gstreamer,

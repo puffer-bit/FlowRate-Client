@@ -49,7 +49,7 @@ disconnects.
 | `--stats-interval <sec>` | Report the counters of all bots every given number of seconds. Default: 10. |
 | `--quiet` | Log only failures and the counters, nothing per bot. |
 | `--listen` | Play what the bot hears. By default incoming audio is only received and decoded. |
-| `--libwebrtc` | Send and receive the voice over libwebrtc instead of GStreamer, as the experimental setting of the client does; needs `Client.LibWebRTC/Native/build.sh` to have run. Screens are not shared or watched. |
+| `--libwebrtc` | Send and receive the voice over libwebrtc instead of GStreamer, as the experimental setting of the client does; needs the libwebrtc runtime of `Client.LibWebRTC` (committed for linux-x64). Screens are shared and watched as well. |
 | `--verbose` | Log everything, including the WebRTC negotiation. |
 | `--help` | Show the usage text. |
 

@@ -82,7 +82,7 @@
     <!-- The GStreamer runtime for the RID of this build, next to the executable -->
     <Import Project="..\Client.GStreamer\Build\GStreamerRuntime.targets" />
 
-    <!-- libwebrtc for the voice, when Client.LibWebRTC/Native/build.sh made it for this RID -->
+    <!-- libwebrtc for the voice, when Client.LibWebRTC has it for this RID -->
     <Import Project="..\Client.LibWebRTC\Build\LibWebRTCRuntime.targets" />
 
     <!-- The LGPL libraries stay separate files next to the executable, so the user can replace them:

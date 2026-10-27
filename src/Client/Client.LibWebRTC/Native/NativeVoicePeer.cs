@@ -7,9 +7,9 @@ using Shared.Enums.WebRTC;
 namespace Client.LibWebRTC.Native;
 
 /// <summary>
-/// The voice peer of the desktop, over flowrate_webrtc. The microphone and the speakers are the
-/// devices of libwebrtc itself: PulseAudio on Linux, WASAPI on Windows. A tone or a file is played
-/// into a custom source instead of the microphone.
+/// The peer of the desktop, over flowrate_webrtc. The microphone and the speakers are the devices of
+/// libwebrtc itself: PulseAudio on Linux, WASAPI on Windows. A tone or a file is played into a custom
+/// source instead of the microphone. Screens are sent from sources of encoded pictures.
 /// </summary>
 internal sealed unsafe class NativeVoicePeer : IVoicePeer
 {
@@ -26,7 +26,8 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     private volatile bool _isClosed;
 
     // What the track we send was created with, so the same options do not replace it
-    private (bool IsCustom, bool EchoCancellation, bool NoiseSuppression) _options = (false, false, true);
+    private (bool IsCustom, bool EchoCancellation, bool NoiseSuppression, bool AutoGainControl) _options =
+        (false, false, true, true);
     private CustomAudioFeeder? _feeder;
     private double _volume = 1;
 
@@ -54,31 +55,47 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         }
     }
 
-    public void Negotiate(string offer, IReadOnlyList<string> sendMids, IReadOnlyList<uint> sendSsrcs)
+    public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
     {
-        var mids = sendMids.Select(mid => Marshal.StringToCoTaskMemUTF8(mid)).ToArray();
-        var ssrcs = sendSsrcs.ToArray();
+        var mids = sends.Select(send => Marshal.StringToCoTaskMemUTF8(send.Mid)).ToArray();
+        var ssrcs = sends.Select(send => send.Ssrc).ToArray();
+        var sources = sends.Select(send => send.Video as NativeVideoSource).ToArray();
+
+        // A source disposed in the meantime leaves its section without a picture until the next round
+        var videos = sources.Select(source => source?.Acquire() ?? 0).ToArray();
 
         try
         {
             fixed (nint* midPointers = mids)
             fixed (uint* ssrcPointers = ssrcs)
+            fixed (nint* videoPointers = videos)
             {
                 var midArray = (byte**)midPointers;
                 var ssrcArray = ssrcPointers;
-                Run(peer => NativeMethods.PeerNegotiate(peer, offer, midArray, ssrcArray, mids.Length));
+                var videoArray = videoPointers;
+                Run(peer => NativeMethods.PeerNegotiate(peer, offer, midArray, ssrcArray, videoArray, mids.Length));
             }
         }
         finally
         {
             foreach (var mid in mids)
                 Marshal.FreeCoTaskMem(mid);
+
+            for (var index = 0; index < sources.Length; index++)
+            {
+                if (videos[index] != 0)
+                    sources[index]!.Release();
+            }
         }
     }
 
+    public IVideoSendSource? CreateVideoSource(int width, int height, int maxFramerate, IVideoSendListener listener) =>
+        NativeVideoSource.Create(width, height, maxFramerate, listener);
+
     public void SetMicrophoneEnabled(bool isEnabled) => Run(peer => NativeMethods.PeerSetMicrophoneEnabled(peer, isEnabled ? 1 : 0));
 
-    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
+    public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled)
     {
         var feeder = input is DeviceAudioInput ? null : CustomAudioFeeder.For(input, Capture);
 
@@ -90,7 +107,8 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
             _runtime.SelectRecordingDevice(device.DeviceId);
 
         // libwebrtc has one level of noise suppression of its own, taken for every level but off
-        var options = (feeder != null, isEchoCancellationEnabled, noiseSuppression != NoiseSuppressionLevel.Off);
+        var options = (feeder != null, isEchoCancellationEnabled, noiseSuppression != NoiseSuppressionLevel.Off,
+            isAutoGainControlEnabled);
         CustomAudioFeeder? previous;
         bool isChanged;
 
@@ -115,7 +133,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
 
         if (isChanged)
             Run(peer => NativeMethods.PeerSetAudioOptions(peer, options.Item1 ? 1 : 0, options.isEchoCancellationEnabled ? 1 : 0,
-                options.Item3 ? 1 : 0, 1));
+                options.Item3 ? 1 : 0, options.isAutoGainControlEnabled ? 1 : 0));
 
         return true;
     }
@@ -219,8 +237,11 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     {
         try
         {
+            var text = Marshal.PtrToStringUTF8((nint)json) ?? "[]";
+            if (Environment.GetEnvironmentVariable("FR_STATS_DUMP") is { } dump)
+                File.AppendAllText(dump + "." + context + ".jsonl", text.Replace("\n", " ") + "\n");
             if (ListenerOf(context) is { } listener)
-                listener.OnStats(StatsReader.Read(Marshal.PtrToStringUTF8((nint)json) ?? "[]"));
+                listener.OnStats(StatsReader.Read(text));
         }
         catch
         {
