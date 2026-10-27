@@ -97,11 +97,15 @@ the publish scripts build it. How to build it, on Linux and on Windows, is in `B
 
 - The microphone and the speakers are the devices of libwebrtc (PulseAudio, WASAPI). The device of the
   settings is found by its name, as PulseAudio gives libwebrtc no ids.
-- Noise suppression is the one of libwebrtc, on for every level but off; RNNoise is not used. The
-  audio settings show it as a single switch while libwebrtc is chosen, and hide the voice detection;
-  their microphone test, which runs on GStreamer, then uses the high WebRTC level and no detection.
-- The automatic gain control is the one of libwebrtc, switched by the same setting as the one of
-  GStreamer.
+- Noise suppression is the one of libwebrtc at the moderate level, on for every level but off; RNNoise
+  is not used. The audio settings show it as a single switch while libwebrtc is chosen, and hide the
+  voice detection; their microphone test, which runs on GStreamer, then uses the moderate WebRTC level
+  and no detection.
+- The automatic gain control is the adaptive digital one of libwebrtc, switched by the same setting as
+  the one of GStreamer. WebRTC itself takes the analog one on the desktop, which moves the volume of
+  the microphone in the system; `Build/patches/flowrate_audio_processing.patch` replaces it, and lets
+  the level of noise suppression be ours instead of always the high one.
+- The processing runs at 48 kHz, so the voice keeps its band above 16 kHz, as with GStreamer.
 - The voice gate is `VoiceGateDecision` on the peaks of the processed microphone, with the pre-roll and
   the ramps of the GStreamer gate; it has no voice detection.
 - The levels of the voices we receive are taken before the playback volume, so a voice turned down or

@@ -26,8 +26,8 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     private volatile bool _isClosed;
 
     // What the track we send was created with, so the same options do not replace it
-    private (bool IsCustom, bool EchoCancellation, bool NoiseSuppression, bool AutoGainControl) _options =
-        (false, false, true, true);
+    private (bool IsCustom, bool EchoCancellation, int NoiseSuppression, bool AutoGainControl) _options =
+        (false, false, (int)NoiseSuppressionLevel.Moderate, true);
     private CustomAudioFeeder? _feeder;
     private double _volume = 1;
 
@@ -46,7 +46,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         };
 
         // libwebrtc copies the callbacks, so they may live on the stack
-        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self), 0, 1, 1);
+        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self), 0, _options.NoiseSuppression, 1);
 
         if (_peer == 0)
         {
@@ -122,8 +122,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         if (input is DeviceAudioInput device)
             _runtime.SelectRecordingDevice(device.DeviceId);
 
-        // libwebrtc has one level of noise suppression of its own, taken for every level but off
-        var options = (feeder != null, isEchoCancellationEnabled, noiseSuppression != NoiseSuppressionLevel.Off,
+        var options = (feeder != null, isEchoCancellationEnabled, (int)WebRtcNoiseSuppression(noiseSuppression),
             isAutoGainControlEnabled);
         CustomAudioFeeder? previous;
         bool isChanged;
@@ -149,10 +148,18 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
 
         if (isChanged)
             Run(peer => NativeMethods.PeerSetAudioOptions(peer, options.Item1 ? 1 : 0, options.isEchoCancellationEnabled ? 1 : 0,
-                options.Item3 ? 1 : 0, options.isAutoGainControlEnabled ? 1 : 0));
+                options.Item3, options.isAutoGainControlEnabled ? 1 : 0));
 
         return true;
     }
+
+    /// <summary>
+    /// The level the noise suppression of libwebrtc runs at: the moderate one for every level but off,
+    /// as the settings of libwebrtc have it on or off only. The levels of GStreamer, the neural ones
+    /// among them, are kept for it.
+    /// </summary>
+    private static NoiseSuppressionLevel WebRtcNoiseSuppression(NoiseSuppressionLevel level) =>
+        level == NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.Off : NoiseSuppressionLevel.Moderate;
 
     public void SetMicrophoneVolume(double volume)
     {
