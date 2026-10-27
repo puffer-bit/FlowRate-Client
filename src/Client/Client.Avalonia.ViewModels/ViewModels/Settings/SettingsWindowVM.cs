@@ -143,7 +143,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new HotKeysControlVM(hotKeysService));
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));
-        SettingList.Add(new ExperimentalControlVM(appearanceService));
+        SettingList.Add(new ExperimentalControlVM(appearanceService, audioService));
         SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion()));
 
         Strings.LanguageChanged += OnLanguageChanged;

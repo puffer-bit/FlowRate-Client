@@ -123,7 +123,7 @@ public partial class ApplicationLoader
             _themeService.ApplyAnimations(await _appearanceService.GetAnimationSettingsAsync());
             _themeService.ApplyInterfaceScale(await _appearanceService.GetInterfaceScaleAsync());
             ExperimentalFeatures.Apply(await _appearanceService.GetIsExperimentalEnabledAsync(),
-                await _appearanceService.GetUseCustomTitleBarAsync(), await _appearanceService.GetUseLibWebRTCAsync());
+                await _appearanceService.GetUseCustomTitleBarAsync(), await _audioSettings.GetUseLibWebRTCAsync());
         }
         catch (Exception exception)
         {
