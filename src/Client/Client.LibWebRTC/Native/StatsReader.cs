@@ -21,10 +21,11 @@ internal static class StatsReader
 
         var levels = new List<VoiceLevel>();
         var inbound = new List<InboundCounters>();
-        var sent = new Dictionary<uint, long>();
+        var sent = new Dictionary<uint, OutboundCounters>();
         var remote = new Dictionary<uint, (double? FractionLost, double? RoundTripMs)>();
         var candidates = new Dictionary<string, string>();
         var pairs = new Dictionary<string, (string? Local, string? Remote)>();
+        var available = new Dictionary<string, double>();
         string? selectedPair = null;
 
         foreach (var stats in document.RootElement.EnumerateArray())
@@ -43,7 +44,8 @@ internal static class StatsReader
                     if (Number(stats, "ssrc") is { } ssrc)
                         inbound.Add(new InboundCounters((uint)ssrc, (long)(Number(stats, "packetsReceived") ?? 0),
                             (long)(Number(stats, "packetsLost") ?? 0), (Number(stats, "jitter") ?? 0) * 1000,
-                            (long)(Number(stats, "pliCount") ?? 0)));
+                            (long)(Number(stats, "pliCount") ?? 0), (long)(Number(stats, "nackCount") ?? 0),
+                            (long)(Number(stats, "freezeCount") ?? 0)));
                     break;
 
                 case "media-source" when kind == "audio":
@@ -53,7 +55,10 @@ internal static class StatsReader
 
                 case "outbound-rtp":
                     if (Number(stats, "ssrc") is { } sentSsrc)
-                        sent[(uint)sentSsrc] = (long)(Number(stats, "packetsSent") ?? 0);
+                        sent[(uint)sentSsrc] = new OutboundCounters((uint)sentSsrc, (long)(Number(stats, "packetsSent") ?? 0),
+                            null, null, (long)(Number(stats, "retransmittedPacketsSent") ?? 0),
+                            (long)(Number(stats, "nackCount") ?? 0), (long)(Number(stats, "pliCount") ?? 0),
+                            Number(stats, "targetBitrate") / 1000);
                     break;
 
                 case "remote-inbound-rtp":
@@ -68,7 +73,12 @@ internal static class StatsReader
 
                 case "candidate-pair":
                     if (String(stats, "id") is { } pairId)
+                    {
                         pairs[pairId] = (String(stats, "localCandidateId"), String(stats, "remoteCandidateId"));
+
+                        if (Number(stats, "availableOutgoingBitrate") is { } bitrate)
+                            available[pairId] = bitrate / 1000;
+                    }
                     break;
 
                 case "local-candidate" or "remote-candidate":
@@ -78,16 +88,17 @@ internal static class StatsReader
             }
         }
 
-        var outbound = sent
-            .Select(stream => remote.TryGetValue(stream.Key, out var report)
-                ? new OutboundCounters(stream.Key, stream.Value, report.FractionLost, report.RoundTripMs)
-                : new OutboundCounters(stream.Key, stream.Value, null, null))
+        var outbound = sent.Values
+            .Select(stream => remote.TryGetValue(stream.Ssrc, out var report)
+                ? stream with { FractionLost = report.FractionLost, RoundTripMs = report.RoundTripMs }
+                : stream)
             .ToList();
 
         var isOverTcp = selectedPair != null && pairs.TryGetValue(selectedPair, out var pair) &&
                         (IsTcp(pair.Local) || IsTcp(pair.Remote));
 
-        return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp));
+        return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp,
+            selectedPair != null && available.TryGetValue(selectedPair, out var kbps) ? kbps : null));
 
         bool IsTcp(string? candidateId) =>
             candidateId != null && candidates.GetValueOrDefault(candidateId) == "tcp";

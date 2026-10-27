@@ -55,8 +55,9 @@ on nothing.
   one file) is built from source by hand and committed in `Client.LibWebRTC/Build/prebuilt/<rid>/`
   (`Client.LibWebRTC/Build/README.md`); CI only copies it.
 - `Client.OpenAL` plays UI sounds and voice output through OpenAL Soft.
-- Android has no GStreamer: the voice goes over libwebrtc (`Platform/Media/WebRTC`), and screens are
-  neither shared nor watched.
+- Android has no GStreamer: the voice goes over libwebrtc (`Platform/Media/WebRTC`). Screens are watched
+  but not shared: libwebrtc decodes them itself (MediaCodec) and hands out I420 pictures, which
+  `Views/PictureView` turns into RGB with a Skia shader.
 
 ## Storage and platform services
 

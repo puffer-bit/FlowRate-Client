@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Client.Application.Ports;
+using Client.Core.Media;
 using Client.Core.Settings;
 using Shared.Enums.WebRTC;
 
@@ -121,5 +122,13 @@ public sealed class VoicePeerWorker : IVoicePeer
         public void OnNegotiated(string localSdp) => owner.Enqueue(_ => owner._listener.OnNegotiated(localSdp));
         public void OnFailed(string error) => owner.Enqueue(_ => owner._listener.OnFailed(error));
         public void OnStats(VoiceStats stats) => owner.Enqueue(_ => owner._listener.OnStats(stats));
+
+        // The only call passed on at once: the picture is valid during it alone. Its receivers only
+        // queue it for drawing, and never wait for the peer
+        public void OnVideoFrame(string mid, RawVideoFrame frame)
+        {
+            if (Volatile.Read(ref owner._isClosed) == 0)
+                owner._listener.OnVideoFrame(mid, frame);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Client.Application.Ports;
+using Client.Core.Media;
 using Client.Core.Settings;
 using Shared.Enums.WebRTC;
 
@@ -69,4 +70,12 @@ public interface IVoicePeerListener
     void OnFailed(string error);
 
     void OnStats(VoiceStats stats);
+
+    /// <summary>
+    /// A picture of the screen of a section, from a peer that decodes the screens itself, on the
+    /// thread of its stream. It is only valid during the call.
+    /// </summary>
+    void OnVideoFrame(string mid, RawVideoFrame frame)
+    {
+    }
 }
