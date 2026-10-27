@@ -100,6 +100,20 @@ internal static class ScreenEncodingBranch
             VideoFramePump.SinkDescription(PreviewSinkName),
             string.Format(CultureInfo.InvariantCulture, scale, settings.MaxHeight));
 
+    // An element that does not take what comes before it raises, so the next description can be tried:
+    // an encoder of the list above may still refuse textures, as Media Foundation does without a GPU
+    private static Bin? Parse(string description)
+    {
+        try
+        {
+            return Global.ParseBinFromDescription(description, true);
+        }
+        catch (Gst.GLib.GException)
+        {
+            return null;
+        }
+    }
+
     // The encoder chosen in the settings is one of H.264
     private static VideoEncoderChoice? SelectEncoder(VideoCodec codec, int bitrateKbps, string? preferred = null) =>
         VideoEncoderSelector.Select(codec, bitrateKbps,
@@ -160,7 +174,7 @@ internal static class ScreenEncodingBranch
         if (isD3D11Source && D3D11Encoders.Contains(encoder.Factory) &&
             ElementFactory.Find("d3d11convert") != null && ElementFactory.Find("d3d11download") != null)
         {
-            branch = Global.ParseBinFromDescription(Describe(codec, settings, encoder, CpuScale, D3D11Description), true);
+            branch = Parse(Describe(codec, settings, encoder, CpuScale, D3D11Description));
             scaler = "GPU (Direct3D 11)";
         }
         else
@@ -170,13 +184,13 @@ internal static class ScreenEncodingBranch
 
         if (branch == null && isDmaBufSource && scale == VaScale)
         {
-            branch = Global.ParseBinFromDescription(Describe(codec, settings, encoder, scale, VaDmaBufDescription), true);
+            branch = Parse(Describe(codec, settings, encoder, scale, VaDmaBufDescription));
             scaler = "GPU (VA-API, DMA-BUF)";
         }
 
         if (branch == null)
         {
-            branch = Global.ParseBinFromDescription(Describe(codec, settings, encoder, scale), true);
+            branch = Parse(Describe(codec, settings, encoder, scale));
             scaler = scale == VaScale ? "GPU (VA-API)" : "CPU";
         }
 
@@ -184,7 +198,7 @@ internal static class ScreenEncodingBranch
         if (branch == null && scale != CpuScale)
         {
             scaler = "CPU";
-            branch = Global.ParseBinFromDescription(Describe(codec, settings, encoder, CpuScale), true);
+            branch = Parse(Describe(codec, settings, encoder, CpuScale));
         }
 
         if (branch?.GetByName(PreviewSinkName) is not { } preview)
