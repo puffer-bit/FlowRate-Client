@@ -51,4 +51,10 @@ public sealed partial class VoiceTransport
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] A callback of libwebrtc failed")]
     private partial void LogCallbackFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to capture the sound of the screen from {Input}")]
+    private partial void LogSoundCaptureFailed(int sessionId, AudioInput input);
+
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Sound of the screen sent on ssrc {Ssrc}")]
+    private partial void LogScreenSoundStarted(int sessionId, uint ssrc);
 }

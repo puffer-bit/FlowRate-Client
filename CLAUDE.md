@@ -42,7 +42,8 @@ on nothing.
   `Client.WebRTC`.
 - Shared screens go through `IVideoMedia` (`Client.Application/Ports`), whatever the transport: a
   transport takes encoded frames from an `IScreenCapture` and pushes the encoded frames it receives into
-  an `IVideoDecoder`, each in a pipeline of its own.
+  an `IVideoDecoder`, each in a pipeline of its own. libwebrtc takes the sound of a shown screen as
+  samples from `IAudioMedia`.
 - `Client.GStreamer` is the media that is not about WebRTC, reusable by any transport (and meant for a
   video player in the chat): `Video/` (capture, encoders, `GstVideoMedia`, decoders and frame output),
   `Audio/` (devices, microphone processing, voice gate, microphone test, the playback sink),

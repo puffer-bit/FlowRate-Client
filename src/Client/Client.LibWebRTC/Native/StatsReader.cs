@@ -38,10 +38,12 @@ internal static class StatsReader
                         levels.Add(new VoiceLevel(mid, Math.Min(1, peak / short.MaxValue)));
                     break;
 
-                case "inbound-rtp" when kind == "audio":
+                // The voices and the screens alike, as the GStreamer transport reports them
+                case "inbound-rtp":
                     if (Number(stats, "ssrc") is { } ssrc)
                         inbound.Add(new InboundCounters((uint)ssrc, (long)(Number(stats, "packetsReceived") ?? 0),
-                            (long)(Number(stats, "packetsLost") ?? 0), (Number(stats, "jitter") ?? 0) * 1000));
+                            (long)(Number(stats, "packetsLost") ?? 0), (Number(stats, "jitter") ?? 0) * 1000,
+                            (long)(Number(stats, "pliCount") ?? 0)));
                     break;
 
                 case "media-source" when kind == "audio":
@@ -49,7 +51,7 @@ internal static class StatsReader
                         levels.Add(new VoiceLevel(null, localLevel));
                     break;
 
-                case "outbound-rtp" when kind == "audio":
+                case "outbound-rtp":
                     if (Number(stats, "ssrc") is { } sentSsrc)
                         sent[(uint)sentSsrc] = (long)(Number(stats, "packetsSent") ?? 0);
                     break;

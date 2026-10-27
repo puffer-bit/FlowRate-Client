@@ -42,8 +42,9 @@ internal sealed class VoiceStatsSampler
             lost += missing;
 
             if (findInbound(current.Ssrc) is { } track)
-                streams.Add(new InboundStreamSample(track.UserId, track.SourceType, MediaType.Audio, packets,
-                    packets + missing > 0 ? 100.0 * missing / (packets + missing) : 0, current.JitterMs, 0));
+                streams.Add(new InboundStreamSample(track.UserId, track.SourceType, track.MediaType, packets,
+                    packets + missing > 0 ? 100.0 * missing / (packets + missing) : 0, current.JitterMs,
+                    (uint)Math.Max(0, current.KeyframeRequests - last.KeyframeRequests)));
         }
 
         // Only the streams that still carry packets: the SFU repeats its last report of a stopped one

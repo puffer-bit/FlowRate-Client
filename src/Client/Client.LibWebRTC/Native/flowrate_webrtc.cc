@@ -170,7 +170,14 @@ struct Gate {
   bool is_closed = false;
 };
 
-std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, uint32_t>& sends);
+// The SSRCs the SFU expects in a section we send in: of the stream, and of the RTX stream its lost
+// packets are resent on, 0 where it gave none
+struct SendSsrcs {
+  uint32_t ssrc;
+  uint32_t rtx;
+};
+
+std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, SendSsrcs>& sends);
 
 }  // namespace
 
@@ -256,9 +263,11 @@ namespace {
 struct Round {
   fr_peer* peer;
   std::shared_ptr<Gate> gate;
-  std::map<std::string, uint32_t> sends;
-  // The video sources of the sections that send one, by mid; the others send the microphone
+  std::map<std::string, SendSsrcs> sends;
+  // The video sources of the sections that send one, by mid
   std::map<std::string, webrtc::scoped_refptr<flowrate::VideoSource>> videos;
+  // The sounds of the audio sections that send one, by mid; the others send the microphone
+  std::map<std::string, scoped_refptr<RTCAudioTrack>> audios;
 };
 
 
@@ -289,6 +298,8 @@ void Answer(std::shared_ptr<Round> round) {
       else if (transceiver->media_type() == RTCMediaType::VIDEO)
         // A screen that stopped: its stream stays, silent, and goes on where it was when it is back
         sender->set_track(nullptr);
+      else if (auto audio = round->audios.find(mid); audio != round->audios.end())
+        sender->set_track(audio->second);
       else
         sender->set_track(microphone);
     } else if (sender->track() != nullptr) {
@@ -329,9 +340,57 @@ void ConfigureVideoSenders(const std::shared_ptr<Round>& round) {
   });
 }
 
-// Replaces the SSRC libwebrtc picked in each section we send in with the one of the producer of the
-// SFU, which knows our stream by it alone. libwebrtc sends with what the local description says.
-std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, uint32_t>& sends) {
+// Gives the SSRCs of the lines a=ssrc and a=ssrc-group of a section the names of renames
+std::string RenameSsrcs(const std::string& section, const std::map<std::string, std::string>& renames) {
+  std::string result;
+  size_t start = 0;
+
+  while (start <= section.size()) {
+    size_t end = section.find("\r\n", start);
+    std::string line = section.substr(start, end == std::string::npos ? std::string::npos : end - start);
+
+    if (line.rfind("a=ssrc:", 0) == 0 || line.rfind("a=ssrc-group:", 0) == 0) {
+      // a=ssrc:<ssrc> <attribute>, a=ssrc-group:<semantics> <ssrc>...
+      bool is_group = line[6] == '-';
+      std::string renamed = line.substr(0, line.find(is_group ? ' ' : ':') + 1);
+      size_t at = renamed.size();
+
+      while (at <= line.size()) {
+        size_t space = line.find(' ', at);
+        std::string token = line.substr(at, space == std::string::npos ? std::string::npos : space - at);
+        auto rename = renames.find(token);
+        renamed += rename != renames.end() ? rename->second : token;
+
+        // The SSRC of a=ssrc is followed by its attribute, which is kept as it is
+        if (space == std::string::npos || !is_group) {
+          if (space != std::string::npos)
+            renamed += line.substr(space);
+          break;
+        }
+
+        renamed += ' ';
+        at = space + 1;
+      }
+
+      line = renamed;
+    }
+
+    result += line;
+
+    if (end == std::string::npos)
+      break;
+
+    result += "\r\n";
+    start = end + 2;
+  }
+
+  return result;
+}
+
+// Replaces the SSRCs libwebrtc picked in each section we send in with the ones of the producer of the
+// SFU, which knows our streams by them alone: the first of the section, or of its group FID, is the
+// stream, the second of the group the RTX stream. libwebrtc sends with what the local description says.
+std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, SendSsrcs>& sends) {
   std::vector<std::string> sections;
   size_t start = 0;
 
@@ -342,24 +401,32 @@ std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, uin
   std::string result;
 
   for (auto& section : sections) {
-    for (const auto& [mid, ssrc] : sends) {
+    for (const auto& [mid, ssrcs] : sends) {
       if (section.find("\r\na=mid:" + mid + "\r\n") == std::string::npos)
         continue;
 
+      std::map<std::string, std::string> renames;
+      const std::string group = "\r\na=ssrc-group:FID ";
       const std::string marker = "\r\na=ssrc:";
-      size_t at = section.find(marker);
 
-      if (at != std::string::npos) {
-        size_t from = at + marker.size();
-        std::string old = "a=ssrc:" + section.substr(from, section.find(' ', from) - from) + " ";
-        std::string replacement = "a=ssrc:" + std::to_string(ssrc) + " ";
+      if (size_t group_at = section.find(group); group_at != std::string::npos) {
+        size_t from = group_at + group.size();
+        size_t space = section.find(' ', from);
+        size_t end = section.find("\r\n", from);
 
-        // From past the replacement: a later round finds the SSRC of the SFU there already
-        for (size_t pos = section.find(old); pos != std::string::npos;
-             pos = section.find(old, pos + replacement.size()))
-          section.replace(pos, old.size(), replacement);
+        if (space != std::string::npos && space < end) {
+          renames[section.substr(from, space - from)] = std::to_string(ssrcs.ssrc);
+
+          if (ssrcs.rtx != 0)
+            renames[section.substr(space + 1, end - space - 1)] = std::to_string(ssrcs.rtx);
+        }
+      } else if (size_t ssrc_at = section.find(marker); ssrc_at != std::string::npos) {
+        size_t from = ssrc_at + marker.size();
+        renames[section.substr(from, section.find(' ', from) - from)] = std::to_string(ssrcs.ssrc);
       }
 
+      // A later round finds the SSRCs of the SFU there already
+      section = RenameSsrcs(section, renames);
       break;
     }
 
@@ -410,6 +477,11 @@ scoped_refptr<RTCAudioDevice> AudioDevice() {
 
 }  // namespace
 
+struct fr_audio_source {
+  scoped_refptr<RTCAudioSource> source;
+  scoped_refptr<RTCAudioTrack> track;
+};
+
 extern "C" {
 
 int fr_initialize(void) {
@@ -417,6 +489,8 @@ int fr_initialize(void) {
 
   if (g_factory != nullptr)
     return 1;
+
+  flowrate::ConfigureLogging();
 
   if (!LibWebRTC::Initialize())
     return 0;
@@ -543,17 +617,20 @@ fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context, int e
   return peer;
 }
 
-void fr_peer_negotiate(fr_peer* peer, const char* offer, const char* const* send_mids, const uint32_t* send_ssrcs,
-                       fr_video_source* const* send_videos, int send_count) {
+void fr_peer_negotiate(fr_peer* peer, const char* offer, const fr_send_section* sends, int send_count) {
   auto round = std::make_shared<Round>();
   round->peer = peer;
   round->gate = peer->gate;
 
   for (int i = 0; i < send_count; i++) {
-    round->sends[send_mids[i]] = send_ssrcs[i];
+    const auto& send = sends[i];
+    round->sends[send.mid] = {send.ssrc, send.rtx_ssrc};
 
-    if (send_videos != nullptr && send_videos[i] != nullptr)
-      round->videos[send_mids[i]] = flowrate::SourceOf(send_videos[i]);
+    if (send.video != nullptr)
+      round->videos[send.mid] = flowrate::SourceOf(send.video);
+
+    if (send.audio != nullptr)
+      round->audios[send.mid] = send.audio->track;
   }
 
   peer->connection->SetRemoteDescription(
@@ -666,5 +743,36 @@ void fr_peer_destroy(fr_peer* peer) {
   // A callback still queued finds the gate closed and leaves the peer alone
   delete peer;
 }
+
+fr_audio_source* fr_audio_source_create(void) {
+  static std::atomic<int> count{0};
+  auto factory = Factory();
+
+  if (factory == nullptr)
+    return nullptr;
+
+  // A custom source takes no part in the processing of the microphone, whatever these say
+  RTCAudioOptions options;
+  options.echo_cancellation = false;
+  options.noise_suppression = false;
+  options.auto_gain_control = false;
+  options.highpass_filter = false;
+
+  std::string id = "sound-" + std::to_string(++count);
+  auto source = factory->CreateAudioSource(id.c_str(), RTCAudioSource::SourceType::kCustom, options);
+  auto track = factory->CreateAudioTrack(source, id.c_str());
+
+  if (source == nullptr || track == nullptr)
+    return nullptr;
+
+  return new fr_audio_source{source, track};
+}
+
+void fr_audio_source_push(fr_audio_source* source, const int16_t* samples, int frames, int sample_rate,
+                          int channels) {
+  source->source->CaptureFrame(samples, 16, sample_rate, channels, frames);
+}
+
+void fr_audio_source_destroy(fr_audio_source* source) { delete source; }
 
 }  // extern "C"
