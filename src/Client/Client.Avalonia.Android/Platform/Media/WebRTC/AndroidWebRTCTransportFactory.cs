@@ -20,5 +20,5 @@ internal sealed class AndroidWebRTCTransportFactory(ILoggerFactory loggerFactory
                 throw new InvalidOperationException("Microphone permission was not granted.");
 
             return new AndroidVoicePeer(peerListener);
-        }, listener), loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled);
+        }, listener), loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled, isVideoDecodedByPeer: true);
 }

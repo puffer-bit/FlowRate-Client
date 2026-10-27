@@ -56,6 +56,11 @@ public partial class SessionsView : UserControl
     public event Action<ISessionVM>? SessionMoveMenuRequested;
 
     /// <summary>
+    /// Raised by a tap on a peer of a voice session.
+    /// </summary>
+    public event Action<PeerVM>? PeerMenuRequested;
+
+    /// <summary>
     /// Raised by a long press on the header of a category.
     /// </summary>
     public event Action<SessionCategoryVM>? CategoryMenuRequested;
@@ -105,6 +110,15 @@ public partial class SessionsView : UserControl
 
         e.Handled = true;
         _isMenuPress = true;
+    }
+
+    private void OnPeerTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not StyledElement { DataContext: PeerVM peer })
+            return;
+
+        PeerMenuRequested?.Invoke(peer);
+        e.Handled = true;
     }
 
     private void OnCategoryTapped(object? sender, TappedEventArgs e)
@@ -164,6 +178,16 @@ public partial class SessionsView : UserControl
             return;
 
         hybrid.Connect();
+    }
+
+    // Brings the session back on screen; the menu closes as after a tap on the list, even if it is shown already
+    private void OnHybridPanelClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowVM viewModel)
+            return;
+
+        viewModel.ShowHybridSessionCommand.Execute().Subscribe();
+        SessionTapped?.Invoke();
     }
 
     private void OnUserCardContextRequested(object? sender, ContextRequestedEventArgs e)
