@@ -25,6 +25,9 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     // the levels in them
     private static readonly TimeSpan StatsInterval = TimeSpan.FromMilliseconds(200);
 
+    // As often as the GStreamer transport tells what its gate did
+    private static readonly TimeSpan GateSummaryInterval = TimeSpan.FromMinutes(1);
+
     // The audio level, 0..1, above which a voice counts as speech, and how long it is held after it falls
     private const double SpeakingLevel = 0.02;
     private static readonly TimeSpan SpeakingHold = TimeSpan.FromMilliseconds(400);
@@ -63,6 +66,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private IVoicePeer? _peer;
     private TransportParameters? _transportParameters;
     private Timer? _statsTimer;
+    private long _gateSummaryTaken = Environment.TickCount64;
     private bool _isVoiceMuted;
 
     // libwebrtc measures the microphone before the track that mutes it, so a muted one still reads loud
@@ -1024,6 +1028,23 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
             StatsSampled?.Invoke(reading);
         }
+
+        LogGateSummary();
+    }
+
+    // The microphone of libwebrtc is one for the process, and so is its gate
+    private void LogGateSummary()
+    {
+        var now = Environment.TickCount64;
+
+        if (now - _gateSummaryTaken < GateSummaryInterval.TotalMilliseconds)
+            return;
+
+        _gateSummaryTaken = now;
+
+        if (Native.NativeVoiceGate.TakeSummary() is { } summary)
+            LogVoiceGateSummary(_sessionId, summary.ThresholdDb, summary.EffectiveThresholdDb, summary.NoiseFloorDb,
+                summary.OpenPercent, summary.Openings, summary.LoudestDb, summary.AverageOpenPeakDb);
     }
 
     /// <summary>Passes a picture the peer decoded on, as one of the screen its section carries now.</summary>
