@@ -1,36 +1,22 @@
 using System.Globalization;
 using Gst;
-using Shared.Models.Media;
-using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
-using Client.GStreamer.Audio;
+using Client.GStreamer.Interop;
 
-namespace Client.GStreamer.WebRTC;
+namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// Capture branch of an outbound audio track: the microphone, or the sound of a shown screen,
-/// encoded to Opus and packetized with exactly the payload type and SSRC the SFU created the
-/// producer with. mediasoup matches the incoming RTP by that SSRC, so any other value would be
-/// dropped on arrival.
+/// What a captured sound goes through before it is encoded: the capture with its processing, the input
+/// gain, and for a microphone the gate with its voice detection. A transport puts its encoder behind it;
+/// the microphone test plays it back, so the user hears what the others would.
 /// </summary>
-internal static class OutgoingAudioBranch
+/// <remarks>
+/// A chain is a bin of two parts: the capture part, named <see cref="CaptureName"/>, and the part after
+/// it, named <see cref="TailName"/>. The capture part is the only one that depends on the device and on
+/// the noise suppression, so it is replaced when either changes, see <see cref="ReplaceCapture"/>.
+/// </remarks>
+public static class MicrophoneChain
 {
-    private const int DefaultOpusPayloadType = 100;
-
-    /// <summary>
-    /// Name of the element that mutes the microphone. It silences the raw audio before the encoder,
-    /// which then sends only the tiny DTX frames, with timestamps that keep running.
-    /// </summary>
-    public const string MuteValveName = "mute";
-
-    /// <summary>
-    /// Name of the volume element in front of the <see cref="MuteValveName"/> valve. It silences the
-    /// audio a few frames before the valve closes and until just after it opens, so the encoder
-    /// starts and ends on silence instead of being cut in the middle of a sound, which the listeners
-    /// hear as a crackle.
-    /// </summary>
-    public const string MuteFadeName = "mute_fade";
-
     /// <summary>
     /// Name of the volume element that applies the input gain.
     /// </summary>
@@ -59,6 +45,17 @@ internal static class OutgoingAudioBranch
     public const string VoiceValveName = "voice_valve";
 
     /// <summary>
+    /// Name of the part that captures: the source and what its sound goes through before the input gain.
+    /// </summary>
+    private const string CaptureName = "capture";
+
+    /// <summary>
+    /// Name of the part that stays for the whole life of a chain, which a new capture part is linked to.
+    /// A bin that runs a chain gives this name to what follows the capture.
+    /// </summary>
+    public const string TailName = "tail";
+
+    /// <summary>
     /// Name of the queue that holds the audio back by <see cref="VoiceGate.PreRoll"/> between the
     /// level element and the valve of the gate.
     /// </summary>
@@ -66,19 +63,6 @@ internal static class OutgoingAudioBranch
 
     // Where the voice detection leaves the gate, in front of the delay
     private const string GateSplitName = "gate_split";
-
-    /// <summary>
-    /// Name of the part that captures: the source and what its sound goes through before the input
-    /// gain. It is the only part that depends on the device and on the noise suppression, so it is
-    /// replaced when either changes, see <see cref="ReplaceCapture"/>.
-    /// </summary>
-    private const string CaptureName = "capture";
-
-    /// <summary>
-    /// Name of the part that stays for the whole life of the track: gain, gate, mute, encoder and
-    /// payloader. The RTP sequence and the timestamps go on across a replaced capture part.
-    /// </summary>
-    private const string EncodingName = "encoding";
 
     // The caps filter is spelled out: the short form of one cannot end a description, which it
     // does for a source that is not processed. A queue of a live source never drains once filled,
@@ -102,41 +86,7 @@ internal static class OutgoingAudioBranch
         MicrophoneProcessing.NeuralCaps + " ! " + MicrophoneProcessing.NeuralElementName + " voice-activity-threshold={1} ! " +
         "level name=" + VoiceLevelName + " interval={0} ! fakesink sync=false async=false";
 
-    // Mono speech at up to 64 kbit/s, less when the signal needs less. FEC lets the receiver rebuild
-    // a lost packet from the next one, but the encoder only adds the redundancy for the loss it is
-    // told to expect, and with the default of 0 it adds none. DTX shrinks the frames of silence to
-    // a byte, refreshing the comfort noise every 400 ms. The payloader still sends every one of them:
-    // opusdec only decodes the packets it gets, so with its own dtx dropping them the receiver
-    // played 20 ms of comfort noise every 400 ms and silence between, which clicks through a long
-    // pause, and the decoder held each refresh until the next one for its FEC, past the deadline
-    // of the mixer. FEC, the loss it expects and DTX are what the media settings of the session
-    // gave the track. The
-    // gate and the mute silence the voice instead of dropping it: a hole in the stream would be
-    // closed up by the encoder, the RTP clock would not advance over the pause, and the receiver
-    // would replay the voice. The last queue drops the oldest packets past 200 ms rather than
-    // sending them late.
-    private const string EncodingDescription =
-        "volume name=" + InputVolumeName + " volume={0} ! {3}" +
-        "volume name=" + MuteFadeName + " ! " +
-        "volume name=" + MuteValveName + " mute=false ! " +
-        "opusenc audio-type=voice bitrate=64000 {4} " +
-        "frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} ! " +
-        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream" +
-        "{5}";
-
-    // Stereo at a rate that keeps music clean. No DTX: a quiet passage of a film is not a pause,
-    // and the producer of the screen sound is created without it. The volume and mute elements
-    // are the same as the voice has, so the track is controlled the same way.
-    private const string ScreenEncodingDescription =
-        "volume name=" + InputVolumeName + " volume={0} ! " +
-        "volume name=" + MuteFadeName + " ! " +
-        "volume name=" + MuteValveName + " mute=false ! " +
-        "opusenc audio-type=generic bitrate=128000 {4} frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} ! " +
-        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
-
-    // What the encoding of a voice has in front of the encoder, the meter split off after the gain.
+    // What a chain of a voice has in front of the encoder, the meter split off after the gain.
     // The trailing identity gives the bin its src pad once the gate is left out.
     private const string MonitorDescription =
         "volume name=" + InputVolumeName + " volume={0} ! tee name=" + MonitorSplitName + " ! {1}identity" +
@@ -156,80 +106,16 @@ internal static class OutgoingAudioBranch
         "volume name=" + GateValveName + " mute=true ! ";
 
     /// <summary>
-    /// The FEC and DTX properties of the encoder. The sound of a screen never has DTX.
-    /// </summary>
-    private static string EncoderSettings(OutboundTrack outbound, bool isScreen) =>
-        string.Format(CultureInfo.InvariantCulture, "inband-fec={0} packet-loss-percentage={1} dtx={2}",
-            outbound.IsFecEnabled ? "true" : "false",
-            outbound.IsFecEnabled ? Math.Clamp(outbound.FecLossPercent, 0, 100) : 0,
-            DtxOf(outbound, isScreen));
-
-    private static string DtxOf(OutboundTrack outbound, bool isScreen) =>
-        outbound.IsDtxEnabled && !isScreen ? "true" : "false";
-
-    /// <summary>
-    /// Builds the branch around <paramref name="source"/>, which it takes ownership of.
+    /// The gate of a microphone and the voice detection beside it, as fragments of a launch description,
+    /// empty when the chain has none. The gate goes in line after the input gain and ends with a link;
+    /// the voice detection is a separate branch, appended to the description.
     /// </summary>
     /// <param name="isMicrophone">
-    /// Whether the source is a microphone. Its branch gets the <see cref="MicrophoneProcessing"/> and
-    /// a gate, closed until a <see cref="VoiceGate"/> opens it, with the voice detection beside it;
-    /// the gate stays even while it is turned off, so it can be turned on again without rebuilding.
+    /// Whether the chain is the one of a microphone. Its gate is closed until a <see cref="VoiceGate"/>
+    /// opens it, and stays even while it is turned off, so it can be turned on again without rebuilding.
     /// Each is left out when the runtime lacks its element.
     /// </param>
-    /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
-    /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
-    /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
-    public static Bin? Build(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
-    {
-        var payloadType = outbound.PayloadType > 0 ? outbound.PayloadType : DefaultOpusPayloadType;
-        var isScreen = outbound.SourceType == MediaSourceType.Screen;
-        var (gate, voiceDetection) = DescribeGate(isMicrophone && !isScreen);
-
-        var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
-            isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
-            EncoderSettings(outbound, isScreen), voiceDetection), true);
-
-        if (encoding == null)
-        {
-            source.Dispose();
-            return null;
-        }
-
-        encoding.SetProperty("name", EncodingName);
-
-        var branch = Bin.New($"outgoing_{outbound.Id}");
-        branch.Add(encoding);
-
-        using (var output = encoding.GetStaticPad("src"))
-        using (var ghost = output == null ? null : GhostPad.New("src", output))
-        {
-            if (ghost == null || !branch.AddPad(ghost))
-            {
-                encoding.Dispose();
-                source.Dispose();
-                branch.Dispose();
-                return null;
-            }
-        }
-
-        // The branch holds it from here on. A wrapper that is merely dropped keeps its element
-        // alive until it is collected and the release queue of the binding is drained.
-        encoding.Dispose();
-
-        if (!ReplaceCapture(branch, source, isMicrophone && !isScreen, isScreen, noiseSuppression, echoProbe))
-        {
-            branch.Dispose();
-            return null;
-        }
-
-        return branch;
-    }
-
-    /// <summary>
-    /// The gate of a microphone and the voice detection beside it, empty when the track has none.
-    /// </summary>
-    private static (string Gate, string VoiceDetection) DescribeGate(bool isMicrophone)
+    public static (string Gate, string VoiceDetection) DescribeGate(bool isMicrophone)
     {
         // A runtime built before the gate has no level element; the voice still goes out, just ungated
         if (!isMicrophone || ElementFactory.Find("level") == null)
@@ -239,7 +125,7 @@ internal static class OutgoingAudioBranch
         var hasVoiceDetection = MicrophoneProcessing.HasNeural;
         var interval = (ulong)VoiceGate.LevelInterval.TotalNanoseconds;
 
-        // The delay is fixed with the branch: changed while the voice flows, it would leave a hole
+        // The delay is fixed with the chain: changed while the voice flows, it would leave a hole
         // or a burst in it
         var gate = string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
             (ulong)(hasVoiceDetection ? VoiceGate.PreRoll + VoiceGate.VoiceDetectionDelay : VoiceGate.PreRoll)
@@ -255,10 +141,9 @@ internal static class OutgoingAudioBranch
     }
 
     /// <summary>
-    /// Builds what a microphone track runs before its encoder, around <paramref name="source"/>,
-    /// which it takes ownership of: the capture with its processing, the input gain and the gate
-    /// with its voice detection. The microphone test plays it back, so the user hears what the
-    /// others would.
+    /// Builds the chain of a microphone around <paramref name="source"/>, which it takes ownership of,
+    /// ending in raw audio: the capture with its processing, the input gain and the gate with its voice
+    /// detection.
     /// </summary>
     /// <param name="meter">
     /// A description fed with the sound in front of the gate, as the gate measures it, ending in a sink.
@@ -278,7 +163,7 @@ internal static class OutgoingAudioBranch
             return null;
         }
 
-        processing.SetProperty("name", EncodingName);
+        processing.SetProperty("name", TailName);
 
         var branch = Bin.New("microphone_monitor");
         branch.Add(processing);
@@ -308,13 +193,17 @@ internal static class OutgoingAudioBranch
 
     /// <summary>
     /// Puts a capture part around <paramref name="source"/>, which it takes ownership of, in front
-    /// of the rest of <paramref name="branch"/>, in place of the one it has. The branch may be running.
+    /// of the <see cref="TailName"/> part of <paramref name="branch"/>, in place of the one it has.
+    /// The branch may be running.
     /// </summary>
     /// <remarks>
     /// The previous part is stopped before it is taken out, and with it the thread that pushed into
     /// the rest of the branch, so nothing flows there in between and no pad has to be blocked.
     /// </remarks>
+    /// <param name="isMicrophone">The sound is a voice, which gets the <see cref="MicrophoneProcessing"/>.</param>
     /// <param name="isStereo">The capture keeps two channels, as the sound of a screen does.</param>
+    /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
+    /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
     /// <returns>False when the part could not be built or linked; the branch is then left without one.</returns>
     public static bool ReplaceCapture(Bin branch, Element source, bool isMicrophone, bool isStereo,
         NoiseSuppressionLevel noiseSuppression, string? echoProbe)
@@ -324,9 +213,9 @@ internal static class OutgoingAudioBranch
         if (capture == null)
             return false;
 
-        using var encoding = branch.GetByName(EncodingName);
+        using var tail = branch.GetByName(TailName);
 
-        if (encoding == null)
+        if (tail == null)
         {
             capture.Dispose();
             return false;
@@ -336,14 +225,14 @@ internal static class OutgoingAudioBranch
         {
             if (previous != null)
             {
-                PipelineBranch.Shutdown(previous);
+                GstBranch.Shutdown(previous);
                 branch.Remove(previous);
             }
         }
 
         branch.Add(capture);
 
-        if (!capture.Link(encoding))
+        if (!capture.Link(tail))
         {
             branch.Remove(capture);
             capture.Dispose();

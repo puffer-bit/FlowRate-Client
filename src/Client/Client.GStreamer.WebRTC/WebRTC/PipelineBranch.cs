@@ -1,5 +1,3 @@
-using Gst;
-
 namespace Client.GStreamer.WebRTC;
 
 /// <summary>
@@ -12,15 +10,4 @@ internal static class PipelineBranch
     /// packets on its streaming thread, so a network that does not take what is sent fills it.
     /// </summary>
     public const string SendQueueName = "send_queue";
-
-    /// <summary>
-    /// Stops a branch that is still inside the pipeline. Its state is locked first: the transport
-    /// sets the pipeline to playing after every negotiation round, which would start the branch
-    /// again in the moment between this and its removal.
-    /// </summary>
-    public static void Shutdown(Element branch)
-    {
-        branch.SetLockedState(true);
-        branch.SetState(State.Null);
-    }
 }

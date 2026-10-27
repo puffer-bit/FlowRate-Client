@@ -18,7 +18,7 @@ namespace Client.GStreamer.Audio;
 /// The probe runs on a streaming thread for every packet, so it only parses the header and stores a
 /// timestamp. Whether the track speaks is read by a timer of the transport.
 /// </remarks>
-internal sealed class SpeechActivityMeter
+public sealed class SpeechActivityMeter
 {
     // DTX and comfort noise frames carry up to three bytes, speech at 32 kbit/s about eighty
     private const int MinSpeechPayloadBytes = 10;

@@ -13,7 +13,6 @@
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
-      <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
     </ItemGroup>
 
     <!-- The GStreamer runtime in Build/artifacts is not part of this library: the executable imports
@@ -28,8 +27,6 @@
     <ItemGroup>
       <PackageReference Include="GstSharp.Net" Version="1.28.17" />
       <PackageReference Include="GstSharp.Net.App" Version="1.28.17" />
-      <PackageReference Include="GstSharp.Net.Sdp" Version="1.28.17" />
-      <PackageReference Include="GstSharp.Net.WebRTC" Version="1.28.17" />
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
