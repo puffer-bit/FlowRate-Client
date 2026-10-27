@@ -37,6 +37,13 @@ internal static unsafe class NativeVoiceGate
         }
     }
 
+    /// <summary>What the gate did since the previous call, or null while it is off.</summary>
+    public static VoiceGateSummary? TakeSummary()
+    {
+        lock (Lock)
+            return _decision?.TakeSummary();
+    }
+
     private static TimeSpan Now => Stopwatch.GetElapsedTime(Start);
 
     // On the audio thread of libwebrtc; an exception may not leave it
