@@ -114,8 +114,19 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
         var bus = new GstBusWatcher(pipeline.GetBus(), MessageType.Error | MessageType.Warning, OnMessage,
             $"decoder_{_name}", _logger);
 
+        // The first frame of each pipeline is logged: whether the picture got through is not told otherwise
+        var isFirstFrame = true;
         var pump = new VideoFramePump(sink, output.Kind, $"video_{_name}",
-            frame => FrameReady?.Invoke(frame),
+            frame =>
+            {
+                if (isFirstFrame)
+                {
+                    isFirstFrame = false;
+                    LogFirstFrame(_logger, _name, frame.Width, frame.Height, output.Kind);
+                }
+
+                FrameReady?.Invoke(frame);
+            },
             exception => LogFrameFailed(_logger, exception, _name),
             OnPumpSurfaceFailed);
 

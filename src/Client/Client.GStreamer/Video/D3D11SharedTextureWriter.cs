@@ -23,6 +23,9 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
     private const int MapRead = 1;
     private const int MapInfoSize = 128;
 
+    // GstD3D11Memory: the GstMemory (112 bytes), then its device. The library has no getter for it
+    private const int D3D11MemoryDeviceOffset = 112;
+
     private const uint FormatB8G8R8A8 = 87;
     private const uint BindShaderResource = 0x8;
     private const uint BindRenderTarget = 0x20;
@@ -82,7 +85,11 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
         if (memory == IntPtr.Zero || gst_is_d3d11_memory(memory) == 0)
             return Broken("not Direct3D 11 memory");
 
-        var gstDevice = gst_d3d11_memory_get_device(memory);
+        var gstDevice = Marshal.ReadIntPtr(memory, D3D11MemoryDeviceOffset);
+
+        if (gstDevice == IntPtr.Zero)
+            return Broken("no device");
+
         var device = gst_d3d11_device_get_device_handle(gstDevice);
         var context = gst_d3d11_device_get_device_context_handle(gstDevice);
 
@@ -374,9 +381,6 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
 
     [DllImport(NativeLibraries.GstD3D11)]
     private static extern int gst_is_d3d11_memory(IntPtr memory);
-
-    [DllImport(NativeLibraries.GstD3D11)]
-    private static extern IntPtr gst_d3d11_memory_get_device(IntPtr memory);
 
     [DllImport(NativeLibraries.GstD3D11)]
     private static extern IntPtr gst_d3d11_memory_get_resource_handle(IntPtr memory);
