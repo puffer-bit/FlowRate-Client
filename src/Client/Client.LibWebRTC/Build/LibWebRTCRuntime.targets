@@ -1,7 +1,8 @@
 <Project>
-    <!-- The libwebrtc runtime Native/build.sh produces: libwebrtc and the C interface over it, copied
-         next to the executable, where P/Invoke looks for them. Imported by the executable project for the
-         same reason as GStreamerRuntime.targets: only it knows the RID.
+    <!-- The libwebrtc runtime, copied next to the executable, where P/Invoke looks for it: the committed
+         prebuilt/<rid>/, libwebrtc and the C interface in one library (linux/build.sh,
+         windows/build.ps1). Imported by the executable project for the same reason as
+         GStreamerRuntime.targets: only it knows the RID.
 
          Optional: without it the voice goes over GStreamer only, and the setting that picks libwebrtc
          falls back to it. -->
@@ -9,7 +10,7 @@
         <LibWebRTCRid>$(RuntimeIdentifier)</LibWebRTCRid>
         <LibWebRTCRid Condition="'$(LibWebRTCRid)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</LibWebRTCRid>
         <LibWebRTCRid Condition="'$(LibWebRTCRid)' == ''">linux-x64</LibWebRTCRid>
-        <LibWebRTCRuntimeDir>$(MSBuildThisFileDirectory)artifacts\$(LibWebRTCRid)\libwebrtc\</LibWebRTCRuntimeDir>
+        <LibWebRTCRuntimeDir>$(MSBuildThisFileDirectory)prebuilt\$(LibWebRTCRid)\</LibWebRTCRuntimeDir>
     </PropertyGroup>
 
     <ItemGroup Condition="Exists('$(LibWebRTCRuntimeDir)')">

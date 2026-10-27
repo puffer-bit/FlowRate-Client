@@ -1,4 +1,6 @@
-# Checks the DLLs and their C exports without opening audio devices (also works on CI runners).
+# Checks flowrate_webrtc.dll in a folder (Build\prebuilt\win-x64, or a published client): that it loads
+# with what lies next to it and Windows alone, and that it exports every function of flowrate_webrtc.h.
+# Opens no audio device, so it also runs on CI runners.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -11,9 +13,7 @@ if ($env:OS -ne "Windows_NT" -or [IntPtr]::Size -ne 8) {
     throw "Run this check in 64-bit PowerShell on Windows"
 }
 $runtime = (Resolve-Path $RuntimeDirectory).Path
-foreach ($file in @('libwebrtc.dll', 'flowrate_webrtc.dll')) {
-    if (-not (Test-Path (Join-Path $runtime $file) -PathType Leaf)) { throw "No $file in $runtime" }
-}
+if (-not (Test-Path (Join-Path $runtime 'flowrate_webrtc.dll') -PathType Leaf)) { throw "No flowrate_webrtc.dll in $runtime" }
 
 if (-not ('FlowRate.NativeLibraryCheck' -as [type])) {
     Add-Type -TypeDefinition @'
@@ -32,14 +32,14 @@ namespace FlowRate {
 '@
 }
 
-# Resolve dependencies next to the shim, just as in the installed client, not from the SDK or PATH.
+# Dependencies are resolved next to the library and in System32, as in the installed client, not from PATH.
 $module = [FlowRate.NativeLibraryCheck]::LoadLibraryExW((Join-Path $runtime 'flowrate_webrtc.dll'), [IntPtr]::Zero, 0x1100)
 if ($module -eq [IntPtr]::Zero) {
     $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
     throw "Cannot load flowrate_webrtc.dll or its dependencies (Win32 error $code)"
 }
 try {
-    $header = Get-Content (Join-Path $PSScriptRoot 'flowrate_webrtc.h') -Raw
+    $header = Get-Content (Join-Path $PSScriptRoot '..\..\Native\flowrate_webrtc.h') -Raw
     $exports = [regex]::Matches($header, '\b(fr_\w+)\(') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
     foreach ($name in $exports) {
         if ([FlowRate.NativeLibraryCheck]::GetProcAddress($module, $name) -eq [IntPtr]::Zero) {

@@ -13,11 +13,20 @@ namespace Client.LibWebRTC.Voice;
 public interface IVoicePeer : IDisposable
 {
     /// <summary>
-    /// Runs one offer/answer round: applies the description of the SFU, puts the microphone into the
+    /// Runs one offer/answer round: applies the description of the SFU, puts what we send into the
     /// sections we send in, answers, and gives each of those sections the SSRC the SFU expects there.
     /// Ends in <see cref="IVoicePeerListener.OnNegotiated"/> or <see cref="IVoicePeerListener.OnFailed"/>.
     /// </summary>
-    void Negotiate(string offer, IReadOnlyList<string> sendMids, IReadOnlyList<uint> sendSsrcs);
+    void Negotiate(string offer, IReadOnlyList<SendSection> sends);
+
+    /// <summary>
+    /// A screen to send, whose pictures come encoded: it goes into a section through
+    /// <see cref="Negotiate"/>.
+    /// </summary>
+    /// <param name="width">The size libwebrtc takes the stream for; the pictures keep their own.</param>
+    /// <param name="maxFramerate">The most frames a second libwebrtc lets through.</param>
+    /// <returns>Null where the platform sends no screens.</returns>
+    IVideoSendSource? CreateVideoSource(int width, int height, int maxFramerate, IVideoSendListener listener) => null;
 
     /// <summary>Stops or resumes sending the microphone, without touching its section.</summary>
     void SetMicrophoneEnabled(bool isEnabled);
@@ -27,7 +36,8 @@ public interface IVoicePeer : IDisposable
     /// such as one whose system does it, keeps what it has.
     /// </summary>
     /// <returns>False when the input is not one the peer can capture.</returns>
-    bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled);
+    bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled);
 
     /// <summary>The gain of the microphone, 1 keeps it as it is.</summary>
     void SetMicrophoneVolume(double volume);

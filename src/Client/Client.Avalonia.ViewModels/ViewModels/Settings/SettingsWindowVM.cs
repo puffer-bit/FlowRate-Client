@@ -123,7 +123,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         IHotKeysService hotKeysService,
         IThemeService themeService,
         ILanguageService languageService,
-        ICollapsedSectionsRepository collapsedSectionsRepository)
+        ICollapsedSectionsRepository collapsedSectionsRepository,
+        ILibWebRTCLoader libWebRTCLoader)
     {
         _collapsedSectionsRepository = collapsedSectionsRepository;
         CloseWindow = new Interaction<RxVoid, RxVoid>();
@@ -143,10 +144,11 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new HotKeysControlVM(hotKeysService));
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));
-        SettingList.Add(new ExperimentalControlVM(appearanceService, audioService));
+        SettingList.Add(new ExperimentalControlVM(appearanceService, audioService, libWebRTCLoader));
         SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion()));
 
         Strings.LanguageChanged += OnLanguageChanged;
+        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
 
         _ = LoadAllSettings();
     }
@@ -157,6 +159,14 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
             setting.RaisePropertyChanged(nameof(ISettingVM.Name));
 
         // The index holds the texts of the previous language
+        _searchIndex = null;
+        if (IsSearching)
+            UpdateSearchResults();
+    }
+
+    // A tab may show other settings for another engine of the voice
+    private void OnExperimentalFeaturesChanged()
+    {
         _searchIndex = null;
         if (IsSearching)
             UpdateSearchResults();
@@ -245,6 +255,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     public void Dispose()
     {
         Strings.LanguageChanged -= OnLanguageChanged;
+        ExperimentalFeatures.Changed -= OnExperimentalFeaturesChanged;
         CollapsedSections.CollectionChanged -= OnCollapsedSectionsChanged;
 
         foreach (var setting in SettingList.OfType<IDisposable>())

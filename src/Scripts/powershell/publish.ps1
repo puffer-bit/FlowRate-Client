@@ -144,11 +144,11 @@ function Initialize-GStreamer([string]$rid) {
     }
 }
 
-# Builds the Windows libwebrtc shim; a Linux runtime can only be copied from a Linux build.
+# Checks the libwebrtc runtime of a RID: the voice of the experimental setting. Optional, the client
+# falls back to GStreamer without it. It is committed (Client.LibWebRTC\Build builds it by hand), so
+# nothing is built here
 function Initialize-LibWebRTC([string]$rid) {
-    if ($rid -eq "win-x64") {
-        & (Join-Path $libWebRTCDir "Native\build.ps1")
-    } elseif (-not (Test-Path (Join-Path $libWebRTCDir "Build\artifacts\$rid\libwebrtc"))) {
+    if (-not (Test-Path (Join-Path $libWebRTCDir "Build\prebuilt\$rid"))) {
         Write-Host "Note: no libwebrtc runtime for $rid, its voice goes over GStreamer only"
     }
 }

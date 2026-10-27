@@ -23,6 +23,7 @@ internal static class DependencyInjection
         services.AddSingleton<IAudioDeviceProvider, NoAudioDeviceProvider>();
         services.AddSingleton<IMicrophoneTester, NoMicrophoneTester>();
         services.AddSingleton<IWebRTCTransportFactory, AndroidWebRTCTransportFactory>();
+        services.AddSingleton<ILibWebRTCLoader, AndroidLibWebRTCLoader>();
         services.AddSingleton<IMediaCapabilities, AndroidMediaCapabilities>();
         services.AddSingleton<IPushTokenProvider, FirebasePushTokenProvider>();
 

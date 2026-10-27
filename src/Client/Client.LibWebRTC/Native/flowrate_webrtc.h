@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 typedef struct fr_peer fr_peer;
+typedef struct fr_video_source fr_video_source;
 
 /* The values of RTCPeerConnectionState: new, connecting, connected, disconnected, failed, closed. */
 typedef void (*fr_state_callback)(void* context, int state);
@@ -81,11 +82,13 @@ FR_API fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context
                                int echo_cancellation, int noise_suppression, int auto_gain_control);
 
 /*
- * Runs one offer/answer round: applies the offer of the SFU, puts the microphone into the sections
- * we send in, answers, and gives each of those sections the SSRC the SFU expects there.
+ * Runs one offer/answer round: applies the offer of the SFU, puts what we send into the sections we
+ * send in (the video source of send_videos where it has one; where it is null, nothing into a video
+ * section and the microphone into an audio one), answers, and gives each of those sections the SSRC
+ * the SFU expects there.
  */
 FR_API void fr_peer_negotiate(fr_peer* peer, const char* offer, const char* const* send_mids,
-                              const uint32_t* send_ssrcs, int send_count);
+                              const uint32_t* send_ssrcs, fr_video_source* const* send_videos, int send_count);
 
 FR_API void fr_peer_set_microphone_enabled(fr_peer* peer, int is_enabled);
 
@@ -108,6 +111,54 @@ FR_API void fr_peer_request_stats(fr_peer* peer);
 
 /* Closes the connection; no callback comes once it returns. */
 FR_API void fr_peer_destroy(fr_peer* peer);
+
+/*
+ * One picture of a video stream we receive, as libwebrtc put it together from its packets: an H.264
+ * access unit in Annex B with its parameter sets before a keyframe, or a whole VP8 frame. libwebrtc
+ * only hands on what it can decode, so the stream starts with a keyframe and has no gaps. Comes on
+ * the decoding thread of the stream, one per stream; the data is only valid during the call.
+ * timestamp_ns is the RTP time of the picture in nanoseconds, counted from an arbitrary start.
+ */
+typedef void (*fr_video_frame_callback)(void* context, uint32_t ssrc, const uint8_t* data, int size,
+                                        int64_t timestamp_ns, int is_keyframe);
+
+/*
+ * Where the pictures of every video stream of the process go, told apart by their SSRC. The video
+ * is not decoded by libwebrtc: whoever receives them decodes them. Set before any video section.
+ */
+FR_API void fr_set_video_receiver(fr_video_frame_callback on_frame, void* context);
+
+/* Asks the sender of a stream for a keyframe, for a decoder that cannot go on without one. */
+FR_API void fr_video_request_keyframe(uint32_t ssrc);
+
+/* The bitrate libwebrtc wants the pictures of a source encoded at now, in kbit/s. */
+typedef void (*fr_bitrate_callback)(void* context, int kbps);
+
+/* libwebrtc wants the next picture of a source to be a keyframe, as a viewer joined or lost one. */
+typedef void (*fr_keyframe_request_callback)(void* context);
+
+typedef struct fr_video_source_callbacks {
+    fr_bitrate_callback bitrate;
+    fr_keyframe_request_callback keyframe;
+} fr_video_source_callbacks;
+
+/*
+ * A video we send whose pictures come encoded from outside: libwebrtc packetizes, paces and resends
+ * them, and asks the source for its bitrate and its keyframes through the callbacks, which come on
+ * its encoder thread. width and height are only what libwebrtc takes the stream for; max_framerate
+ * is the most frames a second it lets through. Goes into a section through fr_peer_negotiate.
+ */
+FR_API fr_video_source* fr_video_source_create(const fr_video_source_callbacks* callbacks, void* context, int width,
+                                               int height, int max_framerate);
+
+/*
+ * The next picture: an H.264 access unit in Annex B, with its parameter sets before a keyframe, or a
+ * whole VP8 frame, in the codec of the section it is sent in. Copied; any thread, one at a time.
+ */
+FR_API void fr_video_source_push(fr_video_source* source, const uint8_t* data, int size, int is_keyframe);
+
+/* Stops the source; no callback comes once it returns. A section that still sends it sends nothing. */
+FR_API void fr_video_source_destroy(fr_video_source* source);
 
 #ifdef __cplusplus
 }
