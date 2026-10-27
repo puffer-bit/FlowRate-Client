@@ -150,7 +150,7 @@ public static class MicrophoneChain
     /// </param>
     /// <returns>A bin with a single src pad carrying raw audio, or null when an element is missing.</returns>
     public static Bin? BuildMonitor(Element source, double volume, NoiseSuppressionLevel noiseSuppression,
-        string? echoProbe, string meter)
+        string? echoProbe, bool isAutoGainControlEnabled, string meter)
     {
         var (gate, voiceDetection) = DescribeGate(true);
 
@@ -182,7 +182,7 @@ public static class MicrophoneChain
 
         processing.Dispose();
 
-        if (!ReplaceCapture(branch, source, true, false, noiseSuppression, echoProbe))
+        if (!ReplaceCapture(branch, source, true, false, noiseSuppression, echoProbe, isAutoGainControlEnabled))
         {
             branch.Dispose();
             return null;
@@ -204,11 +204,12 @@ public static class MicrophoneChain
     /// <param name="isStereo">The capture keeps two channels, as the sound of a screen does.</param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
     /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     /// <returns>False when the part could not be built or linked; the branch is then left without one.</returns>
     public static bool ReplaceCapture(Bin branch, Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
     {
-        var capture = BuildCapture(source, isMicrophone, isStereo, noiseSuppression, echoProbe);
+        var capture = BuildCapture(source, isMicrophone, isStereo, noiseSuppression, echoProbe, isAutoGainControlEnabled);
 
         if (capture == null)
             return false;
@@ -246,11 +247,11 @@ public static class MicrophoneChain
     }
 
     private static Bin? BuildCapture(Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
     {
         // The fragment ends with a link, and without it the description would
         var description = string.Format(CaptureDescription,
-            isMicrophone ? MicrophoneProcessing.Fragment(noiseSuppression, echoProbe) : "",
+            isMicrophone ? MicrophoneProcessing.Fragment(noiseSuppression, echoProbe, isAutoGainControlEnabled) : "",
             isStereo ? ScreenCaps : MicrophoneProcessing.Caps).TrimEnd(' ', '!');
 
         var processing = Global.ParseBinFromDescription(description, true);

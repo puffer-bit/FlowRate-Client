@@ -95,7 +95,8 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     }
 
     public MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled)
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled)
     {
         lock (_lock)
         {
@@ -142,7 +143,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                 // The sound server may restore a mute an earlier version left for the client name
                 VoicePlaybackSink.SetMuted(loopback, false);
 
-                if (Track(MicrophoneChain.BuildMonitor(source, volume, applied, echoProbe,
+                if (Track(MicrophoneChain.BuildMonitor(source, volume, applied, echoProbe, isAutoGainControlEnabled,
                         MeterDescription)) is not { } monitor)
                 {
                     StopPipeline();

@@ -50,6 +50,9 @@ on nothing.
   `Client.GStreamer/Docs/VoiceGate.md`, `VideoRendering.md`.
 - Release builds ship their own GStreamer runtime, built outside git
   (`Client.GStreamer/Build/README.md`); Debug falls back to the system installation.
+- The libwebrtc library (WebRTC, its C++ wrapper and the C interface of `Client.LibWebRTC/Native` in
+  one file) is built from source by hand and committed in `Client.LibWebRTC/Build/prebuilt/<rid>/`
+  (`Client.LibWebRTC/Build/README.md`); CI only copies it.
 - `Client.OpenAL` plays UI sounds and voice output through OpenAL Soft.
 - Android has no GStreamer: the voice goes over libwebrtc (`Platform/Media/WebRTC`), and screens are
   neither shared nor watched.

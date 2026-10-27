@@ -5,11 +5,11 @@ using Microsoft.Extensions.Logging;
 namespace Client.LibWebRTC.Native;
 
 /// <summary>
-/// Creates the voice transports of the desktop over libwebrtc. Screens are not shared or watched
-/// with them.
+/// Creates the transports of the desktop over libwebrtc: the voice, and the screens, which
+/// <see cref="IVideoMedia"/> captures, encodes and decodes.
 /// </summary>
-public sealed class LibWebRTCTransportFactory(LibWebRTCRuntime runtime, ILoggerFactory loggerFactory)
-    : IWebRTCTransportFactory
+public sealed class LibWebRTCTransportFactory(LibWebRTCRuntime runtime, IVideoMedia video,
+    NativeVideoReceiver videoReceiver, ILoggerFactory loggerFactory) : IWebRTCTransportFactory
 {
     /// <summary>Whether libwebrtc is there to create transports with; loads it the first time.</summary>
     public bool IsAvailable => runtime.TryLoad();
@@ -20,6 +20,6 @@ public sealed class LibWebRTCTransportFactory(LibWebRTCRuntime runtime, ILoggerF
             throw new InvalidOperationException("libwebrtc is not available");
 
         return new VoiceTransport(sessionId, listener => new NativeVoicePeer(runtime, listener),
-            loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled);
+            loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled, video, videoReceiver);
     }
 }

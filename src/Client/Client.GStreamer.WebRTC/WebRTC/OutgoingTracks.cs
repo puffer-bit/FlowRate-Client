@@ -194,7 +194,7 @@ internal sealed partial class OutgoingTracks
     /// of sending silence.
     /// </summary>
     public bool Start(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
-        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled, bool isAutoGainControlEnabled)
     {
         if (_outbounds.ContainsKey(outbound.Id))
             return true;
@@ -209,7 +209,7 @@ internal sealed partial class OutgoingTracks
 
         // Only a microphone is processed and gated: a file or a tone is meant to be heard as it is
         if (!Start(outbound, source.Element, volume, input is DeviceAudioInput, voiceGate, noiseSuppression,
-                isEchoCancellationEnabled))
+                isEchoCancellationEnabled, isAutoGainControlEnabled))
         {
             source.Resource?.Dispose();
             return false;
@@ -255,12 +255,15 @@ internal sealed partial class OutgoingTracks
     /// </param>
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
     /// <param name="isEchoCancellationEnabled">Whether the played voices are taken out of a microphone.</param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     public bool Start(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled)
+        VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled)
     {
         var branch = OutgoingAudioBranch.Build(outbound, source, volume, isMicrophone,
             isMicrophone ? Resolve(noiseSuppression) : noiseSuppression,
-            isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null);
+            isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null,
+            isAutoGainControlEnabled);
 
         if (branch == null)
         {
@@ -527,12 +530,12 @@ internal sealed partial class OutgoingTracks
     }
 
     /// <summary>
-    /// Makes a running audio track capture from another input, or with another noise suppression,
-    /// while its section, its producer and its RTP stream stay. Done off the calling thread: stopping
+    /// Makes a running audio track capture from another input, or with another processing of a
+    /// microphone, while its section, its producer and its RTP stream stay. Done off the calling thread: stopping
     /// a capture device may take a while.
     /// </summary>
     public void SetInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled)
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled)
     {
         Task.Run(() =>
         {
@@ -565,7 +568,8 @@ internal sealed partial class OutgoingTracks
                         noiseSuppression = Resolve(noiseSuppression);
 
                     if (MicrophoneChain.ReplaceCapture(branch, source.Element, isMicrophone, isScreen,
-                            noiseSuppression, isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null))
+                            noiseSuppression, isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null,
+                            isAutoGainControlEnabled))
                     {
                         if (source.Resource != null)
                             _audioResources[outboundId] = source.Resource;

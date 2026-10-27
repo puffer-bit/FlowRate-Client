@@ -1,9 +1,6 @@
-// See flowrate_webrtc.h. Built against the C++ interface of webrtc-sdk/libwebrtc, whose types are
-// portable across compilers, so this needs neither the WebRTC tree nor its toolchain.
-
-// The releases of webrtc-sdk/libwebrtc are built with the desktop capturer, which adds virtual
-// methods to the factory: without the same define here every call past them lands in another method
-#define RTC_DESKTOP_DEVICE
+// See flowrate_webrtc.h. Built over the C++ interface of webrtc-sdk/libwebrtc, inside the WebRTC tree
+// and linked into the same library (../Build/linux/build.sh, ../Build/windows/build.ps1). The video
+// goes past that interface, to the classes of the wrapper and of WebRTC beneath it (flowrate_video.h).
 
 #include "flowrate_webrtc.h"
 
@@ -33,6 +30,8 @@
 #include "rtc_rtp_receiver.h"
 #include "rtc_rtp_sender.h"
 #include "rtc_rtp_transceiver.h"
+
+#include "flowrate_video.h"
 
 using namespace libwebrtc;
 
@@ -258,7 +257,10 @@ struct Round {
   fr_peer* peer;
   std::shared_ptr<Gate> gate;
   std::map<std::string, uint32_t> sends;
+  // The video sources of the sections that send one, by mid; the others send the microphone
+  std::map<std::string, webrtc::scoped_refptr<flowrate::VideoSource>> videos;
 };
+
 
 // Runs a callback of libwebrtc unless the peer is gone; destroying it waits for one that runs
 template <typename Call>
@@ -268,6 +270,8 @@ void WhileOpen(const std::shared_ptr<Gate>& gate, Call call) {
   if (!gate->is_closed)
     call();
 }
+
+void ConfigureVideoSenders(const std::shared_ptr<Round>& round);
 
 void Answer(std::shared_ptr<Round> round) {
   fr_peer* peer = round->peer;
@@ -279,7 +283,14 @@ void Answer(std::shared_ptr<Round> round) {
 
     if (!mid.empty() && round->sends.count(mid) > 0) {
       transceiver->SetDirectionWithError(RTCRtpTransceiverDirection::kSendOnly);
-      sender->set_track(microphone);
+
+      if (auto video = round->videos.find(mid); video != round->videos.end())
+        flowrate::NativeSender(sender.get())->SetTrack(video->second->Track().get());
+      else if (transceiver->media_type() == RTCMediaType::VIDEO)
+        // A screen that stopped: its stream stays, silent, and goes on where it was when it is back
+        sender->set_track(nullptr);
+      else
+        sender->set_track(microphone);
     } else if (sender->track() != nullptr) {
       // A track that stopped: its section stays, emptied
       sender->set_track(nullptr);
@@ -295,6 +306,8 @@ void Answer(std::shared_ptr<Round> round) {
           round->peer->connection->SetLocalDescription(
               local->c_str(), "answer",
               [round, local] {
+                // The encodings of a sender are there once it sends
+                ConfigureVideoSenders(round);
                 round->peer->Report([&] { round->peer->callbacks.negotiated(round->peer->context, local->c_str()); });
               },
               [round](const char* error) {
@@ -304,6 +317,16 @@ void Answer(std::shared_ptr<Round> round) {
       },
       [round](const char* error) { WhileOpen(round->gate, [&] { round->peer->Fail("create-answer", error); }); },
       RTCMediaConstraints::Create());
+}
+
+// Sets up the senders of the video sources of a round
+void ConfigureVideoSenders(const std::shared_ptr<Round>& round) {
+  WhileOpen(round->gate, [&] {
+    for (auto& transceiver : round->peer->connection->transceivers().std_vector()) {
+      if (auto video = round->videos.find(transceiver->mid().std_string()); video != round->videos.end())
+        video->second->ConfigureSender(flowrate::NativeSender(transceiver->sender().get()));
+    }
+  });
 }
 
 // Replaces the SSRC libwebrtc picked in each section we send in with the one of the producer of the
@@ -404,6 +427,7 @@ int fr_initialize(void) {
     return 0;
 
   factory->GetAudioProcessing()->SetCapturePostProcessing(&g_capture);
+  flowrate::SetPeerConnectionFactory(factory.get());
   g_factory = factory;
   return 1;
 }
@@ -520,13 +544,17 @@ fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context, int e
 }
 
 void fr_peer_negotiate(fr_peer* peer, const char* offer, const char* const* send_mids, const uint32_t* send_ssrcs,
-                       int send_count) {
+                       fr_video_source* const* send_videos, int send_count) {
   auto round = std::make_shared<Round>();
   round->peer = peer;
   round->gate = peer->gate;
 
-  for (int i = 0; i < send_count; i++)
+  for (int i = 0; i < send_count; i++) {
     round->sends[send_mids[i]] = send_ssrcs[i];
+
+    if (send_videos != nullptr && send_videos[i] != nullptr)
+      round->videos[send_mids[i]] = flowrate::SourceOf(send_videos[i]);
+  }
 
   peer->connection->SetRemoteDescription(
       offer, "offer",
