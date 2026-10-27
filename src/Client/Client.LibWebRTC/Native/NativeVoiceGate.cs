@@ -12,26 +12,39 @@ namespace Client.LibWebRTC.Native;
 /// </summary>
 internal static unsafe class NativeVoiceGate
 {
+    // Held by the audio thread while it asks the gate, from inside the lock of the capture processing.
+    // So it is never held while the capture processing is called, which waits for that lock: the two
+    // threads would wait for each other for good, and the microphone would be silent until a restart
     private static readonly Lock Lock = new();
+
+    // Keeps the changes in order, and is never taken by the audio thread
+    private static readonly Lock ChangeLock = new();
+
     private static readonly long Start = Stopwatch.GetTimestamp();
     private static VoiceGateDecision? _decision;
 
     /// <param name="options">The gate, or null to send the microphone all the time.</param>
     public static void Set(VoiceGateOptions? options)
     {
-        lock (Lock)
+        lock (ChangeLock)
         {
             if (options == null)
             {
-                _decision = null;
                 NativeMethods.SetVoiceGate(null, 0);
+
+                lock (Lock)
+                    _decision = null;
+
                 return;
             }
 
-            if (_decision == null)
-                _decision = new VoiceGateDecision(options);
-            else
-                _decision.SetOptions(options, Now, _decision.IsOpen);
+            lock (Lock)
+            {
+                if (_decision == null)
+                    _decision = new VoiceGateDecision(options);
+                else
+                    _decision.SetOptions(options, Now, _decision.IsOpen);
+            }
 
             NativeMethods.SetVoiceGate(&OnLevel, 0);
         }
