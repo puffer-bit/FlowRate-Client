@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Gst;
 
 namespace Client.GStreamer.Video;

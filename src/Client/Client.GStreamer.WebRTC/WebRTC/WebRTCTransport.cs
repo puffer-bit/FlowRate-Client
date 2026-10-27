@@ -39,6 +39,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     private readonly TransportStats _stats;
 
     private readonly bool _isPlaybackEnabled;
+    private readonly IVideoMedia _video;
     private readonly ILogger<WebRTCTransport> _logger;
     private GstBusWatcher? _busWatcher;
 
@@ -75,18 +76,23 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public DtlsParameters? LocalDtlsParameters => _negotiator.LocalDtlsParameters;
 
     /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
+    /// <param name="video">Captures the screens that are sent and decodes the ones that come.</param>
     /// <param name="isPlaybackEnabled">Whether incoming audio is played on the output device.</param>
-    public WebRTCTransport(int sessionId, GstAudioDeviceProvider? devices, ILogger<WebRTCTransport> logger,
+    public WebRTCTransport(int sessionId, GstAudioDeviceProvider? devices, IVideoMedia video, ILogger<WebRTCTransport> logger,
         bool isPlaybackEnabled = true)
     {
         _logger = logger;
         _isPlaybackEnabled = isPlaybackEnabled;
 
+        // Before webrtcbin is made: its signals hand out the types of these modules
+        WebRTCBinding.EnsureInitialized();
+
         _core = new TransportCore(sessionId, logger);
         _incoming = new IncomingTracks(_core, _sections, Negotiate,
             inboundIds => InboundsReady?.Invoke(inboundIds), logger);
         _retransmission = new OutgoingRetransmission(_core, logger);
-        _outgoing = new OutgoingTracks(_core, _sections, devices, Negotiate, _retransmission,
+        _video = video;
+        _outgoing = new OutgoingTracks(_core, _sections, devices, video, Negotiate, _retransmission,
             (userId, sourceType, frame) => VideoFrameReady?.Invoke(userId, sourceType, frame), logger);
         _states = new TransportStateObserver(_core, state => ConnectionStateChanged?.Invoke(state), logger);
         _tuning = new WebRTCBinTuning(_core, logger);
@@ -155,7 +161,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             _tuning.ConfigureRtpBin(_incoming.FindBySsrc);
 
             _states.Connect(webrtc);
-            _core.Player = new IncomingStreamPlayer(pipeline, _logger, _core.SessionId, _incoming.ResolveSectionVolume,
+            _core.Player = new IncomingStreamPlayer(pipeline, _video, _logger, _core.SessionId, _incoming.ResolveSectionVolume,
                 OnIncomingVideoFrame, _isPlaybackEnabled);
             webrtc.PadAdded += OnPadAdded;
             webrtc.PadRemoved += OnPadRemoved;

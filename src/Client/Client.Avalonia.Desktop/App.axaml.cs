@@ -114,11 +114,11 @@ public partial class App : global::Avalonia.Application
             .AddInfrastructure()
             .AddScreenCast()
             .AddGStreamer()
+            .AddGStreamerWebRTC()
             .AddLibWebRTC()
             .AddOpenAL();
 
-        // Over the one of AddGStreamer: the engine of each session follows the experimental setting
-        services.AddSingleton<WebRTCTransportFactory>();
+        // The engine of each session follows the experimental setting
         services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
 
         // Over the one of AddApplication, which does nothing

@@ -5,7 +5,7 @@ namespace Client.GStreamer.Interop;
 /// that is merely dropped keeps its native object until it is collected and the release queue of
 /// the binding is drained, see <see cref="GstBusWatcher"/>.
 /// </summary>
-internal sealed class WrapperScope
+public sealed class WrapperScope
 {
     private readonly List<IDisposable> _wrappers = [];
 

@@ -14,7 +14,8 @@ This has two purposes:
 
 | File | Role |
 |------|------|
-| `WebRTC/OutgoingAudioBranch.cs` | Builds the capture branch, with the `level` element, the pre-roll, the gate valve and the voice detection in it |
+| `Audio/MicrophoneChain.cs` | What a microphone goes through before its encoder: the capture with its processing, the `level` element, the pre-roll, the gate valve and the voice detection |
+| `Client.GStreamer.WebRTC/WebRTC/OutgoingAudioBranch.cs` | The capture branch of the transport: that chain, the mute, the encoder and the payloader |
 | `Audio/MicrophoneProcessing.cs` | The noise suppression in front of the gate: webrtcdsp and RNNoise |
 | `Client.Core/Media/VoiceGateDecision.cs` | Decides from the readings whether the gate is open: threshold, hysteresis, hold, voice detection, adaptive threshold. Knows nothing of GStreamer, unit tested in `Client.Application.Tests/VoiceGateDecisionTests.cs` |
 | `Audio/VoiceGate.cs` | Feeds the level messages to the decision and moves the valve; the pre-roll and RNNoise constants |
@@ -45,7 +46,7 @@ encoding:
 ```
 
 - The branch is two bins. `capture` holds everything that depends on the device and on the noise
-  suppression level, and `OutgoingAudioBranch.ReplaceCapture` swaps it in a running branch when the
+  suppression level, and `MicrophoneChain.ReplaceCapture` swaps it in a running branch when the
   user picks another microphone or level: the old part is set to NULL, which stops its streaming
   thread, then removed, and the new one is linked in. `encoding` stays, so the gate, the mute state
   and the RTP sequence go on. (`webrtcdsp` reads its settings only when it starts, hence the swap.)
@@ -401,7 +402,7 @@ explicitly. `level` (gst-plugins-good, LGPL like the rest of GStreamer) was adde
 - `Build/windows/collect.ps1`: `level` in `$plugins`;
 - both `required-elements.txt`: a newly built runtime without it fails verification.
 
-A runtime built before that has no `level`. Then `OutgoingAudioBranch.Build` leaves the gate out and
+A runtime built before that has no `level`. Then `MicrophoneChain.DescribeGate` leaves the gate out and
 the microphone is sent ungated, exactly as before. That is why `GstElementCheck` lists `level` as
 optional: an old runtime is reported, but the client still starts. **Both runtimes have to be
 rebuilt** for the gate to work in a build with the bundled runtime; Debug builds without the bundle

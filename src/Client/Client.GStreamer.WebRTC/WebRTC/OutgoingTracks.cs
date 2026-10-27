@@ -5,7 +5,6 @@ using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Interop;
-using Client.GStreamer.Video;
 using Gst;
 using Microsoft.Extensions.Logging;
 using Shared.Models.Media;
@@ -15,13 +14,14 @@ namespace Client.GStreamer.WebRTC;
 
 /// <summary>
 /// The tracks we send: their capture branches, the sections and pads of webrtcbin they go out
-/// through, and what belongs to a branch while it runs (voice gate, speech meter, preview pump).
+/// through, and what belongs to a branch while it runs (voice gate, speech meter, the capture of a screen).
 /// </summary>
 internal sealed partial class OutgoingTracks
 {
     private readonly TransportCore _core;
     private readonly MediaSections _sections;
     private readonly GstAudioDeviceProvider? _devices;
+    private readonly IVideoMedia _video;
     private readonly Func<bool> _negotiate;
     private readonly OutgoingRetransmission _retransmission;
     private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
@@ -45,7 +45,7 @@ internal sealed partial class OutgoingTracks
     // wrapper object for the element every time.
     private readonly ConcurrentDictionary<IntPtr, VoiceGate> _gates = new();
 
-    // What the outgoing video tracks hold besides their branch, keyed by the outbound id
+    // The captures of the outgoing video tracks, keyed by the outbound id
     private readonly ConcurrentDictionary<string, OutgoingVideo> _outgoingVideo = new();
 
     // What feeds the capture element of an outgoing audio track from a thread of its own, keyed by the outbound id
@@ -69,16 +69,18 @@ internal sealed partial class OutgoingTracks
     private readonly ConcurrentDictionary<string, int> _muteGenerations = new();
 
     /// <param name="devices">Needed only to send a <see cref="DeviceAudioInput"/>.</param>
+    /// <param name="video">Captures and encodes the screens that are sent.</param>
     /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
     /// <param name="retransmission">Resends the lost packets of the tracks that have an RTX stream.</param>
     /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
     public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
-        Func<bool> negotiate, OutgoingRetransmission retransmission,
+        IVideoMedia video, Func<bool> negotiate, OutgoingRetransmission retransmission,
         Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
     {
         _core = core;
         _sections = sections;
         _devices = devices;
+        _video = video;
         _negotiate = negotiate;
         _retransmission = retransmission;
         _onVideoFrame = onVideoFrame;
@@ -135,8 +137,8 @@ internal sealed partial class OutgoingTracks
     }
 
     /// <summary>
-    /// The first step of a teardown, before the pipeline stops: the pumps and the capture threads
-    /// work on elements of the pipeline, so they stop before it does.
+    /// The first step of a teardown, before the pipeline stops: the captures push into elements of the
+    /// pipeline, and the capture threads of the sound work on them, so they stop before it does.
     /// </summary>
     public void StopCapture()
     {
@@ -144,10 +146,7 @@ internal sealed partial class OutgoingTracks
         _outgoingVideo.Clear();
 
         foreach (var video in outgoingVideo)
-        {
-            video.Pump.Dispose();
-            video.Resource?.Dispose();
-        }
+            video.Dispose();
 
         foreach (var outboundId in _audioResources.Keys)
         {
@@ -275,11 +274,11 @@ internal sealed partial class OutgoingTracks
             return true;
         }
 
-        if (branch.GetByName(OutgoingAudioBranch.GateLevelName) is { } level &&
-            branch.GetByName(OutgoingAudioBranch.GateValveName) is { } valve)
+        if (branch.GetByName(MicrophoneChain.GateLevelName) is { } level &&
+            branch.GetByName(MicrophoneChain.GateValveName) is { } valve)
         {
-            var detector = branch.GetByName(OutgoingAudioBranch.VoiceLevelName) is { } voiceLevel &&
-                           branch.GetByName(OutgoingAudioBranch.VoiceValveName) is { } voiceValve
+            var detector = branch.GetByName(MicrophoneChain.VoiceLevelName) is { } voiceLevel &&
+                           branch.GetByName(MicrophoneChain.VoiceValveName) is { } voiceValve
                 ? new VoiceGate.VoiceDetector(_heldWrappers.Hold(voiceLevel), _heldWrappers.Hold(voiceValve))
                 : null;
 
@@ -309,10 +308,6 @@ internal sealed partial class OutgoingTracks
         return RegisterOutgoing(outbound, branch);
     }
 
-    // Off until it works: pipewiresrc 1.2.7 fails on the DMA_DRM format KWin picks ("unhandled format"),
-    // and BGRx memory straight into vapostproc comes out black
-    private static readonly bool IsDmaBufCaptureEnabled = false;
-
     /// <summary>
     /// Starts sending a video track captured from <paramref name="input"/> to a producer the SFU
     /// created for it. The frames that are sent also come back through the frame handler given to the constructor.
@@ -323,47 +318,59 @@ internal sealed partial class OutgoingTracks
         if (_outbounds.ContainsKey(outbound.Id))
             return true;
 
-        // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
-        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && OutgoingVideoBranch.CanSendDmaBuf(OutgoingVideoBranch.CodecOf(outbound));
-        var source = VideoSourceFactory.Create(input, settings.Framerate,
-            exception => LogCaptureFailed(exception, _core.SessionId),
-            (rate, caps) => LogCaptureRate(_core.SessionId, rate, settings.Framerate, caps), isDmaBuf);
+        var codec = OutgoingVideoBranch.CodecOf(outbound);
+        var capture = _video.CreateCapture(input, settings, codec, _core.SessionId.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-        if (source == null)
+        if (capture == null)
         {
             LogVideoSourceCreateFailed(_core.SessionId, input);
             return false;
         }
 
-        // The screen capture of Windows hands out Direct3D 11 textures
-        var video = OutgoingVideoBranch.Build(outbound, source.Element, settings,
-            _videoSequenceNumbers.GetValueOrDefault(outbound.Id, -1),
-            isD3D11Source: OperatingSystem.IsWindows() && input is MonitorVideoInput or WindowVideoInput,
-            isDmaBufSource: isDmaBuf);
+        var branch = OutgoingVideoBranch.Build(outbound, codec, _videoSequenceNumbers.GetValueOrDefault(outbound.Id, -1));
 
-        if (video == null)
+        if (branch?.GetByName(OutgoingVideoBranch.SourceName) is not { } source)
         {
-            source.Resource?.Dispose();
+            branch?.Dispose();
+            capture.Dispose();
             LogCaptureBranchBuildFailed(_core.SessionId);
             return false;
         }
 
         if (!_outbounds.TryAdd(outbound.Id, outbound))
         {
-            video.Bin.Dispose();
-            source.Resource?.Dispose();
+            source.Dispose();
+            branch.Dispose();
+            capture.Dispose();
             return true;
         }
 
-        LogVideoEncoder(_core.SessionId, video.Encoder.ToLaunchString(), video.Scaler);
+        // The keyframes the SFU asks for reach the appsrc from webrtcbin
+        using (var output = source.GetStaticPad("src"))
+        {
+            if (output != null)
+                GstEncodedNative.WatchKeyFrameRequests(output, capture.RequestKeyFrame);
+        }
 
-        var pump = new VideoFramePump(video.Preview, VideoOutputKind.Memory, $"preview_{_core.SessionId}",
-            frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame),
-            exception => LogVideoFrameFailed(exception, _core.SessionId));
+        // Stamped again by the appsrc: the RTP timestamps follow the clock of this pipeline. The
+        // appsrc stays with the capture, which pushes into it until it is disposed
+        capture.EncodedFrameReady += frame => GstEncodedNative.Push(source, frame with { Timestamp = -1 });
+        capture.PreviewFrameReady += frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame);
 
-        _outgoingVideo[outbound.Id] = new OutgoingVideo(pump, source.Resource);
+        if (!capture.Start())
+        {
+            _outbounds.TryRemove(outbound.Id, out _);
+            capture.Dispose();
+            source.Dispose();
+            branch.Dispose();
+            return false;
+        }
 
-        return RegisterOutgoing(outbound, video.Bin);
+        _outgoingVideo[outbound.Id] = new OutgoingVideo(capture, source);
+
+        LogVideoEncoder(_core.SessionId, capture.Description);
+
+        return RegisterOutgoing(outbound, branch);
     }
 
     /// <summary>
@@ -415,8 +422,7 @@ internal sealed partial class OutgoingTracks
 
         if (_pendingOutgoing.TryRemove(outboundId, out var pending))
         {
-            video?.Pump.Dispose();
-            video?.Resource?.Dispose();
+            video?.Dispose();
             meter?.Pad.Dispose();
             pending.Dispose();
         }
@@ -500,7 +506,7 @@ internal sealed partial class OutgoingTracks
 
     public void SetVolume(string outboundId, double volume)
     {
-        using var element = FindOutgoingBranch(outboundId)?.GetByName(OutgoingAudioBranch.InputVolumeName);
+        using var element = FindOutgoingBranch(outboundId)?.GetByName(MicrophoneChain.InputVolumeName);
 
         // Every save of the audio settings passes the volume, whatever was changed
         if (element == null || element.GetProperty<double>("volume") == volume)
@@ -558,7 +564,7 @@ internal sealed partial class OutgoingTracks
                     if (isMicrophone)
                         noiseSuppression = Resolve(noiseSuppression);
 
-                    if (OutgoingAudioBranch.ReplaceCapture(branch, source.Element, isMicrophone, isScreen,
+                    if (MicrophoneChain.ReplaceCapture(branch, source.Element, isMicrophone, isScreen,
                             noiseSuppression, isMicrophone && isEchoCancellationEnabled ? _core.Player?.EnsureEchoProbe() : null))
                     {
                         if (source.Resource != null)
@@ -681,8 +687,12 @@ internal sealed partial class OutgoingTracks
             branch.SyncStateWithParent();
             _outgoing[outboundId] = new OutgoingStream(branch, sinkPad);
 
-            if (_outgoingVideo.ContainsKey(outboundId))
+            if (_outgoingVideo.TryGetValue(outboundId, out var video))
+            {
+                // What was encoded before the branch played went nowhere, the first keyframe with it
+                video.Capture.RequestKeyFrame();
                 LogSendingVideo(_core.SessionId, index);
+            }
             else
                 LogSendingAudio(_core.SessionId, index);
         }
@@ -693,12 +703,11 @@ internal sealed partial class OutgoingTracks
     {
         try
         {
-            // Stopped first: the threads must not work on elements that are shutting down
-            video?.Pump.Dispose();
-            video?.Resource?.Dispose();
+            // Stopped first: it must not push into elements that are shutting down
+            video?.Dispose();
 
             lock (_captureLock)
-                PipelineBranch.Shutdown(outgoing.Branch);
+                GstBranch.Shutdown(outgoing.Branch);
 
             meter?.Pad.Dispose();
 
@@ -726,9 +735,16 @@ internal sealed partial class OutgoingTracks
         public static AudioSource? Of(Element? element) => element == null ? null : new AudioSource(element);
     }
 
-    /// <param name="Pump">Reads the preview frames of the branch.</param>
-    /// <param name="Resource">What feeds the capture element from a thread of its own, or null.</param>
-    private sealed record OutgoingVideo(VideoFramePump Pump, IDisposable? Resource);
+    /// <param name="Source">The appsrc of the branch the capture pushes into.</param>
+    private sealed record OutgoingVideo(IScreenCapture Capture, Element Source) : IDisposable
+    {
+        // The capture first: it pushes into the appsrc until it stops
+        public void Dispose()
+        {
+            Capture.Dispose();
+            Source.Dispose();
+        }
+    }
 
     /// <param name="Pad">The pad the meter watches, disposed once its branch has stopped.</param>
     private sealed record OutgoingMeter(int UserId, SpeechActivityMeter Meter, Pad Pad);

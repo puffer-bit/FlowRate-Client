@@ -1,16 +1,17 @@
 using System.Collections.Concurrent;
+using Client.Application.Ports;
 using Client.Core.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Interop;
-using Client.GStreamer.Video;
 
 namespace Client.GStreamer.WebRTC;
 
 /// <summary>
 /// Gives every src pad webrtcbin adds a branch of its own. Opus audio is decoded and played on the
-/// default output device, H.264 video is decoded into raw frames for the caller to draw; any other
+/// default output device, H.264 and VP8 video goes to a decoder of <see cref="IVideoMedia"/>, whose
+/// frames the caller draws; any other
 /// stream is drained into a fakesink, because a pad left unlinked would stop the whole transport
 /// with not-linked.
 /// </summary>
@@ -40,15 +41,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // yet; the soft knee then bends the peaks under it instead of the hard clipping of integer
     // samples, which a loud voice in overdrive crackles with.
     private const string OutputDescription =
-        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " + ShapingDescription;
-
-    /// <summary>
-    /// What the mixed voices go through on their way to the sink, ending with a link. The microphone
-    /// test plays the user back through it too.
-    /// </summary>
-    internal const string ShapingDescription =
-        "capsfilter caps=\"audio/x-raw,format=F32LE,rate=48000,channels=2\" ! " +
-        "audiodynamic mode=compressor characteristics=soft-knee threshold=0.7 ratio=0 ! ";
+        "audiomixer name=" + MixerName + " start-time-selection=first latency=20000000 ! " + VoicePlaybackSink.ShapingDescription;
 
     // The mixed voices pass the probe the echo cancelling of the microphone reads them from, as late
     // as possible, so the delay it measures to the speakers is that of the sink alone. The
@@ -72,25 +65,32 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // No queue: it would cost a thread for every stream that is drained
     private const string DrainDescription = "fakesink sync=false async=false";
 
-    private const string VideoSinkName = "frames";
+    private const string VideoSinkName = "encoded";
 
     // A lost packet breaks every frame up to the next keyframe, so the depayloader asks the sender
     // for one and holds the broken frames back meanwhile. The queue drops the oldest packets past
-    // half a second: with the default room a decoder that fell behind, or a stalled drawing,
-    // would leave the picture late for good. The gap that leaves is repaired like a loss
+    // half a second: with the default room a stalled reader would leave the picture late for good.
+    // The gap that leaves is repaired like a loss. The frames go out as whole access units with the
+    // parameter sets before every keyframe, so a decoder can start at any of them
     private const string H264Description =
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
         "rtph264depay request-keyframe=true wait-for-keyframe=true ! " +
-        "h264parse ! {0} ! {1}";
+        "h264parse config-interval=-1 ! video/x-h264,stream-format=byte-stream,alignment=au ! " + EncodedSink;
 
     // The same for VP8, whose depayloader drops what it has until the next keyframe
     private const string Vp8Description =
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
-        "rtpvp8depay request-keyframe=true wait-for-keyframe=true ! {0} ! {1}";
+        "rtpvp8depay request-keyframe=true wait-for-keyframe=true ! " + EncodedSink;
+
+    // Never drops: a lost frame would break every one up to the next keyframe; the queue in front
+    // drops instead
+    private const string EncodedSink =
+        "appsink name=" + VideoSinkName + " max-buffers=8 drop=false wait-on-eos=false sync=false async=false";
 
     private const string VolumeElementName = "volume";
 
     private readonly Pipeline _pipeline;
+    private readonly IVideoMedia _video;
     private readonly ILogger _logger;
     private readonly int _sessionId;
     private readonly ConcurrentDictionary<string, Branch> _branches = new();
@@ -109,6 +109,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     /// Whether incoming audio is played on the output device. Headless clients such as the test bot
     /// still receive and decode it, but keep it off the speakers.
     /// </param>
+    /// <param name="video">Decodes the video streams.</param>
     /// <param name="logger">The transport's logger; messages carry <paramref name="sessionId"/> like its own.</param>
     /// <param name="resolveVolume">
     /// Playback volume of the section with the given mline index, applied to a branch as it is built.
@@ -117,17 +118,16 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     /// Receives the decoded frames of the section with the given mline index, on a thread of the
     /// branch. The pixels are only valid during the call.
     /// </param>
-    public IncomingStreamPlayer(Pipeline pipeline, ILogger logger, int sessionId, Func<uint, double> resolveVolume,
-        Action<uint, RawVideoFrame> onVideoFrame, bool isPlaybackEnabled = true)
+    public IncomingStreamPlayer(Pipeline pipeline, IVideoMedia video, ILogger logger, int sessionId,
+        Func<uint, double> resolveVolume, Action<uint, RawVideoFrame> onVideoFrame, bool isPlaybackEnabled = true)
     {
         _onVideoFrame = onVideoFrame;
         _pipeline = pipeline;
+        _video = video;
         _logger = logger;
         _sessionId = sessionId;
         _resolveVolume = resolveVolume;
         _isPlaybackEnabled = isPlaybackEnabled;
-
-        VideoSurfaceSupport.Failed += OnSurfaceFailed;
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
         // Frames of a section that cannot be resolved would belong to nobody
         var codec = isOpus ? null : VideoCodecOf(caps);
-        var video = codec != null && mline != null ? BuildVideoBranch(padName, mline.Value, codec.Value, true) : null;
+        var video = codec != null && mline != null ? BuildVideoBranch(padName, mline.Value, codec.Value) : null;
 
         var description = !isOpus ? DrainDescription
             : _isPlaybackEnabled ? OpusPlaybackDescription
@@ -182,7 +182,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         if (result != PadLinkReturn.Ok)
         {
             LogBranchLinkFailed(_sessionId, padName, result);
-            video?.Pump.Dispose();
+            video?.Video.Dispose();
             UnlinkFromOutput(branch, mixerPad);
             _pipeline.Remove(branch);
             branch.Dispose();
@@ -214,17 +214,14 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             arrival.Attach(mixerPad);
         }
 
-        _branches[padName] = new Branch(branch, mline, meter, video?.Pump, pad)
+        _branches[padName] = new Branch(branch, mline, meter, video?.Video, pad)
         {
             MixerPad = mixerPad,
-            Arrival = arrival,
-            Codec = video == null ? null : codec,
-            Output = video?.Output.Kind,
-            Chain = video?.Output.Chain
+            Arrival = arrival
         };
 
         if (video != null)
-            LogDecodingVideo(_sessionId, padName, video.Value.Output.Chain, video.Value.Output.Kind);
+            LogDecodingVideo(_sessionId, padName, codec!.Value);
         else if (!isOpus)
             LogDraining(_sessionId, padName);
         else if (_isPlaybackEnabled)
@@ -256,7 +253,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         foreach (var (padName, branch) in _branches)
         {
             // What has neither is a drain already
-            if (branch.Mline != mline || (branch.Pump == null && branch.Meter == null) ||
+            if (branch.Mline != mline || (branch.Video == null && branch.Meter == null) ||
                 !_branches.TryRemove(padName, out _))
                 continue;
 
@@ -268,8 +265,8 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     {
         try
         {
-            // Stopped first: the pump must not pull from a sink that is shutting down
-            branch.Pump?.Dispose();
+            // Stopped first: the reader must not pull from a sink that is shutting down
+            branch.Video?.Dispose();
 
             if (_isDisposed)
                 return;
@@ -282,7 +279,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
                     branch.Pad.Unlink(input);
             }
 
-            PipelineBranch.Shutdown(branch.Bin);
+            GstBranch.Shutdown(branch.Bin);
             DetachArrival(branch);
             UnlinkFromOutput(branch.Bin, branch.MixerPad);
             _pipeline.Remove(branch.Bin);
@@ -320,29 +317,12 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     }
 
     /// <summary>
-    /// A branch that decodes H.264 or VP8 into frames.
+    /// A branch that depayloads H.264 or VP8 into a sink whose frames go to a decoder.
     /// </summary>
-    /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
-    /// <returns>Null when the runtime has no decoder or an element is missing.</returns>
-    private (Bin Bin, VideoFramePump Pump, VideoOutput Output)? BuildVideoBranch(string padName, uint mline,
-        VideoCodec codec, bool allowGpuSurfaces)
+    /// <returns>Null when an element is missing.</returns>
+    private (Bin Bin, IncomingVideo Video)? BuildVideoBranch(string padName, uint mline, VideoCodec codec)
     {
-        var output = VideoOutputSelector.Select(codec, allowGpuSurfaces);
-
-        if (output == null)
-            return null;
-
-        var description = codec == VideoCodec.VP8 ? Vp8Description : H264Description;
-        var branch = Global.ParseBinFromDescription(
-            string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
-
-        // An element of the chosen chain is missing after all: the plain chain needs none of them
-        if (branch == null && output.Kind != VideoOutputKind.Memory)
-        {
-            output = VideoOutputSelector.Plain(output.Decoder);
-            branch = Global.ParseBinFromDescription(
-                string.Format(description, output.Chain, VideoFramePump.SinkDescription(VideoSinkName)), true);
-        }
+        var branch = Global.ParseBinFromDescription(codec == VideoCodec.VP8 ? Vp8Description : H264Description, true);
 
         if (branch?.GetByName(VideoSinkName) is not { } sink)
         {
@@ -350,130 +330,18 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             return null;
         }
 
-        var pump = new VideoFramePump(sink, output.Kind, $"video_{_sessionId}_{padName}",
-            frame => _onVideoFrame(mline, frame),
-            exception => LogVideoFrameFailed(exception, _sessionId, padName),
-            kind => OnBranchSurfaceFailed(padName, kind));
-
-        return (branch, pump, output);
-    }
-
-    // A pump found its frames cannot be delivered as they come; on its own thread
-    private void OnBranchSurfaceFailed(string padName, VideoOutputKind kind)
-    {
-        VideoSurfaceSupport.ReportFailure(ToSurfaceKind(kind));
-
-        // Reported already when the kind was taken out of the supported ones, but a kind the
-        // screen never claimed to support is rebuilt here
-        if (_branches.TryGetValue(padName, out var branch) && branch.Output == kind)
-            ScheduleRebuild(padName, branch);
-    }
-
-    // The screen found a kind does not work; on whatever thread it found out
-    private void OnSurfaceFailed(VideoSurfaceKinds kinds)
-    {
-        foreach (var (padName, branch) in _branches)
-        {
-            if (branch.Output is { } output && output != VideoOutputKind.Memory && (ToSurfaceKind(output) & kinds) != 0)
-                ScheduleRebuild(padName, branch);
-        }
-    }
-
-    private static VideoSurfaceKinds ToSurfaceKind(VideoOutputKind kind) => kind switch
-    {
-        VideoOutputKind.DmaBuf => VideoSurfaceKinds.DmaBuf,
-        VideoOutputKind.Cuda => VideoSurfaceKinds.CudaGl,
-        VideoOutputKind.D3D11 => VideoSurfaceKinds.D3D11Shared,
-        VideoOutputKind.MemoryYuv => VideoSurfaceKinds.YuvMemory,
-        _ => VideoSurfaceKinds.None
-    };
-
-    private void ScheduleRebuild(string padName, Branch branch)
-    {
-        // Only the first report of a branch rebuilds it
-        if (!_branches.TryUpdate(padName, branch with { Output = VideoOutputKind.Memory, Chain = null }, branch))
-            return;
-
-        LogVideoSurfaceFailed(_sessionId, padName, branch.Output ?? VideoOutputKind.Memory,
-            branch.Output == VideoOutputKind.D3D11 ? Video.D3D11SharedTextureWriter.LastFailure : null);
-
-        // Off the thread of the pump, which disposing the pump waits for
-        System.Threading.Tasks.Task.Run(() => Rebuild(padName, branch, false));
-    }
-
-    /// <summary>
-    /// Replaces a video branch with one built anew, for frames in memory when
-    /// <paramref name="allowGpuSurfaces"/> is false. The depayloader of the new branch waits for a
-    /// keyframe and asks the sender for one.
-    /// </summary>
-    private void Rebuild(string padName, Branch branch, bool allowGpuSurfaces)
-    {
-        // The pad stays without a peer while the branch is swapped
-        var dropping = GstVideoNative.DropBuffers(branch.Pad);
-
-        try
-        {
-            branch.Pump?.Dispose();
-
-            if (_isDisposed || branch.Mline is not { } mline || branch.Codec is not { } codec)
-                return;
-
-            using (var input = branch.Bin.GetStaticPad("sink"))
+        var video = new IncomingVideo(() =>
             {
-                if (input != null)
-                    branch.Pad.Unlink(input);
-            }
+                var decoder = _video.CreateDecoder(codec, $"{_sessionId}_{padName}");
 
-            PipelineBranch.Shutdown(branch.Bin);
-            _pipeline.Remove(branch.Bin);
-            branch.Bin.Dispose();
+                if (decoder != null)
+                    decoder.FrameReady += frame => _onVideoFrame(mline, frame);
 
-            var video = BuildVideoBranch(padName, mline, codec, allowGpuSurfaces);
+                return decoder;
+            }, sink, $"video_{_sessionId}_{padName}",
+            exception => LogVideoFrameFailed(exception, _sessionId, padName));
 
-            if (video == null || _isDisposed)
-            {
-                video?.Pump.Dispose();
-                video?.Bin.Dispose();
-                _branches.TryRemove(padName, out _);
-                return;
-            }
-
-            video.Value.Bin.SetName($"incoming_{padName}_{Guid.NewGuid():N}");
-            _pipeline.Add(video.Value.Bin);
-
-            PadLinkReturn linked;
-
-            using (var input = video.Value.Bin.GetStaticPad("sink"))
-                linked = input == null ? PadLinkReturn.Refused : branch.Pad.Link(input);
-
-            if (linked != PadLinkReturn.Ok)
-            {
-                LogBranchLinkFailed(_sessionId, padName, linked);
-                video.Value.Pump.Dispose();
-                _pipeline.Remove(video.Value.Bin);
-                video.Value.Bin.Dispose();
-                _branches.TryRemove(padName, out _);
-                return;
-            }
-
-            video.Value.Bin.SyncStateWithParent();
-            _branches[padName] = new Branch(video.Value.Bin, branch.Mline, null, video.Value.Pump, branch.Pad)
-            {
-                Codec = codec,
-                Output = video.Value.Output.Kind,
-                Chain = video.Value.Output.Chain
-            };
-
-            LogDecodingVideo(_sessionId, padName, video.Value.Output.Chain, video.Value.Output.Kind);
-        }
-        catch (Exception exception)
-        {
-            LogReleaseFailed(exception, _sessionId, $"incoming_{padName}");
-        }
-        finally
-        {
-            GstVideoNative.RemoveProbe(branch.Pad, dropping);
-        }
+        return (branch, video);
     }
 
     /// <summary>
@@ -662,9 +530,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     {
         try
         {
-            // Stopped first: the pump must not pull from a sink that is shutting down
-            branch.Pump?.Dispose();
-            PipelineBranch.Shutdown(branch.Bin);
+            // Stopped first: the reader must not pull from a sink that is shutting down
+            branch.Video?.Dispose();
+            GstBranch.Shutdown(branch.Bin);
             DetachArrival(branch);
 
             if (!_isDisposed)
@@ -681,7 +549,6 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             LogReleaseFailed(exception, _sessionId, branch.Bin.Name ?? string.Empty);
         }
     }
-
 
     private static bool IsOpus(Caps caps)
     {
@@ -768,36 +635,26 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
     /// <param name="Mline">Null when the section could not be resolved; such a branch keeps its volume.</param>
     /// <param name="Meter">Null for a stream that is not audio.</param>
-    /// <param name="Pump">Null for a stream that is not decoded video.</param>
-    private sealed record Branch(Bin Bin, uint? Mline, SpeechActivityMeter? Meter, VideoFramePump? Pump, Pad Pad)
+    /// <param name="Video">Null for a stream that is not decoded video.</param>
+    private sealed record Branch(Bin Bin, uint? Mline, SpeechActivityMeter? Meter, IncomingVideo? Video, Pad Pad)
     {
         /// <summary>The pad of the mixer a played voice is linked to.</summary>
         public Pad? MixerPad { get; init; }
 
         /// <summary>Measures how late the voice reaches the mixer; null where it is not played.</summary>
         public VoiceArrivalMeter? Arrival { get; init; }
-
-        /// <summary>The codec a video branch decodes.</summary>
-        public VideoCodec? Codec { get; init; }
-
-        /// <summary>The form the frames of a video branch are delivered in.</summary>
-        public VideoOutputKind? Output { get; init; }
-
-        /// <summary>The decoding chain of a video branch; null while it is being rebuilt.</summary>
-        public string? Chain { get; init; }
     }
 
     /// <summary>
-    /// Stops the pumps and takes no more pads. The pipeline must not be shut down before this
-    /// returns: the pumps still pull from its sinks.
+    /// Stops the readers of the video and its decoders, and takes no more pads. The pipeline must not
+    /// be shut down before this returns: the readers still pull from its sinks.
     /// </summary>
     public void Stop()
     {
         _isDisposed = true;
-        VideoSurfaceSupport.Failed -= OnSurfaceFailed;
 
         foreach (var branch in _branches.Values)
-            branch.Pump?.Dispose();
+            branch.Video?.Dispose();
     }
 
     /// <summary>
