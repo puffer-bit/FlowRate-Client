@@ -565,6 +565,7 @@
   "chat.attach.error.storageFull": "The server is out of space",
   "chat.attach.error.connection": "No connection to the server",
   "chat.attach.error.failed": "The server did not take the file",
+  "chat.attach.error.unreadable": "The file cannot be read",
   "chat.send.imageFailed": "{file}: {reason}",
   "@chat.send.imageFailed": {
     "placeholders": {

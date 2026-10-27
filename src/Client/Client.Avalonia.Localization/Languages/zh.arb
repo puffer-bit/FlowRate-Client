@@ -441,6 +441,7 @@
   "chat.attach.error.storageFull": "服务器空间不足",
   "chat.attach.error.connection": "无法连接到服务器",
   "chat.attach.error.failed": "服务器未接受该文件",
+  "chat.attach.error.unreadable": "无法读取该文件",
   "chat.send.imageFailed": "{file}: {reason}",
   "chat.send.imagesLost": "服务器已不再保存上传的文件。请重新发送消息。",
   "chat.image.gone": "图片已被删除。",
