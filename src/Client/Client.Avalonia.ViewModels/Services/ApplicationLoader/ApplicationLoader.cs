@@ -241,6 +241,32 @@ public partial class ApplicationLoader
         return await askPassword(dialog) ? ApplicationLoadResult.NoError : ApplicationLoadResult.DatabaseLocked;
     }
 
+    /// <summary>
+    /// Whether the user can get out of <paramref name="result"/> by starting with a new database.
+    /// A file another copy holds is not one: that copy keeps using it.
+    /// </summary>
+    public static bool CanResetDatabase(ApplicationLoadResult result) => result is ApplicationLoadResult.DatabaseError
+        or ApplicationLoadResult.DatabaseCorrupted or ApplicationLoadResult.DatabaseNewerThanApplication
+        or ApplicationLoadResult.DatabaseLocked;
+
+    /// <summary>
+    /// Moves the database aside so that <see cref="InitializeAsync"/> starts with a new one.
+    /// </summary>
+    /// <returns>Whether the file was moved.</returns>
+    public async Task<bool> ResetDatabaseAsync()
+    {
+        try
+        {
+            await Task.Run(_databaseInitializer.ResetDatabase);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            LogDatabaseResetFailed(exception);
+            return false;
+        }
+    }
+
     private async Task<DatabaseState> LoadDatabase()
     {
         try

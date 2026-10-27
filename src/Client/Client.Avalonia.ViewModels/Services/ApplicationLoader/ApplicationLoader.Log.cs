@@ -5,6 +5,9 @@ namespace Client.Services;
 
 public partial class ApplicationLoader
 {
+    [LoggerMessage(LogLevel.Error, "Failed to reset the database")]
+    private partial void LogDatabaseResetFailed(Exception exception);
+
     [LoggerMessage(LogLevel.Error, "Failed to apply the saved theme")]
     private partial void LogThemeApplyFailed(Exception exception);
 

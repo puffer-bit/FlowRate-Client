@@ -96,4 +96,35 @@ public class DatabaseInitializerTests
 
         Assert.Equal(DatabaseState.Corrupted, state);
     }
+
+    [Fact]
+    public async Task ResetMovesTheFileAsideAndStartsANewOne()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        await database.ExecuteAsync("PRAGMA user_version = 99");
+        var initializer = new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance);
+
+        var backupPath = initializer.ResetDatabase();
+
+        Assert.True(File.Exists(backupPath));
+        Assert.StartsWith(database.FilePath + ".broken-", backupPath);
+        Assert.False(File.Exists(database.FilePath));
+
+        Assert.Equal(DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
+    }
+
+    [Fact]
+    public async Task ResetForgetsThePasswordOfTheOldFile()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        database.Database.Configure("secret", isFileLocked: false);
+        var initializer = new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance);
+
+        initializer.ResetDatabase();
+
+        Assert.Null(database.Database.Password);
+        Assert.Equal(DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        Assert.False(database.Database.IsFileEncrypted);
+    }
 }

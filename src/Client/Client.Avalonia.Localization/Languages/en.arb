@@ -166,6 +166,14 @@
   "main.startup.databaseCorrupted": "The database is corrupted.",
   "main.startup.databaseNewer": "The database was created by a newer version of the application.\nPlease update the application to resolve this issue.",
   "main.startup.databaseInUse": "The database is used by another copy of FlowRate, which holds its file locked. Close it and start again.",
+  "main.startup.resetOffer": "Startup failed.\n\n{reason}\n\nReset the database? The application starts anew: its settings, saved servers and passwords are gone. The old file is kept next to the new one and can be put back.\n\n«No» closes the application.",
+  "@main.startup.resetOffer": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "main.startup.resetTitle": "Forgot the password?",
+  "main.startup.resetForgottenPassword": "Without its password the database cannot be opened. If it is forgotten, the database can be reset: the application starts anew, its settings, saved servers and passwords are gone. The old file is kept next to the new one.\n\nReset the database?",
   "databasePassword.unlock.title": "Database is encrypted",
   "databasePassword.unlock.text": "Enter the database password to continue.",
   "databasePassword.unlock.confirm": "Unlock",
