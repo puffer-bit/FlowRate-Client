@@ -30,4 +30,7 @@ internal sealed partial class WebRTCBinTuning
 
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] RTCP may take up to {Budget} bytes/s")]
     private partial void LogFeedbackBudget(int sessionId, int budget);
+
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Source ssrc {Ssrc} dropped from the RTP manager")]
+    private partial void LogSourceForgotten(int sessionId, uint ssrc);
 }

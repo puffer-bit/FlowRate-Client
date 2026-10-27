@@ -111,9 +111,7 @@ internal sealed partial class WebRTCBinTuning
     }
 
     /// <summary>
-    /// Makes the RTP manager drop a source that timed out, with its jitter buffer and the thread
-    /// of it. Every rejoin of a peer brings a new SSRC, and by default the old ones stay until the
-    /// session is left. Gives the jitter buffer of every stream the latency of its track and whether
+    /// Gives the jitter buffer of every stream the latency of its track and whether
     /// it asks for lost packets again, and the RTP session the <see cref="RtcpBudget"/>.
     /// </summary>
     /// <remarks>
@@ -132,7 +130,6 @@ internal sealed partial class WebRTCBinTuning
                 return;
 
             _rtpbin = rtpbin;
-            rtpbin.SetProperty("autoremove", true);
 
             // The RTP session of the bundle is made during the first negotiation, after this
             rtpbin.ConnectSignal("element-added", (_, args) =>
@@ -169,6 +166,28 @@ internal sealed partial class WebRTCBinTuning
 
                 return null;
             });
+        }
+        catch (Exception exception)
+        {
+            LogRtpBinTuningFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// Makes the RTP manager drop the source of a track we let go of, with its jitter buffer and the
+    /// thread of it: every rejoin of a peer brings a new SSRC, and the old ones would stay until the
+    /// session is left. Not left to the RTP manager, which drops a source that is silent for a few
+    /// seconds: a screen that pauses is, and webrtcbin forgets the section of a dropped SSRC and
+    /// GStreamer (1.28) keeps its pad, so the screen came back to no section at all ("Padname ... is
+    /// not unique").
+    /// </summary>
+    public void ForgetSource(uint ssrc)
+    {
+        try
+        {
+            // Every section is bundled into the session of the first one
+            _rtpbin?.EmitSignal("clear-ssrc", 0u, ssrc);
+            LogSourceForgotten(_core.SessionId, ssrc);
         }
         catch (Exception exception)
         {

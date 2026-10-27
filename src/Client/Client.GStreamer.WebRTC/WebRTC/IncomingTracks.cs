@@ -28,16 +28,19 @@ internal sealed partial class IncomingTracks
 
     // The tracks whose sections webrtcbin knows, which the SFU was told about
     private readonly ConcurrentDictionary<string, bool> _readyInbounds = new();
+    private readonly Action<uint> _sourceGone;
 
     /// <param name="negotiate">Runs a negotiation round after the set of sections changed.</param>
     /// <param name="inboundsReady">Receives the ids of the tracks that can be received from now on.</param>
+    /// <param name="sourceGone">Receives the SSRC of each track that is let go of, which no packet comes on any more.</param>
     public IncomingTracks(TransportCore core, MediaSections sections, Func<bool> negotiate,
-        Action<IReadOnlyList<string>> inboundsReady, ILogger logger)
+        Action<IReadOnlyList<string>> inboundsReady, Action<uint> sourceGone, ILogger logger)
     {
         _core = core;
         _sections = sections;
         _negotiate = negotiate;
         _inboundsReady = inboundsReady;
+        _sourceGone = sourceGone;
         _logger = logger;
     }
 
@@ -105,7 +108,9 @@ internal sealed partial class IncomingTracks
         {
             foreach (var staleId in stale)
             {
-                _inbounds.TryRemove(staleId, out _);
+                if (_inbounds.TryRemove(staleId, out var staleInbound))
+                    _sourceGone(staleInbound.SSRC);
+
                 _readyInbounds.TryRemove(staleId, out _);
 
                 var staleSlot = _sections.Slots.FirstOrDefault(item => item.InboundId == staleId);
@@ -247,6 +252,7 @@ internal sealed partial class IncomingTracks
                 continue;
 
             _readyInbounds.TryRemove(inboundId, out _);
+            _sourceGone(removed.SSRC);
 
             using (_sections.Enter())
             {
