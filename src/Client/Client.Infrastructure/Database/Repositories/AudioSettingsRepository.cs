@@ -85,6 +85,24 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
                 DisabledSounds = string.Join(',', settings.DisabledSounds)
             });
     }
+
+    public async Task<bool> GetUseLibWebRTCAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+
+        return await connection.QueryFirstOrDefaultAsync<bool?>(
+            "SELECT UseLibWebRTC FROM AudioSettings WHERE Id = 1") ?? false;
+    }
+
+    public async Task UpdateUseLibWebRTCAsync(bool useLibWebRTC)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            INSERT INTO AudioSettings (Id, UseLibWebRTC) VALUES (1, @useLibWebRTC)
+            ON CONFLICT (Id) DO UPDATE SET UseLibWebRTC = excluded.UseLibWebRTC
+            """, new { useLibWebRTC });
+    }
 }
 
 internal sealed record AudioSettingsRow(string? InputDeviceId, string? InputDeviceName, double InputVolume,

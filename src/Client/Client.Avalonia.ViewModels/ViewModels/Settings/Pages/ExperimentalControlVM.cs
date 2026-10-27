@@ -60,12 +60,14 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IAppearanceService _appearanceService;
+    private readonly IAudioService _audioService;
 
     private bool _isLoaded;
 
-    public ExperimentalControlVM(IAppearanceService appearanceService)
+    public ExperimentalControlVM(IAppearanceService appearanceService, IAudioService audioService)
     {
         _appearanceService = appearanceService;
+        _audioService = audioService;
 
         LoadCommand = ReactiveCommand
             .CreateFromTask(LoadAsync);
@@ -91,7 +93,7 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     {
         IsExperimentalEnabled = await _appearanceService.GetIsExperimentalEnabledAsync();
         UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
-        UseLibWebRTC = await _appearanceService.GetUseLibWebRTCAsync();
+        UseLibWebRTC = await _audioService.GetUseLibWebRTCAsync();
         _isLoaded = true;
     }
 
@@ -100,7 +102,7 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar, useLibWebRTC);
         await _appearanceService.UpdateIsExperimentalEnabledAsync(isEnabled);
         await _appearanceService.UpdateUseCustomTitleBarAsync(useCustomTitleBar);
-        await _appearanceService.UpdateUseLibWebRTCAsync(useLibWebRTC);
+        await _audioService.UpdateUseLibWebRTCAsync(useLibWebRTC);
     }
 
     public async Task ResetAllAsync()
