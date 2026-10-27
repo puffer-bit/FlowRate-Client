@@ -3,6 +3,7 @@ using Android;
 using Android.Content.PM;
 using AndroidX.Core.Content;
 using Client.Application.Ports;
+using Client.Droid.Platform.Calls;
 using Client.LibWebRTC.Voice;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,8 @@ internal sealed class AndroidWebRTCTransportFactory(ILoggerFactory loggerFactory
             if (ContextCompat.CheckSelfPermission(context, Manifest.Permission.RecordAudio) != Permission.Granted &&
                 (MainActivity.Current is not { } activity || !await activity.RequestMicrophonePermissionAsync()))
                 throw new InvalidOperationException("Microphone permission was not granted.");
+
+            CallService.OnMicrophoneAllowed();
 
             return new AndroidVoicePeer(peerListener);
         }, listener), loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled, isVideoDecodedByPeer: true);
