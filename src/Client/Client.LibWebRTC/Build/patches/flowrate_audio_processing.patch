@@ -1,0 +1,31 @@
+diff --git a/media/engine/audio_processing_controller.cc b/media/engine/audio_processing_controller.cc
+index 2d14f3d..c5a4f51 100644
+--- a/media/engine/audio_processing_controller.cc
++++ b/media/engine/audio_processing_controller.cc
+@@ -370,11 +370,15 @@ AudioProcessingApplyResult ApplyAudioProcessingOptions(AudioProcessing *apm, Aud
+ 
+   if (software_options.auto_gain_control.has_value()) {
+     const bool enabled = *software_options.auto_gain_control;
+-    apm_config.gain_controller1.enabled = enabled;
+ #if defined(WEBRTC_IOS) || defined(WEBRTC_MAC) || defined(WEBRTC_ANDROID)
++    apm_config.gain_controller1.enabled = enabled;
+     apm_config.gain_controller1.mode = AudioProcessing::Config::GainController1::kFixedDigital;
+ #else
+-    apm_config.gain_controller1.mode = AudioProcessing::Config::GainController1::kAdaptiveAnalog;
++    // FlowRate: the adaptive digital gain, as Chromium has on the desktop. The analog one of
++    // GainController1 moves the volume of the microphone in the system and compresses the voice
++    apm_config.gain_controller1.enabled = false;
++    apm_config.gain_controller2.enabled = enabled;
++    apm_config.gain_controller2.adaptive_digital.enabled = enabled;
+ #endif
+   }
+ 
+@@ -385,7 +389,7 @@ AudioProcessingApplyResult ApplyAudioProcessingOptions(AudioProcessing *apm, Aud
+   if (software_options.noise_suppression.has_value()) {
+     const bool enabled = *software_options.noise_suppression;
+     apm_config.noise_suppression.enabled = enabled;
+-    apm_config.noise_suppression.level = AudioProcessing::Config::NoiseSuppression::Level::kHigh;
++    // FlowRate: the level is the one the application set on the APM, not always the high one
+   }
+ 
+   apm->ApplyConfig(apm_config);
