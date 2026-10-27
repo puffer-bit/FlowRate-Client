@@ -63,6 +63,16 @@ public class AudioService : IAudioService
         SettingsChanged?.Invoke(settings);
     }
 
+    public async Task<bool> GetUseLibWebRTCAsync()
+    {
+        return await _audioSettingsRepository.GetUseLibWebRTCAsync();
+    }
+
+    public async Task UpdateUseLibWebRTCAsync(bool useLibWebRTC)
+    {
+        await _audioSettingsRepository.UpdateUseLibWebRTCAsync(useLibWebRTC);
+    }
+
     public async Task<AudioDeviceInfo?> ResolveInputDeviceAsync()
     {
         var settings = await _audioSettingsRepository.GetAsync();
