@@ -8,6 +8,11 @@ namespace Client.LibWebRTC.Native;
 /// libwebrtc of the process: loaded once, with the audio devices it opens. The microphone is
 /// shared by every peer, so its device is chosen here.
 /// </summary>
+/// <remarks>
+/// libwebrtc starts its audio engine with the first peer and stops it with the last, and starting it
+/// puts the default devices back: the default one for communications on Windows, the first one of the
+/// list elsewhere. So the devices chosen here are chosen again whenever a peer comes after none.
+/// </remarks>
 public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogger<LibWebRTCRuntime> logger)
     : ILibWebRTCLoader
 {
@@ -15,6 +20,12 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
     private const string DefaultPrefix = "default: ";
 
     private readonly Lock _lock = new();
+
+    // Keeps the count of the peers in step with the audio engine: a peer is created or destroyed,
+    // and counted, under it
+    private readonly Lock _peerLock = new();
+    private int _peerCount;
+
     private bool? _isLoaded;
     private string? _loadError;
     private string? _recordingDeviceId;
@@ -65,6 +76,42 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
 
         lock (_lock)
             return _loadError;
+    }
+
+    /// <summary>Creates a peer, and chooses the devices again where it started the audio engine.</summary>
+    /// <returns>The peer, or 0 when libwebrtc did not create one.</returns>
+    internal unsafe nint CreatePeer(NativeMethods.PeerCallbacks* callbacks, nint context, int echoCancellation,
+        int noiseSuppression, int autoGainControl)
+    {
+        lock (_peerLock)
+        {
+            var peer = NativeMethods.PeerCreate(callbacks, context, echoCancellation, noiseSuppression, autoGainControl);
+
+            if (peer != 0 && _peerCount++ == 0)
+                OnAudioEngineStarted();
+
+            return peer;
+        }
+    }
+
+    /// <summary>Destroys a peer; the last one stops the audio engine.</summary>
+    internal void DestroyPeer(nint peer)
+    {
+        lock (_peerLock)
+        {
+            NativeMethods.PeerDestroy(peer);
+            _peerCount--;
+        }
+    }
+
+    // The microphone is chosen again by the peer that sends it, see SelectRecordingDevice
+    private void OnAudioEngineStarted()
+    {
+        lock (_lock)
+        {
+            _recordingDeviceId = null;
+            SelectPlayoutDevice();
+        }
     }
 
     /// <summary>
