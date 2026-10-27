@@ -533,14 +533,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     }
 
     // The test runs on GStreamer whatever the engine of the voice. For libwebrtc it does what
-    // libwebrtc does: the high level of the WebRTC suppression, which is the one libwebrtc runs,
+    // libwebrtc does: the moderate level of the WebRTC suppression, which is the one libwebrtc runs,
     // and a gate by the loudness alone
     private VoiceGateOptions? TestVoiceGate => IsVoiceGateEnabled
         ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled && !IsLibWebRTC, IsAdaptiveThresholdEnabled)
         : null;
 
     private NoiseSuppressionLevel TestNoiseSuppression =>
-        IsLibWebRTC && NoiseSuppression != NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.High : NoiseSuppression;
+        IsLibWebRTC && NoiseSuppression != NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.Moderate : NoiseSuppression;
 
     private void OnExperimentalFeaturesChanged()
     {

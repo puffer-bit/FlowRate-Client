@@ -20,6 +20,7 @@ What goes in, pinned by both scripts:
 | webrtc-sdk/libwebrtc, the C++ wrapper | tag `libwebrtc.m150.7871.06` |
 | patches of the wrapper to WebRTC | `custom_audio_source_m150`, `add_libwebrtc_build_target`, and `fix_desktop_capture_compile` (Linux) or `allow_176k4_192k_shared_mode_formats` (Windows) |
 | `patches/flowrate_target.patch` | names the library `flowrate_webrtc` and adds `Native/flowrate_webrtc.cc` to it |
+| `patches/flowrate_audio_processing.patch` | the processing of the microphone on the desktop: the adaptive digital gain instead of the analog one, which moves the volume of the microphone in the system, and the level of noise suppression the client sets instead of always the high one |
 
 Left out: the desktop capture of the wrapper, H.264 of WebRTC and, on Windows, the H.265 coder of
 Media Foundation. Screens are captured and encoded by GStreamer. The C++ runtime is linked in
@@ -79,6 +80,7 @@ The output is `prebuilt/win-x64/flowrate_webrtc.dll`. The script then runs `wind
 | `windows/build.ps1` | the same for Windows, after it has checked the prerequisites above |
 | `windows/verify.ps1` | loads `flowrate_webrtc.dll` from a folder with Windows alone on the search path and looks up every function of the header; opens no audio device. CI runs it on the published client |
 | `patches/flowrate_target.patch` | our change to the `BUILD.gn` of the wrapper, used by both scripts |
+| `patches/flowrate_audio_processing.patch` | our change to WebRTC, applied once like the patches of the wrapper |
 | `LibWebRTCRuntime.targets` | copies `prebuilt/<rid>/` next to the executable on every build and publish |
 
 ### Moving to a newer WebRTC
@@ -87,7 +89,7 @@ Change the pinned commit, tag and patch names together in both scripts. The wrap
 for each release, e.g. `custom_audio_source_m<N>.patch`, and its own `build/` scripts show which ones
 a platform takes. On Windows the script stops when the new WebRTC wants another SDK, and `$sdkVersion`
 and the table above follow it. A sync of the new commit resets the tree, so the patches go on again
-by themselves.
+by themselves; ours to WebRTC may need to be made again for the new sources.
 
 ## Publishing the client
 

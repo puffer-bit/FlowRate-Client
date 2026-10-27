@@ -78,7 +78,11 @@ FR_API int fr_default_device(int is_recording, char* guid, int guid_size);
 FR_API void fr_set_capture_volume(double volume);
 FR_API void fr_set_voice_gate(fr_level_callback on_level, void* context);
 
-/* A peer connection with a microphone track that stays muted until a section sends it. */
+/*
+ * A peer connection with a microphone track that stays muted until a section sends it.
+ * noise_suppression: 0 off, 1 low, 2 moderate, 3 high, 4 very high. The processing is one for the
+ * process, as the microphone is, so the level is the one of the last microphone set.
+ */
 FR_API fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context,
                                int echo_cancellation, int noise_suppression, int auto_gain_control);
 

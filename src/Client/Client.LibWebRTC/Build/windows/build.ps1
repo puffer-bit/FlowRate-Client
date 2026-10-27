@@ -24,6 +24,8 @@ if ($env:OS -ne "Windows_NT" -or [IntPtr]::Size -ne 8) {
 $wrapperTag = "libwebrtc.m150.7871.06"
 $webrtcCommit = "a545de45259b47dfac5f3635863e47cb601f1bb2" # webrtc-sdk/webrtc, m150_release
 $webrtcPatches = @("custom_audio_source_m150", "add_libwebrtc_build_target", "allow_176k4_192k_shared_mode_formats")
+# Our patches to WebRTC, in ..\patches
+$flowratePatches = @("flowrate_audio_processing")
 # The Windows SDK this WebRTC builds with: SDK_VERSION of src\build\vs_toolchain.py, checked after the sync
 $sdkVersion = "10.0.26100.0"
 
@@ -248,6 +250,14 @@ foreach ($patch in $webrtcPatches) {
     }
 }
 
+foreach ($patch in $flowratePatches) {
+    $file = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\patches\$patch.patch"))
+    if (-not (Test-Native git.exe @("-C", "src", "apply", "--reverse", "--check", "--ignore-whitespace", $file))) {
+        Write-Step "Applying $patch"
+        Invoke-Native git.exe @("-C", "src", "apply", "--ignore-whitespace", "--whitespace=nowarn", $file)
+    }
+}
+
 # Our sources, copied only when they changed so that ninja rebuilds nothing else
 New-Item -ItemType Directory -Force -Path "src\libwebrtc\flowrate" | Out-Null
 foreach ($source in Get-ChildItem (Join-Path $native "flowrate_*") -Include "*.cc", "*.h") {
@@ -303,7 +313,7 @@ flowrate_webrtc.dll, built by Build/windows/build.ps1
 Date:      $date
 WebRTC:    webrtc-sdk/webrtc $webrtcCommit
 Wrapper:   webrtc-sdk/libwebrtc $wrapperTag
-Patches:   $($webrtcPatches -join ' ') flowrate_target
+Patches:   $($webrtcPatches -join ' ') $($flowratePatches -join ' ') flowrate_target
 FlowRate:  $flowrateCommit
 SHA-256:   $hash
 Toolchain: Visual Studio $vsYear, Windows SDK $sdkVersion

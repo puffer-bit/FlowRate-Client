@@ -32,6 +32,7 @@
 #include "rtc_rtp_transceiver.h"
 
 #include "flowrate_video.h"
+#include "src/rtc_audio_processing_impl.h"
 
 using namespace libwebrtc;
 
@@ -446,8 +447,31 @@ int CopyDeviceName(int32_t status, const char* name, const char* guid, char* nam
   return 1;
 }
 
+// The processing of the microphone, one for the process. The voice engine configures it from the options
+// of the sources; what they cannot say is set on it here, and the engine keeps it
+// (flowrate_audio_processing.patch). A configuration the engine applies at the same moment may be lost:
+// it is set before the sources that would apply one are created.
+webrtc::AudioProcessing* Processing(const scoped_refptr<RTCPeerConnectionFactory>& factory) {
+  auto processing = factory->GetAudioProcessing();
+  return processing != nullptr ? static_cast<RTCAudioProcessingImpl*>(processing.get())->GetAudioProcessing().get()
+                               : nullptr;
+}
+
+void SetNoiseSuppressionLevel(const scoped_refptr<RTCPeerConnectionFactory>& factory, int level) {
+  auto processing = Processing(factory);
+
+  if (processing == nullptr || level < 1 || level > 4)
+    return;
+
+  auto config = processing->GetConfig();
+  config.noise_suppression.level = static_cast<webrtc::AudioProcessing::Config::NoiseSuppression::Level>(level - 1);
+  processing->ApplyConfig(config);
+}
+
 void CreateMicrophone(scoped_refptr<RTCPeerConnectionFactory> factory, fr_peer* peer, bool is_custom,
                       int echo_cancellation, int noise_suppression, int auto_gain_control, bool is_enabled) {
+  SetNoiseSuppressionLevel(factory, noise_suppression);
+
   RTCAudioOptions options;
   options.echo_cancellation = echo_cancellation != 0;
   options.noise_suppression = noise_suppression != 0;
@@ -501,6 +525,14 @@ int fr_initialize(void) {
     return 0;
 
   factory->GetAudioProcessing()->SetCapturePostProcessing(&g_capture);
+
+  // The whole band of the voice, up to 24 kHz, as the processing of GStreamer keeps it: by default
+  // the processing runs at 32 kHz at most, and what is above 16 kHz is lost
+  if (auto processing = Processing(factory)) {
+    auto config = processing->GetConfig();
+    config.pipeline.maximum_internal_processing_rate = 48000;
+    processing->ApplyConfig(config);
+  }
   flowrate::SetPeerConnectionFactory(factory.get());
   g_factory = factory;
   return 1;

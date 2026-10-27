@@ -16,6 +16,8 @@ set -euo pipefail
 WRAPPER_TAG=libwebrtc.m150.7871.06
 WEBRTC_COMMIT=a545de45259b47dfac5f3635863e47cb601f1bb2 # webrtc-sdk/webrtc, m150_release
 WEBRTC_PATCHES=(custom_audio_source_m150 add_libwebrtc_build_target fix_desktop_capture_compile)
+# Our patches to WebRTC, in ../patches
+FLOWRATE_PATCHES=(flowrate_audio_processing)
 
 here=$(cd "$(dirname "$0")" && pwd)
 native="$here/../../Native"
@@ -116,6 +118,14 @@ for patch in "${WEBRTC_PATCHES[@]}"; do
     fi
 done
 
+for patch in "${FLOWRATE_PATCHES[@]}"; do
+    file="$here/../patches/$patch.patch"
+    if ! git -C src apply --reverse --check --ignore-whitespace "$file" 2>/dev/null; then
+        step "Applying $patch"
+        git -C src apply --ignore-whitespace --whitespace=nowarn "$file"
+    fi
+done
+
 # Our sources, copied only when they changed so that ninja rebuilds nothing else
 mkdir -p src/libwebrtc/flowrate
 for source in "$native"/flowrate_*.{cc,h}; do
@@ -163,7 +173,7 @@ libflowrate_webrtc.so, built by Build/linux/build.sh
 Date:      $(date -u +%Y-%m-%dT%H:%M:%SZ)
 WebRTC:    webrtc-sdk/webrtc $WEBRTC_COMMIT
 Wrapper:   webrtc-sdk/libwebrtc $WRAPPER_TAG
-Patches:   ${WEBRTC_PATCHES[*]} flowrate_target
+Patches:   ${WEBRTC_PATCHES[*]} ${FLOWRATE_PATCHES[*]} flowrate_target
 FlowRate:  $flowrate_commit$dirty
 SHA-256:   $(sha256sum "$prebuilt/libflowrate_webrtc.so" | cut -d' ' -f1)
 GN args:  $(echo $GN_ARGS)
