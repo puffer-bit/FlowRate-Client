@@ -137,6 +137,23 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task UseLibWebRTCRoundTrip()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+
+        // Nothing chosen yet: the voice goes over GStreamer
+        Assert.False(await repository.GetUseLibWebRTCAsync());
+
+        await repository.UpdateUseLibWebRTCAsync(true);
+        Assert.True(await repository.GetUseLibWebRTCAsync());
+
+        // Saving the other audio settings keeps the choice
+        await repository.SaveAsync(new AudioSettings { InputVolume = 0.5 });
+        Assert.True(await repository.GetUseLibWebRTCAsync());
+    }
+
+    [Fact]
     public async Task ScreenShareSettingsStartWithTheDefaults()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
