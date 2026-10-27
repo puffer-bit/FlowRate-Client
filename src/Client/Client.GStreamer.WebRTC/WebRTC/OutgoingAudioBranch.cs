@@ -56,7 +56,7 @@ internal static class OutgoingAudioBranch
         "volume name=" + MuteValveName + " mute=false ! " +
         "opusenc audio-type=voice bitrate=64000 {4} " +
         "frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} ! " +
+        "rtpopuspay name=" + PipelineBranch.PayloaderName + " pt={1} ssrc={2} seqnum-offset={6} ! " +
         "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream" +
         "{5}";
 
@@ -68,7 +68,7 @@ internal static class OutgoingAudioBranch
         "volume name=" + MuteFadeName + " ! " +
         "volume name=" + MuteValveName + " mute=false ! " +
         "opusenc audio-type=generic bitrate=128000 {4} frame-size=20 ! " +
-        "rtpopuspay pt={1} ssrc={2} ! " +
+        "rtpopuspay name=" + PipelineBranch.PayloaderName + " pt={1} ssrc={2} seqnum-offset={6} ! " +
         "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 leaky=downstream";
 
     /// <summary>
@@ -95,9 +95,13 @@ internal static class OutgoingAudioBranch
     /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
     /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
     /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
+    /// <param name="sequenceNumber">
+    /// The RTP sequence number the track continues from, as <see cref="PipelineBranch.ReadNextSequenceNumber"/>
+    /// gave it when the track was stopped, or -1 for a track that starts for the first time.
+    /// </param>
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
     public static Bin? Build(OutboundTrack outbound, Element source, double volume, bool isMicrophone,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
+        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled, int sequenceNumber = -1)
     {
         var payloadType = outbound.PayloadType > 0 ? outbound.PayloadType : DefaultOpusPayloadType;
         var isScreen = outbound.SourceType == MediaSourceType.Screen;
@@ -105,7 +109,7 @@ internal static class OutgoingAudioBranch
 
         var encoding = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
             isScreen ? ScreenEncodingDescription : EncodingDescription, volume, payloadType, outbound.SSRC, gate,
-            EncoderSettings(outbound, isScreen), voiceDetection), true);
+            EncoderSettings(outbound, isScreen), voiceDetection, sequenceNumber), true);
 
         if (encoding == null)
         {
