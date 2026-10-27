@@ -595,6 +595,13 @@
   "push.markRead": "Mark as read",
   "push.reply.hint": "Message",
   "push.reply.failed": "The reply was not sent",
+  "call.channel": "Voice sessions",
+  "call.text.active": "In a voice session",
+  "call.text.microphoneOff": "Microphone off",
+  "call.text.soundOff": "Sound off",
+  "call.microphoneOff": "Mute",
+  "call.microphoneOn": "Unmute",
+  "call.leave": "Leave",
   "chat.send.tooLong": "The message is too long: {length} characters of {limit} allowed.",
   "@chat.send.tooLong": {
     "placeholders": {
