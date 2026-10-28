@@ -1,5 +1,6 @@
+using Client.Core.Coordinator;
+using Shared.Enums;
 using Shared.Enums.Auth;
-using Shared.Enums.User;
 using Client.Core.Users;
 using Client.Application.Ports;
 
@@ -23,44 +24,40 @@ public partial class CoordinatorSession
 
     public string? AccountPasswordToSave => _isAccountPasswordRemembered ? _accountPassword : null;
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity() =>
-        SendAsync(_gateway.GetAccountSecurity, UserSecurityResult.InternalError, UserSecurityResult.InternalError);
+    public Task<RequestResult<AccountSecurity>> GetAccountSecurity() =>
+        SendAsync(_gateway.GetAccountSecurity);
 
-    public async Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+    public async Task<RequestResult<AccountSecurity>> SetAccountPassword(AccountProof proof,
         string? newPassword)
     {
-        var response = await SendAsync(() => _gateway.SetAccountPassword(proof, newPassword),
-            UserSecurityResult.InternalError, UserSecurityResult.InternalError);
+        var response = await SendAsync(() => _gateway.SetAccountPassword(proof, newPassword));
 
         // The next reconnect logs in with the new one, and a remembered password is replaced
-        if (response.Result == UserSecurityResult.NoError)
+        if (response.IsSuccess)
             KeepAccountPassword(newPassword, _isAccountPasswordRemembered && newPassword != null);
 
         return response;
     }
 
-    public Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof) =>
-        SendAsync(() => _gateway.SetupTwoFactor(proof), UserSecurityResult.InternalError,
-            UserSecurityResult.InternalError);
+    public Task<RequestResult<TwoFactorSetup>> SetupTwoFactor(AccountProof proof) =>
+        SendAsync(() => _gateway.SetupTwoFactor(proof));
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code) =>
-        SendAsync(() => _gateway.EnableTwoFactor(code), UserSecurityResult.InternalError,
-            UserSecurityResult.InternalError);
+    public Task<RequestResult<AccountSecurity>> EnableTwoFactor(string code) =>
+        SendAsync(() => _gateway.EnableTwoFactor(code));
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof) =>
-        SendAsync(() => _gateway.DisableTwoFactor(proof), UserSecurityResult.InternalError,
-            UserSecurityResult.InternalError);
+    public Task<RequestResult<AccountSecurity>> DisableTwoFactor(AccountProof proof) =>
+        SendAsync(() => _gateway.DisableTwoFactor(proof));
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof,
+    public Task<RequestResult<AccountSecurity>> DeletePasskey(AccountProof proof,
         int passkeyId) =>
-        SendAsync(() => _gateway.DeletePasskey(proof, passkeyId), UserSecurityResult.InternalError,
-            UserSecurityResult.InternalError);
+        SendAsync(() => _gateway.DeletePasskey(proof, passkeyId));
 
     /// <summary>
-    /// Finishes a login the server answered with <see cref="AuthResult.SecondStageRequeried"/>. A known password
+    /// Finishes a login the server answered with <see cref="AuthResult.SecondStageRequired"/>. A known password
     /// goes without asking; a code, a password not known yet or one that was refused is asked of the user.
     /// </summary>
-    /// <returns>The last answer of the server, or null when the user gave the login up or cannot finish it here.</returns>
+    /// <returns>The answer of the server, or null when the user gave the login up or cannot finish it here.</returns>
+    /// <exception cref="RequestFailedException">The server refused the last answer, or failed otherwise.</exception>
     private async Task<AuthenticationResult?> PassSecondStageAsync(string address, int port, LoginChallenge challenge,
         CancellationToken cancellationToken)
     {
@@ -73,9 +70,7 @@ public partial class CoordinatorSession
 
         var knownPassword = challenge.AsksPassword ? _accountPassword : null;
         var isRetry = false;
-        AuthenticationResult? response = null;
-
-        for (var tries = 0; tries < SecondStageTries; tries++)
+        for (var tries = 1; ; tries++)
         {
             var password = knownPassword;
             string? code = null;
@@ -106,24 +101,21 @@ public partial class CoordinatorSession
                 code = challenge.AsksTwoFactorCode ? answer.TwoFactorCode : null;
             }
 
-            response = await _gateway.FinishLoginAsync(password, code).WaitAsync(cancellationToken);
-
-            if (response.Result == AuthResult.Success)
+            try
             {
+                var response = await _gateway.FinishLoginAsync(password, code).WaitAsync(cancellationToken);
                 KeepAccountPassword(challenge.AsksPassword ? password : null, remember);
                 return response;
             }
-
-            if (response.Result != AuthResult.AuthFailed)
-                return response;
-
-            // Which of the two was wrong is not told: the known password is asked for as well from now on
-            LogSecondStageRefused(LogName, tries + 1);
-            knownPassword = null;
-            isRetry = true;
+            catch (RequestFailedException exception) when (exception.Code == ErrorCode.AuthFailed
+                                                           && tries < SecondStageTries)
+            {
+                // Which of the two was wrong is not told: the known password is asked for as well from now on
+                LogSecondStageRefused(LogName, tries);
+                knownPassword = null;
+                isRetry = true;
+            }
         }
-
-        return response;
     }
 
     private void KeepAccountPassword(string? password, bool remember)

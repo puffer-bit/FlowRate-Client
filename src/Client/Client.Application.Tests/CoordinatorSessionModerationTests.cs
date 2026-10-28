@@ -3,7 +3,7 @@ using Client.Application.Tests.Fakes;
 using Client.Core.Coordinator;
 using Client.Core.Events;
 using Microsoft.Extensions.Logging.Abstractions;
-using Shared.Enums.Auth;
+using Shared.Enums;
 using Shared.Enums.User;
 using Xunit;
 
@@ -23,7 +23,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task BannedLogin_IsDenied_AndClosesTheSocket()
     {
-        _gateway.LoginResult = AuthResult.Banned;
+        _gateway.LoginError = ErrorCode.Banned;
 
         await _session.Connect("server", 1, null, null);
 
@@ -34,7 +34,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task FailedLogin_IsNotTakenForABan()
     {
-        _gateway.LoginResult = AuthResult.AuthFailed;
+        _gateway.LoginError = ErrorCode.AuthFailed;
 
         await _session.Connect("server", 1, null, null);
 
@@ -46,8 +46,8 @@ public class CoordinatorSessionModerationTests
     {
         await _session.Connect("server", 1, null, null);
 
-        Assert.Equal(ModerateUserResult.NoError, await _session.SetUserState(7, UserState.Suspended));
-        Assert.Equal(ModerateUserResult.NoError, await _session.DeleteUser(8));
+        Assert.True((await _session.SetUserState(7, UserState.Suspended)).IsSuccess);
+        Assert.True((await _session.DeleteUser(8)).IsSuccess);
 
         Assert.Equal([(7, (UserState?)UserState.Suspended), (8, null)], _gateway.ModerationRequests);
     }

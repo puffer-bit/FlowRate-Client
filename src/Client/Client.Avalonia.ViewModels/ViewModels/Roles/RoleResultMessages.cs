@@ -1,5 +1,6 @@
+using Shared.Enums;
+using Client.Core.Coordinator;
 using Client.Avalonia.Localization;
-using Shared.Enums.Coordinator;
 
 namespace Client.ViewModels.Roles;
 
@@ -7,17 +8,16 @@ namespace Client.ViewModels.Roles;
 public static class RoleResultMessages
 {
     /// <returns>Null when there is nothing to tell: done, or refused before it was sent, which the main window tells.</returns>
-    public static string? Describe(CoordinatorRoleResult result) => result switch
+    public static string? Describe(RequestResult result) => result switch
     {
-        CoordinatorRoleResult.NoError or CoordinatorRoleResult.Rejected => null,
-        CoordinatorRoleResult.InsufficientPermissions => Strings.Get("roles.error.insufficientPermissions"),
-        CoordinatorRoleResult.HierarchyViolation => Strings.Get("roles.error.hierarchy"),
-        CoordinatorRoleResult.Conflict => Strings.Get("roles.error.conflict"),
-        CoordinatorRoleResult.RoleNotFound => Strings.Get("roles.error.roleNotFound"),
-        CoordinatorRoleResult.UserNotFound => Strings.Get("roles.error.userNotFound"),
-        CoordinatorRoleResult.InvalidRole => Strings.Get("roles.error.invalid"),
-        CoordinatorRoleResult.TooManyRoles => Strings.Get("roles.error.tooMany"),
-        CoordinatorRoleResult.TimedOut => Strings.Get("roles.error.timedOut"),
+        { IsSuccess: true } or { IsRejected: true } => null,
+        { Error: ErrorCode.HierarchyViolation } => Strings.Get("roles.error.hierarchy"),
+        { Error: ErrorCode.Conflict } => Strings.Get("roles.error.conflict"),
+        { Error: ErrorCode.RoleNotFound } => Strings.Get("roles.error.roleNotFound"),
+        { Error: ErrorCode.UserNotFound } => Strings.Get("roles.error.userNotFound"),
+        { Error: ErrorCode.InvalidValue } => Strings.Get("roles.error.invalid"),
+        { Error: ErrorCode.TooManyRoles } => Strings.Get("roles.error.tooMany"),
+        { Error: ErrorCode.TimedOut } => Strings.Get("roles.error.timedOut"),
         _ => Strings.Format("roles.error.failed", ("reason", result))
     };
 }

@@ -1,6 +1,5 @@
 using Shared.Permissions;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
@@ -119,25 +118,25 @@ public interface ICoordinatorSession : IDisposable
     event Action<TimeSpan?>? ServerRoundTripChanged;
 
     /// <summary>
-    /// Raised when a request is refused before it is handled: the server rate limit, or data
-    /// outside the shared validation limits. The request itself returns its <c>Rejected</c> result,
-    /// so callers leave telling the user to the subscriber of this event.
+    /// Raised when a request is refused as a whole: the server rate limit, data outside the shared validation
+    /// limits, missing permissions or a frozen user. The request itself returns that error, so callers leave
+    /// telling the user to the subscriber of this event.
     /// Raised on the thread the request completed on.
     /// </summary>
-    event Action<RequestRejectedException>? RequestRejected;
+    event Action<RequestFailedException>? RequestRejected;
 
     /// <summary>
     /// The messages that precede <paramref name="beforeMessageId"/>, or the newest ones when it is null.
     /// </summary>
-    Task<(FetchMessagesResult Result, ChatHistoryPage? Page)> RequestChatHistoryPage(int sessionId,
+    Task<RequestResult<ChatHistoryPage>> RequestChatHistoryPage(int sessionId,
         int? beforeMessageId, int take);
 
     /// <summary>
     /// The messages changed after <paramref name="afterRevision"/> in their current state.
     /// </summary>
-    Task<(FetchMessagesResult Result, ChatChanges? Changes)> RequestChatChanges(int sessionId,
+    Task<RequestResult<ChatChanges>> RequestChatChanges(int sessionId,
         long afterRevision, int take);
-    Task<(FetchMessageResult Result, ChatMessageModel? Message)> RequestChatMessage(int sessionId,
+    Task<RequestResult<ChatMessageModel>> RequestChatMessage(int sessionId,
         int messageId);
 
     /// <summary>
@@ -171,20 +170,20 @@ public interface ICoordinatorSession : IDisposable
     event Action<string?>? AccountPasswordToSaveChanged;
 
     /// <summary>What the current user logs in with.</summary>
-    Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity();
+    Task<RequestResult<AccountSecurity>> GetAccountSecurity();
 
     /// <summary>
     /// Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null. The
     /// next reconnect logs in with the new one.
     /// </summary>
-    Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
+    Task<RequestResult<AccountSecurity>> SetAccountPassword(AccountProof proof,
         string? newPassword);
 
     /// <summary>Offers a secret for an authenticator app; <see cref="EnableTwoFactor"/> turns the codes on with it.</summary>
-    Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof);
-    Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code);
-    Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof);
-    Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof, int passkeyId);
+    Task<RequestResult<TwoFactorSetup>> SetupTwoFactor(AccountProof proof);
+    Task<RequestResult<AccountSecurity>> EnableTwoFactor(string code);
+    Task<RequestResult<AccountSecurity>> DisableTwoFactor(AccountProof proof);
+    Task<RequestResult<AccountSecurity>> DeletePasskey(AccountProof proof, int passkeyId);
 
     /// <summary>
     /// The certificate that stopped the last connect or reconnect with
@@ -227,80 +226,80 @@ public interface ICoordinatorSession : IDisposable
     /// credentials, presents an untrusted certificate or another coordinator.
     /// </summary>
     Task Disconnect();
-    Task<(SessionRequestResult Result, IDictionary<int, SessionModel>? Sessions, SessionLayout? Layout)> GetAllSessions();
-    Task<(SessionRequestResult Result, SessionModel? Session)> GetSessionInfo(int sessionId);
+    Task<RequestResult<(IDictionary<int, SessionModel> Sessions, SessionLayout Layout)>> GetAllSessions();
+    Task<RequestResult<SessionModel>> GetSessionInfo(int sessionId);
     
-    Task<CreateSessionResult> CreateSession(NewSessionModel newSession);
-    Task<DeleteSessionResult> DeleteSession(int sessionId);
+    Task<RequestResult> CreateSession(NewSessionModel newSession);
+    Task<RequestResult> DeleteSession(int sessionId);
 
     /// <summary>
     /// Changes of the session layout. The new layout itself comes to every client, this one too,
     /// through the layout notification.
     /// </summary>
-    Task<(SessionLayoutResult Result, int? CategoryId)> CreateSessionCategory(string name);
-    Task<SessionLayoutResult> RenameSessionCategory(int categoryId, string name);
-    Task<SessionLayoutResult> DeleteSessionCategory(int categoryId);
-    Task<SessionLayoutResult> MoveSession(int sessionId, int? categoryId, int index);
-    Task<SessionLayoutResult> MoveSessionCategory(int categoryId, int index);
+    Task<RequestResult<int>> CreateSessionCategory(string name);
+    Task<RequestResult> RenameSessionCategory(int categoryId, string name);
+    Task<RequestResult> DeleteSessionCategory(int categoryId);
+    Task<RequestResult> MoveSession(int sessionId, int? categoryId, int index);
+    Task<RequestResult> MoveSessionCategory(int categoryId, int index);
     
-    Task<(HybridSessionJoinResult Result, TransportParameters? Transport)> JoinHybridSession(int sessionId, string clientEpoch);
+    Task<RequestResult<TransportParameters>> JoinHybridSession(int sessionId, string clientEpoch);
 
-    Task<HybridSessionConnectTransportResult> ConnectHybridSessionTransport(int sessionId, DtlsParameters dtlsParameters);
-    Task<(StartVideoShareResult Result, OutboundTrack? Outbound)> StartVideoShareInHybridSession(int sessionId);
-    Task<StopVideoShareResult> StopVideoShareInHybridSession(int sessionId);
-    Task<(StartVoiceShareResult Result, OutboundTrack? Outbound)> StartVoiceShareInHybridSession(int sessionId);
-    Task<StopVoiceShareResult> StopVoiceShareInHybridSession(int sessionId);
+    Task<RequestResult> ConnectHybridSessionTransport(int sessionId, DtlsParameters dtlsParameters);
+    Task<RequestResult<OutboundTrack>> StartVideoShareInHybridSession(int sessionId);
+    Task<RequestResult> StopVideoShareInHybridSession(int sessionId);
+    Task<RequestResult<OutboundTrack>> StartVoiceShareInHybridSession(int sessionId);
+    Task<RequestResult> StopVoiceShareInHybridSession(int sessionId);
     /// <param name="withAudio">Also ask for a producer of the sound of the shared application or system.</param>
-    Task<(StartScreenShareResult Result, ScreenShareOutbounds? Outbounds)> StartScreenShareInHybridSession(int sessionId,
+    Task<RequestResult<ScreenShareOutbounds>> StartScreenShareInHybridSession(int sessionId,
         bool withAudio);
-    Task<StopScreenShareResult> StopScreenShareInHybridSession(int sessionId);
-    Task<(SetScreenShareWatchResult Result, ScreenShareInbounds? Inbounds)> SetScreenShareWatchInHybridSession(int sessionId,
+    Task<RequestResult> StopScreenShareInHybridSession(int sessionId);
+    Task<RequestResult<ScreenShareInbounds?>> SetScreenShareWatchInHybridSession(int sessionId,
         int userId, bool isWatching);
 
     /// <summary>
     /// Tells the SFU that the transport is ready to receive the given inbound tracks. The SFU sends
     /// nothing in a track until then.
     /// </summary>
-    Task<ResumeInboundsResult> ResumeInboundsInHybridSession(int sessionId, IReadOnlyList<string> inboundIds);
-    Task<SetMicrophoneMuteResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted);
+    Task<RequestResult> ResumeInboundsInHybridSession(int sessionId, IReadOnlyList<string> inboundIds);
+    Task<RequestResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted);
 
     /// <summary>
     /// Tells the server that we turned the sound of the session off or on, for the others to see it.
     /// The sound itself is silenced on this side.
     /// </summary>
-    Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
+    Task<RequestResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted);
 
     /// <summary>Tells the others of the session that we are away from the keyboard, and why, or that we are back.</summary>
-    Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
+    Task<RequestResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
 
     /// <summary>Pokes another peer of the session; only they see it, with the message if there is one.</summary>
-    Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message);
-    Task<(PeerListRequestResult Result, Dictionary<int, PeerModel>? Peers)> GetAllHybridSessionPeers(int sessionId);
-    Task<LeaveSessionResult> LeaveSession(int sessionId);
+    Task<RequestResult> PokeInHybridSession(int sessionId, int userId, string? message);
+    Task<RequestResult<Dictionary<int, PeerModel>>> GetAllHybridSessionPeers(int sessionId);
+    Task<RequestResult> LeaveSession(int sessionId);
 
     /// <summary>
     /// Removes another user from the hybrid session. Kicking ourselves is refused without asking the server.
     /// </summary>
-    Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId);
+    Task<RequestResult> KickFromHybridSession(int sessionId, int userId);
 
     /// <summary>Lets a user waiting for the host into the hybrid session.</summary>
-    Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId);
+    Task<RequestResult> ApproveInHybridSession(int sessionId, int userId);
 
     /// <summary>Turns away a user waiting for the host; they cannot join the session again while it runs.</summary>
-    Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId);
+    Task<RequestResult> RejectInHybridSession(int sessionId, int userId);
 
     /// <summary>
     /// Replaces the settings of the hybrid session. A saved change comes back to every client, this one too,
     /// as <see cref="HybridSessionReconfigured"/>.
     /// </summary>
-    Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
+    Task<RequestResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isHostMustApprove, MediaSettings media);
 
     /// <summary>
     /// Replaces the permission overrides of the session. A saved change comes back as the session reconfigured,
     /// or removed for a client that may no longer see it.
     /// </summary>
-    Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+    Task<RequestResult> ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides);
     bool ValidateSession(NewSessionModel newSession);
     
@@ -324,7 +323,7 @@ public interface ICoordinatorSession : IDisposable
     Task<IReadOnlyList<UserModel>> SearchUsers(string query, int limit);
 
     /// <summary>Every user of the coordinator, banned ones too, by name.</summary>
-    Task<(UsersRequestResult Result, IReadOnlyList<UserModel>? Users)> GetAllUsers();
+    Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers();
 
     UserModel GetCurrentUser();
     SavedUserModel GetCurrentUserCredentials();
@@ -333,23 +332,23 @@ public interface ICoordinatorSession : IDisposable
     /// Renames the current user. On success <see cref="GetCurrentUser"/> returns the new name
     /// and <see cref="CurrentUserChanged"/> is raised.
     /// </summary>
-    Task<ChangeUsernameResult> ChangeUsername(string username);
+    Task<RequestResult> ChangeUsername(string username);
 
     /// <summary>
     /// Renames a user, connected or not. On success <see cref="UserUpdated"/> is raised with the new name.
     /// </summary>
-    Task<ChangeUsernameResult> ChangeUsername(int userId, string username);
+    Task<RequestResult> ChangeUsername(int userId, string username);
 
     /// <summary>
     /// Bans, freezes or reinstates another user. On success <see cref="UserUpdated"/> is raised with the new state.
     /// </summary>
-    Task<ModerateUserResult> SetUserState(int userId, UserState state);
+    Task<RequestResult> SetUserState(int userId, UserState state);
 
     /// <summary>Deletes another user. On success <see cref="UserDeleted"/> is raised.</summary>
-    Task<ModerateUserResult> DeleteUser(int userId);
+    Task<RequestResult> DeleteUser(int userId);
     bool ValidateUsername(string username);
     
-    Task<AddMessageResult> SendChatMessage(NewChatMessage message);
+    Task<RequestResult> SendChatMessage(NewChatMessage message);
 
     /// <summary>
     /// Uploads a picture and puts it on the profile of the current user. On success
@@ -357,19 +356,19 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     /// <param name="image">The encoded picture, as small as an avatar is shown.</param>
     /// <returns>The user as the server has them now, when the picture was taken.</returns>
-    Task<(SetAvatarResult Result, UserModel? User)> SetAvatar(byte[] image, string mimeType,
+    Task<RequestResult<UserModel>> SetAvatar(byte[] image, string mimeType,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets the status of the current user. On success <see cref="UserUpdated"/> and
     /// <see cref="CurrentUserChanged"/> are raised with it.
     /// </summary>
-    Task<SetUserStatusResult> SetStatus(UserStatus status);
+    Task<RequestResult> SetStatus(UserStatus status);
 
     /// <summary>
     /// Takes the avatar off a connected user. On success <see cref="UserUpdated"/> is raised.
     /// </summary>
-    Task<SetAvatarResult> ResetAvatar(int userId);
+    Task<RequestResult> ResetAvatar(int userId);
 
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadAvatar"/>
     Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination,
@@ -386,42 +385,42 @@ public interface ICoordinatorSession : IDisposable
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFile"/>
     Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
-    Task<DeleteMessageResult> DeleteChatMessage(int chatId, int messageId);
+    Task<RequestResult> DeleteChatMessage(int chatId, int messageId);
 
     /// <summary>
     /// Replaces the text of the user's own message. On success <see cref="TextMessageEdited"/> is raised.
     /// </summary>
-    Task<EditMessageResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
+    Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
 
     /// <summary>
     /// The read positions and unread counts of all chats of the user.
     /// </summary>
-    Task<(ChatReadResult Result, IReadOnlyList<ChatReadState>? States)> RequestChatReadStates();
+    Task<RequestResult<IReadOnlyList<ChatReadState>>> RequestChatReadStates();
 
     /// <summary>
     /// Moves the read position of the user in a chat up to <paramref name="messageId"/>; it never
     /// goes back. Every device of the user gets <see cref="ChatReadStateChanged"/>.
     /// </summary>
-    Task<(ChatReadResult Result, ChatReadState? State)> MarkChatRead(int chatId, int messageId);
+    Task<RequestResult<ChatReadState>> MarkChatRead(int chatId, int messageId);
 
     /// <summary>
     /// Registers this device for the push notifications of the coordinator, encrypted with
     /// <paramref name="key"/>. Registering a token again replaces its key.
     /// </summary>
     /// <returns>On success also the token the device answers notifications with over HTTP.</returns>
-    Task<(PushTokenResult Result, string? ReplyToken)> RegisterPushToken(string token, PushPlatform platform, PushKey key);
-    Task<PushTokenResult> UnregisterPushToken(string token);
+    Task<RequestResult<string?>> RegisterPushToken(string token, PushPlatform platform, PushKey key);
+    Task<RequestResult> UnregisterPushToken(string token);
 
     /// <summary>The stored settings of the coordinator and the SFU nodes they may name.</summary>
-    Task<(CoordinatorSettingsResult Result, CoordinatorSettingsSnapshot? Snapshot)> GetCoordinatorSettings();
+    Task<RequestResult<CoordinatorSettingsSnapshot>> GetCoordinatorSettings();
 
     /// <summary>
-    /// Replaces the settings of the coordinator. Refused with <see cref="CoordinatorSettingsResult.Conflict"/>
-    /// when someone saved others after <paramref name="expectedRevision"/>; the outcome then holds theirs.
-    /// A saved change comes back to every client, this one too, as <see cref="CoordinatorReconfigured"/>.
-    /// A new address or port restarts the coordinator, which drops the connection.
+    /// Replaces the settings of the coordinator and returns them as saved. Refused with
+    /// <see cref="Shared.Enums.ErrorCode.Conflict"/> when someone saved others after <paramref name="expectedRevision"/>,
+    /// which are fetched again then. A saved change comes back to every client, this one too, as
+    /// <see cref="CoordinatorReconfigured"/>. A new address or port restarts the coordinator, which drops the connection.
     /// </summary>
-    Task<CoordinatorSettingsUpdateOutcome> UpdateCoordinatorSettings(CoordinatorSettingsUpdate update,
+    Task<RequestResult<CoordinatorSettingsModel>> UpdateCoordinatorSettings(CoordinatorSettingsUpdate update,
         long expectedRevision);
 
     /// <summary>
@@ -440,28 +439,28 @@ public interface ICoordinatorSession : IDisposable
     event Action<CoordinatorPermissions>? PermissionsChanged;
 
     /// <summary>The roles of the coordinator, lowest first.</summary>
-    Task<(CoordinatorRoleResult Result, IReadOnlyList<RoleModel>? Roles)> GetRoles();
+    Task<RequestResult<IReadOnlyList<RoleModel>>> GetRoles();
 
     /// <summary>Creates a role right above the everyone role. Every client hears of it.</summary>
-    Task<(CoordinatorRoleResult Result, RoleModel? Role)> CreateRole(RoleChange change);
+    Task<RequestResult<RoleModel>> CreateRole(RoleChange change);
 
     /// <summary>
-    /// Changes a role, unless it was changed after <paramref name="expectedRevision"/>: then the result is
-    /// <see cref="CoordinatorRoleResult.Conflict"/> with the role as it is now.
+    /// Changes a role, unless it was changed after <paramref name="expectedRevision"/>: then it fails with
+    /// <see cref="Shared.Enums.ErrorCode.Conflict"/>.
     /// </summary>
-    Task<(CoordinatorRoleResult Result, RoleModel? Role)> UpdateRole(int roleId, RoleChange change,
+    Task<RequestResult<RoleModel>> UpdateRole(int roleId, RoleChange change,
         long expectedRevision);
 
     /// <summary>Deletes a role and takes it from every user who has it.</summary>
-    Task<CoordinatorRoleResult> DeleteRole(int roleId);
+    Task<RequestResult> DeleteRole(int roleId);
 
     /// <param name="roleIds">Every role but the everyone role, lowest first.</param>
-    Task<(CoordinatorRoleResult Result, IReadOnlyList<RoleModel>? Roles)> ReorderRoles(IReadOnlyList<int> roleIds);
+    Task<RequestResult<IReadOnlyList<RoleModel>>> ReorderRoles(IReadOnlyList<int> roleIds);
 
     /// <summary>
     /// Gives a role to a user or takes it. The user comes to every client changed, as <see cref="UserUpdated"/>.
     /// </summary>
-    Task<(CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)> SetUserRole(int userId, int roleId, bool has);
+    Task<RequestResult<IReadOnlyList<int>>> SetUserRole(int userId, int roleId, bool has);
 
     string GetCoordinatorName(bool trimName = true);
 }
