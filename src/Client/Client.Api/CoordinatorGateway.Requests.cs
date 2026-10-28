@@ -1,3 +1,5 @@
+using Client.Tools.AppInfo;
+using Shared.Models.DataTransferObjects;
 using Shared.Permissions;
 using Client.Api.Mappers;
 using Shared.Enums;
@@ -30,9 +32,9 @@ namespace Client.Api;
 internal partial class CoordinatorGateway
 {
     public async Task<AuthenticationResult> AuthenticateAsync(
-        string? password, string? userIdentity)
+        string? password, string? userIdentity, string? sessionToken)
     {
-        var request = new UserAuthRequest(password, userIdentity);
+        var request = new UserAuthRequest(password, userIdentity, SessionToken: sessionToken, Device: Device());
         var authResponse = await SendRequestAsync<UserAuthResponse>(request);
 
         return new AuthenticationResult(
@@ -41,15 +43,25 @@ internal partial class CoordinatorGateway
             authResponse.UserIdentity,
             authResponse.AuthResult == AuthResult.SecondStageRequired
                 ? AccountSecurityMapper.ToLoginChallenge(authResponse.SecondStages, authResponse.FIDO2LoginOptions)
-                : null);
+                : null,
+            authResponse.SessionToken);
     }
+
+    private static DeviceInfoDTO Device() => new(
+        Truncate(DeviceInformation.Name, Limits.DeviceNameMaxLength),
+        DeviceInformation.Platform,
+        Truncate(AppInformation.GetClientVersion(), Limits.AppVersionMaxLength));
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 
     public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode)
     {
         var request = new TwoFactorUserAuthRequest(password, twoFactorCode);
         var response = await SendRequestAsync<TwoFactorUserAuthResponse>(request);
 
-        return new AuthenticationResult(AuthResult.Success, response.User.ToModel(), null);
+        return new AuthenticationResult(AuthResult.Success, response.User.ToModel(), null,
+            SessionToken: response.SessionToken);
     }
 
     public async Task<CoordinatorSessionModel?> GetCoordinatorInfo()

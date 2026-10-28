@@ -29,3 +29,19 @@ public sealed record LoginChallenge(bool AsksPassword, bool AsksTwoFactorCode, b
     /// <summary>A password or a code would do; a user with passkeys alone cannot log in from here.</summary>
     public bool AcceptsCodes => AsksPassword || AsksTwoFactorCode;
 }
+
+/// <summary>A device the current user is logged in from.</summary>
+/// <param name="LastUsedAtUtc">The last login of the device; the session ends after a while without one.</param>
+/// <param name="IsCurrent">This device.</param>
+/// <param name="IsOnline">The device is connected now.</param>
+public sealed record AccountSession(
+    Guid Id,
+    string DeviceName,
+    string Platform,
+    string AppVersion,
+    DateTime CreatedAtUtc,
+    DateTime LastUsedAtUtc,
+    DateTime ExpiresAtUtc,
+    string? LastAddress,
+    bool IsCurrent,
+    bool IsOnline);

@@ -1,4 +1,5 @@
 using Shared.Enums;
+using Shared.Enums.User;
 using Shared.Models.Media;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
@@ -14,6 +15,11 @@ namespace Client.Core.Events;
 public abstract record CoordinatorEvent;
 
 public sealed record ServerClosingEvent(string? Message) : CoordinatorEvent;
+
+/// <summary>
+/// The server ended the session of this device, from another device or the control panel, and closes the connection.
+/// </summary>
+public sealed record SessionEndedEvent(UserSessionEndReason Reason) : CoordinatorEvent;
 
 /// <summary>
 /// The settings of the coordinator were changed and applied, from the control panel or by a user.

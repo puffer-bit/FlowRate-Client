@@ -11,6 +11,9 @@ public class SavedUserModel
 
     /// <summary>The password of the user's account, kept when the user asked to remember it.</summary>
     public string? AccountPassword { get; init; }
+
+    /// <summary>The token of the device's session: logs in without the second stage until the session ends.</summary>
+    public string? SessionToken { get; init; }
     public string CoordinatorId { get; init; } = string.Empty;
 
     /// <summary>

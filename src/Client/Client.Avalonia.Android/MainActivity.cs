@@ -10,6 +10,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Avalonia.Android;
 using Client.Droid.Platform.Notifications;
+using Client.Tools.AppInfo;
 using Firebase;
 
 namespace Client.Droid;
@@ -104,6 +105,8 @@ public class MainActivity : AvaloniaMainActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Current = this;
+        // The list of sessions names the phone; the machine name of Android is "localhost"
+        DeviceInformation.Name = $"{Build.Manufacturer} {Build.Model}".Trim();
         base.OnCreate(savedInstanceState);
 
         FirebaseApp.InitializeApp(this);
