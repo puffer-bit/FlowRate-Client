@@ -7,7 +7,6 @@ using Avalonia.Threading;
 using ReactiveUI;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Application.Coordinator;
 using Client.Core.Coordinator;
@@ -245,8 +244,8 @@ public sealed class ServerSettingsVM : ReactiveObject, IDisposable
         if (snapshot == null)
         {
             // Rejected is told by the main window
-            if (result != CoordinatorSettingsResult.Rejected)
-                GeneralError = result == CoordinatorSettingsResult.TimedOut
+            if (!result.IsRejected)
+                GeneralError = result.Error == ErrorCode.TimedOut
                     ? Strings.Get("serverSettings.error.timedOut")
                     : Strings.Format("serverSettings.error.notLoaded", ("reason", result));
             return;
@@ -269,29 +268,30 @@ public sealed class ServerSettingsVM : ReactiveObject, IDisposable
 
         var outcome = await _coordinatorSession.UpdateCoordinatorSettings(Form.ToUpdate(), Form.Loaded!.Revision);
 
-        switch (outcome.Result)
+        switch (outcome)
         {
-            case CoordinatorSettingsResult.NoError when outcome.Settings != null:
-                Form.Load(outcome.Settings, _sfuNodes);
+            case { IsSuccess: true }:
+                Form.Load(outcome.Value, _sfuNodes);
                 IsSaved = true;
                 break;
-            case CoordinatorSettingsResult.Conflict:
+            case { Error: ErrorCode.Conflict }:
                 IsChangedElsewhere = true;
                 break;
-            case CoordinatorSettingsResult.InvalidSettings:
-                GeneralError = string.Join(Environment.NewLine, outcome.Errors.Values.SelectMany(messages => messages));
+            case { Error: ErrorCode.InvalidValue }:
+                GeneralError = string.Join(Environment.NewLine,
+                    outcome.Fields?.Values.SelectMany(messages => messages) ?? []);
                 break;
-            case CoordinatorSettingsResult.TimedOut:
+            case { Error: ErrorCode.TimedOut }:
                 // A new endpoint restarts the coordinator, and the answer goes down with the connection
                 GeneralError = Strings.Get(Form.MovesEndpoint
                     ? "serverSettings.error.restarting"
                     : "serverSettings.error.timedOut");
                 break;
             // The main window tells why; the form stays filled in for another try
-            case CoordinatorSettingsResult.Rejected:
+            case { IsRejected: true }:
                 break;
             default:
-                GeneralError = Strings.Format("serverSettings.error.notSaved", ("reason", outcome.Result));
+                GeneralError = Strings.Format("serverSettings.error.notSaved", ("reason", outcome));
                 break;
         }
 

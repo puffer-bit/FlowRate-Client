@@ -203,23 +203,20 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
         switch (result)
         {
-            case CreateSessionResult.NoError:
+            case { IsSuccess: true }:
                 await CloseWindow.Handle(RxVoid.Default);
                 break;
-            case CreateSessionResult.NameAlreadyUsed:
+            case { Error: ErrorCode.NameTaken }:
                 NameError = Strings.Get("createSession.name.taken");
                 break;
-            case CreateSessionResult.WrongCapacity:
-                CapacityError = Strings.Get("createSession.capacity.notAccepted");
-                break;
-            case CreateSessionResult.UnexpectedParameters:
+            case { Error: ErrorCode.InvalidValue }:
                 GeneralError = Strings.Get("createSession.notAccepted");
                 break;
-            case CreateSessionResult.TimedOut:
+            case { Error: ErrorCode.TimedOut }:
                 GeneralError = Strings.Get("profile.name.timedOut");
                 break;
             // The main window tells why; the form stays filled in for another try
-            case CreateSessionResult.Rejected:
+            case { IsRejected: true }:
                 break;
             default:
                 GeneralError = Strings.Format("createSession.notCreated", ("reason", result));

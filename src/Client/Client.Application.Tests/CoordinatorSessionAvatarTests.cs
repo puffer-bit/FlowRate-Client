@@ -2,8 +2,8 @@ using Client.Application.Coordinator;
 using Client.Application.Tests.Fakes;
 using Client.Core.Chat;
 using Client.Core.Users;
+using Shared.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
-using Shared.Enums.User;
 using Shared.Validation;
 using Xunit;
 
@@ -28,7 +28,7 @@ public class CoordinatorSessionAvatarTests
 
         var (result, user) = await _session.SetAvatar(image, "image/webp", TestContext.Current.CancellationToken);
 
-        Assert.Equal(SetAvatarResult.NoError, result);
+        Assert.True(result.IsSuccess);
         var (uploadId, (upload, content)) = Assert.Single(_gateway.Uploads);
         Assert.Equal(MediaUploadKind.Avatar, upload.Kind);
         Assert.Null(upload.ChatId);
@@ -46,7 +46,7 @@ public class CoordinatorSessionAvatarTests
 
         var (result, user) = await _session.SetAvatar([1], "image/webp", TestContext.Current.CancellationToken);
 
-        Assert.Equal(SetAvatarResult.UploadFailed, result);
+        Assert.Equal(ErrorCode.UploadNotFound, result.Error);
         Assert.Null(user);
         Assert.Empty(_gateway.AvatarRequests);
     }
@@ -59,7 +59,7 @@ public class CoordinatorSessionAvatarTests
         var (result, _) = await _session.SetAvatar(new byte[Limits.AvatarMaxSize + 1], "image/webp",
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(SetAvatarResult.UploadFailed, result);
+        Assert.Equal(ErrorCode.UploadNotFound, result.Error);
         Assert.Empty(_gateway.Uploads);
     }
 
@@ -67,11 +67,11 @@ public class CoordinatorSessionAvatarTests
     public async Task SetAvatar_TheServerRefuses_ReportsItsAnswer()
     {
         await _session.Connect("server", 1, null, null);
-        _gateway.AvatarResult = SetAvatarResult.UploadNotFound;
+        _gateway.AvatarError = ErrorCode.UploadNotFound;
 
         var (result, user) = await _session.SetAvatar([1], "image/webp", TestContext.Current.CancellationToken);
 
-        Assert.Equal(SetAvatarResult.UploadNotFound, result);
+        Assert.Equal(ErrorCode.UploadNotFound, result.Error);
         Assert.Null(user);
     }
 
@@ -82,7 +82,7 @@ public class CoordinatorSessionAvatarTests
 
         var result = await _session.ResetAvatar(7);
 
-        Assert.Equal(SetAvatarResult.NoError, result);
+        Assert.True(result.IsSuccess);
         Assert.Equal((null, 7), Assert.Single(_gateway.AvatarRequests));
         Assert.Empty(_gateway.Uploads);
     }
