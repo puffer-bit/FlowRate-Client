@@ -550,6 +550,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
                 return;
 
             IsLibWebRTC = ExperimentalFeatures.UseLibWebRTC;
+            this.RaisePropertyChanged(nameof(SearchEntries));
 
             if (IsTestRunning)
                 StartTest();
