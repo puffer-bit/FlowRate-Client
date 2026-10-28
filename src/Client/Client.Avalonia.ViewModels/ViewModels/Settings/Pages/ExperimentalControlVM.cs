@@ -1,3 +1,4 @@
+using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
@@ -20,7 +21,8 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("experimental",
         ("general", ["enable"]),
-        ("window", ["customTitleBar"]));
+        ("window", ["customTitleBar"]),
+        ("voice", ["libWebRTC"]));
 
     /// <summary>
     /// The experimental features as a whole: while off, none of them works and their settings cannot
@@ -47,24 +49,48 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>
+    /// Whether the voice of a session goes over libwebrtc instead of GStreamer.
+    /// </summary>
+    public bool UseLibWebRTC
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
+    /// Why libwebrtc could not be switched on, or null. The choice is taken back then, and the voice
+    /// stays on GStreamer.
+    /// </summary>
+    public string? LibWebRTCError
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IAppearanceService _appearanceService;
+    private readonly IAudioService _audioService;
+    private readonly ILibWebRTCLoader _libWebRTCLoader;
 
     private bool _isLoaded;
 
-    public ExperimentalControlVM(IAppearanceService appearanceService)
+    public ExperimentalControlVM(IAppearanceService appearanceService, IAudioService audioService,
+        ILibWebRTCLoader libWebRTCLoader)
     {
         _appearanceService = appearanceService;
+        _audioService = audioService;
+        _libWebRTCLoader = libWebRTCLoader;
 
         LoadCommand = ReactiveCommand
             .CreateFromTask(LoadAsync);
 
         // Apply and persist only on user changes, not on initial load
-        this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar))
+        this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar), nameof(UseLibWebRTC))
             .Where(_ => _isLoaded)
-            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar))
-            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2)))
+            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar, vm.UseLibWebRTC))
+            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2, values.Item3)))
             .Concat()
             .Subscribe();
 
@@ -81,14 +107,33 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     {
         IsExperimentalEnabled = await _appearanceService.GetIsExperimentalEnabledAsync();
         UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
+        UseLibWebRTC = await _audioService.GetUseLibWebRTCAsync();
         _isLoaded = true;
     }
 
-    private async Task ChangeAsync(bool isEnabled, bool useCustomTitleBar)
+    private async Task ChangeAsync(bool isEnabled, bool useCustomTitleBar, bool useLibWebRTC)
     {
-        ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar);
+        if (!useLibWebRTC || !isEnabled)
+            LibWebRTCError = null;
+
+        // Loaded the moment it is chosen, not at the next session, so a missing or broken libwebrtc is
+        // told here and not by a voice that quietly stays on GStreamer
+        if (isEnabled && useLibWebRTC && !ExperimentalFeatures.UseLibWebRTC &&
+            await Task.Run(_libWebRTCLoader.Load) is { } error)
+        {
+            LibWebRTCError = Strings.Format("settings.experimental.libWebRTC.failed", ("reason", error));
+            useLibWebRTC = false;
+
+            // Taken back without a round of its own: the rest is saved below
+            _isLoaded = false;
+            UseLibWebRTC = false;
+            _isLoaded = true;
+        }
+
+        ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar, useLibWebRTC);
         await _appearanceService.UpdateIsExperimentalEnabledAsync(isEnabled);
         await _appearanceService.UpdateUseCustomTitleBarAsync(useCustomTitleBar);
+        await _audioService.UpdateUseLibWebRTCAsync(useLibWebRTC);
     }
 
     public async Task ResetAllAsync()
@@ -97,8 +142,10 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         _isLoaded = false;
         IsExperimentalEnabled = false;
         UseCustomTitleBar = false;
+        UseLibWebRTC = false;
+        LibWebRTCError = null;
         _isLoaded = true;
 
-        await ChangeAsync(false, false);
+        await ChangeAsync(false, false, false);
     }
 }

@@ -11,7 +11,7 @@ namespace Client.GStreamer.Interop;
 /// reference left on one keeps the ICE agent, with its sockets, after the session is left. The
 /// watch holds exactly the one reference it was given.
 /// </remarks>
-internal sealed unsafe class GstPropertyWatch : IDisposable
+public sealed unsafe class GstPropertyWatch : IDisposable
 {
     [DllImport(NativeLibraries.GObject)]
     private static extern CULong g_signal_connect_data(IntPtr instance,

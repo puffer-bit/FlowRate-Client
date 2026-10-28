@@ -8,7 +8,7 @@ namespace Client.GStreamer.Audio;
 /// loopback of the audio engine. It is taken before any device, so the volume of the device and a
 /// switch to another one do not change it.
 /// </summary>
-internal static class ProcessLoopbackSource
+public static class ProcessLoopbackSource
 {
     private const string ElementName = "wasapi2src";
 
