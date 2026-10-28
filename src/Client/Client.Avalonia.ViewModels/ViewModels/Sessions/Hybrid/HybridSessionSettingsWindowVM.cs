@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using System;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
@@ -22,7 +23,7 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
 {
     private readonly HybridSessionModel _session;
     private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
-        MediaSettings Media), ChangeSessionSettingsResult> _changeSettingsCommand;
+        MediaSettings Media), RequestResult> _changeSettingsCommand;
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
@@ -174,7 +175,7 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
 
     public HybridSessionSettingsWindowVM(HybridSessionModel session,
         ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
-            MediaSettings Media), ChangeSessionSettingsResult> changeSettingsCommand)
+            MediaSettings Media), RequestResult> changeSettingsCommand)
     {
         _session = session;
         _changeSettingsCommand = changeSettingsCommand;
@@ -224,23 +225,23 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
 
         switch (result)
         {
-            case ChangeSessionSettingsResult.NoError:
+            case { IsSuccess: true }:
                 await CloseWindow.Handle(RxVoid.Default);
                 break;
-            case ChangeSessionSettingsResult.NameAlreadyUsed:
+            case { Error: ErrorCode.NameTaken }:
                 NameError = Strings.Get("createSession.name.taken");
                 break;
-            case ChangeSessionSettingsResult.WrongCapacity:
+            case { Error: ErrorCode.InvalidValue }:
                 CapacityError = Strings.Get("sessionSettings.capacity.notAccepted");
                 break;
-            case ChangeSessionSettingsResult.SessionNotExists:
+            case { Error: ErrorCode.SessionNotFound }:
                 GeneralError = Strings.Get("sessionSettings.sessionGone");
                 break;
-            case ChangeSessionSettingsResult.TimedOut:
+            case { Error: ErrorCode.TimedOut }:
                 GeneralError = Strings.Get("profile.name.timedOut");
                 break;
             // The main window tells why; the form stays filled in for another try
-            case ChangeSessionSettingsResult.Rejected:
+            case { IsRejected: true }:
                 break;
             default:
                 GeneralError = Strings.Format("sessionSettings.notSaved", ("reason", result));

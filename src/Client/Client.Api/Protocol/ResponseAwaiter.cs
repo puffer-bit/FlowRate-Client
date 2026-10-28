@@ -27,7 +27,7 @@ internal partial class ResponseAwaiter
     /// arrive before anyone waits for it.
     /// </summary>
     /// <exception cref="TimeoutException">No response in time, or the connection was lost.</exception>
-    /// <exception cref="RequestRejectedException">The server refused the request.</exception>
+    /// <exception cref="RequestFailedException">The server answered with an error.</exception>
     public async Task<BaseMessage> SendAndWaitAsync(Guid requestId, Action send)
     {
         var completion = new TaskCompletionSource<BaseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -53,10 +53,11 @@ internal partial class ResponseAwaiter
 
         if (_pending.TryRemove(response.RequestId, out var completion))
         {
-            if (response is RequestRejectedResponse rejected)
+            if (response is ErrorResponse error)
             {
-                LogRequestRejected(rejected.RequestId, rejected.Reason, rejected.Details);
-                completion.TrySetException(new RequestRejectedException(rejected.Reason, rejected.Details));
+                LogRequestFailed(error.RequestId, error.Code, error.Details);
+                completion.TrySetException(new RequestFailedException(error.Code, error.Details,
+                    error.Fields?.AsReadOnly()));
             }
             else
             {

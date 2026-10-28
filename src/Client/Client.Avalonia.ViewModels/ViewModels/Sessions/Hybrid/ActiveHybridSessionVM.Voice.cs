@@ -60,7 +60,7 @@ public partial class ActiveHybridSessionVM
             settings.ActiveVoiceGate, settings.NoiseSuppression, settings.IsEchoCancellationEnabled,
             settings.IsAutoGainControlEnabled, isMuted);
 
-        if (result == StartVoiceShareResult.NoError)
+        if (result.IsSuccess)
         {
             lock (_microphoneInputLock)
                 _microphoneInput = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled,
@@ -71,7 +71,7 @@ public partial class ActiveHybridSessionVM
         }
 
         // A rejection is reported by the main window
-        if (result != StartVoiceShareResult.Rejected)
+        if (!result.IsRejected)
             ShowPopUp(NotificationPopUpVM.PopUpType.Error,
                 Strings.Format("hybrid.microphone.startFailed", ("reason", result)), "MicrophoneStartFailed");
     }
@@ -140,14 +140,14 @@ public partial class ActiveHybridSessionVM
         var muteResult = await _hybridSession.SetMicrophoneMutedAsync(mute);
 
         // A rejection is reported by the main window
-        if (muteResult is not (SetMicrophoneMuteResult.NoError or SetMicrophoneMuteResult.Rejected))
+        if (!(muteResult.IsSuccess || muteResult.IsRejected))
         {
             ShowPopUp(NotificationPopUpVM.PopUpType.Error,
                 Strings.Format(mute ? "hybrid.microphone.muteFailed" : "hybrid.microphone.unmuteFailed",
                     ("reason", muteResult)), "MicrophoneMuteFailed");
         }
 
-        return muteResult == SetMicrophoneMuteResult.NoError;
+        return muteResult.IsSuccess;
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public partial class ActiveHybridSessionVM
         var result = await _hybridSession.SetSoundMutedAsync(mute);
 
         // A rejection is reported by the main window
-        if (result is not (SetSoundMuteResult.NoError or SetSoundMuteResult.Rejected))
+        if (!(result.IsSuccess || result.IsRejected))
         {
             ShowPopUp(NotificationPopUpVM.PopUpType.Error,
                 Strings.Format("hybrid.sound.muteFailed", ("reason", result)), "SoundMuteFailed");
