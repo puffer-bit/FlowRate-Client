@@ -148,7 +148,12 @@ public interface ICoordinatorSession : IDisposable
     /// <param name="accountPassword">
     /// The password of the user's account kept with the saved identity; it finishes the login without asking.
     /// </param>
-    Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null);
+    /// <param name="sessionToken">
+    /// The token of the device's session kept with the saved identity; logs in without the second stage while the
+    /// session lasts, and the identity takes over once it has ended.
+    /// </param>
+    Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null,
+        string? sessionToken = null);
 
     /// <summary>
     /// Asks the user for the account password or a one-time code when a login, a reconnect too, needs them.
@@ -168,6 +173,32 @@ public interface ICoordinatorSession : IDisposable
     /// changed or removed in the profile. Raised on any thread.
     /// </summary>
     event Action<string?>? AccountPasswordToSaveChanged;
+
+    /// <summary>
+    /// Raised with the token the next login is to use: the server gives a new one on every login, and takes it back
+    /// when the session ends (null then). Raised on any thread, once the current user is known.
+    /// </summary>
+    event Action<string?>? SessionTokenChanged;
+
+    /// <summary>Raised with the new identity of the current user, after <see cref="ResetUserIdentity"/>.</summary>
+    event Action<string>? UserIdentityChanged;
+
+    /// <summary>
+    /// The server ended the session of this device and closed the connection; the session does not reconnect on its
+    /// own. Raised on any thread.
+    /// </summary>
+    event Action<UserSessionEndReason>? SessionEnded;
+
+    /// <summary>The devices the current user is logged in from, the latest used first.</summary>
+    Task<RequestResult<IReadOnlyList<AccountSession>>> GetAccountSessions();
+
+    /// <summary>Ends a session of another device, or all of them when <paramref name="sessionId"/> is null.</summary>
+    Task<RequestResult<IReadOnlyList<AccountSession>>> EndAccountSession(Guid? sessionId);
+
+    /// <summary>
+    /// Gives the current user a new identity, which is kept from now on, and ends the sessions of the other devices.
+    /// </summary>
+    Task<RequestResult> ResetUserIdentity(AccountProof proof);
 
     /// <summary>What the current user logs in with.</summary>
     Task<RequestResult<AccountSecurity>> GetAccountSecurity();
