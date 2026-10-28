@@ -83,12 +83,13 @@ public class CoordinatorSessionLoginTests
     }
 
     [Fact]
-    public async Task Code_IsAskedAtEveryLogin_ThePasswordOnce()
+    public async Task Code_IsAskedAtEveryLoginWithTheIdentity_ThePasswordOnce()
     {
         var user = new User(new LoginAnswer("secret-password", "123456", true), new LoginAnswer(null, "123456", false));
         var (session, gateway) = Create(PasswordAndCode, user);
 
         await session.Connect("server", 1, "#identity", null);
+        gateway.SessionToken = null; // the session ended meanwhile: the reconnect logs in with the identity
         await ReconnectAsync(session);
 
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
@@ -179,6 +180,7 @@ public class CoordinatorSessionLoginTests
         await session.Connect("server", 1, "#identity", null, "secret-password");
 
         var (result, _) = await session.SetAccountPassword(new AccountProof("secret-password", null), "new-password");
+        gateway.SessionToken = null; // the session ended meanwhile: the reconnect logs in with the identity
         await ReconnectAsync(session);
 
         Assert.True(result.IsSuccess);

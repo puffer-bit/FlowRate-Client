@@ -110,6 +110,7 @@ public partial class CoordinatorSession
             Id = user.Id,
             UserIdentity = userIdentity,
             Username = user.Username,
+            SessionToken = _sessionToken
         };
 
         // The roles of the user may have changed with it

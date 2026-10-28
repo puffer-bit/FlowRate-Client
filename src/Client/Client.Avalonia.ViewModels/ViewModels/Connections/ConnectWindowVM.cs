@@ -258,7 +258,9 @@ public class ConnectWindowVM : ReactiveObject
 
             string? identity = SelectedIdentity?.UserIdentity;
             var accountPassword = SelectedIdentity?.AccountPassword;
-            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword);
+            var sessionToken = SelectedIdentity?.SessionToken;
+            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
+                sessionToken);
 
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -271,7 +273,8 @@ public class ConnectWindowVM : ReactiveObject
                 }
 
                 ConnectionStatus = Strings.Get("main.status.waitingForServer");
-                await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword);
+                await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
+                    sessionToken);
 
                 _cancellationTokenSource.Token.ThrowIfCancellationRequested();
             }
@@ -372,6 +375,7 @@ public class ConnectWindowVM : ReactiveObject
                     UserIdentity = userModel.UserIdentity,
                     Password = this.Password,
                     AccountPassword = accountPassword,
+                    SessionToken = userModel.SessionToken,
                     Username = userModel.Username,
                     CoordinatorId = coordinatorSessionModel.Id
                 });

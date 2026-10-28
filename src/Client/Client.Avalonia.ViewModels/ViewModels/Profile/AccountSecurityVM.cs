@@ -1,6 +1,7 @@
 using Shared.Enums;
 using Client.Core.Coordinator;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
@@ -17,8 +18,9 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 namespace Client.ViewModels.Profile;
 
 /// <summary>
-/// What the current user logs in with: the password, one-time codes and passkeys. Every change asks for the
-/// current password and code the user has, so an open session alone cannot take over the account.
+/// What the current user logs in with: the password, one-time codes and passkeys, and the devices logged in. Every
+/// change asks for the current password and code the user has, so an open session alone cannot take over the
+/// account; ending the sessions of other devices takes nothing from it, and asks for nothing.
 /// </summary>
 public sealed class AccountSecurityVM : ReactiveObject
 {
@@ -32,7 +34,10 @@ public sealed class AccountSecurityVM : ReactiveObject
         RemovePassword,
         EnableCodes,
         DisableCodes,
-        DeletePasskey
+        DeletePasskey,
+        EndSession,
+        EndOtherSessions,
+        ResetIdentity
     }
 
     private readonly ICoordinatorSession _session;
@@ -55,6 +60,13 @@ public sealed class AccountSecurityVM : ReactiveObject
             PasskeyToDelete = passkey;
             Begin(Change.DeletePasskey);
         }, inOverview);
+        EndSessionCommand = ReactiveCommand.Create<AccountSessionVM>(session =>
+        {
+            SessionToEnd = session;
+            Begin(Change.EndSession);
+        }, inOverview);
+        EndOtherSessionsCommand = ReactiveCommand.Create(() => Begin(Change.EndOtherSessions), inOverview);
+        ResetIdentityCommand = ReactiveCommand.Create(() => Begin(Change.ResetIdentity), inOverview);
         ConfirmCommand = ReactiveCommand.CreateFromTask(ConfirmAsync,
             this.WatchProperties(nameof(IsBusy), nameof(Current)).Select(_ => !IsBusy && Current != Change.None));
         BackCommand = ReactiveCommand.Create(Back, notBusy);
@@ -97,6 +109,11 @@ public sealed class AccountSecurityVM : ReactiveObject
 
     public ObservableCollection<AccountPasskeyVM> Passkeys { get; } = [];
 
+    /// <summary>The devices the user is logged in from, this one first.</summary>
+    public ObservableCollection<AccountSessionVM> Sessions { get; } = [];
+
+    public bool HasOtherSessions => Sessions.Any(session => !session.IsCurrent);
+
     /// <summary>The change being made; <see cref="Change.None"/> shows what the user has.</summary>
     public Change Current
     {
@@ -109,6 +126,7 @@ public sealed class AccountSecurityVM : ReactiveObject
             this.RaisePropertyChanged(nameof(IsNewPasswordAsked));
             this.RaisePropertyChanged(nameof(IsProofAsked));
             this.RaisePropertyChanged(nameof(ChangeTitle));
+            this.RaisePropertyChanged(nameof(ChangeHint));
             this.RaisePropertyChanged(nameof(ConfirmText));
         }
     }
@@ -118,7 +136,8 @@ public sealed class AccountSecurityVM : ReactiveObject
     public bool IsNewPasswordAsked => Current == Change.SetPassword;
 
     /// <summary>Turning the codes on asks for the proof once, before the secret is offered.</summary>
-    public bool IsProofAsked => Current != Change.None && (Current != Change.EnableCodes || Setup == null)
+    public bool IsProofAsked => Current is not (Change.None or Change.EndSession or Change.EndOtherSessions)
+                                && (Current != Change.EnableCodes || Setup == null)
                                 && (IsPasswordProofAsked || IsCodeProofAsked);
 
     public bool IsPasswordProofAsked => HasPassword;
@@ -131,12 +150,25 @@ public sealed class AccountSecurityVM : ReactiveObject
         Change.EnableCodes => Strings.Get("accountSecurity.codes.enable"),
         Change.DisableCodes => Strings.Get("accountSecurity.codes.disable"),
         Change.DeletePasskey => Strings.Format("accountSecurity.passkeys.delete", ("name", PasskeyToDelete?.Label ?? "")),
+        Change.EndSession => Strings.Format("accountSecurity.sessions.end", ("name", SessionToEnd?.Name ?? "")),
+        Change.EndOtherSessions => Strings.Get("accountSecurity.sessions.endOthers"),
+        Change.ResetIdentity => Strings.Get("accountSecurity.identity.reset"),
         _ => ""
+    };
+
+    /// <summary>What the change does, for the changes that need it told.</summary>
+    public string? ChangeHint => Current switch
+    {
+        Change.EndSession or Change.EndOtherSessions => Strings.Get("accountSecurity.sessions.endHint"),
+        Change.ResetIdentity => Strings.Get("accountSecurity.identity.resetHint"),
+        _ => null
     };
 
     public string ConfirmText => Strings.Get(Current switch
     {
         Change.RemovePassword or Change.DeletePasskey => "common.delete",
+        Change.EndSession or Change.EndOtherSessions => "accountSecurity.sessions.endConfirm",
+        Change.ResetIdentity => "accountSecurity.identity.resetConfirm",
         Change.DisableCodes => "accountSecurity.codes.disableConfirm",
         Change.EnableCodes when Setup == null => "accountSecurity.next",
         Change.EnableCodes => "accountSecurity.codes.enableConfirm",
@@ -222,6 +254,8 @@ public sealed class AccountSecurityVM : ReactiveObject
 
     public AccountPasskeyVM? PasskeyToDelete { get; private set; }
 
+    public AccountSessionVM? SessionToEnd { get; private set; }
+
     public string? Error
     {
         get;
@@ -242,6 +276,9 @@ public sealed class AccountSecurityVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> EnableCodesCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> DisableCodesCommand { get; }
     public ReactiveCommand<AccountPasskeyVM, RxVoid> DeletePasskeyCommand { get; }
+    public ReactiveCommand<AccountSessionVM, RxVoid> EndSessionCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> EndOtherSessionsCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ResetIdentityCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ConfirmCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> BackCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
@@ -252,7 +289,12 @@ public sealed class AccountSecurityVM : ReactiveObject
         {
             var (result, security) = await _session.GetAccountSecurity();
             Apply(result, security);
-            return result;
+            if (!result.IsSuccess)
+                return result;
+
+            var (sessionsResult, sessions) = await _session.GetAccountSessions();
+            ApplySessions(sessionsResult, sessions);
+            return sessionsResult;
         });
     }
 
@@ -281,6 +323,7 @@ public sealed class AccountSecurityVM : ReactiveObject
         Current = Change.None;
         Setup = null;
         PasskeyToDelete = null;
+        SessionToEnd = null;
         Error = null;
     }
 
@@ -312,6 +355,22 @@ public sealed class AccountSecurityVM : ReactiveObject
                     return Finish(await _session.DisableTwoFactor(proof));
                 case Change.DeletePasskey when PasskeyToDelete is { } passkey:
                     return Finish(await _session.DeletePasskey(proof, passkey.Id));
+                case Change.EndSession when SessionToEnd is { } session:
+                    return FinishSessions(await _session.EndAccountSession(session.Id));
+                case Change.EndOtherSessions:
+                    return FinishSessions(await _session.EndAccountSession(null));
+                case Change.ResetIdentity:
+                {
+                    var result = await _session.ResetUserIdentity(proof);
+                    if (!result.IsSuccess)
+                        return result;
+
+                    // The other devices were logged out with the old identity
+                    var (sessionsResult, sessions) = await _session.GetAccountSessions();
+                    ApplySessions(sessionsResult, sessions);
+                    Back();
+                    return RequestResult.Success;
+                }
                 default:
                     return RequestResult.Success;
             }
@@ -326,10 +385,30 @@ public sealed class AccountSecurityVM : ReactiveObject
         return response.Result;
     }
 
+    private RequestResult FinishSessions(RequestResult<IReadOnlyList<AccountSession>> response)
+    {
+        ApplySessions(response.Result, response.Value);
+        if (response.IsSuccess)
+            Back();
+        return response.Result;
+    }
+
     private void Apply(RequestResult result, AccountSecurity? security)
     {
         if (result.IsSuccess && security != null)
             Security = security;
+    }
+
+    private void ApplySessions(RequestResult result,
+        IReadOnlyList<AccountSession>? sessions)
+    {
+        if (!result.IsSuccess || sessions == null)
+            return;
+
+        Sessions.Clear();
+        foreach (var session in sessions.OrderByDescending(session => session.IsCurrent))
+            Sessions.Add(new AccountSessionVM(session));
+        this.RaisePropertyChanged(nameof(HasOtherSessions));
     }
 
     /// <summary>Checks here what the server would refuse anyway, so the user learns it without a round trip.</summary>
@@ -337,6 +416,9 @@ public sealed class AccountSecurityVM : ReactiveObject
     {
         if (Current == Change.EnableCodes && Setup != null)
             return Require(IsCodeValid(SetupCode), "accountSecurity.error.codeFormat");
+
+        if (!IsProofAsked)
+            return true;
 
         if (IsPasswordProofAsked && !Require(ProofPassword.Length > 0, "accountSecurity.error.proofPassword"))
             return false;
@@ -392,6 +474,7 @@ public sealed class AccountSecurityVM : ReactiveObject
         { Error: ErrorCode.InvalidValue } => Strings.Get("accountSecurity.error.invalid"),
         { Error: ErrorCode.FeatureDisabled } => Strings.Get("accountSecurity.passkeys.unavailable"),
         { Error: ErrorCode.PasskeyNotFound } => Strings.Get("accountSecurity.error.passkeyNotFound"),
+        { Error: ErrorCode.SessionNotFound } => Strings.Get("accountSecurity.error.sessionNotFound"),
         _ => Strings.Format("accountSecurity.error.failed", ("code", (int?)result.Error))
     };
 }
@@ -411,4 +494,29 @@ public sealed class AccountPasskeyVM(AccountPasskey passkey)
 
     private static string Format(DateTime time) =>
         Strings.FormatDateTime(time.Kind == DateTimeKind.Local ? time : DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
+}
+
+public sealed class AccountSessionVM(AccountSession session)
+{
+    public Guid Id => session.Id;
+    public bool IsCurrent => session.IsCurrent;
+    public bool IsOther => !session.IsCurrent;
+
+    public string Name => string.IsNullOrWhiteSpace(session.DeviceName)
+        ? Strings.Get("accountSecurity.sessions.unnamed")
+        : session.DeviceName;
+
+    /// <summary>"Linux · 0.8.0 · this device", "Android · 0.8.0 · online", or when it was last used, and from where.</summary>
+    public string Details => string.Join(" · ", new[]
+    {
+        session.Platform,
+        session.AppVersion,
+        session.IsCurrent ? Strings.Get("accountSecurity.sessions.current")
+        : session.IsOnline ? Strings.Get("accountSecurity.sessions.online")
+        : Strings.Format("accountSecurity.sessions.lastUsed", ("time", Format(session.LastUsedAtUtc))),
+        session.LastAddress
+    }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private static string Format(DateTime time) =>
+        Strings.FormatDateTime(DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
 }

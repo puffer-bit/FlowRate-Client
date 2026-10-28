@@ -18,6 +18,7 @@ using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
+using Shared.Enums.User;
 using Result = Client.ViewModels.Dialogs.Result;
 
 namespace Client.ViewModels.Main;
@@ -47,7 +48,7 @@ public partial class MainWindowVM
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
         await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-            user.AccountPassword);
+            user.AccountPassword, user.SessionToken);
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -60,7 +61,7 @@ public partial class MainWindowVM
 
             await StatusLine.SetAsync(Connecting, true);
             await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-                user.AccountPassword);
+                user.AccountPassword, user.SessionToken);
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)
@@ -132,6 +133,7 @@ public partial class MainWindowVM
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
+            .Add(() => session.SessionEnded += OnSessionEnded, () => session.SessionEnded -= OnSessionEnded)
             .Add(() => session.PermissionsChanged += OnPermissionsChanged, () => session.PermissionsChanged -= OnPermissionsChanged)
             .Add(() => session.CurrentUserChanged += OnCurrentUserChanged, () => session.CurrentUserChanged -= OnCurrentUserChanged)
             .Add(() => session.ServerRoundTripChanged += OnServerRoundTripChanged,
@@ -268,6 +270,20 @@ public partial class MainWindowVM
     // Raised on the transport thread
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => Access.Update(permissions));
+
+    // The session disconnects on its own; the user is told why it does not come back
+    private void OnSessionEnded(UserSessionEndReason reason)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await SetStatus("main.status.offline", false);
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get(reason == UserSessionEndReason.IdentityReset
+                    ? "main.sessionEnded.identityReset"
+                    : "main.sessionEnded.revoked"),
+                Strings.Get("main.sessionEnded.title")));
+        });
+    }
 
     private void OnRequestRejected(RequestFailedException exception)
     {

@@ -13,6 +13,14 @@ public partial class CoordinatorSession
                 _ = Disconnect();
                 break;
 
+            // The identity would log in again at once: the device stays out until the user connects
+            case SessionEndedEvent ended:
+                LogSessionEnded(LogName, ended.Reason);
+                KeepSessionToken(null);
+                _ = Disconnect();
+                SessionEnded?.Invoke(ended.Reason);
+                break;
+
             case CoordinatorReconfiguredEvent reconfigured:
                 CoordinatorModel = reconfigured.Coordinator;
                 CoordinatorReconfigured?.Invoke(reconfigured.Coordinator);

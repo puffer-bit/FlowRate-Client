@@ -11,7 +11,7 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
 
     // The avatar is what the remembered users know about the same user
     private const string SelectIdentities = """
-        SELECT CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword,
+        SELECT CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword, SessionToken,
             (SELECT AvatarUrl FROM RememberedUsers
              WHERE RememberedUsers.CoordinatorInstanceId = SavedIdentities.CoordinatorId
                AND RememberedUsers.UserId = SavedIdentities.UserId) AS AvatarUrl
@@ -88,15 +88,17 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            INSERT INTO SavedIdentities (CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword)
-            VALUES (@CoordinatorId, @Id, @UserIdentity, @Username, @Password, @AccountPassword)
+            INSERT INTO SavedIdentities (CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword,
+                SessionToken)
+            VALUES (@CoordinatorId, @Id, @UserIdentity, @Username, @Password, @AccountPassword, @SessionToken)
             ON CONFLICT (CoordinatorId, UserId) DO UPDATE SET
                 UserIdentity = excluded.UserIdentity,
                 Username = excluded.Username,
                 Password = excluded.Password,
-                AccountPassword = excluded.AccountPassword
+                AccountPassword = excluded.AccountPassword,
+                SessionToken = excluded.SessionToken
             """, new { model.CoordinatorId, model.Id, model.UserIdentity, model.Username, model.Password,
-                model.AccountPassword });
+                model.AccountPassword, model.SessionToken });
     }
 
     public async Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword)
@@ -107,6 +109,26 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
             UPDATE SavedIdentities SET AccountPassword = @accountPassword
             WHERE CoordinatorId = @coordinatorId AND UserId = @userId
             """, new { coordinatorId, userId, accountPassword });
+    }
+
+    public async Task SetSessionTokenAsync(string coordinatorId, int userId, string? sessionToken)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            UPDATE SavedIdentities SET SessionToken = @sessionToken
+            WHERE CoordinatorId = @coordinatorId AND UserId = @userId
+            """, new { coordinatorId, userId, sessionToken });
+    }
+
+    public async Task SetUserIdentityAsync(string coordinatorId, int userId, string userIdentity)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            UPDATE SavedIdentities SET UserIdentity = @userIdentity
+            WHERE CoordinatorId = @coordinatorId AND UserId = @userId
+            """, new { coordinatorId, userId, userIdentity });
     }
 
     public async Task RenameUserAsync(string coordinatorId, int userId, string username)
@@ -198,7 +220,7 @@ internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, s
 }
 
 internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string UserIdentity, string Username,
-    string? Password, string? AccountPassword, string? AvatarUrl)
+    string? Password, string? AccountPassword, string? SessionToken, string? AvatarUrl)
 {
     public SavedUserModel ToModel() => new()
     {
@@ -208,6 +230,7 @@ internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string
         Username = Username,
         Password = Password,
         AccountPassword = AccountPassword,
+        SessionToken = SessionToken,
         AvatarUrl = AvatarUrl
     };
 }

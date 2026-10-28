@@ -20,9 +20,37 @@ public sealed partial class SavedAccountsRecorder
         _logger = logger;
     }
 
+    // The tokens of reconnects close together are written in their order
+    private readonly SemaphoreSlim _writes = new(1, 1);
+
     public void Track(ICoordinatorSession session)
     {
         session.CurrentUserChanged += user => _ = RenameAsync(session.CoordinatorModel!.Id, user);
+        session.SessionTokenChanged += token => _ = WriteAsync(session, (coordinatorId, userId) =>
+            _accountingSettings.SetSessionTokenAsync(coordinatorId, userId, token));
+        session.UserIdentityChanged += identity => _ = WriteAsync(session, (coordinatorId, userId) =>
+            _accountingSettings.SetUserIdentityAsync(coordinatorId, userId, identity));
+    }
+
+    private async Task WriteAsync(ICoordinatorSession session, Func<string, int, Task> write)
+    {
+        if (session.CoordinatorModel?.Id is not { } coordinatorId)
+            return;
+
+        var userId = session.GetCurrentUser().Id;
+        await _writes.WaitAsync();
+        try
+        {
+            await write(coordinatorId, userId);
+        }
+        catch (Exception exception)
+        {
+            LogCredentialsNotSaved(exception, userId);
+        }
+        finally
+        {
+            _writes.Release();
+        }
     }
 
     private async Task RenameAsync(string coordinatorId, UserModel user)

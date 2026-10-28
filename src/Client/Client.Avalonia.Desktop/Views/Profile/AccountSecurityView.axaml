@@ -113,6 +113,46 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                        <TextBlock Grid.Column="0" Classes="fieldLabel" VerticalAlignment="Center"
+                                   Text="{l:Text accountSecurity.sessions}"/>
+                        <Button Grid.Column="1" Command="{Binding EndOtherSessionsCommand}"
+                                IsVisible="{Binding HasOtherSessions}" Content="{l:Text accountSecurity.sessions.endOthers}"/>
+                    </Grid>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.sessions.hint}"/>
+                    <ItemsControl ItemsSource="{Binding Sessions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="profileVm:AccountSessionVM">
+                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
+                                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" VerticalAlignment="Center" IsVisible="{Binding IsOther}"
+                                            Content="{l:Text accountSecurity.sessions.endConfirm}"
+                                            Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).EndSessionCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.identity}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.identity.hint}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ResetIdentityCommand}"
+                            Content="{l:Text accountSecurity.identity.resetConfirm}"/>
+                </Grid>
+
                 <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
                            IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
             </StackPanel>
@@ -120,6 +160,8 @@
             <!-- A change -->
             <StackPanel Spacing="12" IsVisible="{Binding IsChanging}" IsEnabled="{Binding !IsBusy}">
                 <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding ChangeTitle}"/>
+                <TextBlock TextWrapping="Wrap" Text="{Binding ChangeHint}"
+                           IsVisible="{Binding ChangeHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsProofAsked}">
                     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.proof.hint}"/>

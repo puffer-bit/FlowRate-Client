@@ -60,6 +60,14 @@ public class FakeGateway : DispatchProxy
     /// <summary>The answers to the second login stage, as they came.</summary>
     public List<(string? Password, string? Code)> SecondStageAnswers { get; } = [];
 
+    /// <summary>The identity and session token of every login.</summary>
+    public List<(string? Identity, string? SessionToken)> SentLogins { get; } = [];
+
+    /// <summary>The token of the session the server knows: the last one it gave out, or none.</summary>
+    public string? SessionToken { get; set; }
+
+    private int _issuedTokens;
+
     /// <summary>The roles of the user who logs in.</summary>
     public IReadOnlyList<int> UserRoleIds { get; set; } = [];
 
@@ -152,6 +160,22 @@ public class FakeGateway : DispatchProxy
     private UserModel LoggedInUser() =>
         new() { Id = 1, CoordinatorInstanceId = CoordinatorId, Username = "alice", RoleIds = UserRoleIds };
 
+    private AuthenticationResult Authenticate(string? userIdentity, string? sessionToken)
+    {
+        SentLogins.Add((userIdentity, sessionToken));
+
+        if (LoginError is { } loginError)
+            throw new RequestFailedException(loginError, null);
+        // The token of the session lets the device in without the second stage, and is not told the identity
+        if (sessionToken != null && sessionToken == SessionToken)
+            return new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken());
+        if (Challenge != null)
+            return new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge);
+        return new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity", SessionToken: IssueToken());
+    }
+
+    private string IssueToken() => SessionToken = $"token-{++_issuedTokens}";
+
     private AuthenticationResult FinishLogin(string? password, string? code)
     {
         SecondStageAnswers.Add((password, code));
@@ -161,7 +185,7 @@ public class FakeGateway : DispatchProxy
                        && (!Challenge.AsksTwoFactorCode || code == TwoFactorCode);
 
         return isProven
-            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null)
+            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken())
             : throw new RequestFailedException(ErrorCode.AuthFailed, null);
     }
 
@@ -209,12 +233,15 @@ public class FakeGateway : DispatchProxy
                 return DisconnectAsync();
             case nameof(ICoordinatorGateway.CheckConnectionAsync):
                 return CheckAsync((TimeSpan)args![0]!);
-            case nameof(ICoordinatorGateway.AuthenticateAsync) when LoginError is { } loginError:
-                return Fail<AuthenticationResult>(loginError);
-            case nameof(ICoordinatorGateway.AuthenticateAsync) when Challenge != null:
-                return Task.FromResult(new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge));
             case nameof(ICoordinatorGateway.AuthenticateAsync):
-                return Task.FromResult(new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity"));
+                try
+                {
+                    return Task.FromResult(Authenticate((string?)args![1], (string?)args[2]));
+                }
+                catch (RequestFailedException exception)
+                {
+                    return Task.FromException<AuthenticationResult>(exception);
+                }
             case nameof(ICoordinatorGateway.FinishLoginAsync):
                 try
                 {
