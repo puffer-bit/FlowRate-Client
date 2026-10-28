@@ -14,6 +14,10 @@ internal static class AccountSecurityMapper
         dto.Passkeys.Select(passkey => new AccountPasskey(passkey.Id, passkey.Label, passkey.CreatedAtUtc,
             passkey.LastUsedAtUtc)).ToList());
 
+    public static AccountSession ToModel(this UserSessionDTO dto) => new(dto.Id, dto.Device.Name, dto.Device.Platform,
+        dto.Device.AppVersion, dto.CreatedAtUtc, dto.LastUsedAtUtc, dto.ExpiresAtUtc, dto.LastAddress, dto.IsCurrent,
+        dto.IsOnline);
+
     public static UserSecurityProofDTO ToDto(this AccountProof proof) => new(
         string.IsNullOrEmpty(proof.Password) ? null : proof.Password,
         string.IsNullOrEmpty(proof.TwoFactorCode) ? null : proof.TwoFactorCode);

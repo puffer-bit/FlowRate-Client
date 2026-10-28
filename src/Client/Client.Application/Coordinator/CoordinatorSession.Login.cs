@@ -1,7 +1,9 @@
 using Client.Core.Coordinator;
 using Shared.Enums;
 using Shared.Enums.Auth;
+using Shared.Enums.User;
 using Client.Core.Users;
+using Client.Core.Settings;
 using Client.Application.Ports;
 
 namespace Client.Application.Coordinator;
@@ -18,11 +20,40 @@ public partial class CoordinatorSession
     private volatile bool _isAccountPasswordRemembered;
     private string? _accountPasswordToSave;
 
+    // Written by the attempts, read by the next one; kept with the saved identity by SavedAccountsRecorder
+    private volatile string? _sessionToken;
+
     public LoginPromptHandler? LoginPrompt { get; set; }
 
     public event Action<string?>? AccountPasswordToSaveChanged;
 
     public string? AccountPasswordToSave => _isAccountPasswordRemembered ? _accountPassword : null;
+
+    public event Action<string?>? SessionTokenChanged;
+
+    public event Action<string>? UserIdentityChanged;
+
+    public event Action<UserSessionEndReason>? SessionEnded;
+
+    public Task<RequestResult<IReadOnlyList<AccountSession>>> GetAccountSessions() =>
+        SendAsync(_gateway.GetAccountSessions);
+
+    public Task<RequestResult<IReadOnlyList<AccountSession>>> EndAccountSession(Guid? sessionId) =>
+        SendAsync(() => _gateway.EndAccountSession(sessionId));
+
+    public async Task<RequestResult> ResetUserIdentity(AccountProof proof)
+    {
+        var (result, identity) = await SendAsync(() => _gateway.ResetUserIdentity(proof));
+
+        // The reconnects log in with the new one, and the saved identity is replaced
+        if (result.IsSuccess && identity != null && _currentUser is { } user)
+        {
+            SetCurrentUser(user, identity);
+            UserIdentityChanged?.Invoke(identity);
+        }
+
+        return result;
+    }
 
     public Task<RequestResult<AccountSecurity>> GetAccountSecurity() =>
         SendAsync(_gateway.GetAccountSecurity);
@@ -116,6 +147,23 @@ public partial class CoordinatorSession
                 isRetry = true;
             }
         }
+    }
+
+    private void KeepSessionToken(string? token)
+    {
+        if (token == _sessionToken)
+            return;
+
+        _sessionToken = token;
+        if (_currentUserCredentials is { } credentials)
+            _currentUserCredentials = new SavedUserModel
+            {
+                Id = credentials.Id,
+                UserIdentity = credentials.UserIdentity,
+                Username = credentials.Username,
+                SessionToken = token
+            };
+        SessionTokenChanged?.Invoke(token);
     }
 
     private void KeepAccountPassword(string? password, bool remember)
