@@ -27,7 +27,9 @@ public class MainActivity : AvaloniaMainActivity
 {
     private const int NotificationPermissionRequest = 1001;
     private const int MicrophonePermissionRequest = 7001;
-    private TaskCompletionSource<bool>? _microphonePermission;
+    // Of the process, not of the activity: a request survives the activity recreated under its
+    // dialog, and its answer comes to the new one
+    private static TaskCompletionSource<bool>? _microphonePermission;
 
     internal Task<bool> RequestMicrophonePermissionAsync()
     {
@@ -137,8 +139,12 @@ public class MainActivity : AvaloniaMainActivity
 
     protected override void OnDestroy()
     {
-        _microphonePermission?.TrySetResult(false);
-        _microphonePermission = null;
+        // A recreated activity still gets the answer; one closed for good never will
+        if (IsFinishing && !IsChangingConfigurations)
+        {
+            _microphonePermission?.TrySetResult(false);
+            _microphonePermission = null;
+        }
 
         if (ReferenceEquals(Current, this))
             Current = null;
