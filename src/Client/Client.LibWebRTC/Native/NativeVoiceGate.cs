@@ -8,7 +8,8 @@ namespace Client.LibWebRTC.Native;
 /// <summary>
 /// The voice gate of the microphone of libwebrtc. The capture processing of flowrate_webrtc measures
 /// every 10 ms and asks here whether the gate is open; the ramps and the pre-roll are its own. There
-/// is one microphone in the process, so there is one gate.
+/// is one microphone in the process, so there is one gate: each peer that sends the microphone sets
+/// its own options, and the gate follows the peer that set them last, until it lets go of them.
 /// </summary>
 internal static unsafe class NativeVoiceGate
 {
@@ -23,31 +24,47 @@ internal static unsafe class NativeVoiceGate
     private static readonly long Start = Stopwatch.GetTimestamp();
     private static VoiceGateDecision? _decision;
 
-    /// <param name="options">The gate, or null to send the microphone all the time.</param>
-    public static void Set(VoiceGateOptions? options)
+    // The options of every peer that holds the gate, the one set last at the end. Under ChangeLock
+    private static readonly List<(object Owner, VoiceGateOptions Options)> Owners = [];
+
+    /// <param name="owner">The peer the options are of.</param>
+    /// <param name="options">The gate, or null when that peer no longer gates the microphone: the gate
+    /// goes back to the options of another peer, or sends the microphone all the time.</param>
+    public static void Set(object owner, VoiceGateOptions? options)
     {
         lock (ChangeLock)
         {
-            if (options == null)
-            {
-                NativeMethods.SetVoiceGate(null, 0);
+            Owners.RemoveAll(entry => ReferenceEquals(entry.Owner, owner));
 
-                lock (Lock)
-                    _decision = null;
+            if (options != null)
+                Owners.Add((owner, options));
 
-                return;
-            }
+            Apply(Owners.Count > 0 ? Owners[^1].Options : null);
+        }
+    }
+
+    // Under ChangeLock
+    private static void Apply(VoiceGateOptions? options)
+    {
+        if (options == null)
+        {
+            NativeMethods.SetVoiceGate(null, 0);
 
             lock (Lock)
-            {
-                if (_decision == null)
-                    _decision = new VoiceGateDecision(options);
-                else
-                    _decision.SetOptions(options, Now, _decision.IsOpen);
-            }
+                _decision = null;
 
-            NativeMethods.SetVoiceGate(&OnLevel, 0);
+            return;
         }
+
+        lock (Lock)
+        {
+            if (_decision == null)
+                _decision = new VoiceGateDecision(options);
+            else
+                _decision.SetOptions(options, Now, _decision.IsOpen);
+        }
+
+        NativeMethods.SetVoiceGate(&OnLevel, 0);
     }
 
     /// <summary>What the gate did since the previous call, or null while it is off.</summary>
