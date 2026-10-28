@@ -20,11 +20,17 @@ namespace Client.Droid.Platform.Media.WebRTC;
 internal sealed class AndroidVoicePeer : IVoicePeer
 {
     private readonly VoicePeer _peer;
+    private readonly bool _isMicrophoneAllowed;
 
-    public AndroidVoicePeer(IVoicePeerListener listener)
+    /// <param name="isMicrophoneAllowed">False without the permission to record: the peer only
+    /// listens and its microphone stays off.</param>
+    public AndroidVoicePeer(IVoicePeerListener listener, bool isMicrophoneAllowed)
     {
+        _isMicrophoneAllowed = isMicrophoneAllowed;
         VoicePeer.Initialize(global::Android.App.Application.Context);
         _peer = new VoicePeer(new PeerListener(listener));
+        if (!isMicrophoneAllowed)
+            _peer.SetMicrophoneEnabled(false);
         VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, true);
     }
 
@@ -32,7 +38,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
     public void Negotiate(string offer, IReadOnlyList<SendSection> sends) =>
         _peer.Negotiate(offer, sends.Select(send => send.Mid).ToArray(), sends.Select(send => (long)send.Ssrc).ToArray());
 
-    public void SetMicrophoneEnabled(bool isEnabled) => _peer.SetMicrophoneEnabled(isEnabled);
+    public void SetMicrophoneEnabled(bool isEnabled) => _peer.SetMicrophoneEnabled(isEnabled && _isMicrophoneAllowed);
 
     public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
         bool isAutoGainControlEnabled) => true;
