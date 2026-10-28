@@ -22,15 +22,10 @@ internal static class AccountSecurityMapper
     /// Reads what the user can prove from the message of a first login stage: names of
     /// <see cref="SecondStageAuthType"/>, comma separated.
     /// </summary>
-    public static LoginChallenge ToLoginChallenge(string? serverMessage, FIDO2LoginOptionsDTO? passkeyOptions)
+    public static LoginChallenge ToLoginChallenge(IReadOnlyCollection<SecondStageAuthType>? secondStages,
+        FIDO2LoginOptionsDTO? passkeyOptions)
     {
-        var methods = (serverMessage ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(name => Enum.TryParse<SecondStageAuthType>(name, ignoreCase: true, out var method)
-                ? method
-                : (SecondStageAuthType?)null)
-            .OfType<SecondStageAuthType>()
-            .ToHashSet();
+        var methods = secondStages ?? [];
 
         return new LoginChallenge(methods.Contains(SecondStageAuthType.Password),
             methods.Contains(SecondStageAuthType.TwoFactor),

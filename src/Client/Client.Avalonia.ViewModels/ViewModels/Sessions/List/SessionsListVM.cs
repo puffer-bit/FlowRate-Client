@@ -329,9 +329,9 @@ public partial class SessionsListVM : ReactiveObject
                 if (attachId != _attachId)
                     return;
 
-                if (result.Result != SessionRequestResult.NoError)
+                if (!result.Result.IsSuccess)
                 {
-                    ShowFailed(result.Result == SessionRequestResult.Rejected
+                    ShowFailed(result.Result.IsRejected
                         ? Strings.Get("sessions.fetch.rateLimited")
                         : Strings.Get("sessions.fetch.serverError"));
                     return;
@@ -344,9 +344,9 @@ public partial class SessionsListVM : ReactiveObject
                     return;
 
                 ClearList();
-                SetLayout(result.Layout ?? SessionLayout.Empty, collapsedCategoryIds);
+                SetLayout(result.Value.Layout, collapsedCategoryIds);
 
-                foreach (var sessionModel in result.Sessions!.Values)
+                foreach (var sessionModel in result.Value.Sessions.Values)
                 {
                     if (attachId != _attachId)
                         return;
@@ -396,7 +396,7 @@ public partial class SessionsListVM : ReactiveObject
         if (attachId != _attachId)
             return;
 
-        if (result == ChatReadResult.NoError && states != null)
+        if (result.IsSuccess && states != null)
             _readTracker.Load(states);
         else
             LogReadStatesLoadFailed(result);
@@ -426,14 +426,14 @@ public partial class SessionsListVM : ReactiveObject
         var model = AddHybridSessionVM(hybridSessionModel);
 
         var result = await _coordinatorSession!.GetAllHybridSessionPeers(hybridSessionModel.Id);
-        if (result.Result != PeerListRequestResult.NoError)
+        if (!result.Result.IsSuccess)
         {
             LogPeersRequestFailed(hybridSessionModel.Id, hybridSessionModel.Name, result.Result);
             model.IsCorrupted = true;
             return;
         }
 
-        var peers = result.Peers!.Values;
+        var peers = result.Value!.Values;
 
         foreach (var peer in peers)
             model.AddPeerToSession(peer);
@@ -747,10 +747,10 @@ public partial class SessionsListVM : ReactiveObject
         {
             var result = await _coordinatorSession!.DeleteSession(sessionId);
             // A rejection is reported by the main window
-            if (result is not (DeleteSessionResult.NoError or DeleteSessionResult.Rejected))
+            if (!(result.IsSuccess || result.IsRejected))
             {
                 await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
-                    Strings.Format("sessions.delete.failed", ("session", sessionId), ("code", (int)result)),
+                    Strings.Format("sessions.delete.failed", ("session", sessionId), ("code", (int?)result.Error)),
                     Strings.Get("common.error")));
             }
         }

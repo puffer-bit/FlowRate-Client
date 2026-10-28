@@ -12,7 +12,6 @@ using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Roles;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -27,11 +26,11 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
-    private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUsernameCommand;
-    private readonly ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> _setAvatarCommand;
-    private readonly ReactiveCommand<int, SetAvatarResult> _resetAvatarCommand;
+    private readonly ReactiveCommand<(int UserId, string Username), RequestResult> _changeUsernameCommand;
+    private readonly ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> _setAvatarCommand;
+    private readonly ReactiveCommand<int, RequestResult> _resetAvatarCommand;
     private readonly ReactiveCommand<(int UserId, int RoleId, bool Has),
-        (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)> _setUserRoleCommand;
+        RequestResult<IReadOnlyList<int>>> _setUserRoleCommand;
     private readonly ObservableAsPropertyHelper<bool> _isChangingRole;
 
     /// <summary>
@@ -142,11 +141,11 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
     public UserProfileWindowVM(UserModel user, bool isCurrentUser, IAvatarService avatars,
-        ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> changeUsernameCommand,
-        ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> setAvatarCommand,
-        ReactiveCommand<int, SetAvatarResult> resetAvatarCommand,
+        ReactiveCommand<(int UserId, string Username), RequestResult> changeUsernameCommand,
+        ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> setAvatarCommand,
+        ReactiveCommand<int, RequestResult> resetAvatarCommand,
         CoordinatorPermissions permissions,
-        ReactiveCommand<(int UserId, int RoleId, bool Has), (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)>
+        ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
             setUserRoleCommand)
     {
         _changeUsernameCommand = changeUsernameCommand;
@@ -263,7 +262,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             NameError = UsernameRules.DescribeResult(result);
 
-            if (result != ChangeUsernameResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             Username = name;
@@ -275,7 +274,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             AvatarUrl = avatarUrl;
@@ -286,7 +285,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             AvatarUrl = null;
