@@ -10,12 +10,15 @@ internal sealed class OutgoingSound : IDisposable
 {
     private const int FrameSamples = IAudioCapture.SampleRate / 100 * IAudioCapture.Channels;
 
+    // Keeps Replace and Dispose apart, which come from different threads; the capture thread never takes it
+    private readonly Lock _lock = new();
     private IAudioCapture _capture;
     private readonly IAudioSendSource _source;
     private readonly short[] _frame = new short[FrameSamples];
     private int _filled;
     private volatile float _volume = 1;
     private volatile bool _isMuted;
+    private bool _isDisposed;
 
     public OutgoingSound(IAudioCapture capture, IAudioSendSource source)
     {
@@ -46,13 +49,23 @@ internal sealed class OutgoingSound : IDisposable
     /// </summary>
     public bool Replace(IAudioCapture capture)
     {
-        _capture.SamplesReady -= OnSamples;
-        _capture.Dispose();
-        _filled = 0;
+        lock (_lock)
+        {
+            // Stopped meanwhile: the new capture would run for nothing and never be stopped
+            if (_isDisposed)
+            {
+                capture.Dispose();
+                return false;
+            }
 
-        _capture = capture;
-        _capture.SamplesReady += OnSamples;
-        return _capture.Start();
+            _capture.SamplesReady -= OnSamples;
+            _capture.Dispose();
+            _filled = 0;
+
+            _capture = capture;
+            _capture.SamplesReady += OnSamples;
+            return _capture.Start();
+        }
     }
 
     // On the thread of the capture, one piece at a time
@@ -92,7 +105,14 @@ internal sealed class OutgoingSound : IDisposable
     /// <summary>Stops the capture, then the source it pushed into.</summary>
     public void Dispose()
     {
-        _capture.Dispose();
-        _source.Dispose();
+        lock (_lock)
+        {
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
+            _capture.Dispose();
+            _source.Dispose();
+        }
     }
 }
