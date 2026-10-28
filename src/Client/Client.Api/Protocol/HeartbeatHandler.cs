@@ -34,7 +34,7 @@ internal class HeartbeatHandler : IHeartbeatHandler
                     // The socket reports the loss on its own
                     break;
                 }
-                catch (RequestRejectedException)
+                catch (RequestFailedException)
                 {
                     // Refused by the rate limit, but an answer still proves the server is alive
                     missedPings = 0;

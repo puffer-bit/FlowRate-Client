@@ -1,4 +1,4 @@
-using Shared.Enums.Coordinator;
+using Shared.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Application.Coordinator;
@@ -96,5 +96,5 @@ public partial class CoordinatorSession
         string answeredId);
 
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Roles not loaded: {Result}")]
-    private partial void LogRolesNotLoaded(string coordinator, CoordinatorRoleResult result);
+    private partial void LogRolesNotLoaded(string coordinator, ErrorCode result);
 }

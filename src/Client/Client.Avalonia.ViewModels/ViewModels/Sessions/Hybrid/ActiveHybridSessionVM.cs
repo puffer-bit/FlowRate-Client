@@ -240,12 +240,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // Left before the server answered: nothing is set up yet, only the join itself is undone
             if (IsClosed)
             {
-                if (result.Result == HybridSessionJoinResult.NoError)
+                if (result.Result.IsSuccess)
                     _ = _coordinatorSession.LeaveSession(Model.Id);
                 return;
             }
 
-            if (result.Result == HybridSessionJoinResult.NoError && 
+            if (result.Result.IsSuccess && 
                 _coordinatorSession.ConnectionStatus == CoordinatorState.Connected)
             {
                 // Subscribed before the snapshot is taken, so that a peer joining or connecting in
@@ -262,10 +262,10 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _sounds.Play(SoundEvent.Join);
 
                 var getAllPeerResult = await _coordinatorSession!.GetAllHybridSessionPeers(Model.Id);
-                if (getAllPeerResult.Result != PeerListRequestResult.NoError)
+                if (!getAllPeerResult.Result.IsSuccess)
                     throw new Exception($"Failed to get Peers for HybridSession {Model.Name}");
 
-                var peers = getAllPeerResult.Peers!.Values;
+                var peers = getAllPeerResult.Value!.Values;
 
                 foreach (var peer in peers)
                 {
@@ -303,7 +303,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 
                 // Off the UI thread: the first transport of a run loads the WebRTC plugins while
                 // it builds its pipeline, and the window would stand still for that long
-                await Task.Run(() => _hybridSession.Connect(result.Transport!));
+                await Task.Run(() => _hybridSession.Connect(result.Value!));
 
                 if (IsClosed)
                     return;
@@ -316,9 +316,9 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             else
             {
                 // A rejection is reported by the main window
-                if (!IsClosed && result.Result != HybridSessionJoinResult.Rejected)
+                if (!IsClosed && !result.Result.IsRejected)
                 {
-                    var message = result.Result == HybridSessionJoinResult.SFUNotActive
+                    var message = result.Result.Error == ErrorCode.SFUUnavailable
                         ? Strings.Get("hybrid.join.noVoiceServer")
                         : Strings.Format("hybrid.join.failed", ("code", result.Result));
 

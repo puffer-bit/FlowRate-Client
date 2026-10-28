@@ -78,7 +78,7 @@ public class ChatHistoryPager
             }
 
             var (result, page) = await _coordinatorSession.RequestChatHistoryPage(_chatId, beforeMessageId, PageSize);
-            if (result != FetchMessagesResult.NoError || page == null)
+            if (!result.IsSuccess || page == null)
                 return null;
 
             if (page.Messages.Count < PageSize)

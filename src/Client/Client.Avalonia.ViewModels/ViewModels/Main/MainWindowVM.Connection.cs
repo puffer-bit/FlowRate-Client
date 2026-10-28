@@ -269,7 +269,7 @@ public partial class MainWindowVM
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => Access.Update(permissions));
 
-    private void OnRequestRejected(RequestRejectedException exception)
+    private void OnRequestRejected(RequestFailedException exception)
     {
         Dispatcher.UIThread.Post(async () =>
         {
@@ -285,7 +285,7 @@ public partial class MainWindowVM
             try
             {
                 await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
-                    RequestRejectionMessages.Get(exception.Reason), RequestRejectionMessages.Title));
+                    RequestRejectionMessages.Get(exception.Code), RequestRejectionMessages.Title));
             }
             finally
             {

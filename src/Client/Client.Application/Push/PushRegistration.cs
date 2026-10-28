@@ -113,11 +113,11 @@ public sealed partial class PushRegistration
 
             var (result, replyToken) = await session.RegisterPushToken(token, _tokenProvider.Platform, key);
 
-            if (result is not (PushTokenResult.NoError or PushTokenResult.PushDisabled))
-                LogRegisterRefused(coordinator.Id, result);
+            if (result.Error is not (null or ErrorCode.FeatureDisabled))
+                LogRegisterRefused(coordinator.Id, result.Error);
 
             // Every registration replaces the token, so the one just given is the only one that works
-            if (result == PushTokenResult.NoError && replyToken != null
+            if (result.IsSuccess && replyToken != null
                 && TrySplitAddress(session.ConnectedAddress, out var address, out var port))
                 await _keys.SetReplyTargetAsync(coordinator.Id, new PushReplyTarget(address, port, replyToken));
         }
@@ -142,7 +142,7 @@ public sealed partial class PushRegistration
     }
 
     [LoggerMessage(LogLevel.Warning, "Coordinator {CoordinatorId} did not register the device for push: {Result}")]
-    private partial void LogRegisterRefused(string coordinatorId, PushTokenResult result);
+    private partial void LogRegisterRefused(string coordinatorId, ErrorCode? result);
 
     [LoggerMessage(LogLevel.Error, "Failed to register the device for push at coordinator {CoordinatorId}")]
     private partial void LogRegisterFailed(Exception exception, string coordinatorId);

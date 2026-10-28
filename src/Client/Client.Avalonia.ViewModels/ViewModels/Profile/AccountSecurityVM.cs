@@ -1,3 +1,5 @@
+using Shared.Enums;
+using Client.Core.Coordinator;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -9,7 +11,6 @@ using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Connections;
 using ReactiveUI;
-using Shared.Enums.User;
 using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -312,22 +313,22 @@ public sealed class AccountSecurityVM : ReactiveObject
                 case Change.DeletePasskey when PasskeyToDelete is { } passkey:
                     return Finish(await _session.DeletePasskey(proof, passkey.Id));
                 default:
-                    return UserSecurityResult.NoError;
+                    return RequestResult.Success;
             }
         });
     }
 
-    private UserSecurityResult Finish((UserSecurityResult Result, AccountSecurity? Security) response)
+    private RequestResult Finish(RequestResult<AccountSecurity> response)
     {
-        Apply(response.Result, response.Security);
-        if (response.Result == UserSecurityResult.NoError)
+        Apply(response.Result, response.Value);
+        if (response.IsSuccess)
             Back();
         return response.Result;
     }
 
-    private void Apply(UserSecurityResult result, AccountSecurity? security)
+    private void Apply(RequestResult result, AccountSecurity? security)
     {
-        if (result == UserSecurityResult.NoError && security != null)
+        if (result.IsSuccess && security != null)
             Security = security;
     }
 
@@ -363,7 +364,7 @@ public sealed class AccountSecurityVM : ReactiveObject
         return normalized.Length == Limits.TwoFactorMaxLength && normalized.All(char.IsAsciiDigit);
     }
 
-    private async Task RunAsync(Func<Task<UserSecurityResult>> request)
+    private async Task RunAsync(Func<Task<RequestResult>> request)
     {
         IsBusy = true;
         Error = null;
@@ -382,16 +383,16 @@ public sealed class AccountSecurityVM : ReactiveObject
         }
     }
 
-    private string? Describe(UserSecurityResult result) => result switch
+    private string? Describe(RequestResult result) => result switch
     {
-        UserSecurityResult.NoError => null,
-        UserSecurityResult.ProofRequired => Strings.Get("accountSecurity.error.proof"),
-        UserSecurityResult.Refused => Strings.Get("accountSecurity.error.codeRefused"),
-        UserSecurityResult.InvalidValue when Current == Change.SetPassword => NewPasswordHint,
-        UserSecurityResult.InvalidValue => Strings.Get("accountSecurity.error.invalid"),
-        UserSecurityResult.PasskeysUnavailable => Strings.Get("accountSecurity.passkeys.unavailable"),
-        UserSecurityResult.PasskeyNotFound => Strings.Get("accountSecurity.error.passkeyNotFound"),
-        _ => Strings.Format("accountSecurity.error.failed", ("code", (int)result))
+        { IsSuccess: true } => null,
+        { Error: ErrorCode.ProofRequired } => Strings.Get("accountSecurity.error.proof"),
+        { Error: ErrorCode.VerificationFailed } => Strings.Get("accountSecurity.error.codeRefused"),
+        { Error: ErrorCode.InvalidValue } when Current == Change.SetPassword => NewPasswordHint,
+        { Error: ErrorCode.InvalidValue } => Strings.Get("accountSecurity.error.invalid"),
+        { Error: ErrorCode.FeatureDisabled } => Strings.Get("accountSecurity.passkeys.unavailable"),
+        { Error: ErrorCode.PasskeyNotFound } => Strings.Get("accountSecurity.error.passkeyNotFound"),
+        _ => Strings.Format("accountSecurity.error.failed", ("code", (int?)result.Error))
     };
 }
 

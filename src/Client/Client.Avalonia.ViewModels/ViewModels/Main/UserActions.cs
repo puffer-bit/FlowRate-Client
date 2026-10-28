@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using System;
 using System.Reactive.Linq;
 using System.Collections.Generic;
@@ -11,7 +12,6 @@ using Client.ViewModels.Profile;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using Result = Client.ViewModels.Dialogs.Result;
 
@@ -40,11 +40,11 @@ public sealed class UserActions
     /// <summary>Pokes a peer of the hybrid session we are in, with a message if there is one.</summary>
     public ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> PokePeerCommand { get; }
 
-    private readonly ReactiveCommand<string, ChangeUsernameResult> _changeUsernameCommand;
-    private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUserUsernameCommand;
-    private readonly ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> _setAvatarCommand;
-    private readonly ReactiveCommand<int, SetAvatarResult> _resetAvatarCommand;
-    private readonly ReactiveCommand<(int UserId, int RoleId, bool Has), (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)>
+    private readonly ReactiveCommand<string, RequestResult> _changeUsernameCommand;
+    private readonly ReactiveCommand<(int UserId, string Username), RequestResult> _changeUserUsernameCommand;
+    private readonly ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> _setAvatarCommand;
+    private readonly ReactiveCommand<int, RequestResult> _resetAvatarCommand;
+    private readonly ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
         _setUserRoleCommand;
 
     private readonly Func<ICoordinatorSession?> _session;
@@ -86,21 +86,21 @@ public sealed class UserActions
         PokePeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, string? Message)>(PokePeer,
             isConnected);
 
-        _changeUsernameCommand = ReactiveCommand.CreateFromTask<string, ChangeUsernameResult>(
+        _changeUsernameCommand = ReactiveCommand.CreateFromTask<string, RequestResult>(
             name => Session.ChangeUsername(name));
-        _changeUserUsernameCommand = ReactiveCommand.CreateFromTask<(int UserId, string Username), ChangeUsernameResult>(
+        _changeUserUsernameCommand = ReactiveCommand.CreateFromTask<(int UserId, string Username), RequestResult>(
             change => Session.ChangeUsername(change.UserId, change.Username));
-        _setAvatarCommand = ReactiveCommand.CreateFromTask<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)>(
+        _setAvatarCommand = ReactiveCommand.CreateFromTask<PreparedAvatar, (RequestResult Result, string? AvatarUrl)>(
             async avatar =>
             {
                 var (result, user) = await Session.SetAvatar(avatar.Encoded, avatar.MimeType);
                 return (result, user?.AvatarUrl);
             });
         ManageSecurityCommand = ReactiveCommand.CreateFromTask(ManageSecurity, isConnected);
-        _resetAvatarCommand = ReactiveCommand.CreateFromTask<int, SetAvatarResult>(
+        _resetAvatarCommand = ReactiveCommand.CreateFromTask<int, RequestResult>(
             userId => Session.ResetAvatar(userId));
         _setUserRoleCommand = ReactiveCommand
-            .CreateFromTask<(int UserId, int RoleId, bool Has), (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)>(
+            .CreateFromTask<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>(
                 change => Session.SetUserRole(change.UserId, change.RoleId, change.Has));
     }
 
@@ -144,11 +144,11 @@ public sealed class UserActions
         var result = await Session.SetStatus(status);
 
         // A rejection is reported on its own
-        if (result is SetUserStatusResult.NoError or SetUserStatusResult.Rejected)
+        if (result.IsSuccess || result.IsRejected)
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("profile.status.failed"),
-            Strings.Format("profile.status.failed.text", ("code", (int)result)));
+            Strings.Format("profile.status.failed.text", ("code", (int?)result.Error)));
     }
 
     private async Task KickPeer((int SessionId, int UserId) target)
@@ -156,11 +156,11 @@ public sealed class UserActions
         var result = await Session.KickFromHybridSession(target.SessionId, target.UserId);
 
         // A rejection is reported on its own; a peer that is already gone needs no word
-        if (result is LeaveSessionResult.NoError or LeaveSessionResult.Rejected or LeaveSessionResult.PeerNotExists)
+        if (result.IsSuccess || result.IsRejected || result.Error == ErrorCode.PeerNotFound)
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
-            Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+            Strings.Format("peer.kick.failed.text", ("code", (int?)result.Error)));
     }
 
     private async Task PokePeer((int SessionId, int UserId, string? Message) target)
@@ -168,11 +168,11 @@ public sealed class UserActions
         var result = await Session.PokeInHybridSession(target.SessionId, target.UserId, target.Message);
 
         // A rejection is reported on its own; a peer that is already gone needs no word
-        if (result is PokeResult.NoError or PokeResult.Rejected or PokeResult.PeerNotExists)
+        if (result.IsSuccess || result.IsRejected || result.Error == ErrorCode.PeerNotFound)
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.poke.failed.title"),
-            Strings.Format("peer.poke.failed.text", ("code", (int)result)));
+            Strings.Format("peer.poke.failed.text", ("code", (int?)result.Error)));
     }
 
     // The user leaves its sessions and the coordinator with the ban, as from the server settings
@@ -186,11 +186,11 @@ public sealed class UserActions
         var result = await Session.SetUserState(target.UserId, UserState.Banned);
 
         // A rejection is reported on its own
-        if (result is ModerateUserResult.NoError or ModerateUserResult.Rejected)
+        if (result.IsSuccess || result.IsRejected)
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.ban.failed.title"),
-            Strings.Format("peer.kick.failed.text", ("code", (int)result)));
+            Strings.Format("peer.kick.failed.text", ("code", (int?)result.Error)));
     }
 
     private async Task AdmitPeer((int SessionId, int UserId, bool IsApproved) target)
@@ -199,14 +199,14 @@ public sealed class UserActions
         var code = target.IsApproved
             ? await Session.ApproveInHybridSession(target.SessionId, target.UserId) switch
             {
-                ApproveUserSessionResult.NoError or ApproveUserSessionResult.PeerNotExists => (int?)null,
-                var result => (int)result
+                { IsSuccess: true } or { Error: ErrorCode.PeerNotFound } => (int?)null,
+                var result => (int?)result.Error
             }
             : await Session.RejectInHybridSession(target.SessionId, target.UserId) switch
             {
-                RejectUserSessionResult.NoError or RejectUserSessionResult.PeerNotExists
-                    or RejectUserSessionResult.AlreadyApproved => (int?)null,
-                var result => (int)result
+                { IsSuccess: true } or { Error: ErrorCode.PeerNotFound }
+                    or { Error: ErrorCode.AlreadyApproved } => (int?)null,
+                var result => (int?)result.Error
             };
         if (code is not { } failure)
             return;

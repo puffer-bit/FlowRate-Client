@@ -18,13 +18,6 @@ public abstract record NewSessionOptions
 
 public sealed record NewHybridSessionOptions(
     WebRTCEngine EngineType,
-    VideoResolutions Resolution = VideoResolutions.FHD,
-    int? VideoBitrate = 2500,
-    bool IsAudioTransferEnabled = false,
-    bool IsDataChannelEnabled = false,
-    bool IsSimulcastEnabled = false,
-    bool IsTunnelingEnabled = false,
-    bool IsProxyActive = false,
     MediaSettings? Media = null
 ) : NewSessionOptions
 {
