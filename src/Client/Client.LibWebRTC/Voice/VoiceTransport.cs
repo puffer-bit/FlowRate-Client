@@ -125,9 +125,10 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
             _transportParameters = transportParameters;
             _peer = _createPeer(new PeerListener(this));
-        }
 
-        _statsTimer = new Timer(_ => RequestStats(), null, StatsInterval, StatsInterval);
+            // Under the lock, so a Disconnect or Dispose coming at once finds it and stops it
+            _statsTimer = new Timer(_ => RequestStats(), null, StatsInterval, StatsInterval);
+        }
 
         return Negotiate();
     }
@@ -182,8 +183,15 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     private void Close(IVoicePeer? peer)
     {
-        _statsTimer?.Dispose();
-        _statsTimer = null;
+        Timer? statsTimer;
+
+        lock (_lock)
+        {
+            statsTimer = _statsTimer;
+            _statsTimer = null;
+        }
+
+        statsTimer?.Dispose();
         _connected.TrySetResult(false);
 
         if (peer == null)

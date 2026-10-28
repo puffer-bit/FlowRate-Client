@@ -38,8 +38,10 @@ internal sealed class CustomAudioFeeder : IDisposable
         _pcm = pcm;
         _frequency = frequency;
         _thread = new Thread(Run) { IsBackground = true, Name = "libwebrtc custom audio" };
-        _thread.Start();
     }
+
+    /// <summary>Starts playing, once the peer takes the custom source: frames before are dropped.</summary>
+    public void Start() => _thread.Start();
 
     /// <summary>The gain of what is played, 1 keeps it as it is.</summary>
     public double Volume
@@ -92,7 +94,10 @@ internal sealed class CustomAudioFeeder : IDisposable
     public void Dispose()
     {
         _stop.Cancel();
-        _thread.Join();
+
+        if (_thread.ThreadState != System.Threading.ThreadState.Unstarted)
+            _thread.Join();
+
         _stop.Dispose();
     }
 }
