@@ -2,15 +2,18 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Client.Core.Media;
 using Client.LibWebRTC.Voice;
+using Microsoft.Extensions.Logging;
 
 namespace Client.LibWebRTC.Native;
 
 /// <summary>
 /// The video streams of every peer of the process: flowrate_webrtc.h has one receiver for them all,
 /// and its pictures are told apart by their SSRC, which the SFU gives each consumer of its own.
+/// Two peers of different servers may in theory get the same one: the newest stream then takes the
+/// pictures, here as in flowrate_video.cc, and the log says so.
 /// </summary>
 /// <remarks>Use only once <see cref="LibWebRTCRuntime.TryLoad"/> succeeded.</remarks>
-public sealed unsafe class NativeVideoReceiver : IEncodedVideoReceiver
+public sealed unsafe partial class NativeVideoReceiver(ILogger<NativeVideoReceiver>? logger = null) : IEncodedVideoReceiver
 {
     private static readonly ConcurrentDictionary<uint, Action<EncodedVideoFrame>> Streams = new();
     private static int _isInstalled;
@@ -20,7 +23,16 @@ public sealed unsafe class NativeVideoReceiver : IEncodedVideoReceiver
         if (Interlocked.Exchange(ref _isInstalled, 1) == 0)
             NativeMethods.SetVideoReceiver(&OnFrame, 0);
 
-        Streams[ssrc] = onFrame;
+        Action<EncodedVideoFrame>? previous = null;
+        Streams.AddOrUpdate(ssrc, onFrame, (_, current) =>
+        {
+            previous = current;
+            return onFrame;
+        });
+
+        if (previous != null && logger != null)
+            LogSsrcTaken(logger, ssrc);
+
         return new Subscription(ssrc, onFrame);
     }
 
@@ -41,6 +53,9 @@ public sealed unsafe class NativeVideoReceiver : IEncodedVideoReceiver
             // Nothing to tell it to
         }
     }
+
+    [LoggerMessage(LogLevel.Warning, "SSRC {Ssrc} is already received by another stream: its pictures go to the new one")]
+    private static partial void LogSsrcTaken(ILogger logger, uint ssrc);
 
     private sealed class Subscription(uint ssrc, Action<EncodedVideoFrame> onFrame) : IDisposable
     {
