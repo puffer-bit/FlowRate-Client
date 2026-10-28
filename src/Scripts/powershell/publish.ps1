@@ -5,8 +5,9 @@ Builds the self-contained FlowRate client on Windows, for Windows, Linux and/or 
 .DESCRIPTION
 Builds the GStreamer runtime, then the client with its own .NET runtime, then everything to publish in
 dist\<version>\<platform>\ (platform win-x64, win-x64-aot, linux-x64 or android). The result needs
-neither .NET nor GStreamer on the target machine. Needs the .NET 10 SDK; no administrator rights. See
-src\Client\Client.GStreamer\Build\README.md for how the runtime is built.
+neither .NET nor GStreamer on the target machine. Needs the .NET 10 SDK and Visual Studio x64 C++ build
+tools with a Windows SDK (also for JIT, to build the libwebrtc shim); no administrator rights to build.
+See src\Client\Client.GStreamer\Build\README.md for how the GStreamer runtime is built.
 
 A desktop platform folder holds two forms of the client:
  - the installed one, made by vpk (Velopack, a local dotnet tool of the repository), which updates
@@ -80,6 +81,7 @@ Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\..\.."))
 
 $project = "src\Client\Client.Avalonia.Desktop\Client.Avalonia.Desktop.csproj"
 $gstreamerDir = "src\Client\Client.GStreamer\Build"
+$libWebRTCDir = "src\Client\Client.LibWebRTC"
 $publishRoot = "src\Client\Client.Avalonia.Desktop\bin\publish"
 $androidProject = "src\Client\Client.Avalonia.Android\Client.Avalonia.Android.csproj"
 $androidPublishDir = "src\Client\Client.Avalonia.Android\bin\publish\android"
@@ -139,6 +141,15 @@ function Initialize-GStreamer([string]$rid) {
         & (Join-Path $gstreamerDir "windows\collect.ps1")
     } else {
         Write-Host "######## Using the existing Windows GStreamer runtime ($runtime), -GStreamer rebuilds it"
+    }
+}
+
+# Checks the libwebrtc runtime of a RID: the voice of the experimental setting. Optional, the client
+# falls back to GStreamer without it. It is committed (Client.LibWebRTC\Build builds it by hand), so
+# nothing is built here
+function Initialize-LibWebRTC([string]$rid) {
+    if (-not (Test-Path (Join-Path $libWebRTCDir "Build\prebuilt\$rid"))) {
+        Write-Host "Note: no libwebrtc runtime for $rid, its voice goes over GStreamer only"
     }
 }
 
@@ -400,6 +411,7 @@ foreach ($rid in $targets) {
 
     Write-Host "######## FlowRate client $version for $rid ($mode)"
     Initialize-GStreamer $rid
+    Initialize-LibWebRTC $rid
 
     $publishDir = Join-Path $publishRoot "$rid$suffix"
     # dotnet publish ignores a missing profile and publishes elsewhere

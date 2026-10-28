@@ -14,9 +14,9 @@
         <WarningsAsErrors Condition="'$(PublishAot)' == 'true'">$(WarningsAsErrors);IL2104;IL3053</WarningsAsErrors>
         <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifier>
         <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT'">linux-x64</RuntimeIdentifier>
-        <Version>0.6.1</Version>
-        <AssemblyVersion>0.6.1.0</AssemblyVersion>
-        <FileVersion>0.6.1.0</FileVersion>
+        <Version>0.7.1</Version>
+        <AssemblyVersion>0.7.1.0</AssemblyVersion>
+        <FileVersion>0.7.1.0</FileVersion>
         <LangVersion>preview</LangVersion>
         <RootNamespace>Client</RootNamespace>
         <!-- A release carries its own .NET runtime, so the target machine needs none installed. The
@@ -69,7 +69,9 @@
       <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+      <ProjectReference Include="..\Client.GStreamer.WebRTC\Client.GStreamer.WebRTC.csproj" />
       <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
+      <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
       <ProjectReference Include="..\Client.OpenAL\Client.OpenAL.csproj" />
       <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
     </ItemGroup>
@@ -79,6 +81,9 @@
 
     <!-- The GStreamer runtime for the RID of this build, next to the executable -->
     <Import Project="..\Client.GStreamer\Build\GStreamerRuntime.targets" />
+
+    <!-- libwebrtc for the voice, when Client.LibWebRTC has it for this RID -->
+    <Import Project="..\Client.LibWebRTC\Build\LibWebRTCRuntime.targets" />
 
     <!-- The LGPL libraries stay separate files next to the executable, so the user can replace them:
          the GStreamer binding (GstSharp.Net) and OpenAL Soft. The GStreamer runtime is content, never bundled. -->

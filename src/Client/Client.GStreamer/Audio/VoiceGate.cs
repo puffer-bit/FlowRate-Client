@@ -25,7 +25,7 @@ namespace Client.GStreamer.Audio;
 /// <para>The valve ramps open and closed, see <see cref="VoiceGateFade"/>: switched at once, the voice
 /// would start with a click and its tail would be cut off.</para>
 /// </remarks>
-internal sealed class VoiceGate
+public sealed class VoiceGate
 {
     /// <summary>
     /// How often the level element reports. Shorter clips less of the first word.
