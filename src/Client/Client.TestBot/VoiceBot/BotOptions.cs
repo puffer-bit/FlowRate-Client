@@ -57,6 +57,10 @@ internal sealed record BotOptions
           --quiet                  Only failures and the counters, nothing per bot.
           --listen                 Play what the bot hears. By default incoming audio is only
                                    received and decoded, so several bots do not fill the speakers.
+          --libwebrtc              Send and receive the voice over libwebrtc instead of GStreamer,
+                                   as the experimental setting of the client does. No screens.
+          --create-session <name>  Join the voice session of that name, which the first bot
+                                   creates when the server has none, e.g. a fresh local one.
           --verbose                Log everything, including the WebRTC negotiation.
           --help                   Show this text.
 
@@ -101,6 +105,8 @@ internal sealed record BotOptions
     public TimeSpan? ChatInterval { get; init; }
     public TimeSpan StatsInterval { get; init; } = TimeSpan.FromSeconds(10);
     public bool Quiet { get; init; }
+    public bool LibWebRTC { get; init; }
+    public string? CreateSession { get; init; }
 
     /// <returns>The options, or null when help was requested.</returns>
     /// <exception cref="ArgumentException">An option is missing or malformed.</exception>
@@ -120,6 +126,8 @@ internal sealed record BotOptions
         int? gpuFailSeconds = null;
         var voice = true;
         var quiet = false;
+        var libWebRTC = false;
+        string? createSession = null;
         string? chat = null;
         double? chatSeconds = null;
         int ramp = 0, statsSeconds = 10;
@@ -229,6 +237,12 @@ internal sealed record BotOptions
                 case "--quiet":
                     quiet = true;
                     break;
+                case "--libwebrtc":
+                    libWebRTC = true;
+                    break;
+                case "--create-session":
+                    createSession = Value();
+                    break;
                 default:
                     throw new ArgumentException($"Unknown option {name}");
             }
@@ -281,7 +295,9 @@ internal sealed record BotOptions
             Chat = chat,
             ChatInterval = chatSeconds.HasValue ? TimeSpan.FromSeconds(chatSeconds.Value) : null,
             StatsInterval = TimeSpan.FromSeconds(statsSeconds),
-            Quiet = quiet
+            Quiet = quiet,
+            LibWebRTC = libWebRTC,
+            CreateSession = createSession
         };
     }
 

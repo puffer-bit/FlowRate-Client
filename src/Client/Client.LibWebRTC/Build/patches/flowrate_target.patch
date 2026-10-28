@@ -1,0 +1,60 @@
+diff --git a/libwebrtc/BUILD.gn b/libwebrtc/BUILD.gn
+index 33a8a63..05ced80 100644
+--- a/libwebrtc/BUILD.gn
++++ b/libwebrtc/BUILD.gn
+@@ -40,6 +40,8 @@ config("external_config") {
+ }
+ 
+ rtc_shared_library("libwebrtc") {
++  # FlowRate: the C interface of the client is linked into the same library, named after it
++  output_name = "flowrate_webrtc"
+   libs = []
+   cflags = []
+   include_dirs = [
+@@ -287,6 +289,14 @@ rtc_shared_library("libwebrtc") {
+     "//third_party/libyuv",
+   ]
+ 
++  # FlowRate: the C interface of the client and its video codecs
++  sources += [
++    "flowrate/flowrate_video.cc",
++    "flowrate/flowrate_video.h",
++    "flowrate/flowrate_webrtc.cc",
++    "flowrate/flowrate_webrtc.h",
++  ]
++
+   # screen capture device
+   if (libwebrtc_desktop_capture) {
+     sources += [
+diff --git a/libwebrtc/src/rtc_peerconnection_factory_impl.cc b/libwebrtc/src/rtc_peerconnection_factory_impl.cc
+index cf524b6..00d00db 100644
+--- a/libwebrtc/src/rtc_peerconnection_factory_impl.cc
++++ b/libwebrtc/src/rtc_peerconnection_factory_impl.cc
+@@ -7,6 +7,7 @@
+ #include "api/media_stream_interface.h"
+ #include "api/video_codecs/builtin_video_decoder_factory.h"
+ #include "api/video_codecs/builtin_video_encoder_factory.h"
++#include "flowrate/flowrate_video.h"
+ #include "modules/audio_device/audio_device_impl.h"
+ #include "rtc_audio_source_impl.h"
+ #include "rtc_field_trials_impl.h"
+@@ -98,17 +99,8 @@ bool RTCPeerConnectionFactoryImpl::Initialize() {
+         network_thread_.get(), worker_thread_.get(), signaling_thread_.get(),
+         audio_device_module_, webrtc::CreateBuiltinAudioEncoderFactory(),
+         webrtc::CreateBuiltinAudioDecoderFactory(),
+-#if defined(USE_INTEL_MEDIA_SDK)
+-        CreateIntelVideoEncoderFactory(), CreateIntelVideoDecoderFactory(),
+-#elif defined(WEBRTC_WIN) && defined(RTC_ENABLE_H265)
+-        webrtc::CreateWmfH265EncoderFactory(
+-            webrtc::CreateBuiltinVideoEncoderFactory()),
+-        webrtc::CreateWmfH265DecoderFactory(
+-            webrtc::CreateBuiltinVideoDecoderFactory()),
+-#else
+-        webrtc::CreateBuiltinVideoEncoderFactory(),
+-        webrtc::CreateBuiltinVideoDecoderFactory(),
+-#endif
++        // FlowRate: the video codecs of the client, see flowrate_video.h
++        flowrate::CreateVideoEncoderFactory(), flowrate::CreateVideoDecoderFactory(),
+         nullptr, audio_processing_impl_->GetAudioProcessing(), nullptr,
+         // The field trials configured through RTCFieldTrials, e.g. WARP's
+         // `WebRTC-IceHandshakeDtls`. Passing nullptr here makes the factory

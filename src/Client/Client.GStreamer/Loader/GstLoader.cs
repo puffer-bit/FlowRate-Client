@@ -8,6 +8,12 @@ namespace Client.GStreamer.Loader;
 
 public partial class GstLoader
 {
+    /// <summary>
+    /// What the binding was initialized with, once the runtime is loaded. A module of the binding that
+    /// only another project uses, such as the one of webrtcbin, is initialized there with it.
+    /// </summary>
+    public static Gst.GstSharpOptions? Options { get; private set; }
+
     public static bool LoadGstreamer(ILogger logger)
     {
         if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
@@ -38,8 +44,7 @@ public partial class GstLoader
             var options = new Gst.GstSharpOptions { NativeSearchPath = GstNativeLibraryResolver.LibraryDirectory };
             GstSharp.Initialize(options);
             Gst.App.GstApp.Initialize(options);
-            Gst.Sdp.GstSdp.Initialize(options);
-            Gst.WebRTC.GstWebRTC.Initialize(options);
+            Options = options;
             GstLogFilter.Install(logger);
 
             LogInitialized(logger, Gst.Global.VersionString(), GstNativeLibraryResolver.LibraryDirectory);

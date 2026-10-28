@@ -13,6 +13,8 @@
         <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
         <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
         <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+        <ProjectReference Include="..\Client.GStreamer.WebRTC\Client.GStreamer.WebRTC.csproj" />
+        <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
         <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
     </ItemGroup>
 
@@ -37,4 +39,8 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
+
+    <!-- libwebrtc for the libwebrtc option, when Client.LibWebRTC has it for this RID -->
+    <Import Project="..\Client.LibWebRTC\Build\LibWebRTCRuntime.targets" />
+
 </Project>

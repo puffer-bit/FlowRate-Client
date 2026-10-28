@@ -2,6 +2,8 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shared.Enums;
+using Shared.Enums.WebRTC;
+using Client.Core.Sessions;
 using Shared.Models.Media;
 using Client.Core.Media;
 using Client.Core.Coordinator;
@@ -551,12 +553,10 @@ internal sealed partial class VoiceBot
 
     private async Task<HybridSessionModel> FindSessionAsync(ICoordinatorSession coordinator)
     {
-        var (result, sessions, _) = await coordinator.GetAllSessions();
+        var voiceSessions = await GetVoiceSessionsAsync(coordinator);
 
-        if (result != SessionRequestResult.NoError || sessions == null)
-            throw new InvalidOperationException($"{Name}: failed to get the session list: {result}");
-
-        var voiceSessions = sessions.Values.OfType<HybridSessionModel>().ToList();
+        if (_options.CreateSession is { } created)
+            return await FindOrCreateSessionAsync(coordinator, voiceSessions, created);
 
         if (voiceSessions.Count == 0)
             throw new InvalidOperationException($"{Name}: the server has no voice sessions");
@@ -570,6 +570,55 @@ internal sealed partial class VoiceBot
                ?? throw new InvalidOperationException(
                    $"{Name}: no voice session \"{_options.Session}\". Available: " +
                    string.Join(", ", voiceSessions.Select(session => $"{session.Id} \"{session.Name}\"")));
+    }
+
+    private async Task<List<HybridSessionModel>> GetVoiceSessionsAsync(ICoordinatorSession coordinator)
+    {
+        var (result, sessions, _) = await coordinator.GetAllSessions();
+
+        if (result != SessionRequestResult.NoError || sessions == null)
+            throw new InvalidOperationException($"{Name}: failed to get the session list: {result}");
+
+        return sessions.Values.OfType<HybridSessionModel>().ToList();
+    }
+
+    /// <summary>
+    /// The session of --create-session: the first bot creates it when the server has none of that
+    /// name, the others wait for it to appear.
+    /// </summary>
+    private async Task<HybridSessionModel> FindOrCreateSessionAsync(ICoordinatorSession coordinator,
+        List<HybridSessionModel> voiceSessions, string name)
+    {
+        const int attempts = 20;
+        var interval = TimeSpan.FromMilliseconds(250);
+
+        for (var attempt = 0; ; attempt++)
+        {
+            if (voiceSessions.FirstOrDefault(session =>
+                    string.Equals(session.Name, name, StringComparison.OrdinalIgnoreCase)) is { } found)
+                return found;
+
+            if (attempt == 0 && _index == 0)
+            {
+                var result = await coordinator.CreateSession(new NewSessionModel(name, coordinator.GetCurrentUser().Id,
+                    Shared.Validation.Limits.SessionCapacityMax, new NewHybridSessionOptions(WebRTCEngine.GStreamer)));
+
+                if (result is not (CreateSessionResult.NoError or CreateSessionResult.NameAlreadyUsed))
+                    throw new InvalidOperationException($"{Name}: failed to create the session \"{name}\": {result}");
+
+                Log($"created the session \"{name}\"");
+            }
+            else if (attempt >= attempts)
+            {
+                throw new InvalidOperationException($"{Name}: the session \"{name}\" did not appear");
+            }
+            else
+            {
+                await Task.Delay(interval);
+            }
+
+            voiceSessions = await GetVoiceSessionsAsync(coordinator);
+        }
     }
 
     // Each bot keeps its own user between runs instead of registering a new one every time

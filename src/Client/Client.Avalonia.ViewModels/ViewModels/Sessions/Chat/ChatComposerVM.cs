@@ -577,6 +577,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 ChatMediaUploadResult.TooManyUploads => "chat.attach.error.tooMany",
                 ChatMediaUploadResult.StorageFull => "chat.attach.error.storageFull",
                 ChatMediaUploadResult.ConnectionFailed => "chat.attach.error.connection",
+                ChatMediaUploadResult.Unreadable => "chat.attach.error.unreadable",
                 _ => "chat.attach.error.failed"
             });
             SendError = Strings.Format("chat.send.imageFailed", ("file", attachment.FileName), ("reason", attachment.Error));

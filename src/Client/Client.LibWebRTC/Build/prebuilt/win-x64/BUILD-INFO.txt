@@ -1,0 +1,9 @@
+flowrate_webrtc.dll, built by Build/windows/build.ps1
+Date:      2026-10-27T16:48:53Z
+WebRTC:    webrtc-sdk/webrtc a545de45259b47dfac5f3635863e47cb601f1bb2
+Wrapper:   webrtc-sdk/libwebrtc libwebrtc.m150.7871.06
+Patches:   custom_audio_source_m150 add_libwebrtc_build_target allow_176k4_192k_shared_mode_formats flowrate_target
+FlowRate:  unknown
+SHA-256:   e4d98ebfc84d0ba668eece9b540fdb96af98a07cb1f3d91b2cf6ee1ffe198d72
+Toolchain: Visual Studio 2022, Windows SDK 10.0.26100.0
+GN args:   target_os="win" target_cpu="x64" is_debug=false is_clang=true is_component_build=false symbol_level=0 enable_iterator_debugging=false treat_warnings_as_errors=false use_custom_libcxx=false rtc_include_tests=true rtc_build_tools=false rtc_build_examples=false rtc_enable_protobuf=false rtc_use_h265=false libwebrtc_desktop_capture=false

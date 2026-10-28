@@ -565,6 +565,7 @@
   "chat.attach.error.storageFull": "The server is out of space",
   "chat.attach.error.connection": "No connection to the server",
   "chat.attach.error.failed": "The server did not take the file",
+  "chat.attach.error.unreadable": "The file cannot be read",
   "chat.send.imageFailed": "{file}: {reason}",
   "@chat.send.imageFailed": {
     "placeholders": {
@@ -595,6 +596,13 @@
   "push.markRead": "Mark as read",
   "push.reply.hint": "Message",
   "push.reply.failed": "The reply was not sent",
+  "call.channel": "Voice sessions",
+  "call.text.active": "In a voice session",
+  "call.text.microphoneOff": "Microphone off",
+  "call.text.soundOff": "Sound off",
+  "call.microphoneOff": "Mute",
+  "call.microphoneOn": "Unmute",
+  "call.leave": "Leave",
   "chat.send.tooLong": "The message is too long: {length} characters of {limit} allowed.",
   "@chat.send.tooLong": {
     "placeholders": {
@@ -1123,8 +1131,12 @@
   "settings.audio.noiseSuppression.veryHigh": "Very high",
   "settings.audio.noiseSuppression.neural": "Neural (RNNoise)",
   "settings.audio.noiseSuppression.neuralAndWebRtc": "Neural + moderate",
+  "settings.audio.webRtcNoiseSuppression.title": "Noise suppression",
+  "settings.audio.webRtcNoiseSuppression.description": "Removes background noise from the microphone with the noise suppression of libwebrtc. Its levels, the neural ones included, are kept for the GStreamer engine.",
   "settings.audio.echoCancellation.title": "Echo cancellation",
   "settings.audio.echoCancellation.description": "Takes the voices from your speakers out of the microphone, so the others do not hear themselves. Not needed with headphones.",
+  "settings.audio.autoGainControl.title": "Automatic gain",
+  "settings.audio.autoGainControl.description": "Brings a quiet microphone up to the level of speech. Turn it off if the voice pumps, the noise of the room rises in pauses or the voice gate opens on its own.",
   "settings.audio.section.voiceActivity": "Voice activity",
   "settings.audio.voiceGate.title": "Send the microphone only while I speak",
   "settings.audio.voiceGate.description": "Set the threshold under the meter while testing the microphone: the meter turns green while your voice would be sent.",
@@ -1251,6 +1263,15 @@
   "settings.experimental.section.window": "Window",
   "settings.experimental.customTitleBar.title": "Own window title bar",
   "settings.experimental.customTitleBar.description": "The window buttons sit in the top bar of the application and the title bar of the system is hidden. Turn off to get the title bar of the system back. Applies at once",
+  "settings.experimental.section.voice": "Voice",
+  "settings.experimental.libWebRTC.title": "Voice and screens over libwebrtc",
+  "settings.experimental.libWebRTC.description": "Voice and screens go through the engine of Chrome instead of GStreamer: its jitter buffer, noise suppression and echo cancelling, and its transport for the screens, which GStreamer still captures, encodes and decodes. The sound of a shared screen goes through it too, untouched by the processing of the microphone. Applies to the next session joined",
+  "settings.experimental.libWebRTC.failed": "libwebrtc could not be loaded, the voice and the screens stay on GStreamer: {reason}",
+  "@settings.experimental.libWebRTC.failed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
   "settings.accounting.certificate.notBound": "Not bound yet: bound to the coordinator on the next login",
   "settings.accounting.forgetServer.title": "Forget server",
   "settings.accounting.forgetServer.question": "Forget \"{server}\"?\n\n{consequence}",

@@ -102,7 +102,7 @@ public static class FileAudioSource
     /// Creates the source element for an input that is not a capture device.
     /// </summary>
     /// <returns>An element with a single src pad of raw audio, or null when an element is missing.</returns>
-    internal static Element? CreateElement(AudioInput input)
+    public static Element? CreateElement(AudioInput input)
     {
         switch (input)
         {

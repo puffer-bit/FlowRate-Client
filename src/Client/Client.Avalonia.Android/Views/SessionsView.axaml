@@ -6,6 +6,8 @@
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.SessionsView"
              x:DataType="mainVm:MainWindowVM"
              Background="{DynamicResource GeneralBrush}">
@@ -80,7 +82,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, 1, *, 1, Auto">
+    <Grid RowDefinitions="Auto, 1, *, Auto, 1, Auto">
 
         <!-- The server, as at the top of the side panel of the desktop. A tap opens its menu, or the
              connect form while there is no server -->
@@ -195,7 +197,9 @@
                         <Grid RowDefinitions="Auto, Auto" RowSpacing="2"
                               anim:Presence.Leave="Fold"
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
-                            <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}">
+                            <!-- A tap on the header enters the session, or brings it back on screen -->
+                            <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}"
+                                    Tapped="OnHybridSessionTapped">
                                 <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                                     <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
                                            Source="{StaticResource HybridSessionIcon}"/>
@@ -213,7 +217,7 @@
                                 </Grid>
                             </Border>
 
-                            <!-- Who is in the session. Not a list box: there is nothing to do with a peer here yet -->
+                            <!-- Who is in the session. Not a list box: a tap on a peer opens its menu -->
                             <Border Grid.Row="1"
                                     Classes="peersBranch"
                                     IsVisible="{Binding !!Peers.Count}">
@@ -229,7 +233,9 @@
                                                   anim:Presence.Leave="Fold"
                                                   anim:Presence.IsLeaving="{Binding IsLeaving}"
                                                   Classes="peerRow"
-                                                  Classes.afk="{Binding IsAfk}">
+                                                  Classes.afk="{Binding IsAfk}"
+                                                  Background="Transparent"
+                                                  Tapped="OnPeerTapped">
                                                 <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
                                                     <avatars:UserAvatar UserName="{Binding UserData.Username}"
                                                                         IsAnimated="True"
@@ -369,11 +375,120 @@
             </ListBox>
         </Grid>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <!-- The voice session we are in, as under the list of the desktop: its state, a way back to it
+             and out of it, and the microphone, the sound and AFK. It unfolds when we join and folds
+             back when we leave, so the list above gives way smoothly -->
+        <Border Grid.Row="3" Classes="hybridPanel"
+                BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
+                Padding="8"
+                anim:Presence.Appear="Unfold"
+                anim:Presence.Leave="Fold"
+                anim:Presence.IsLeaving="{Binding OpenedSessions.IsHybridPanelLeaving, FallbackValue=False}"
+                IsVisible="{Binding OpenedSessions.HybridPanelSession, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+            <Border.Styles>
+                <!-- The part that has not unfolded yet is cut off. A style and not a value of the
+                     element: the end of a fold clears the value the element has -->
+                <Style Selector="Border.hybridPanel">
+                    <Setter Property="ClipToBounds" Value="True"/>
+                </Style>
+                <Style Selector="Button.hybridAction">
+                    <Setter Property="Height" Value="44"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                </Style>
+                <Style Selector="Button.hybridAction /template/ ContentPresenter">
+                    <Setter Property="BorderThickness" Value="0"/>
+                </Style>
+                <!-- Being away stays visible at a glance -->
+                <Style Selector="Button.hybridAction.active /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                </Style>
+            </Border.Styles>
+
+            <Grid RowDefinitions="Auto, Auto" RowSpacing="8">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" ColumnSpacing="4">
+                    <!-- The state of the connection, as wide as the avatar of the user below -->
+                    <Panel Grid.Column="0" Width="40" Height="40" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <loadingIndicators:ProgressRing Width="22" Height="22" MinWidth="22" MinHeight="22"
+                                                        IsIndeterminate="True"
+                                                        BorderThickness="3"
+                                                        Foreground="{DynamicResource ProgressRingBrush}"
+                                                        IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsLoading, FallbackValue=False}"/>
+                        <indicators:SignalIndicator Width="24" Height="24"
+                                                    Level="{Binding OpenedSessions.HybridPanelSession.StatusBar.Stats.SignalLevel, FallbackValue=0}"
+                                                    IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsConnected, FallbackValue=False}"/>
+                        <Image Width="22" Height="22"
+                               Source="{Binding OpenedSessions.HybridPanelSession.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}">
+                            <Image.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsLoading" FallbackValue="False"/>
+                                    <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsConnected" FallbackValue="False"/>
+                                </MultiBinding>
+                            </Image.IsVisible>
+                        </Image>
+                    </Panel>
+
+                    <!-- A tap brings the session back on screen -->
+                    <Button Grid.Column="1" Classes="borderless" Padding="6"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            Click="OnHybridPanelClick">
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock FontSize="15" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.SessionName, FallbackValue={x:Null}}"/>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.ShortStatusText, FallbackValue={x:Null}}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="2" Classes="hybridAction" Width="44" VerticalAlignment="Center"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.CloseCommand, FallbackValue={x:Null}}">
+                        <Image Width="22" Height="22" Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
+                    </Button>
+                </Grid>
+
+                <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
+                    <Button Classes="hybridAction"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}">
+                        <Panel>
+                            <Image Width="22" Height="22" Source="{StaticResource MicrophoneIcon}"
+                                   IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsMicrophoneOn, FallbackValue=False}"/>
+                            <Image Width="22" Height="22" Source="{StaticResource CrossedMicrophoneIcon}"
+                                   IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsMicrophoneOn, FallbackValue=True}"/>
+                        </Panel>
+                    </Button>
+
+                    <Button Classes="hybridAction"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleSoundCommand, FallbackValue={x:Null}}">
+                        <Panel>
+                            <Image Width="22" Height="22" Source="{StaticResource HeadphonesIcon}"
+                                   IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsSoundOn, FallbackValue=True}"/>
+                            <Image Width="22" Height="22" Source="{StaticResource CrossedHeadphonesIcon}"
+                                   IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsSoundOn, FallbackValue=False}"/>
+                        </Panel>
+                    </Button>
+
+                    <!-- Away from the keyboard and back with one tap, without a reason -->
+                    <Button Classes="hybridAction"
+                            Classes.active="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=False}"
+                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}">
+                        <Image Width="22" Height="22" Source="{StaticResource AfkIcon}"/>
+                    </Button>
+                </UniformGrid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- The signed-in user and the settings, as at the bottom of the side panel of the desktop.
              A tap on the user opens the profile, a long press the choice of the status -->
-        <Grid Grid.Row="4" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
+        <Grid Grid.Row="5" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
         <Button Grid.Column="0"
                 Classes="borderless"
                 Padding="8,6"

@@ -35,11 +35,29 @@ public static class PickedFiles
                 continue;
 
             var properties = await file.GetBasicPropertiesAsync();
-            picked.Add(new PickedFile(file.Name, file.TryGetLocalPath() ?? file.Path.ToString(),
-                (long)(properties.Size ?? 0), file.OpenReadAsync));
+            var path = file.TryGetLocalPath();
+            picked.Add(new PickedFile(file.Name, path ?? file.Path.ToString(),
+                (long)(properties.Size ?? 0), path != null ? () => OpenShared(path, file) : file.OpenReadAsync));
         }
 
         return picked;
+    }
+
+    // Shared with the program that writes the file, as a log being written still is: the storage file of
+    // Avalonia opens it for reading alone, which Windows refuses while another program writes to it.
+    // Only what the file held when it was picked is sent. A path this process may not open itself, as
+    // Android gives, is read the way the platform reads it
+    private static async Task<Stream> OpenShared(string path, IStorageFile file)
+    {
+        try
+        {
+            return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                4096, useAsync: true);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return await file.OpenReadAsync();
+        }
     }
 
     /// <summary>A picture that is not a file, as the clipboard holds a screenshot.</summary>

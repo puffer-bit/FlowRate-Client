@@ -195,6 +195,29 @@ public class ChatMediaUploaderTests
         Assert.Equal(2, _fake.Uploads.Count);
     }
 
+    [Fact]
+    public async Task FileAnotherProgramHoldsLocked_IsReportedUnreadable()
+    {
+        var result = await _uploader.UploadFileAsync(_session, 3,
+            new ChatMediaSource("app-20261027.txt", Content.Length,
+                () => throw new IOException("The process cannot access the file because it is being used by another process.")),
+            _fileState, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ChatMediaUploadResult.Unreadable, result);
+        Assert.Null(_fileState.File);
+    }
+
+    [Fact]
+    public async Task ImageThatCannotBeRead_IsReportedUnreadable()
+    {
+        var result = await _uploader.UploadImageAsync(_session, 3,
+            new ChatMediaSource("cat.png", Content.Length, () => throw new UnauthorizedAccessException()),
+            _state, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ChatMediaUploadResult.Unreadable, result);
+        Assert.Null(_state.Image);
+    }
+
     private sealed class Collector(List<double> values) : IProgress<double>
     {
         public void Report(double value) => values.Add(value);
@@ -229,6 +252,16 @@ public class ChatMediaUploaderTests
 
             var upload = (MediaUpload)args![0]!;
             Uploads.Add(upload);
+
+            // The client reads the bytes before it sends them, and fails as the source does
+            try
+            {
+                upload.OpenContent().GetAwaiter().GetResult().Dispose();
+            }
+            catch (Exception exception)
+            {
+                return Task.FromException<MediaUploadOutcome>(exception);
+            }
 
             var result = Results.TryDequeue(out var queued) ? queued : MediaTransferResult.NoError;
             var id = result is MediaTransferResult.NoError or MediaTransferResult.ConnectionFailed or MediaTransferResult.Canceled

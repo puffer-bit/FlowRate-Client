@@ -89,9 +89,13 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public SettingTabType Type => SettingTabType.Audio;
     public bool IsEnabled => true;
 
+    // Only the rows the engine of the voice shows
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
-        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression", "echoCancellation"]),
-        ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
+        ("microphone", ["inputDevice", "inputVolume", IsLibWebRTC ? "webRtcNoiseSuppression" : "noiseSuppression",
+            "echoCancellation", "autoGainControl"]),
+        ("voiceActivity", IsLibWebRTC
+            ? ["voiceGate", "adaptiveThreshold"]
+            : ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
 
@@ -112,14 +116,48 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = 100;
     
+    /// <summary>
+    /// Whether the voice goes over libwebrtc, whose microphone has fewer choices: one noise
+    /// suppression, on or off, and no voice detection.
+    /// </summary>
+    public bool IsLibWebRTC
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = ExperimentalFeatures.UseLibWebRTC;
+
     // Index into the noise suppression choices of the view, in the order of NoiseSuppressionLevel
     public int NoiseSuppressionIndex
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsWebRtcNoiseSuppressionEnabled));
+        }
     } = (int)NoiseSuppressionLevel.Moderate;
 
+    /// <summary>
+    /// The noise suppression of libwebrtc, which runs for every level but off. Switching it on
+    /// picks the default level, so a level chosen for GStreamer stays as long as it is left on.
+    /// </summary>
+    public bool IsWebRtcNoiseSuppressionEnabled
+    {
+        get => NoiseSuppression != NoiseSuppressionLevel.Off;
+        set
+        {
+            if (value != IsWebRtcNoiseSuppressionEnabled)
+                NoiseSuppressionIndex = (int)(value ? new AudioSettings().NoiseSuppression : NoiseSuppressionLevel.Off);
+        }
+    }
+
     public bool IsEchoCancellationEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    public bool IsAutoGainControlEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -308,6 +346,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
 
+        var autoGainControlChanges = this.WatchProperty(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
         var soundsEnabledChanges = this.WatchProperty(nameof(AreSoundsEnabled), x => x.AreSoundsEnabled)
             .Where(_ => !_isUpdating)
             .Select(_ => RxVoid.Default);
@@ -331,6 +373,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Merge(volumeChanges)
             .Merge(noiseSuppressionChanges)
             .Merge(echoCancellationChanges)
+            .Merge(autoGainControlChanges)
             .Merge(gateChanges)
             .Merge(voiceDetectionChanges)
             .Merge(adaptiveThresholdChanges)
@@ -364,6 +407,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(_ => !_isUpdating && IsTestRunning)
             .Subscribe(_ => StartTest()));
 
+        _disposables.Add(this.WatchProperty(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled)
+            .Where(_ => !_isUpdating && IsTestRunning)
+            .Subscribe(_ => StartTest()));
+
         // The gate of the test decides as the one of a call, with the same options
         _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(VoiceGateThresholdDb),
                 nameof(IsVoiceDetectionEnabled), nameof(IsAdaptiveThresholdEnabled))
@@ -379,6 +426,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Subscribe(_ => ResetVoiceDetected()));
         
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
+        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
         _microphoneTester.GateChanged += OnTestGateChanged;
         _microphoneTester.Failed += OnTestFailed;
@@ -453,7 +501,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void StartTest()
     {
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
-            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled));
+            InputVolumePercent / 100, IsLoopbackEnabled, TestNoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled,
+            IsAutoGainControlEnabled));
         IsTestRunning = TestError == null;
         InputLevel = 0;
     }
@@ -483,9 +532,32 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         Dispatcher.UIThread.Post(() => IsVoiceDetected = isOpen && IsVoiceGateEnabled && IsTestRunning);
     }
 
+    // The test runs on GStreamer whatever the engine of the voice. For libwebrtc it does what
+    // libwebrtc does: the moderate level of the WebRTC suppression, which is the one libwebrtc runs,
+    // and a gate by the loudness alone
     private VoiceGateOptions? TestVoiceGate => IsVoiceGateEnabled
-        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled)
+        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled && !IsLibWebRTC, IsAdaptiveThresholdEnabled)
         : null;
+
+    private NoiseSuppressionLevel TestNoiseSuppression =>
+        IsLibWebRTC && NoiseSuppression != NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.Moderate : NoiseSuppression;
+
+    private void OnExperimentalFeaturesChanged()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsLibWebRTC == ExperimentalFeatures.UseLibWebRTC)
+                return;
+
+            IsLibWebRTC = ExperimentalFeatures.UseLibWebRTC;
+            this.RaisePropertyChanged(nameof(SearchEntries));
+
+            if (IsTestRunning)
+                StartTest();
+            else
+                _microphoneTester.SetVoiceGate(TestVoiceGate);
+        });
+    }
 
     private void ResetVoiceDetected()
     {
@@ -526,6 +598,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         IsAdaptiveThresholdEnabled = settings.IsAdaptiveThresholdEnabled;
         NoiseSuppressionIndex = (int)settings.NoiseSuppression;
         IsEchoCancellationEnabled = settings.IsEchoCancellationEnabled;
+        IsAutoGainControlEnabled = settings.IsAutoGainControlEnabled;
         AreSoundsEnabled = settings.AreSoundsEnabled;
         SoundsVolumePercent = settings.SoundsVolume * 100;
         _savedSoundPack = settings.SoundPack;
@@ -607,6 +680,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         IsAdaptiveThresholdEnabled = IsAdaptiveThresholdEnabled,
         NoiseSuppression = NoiseSuppression,
         IsEchoCancellationEnabled = IsEchoCancellationEnabled,
+        IsAutoGainControlEnabled = IsAutoGainControlEnabled,
         AreSoundsEnabled = AreSoundsEnabled,
         SoundsVolume = SoundsVolumePercent / 100,
         SoundPack = _savedSoundPack,
@@ -627,6 +701,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester.Stop();
         
         _audioService.InputDevicesChanged -= OnInputDevicesChanged;
+        ExperimentalFeatures.Changed -= OnExperimentalFeaturesChanged;
         _disposables.Dispose();
     }
 }

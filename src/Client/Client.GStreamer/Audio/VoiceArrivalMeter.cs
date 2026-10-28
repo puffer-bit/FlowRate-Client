@@ -14,7 +14,7 @@ namespace Client.GStreamer.Audio;
 /// The probe runs on a streaming thread for every buffer, so it only adds the delay to the figures
 /// of the current period; the transport reads and resets them with <see cref="TakeSummary"/>.
 /// </remarks>
-internal sealed class VoiceArrivalMeter
+public sealed class VoiceArrivalMeter
 {
     private readonly IntPtr _mixer;
 

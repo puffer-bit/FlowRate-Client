@@ -7,7 +7,7 @@ namespace Client.GStreamer.Interop;
 /// Running times of buffers and elements, read without wrappers: the readings are made for every
 /// buffer of a voice, and a wrapper per buffer would only feed the collector.
 /// </summary>
-internal static class GstTimingNative
+public static class GstTimingNative
 {
     private const ulong ClockTimeNone = ulong.MaxValue;
 

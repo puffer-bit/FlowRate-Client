@@ -2,7 +2,9 @@ using Client.Api;
 using Client.Application.Coordinator.Users;
 using Client.GStreamer.Loader;
 using Client.GStreamer.Audio;
+using Client.GStreamer.Video;
 using Client.GStreamer.WebRTC;
+using Client.LibWebRTC.Native;
 using Client.TestBot;
 using Client.Tools.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,7 +84,24 @@ catch (Exception exception) when (exception is IOException or InvalidOperationEx
 }
 
 using var devices = new GstAudioDeviceProvider(services.GetRequiredService<ILogger<GstAudioDeviceProvider>>());
-var transports = new WebRTCTransportFactory(devices, services.GetRequiredService<ILogger<WebRTCTransport>>());
+var video = new GstVideoMedia(services.GetRequiredService<ILoggerFactory>());
+IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, video, services.GetRequiredService<ILogger<WebRTCTransport>>());
+
+if (options.LibWebRTC)
+{
+    var libWebRTC = new LibWebRTCTransportFactory(
+        new LibWebRTCRuntime(devices, services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
+        new GstAudioMedia(services.GetRequiredService<ILoggerFactory>()), new NativeVideoReceiver(),
+        services.GetRequiredService<ILoggerFactory>());
+
+    if (!libWebRTC.IsAvailable)
+    {
+        ProgramLog.LibWebRTCMissing(logger);
+        return 1;
+    }
+
+    transports = libWebRTC;
+}
 using var stop = new CancellationTokenSource();
 
 Console.CancelKeyPress += (_, eventArgs) =>

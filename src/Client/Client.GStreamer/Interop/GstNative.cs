@@ -11,7 +11,7 @@ namespace Client.GStreamer.Interop;
 /// after the session is left, so these reads go to GObject directly, where a getter hands over
 /// exactly one reference, and the caller decides whether a wrapper is made for it at all.
 /// </remarks>
-internal static class GstNative
+public static class GstNative
 {
     [DllImport(NativeLibraries.GObject)]
     private static extern void g_object_get(IntPtr instance,

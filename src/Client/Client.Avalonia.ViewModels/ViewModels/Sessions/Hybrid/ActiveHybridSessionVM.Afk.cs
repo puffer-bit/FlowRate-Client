@@ -35,7 +35,7 @@ public partial class ActiveHybridSessionVM
 
     /// <summary>
     /// Goes away with the reason typed in the bar, or comes back. Remembered on this coordinator, as the mutes are.
-    /// Away nothing is heard and the microphone is always off; back, both return to what the user chose for them.
+    /// Away no voice is heard (the sound of screens still is) and the microphone is always off; back, both return to what the user chose for them.
     /// </summary>
     private async Task ToggleAfk()
     {

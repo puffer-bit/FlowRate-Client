@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Video;

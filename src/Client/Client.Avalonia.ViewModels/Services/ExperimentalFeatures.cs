@@ -16,17 +16,25 @@ public static class ExperimentalFeatures
     /// </summary>
     public static bool UseCustomTitleBar { get; private set; }
 
+    /// <summary>
+    /// Whether the voice of a session goes over libwebrtc instead of GStreamer. Read when a session
+    /// is joined; a platform with both engines applies it.
+    /// </summary>
+    public static bool UseLibWebRTC { get; private set; }
+
     public static event Action? Changed;
 
-    public static void Apply(bool isEnabled, bool useCustomTitleBar)
+    public static void Apply(bool isEnabled, bool useCustomTitleBar, bool useLibWebRTC)
     {
         useCustomTitleBar = isEnabled && useCustomTitleBar;
+        useLibWebRTC = isEnabled && useLibWebRTC;
 
-        if (IsEnabled == isEnabled && UseCustomTitleBar == useCustomTitleBar)
+        if (IsEnabled == isEnabled && UseCustomTitleBar == useCustomTitleBar && UseLibWebRTC == useLibWebRTC)
             return;
 
         IsEnabled = isEnabled;
         UseCustomTitleBar = useCustomTitleBar;
+        UseLibWebRTC = useLibWebRTC;
         Changed?.Invoke();
     }
 }

@@ -48,9 +48,11 @@ public interface IMicrophoneTester : IDisposable
     /// <param name="isEchoCancellationEnabled">
     /// Whether what is played back is taken out of the microphone, as the voices of a session are.
     /// </param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     /// <returns>Null when capturing started.</returns>
     MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled);
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled);
     void Stop();
     
     void SetVolume(double volume);
