@@ -26,7 +26,7 @@ public partial class CoordinatorSession
     private abstract record ConnectionMessage(TaskCompletionSource? Completion = null);
 
     private sealed record ConnectRequested(string Address, int Port, string? UserIdentity, string? Password,
-        string? AccountPassword, TaskCompletionSource Completion) : ConnectionMessage(Completion);
+        string? AccountPassword, string? SessionToken, TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
     private sealed record DisconnectRequested(TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
@@ -104,9 +104,9 @@ public partial class CoordinatorSession
     private readonly CancellationTokenSource _lifetime = new();
 
     public Task Connect(string address, int port, string? userIdentity, string? password,
-        string? accountPassword = null) =>
+        string? accountPassword = null, string? sessionToken = null) =>
         PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, accountPassword,
-            completion));
+            sessionToken, completion));
 
     public Task Disconnect() => PostAndWait(completion => new DisconnectRequested(completion));
 
@@ -198,6 +198,7 @@ public partial class CoordinatorSession
         _accountPassword = connect.AccountPassword;
         _isAccountPasswordRemembered = connect.AccountPassword != null;
         _accountPasswordToSave = connect.AccountPassword;
+        _sessionToken = connect.SessionToken;
         ConnectionStatus = CoordinatorState.Connecting;
         LogConnectStarted(LogName, connect.Address, connect.Port);
 
@@ -660,7 +661,8 @@ public partial class CoordinatorSession
             cancellationToken.ThrowIfCancellationRequested();
 
             LogAuthStarted(LogName);
-            var response = await _gateway.AuthenticateAsync(password, userIdentity).WaitAsync(cancellationToken);
+            var response = await _gateway.AuthenticateAsync(password, userIdentity, _sessionToken)
+                .WaitAsync(cancellationToken);
 
             if (response is { Result: AuthResult.SecondStageRequired, Challenge: { } challenge })
             {
@@ -701,7 +703,9 @@ public partial class CoordinatorSession
             CoordinatorModel = coordinatorInfo;
             // Remembered like the users met later, so the account shows its avatar before the next login
             _usersDirectory.Upsert(response.User);
-            SetCurrentUser(response.User, response.UserIdentity ?? string.Empty);
+            // A login with the session token is not told the identity: it stays the one the device has
+            SetCurrentUser(response.User, response.UserIdentity ?? userIdentity ?? string.Empty);
+            KeepSessionToken(response.SessionToken);
             LogConnected(LogName, CoordinatorModel.Id);
 
             return CoordinatorState.Connected;
