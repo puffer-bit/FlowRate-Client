@@ -131,6 +131,44 @@
                         </ItemsControl>
                     </StackPanel>
 
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.sessions}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.sessions.hint}"/>
+                        <ItemsControl ItemsSource="{Binding Sessions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="profileVm:AccountSessionVM">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,6">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
+                                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
+                                                IsVisible="{Binding IsOther}"
+                                                Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).EndSessionCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{l:Text accountSecurity.sessions.endConfirm}"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Classes="actions" Margin="0,4,0,0" IsVisible="{Binding HasOtherSessions}">
+                            <Button Command="{Binding EndOtherSessionsCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.sessions.endOthers}"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.identity}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.identity.hint}"/>
+                        <StackPanel Classes="actions" Margin="0,4,0,0">
+                            <Button Command="{Binding ResetIdentityCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.identity.resetConfirm}"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
                     <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
                                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
@@ -138,6 +176,8 @@
                 <!-- A change -->
                 <StackPanel Spacing="14" IsVisible="{Binding IsChanging}">
                     <TextBlock FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding ChangeTitle}"/>
+                    <TextBlock TextWrapping="Wrap" Text="{Binding ChangeHint}"
+                               IsVisible="{Binding ChangeHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <StackPanel Spacing="6" IsVisible="{Binding IsProofAsked}" IsEnabled="{Binding !IsBusy}">
                         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.proof.hint}"/>

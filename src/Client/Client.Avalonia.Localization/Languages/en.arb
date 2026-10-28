@@ -180,6 +180,9 @@
   "main.startup.internalError": "A critical internal error occurred while loading required components.",
   "main.autoConnect.failedTitle": "Connection error",
   "main.autoConnect.failed": "Autoconnection failed.\n\nFailed to establish connection to previous server. Perhaps the server address has changed or your login data is no longer valid.\n\n*Tip: The server owner can set up a fallback server to which the client will connect if the primary server does not respond.",
+  "main.sessionEnded.title": "Logged out",
+  "main.sessionEnded.revoked": "This device was logged out from another device.\n\nConnect again to log back in with the identity saved here.",
+  "main.sessionEnded.identityReset": "The identity of your account was replaced on another device, and this device was logged out.\n\nThe identity saved here no longer logs in.",
   "main.disconnected.title": "Connection",
   "main.disconnected.message": "Connection closed.\n\n{reason}",
   "@main.disconnected.message": {
@@ -1548,6 +1551,32 @@
   "accountSecurity.error.codeRefused": "The code is wrong. Check the time on the device and try again.",
   "accountSecurity.error.invalid": "The server did not accept the change. Close the window and open it again.",
   "accountSecurity.error.passkeyNotFound": "This passkey is already gone.",
+  "accountSecurity.sessions": "Devices",
+  "accountSecurity.sessions.hint": "Where your account is logged in. A device that does not connect for 90 days is logged out.",
+  "accountSecurity.sessions.end": "Log out {name}",
+  "@accountSecurity.sessions.end": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "accountSecurity.sessions.endOthers": "Log out other devices",
+  "accountSecurity.sessions.endHint": "The device is disconnected at once. It gets back in only by logging in with the identity, and with your password and code when you have them.",
+  "accountSecurity.sessions.endConfirm": "Log out",
+  "accountSecurity.sessions.unnamed": "Unknown device",
+  "accountSecurity.sessions.current": "this device",
+  "accountSecurity.sessions.online": "online",
+  "accountSecurity.sessions.lastUsed": "last seen {time}",
+  "@accountSecurity.sessions.lastUsed": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "accountSecurity.identity": "Identity",
+  "accountSecurity.identity.hint": "The key this app keeps to log in to your account. Replace it if it may have leaked.",
+  "accountSecurity.identity.reset": "Replace the identity",
+  "accountSecurity.identity.resetHint": "This device gets a new identity and keeps it. The old one stops working, and every other device is logged out.",
+  "accountSecurity.identity.resetConfirm": "Replace",
+  "accountSecurity.error.sessionNotFound": "This device is logged out already.",
   "accountSecurity.error.failed": "The server could not make the change (code {code}).",
   "@accountSecurity.error.failed": {
     "placeholders": {
