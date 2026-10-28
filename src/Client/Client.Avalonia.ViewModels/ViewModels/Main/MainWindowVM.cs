@@ -1,4 +1,5 @@
 ﻿using Client.Application.Push;
+using Client.Core.Coordinator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -217,8 +218,8 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
     private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
-        ChangeSessionSettingsResult> _changeHybridSessionSettingsCommand;
-    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>
+        RequestResult> _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>
         _changeSessionPermissionsCommand;
 
     private readonly UserActions _users;
@@ -288,11 +289,11 @@ public partial class MainWindowVM : ReactiveObject
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeHybridSessionSettingsCommand = ReactiveCommand
             .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
-                ChangeSessionSettingsResult>(
+                RequestResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
                     change.Capacity, change.IsHostMustApprove, change.Media));
         _changeSessionPermissionsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>(
+            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>(
                 change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
         // Leaves only the session asked for: the menu may have been opened before we moved to another one

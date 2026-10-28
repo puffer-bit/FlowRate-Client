@@ -1,6 +1,7 @@
+using Shared.Enums;
+using Client.Core.Coordinator;
 using Client.Avalonia.Localization;
 using System.Linq;
-using Shared.Enums.User;
 using Shared.Validation;
 
 namespace Client.ViewModels.Profile;
@@ -31,15 +32,15 @@ public static class UsernameRules
     /// <summary>
     /// The error to show under the name field, or null when there is none to show there.
     /// </summary>
-    public static string? DescribeResult(ChangeUsernameResult result) => result switch
+    public static string? DescribeResult(RequestResult result) => result switch
     {
-        ChangeUsernameResult.NoError => null,
-        ChangeUsernameResult.UsernameAlreadyUsed => Strings.Get("profile.name.taken"),
-        ChangeUsernameResult.InvalidUsername => Strings.Get("profile.name.notAccepted"),
-        ChangeUsernameResult.UserNotFound => Strings.Get("profile.name.userNotConnected"),
-        ChangeUsernameResult.TimedOut => Strings.Get("profile.name.timedOut"),
+        { IsSuccess: true } => null,
+        { Error: ErrorCode.NameTaken } => Strings.Get("profile.name.taken"),
+        { Error: ErrorCode.InvalidValue } => Strings.Get("profile.name.notAccepted"),
+        { Error: ErrorCode.UserNotFound } => Strings.Get("profile.name.userNotConnected"),
+        { Error: ErrorCode.TimedOut } => Strings.Get("profile.name.timedOut"),
         // The main window tells why; the field stays filled in for another try
-        ChangeUsernameResult.Rejected => null,
+        { IsRejected: true } => null,
         _ => Strings.Format("profile.name.notChanged", ("reason", result))
     };
 }

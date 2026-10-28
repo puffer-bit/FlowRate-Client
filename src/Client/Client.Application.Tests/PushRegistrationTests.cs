@@ -55,7 +55,7 @@ public class PushRegistrationTests
     [Fact]
     public async Task Login_KeepsNoReplyTokenWhenPushIsDisabled()
     {
-        _gateway.PushResult = PushTokenResult.PushDisabled;
+        _gateway.PushError = ErrorCode.FeatureDisabled;
         Track(_token);
 
         await _session.Connect("server", 1, null, null);

@@ -20,7 +20,7 @@ internal static class CoordinatorEventMapper
         HeartbeatServerRestartingNotification restarting => new ServerRestartingEvent(restarting.Message),
 
         CoordinatorReconfiguredNotification reconfigured =>
-            new CoordinatorReconfiguredEvent(reconfigured.CoordinatorSessionDTO.ToModel()),
+            new CoordinatorReconfiguredEvent(reconfigured.Coordinator.ToModel()),
         CoordinatorUserUpdatedNotification updated => new UserUpdatedEvent(updated.User.ToModel()),
         // Brings the status of the user; the client knows of users only by their updates
         CoordinatorUserConnectedNotification connected => new UserUpdatedEvent(connected.User.ToModel()),
@@ -45,7 +45,8 @@ internal static class CoordinatorEventMapper
 
         HybridSessionStateChangedNotification changed => new SessionNodeStateChangedEvent(changed.SessionId, changed.State),
         HybridSessionSFUNodeChangedNotification changed => new SessionNodeReplacedEvent(changed.SessionId),
-        HybridSessionSFUNodeConnectedNotification connected => new SessionNodeReplacedEvent(connected.SessionId),
+        HybridSessionSFUNodeConnectionChangedNotification { IsConnected: true } connected =>
+            new SessionNodeReplacedEvent(connected.SessionId),
 
         HybridSessionPeerJoinedNotification joined =>new PeerJoinedEvent(joined.SessionId, joined.Peer.ToModel()),
         HybridSessionPeerLeftNotification left => new PeerLeftEvent(left.SessionId, left.UserId),
@@ -60,20 +61,13 @@ internal static class CoordinatorEventMapper
         HybridSessionPeerStateChangedNotification changed =>
             new PeerStateChangedEvent(changed.SessionId, changed.UserId, changed.State),
 
-        HybridSessionPeerMuteMicrophoneNotification muted =>
-            new PeerMicrophoneMuteChangedEvent(muted.SessionId, muted.UserId, true),
-        HybridSessionPeerUnmuteMicrophoneNotification unmuted =>
-            new PeerMicrophoneMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
-
-        HybridSessionPeerMuteSoundNotification muted =>
-            new PeerSoundMuteChangedEvent(muted.SessionId, muted.UserId, true),
-        HybridSessionPeerUnmuteSoundNotification unmuted =>
-            new PeerSoundMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
-
-        HybridSessionPeerAfkNotification afk =>
-            new PeerAfkChangedEvent(afk.SessionId, afk.UserId, true, afk.Reason),
-        HybridSessionPeerNotAfkNotification back =>
-            new PeerAfkChangedEvent(back.SessionId, back.UserId, false, null),
+        HybridSessionPeerMicrophoneMuteChangedNotification changed =>
+            new PeerMicrophoneMuteChangedEvent(changed.SessionId, changed.UserId, changed.IsMuted),
+        HybridSessionPeerSoundMuteChangedNotification changed =>
+            new PeerSoundMuteChangedEvent(changed.SessionId, changed.UserId, changed.IsMuted),
+        HybridSessionPeerAfkChangedNotification changed =>
+            new PeerAfkChangedEvent(changed.SessionId, changed.UserId, changed.IsAfk,
+                changed.IsAfk ? changed.Reason : null),
         HybridSessionPeerPokedNotification poked =>
             new PeerPokedEvent(poked.SessionId, poked.UserId, poked.InitiatorUserId, poked.Message),
 

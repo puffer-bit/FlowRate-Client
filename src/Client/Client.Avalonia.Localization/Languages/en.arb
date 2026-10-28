@@ -267,7 +267,6 @@
   "profile.avatar.fileType": "Images",
   "profile.avatar.pickerTitle": "Choose an avatar",
   "profile.avatar.uploadFailed": "The image did not reach the server. Try again.",
-  "profile.avatar.notAllowed": "Only the user themselves can set their avatar",
   "profile.avatar.notChanged": "The avatar was not changed: {reason}.",
   "@profile.avatar.notChanged": {
     "placeholders": {
@@ -822,7 +821,6 @@
     }
   },
   "createSession.capacity.wholeNumber": "Enter a whole number",
-  "createSession.capacity.notAccepted": "The server does not accept this number of participants",
   "createSession.name.taken": "A session with this name already exists",
   "createSession.notAccepted": "The server did not accept the session settings. Check the fields and try again.",
   "createSession.notCreated": "The session was not created: {reason}.",
@@ -1378,7 +1376,6 @@
     }
   },
   "roles.name.reserved": "This name belongs to the role every user has",
-  "roles.error.insufficientPermissions": "Your roles do not allow managing roles.",
   "roles.error.hierarchy": "You can only manage roles and users below your highest role, and give only the permissions you have.",
   "roles.error.conflict": "The roles were changed meanwhile. Look at them again and repeat the change.",
   "roles.error.roleNotFound": "The role no longer exists.",

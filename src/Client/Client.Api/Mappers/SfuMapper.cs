@@ -43,11 +43,11 @@ internal static class SfuMapper
     public static TransportParameters ToModel(this TransportData transportData) => new(
         transportData.Host,
         transportData.Port,
-        transportData.DTLSData.ToModel(),
+        transportData.DTLSParameters.ToModel(),
         new IceParameters(
-            transportData.ICEData.UsernameFragment,
-            transportData.ICEData.Password,
-            transportData.ICEData.ICECandidates
+            transportData.ICEParameters.UsernameFragment,
+            transportData.ICEParameters.Password,
+            transportData.ICEParameters.Candidates
                 .Select(candidate => new IceCandidate(candidate.Candidate, candidate.SDPMid, candidate.SDPMLineIndex))
                 .ToList()));
 

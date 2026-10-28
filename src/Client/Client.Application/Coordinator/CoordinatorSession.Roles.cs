@@ -1,4 +1,4 @@
-using Shared.Enums.Coordinator;
+using Client.Application.Ports;
 using Client.Core.Coordinator;
 
 namespace Client.Application.Coordinator;
@@ -14,37 +14,39 @@ public partial class CoordinatorSession
 
     public IReadOnlyList<RoleModel> Roles => _roles;
 
-    public Task<(CoordinatorRoleResult Result, IReadOnlyList<RoleModel>? Roles)> GetRoles() =>
-        SendAsync(_gateway.GetRoles, CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+    public Task<RequestResult<IReadOnlyList<RoleModel>>> GetRoles() =>
+        SendAsync(_gateway.GetRoles);
 
-    public Task<(CoordinatorRoleResult Result, RoleModel? Role)> CreateRole(RoleChange change) =>
-        SendAsync(() => _gateway.CreateRole(change), CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+    public Task<RequestResult<RoleModel>> CreateRole(RoleChange change) =>
+        SendAsync(() => _gateway.CreateRole(change));
 
-    public Task<(CoordinatorRoleResult Result, RoleModel? Role)> UpdateRole(int roleId, RoleChange change,
+    public Task<RequestResult<RoleModel>> UpdateRole(int roleId, RoleChange change,
         long expectedRevision) =>
-        SendAsync(() => _gateway.UpdateRole(roleId, change, expectedRevision),
-            CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+        SendAsync(() => _gateway.UpdateRole(roleId, change, expectedRevision));
 
-    public Task<CoordinatorRoleResult> DeleteRole(int roleId) =>
-        SendAsync(() => _gateway.DeleteRole(roleId), CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+    public Task<RequestResult> DeleteRole(int roleId) =>
+        SendAsync(() => _gateway.DeleteRole(roleId));
 
-    public Task<(CoordinatorRoleResult Result, IReadOnlyList<RoleModel>? Roles)> ReorderRoles(
+    public Task<RequestResult<IReadOnlyList<RoleModel>>> ReorderRoles(
         IReadOnlyList<int> roleIds) =>
-        SendAsync(() => _gateway.ReorderRoles(roleIds), CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+        SendAsync(() => _gateway.ReorderRoles(roleIds));
 
-    public Task<(CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)> SetUserRole(int userId, int roleId,
+    public Task<RequestResult<IReadOnlyList<int>>> SetUserRole(int userId, int roleId,
         bool has) =>
-        SendAsync(() => _gateway.SetUserRole(userId, roleId, has),
-            CoordinatorRoleResult.Rejected, CoordinatorRoleResult.TimedOut);
+        SendAsync(() => _gateway.SetUserRole(userId, roleId, has));
 
     /// <summary>Loads the roles on login; without them nothing is allowed, which the server agrees with.</summary>
     private async Task LoadRolesAsync(CancellationToken cancellationToken)
     {
-        var (result, roles) = await _gateway.GetRoles().WaitAsync(cancellationToken);
-        if (roles == null)
-            LogRolesNotLoaded(LogName, result);
-
-        _roles = roles ?? [];
+        try
+        {
+            _roles = await _gateway.GetRoles().WaitAsync(cancellationToken);
+        }
+        catch (RequestFailedException exception)
+        {
+            LogRolesNotLoaded(LogName, exception.Code);
+            _roles = [];
+        }
     }
 
     private void OnRolesChanged(IReadOnlyList<RoleModel> roles)

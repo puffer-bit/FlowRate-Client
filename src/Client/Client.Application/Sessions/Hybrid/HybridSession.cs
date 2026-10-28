@@ -200,17 +200,17 @@ public partial class HybridSession : IHybridSession
             if (transport != _webRTCService)
                 return;
 
-            if (result == HybridSessionConnectTransportResult.NoError)
+            if (result.IsSuccess)
             {
                 LogDtlsAccepted(Model.Id);
                 return;
             }
 
             // A rejection is reported to the user by the subscriber of RequestRejected
-            if (result != HybridSessionConnectTransportResult.Rejected)
-                ErrorOccurred?.Invoke(new HybridSessionError(HybridSessionErrorKind.DtlsParametersRejected, result.ToString()));
+            if (!result.IsRejected)
+                ErrorOccurred?.Invoke(new HybridSessionError(HybridSessionErrorKind.DtlsParametersRejected, result.Error.ToString()));
 
-            ScheduleReconnect($"the SFU rejected the DTLS parameters: {result}");
+            ScheduleReconnect($"the SFU rejected the DTLS parameters: {result.Error}");
         }
         catch (Exception exception)
         {
@@ -238,13 +238,12 @@ public partial class HybridSession : IHybridSession
 
                 var result = await _coordinatorSession.ResumeInboundsInHybridSession(Model.Id, inboundIds);
 
-                if (result == ResumeInboundsResult.NoError)
+                if (result.IsSuccess)
                     return;
 
-                LogResumeInboundsFailed(Model.Id, result, attempt);
+                LogResumeInboundsFailed(Model.Id, result.Error, attempt);
 
-                if (result is not (ResumeInboundsResult.TimedOut or ResumeInboundsResult.SFUError
-                    or ResumeInboundsResult.InternalError))
+                if (result.Error is not (ErrorCode.TimedOut or ErrorCode.SFUError or ErrorCode.Internal))
                     return;
 
                 await Task.Delay(ResumeInboundsRetryDelay, _lifetime.Token);
@@ -260,7 +259,7 @@ public partial class HybridSession : IHybridSession
         }
     }
 
-    public Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
+    public Task<RequestResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
         VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
         bool isAutoGainControlEnabled, bool isMuted = false) =>
         StartVoiceShareAsync(new DeviceAudioInput(inputDeviceId), inputVolume, voiceGate, noiseSuppression,
@@ -270,32 +269,32 @@ public partial class HybridSession : IHybridSession
     /// Asks the SFU for a voice producer and starts sending <paramref name="input"/> to it. Besides the
     /// microphone this takes a looped file or a tone, which is what the test bot sends.
     /// </summary>
-    public async Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
+    public async Task<RequestResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
         VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
         bool isEchoCancellationEnabled = false, bool isAutoGainControlEnabled = true, bool isMuted = false)
     {
         if (_voiceOutbound != null)
-            return StartVoiceShareResult.NoError;
+            return RequestResult.Success;
 
         var transport = _webRTCService;
         var (result, outbound) = await _coordinatorSession.StartVoiceShareInHybridSession(Model.Id);
 
-        if (result != StartVoiceShareResult.NoError)
+        if (!result.IsSuccess)
             return result;
 
         if (outbound == null)
-            return StartVoiceShareResult.InternalError;
+            return ErrorCode.Internal;
 
         // The transport was rebuilt in the meantime, and the rejoin released the producer with it
         if (transport != _webRTCService)
-            return StartVoiceShareResult.InternalError;
+            return ErrorCode.Internal;
 
         if (!transport.StartOutbound(outbound, input, inputVolume, voiceGate, noiseSuppression,
                 isEchoCancellationEnabled, isAutoGainControlEnabled))
         {
             LogStartSendingFailed(Model.Id, input);
             await _coordinatorSession.StopVoiceShareInHybridSession(Model.Id);
-            return StartVoiceShareResult.InternalError;
+            return ErrorCode.Internal;
         }
 
         _voiceOutbound = outbound;
@@ -306,15 +305,15 @@ public partial class HybridSession : IHybridSession
         if (isMuted)
             await SetMicrophoneMutedAsync(true);
 
-        return StartVoiceShareResult.NoError;
+        return RequestResult.Success;
     }
 
-    public async Task<StopVoiceShareResult> StopVoiceShareAsync()
+    public async Task<RequestResult> StopVoiceShareAsync()
     {
         var outbound = _voiceOutbound;
 
         if (outbound == null)
-            return StopVoiceShareResult.NoError;
+            return RequestResult.Success;
 
         _voiceOutbound = null;
         IsMicrophoneMuted = false;
@@ -328,32 +327,32 @@ public partial class HybridSession : IHybridSession
 
     public bool IsScreenShareStarted => _screenOutbound != null;
 
-    public async Task<StartScreenShareResult> StartScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+    public async Task<RequestResult> StartScreenShareAsync(VideoInput input, ScreenShareSettings settings,
         AudioInput? audioInput = null)
     {
         if (_screenOutbound != null)
-            return StartScreenShareResult.NoError;
+            return RequestResult.Success;
 
         var transport = _webRTCService;
         var (result, outbounds) = await _coordinatorSession.StartScreenShareInHybridSession(Model.Id, audioInput != null);
 
-        if (result != StartScreenShareResult.NoError)
+        if (!result.IsSuccess)
             return result;
 
         if (outbounds == null)
-            return StartScreenShareResult.InternalError;
+            return ErrorCode.Internal;
 
         var outbound = outbounds.Video;
 
         // The transport was rebuilt in the meantime, and the rejoin released the producer with it
         if (transport != _webRTCService)
-            return StartScreenShareResult.InternalError;
+            return ErrorCode.Internal;
 
         if (!transport.StartOutbound(outbound, input, settings))
         {
             LogScreenShareStartFailed(Model.Id, input);
             await _coordinatorSession.StopScreenShareInHybridSession(Model.Id);
-            return StartScreenShareResult.UnsupportedMedia;
+            return ErrorCode.UnsupportedMedia;
         }
 
         _screenOutbound = outbound;
@@ -365,7 +364,7 @@ public partial class HybridSession : IHybridSession
 
         ScreenShareChanged?.Invoke(outbound.UserId, true);
 
-        return StartScreenShareResult.NoError;
+        return RequestResult.Success;
     }
 
     private void StartScreenAudio(IWebRTCTransport transport, OutboundTrack audioOutbound, AudioInput audioInput)
@@ -393,7 +392,7 @@ public partial class HybridSession : IHybridSession
             return;
 
         // A server that cannot add it leaves the share silent rather than restarting it under its viewers
-        if (result != StartScreenShareResult.NoError || outbounds?.Audio is not { } audioOutbound)
+        if (!result.IsSuccess || outbounds?.Audio is not { } audioOutbound)
         {
             LogScreenAudioStartFailed(Model.Id, audioInput);
             return;
@@ -402,7 +401,7 @@ public partial class HybridSession : IHybridSession
         StartScreenAudio(transport, audioOutbound, audioInput);
     }
 
-    public async Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+    public async Task<RequestResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
         AudioInput? audioInput = null)
     {
         var outbound = _screenOutbound;
@@ -420,7 +419,7 @@ public partial class HybridSession : IHybridSession
         {
             LogScreenShareStartFailed(Model.Id, input);
             await StopScreenShareAsync();
-            return StartScreenShareResult.UnsupportedMedia;
+            return ErrorCode.UnsupportedMedia;
         }
 
         LogScreenShareChanged(Model.Id, outbound.SSRC);
@@ -436,15 +435,15 @@ public partial class HybridSession : IHybridSession
         else if (audioInput != null)
             await AddScreenAudioAsync(outbound, audioInput);
 
-        return StartScreenShareResult.NoError;
+        return RequestResult.Success;
     }
 
-    public async Task<StopScreenShareResult> StopScreenShareAsync()
+    public async Task<RequestResult> StopScreenShareAsync()
     {
         var outbound = _screenOutbound;
 
         if (outbound == null)
-            return StopScreenShareResult.NoError;
+            return RequestResult.Success;
 
         _screenOutbound = null;
         _webRTCService.StopOutbound(outbound.Id);
@@ -463,31 +462,31 @@ public partial class HybridSession : IHybridSession
 
     public bool HasWatchedScreenAudio(int userId) => _watchedScreens.TryGetValue(userId, out var hasAudio) && hasAudio;
 
-    public Task<SetScreenShareWatchResult> SetScreenWatchAsync(int userId, bool isWatching)
+    public Task<RequestResult> SetScreenWatchAsync(int userId, bool isWatching)
     {
         if (userId != _coordinatorSession.GetCurrentUser().Id)
             return EnqueuePeerWork(() => SetPeerScreenWatchAsync(userId, isWatching));
 
         // Our own screen is not received from the SFU, the frames come from the branch that sends it
         if (isWatching && _screenOutbound == null)
-            return Task.FromResult(SetScreenShareWatchResult.ScreenShareNotActive);
+            return Task.FromResult<RequestResult>(ErrorCode.MediaNotActive);
 
         SetScreenWatched(userId, isWatching);
 
-        return Task.FromResult(SetScreenShareWatchResult.NoError);
+        return Task.FromResult(RequestResult.Success);
     }
 
     /// <summary>
     /// Runs in the chain of the peer events, so that a stop of the same screen cannot be handled
     /// while the answer of the server is on its way.
     /// </summary>
-    private async Task<SetScreenShareWatchResult> SetPeerScreenWatchAsync(int userId, bool isWatching)
+    private async Task<RequestResult> SetPeerScreenWatchAsync(int userId, bool isWatching)
     {
         if (IsDisposed)
-            return SetScreenShareWatchResult.InternalError;
+            return ErrorCode.Internal;
 
         if (isWatching == _watchedScreens.ContainsKey(userId))
-            return SetScreenShareWatchResult.NoError;
+            return RequestResult.Success;
 
         var transport = _webRTCService;
         var (result, inbounds) = await _coordinatorSession.SetScreenShareWatchInHybridSession(Model.Id, userId, isWatching);
@@ -501,12 +500,12 @@ public partial class HybridSession : IHybridSession
             return result;
         }
 
-        if (result != SetScreenShareWatchResult.NoError)
+        if (!result.IsSuccess)
             return result;
 
         // The transport was rebuilt in the meantime, and the rejoin released the consumer with it
         if (inbounds == null || transport != _webRTCService)
-            return SetScreenShareWatchResult.InternalError;
+            return ErrorCode.Internal;
 
         // A track the transport already knows is left alone, which is the case when a paused
         // screen is watched again
@@ -519,7 +518,7 @@ public partial class HybridSession : IHybridSession
         SetScreenWatched(userId, true, inbounds.Audio != null);
         LogScreenWatchChanged(Model.Id, userId, true);
 
-        return SetScreenShareWatchResult.NoError;
+        return RequestResult.Success;
     }
 
     private void SetScreenWatched(int userId, bool isWatched, bool hasAudio = false)
@@ -544,12 +543,12 @@ public partial class HybridSession : IHybridSession
 
     public bool IsMicrophoneMuted { get; private set; }
 
-    public async Task<SetMicrophoneMuteResult> SetMicrophoneMutedAsync(bool isMuted)
+    public async Task<RequestResult> SetMicrophoneMutedAsync(bool isMuted)
     {
         var outbound = _voiceOutbound;
 
         if (outbound == null)
-            return SetMicrophoneMuteResult.VoiceNotStarted;
+            return ErrorCode.MediaNotActive;
 
         if (isMuted)
         {
@@ -563,13 +562,13 @@ public partial class HybridSession : IHybridSession
         // Resumed on the server first, so the first words after unmuting are not dropped by a paused producer
         var result = await _coordinatorSession.SetMicrophoneMuteInHybridSession(Model.Id, false);
 
-        if (result != SetMicrophoneMuteResult.NoError)
+        if (!result.IsSuccess)
             return result;
 
         _webRTCService.SetOutboundMuted(outbound.Id, false);
         IsMicrophoneMuted = false;
 
-        return SetMicrophoneMuteResult.NoError;
+        return RequestResult.Success;
     }
 
     public bool IsSoundMuted => _isSoundMuted;
@@ -577,7 +576,7 @@ public partial class HybridSession : IHybridSession
     public bool IsAfk { get; private set; }
     public string? AfkReason { get; private set; }
 
-    public async Task<SetAfkResult> SetAfkAsync(bool isAfk, string? reason)
+    public async Task<RequestResult> SetAfkAsync(bool isAfk, string? reason)
     {
         IsAfk = isAfk;
         AfkReason = isAfk && !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : null;
@@ -585,11 +584,11 @@ public partial class HybridSession : IHybridSession
         return await _coordinatorSession.SetAfkInHybridSession(Model.Id, isAfk, AfkReason);
     }
 
-    public Task<PokeResult> PokeAsync(int userId, string? message) =>
+    public Task<RequestResult> PokeAsync(int userId, string? message) =>
         _coordinatorSession.PokeInHybridSession(Model.Id, userId,
             string.IsNullOrWhiteSpace(message) ? null : message.Trim());
 
-    public async Task<SetSoundMuteResult> SetSoundMutedAsync(bool isMuted)
+    public async Task<RequestResult> SetSoundMutedAsync(bool isMuted)
     {
         _isSoundMuted = isMuted;
         _webRTCService.SetInboundVoiceMuted(isMuted);
@@ -784,11 +783,11 @@ public partial class HybridSession : IHybridSession
                     return;
                 }
 
-                if (fatalResult != null)
+                if (fatalResult is { } fatal)
                 {
                     // A rejection is reported to the user by the subscriber of RequestRejected
-                    if (fatalResult != HybridSessionJoinResult.Rejected)
-                        ErrorOccurred?.Invoke(new HybridSessionError(HybridSessionErrorKind.RejoinFailed, fatalResult.ToString()));
+                    if (!fatal.IsRejected)
+                        ErrorOccurred?.Invoke(new HybridSessionError(HybridSessionErrorKind.RejoinFailed, fatal.Error.ToString()));
 
                     State = HybridSessionState.Failed;
                     return;
@@ -832,12 +831,12 @@ public partial class HybridSession : IHybridSession
     /// and consumers on a rejoin and creates the consumers again once the new transport connects.
     /// </summary>
     /// <returns>Whether the new transport connected, or the join result that retrying cannot fix.</returns>
-    private async Task<(bool IsConnected, HybridSessionJoinResult? FatalResult)> RejoinAsync(
+    private async Task<(bool IsConnected, RequestResult? FatalResult)> RejoinAsync(
         CancellationToken cancellationToken)
     {
         var transport = ReplaceTransport(cancellationToken);
 
-        HybridSessionJoinResult result;
+        RequestResult result;
         TransportParameters? parameters;
 
         try
@@ -852,13 +851,12 @@ public partial class HybridSession : IHybridSession
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (result != HybridSessionJoinResult.NoError || parameters == null)
+        if (!result.IsSuccess || parameters == null)
         {
-            LogRejoinRejected(Model.Id, result);
+            LogRejoinRejected(Model.Id, result.Error);
 
-            return result is HybridSessionJoinResult.NoError or HybridSessionJoinResult.InternalError
-                or HybridSessionJoinResult.TimedOut or HybridSessionJoinResult.SFUError
-                or HybridSessionJoinResult.SFUNotActive
+            return result.Error is null or ErrorCode.Internal or ErrorCode.TimedOut or ErrorCode.SFUError
+                or ErrorCode.SFUUnavailable
                 ? (false, null)
                 : (false, result);
         }

@@ -1,5 +1,6 @@
 using Shared.Enums;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Shared.Enums.User;
 using Shared.Validation;
 using Client.Core.Settings;
@@ -24,8 +25,8 @@ public partial class CoordinatorSession
     public Task<IReadOnlyList<UserModel>> SearchUsers(string query, int limit) =>
         _usersDirectory.SearchAsync(query, limit);
 
-    public Task<(UsersRequestResult Result, IReadOnlyList<UserModel>? Users)> GetAllUsers() =>
-        SendAsync(_gateway.GetAllUsers, UsersRequestResult.Rejected, UsersRequestResult.TimedOut);
+    public Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers() =>
+        SendAsync(_gateway.GetAllUsers);
 
     public UserModel GetCurrentUser() =>
         _currentUser ?? throw new InvalidOperationException("Not logged in to the coordinator");
@@ -33,64 +34,48 @@ public partial class CoordinatorSession
     public SavedUserModel GetCurrentUserCredentials() =>
         _currentUserCredentials ?? throw new InvalidOperationException("Not logged in to the coordinator");
 
-    public Task<ChangeUsernameResult> ChangeUsername(string username) =>
+    public Task<RequestResult> ChangeUsername(string username) =>
         ChangeUsername(null, username);
 
-    public Task<ChangeUsernameResult> ChangeUsername(int userId, string username) =>
+    public Task<RequestResult> ChangeUsername(int userId, string username) =>
         ChangeUsername((int?)userId, username);
 
-    private async Task<ChangeUsernameResult> ChangeUsername(int? userId, string username)
+    private async Task<RequestResult> ChangeUsername(int? userId, string username)
     {
         if (!ValidateUsername(username))
-            return ChangeUsernameResult.InvalidUsername;
+            return ErrorCode.InvalidValue;
 
-        var (result, _) = await SendAsync(() => _gateway.ChangeUsername(username.Trim(), userId),
-            ChangeUsernameResult.Rejected, ChangeUsernameResult.TimedOut);
-        
-        return result;
+        return (await SendAsync(() => _gateway.ChangeUsername(username.Trim(), userId))).Result;
     }
 
-    public async Task<ModerateUserResult> SetUserState(int userId, UserState state)
-    {
-        var (result, _) = await SendAsync(() => _gateway.SetUserState(userId, state),
-            ModerateUserResult.Rejected, ModerateUserResult.TimedOut);
+    public async Task<RequestResult> SetUserState(int userId, UserState state) =>
+        (await SendAsync(() => _gateway.SetUserState(userId, state))).Result;
 
-        return result;
-    }
+    public Task<RequestResult> DeleteUser(int userId) =>
+        SendAsync(() => _gateway.DeleteUser(userId));
 
-    public Task<ModerateUserResult> DeleteUser(int userId) =>
-        SendAsync(() => _gateway.DeleteUser(userId), ModerateUserResult.Rejected, ModerateUserResult.TimedOut);
-
-    public async Task<(SetAvatarResult Result, UserModel? User)> SetAvatar(byte[] image, string mimeType,
+    /// <summary>
+    /// Fails with <see cref="ErrorCode.UploadNotFound"/> when the image is empty or too large, or did not get to the server.
+    /// </summary>
+    public async Task<RequestResult<UserModel>> SetAvatar(byte[] image, string mimeType,
         CancellationToken cancellationToken = default)
     {
         if (image.Length is 0 or > Limits.AvatarMaxSize)
-            return (SetAvatarResult.UploadFailed, null);
+            return ErrorCode.UploadNotFound;
 
         var upload = await _gateway.UploadMedia(new MediaUpload(null, MediaUploadKind.Avatar, mimeType, image.Length,
             () => Task.FromResult<Stream>(new MemoryStream(image, writable: false))), null, cancellationToken);
         if (upload is not { Result: MediaTransferResult.NoError, UploadId: { } uploadId })
-            return (SetAvatarResult.UploadFailed, null);
+            return ErrorCode.UploadNotFound;
 
-        return await SendAsync(() => _gateway.SetAvatar(uploadId),
-            SetAvatarResult.Rejected, SetAvatarResult.TimedOut);
+        return await SendAsync(() => _gateway.SetAvatar(uploadId));
     }
 
-    public async Task<SetUserStatusResult> SetStatus(UserStatus status)
-    {
-        var (result, _) = await SendAsync(() => _gateway.SetStatus(status),
-            SetUserStatusResult.Rejected, SetUserStatusResult.TimedOut);
+    public async Task<RequestResult> SetStatus(UserStatus status) =>
+        (await SendAsync(() => _gateway.SetStatus(status))).Result;
 
-        return result;
-    }
-
-    public async Task<SetAvatarResult> ResetAvatar(int userId)
-    {
-        var (result, _) = await SendAsync(() => _gateway.SetAvatar(null, userId),
-            SetAvatarResult.Rejected, SetAvatarResult.TimedOut);
-
-        return result;
-    }
+    public async Task<RequestResult> ResetAvatar(int userId) =>
+        (await SendAsync(() => _gateway.SetAvatar(null, userId))).Result;
 
     public bool ValidateUsername(string username)
     {

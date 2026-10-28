@@ -181,7 +181,7 @@ public class CoordinatorSessionLoginTests
         var (result, _) = await session.SetAccountPassword(new AccountProof("secret-password", null), "new-password");
         await ReconnectAsync(session);
 
-        Assert.Equal(Shared.Enums.User.UserSecurityResult.NoError, result);
+        Assert.True(result.IsSuccess);
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
         Assert.Empty(user.Prompts);
         Assert.Equal("new-password", gateway.SecondStageAnswers[^1].Password);

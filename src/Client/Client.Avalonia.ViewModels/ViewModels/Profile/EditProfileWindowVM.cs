@@ -1,10 +1,10 @@
+using Client.Core.Coordinator;
 using Client.Services;
 using System;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
-using Shared.Enums.User;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Profile;
@@ -18,9 +18,9 @@ public sealed class EditProfileWindowVM : ReactiveObject, IDisposable
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
     private readonly string _currentName;
     private readonly string? _currentAvatarUrl;
-    private readonly ReactiveCommand<string, ChangeUsernameResult> _changeUsernameCommand;
-    private readonly ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> _setAvatarCommand;
-    private readonly ReactiveCommand<int, SetAvatarResult> _resetAvatarCommand;
+    private readonly ReactiveCommand<string, RequestResult> _changeUsernameCommand;
+    private readonly ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> _setAvatarCommand;
+    private readonly ReactiveCommand<int, RequestResult> _resetAvatarCommand;
 
     public string Name
     {
@@ -66,9 +66,9 @@ public sealed class EditProfileWindowVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
     public EditProfileWindowVM(string currentName, int? userId, string? currentAvatarUrl, IAvatarService avatars,
-        ReactiveCommand<string, ChangeUsernameResult> changeUsernameCommand,
-        ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> setAvatarCommand,
-        ReactiveCommand<int, SetAvatarResult> resetAvatarCommand)
+        ReactiveCommand<string, RequestResult> changeUsernameCommand,
+        ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> setAvatarCommand,
+        ReactiveCommand<int, RequestResult> resetAvatarCommand)
     {
         _currentName = currentName;
         _currentAvatarUrl = currentAvatarUrl;
@@ -117,7 +117,7 @@ public sealed class EditProfileWindowVM : ReactiveObject, IDisposable
 
             NameError = UsernameRules.DescribeResult(result);
 
-            if (result != ChangeUsernameResult.NoError)
+            if (!result.IsSuccess)
                 return;
         }
 
@@ -127,7 +127,7 @@ public sealed class EditProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
         }
         else if (IsAvatarReset && UserId is { } userId)
@@ -136,7 +136,7 @@ public sealed class EditProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
         }
 

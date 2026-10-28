@@ -1,6 +1,5 @@
 using Shared.Permissions;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Shared.Validation;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
@@ -13,21 +12,18 @@ namespace Client.Application.Coordinator;
 
 public partial class CoordinatorSession
 {
-    public event Action<RequestRejectedException>? RequestRejected;
+    public event Action<RequestFailedException>? RequestRejected;
 
-    public Task<(SessionRequestResult Result, IDictionary<int, SessionModel>? Sessions, SessionLayout? Layout)>
-        GetAllSessions() =>
-        SendAsync(_gateway.GetAllSessions,
-            (SessionRequestResult.Rejected, (IDictionary<int, SessionModel>?)null, (SessionLayout?)null),
-            (SessionRequestResult.TimedOut, (IDictionary<int, SessionModel>?)null, (SessionLayout?)null));
+    public Task<RequestResult<(IDictionary<int, SessionModel> Sessions, SessionLayout Layout)>> GetAllSessions() =>
+        SendAsync(_gateway.GetAllSessions);
 
-    public Task<(SessionRequestResult Result, SessionModel? Session)> GetSessionInfo(int sessionId) =>
-        SendAsync(() => _gateway.GetSessionInfo(sessionId), SessionRequestResult.Rejected, SessionRequestResult.TimedOut);
+    public Task<RequestResult<SessionModel>> GetSessionInfo(int sessionId) =>
+        SendAsync(() => _gateway.GetSessionInfo(sessionId));
 
-    public Task<CreateSessionResult> CreateSession(NewSessionModel session) =>
+    public Task<RequestResult> CreateSession(NewSessionModel session) =>
         ValidateSession(session)
-            ? SendAsync(() => _gateway.CreateSession(session), CreateSessionResult.Rejected, CreateSessionResult.TimedOut)
-            : Task.FromResult(CreateSessionResult.UnexpectedParameters);
+            ? SendAsync(() => _gateway.CreateSession(session))
+            : Task.FromResult<RequestResult>(ErrorCode.InvalidValue);
 
     public bool ValidateSession(NewSessionModel newSession)
     {
@@ -39,20 +35,18 @@ public partial class CoordinatorSession
                && newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax;
     }
 
-    public Task<DeleteSessionResult> DeleteSession(int sessionId) =>
-        SendAsync(() => _gateway.DeleteSession(sessionId), DeleteSessionResult.Rejected, DeleteSessionResult.TimedOut);
+    public Task<RequestResult> DeleteSession(int sessionId) =>
+        SendAsync(() => _gateway.DeleteSession(sessionId));
 
-    public Task<(SessionLayoutResult Result, int? CategoryId)> CreateSessionCategory(string name) =>
+    public Task<RequestResult<int>> CreateSessionCategory(string name) =>
         ValidateCategoryName(name)
-            ? SendAsync(() => _gateway.CreateSessionCategory(name),
-                (SessionLayoutResult.Rejected, (int?)null), (SessionLayoutResult.TimedOut, (int?)null))
-            : Task.FromResult((SessionLayoutResult.InternalError, (int?)null));
+            ? SendAsync(() => _gateway.CreateSessionCategory(name))
+            : Task.FromResult<RequestResult<int>>(ErrorCode.InvalidValue);
 
-    public Task<SessionLayoutResult> RenameSessionCategory(int categoryId, string name) =>
+    public Task<RequestResult> RenameSessionCategory(int categoryId, string name) =>
         ValidateCategoryName(name)
-            ? SendAsync(() => _gateway.RenameSessionCategory(categoryId, name),
-                SessionLayoutResult.Rejected, SessionLayoutResult.TimedOut)
-            : Task.FromResult(SessionLayoutResult.InternalError);
+            ? SendAsync(() => _gateway.RenameSessionCategory(categoryId, name))
+            : Task.FromResult<RequestResult>(ErrorCode.InvalidValue);
 
     /// <summary>
     /// Mirrors the server's checks on a category name, so a bad one is not sent at all.
@@ -62,130 +56,102 @@ public partial class CoordinatorSession
         && name.Length <= Limits.SessionCategoryNameMaxLength
         && !name.Any(char.IsControl);
 
-    public Task<SessionLayoutResult> DeleteSessionCategory(int categoryId) =>
-        SendAsync(() => _gateway.DeleteSessionCategory(categoryId),
-            SessionLayoutResult.Rejected, SessionLayoutResult.TimedOut);
+    public Task<RequestResult> DeleteSessionCategory(int categoryId) =>
+        SendAsync(() => _gateway.DeleteSessionCategory(categoryId));
 
-    public Task<SessionLayoutResult> MoveSession(int sessionId, int? categoryId, int index) =>
-        SendAsync(() => _gateway.MoveSession(sessionId, categoryId, index),
-            SessionLayoutResult.Rejected, SessionLayoutResult.TimedOut);
+    public Task<RequestResult> MoveSession(int sessionId, int? categoryId, int index) =>
+        SendAsync(() => _gateway.MoveSession(sessionId, categoryId, index));
 
-    public Task<SessionLayoutResult> MoveSessionCategory(int categoryId, int index) =>
-        SendAsync(() => _gateway.MoveSessionCategory(categoryId, index),
-            SessionLayoutResult.Rejected, SessionLayoutResult.TimedOut);
+    public Task<RequestResult> MoveSessionCategory(int categoryId, int index) =>
+        SendAsync(() => _gateway.MoveSessionCategory(categoryId, index));
 
-    public Task<LeaveSessionResult> LeaveSession(int sessionId) =>
-        SendAsync(() => _gateway.LeaveSession(sessionId), LeaveSessionResult.Rejected, LeaveSessionResult.TimedOut);
+    public Task<RequestResult> LeaveSession(int sessionId) =>
+        SendAsync(() => _gateway.LeaveSession(sessionId));
 
-    public Task<LeaveSessionResult> KickFromHybridSession(int sessionId, int userId) =>
+    public Task<RequestResult> KickFromHybridSession(int sessionId, int userId) =>
         userId == _currentUser?.Id
-            ? Task.FromResult(LeaveSessionResult.CannotKickSelf)
-            : SendAsync(() => _gateway.KickFromHybridSession(sessionId, userId),
-                LeaveSessionResult.Rejected, LeaveSessionResult.TimedOut);
+            ? Task.FromResult<RequestResult>(ErrorCode.CannotTargetSelf)
+            : SendAsync(() => _gateway.KickFromHybridSession(sessionId, userId));
 
-    // Neither result has a value of its own for a request the server refused unread
-    public Task<ApproveUserSessionResult> ApproveInHybridSession(int sessionId, int userId) =>
-        SendAsync(() => _gateway.ApproveInHybridSession(sessionId, userId),
-            ApproveUserSessionResult.InternalError, ApproveUserSessionResult.TimedOut);
+    public Task<RequestResult> ApproveInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.ApproveInHybridSession(sessionId, userId));
 
-    public Task<RejectUserSessionResult> RejectInHybridSession(int sessionId, int userId) =>
-        SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId),
-            RejectUserSessionResult.InternalError, RejectUserSessionResult.TimedOut);
+    public Task<RequestResult> RejectInHybridSession(int sessionId, int userId) =>
+        SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId));
 
-    public Task<ChangeSessionSettingsResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
+    public Task<RequestResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isHostMustApprove, MediaSettings media) =>
-        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove, media),
-            ChangeSessionSettingsResult.Rejected, ChangeSessionSettingsResult.TimedOut);
+        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove, media));
 
-    public Task<ChangeSessionPermissionsResult> ChangeSessionPermissions(int sessionId,
+    public Task<RequestResult> ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides) =>
-        SendAsync(() => _gateway.ChangeSessionPermissions(sessionId, overrides),
-            ChangeSessionPermissionsResult.Rejected, ChangeSessionPermissionsResult.TimedOut);
+        SendAsync(() => _gateway.ChangeSessionPermissions(sessionId, overrides));
 
-    public Task<(HybridSessionJoinResult Result, TransportParameters? Transport)> JoinHybridSession(int sessionId,
-        string clientEpoch) =>
-        SendAsync(() => _gateway.JoinHybridSession(sessionId, clientEpoch),
-            HybridSessionJoinResult.Rejected, HybridSessionJoinResult.TimedOut);
+    public Task<RequestResult<TransportParameters>> JoinHybridSession(int sessionId, string clientEpoch) =>
+        SendAsync(() => _gateway.JoinHybridSession(sessionId, clientEpoch));
 
-    public Task<HybridSessionConnectTransportResult> ConnectHybridSessionTransport(int sessionId,
+    public Task<RequestResult> ConnectHybridSessionTransport(int sessionId,
         DtlsParameters dtlsParameters) =>
-        SendAsync(() => _gateway.ConnectHybridSessionTransport(sessionId, dtlsParameters),
-            HybridSessionConnectTransportResult.Rejected, HybridSessionConnectTransportResult.InternalError);
+        SendAsync(() => _gateway.ConnectHybridSessionTransport(sessionId, dtlsParameters));
 
-    public Task<(PeerListRequestResult Result, Dictionary<int, PeerModel>? Peers)> GetAllHybridSessionPeers(
-        int sessionId) =>
-        SendAsync(() => _gateway.GetAllHybridSessionPeers(sessionId),
-            PeerListRequestResult.Rejected, PeerListRequestResult.InternalError);
+    public Task<RequestResult<Dictionary<int, PeerModel>>> GetAllHybridSessionPeers(int sessionId) =>
+        SendAsync(() => _gateway.GetAllHybridSessionPeers(sessionId));
 
-    public Task<(StartVideoShareResult Result, OutboundTrack? Outbound)> StartVideoShareInHybridSession(int sessionId) =>
-        SendAsync(() => _gateway.StartVideoShareInHybridSession(sessionId),
-            StartVideoShareResult.Rejected, StartVideoShareResult.TimedOut);
+    public Task<RequestResult<OutboundTrack>> StartVideoShareInHybridSession(int sessionId) =>
+        SendAsync(() => _gateway.StartVideoShareInHybridSession(sessionId));
 
-    public Task<StopVideoShareResult> StopVideoShareInHybridSession(int sessionId) =>
-        SendAsync(() => _gateway.StopVideoShareInHybridSession(sessionId),
-            StopVideoShareResult.Rejected, StopVideoShareResult.TimedOut);
+    public Task<RequestResult> StopVideoShareInHybridSession(int sessionId) =>
+        SendAsync(() => _gateway.StopVideoShareInHybridSession(sessionId));
 
-    public Task<(StartVoiceShareResult Result, OutboundTrack? Outbound)> StartVoiceShareInHybridSession(int sessionId) =>
-        SendAsync(() => _gateway.StartVoiceShareInHybridSession(sessionId),
-            StartVoiceShareResult.Rejected, StartVoiceShareResult.TimedOut);
+    public Task<RequestResult<OutboundTrack>> StartVoiceShareInHybridSession(int sessionId) =>
+        SendAsync(() => _gateway.StartVoiceShareInHybridSession(sessionId));
 
-    public Task<StopVoiceShareResult> StopVoiceShareInHybridSession(int sessionId) =>
-        SendAsync(() => _gateway.StopVoiceShareInHybridSession(sessionId),
-            StopVoiceShareResult.Rejected, StopVoiceShareResult.TimedOut);
+    public Task<RequestResult> StopVoiceShareInHybridSession(int sessionId) =>
+        SendAsync(() => _gateway.StopVoiceShareInHybridSession(sessionId));
 
-    public Task<(StartScreenShareResult Result, ScreenShareOutbounds? Outbounds)> StartScreenShareInHybridSession(
+    public Task<RequestResult<ScreenShareOutbounds>> StartScreenShareInHybridSession(
         int sessionId, bool withAudio) =>
-        SendAsync(() => _gateway.StartScreenShareInHybridSession(sessionId, withAudio),
-            StartScreenShareResult.Rejected, StartScreenShareResult.TimedOut);
+        SendAsync(() => _gateway.StartScreenShareInHybridSession(sessionId, withAudio));
 
-    public Task<StopScreenShareResult> StopScreenShareInHybridSession(int sessionId) =>
-        SendAsync(() => _gateway.StopScreenShareInHybridSession(sessionId),
-            StopScreenShareResult.Rejected, StopScreenShareResult.TimedOut);
+    public Task<RequestResult> StopScreenShareInHybridSession(int sessionId) =>
+        SendAsync(() => _gateway.StopScreenShareInHybridSession(sessionId));
 
-    public Task<(SetScreenShareWatchResult Result, ScreenShareInbounds? Inbounds)> SetScreenShareWatchInHybridSession(
+    public Task<RequestResult<ScreenShareInbounds?>> SetScreenShareWatchInHybridSession(
         int sessionId, int userId, bool isWatching) =>
-        SendAsync(() => _gateway.SetScreenShareWatchInHybridSession(sessionId, userId, isWatching),
-            SetScreenShareWatchResult.Rejected, SetScreenShareWatchResult.TimedOut);
+        SendAsync(() => _gateway.SetScreenShareWatchInHybridSession(sessionId, userId, isWatching));
 
-    public Task<ResumeInboundsResult> ResumeInboundsInHybridSession(int sessionId,
+    public Task<RequestResult> ResumeInboundsInHybridSession(int sessionId,
         IReadOnlyList<string> inboundIds) =>
-        SendAsync(() => _gateway.ResumeInboundsInHybridSession(sessionId, inboundIds),
-            ResumeInboundsResult.Rejected, ResumeInboundsResult.TimedOut);
+        SendAsync(() => _gateway.ResumeInboundsInHybridSession(sessionId, inboundIds));
 
-    public Task<SetMicrophoneMuteResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted) =>
-        SendAsync(() => _gateway.SetMicrophoneMuteInHybridSession(sessionId, isMuted),
-            SetMicrophoneMuteResult.Rejected, SetMicrophoneMuteResult.TimedOut);
+    public Task<RequestResult> SetMicrophoneMuteInHybridSession(int sessionId, bool isMuted) =>
+        SendAsync(() => _gateway.SetMicrophoneMuteInHybridSession(sessionId, isMuted));
 
-    public Task<SetSoundMuteResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted) =>
-        SendAsync(() => _gateway.SetSoundMuteInHybridSession(sessionId, isMuted),
-            SetSoundMuteResult.Rejected, SetSoundMuteResult.TimedOut);
+    public Task<RequestResult> SetSoundMuteInHybridSession(int sessionId, bool isMuted) =>
+        SendAsync(() => _gateway.SetSoundMuteInHybridSession(sessionId, isMuted));
 
-    public Task<SetAfkResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason) =>
-        SendAsync(() => _gateway.SetAfkInHybridSession(sessionId, isAfk, reason),
-            SetAfkResult.Rejected, SetAfkResult.TimedOut);
+    public Task<RequestResult> SetAfkInHybridSession(int sessionId, bool isAfk, string? reason) =>
+        SendAsync(() => _gateway.SetAfkInHybridSession(sessionId, isAfk, reason));
 
-    public Task<PokeResult> PokeInHybridSession(int sessionId, int userId, string? message) =>
-        SendAsync(() => _gateway.PokeInHybridSession(sessionId, userId, message),
-            PokeResult.Rejected, PokeResult.TimedOut);
+    public Task<RequestResult> PokeInHybridSession(int sessionId, int userId, string? message) =>
+        SendAsync(() => _gateway.PokeInHybridSession(sessionId, userId, message));
 
-    public async Task<(FetchMessagesResult Result, ChatHistoryPage? Page)> RequestChatHistoryPage(
+    public async Task<RequestResult<ChatHistoryPage>> RequestChatHistoryPage(
         int sessionId, int? beforeMessageId, int take)
     {
-        var (result, page) = await SendAsync(() => _gateway.RequestChatHistoryPage(sessionId, beforeMessageId, take),
-            FetchMessagesResult.Rejected, FetchMessagesResult.TimedOut);
+        var result = await SendAsync(() => _gateway.RequestChatHistoryPage(sessionId, beforeMessageId, take));
 
-        MarkMine(page?.Messages);
-        return (result, page);
+        MarkMine(result.Value?.Messages);
+        return result;
     }
 
-    public async Task<(FetchMessagesResult Result, ChatChanges? Changes)> RequestChatChanges(
+    public async Task<RequestResult<ChatChanges>> RequestChatChanges(
         int sessionId, long afterRevision, int take)
     {
-        var (result, changes) = await SendAsync(() => _gateway.RequestChatChanges(sessionId, afterRevision, take),
-            FetchMessagesResult.Rejected, FetchMessagesResult.TimedOut);
+        var result = await SendAsync(() => _gateway.RequestChatChanges(sessionId, afterRevision, take));
 
-        MarkMine(changes?.Messages);
-        return (result, changes);
+        MarkMine(result.Value?.Messages);
+        return result;
     }
 
     private void MarkMine(IReadOnlyList<ChatMessageModel>? messages)
@@ -199,40 +165,32 @@ public partial class CoordinatorSession
             message.IsMine = message.SenderUserId == currentUserId;
     }
 
-    public async Task<(FetchMessageResult Result, ChatMessageModel? Message)> RequestChatMessage(int sessionId,
+    public async Task<RequestResult<ChatMessageModel>> RequestChatMessage(int sessionId,
         int messageId)
     {
-        var (result, message) = await SendAsync(() => _gateway.RequestChatMessage(sessionId, messageId),
-            FetchMessageResult.Rejected, FetchMessageResult.TimedOut);
+        var result = await SendAsync(() => _gateway.RequestChatMessage(sessionId, messageId));
 
-        if (message != null)
-            message.IsMine = message.SenderUserId == GetCurrentUser().Id;
+        if (result.IsSuccess)
+            result.Value.IsMine = result.Value.SenderUserId == GetCurrentUser().Id;
 
-        return (result, message);
+        return result;
     }
 
-    public Task<AddMessageResult> SendChatMessage(NewChatMessage message) =>
-        SendAsync(() => _gateway.SendChatMessage(message.ChatId, message),
-            AddMessageResult.Rejected, AddMessageResult.TimedOut);
+    public Task<RequestResult> SendChatMessage(NewChatMessage message) =>
+        SendAsync(() => _gateway.SendChatMessage(message.ChatId, message));
 
-    public Task<DeleteMessageResult> DeleteChatMessage(int sessionId, int messageId) =>
-        SendAsync(() => _gateway.DeleteChatMessage(sessionId, messageId),
-            DeleteMessageResult.Rejected, DeleteMessageResult.TimedOut);
+    public Task<RequestResult> DeleteChatMessage(int sessionId, int messageId) =>
+        SendAsync(() => _gateway.DeleteChatMessage(sessionId, messageId));
 
-    public Task<EditMessageResult> EditChatMessage(int sessionId, int messageId, ChatTextContent text) =>
-        SendAsync(() => _gateway.EditChatMessage(sessionId, messageId, text.Text),
-            EditMessageResult.Rejected, EditMessageResult.TimedOut);
+    public Task<RequestResult> EditChatMessage(int sessionId, int messageId, ChatTextContent text) =>
+        SendAsync(() => _gateway.EditChatMessage(sessionId, messageId, text.Text));
 
-    public Task<(ChatReadResult Result, IReadOnlyList<ChatReadState>? States)> RequestChatReadStates() =>
-        SendAsync(_gateway.RequestChatReadStates, ChatReadResult.Rejected, ChatReadResult.TimedOut);
+    public Task<RequestResult<IReadOnlyList<ChatReadState>>> RequestChatReadStates() =>
+        SendAsync(_gateway.RequestChatReadStates);
 
-    public Task<(ChatReadResult Result, ChatReadState? State)> MarkChatRead(int chatId, int messageId) =>
-        SendAsync(() => _gateway.MarkChatRead(chatId, messageId), ChatReadResult.Rejected, ChatReadResult.TimedOut);
+    public Task<RequestResult<ChatReadState>> MarkChatRead(int chatId, int messageId) =>
+        SendAsync(() => _gateway.MarkChatRead(chatId, messageId));
 
-    /// <summary>
-    /// Turns the two ways a request fails without an answer into its result: a refusal is reported
-    /// through <see cref="RequestRejected"/>, a timeout or a lost connection is just a result.
-    /// </summary>
     public Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress = null,
         CancellationToken cancellationToken = default) =>
         _gateway.UploadMedia(upload, progress, cancellationToken);
@@ -249,51 +207,71 @@ public partial class CoordinatorSession
         IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
         _gateway.DownloadChatFile(fileId, destination, progress, cancellationToken);
 
-    public Task<(PushTokenResult Result, string? ReplyToken)> RegisterPushToken(string token, PushPlatform platform,
+    public Task<RequestResult<string?>> RegisterPushToken(string token, PushPlatform platform,
         PushKey key) =>
-        SendAsync(() => _gateway.RegisterPushToken(token, platform, key),
-            PushTokenResult.Rejected, PushTokenResult.TimedOut);
+        SendAsync(() => _gateway.RegisterPushToken(token, platform, key));
 
-    public Task<PushTokenResult> UnregisterPushToken(string token) =>
-        SendAsync(() => _gateway.UnregisterPushToken(token), PushTokenResult.Rejected, PushTokenResult.TimedOut);
+    public Task<RequestResult> UnregisterPushToken(string token) =>
+        SendAsync(() => _gateway.UnregisterPushToken(token));
 
-    public Task<(CoordinatorSettingsResult Result, CoordinatorSettingsSnapshot? Snapshot)> GetCoordinatorSettings() =>
-        SendAsync(_gateway.GetCoordinatorSettings, CoordinatorSettingsResult.Rejected, CoordinatorSettingsResult.TimedOut);
+    public Task<RequestResult<CoordinatorSettingsSnapshot>> GetCoordinatorSettings() =>
+        SendAsync(_gateway.GetCoordinatorSettings);
 
-    public Task<CoordinatorSettingsUpdateOutcome> UpdateCoordinatorSettings(CoordinatorSettingsUpdate update,
+    public Task<RequestResult<CoordinatorSettingsModel>> UpdateCoordinatorSettings(CoordinatorSettingsUpdate update,
         long expectedRevision) =>
-        SendAsync(() => _gateway.UpdateCoordinatorSettings(update, expectedRevision),
-            CoordinatorSettingsUpdateOutcome.Of(CoordinatorSettingsResult.Rejected),
-            CoordinatorSettingsUpdateOutcome.Of(CoordinatorSettingsResult.TimedOut));
+        SendAsync(() => _gateway.UpdateCoordinatorSettings(update, expectedRevision));
 
-    private async Task<TResult> SendAsync<TResult>(Func<Task<TResult>> request, TResult rejected, TResult timedOut)
+    /// <summary>
+    /// Turns the ways a request fails into its result. The failures of the request as a whole that the user
+    /// is told about (too many requests, missing permissions...) are reported through <see cref="RequestRejected"/>
+    /// as well; a timeout or a lost connection is just a result.
+    /// </summary>
+    private async Task<RequestResult> SendAsync(Func<Task> request)
+    {
+        try
+        {
+            await request();
+            return RequestResult.Success;
+        }
+        catch (RequestFailedException exception)
+        {
+            return OnRequestFailed(exception);
+        }
+        catch (TimeoutException)
+        {
+            return ErrorCode.TimedOut;
+        }
+    }
+
+    /// <summary>
+    /// The same for requests that return a value.
+    /// </summary>
+    private async Task<RequestResult<T>> SendAsync<T>(Func<Task<T>> request)
     {
         try
         {
             return await request();
         }
-        catch (RequestRejectedException exception)
+        catch (RequestFailedException exception)
         {
-            return OnRequestRejected(exception, rejected);
+            return OnRequestFailed(exception);
         }
         catch (TimeoutException)
         {
-            return timedOut;
+            return ErrorCode.TimedOut;
         }
     }
 
-    /// <summary>
-    /// The same for requests that also return data, which is null when the request fails here.
-    /// </summary>
-    private Task<(TResult Result, TData? Data)> SendAsync<TResult, TData>(
-        Func<Task<(TResult Result, TData? Data)>> request, TResult rejected, TResult timedOut)
-        where TData : class =>
-        SendAsync(request, (rejected, (TData?)null), (timedOut, (TData?)null));
-
-    private T OnRequestRejected<T>(RequestRejectedException exception, T result)
+    private RequestResult OnRequestFailed(RequestFailedException exception)
     {
-        LogRequestRejected(LogName, exception.Message);
-        RequestRejected?.Invoke(exception);
+        var result = new RequestResult(exception.Code, exception.Fields);
+
+        if (result.IsRejected)
+        {
+            LogRequestRejected(LogName, exception.Message);
+            RequestRejected?.Invoke(exception);
+        }
+
         return result;
     }
 }

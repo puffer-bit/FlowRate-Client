@@ -493,17 +493,17 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             var result = await _session.SendChatMessage(message);
             switch (result)
             {
-                case AddMessageResult.NoError:
+                case { IsSuccess: true }:
                     InputtedText = string.Empty;
                     MentionPicker.Reset();
                     Attachments.Clear();
                     ResetReply();
                     break;
                 // A rejection is reported by the main window
-                case AddMessageResult.Rejected:
+                case { IsRejected: true }:
                     break;
                 // The server does not hold the uploads anymore, so the next try sends the files again
-                case AddMessageResult.AttachmentNotReady or AddMessageResult.AttachmentInvalid:
+                case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
                     foreach (var attachment in attachments)
                         attachment.ResetUpload();
                     SendError = Strings.Get("chat.send.imagesLost");
@@ -512,8 +512,8 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 default:
                     SendError = Strings.Get(result switch
                     {
-                        AddMessageResult.TimedOut => "chat.send.timedOut",
-                        AddMessageResult.AttachmentsNotAllowed => "chat.attach.turnedOff",
+                        { Error: ErrorCode.TimedOut } => "chat.send.timedOut",
+                        { Error: ErrorCode.AttachmentsNotAllowed } => "chat.attach.turnedOff",
                         _ => "chat.send.refused"
                     });
                     break;
@@ -605,15 +605,15 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             switch (result)
             {
                 // The message may have been deleted while the request was on its way, which ended the edit already
-                case EditMessageResult.NoError when EditMessage?.Id == edited.Id:
+                case { IsSuccess: true } when EditMessage?.Id == edited.Id:
                     EndEdit();
                     break;
                 // A rejection is reported by the main window
-                case EditMessageResult.NoError or EditMessageResult.Rejected:
+                case { IsSuccess: true } or { IsRejected: true }:
                     break;
                 // The text stays in the input for another try
                 default:
-                    SendError = Strings.Get(result == EditMessageResult.TimedOut ? "chat.edit.timedOut" : "chat.edit.refused");
+                    SendError = Strings.Get(result.Error == ErrorCode.TimedOut ? "chat.edit.timedOut" : "chat.edit.refused");
                     break;
             }
         }

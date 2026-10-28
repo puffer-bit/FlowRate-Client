@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
@@ -389,26 +390,26 @@ public partial class SessionsListVM
     /// A refused change goes back to the last layout of the server; an accepted one is followed by
     /// that layout anyway.
     /// </summary>
-    private async Task OnLayoutRequestDone(SessionLayoutResult result)
+    private async Task OnLayoutRequestDone(RequestResult result)
     {
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
             return;
 
         _shownLayout = _serverLayout;
         RebuildRows();
 
         // A rejection is reported by the main window
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 
-    private async Task ShowLayoutError(SessionLayoutResult result) =>
+    private async Task ShowLayoutError(RequestResult result) =>
         await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok, result switch
         {
-            SessionLayoutResult.TooManyCategories => Strings.Format("sessions.category.tooMany",
+            { Error: ErrorCode.TooManyCategories } => Strings.Format("sessions.category.tooMany",
                 ("limit", Limits.SessionCategoriesMaxCount)),
-            SessionLayoutResult.TimedOut => Strings.Get("sessions.layout.timedOut"),
-            _ => Strings.Format("sessions.layout.failed", ("code", (int)result))
+            { Error: ErrorCode.TimedOut } => Strings.Get("sessions.layout.timedOut"),
+            _ => Strings.Format("sessions.layout.failed", ("code", (int?)result.Error))
         }, Strings.Get("common.error")));
 
     private async Task CreateCategory()
@@ -417,9 +418,9 @@ public partial class SessionsListVM
             return;
 
         var (result, categoryId) = await coordinatorSession.CreateSessionCategory(Strings.Get("sessions.category.newName"));
-        if (result != SessionLayoutResult.NoError)
+        if (!result.IsSuccess)
         {
-            if (result != SessionLayoutResult.Rejected)
+            if (!result.IsRejected)
                 await ShowLayoutError(result);
             return;
         }
@@ -443,11 +444,11 @@ public partial class SessionsListVM
         category.Name = name;
 
         var result = await coordinatorSession.RenameSessionCategory(category.Id, name);
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
             return;
 
         category.Name = _serverLayout.FindCategory(category.Id)?.Name ?? previous;
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 
@@ -462,13 +463,13 @@ public partial class SessionsListVM
             return;
 
         var result = await coordinatorSession.DeleteSessionCategory(category.Id);
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
         {
             _ = _preferences.SaveCategoryCollapseAsync(coordinatorSession.GetCurrentUser().CoordinatorInstanceId, category.Id, false);
             return;
         }
 
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 
