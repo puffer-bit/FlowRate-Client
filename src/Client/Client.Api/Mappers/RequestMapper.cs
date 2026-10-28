@@ -17,16 +17,7 @@ internal static class RequestMapper
 
     private static CreateSessionData ToDto(this NewSessionOptions options) => options switch
     {
-        NewHybridSessionOptions hybrid => new HybridSessionCreateData(
-            hybrid.EngineType,
-            hybrid.Resolution,
-            hybrid.VideoBitrate,
-            hybrid.IsAudioTransferEnabled,
-            hybrid.IsDataChannelEnabled,
-            hybrid.IsSimulcastEnabled,
-            hybrid.IsTunnelingEnabled,
-            hybrid.IsProxyActive,
-            hybrid.Media?.ToDto()),
+        NewHybridSessionOptions hybrid => new HybridSessionCreateData(hybrid.EngineType, hybrid.Media?.ToDto()),
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
             chat.Description,

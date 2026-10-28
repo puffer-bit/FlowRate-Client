@@ -46,7 +46,7 @@ public partial class HybridSession
 
         switch (nodeEvent)
         {
-            case SessionNodeStateChangedEvent { State: HybridSessionNodeState.WaitingForSfuNode }:
+            case SessionNodeStateChangedEvent { State: HybridSessionNodeState.WaitingForSFUNode }:
                 _isWaitingForNode = true;
                 _isRejoinRequired = true;
                 ScheduleReconnect("the session waits for an SFU node");

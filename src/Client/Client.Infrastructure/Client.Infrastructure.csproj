@@ -12,7 +12,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
-      <ProjectReference Include="..\..\Shared\Shared.Parsers\Shared.Parsers.csproj" />
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
     </ItemGroup>

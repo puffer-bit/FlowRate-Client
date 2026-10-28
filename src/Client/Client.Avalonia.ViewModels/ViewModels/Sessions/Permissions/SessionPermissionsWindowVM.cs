@@ -21,7 +21,7 @@ public sealed class SessionPermissionsWindowVM : ReactiveObject, IDisposable
 {
     private readonly SessionModel _session;
     private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides),
-        ChangeSessionPermissionsResult> _changePermissionsCommand;
+        RequestResult> _changePermissionsCommand;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
     public string SessionName => _session.Name;
@@ -50,7 +50,7 @@ public sealed class SessionPermissionsWindowVM : ReactiveObject, IDisposable
 
     public SessionPermissionsWindowVM(SessionModel session, CoordinatorPermissions permissions,
         ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides),
-            ChangeSessionPermissionsResult> changePermissionsCommand)
+            RequestResult> changePermissionsCommand)
     {
         _session = session;
         _changePermissionsCommand = changePermissionsCommand;
@@ -88,23 +88,23 @@ public sealed class SessionPermissionsWindowVM : ReactiveObject, IDisposable
 
         switch (result)
         {
-            case ChangeSessionPermissionsResult.NoError:
+            case { IsSuccess: true }:
                 await CloseWindow.Handle(RxVoid.Default);
                 break;
-            case ChangeSessionPermissionsResult.SessionNotExists:
+            case { Error: ErrorCode.SessionNotFound }:
                 GeneralError = Strings.Get("sessionSettings.sessionGone");
                 break;
-            case ChangeSessionPermissionsResult.RoleNotExists:
+            case { Error: ErrorCode.RoleNotFound }:
                 GeneralError = Strings.Get("sessionPermissions.roleGone");
                 break;
-            case ChangeSessionPermissionsResult.NotAllowed:
+            case { Error: ErrorCode.InsufficientPermissions }:
                 GeneralError = Strings.Get("sessionPermissions.notAllowed");
                 break;
-            case ChangeSessionPermissionsResult.TimedOut:
+            case { Error: ErrorCode.TimedOut }:
                 GeneralError = Strings.Get("profile.name.timedOut");
                 break;
             // The main window tells why
-            case ChangeSessionPermissionsResult.Rejected:
+            case { IsRejected: true }:
                 break;
             default:
                 GeneralError = Strings.Format("sessionSettings.notSaved", ("reason", result));
