@@ -163,7 +163,7 @@ public partial class ActiveChatSessionVM
 
                 var (result, changes) = await _coordinatorSession.RequestChatChanges(Id, _revision,
                     Limits.ChatHistoryMaxTake);
-                if (result != FetchMessagesResult.NoError || changes == null)
+                if (!result.IsSuccess || changes == null)
                     return;
 
                 // More was missed than one answer holds: the newest page is loaded anew rather than

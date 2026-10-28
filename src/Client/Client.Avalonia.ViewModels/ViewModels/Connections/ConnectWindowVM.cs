@@ -248,8 +248,8 @@ public class ConnectWindowVM : ReactiveObject
         LoginPromptVM.Attach(session, AskLogin);
 
         // Only the reason of a rejected login is needed, the main window takes over the session after
-        RequestRejectedException? rejection = null;
-        void OnRejected(RequestRejectedException exception) => rejection = exception;
+        RequestFailedException? rejection = null;
+        void OnRejected(RequestFailedException exception) => rejection = exception;
         session.RequestRejected += OnRejected;
 
         try
@@ -310,7 +310,7 @@ public class ConnectWindowVM : ReactiveObject
             if (session.ConnectionStatus != CoordinatorState.Connected)
             {
                 var message = session.ConnectionStatus == CoordinatorState.Rejected && rejection != null
-                    ? RequestRejectionMessages.GetForConnection(rejection.Reason)
+                    ? RequestRejectionMessages.GetForConnection(rejection.Code)
                     : Strings.Get("connect.failed.unavailable");
                 session.Dispose();
                 await HandleConnectionError(message);

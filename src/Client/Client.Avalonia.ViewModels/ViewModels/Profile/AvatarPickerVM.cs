@@ -1,3 +1,5 @@
+using Shared.Enums;
+using Client.Core.Coordinator;
 using Client.Services;
 using Client.Avalonia.Localization;
 using System;
@@ -6,7 +8,6 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using Client.ViewModels.Sessions.Chat;
 using ReactiveUI;
-using Shared.Enums.User;
 using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -72,15 +73,14 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
     /// <summary>
     /// Tells under the avatar why the server did not take it; nothing for a result that needs no words there.
     /// </summary>
-    public void ShowResult(SetAvatarResult result) => AvatarError = result switch
+    public void ShowResult(RequestResult result) => AvatarError = result switch
     {
-        SetAvatarResult.NoError => null,
-        SetAvatarResult.UploadFailed or SetAvatarResult.UploadNotFound => Strings.Get("profile.avatar.uploadFailed"),
-        SetAvatarResult.NotAllowed => Strings.Get("profile.avatar.notAllowed"),
-        SetAvatarResult.UserNotFound => Strings.Get("profile.name.userNotConnected"),
-        SetAvatarResult.TimedOut => Strings.Get("profile.name.timedOut"),
+        { IsSuccess: true } => null,
+        { Error: ErrorCode.UploadNotFound } => Strings.Get("profile.avatar.uploadFailed"),
+        { Error: ErrorCode.UserNotFound } => Strings.Get("profile.name.userNotConnected"),
+        { Error: ErrorCode.TimedOut } => Strings.Get("profile.name.timedOut"),
         // The main window tells why; the picture stays picked for another try
-        SetAvatarResult.Rejected => null,
+        { IsRejected: true } => null,
         _ => Strings.Format("profile.avatar.notChanged", ("reason", result))
     };
 

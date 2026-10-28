@@ -315,14 +315,14 @@ public sealed class SfuNodeOptionVM : ReactiveObject
         if (node.Connection is { } connection && node.IsEnabled)
         {
             HasConnection = true;
-            RoundTrip = connection.State == SfuNodeConnectionState.Connected ? connection.RoundTrip : null;
-            IsConnectionProblem = connection.State is SfuNodeConnectionState.Unresponsive
-                or SfuNodeConnectionState.Disconnected;
+            RoundTrip = connection.State == SFUNodeConnectionState.Connected ? connection.RoundTrip : null;
+            IsConnectionProblem = connection.State is SFUNodeConnectionState.Unresponsive
+                or SFUNodeConnectionState.Disconnected;
             ConnectionText = Strings.Get(connection.State switch
             {
-                SfuNodeConnectionState.Connected => "serverSettings.sfu.state.connected",
-                SfuNodeConnectionState.Unresponsive => "serverSettings.sfu.state.unresponsive",
-                SfuNodeConnectionState.Disconnected => "serverSettings.sfu.state.disconnected",
+                SFUNodeConnectionState.Connected => "serverSettings.sfu.state.connected",
+                SFUNodeConnectionState.Unresponsive => "serverSettings.sfu.state.unresponsive",
+                SFUNodeConnectionState.Disconnected => "serverSettings.sfu.state.disconnected",
                 _ => "serverSettings.sfu.state.connecting"
             });
             ConnectionError = string.IsNullOrWhiteSpace(connection.Error) ? null : connection.Error;

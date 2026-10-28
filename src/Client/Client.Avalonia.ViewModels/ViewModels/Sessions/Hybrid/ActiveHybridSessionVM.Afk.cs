@@ -52,7 +52,7 @@ public partial class ActiveHybridSessionVM
         await _coordinatorStates.SetAfkAsync(CoordinatorInstanceId, isAfk, _hybridSession.AfkReason);
 
         // Kept here anyway; a rejection is reported by the main window
-        if (result is not (SetAfkResult.NoError or SetAfkResult.Rejected))
+        if (!(result.IsSuccess || result.IsRejected))
             ShowPopUp(NotificationPopUpVM.PopUpType.Error, Strings.Format("hybrid.afk.failed", ("reason", result)),
                 "AfkFailed");
 

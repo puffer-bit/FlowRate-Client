@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using Client.Avalonia.Styles.Animation;
 using System;
 using System.Collections.Concurrent;
@@ -125,7 +126,7 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        if (result == StartScreenShareResult.NoError)
+        if (result.IsSuccess)
             StatusBar.IsScreenShareOn = true;
         else
         {
@@ -134,7 +135,7 @@ public partial class ActiveHybridSessionVM
             StatusBar.IsScreenShareOn = false;
             ReleaseScreenInput();
 
-            if (result != StartScreenShareResult.Rejected)
+            if (!result.IsRejected)
                 NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
         }
 
@@ -190,7 +191,7 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        if (result == StartScreenShareResult.NoError)
+        if (result.IsSuccess)
         {
             StatusBar.IsScreenShareOn = true;
 
@@ -203,7 +204,7 @@ public partial class ActiveHybridSessionVM
         ReleaseScreenInput();
 
         // A rejection is reported by the main window
-        if (result != StartScreenShareResult.Rejected)
+        if (!result.IsRejected)
             NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
     }
 
@@ -383,7 +384,7 @@ public partial class ActiveHybridSessionVM
 
         stream.IsBusy = true;
 
-        SetScreenShareWatchResult result;
+        RequestResult result;
 
         try
         {
@@ -394,14 +395,14 @@ public partial class ActiveHybridSessionVM
             stream.IsBusy = false;
         }
 
-        if (IsClosed || result == SetScreenShareWatchResult.NoError)
+        if (IsClosed || result.IsSuccess)
             return;
 
         if (isWatched)
             _wantedScreens.Remove(userId);
 
         // A rejection is reported by the main window
-        if (isWatched && result != SetScreenShareWatchResult.Rejected)
+        if (isWatched && !result.IsRejected)
             NotifyScreenShareError(Strings.Format("hybrid.screen.watchFailed", ("reason", result)));
     }
 

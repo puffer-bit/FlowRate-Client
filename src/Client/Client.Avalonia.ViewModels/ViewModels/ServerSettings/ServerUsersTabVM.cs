@@ -114,8 +114,8 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         if (users == null)
         {
             // Rejected is told by the main window
-            if (result != UsersRequestResult.Rejected)
-                Error = result == UsersRequestResult.TimedOut
+            if (!result.IsRejected)
+                Error = result.Error == ErrorCode.TimedOut
                     ? Strings.Get("serverSettings.error.timedOut")
                     : Strings.Format("serverSettings.users.error.notLoaded", ("reason", result));
             return;
@@ -163,15 +163,15 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         await TellFailureAsync(await _coordinatorSession.DeleteUser(row.User.Id), "serverSettings.users.action.delete");
     }
 
-    private async Task TellFailureAsync(ModerateUserResult result, string actionKey)
+    private async Task TellFailureAsync(RequestResult result, string actionKey)
     {
         // Rejected is told by the main window
         var message = result switch
         {
-            ModerateUserResult.NoError or ModerateUserResult.Rejected => null,
-            ModerateUserResult.TimedOut => Strings.Get("serverSettings.error.timedOut"),
-            ModerateUserResult.UserNotFound => Strings.Get("serverSettings.users.error.userNotFound"),
-            ModerateUserResult.CannotTargetSelf => Strings.Get("serverSettings.users.error.cannotTargetSelf"),
+            { IsSuccess: true } or { IsRejected: true } => null,
+            { Error: ErrorCode.TimedOut } => Strings.Get("serverSettings.error.timedOut"),
+            { Error: ErrorCode.UserNotFound } => Strings.Get("serverSettings.users.error.userNotFound"),
+            { Error: ErrorCode.CannotTargetSelf } => Strings.Get("serverSettings.users.error.cannotTargetSelf"),
             _ => Strings.Format("serverSettings.users.error.failed", ("reason", result))
         };
         if (message != null)

@@ -54,7 +54,7 @@ internal partial class CoordinatorGateway
             await SendPingAsync().WaitAsync(timeout);
             return true;
         }
-        catch (RequestRejectedException)
+        catch (RequestFailedException)
         {
             // Refused by the rate limit, but an answer still proves the server is alive
             return true;

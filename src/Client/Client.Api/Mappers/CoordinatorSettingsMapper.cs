@@ -14,8 +14,8 @@ internal static class CoordinatorSettingsMapper
         IsPasswordProtected = dto.IsPasswordProtected,
         MaxOnlineUsers = dto.MaxOnlineUsers,
         MaxUsers = dto.MaxUsers,
-        IsMotdEnabled = dto.IsMotdEnabled,
-        MotdText = dto.MotdText,
+        IsMotdEnabled = dto.IsMOTDEnabled,
+        MotdText = dto.MOTDText,
         AllowedIps = dto.AllowedIps,
         BannedIps = dto.BannedIps,
         HeartbeatIntervalSeconds = dto.HeartbeatIntervalSeconds,
@@ -26,10 +26,10 @@ internal static class CoordinatorSettingsMapper
         UnattachedUploadLifetimeHours = dto.UnattachedUploadLifetimeHours,
         MediaTokenLifetimeMinutes = dto.MediaTokenLifetimeMinutes,
         RateLimits = dto.RateLimits.ToModel(),
-        SfuNodeIds = dto.SfuNodeIds
+        SfuNodeIds = dto.SFUNodeIds
     };
 
-    public static SfuNodeModel ToModel(this SfuNodeDTO dto) => new(dto.Id, dto.Name, dto.Host, dto.Port, dto.IsEnabled,
+    public static SfuNodeModel ToModel(this SFUNodeDTO dto) => new(dto.Id, dto.Name, dto.Host, dto.Port, dto.IsEnabled,
         dto.ConnectionState is { } state
             ? new SfuNodeConnection(state, dto.PingMs is { } ms ? TimeSpan.FromMilliseconds(ms) : null,
                 dto.ConnectionError)
@@ -44,8 +44,8 @@ internal static class CoordinatorSettingsMapper
         RemovePassword = update.RemovePassword,
         MaxOnlineUsers = update.MaxOnlineUsers,
         MaxUsers = update.MaxUsers,
-        IsMotdEnabled = update.IsMotdEnabled,
-        MotdText = update.MotdText,
+        IsMOTDEnabled = update.IsMotdEnabled,
+        MOTDText = update.MotdText,
         AllowedIps = update.AllowedIps.ToList(),
         BannedIps = update.BannedIps.ToList(),
         HeartbeatIntervalSeconds = update.HeartbeatIntervalSeconds,
@@ -56,7 +56,7 @@ internal static class CoordinatorSettingsMapper
         UnattachedUploadLifetimeHours = update.UnattachedUploadLifetimeHours,
         MediaTokenLifetimeMinutes = update.MediaTokenLifetimeMinutes,
         RateLimits = update.RateLimits.ToDto(),
-        SfuNodeIds = update.SfuNodeIds.ToList()
+        SFUNodeIds = update.SfuNodeIds.ToList()
     };
 
     private static CoordinatorRateLimits ToModel(this CoordinatorRateLimitsDTO dto) => new()

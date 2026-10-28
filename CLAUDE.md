@@ -11,7 +11,7 @@ Dependencies point inwards; each outer project registers its services in its own
 
 | Layer | Projects | Role |
 |---|---|---|
-| Protocol | `Shared/Shared.Core`, `Shared/Shared.Parsers` (submodule FlowRate-Shared, also used by the server) | messages, models, enums, permissions, validation; wire format in `Shared/Docs/Protocol.md` |
+| Protocol | `Shared/Shared.Core` (submodule FlowRate-Shared, also used by the server) | messages, models, enums, permissions, validation; wire format in `Shared/Docs/Protocol.md` |
 | Domain | `Client.Core` | models of coordinators (servers), sessions, users, chat, media, settings; no I/O |
 | Application | `Client.Application` | use cases; `Ports/` holds the interfaces every outer layer implements (gateway, WebRTC transport, audio devices, storage, updater, push, screen capture) |
 | Adapters | `Client.Api`, `Client.WebSockets`, `Client.Infrastructure`, `Client.GStreamer`, `Client.GStreamer.WebRTC`, `Client.LibWebRTC`, `Client.WebRTC`, `Client.OpenAL` | server connection, SQLite storage, media and the WebRTC transports, audio output |

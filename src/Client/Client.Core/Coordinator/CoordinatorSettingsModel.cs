@@ -1,5 +1,4 @@
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 
 namespace Client.Core.Coordinator;
 
@@ -137,18 +136,7 @@ public sealed record SfuNodeModel(int Id, string Name, string Host, int Port, bo
 
 /// <param name="RoundTrip">The server's last answered ping to the node; null while the node does not answer.</param>
 /// <param name="Error">Why the node is not connected, if the server knows.</param>
-public sealed record SfuNodeConnection(SfuNodeConnectionState State, TimeSpan? RoundTrip, string? Error);
+public sealed record SfuNodeConnection(SFUNodeConnectionState State, TimeSpan? RoundTrip, string? Error);
 
 /// <summary>The settings together with the SFU nodes they may name.</summary>
 public sealed record CoordinatorSettingsSnapshot(CoordinatorSettingsModel Settings, IReadOnlyList<SfuNodeModel> SfuNodes);
-
-/// <param name="Settings">The settings as they are now: the saved ones, or on a conflict the newer ones.</param>
-/// <param name="Errors">Why values were refused, by field ("Heartbeat.TimeoutSeconds"; "" for the whole change).</param>
-public sealed record CoordinatorSettingsUpdateOutcome(
-    CoordinatorSettingsResult Result,
-    CoordinatorSettingsModel? Settings,
-    IReadOnlyDictionary<string, string[]> Errors)
-{
-    public static CoordinatorSettingsUpdateOutcome Of(CoordinatorSettingsResult result) =>
-        new(result, null, new Dictionary<string, string[]>());
-}

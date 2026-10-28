@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Shared.Enums;
 using Shared.Enums.Auth;
 using Client.Core.Coordinator;
 using Client.Core.Settings;
@@ -661,7 +662,7 @@ public partial class CoordinatorSession
             LogAuthStarted(LogName);
             var response = await _gateway.AuthenticateAsync(password, userIdentity).WaitAsync(cancellationToken);
 
-            if (response is { Result: AuthResult.SecondStageRequeried, Challenge: { } challenge })
+            if (response is { Result: AuthResult.SecondStageRequired, Challenge: { } challenge })
             {
                 if (await PassSecondStageAsync(address, port, challenge, cancellationToken) is not { } finished)
                 {
@@ -675,13 +676,6 @@ public partial class CoordinatorSession
             // Let in at once: the user has no password, whatever was kept for them
             else if (response.Result == AuthResult.Success)
                 KeepAccountPassword(null, false);
-
-            if (response is { Result: AuthResult.Banned })
-            {
-                LogAuthFailed(LogName);
-                await _gateway.DisconnectWebSocketAsync();
-                return CoordinatorState.Denied;
-            }
 
             if (response is not { Result: AuthResult.Success, User: not null })
             {
@@ -712,10 +706,19 @@ public partial class CoordinatorSession
 
             return CoordinatorState.Connected;
         }
-        catch (RequestRejectedException exception)
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed or ErrorCode.Banned
+                                                           or ErrorCode.OnlineLimitReached or ErrorCode.UserLimitReached)
+        {
+            LogAuthFailed(LogName);
+            // The server keeps an unauthenticated socket open until it is closed from here
+            await _gateway.DisconnectWebSocketAsync();
+            return exception.Code == ErrorCode.Banned ? CoordinatorState.Denied : CoordinatorState.AuthenticationFailed;
+        }
+        catch (RequestFailedException exception)
         {
             await _gateway.DisconnectWebSocketAsync();
-            return OnRequestRejected(exception, CoordinatorState.Rejected);
+            OnRequestFailed(exception);
+            return CoordinatorState.Rejected;
         }
         catch (TimeoutException)
         {

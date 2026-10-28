@@ -73,13 +73,13 @@ public partial class HybridSession
     private partial void LogRejoinFailed(int sessionId, string error);
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Rejoin rejected: {Result}")]
-    private partial void LogRejoinRejected(int sessionId, HybridSessionJoinResult result);
+    private partial void LogRejoinRejected(int sessionId, ErrorCode? result);
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to start the new WebRTC transport")]
     private partial void LogNewTransportFailed(int sessionId);
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to resume the inbound tracks: {Result}, attempt {Attempt}")]
-    private partial void LogResumeInboundsFailed(int sessionId, ResumeInboundsResult result, int attempt);
+    private partial void LogResumeInboundsFailed(int sessionId, ErrorCode? result, int attempt);
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Resuming the inbound tracks stopped")]
     private partial void LogResumeInboundsStopped(Exception exception, int sessionId);

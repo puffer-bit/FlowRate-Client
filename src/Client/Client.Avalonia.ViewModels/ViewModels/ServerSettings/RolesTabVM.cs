@@ -8,7 +8,6 @@ using Avalonia.Threading;
 using ReactiveUI;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
@@ -150,7 +149,7 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
         Error = null;
         var (result, saved) = await _coordinatorSession.UpdateRole(role.Id, Editor.ToChange(), role.Revision);
 
-        if (result == CoordinatorRoleResult.Conflict)
+        if (result.Error == ErrorCode.Conflict)
         {
             Editor.IsChangedElsewhere = true;
             return;
