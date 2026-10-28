@@ -20,6 +20,10 @@ public interface IAudioService
 
     Task<AudioSettings> GetSettingsAsync();
     Task SaveSettingsAsync(AudioSettings settings);
+
+    /// <returns>Whether the voice of a session goes over libwebrtc instead of GStreamer.</returns>
+    Task<bool> GetUseLibWebRTCAsync();
+    Task UpdateUseLibWebRTCAsync(bool useLibWebRTC);
     
     /// <summary>
     /// Finds the connected device that matches the saved choice. Falls back to the saved name,

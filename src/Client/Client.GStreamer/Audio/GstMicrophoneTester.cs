@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.Core.Settings;
 using Client.GStreamer.Interop;
-using Client.GStreamer.WebRTC;
 using Gst;
 using Gst.App;
 using Microsoft.Extensions.Logging;
@@ -39,7 +38,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     // echo cancelling takes out what is really played and when.
     private const string LoopbackDescription =
         "queue max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! audioconvert ! audioresample ! " +
-        IncomingStreamPlayer.ShapingDescription + "volume name=loopback_volume ! {0}audioconvert ! audioresample ! ";
+        VoicePlaybackSink.ShapingDescription + "volume name=loopback_volume ! {0}audioconvert ! audioresample ! ";
 
     private const string EchoProbeDescription =
         "audioconvert ! " + MicrophoneProcessing.EchoProbeCaps + " ! " +
@@ -96,7 +95,8 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     }
 
     public MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled)
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled)
     {
         lock (_lock)
         {
@@ -143,7 +143,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                 // The sound server may restore a mute an earlier version left for the client name
                 VoicePlaybackSink.SetMuted(loopback, false);
 
-                if (Track(OutgoingAudioBranch.BuildMonitor(source, volume, applied, echoProbe,
+                if (Track(MicrophoneChain.BuildMonitor(source, volume, applied, echoProbe, isAutoGainControlEnabled,
                         MeterDescription)) is not { } monitor)
                 {
                     StopPipeline();
@@ -169,7 +169,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                     return MicrophoneTestError.Unexpected;
                 }
 
-                _inputVolume = Track(monitor.GetByName(OutgoingAudioBranch.InputVolumeName));
+                _inputVolume = Track(monitor.GetByName(MicrophoneChain.InputVolumeName));
                 _loopbackVolume = Track(loopback.GetByName("loopback_volume"));
                 _loopbackVolume?.SetProperty("mute", !isLoopbackEnabled);
                 StartGate(monitor, voiceGate);
@@ -206,12 +206,12 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     /// </summary>
     private void StartGate(Bin monitor, VoiceGateOptions? voiceGate)
     {
-        if (Track(monitor.GetByName(OutgoingAudioBranch.GateLevelName)) is not { } level ||
-            Track(monitor.GetByName(OutgoingAudioBranch.GateValveName)) is not { } valve)
+        if (Track(monitor.GetByName(MicrophoneChain.GateLevelName)) is not { } level ||
+            Track(monitor.GetByName(MicrophoneChain.GateValveName)) is not { } valve)
             return;
 
-        var detector = Track(monitor.GetByName(OutgoingAudioBranch.VoiceLevelName)) is { } voiceLevel &&
-                       Track(monitor.GetByName(OutgoingAudioBranch.VoiceValveName)) is { } voiceValve
+        var detector = Track(monitor.GetByName(MicrophoneChain.VoiceLevelName)) is { } voiceLevel &&
+                       Track(monitor.GetByName(MicrophoneChain.VoiceValveName)) is { } voiceValve
             ? new VoiceGate.VoiceDetector(voiceLevel, voiceValve)
             : null;
 

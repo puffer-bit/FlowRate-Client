@@ -30,6 +30,7 @@ disconnects.
 | `--server <host:port>` | Coordinator to connect to. Required. |
 | `--password <password>` | Coordinator password. |
 | `--session <id\|name>` | Voice session to join, by id or name (case-insensitive). Defaults to the first one. |
+| `--create-session <name>` | Join the voice session of that name; the first bot creates it when the server has none, as on a fresh local server. Needs the right to create sessions. |
 | `--file <path>` | Audio file to play in a loop: wav, mp3, ogg, flac or raw PCM. |
 | `--raw-rate <hz>` | Sample rate of a raw 16-bit PCM file, which has no header. Only with `--file`. |
 | `--raw-channels <n>` | Channel count of a raw PCM file. Default: 1. |
@@ -48,6 +49,7 @@ disconnects.
 | `--stats-interval <sec>` | Report the counters of all bots every given number of seconds. Default: 10. |
 | `--quiet` | Log only failures and the counters, nothing per bot. |
 | `--listen` | Play what the bot hears. By default incoming audio is only received and decoded. |
+| `--libwebrtc` | Send and receive the voice over libwebrtc instead of GStreamer, as the experimental setting of the client does; needs the libwebrtc runtime of `Client.LibWebRTC` (committed for linux-x64). Screens are shared and watched as well. |
 | `--verbose` | Log everything, including the WebRTC negotiation. |
 | `--help` | Show the usage text. |
 

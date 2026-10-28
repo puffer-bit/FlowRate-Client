@@ -59,6 +59,12 @@ public class AudioSettings
     public bool IsEchoCancellationEnabled { get; set; }
 
     /// <summary>
+    /// Whether a quiet microphone is brought up to the level speech is expected at. Off sends the
+    /// voice as loud as the device delivers it, with only the input volume on top.
+    /// </summary>
+    public bool IsAutoGainControlEnabled { get; set; } = true;
+
+    /// <summary>
     /// Whether the interface makes sounds: someone joining, the microphone being muted and the like.
     /// </summary>
     public bool AreSoundsEnabled { get; set; } = true;
