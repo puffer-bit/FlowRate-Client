@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
@@ -148,7 +149,9 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion()));
 
         Strings.LanguageChanged += OnLanguageChanged;
-        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
+
+        foreach (var setting in SettingList)
+            setting.PropertyChanged += OnSettingPropertyChanged;
 
         _ = LoadAllSettings();
     }
@@ -164,9 +167,13 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
             UpdateSearchResults();
     }
 
-    // A tab may show other settings for another engine of the voice
-    private void OnExperimentalFeaturesChanged()
+    // A tab may show other settings, as the audio one for another engine of the voice. Its own
+    // change is waited for, not the cause of it, so the index is built from the new entries
+    private void OnSettingPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName != nameof(ISettingVM.SearchEntries))
+            return;
+
         _searchIndex = null;
         if (IsSearching)
             UpdateSearchResults();
@@ -255,7 +262,10 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     public void Dispose()
     {
         Strings.LanguageChanged -= OnLanguageChanged;
-        ExperimentalFeatures.Changed -= OnExperimentalFeaturesChanged;
+
+        foreach (var setting in SettingList)
+            setting.PropertyChanged -= OnSettingPropertyChanged;
+
         CollapsedSections.CollectionChanged -= OnCollapsedSectionsChanged;
 
         foreach (var setting in SettingList.OfType<IDisposable>())
