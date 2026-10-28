@@ -150,6 +150,9 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
             Run(peer => NativeMethods.PeerSetAudioOptions(peer, options.Item1 ? 1 : 0, options.isEchoCancellationEnabled ? 1 : 0,
                 options.Item3, options.isAutoGainControlEnabled ? 1 : 0));
 
+        // Only now: before the options the peer still records the microphone and drops what comes
+        feeder?.Start();
+
         return true;
     }
 
@@ -181,7 +184,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
             NativeMethods.PeerCapture(peer, samples, frame.Length, CustomAudioFeeder.SampleRate, 1);
     });
 
-    public void SetVoiceGate(VoiceGateOptions? voiceGate) => NativeVoiceGate.Set(voiceGate);
+    public void SetVoiceGate(VoiceGateOptions? voiceGate) => NativeVoiceGate.Set(this, voiceGate);
 
     public void SetVolume(string mid, double volume) => Run(peer => NativeMethods.PeerSetVolume(peer, mid, volume));
 
@@ -206,6 +209,9 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         }
 
         feeder?.Dispose();
+
+        // The gate goes back to another peer that still sends the microphone, if any
+        NativeVoiceGate.Set(this, null);
 
         Task.Run(() =>
         {
@@ -261,8 +267,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         try
         {
             var text = Marshal.PtrToStringUTF8((nint)json) ?? "[]";
-            if (Environment.GetEnvironmentVariable("FR_STATS_DUMP") is { } dump)
-                File.AppendAllText(dump + "." + context + ".jsonl", text.Replace("\n", " ") + "\n");
+
             if (ListenerOf(context) is { } listener)
                 listener.OnStats(StatsReader.Read(text));
         }
