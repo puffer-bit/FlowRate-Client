@@ -53,12 +53,16 @@ public interface ICoordinatorGateway : IDisposable
     // Requests: each fails with a RequestFailedException when the server answers with an error, and with a
     // TimeoutException when no answer comes
     /// <param name="password">The password of the server, not of the user.</param>
+    /// <param name="sessionToken">
+    /// The token of the device's session; logs in without the second stage while the server still knows it, and is
+    /// otherwise passed over for <paramref name="userIdentity"/>.
+    /// </param>
     /// <returns>
     /// <see cref="Shared.Enums.Auth.AuthResult.SecondStageRequired"/> with the challenge set when the user has a
     /// password, one-time codes or passkeys; <see cref="FinishLoginAsync"/> completes the login then.
     /// </returns>
     Task<AuthenticationResult> AuthenticateAsync(
-        string? password, string? userIdentity);
+        string? password, string? userIdentity, string? sessionToken);
 
     /// <summary>
     /// The second login stage: the password and the one-time code of the user, each when the challenge asks for it.
@@ -68,6 +72,18 @@ public interface ICoordinatorGateway : IDisposable
 
     // The login of the current user: each change answers with what the user has now
     Task<AccountSecurity> GetAccountSecurity();
+
+    /// <summary>The devices the current user is logged in from, the latest used first.</summary>
+    Task<IReadOnlyList<AccountSession>> GetAccountSessions();
+
+    /// <summary>
+    /// Ends a session of the current user, or every one but this device's when <paramref name="sessionId"/> is null;
+    /// answers with the sessions left.
+    /// </summary>
+    Task<IReadOnlyList<AccountSession>> EndAccountSession(Guid? sessionId);
+
+    /// <summary>Gives the current user a new identity and ends every other session; answers with the identity.</summary>
+    Task<string> ResetUserIdentity(AccountProof proof);
 
     /// <summary>Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null.</summary>
     Task<AccountSecurity> SetAccountPassword(AccountProof proof,

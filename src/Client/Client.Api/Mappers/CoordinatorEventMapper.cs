@@ -18,6 +18,7 @@ internal static class CoordinatorEventMapper
     {
         HeartbeatServerClosingNotification closing => new ServerClosingEvent(closing.Message),
         HeartbeatServerRestartingNotification restarting => new ServerRestartingEvent(restarting.Message),
+        CoordinatorUserSessionEndedNotification ended => new SessionEndedEvent(ended.Reason),
 
         CoordinatorReconfiguredNotification reconfigured =>
             new CoordinatorReconfiguredEvent(reconfigured.Coordinator.ToModel()),

@@ -171,4 +171,23 @@ public class AccountingSettingsRepositoryTests
         Assert.False(settings.IsDatabasePasswordSaveEnabled);
         Assert.True(settings.IsDatabaseLockEnabled);
     }
+
+    [Fact]
+    public async Task SessionTokenAndNewIdentity_AreKeptWithTheSavedIdentity()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveUserAsync(Identity(1));
+
+        await repository.SetSessionTokenAsync("coordinator", 1, "token");
+        await repository.SetUserIdentityAsync("coordinator", 1, "#new");
+        await repository.SetSessionTokenAsync("coordinator", 2, "not saved");
+
+        var user = Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users);
+        Assert.Equal(("#new", "token"), (user.UserIdentity, user.SessionToken));
+
+        await repository.SetSessionTokenAsync("coordinator", 1, null);
+        Assert.Null((await repository.GetCoordinatorInstanceAsync(("coordinator", 1)))!.Value.User.SessionToken);
+    }
 }
