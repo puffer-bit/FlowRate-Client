@@ -849,6 +849,13 @@
   "hybrid.stats.lossOut": "Loss out",
   "hybrid.stats.pingGraph": "Ping over the last 2 minutes",
   "hybrid.stats.lossGraph": "Packet loss",
+  "hybrid.stats.peer.title": "Their connection",
+  "hybrid.stats.peer.silent": "Sends nothing",
+  "hybrid.stats.peer.loss": "Loss",
+  "hybrid.stats.peer.jitter": "Jitter",
+  "hybrid.stats.peer.lossGraph": "Packet loss on their way to the server",
+  "hybrid.stats.peer.jitterGraph": "Jitter of their packets",
+  "hybrid.stats.peer.hint": "What all users lose alike is counted as yours, so it is left out here. With a single user sending, the two cannot be told apart.",
   "hybrid.screen.change": "Change sharing",
   "hybrid.screen.watchFailed": "Failed to open the screen: {reason}",
   "@hybrid.screen.watchFailed": {
