@@ -37,6 +37,10 @@ public partial class ActiveHybridSessionVM
     // The same screens as in ScreenStreams by user, read on the threads of the video tracks
     private readonly ConcurrentDictionary<int, ScreenStreamVM> _screenStreamsByUser = new();
 
+    // How the screen of each user is decoded, as last reported. A decoder reports it once, on its
+    // first frame, and outlives a tile that is taken out and added again, or comes before its tile
+    private readonly ConcurrentDictionary<int, VideoDecoding> _screenDecodings = new();
+
     // Whose screens the user asked to watch, kept across a reconnect of the transport. UI thread only
     private readonly HashSet<int> _wantedScreens = [];
 
@@ -317,6 +321,11 @@ public partial class ActiveHybridSessionVM
         };
 
         _screenStreamsByUser[userId] = stream;
+
+        // After the stream is in the map, so that a report arriving now is not missed by both
+        if (_screenDecodings.TryGetValue(userId, out var decoding))
+            stream.PushDecoding(decoding);
+
         ScreenStreams.Add(stream);
         UpdateCanExpand();
     }
@@ -496,7 +505,12 @@ public partial class ActiveHybridSessionVM
     // Raised on a thread of the track
     private void OnVideoDecoding(int userId, MediaSourceType source, VideoDecoding decoding)
     {
-        if (source == MediaSourceType.Screen && _screenStreamsByUser.TryGetValue(userId, out var stream))
+        if (source != MediaSourceType.Screen)
+            return;
+
+        _screenDecodings[userId] = decoding;
+
+        if (_screenStreamsByUser.TryGetValue(userId, out var stream))
             stream.PushDecoding(decoding);
     }
 
