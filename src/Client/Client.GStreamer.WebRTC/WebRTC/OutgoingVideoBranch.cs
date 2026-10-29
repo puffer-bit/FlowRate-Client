@@ -20,12 +20,20 @@ internal static class OutgoingVideoBranch
     public const string SourceName = "encoded";
 
     // The appsrc stamps the frames with the running time of the pipeline of webrtcbin, which the RTP
-    // timestamps follow. It drops the oldest frames rather than queueing them: a late frame of a
-    // screen is worth nothing.
+    // timestamps follow. It holds about a fifth of a second of frames, and past that the frames up
+    // to the next keyframe are dropped (see EncodedFrameGate): a late frame of a screen is worth
+    // nothing. The packets wait in the send queue by time, not by count: a frame of a high rate
+    // still takes a dozen of them, and the 200 a queue holds by default were gone in 90 ms
     private const string Description =
-        "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=true max-buffers=8 max-bytes=0 " +
+        "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=true max-buffers={2} max-bytes=0 " +
         "leaky-type=downstream caps=\"{0}\" ! {1}" +
-        "queue name=" + PipelineBranch.SendQueueName;
+        "queue name=" + PipelineBranch.SendQueueName + " max-size-buffers=0 max-size-bytes=0 max-size-time=300000000";
+
+    /// <summary>
+    /// How many encoded frames wait for the packetizer before the frames up to the next keyframe are
+    /// dropped: about 200 ms, and never fewer than 8.
+    /// </summary>
+    public static ulong MaxQueuedFrames(int framerate) => (ulong)Math.Max(8, framerate / 5);
 
     // Constrained baseline is what the SFU router announces (profile-level-id 42e01f). The parameter
     // sets come with every keyframe already, and are sent again before each one all the same.
@@ -53,15 +61,15 @@ internal static class OutgoingVideoBranch
     /// gave it when the track was stopped, or -1 for a track that starts for the first time.
     /// </param>
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
-    public static Bin? Build(OutboundTrack outbound, VideoCodec codec, int sequenceNumber = -1)
+    public static Bin? Build(OutboundTrack outbound, VideoCodec codec, int framerate, int sequenceNumber = -1)
     {
         var packetizer = string.Format(CultureInfo.InvariantCulture, codec == VideoCodec.VP8 ? Vp8Packetizer : H264Packetizer,
             outbound.PayloadType, outbound.SSRC, sequenceNumber, outbound.SSRC);
 
         var branch = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture, Description,
-            codec == VideoCodec.VP8 ? "video/x-vp8" : H264Caps, packetizer), true);
+            codec == VideoCodec.VP8 ? "video/x-vp8" : H264Caps, packetizer, MaxQueuedFrames(framerate)), true);
 
-        branch?.SetName($"outgoing_{outbound.Id}");
+        branch?.SetName(PipelineBranch.OutgoingName(outbound.Id));
         return branch;
     }
 }

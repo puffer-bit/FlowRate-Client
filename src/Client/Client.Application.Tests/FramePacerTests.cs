@@ -141,6 +141,43 @@ public class FramePacerTests
         Assert.False(pacer.HasPending);
     }
 
+    [Fact]
+    public void FramesThatComeOnTimeAreNotLate()
+    {
+        using var pacer = CreatePacer();
+
+        pacer.Enqueue("a", 0);
+        SpinFor(20_000_000);
+        pacer.Enqueue("b", 20_000_000);
+
+        Assert.InRange(pacer.Stats.LateMs, 0, 15);
+    }
+
+    [Fact]
+    public void AFrameHeldBackIsAsLateAsItWaited()
+    {
+        using var pacer = CreatePacer();
+
+        // The second frame was due 10 ms after the first and came 150 ms after it
+        pacer.Enqueue("a", 0);
+        SpinFor(150_000_000);
+        pacer.Enqueue("b", 10_000_000);
+
+        Assert.InRange(pacer.Stats.LateMs, 130, 1000);
+    }
+
+    [Fact]
+    public void FramesWithoutTimestampsAreNeverLate()
+    {
+        using var pacer = CreatePacer();
+
+        pacer.Enqueue("a", -1);
+        SpinFor(50_000_000);
+        pacer.Enqueue("b", -1);
+
+        Assert.Equal(0, pacer.Stats.LateMs);
+    }
+
     private static void SpinFor(long nanoseconds)
     {
         var until = Stopwatch.GetTimestamp() + (long)(nanoseconds * (Stopwatch.Frequency / 1e9));

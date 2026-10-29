@@ -58,3 +58,58 @@ index cf524b6..00d00db 100644
          nullptr, audio_processing_impl_->GetAudioProcessing(), nullptr,
          // The field trials configured through RTCFieldTrials, e.g. WARP's
          // `WebRTC-IceHandshakeDtls`. Passing nullptr here makes the factory
+diff --git a/libwebrtc/src/rtc_audio_device_impl.cc b/libwebrtc/src/rtc_audio_device_impl.cc
+--- a/libwebrtc/src/rtc_audio_device_impl.cc
++++ b/libwebrtc/src/rtc_audio_device_impl.cc
+@@ -41,34 +41,35 @@ int32_t AudioDeviceImpl::RecordingDeviceName(uint16_t index,
+   });
+ }
+ 
++// FlowRate: the device modules refuse another device once the playout or the recording is
++// initialized, not only once it runs, so an initialized one is stopped and initialized again too;
++// the result is the one of the module, waited for, instead of always 0
+ int32_t AudioDeviceImpl::SetPlayoutDevice(uint16_t index) {
+-  worker_thread_->PostTask([this, index] {
++  return worker_thread_->BlockingCall([this, index] {
+     RTC_DCHECK_RUN_ON(worker_thread_);
+-    if (audio_device_module_->Playing()) {
++    const bool was_initialized = audio_device_module_->PlayoutIsInitialized();
++    const bool was_playing = audio_device_module_->Playing();
++    if (was_initialized)
+       audio_device_module_->StopPlayout();
+-      audio_device_module_->SetPlayoutDevice(index);
+-      audio_device_module_->InitPlayout();
++    const int32_t result = audio_device_module_->SetPlayoutDevice(index);
++    if (was_initialized && audio_device_module_->InitPlayout() == 0 && was_playing)
+       audio_device_module_->StartPlayout();
+-    } else {
+-      audio_device_module_->SetPlayoutDevice(index);
+-    }
++    return result;
+   });
+-  return 0;
+ }
+ 
+ int32_t AudioDeviceImpl::SetRecordingDevice(uint16_t index) {
+-  worker_thread_->PostTask([this, index] {
++  return worker_thread_->BlockingCall([this, index] {
+     RTC_DCHECK_RUN_ON(worker_thread_);
+-    if (audio_device_module_->Recording()) {
++    const bool was_initialized = audio_device_module_->RecordingIsInitialized();
++    const bool was_recording = audio_device_module_->Recording();
++    if (was_initialized)
+       audio_device_module_->StopRecording();
+-      audio_device_module_->SetRecordingDevice(index);
+-      audio_device_module_->InitRecording();
++    const int32_t result = audio_device_module_->SetRecordingDevice(index);
++    if (was_initialized && audio_device_module_->InitRecording() == 0 && was_recording)
+       audio_device_module_->StartRecording();
+-    } else {
+-      audio_device_module_->SetRecordingDevice(index);
+-    }
++    return result;
+   });
+-  return 0;
+ }
+ 
+ int32_t AudioDeviceImpl::SetMicrophoneVolume(uint32_t volume) {

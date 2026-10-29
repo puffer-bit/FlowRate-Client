@@ -84,6 +84,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     public event Action<WebRTCConnectionState>? ConnectionStateChanged;
     public event Action<int, bool>? SpeakingChanged;
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
+    public event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
 
     public event Action<IReadOnlyList<string>>? InboundsReady;
     public event Action<TransportStatsSample>? StatsSampled;
@@ -281,6 +282,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 return decoder;
             },
             frame => VideoFrameReady?.Invoke(inbound.UserId, inbound.SourceType, frame),
+            decoding => VideoDecodingChanged?.Invoke(inbound.UserId, inbound.SourceType, decoding),
             exception => LogVideoFrameFailed(exception, _sessionId, inbound.UserId));
     }
 
@@ -622,6 +624,16 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             peer?.SetVoiceGate(null);
 
         Negotiate();
+    }
+
+    public void SetOutboundPreviewShown(string outboundId, bool isShown)
+    {
+        OutgoingVideo? video;
+
+        lock (_lock)
+            _outgoingVideos.TryGetValue(outboundId, out video);
+
+        video?.SetPreviewShown(isShown);
     }
 
     public bool SetOutboundMuted(string outboundId, bool isMuted)
@@ -1014,7 +1026,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         lock (_lock)
         {
             sample = stats.Streams is { } streams
-                ? _sampler.Read(streams, FindInbound, ssrc => _outbounds.Values.Any(outbound => outbound.SSRC == ssrc))
+                ? _sampler.Read(streams, FindInbound,
+                    ssrc => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc))
                 : null;
         }
 
