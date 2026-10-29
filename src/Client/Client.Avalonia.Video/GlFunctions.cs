@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia.OpenGL;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// The OpenGL and EGL calls the video presenter makes, loaded from the context of the control as

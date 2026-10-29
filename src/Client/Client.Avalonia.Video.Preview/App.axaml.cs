@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace Client.VideoAnalyzersTest;
+namespace Client.Avalonia.Video.Preview;
 
 public class App : Application
 {
