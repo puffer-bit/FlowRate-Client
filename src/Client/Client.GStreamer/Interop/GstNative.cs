@@ -22,6 +22,10 @@ public static class GstNative
         [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out int value, IntPtr terminator);
 
     [DllImport(NativeLibraries.GObject)]
+    private static extern void g_object_get(IntPtr instance,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out long value, IntPtr terminator);
+
+    [DllImport(NativeLibraries.GObject)]
     private static extern void g_object_set(IntPtr instance,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string property, int value, IntPtr terminator);
 
@@ -129,6 +133,13 @@ public static class GstNative
         g_object_get(instance, property, out int value, IntPtr.Zero);
 
         return (uint)value;
+    }
+
+    public static ulong GetUInt64(IntPtr instance, string property)
+    {
+        g_object_get(instance, property, out long value, IntPtr.Zero);
+
+        return (ulong)value;
     }
 
     public static void SetBoolean(IntPtr instance, string property, bool value) =>

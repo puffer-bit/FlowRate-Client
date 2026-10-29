@@ -136,11 +136,17 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
                 index = FindDefault(available, isRecording: true);
             }
 
-            NativeMethods.SetRecordingDevice(index);
-            _recordingDeviceId = deviceId;
+            var name = index < available.Count ? available[index].Name : deviceId ?? "default";
 
-            if (index < available.Count)
-                LogDeviceSelected(available[index].Name);
+            // Not remembered when refused, so the next microphone set tries again
+            if (NativeMethods.SetRecordingDevice(index) == 0)
+            {
+                LogRecordingDeviceFailed(name);
+                return;
+            }
+
+            _recordingDeviceId = deviceId;
+            LogDeviceSelected(name);
         }
     }
 
@@ -232,6 +238,9 @@ public sealed partial class LibWebRTCRuntime(IAudioDeviceProvider devices, ILogg
 
     [LoggerMessage(LogLevel.Information, "Microphone of libwebrtc: {Name}")]
     private partial void LogDeviceSelected(string name);
+
+    [LoggerMessage(LogLevel.Warning, "libwebrtc could not record from {Name}")]
+    private partial void LogRecordingDeviceFailed(string name);
 
     [LoggerMessage(LogLevel.Information, "Speakers of libwebrtc: {Name}")]
     private partial void LogPlayoutDeviceSelected(string name);

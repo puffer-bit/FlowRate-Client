@@ -47,7 +47,7 @@ public sealed partial class VoiceTransport
     [LoggerMessage(LogLevel.Debug,
         "[Session {SessionId}] Stats: rtt {RoundTripMs:F0} ms, loss in {InboundLoss:F1}%, out {OutboundLoss:F1}%, tcp {IsOverTcp}, received {Streams}")]
     private partial void LogStatsSample(int sessionId, double roundTripMs, double inboundLoss, double outboundLoss,
-        bool isOverTcp, string streams);
+        bool? isOverTcp, string streams);
 
     [LoggerMessage(LogLevel.Information,
         "[Session {SessionId}] Voice gate at {ThresholdDb:F0} dB, opening from {EffectiveThresholdDb:F0} dB over a " +

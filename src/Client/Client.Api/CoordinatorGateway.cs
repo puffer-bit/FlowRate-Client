@@ -1,7 +1,7 @@
 using Client.Api.Mappers;
 using Client.Api.Protocol;
 using Client.Api.Transport;
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Shared.Models;
 using Client.Application.Ports;
 using Microsoft.Extensions.Logging;

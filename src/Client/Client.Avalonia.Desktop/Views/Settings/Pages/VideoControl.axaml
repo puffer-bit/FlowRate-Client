@@ -9,6 +9,16 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Settings.Pages.VideoControl"
              x:DataType="pagesVm:VideoControlVM">
+    <UserControl.Styles>
+        <!-- A fact, on the right of what it is -->
+        <Style Selector="ui|SettingsRow TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="280"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
         <ui:SettingsCard>
@@ -24,6 +34,10 @@
             <ui:SettingsRow services:SettingText.Key="video.zeroCopy"
                             IsExpanded="{Binding IsHardwareDecodingEnabled}">
                 <CheckBox IsChecked="{Binding IsZeroCopyEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.zeroCopyStatus" IndentLevel="1"
+                            IsExpanded="{Binding IsZeroCopyEnabled}">
+                <TextBlock Classes="value" Text="{Binding ZeroCopyStatus}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
 

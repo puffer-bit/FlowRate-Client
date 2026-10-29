@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Application.Sounds;
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Client.Services;
 using Client.ViewModels.Notifications;
 using Shared.Enums;
