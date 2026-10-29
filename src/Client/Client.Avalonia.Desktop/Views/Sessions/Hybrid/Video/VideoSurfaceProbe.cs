@@ -70,13 +70,15 @@ internal static class VideoSurfaceProbe
             logger?.LogInformation("The renderer cannot create a shared OpenGL context ({CanCreate})",
                 sharing.CanCreateSharedContext);
 
-            // ANGLE refuses shared contexts, but the presenter draws in the renderer's own context and
-            // reports a failed D3D11 import with the first frame, so the GL path is still worth trying
+            // ANGLE refuses shared contexts, but the presenter draws in the renderer's own context, so it
+            // still uploads YUV and RGB frames. D3D11 frames are not taken there: copying into ANGLE's
+            // device behind its back showed black pictures and crashed the AMD driver, not reported as
+            // a failed import that would fall back
             if (!OperatingSystem.IsWindows())
                 return VideoSurfaceKinds.None;
 
             UsesGl = true;
-            return VideoSurfaceKinds.D3D11Shared;
+            return VideoSurfaceKinds.None;
         }
 
         var kinds = VideoSurfaceKinds.None;
