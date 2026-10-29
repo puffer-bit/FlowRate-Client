@@ -42,8 +42,15 @@ public interface IScreenCapture : IDisposable
     /// <returns>False when the capture could not start.</returns>
     bool Start();
 
-    /// <summary>Makes the next picture a keyframe, for a viewer who joined or lost one. Any thread.</summary>
-    void RequestKeyFrame();
+    /// <summary>
+    /// Makes the next picture a keyframe, for a viewer who joined or lost one. Any thread. The requests
+    /// of viewers come in bursts, so one while a keyframe is on its way is left out, and one right
+    /// after a keyframe waits a little instead of making another at once.
+    /// </summary>
+    /// <param name="isUrgent">
+    /// The last keyframe never left, so the request goes to the encoder at once, whatever came before.
+    /// </param>
+    void RequestKeyFrame(bool isUrgent = false);
 
     /// <summary>Changes the bitrate of the encoder while it runs, where the encoder allows it.</summary>
     void SetBitrate(int kbps);

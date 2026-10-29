@@ -59,9 +59,19 @@ internal static class VideoSourceFactory
     // memory for a send branch that cannot take DMA-BUF. One that can leaves the format to the compositor.
     //
     // The buffers keep the timestamps of the capture, both halves run on the clock of one pipeline.
+    //
+    // A frame in memory is copied out of the buffer of PipeWire, which goes back to the compositor at
+    // once. KWin hands a stream only a few buffers, and the queues, the videorates and the bridge hold
+    // more than that: the compositor had none free for most of its frames, a share at 144 came out
+    // at 35 to 60 fps. A DMA-BUF frame stays as it is, its copy would leave the GPU; it would starve
+    // the compositor the same way, which is one more reason its capture is still off.
+    //
+    // The rate is cut right at the source, so what is dropped goes back at once and only the frames
+    // that are sent wait in the queue and get converted. The copy still takes every frame the
+    // compositor hands out: pipewiresrc makes it before anything here sees the frame.
     private const string PipeWireDescription =
-        "pipewiresrc name=" + PipeWireElementName + " do-timestamp=true keepalive-time={0} ! " +
-        "queue max-size-buffers=2 leaky=downstream ! {3}videorate drop-only=true max-rate={1} ! {2}" +
+        "pipewiresrc name=" + PipeWireElementName + " do-timestamp=true keepalive-time={0} always-copy={4} ! " +
+        "videorate drop-only=true max-rate={1} ! queue max-size-buffers=2 leaky=downstream ! {3}{2}" +
         "appsink name=" + BridgeSinkName + " max-buffers=2 drop=true wait-on-eos=false sync=false async=false " +
 
         "appsrc name=" + BridgeSourceName + " is-live=true format=time max-buffers=2 leaky-type=downstream";
@@ -72,10 +82,15 @@ internal static class VideoSourceFactory
     /// <returns>Null when the element is missing from the runtime or the input cannot be captured here.</returns>
     /// <param name="onRate">Receives the rate and the caps of a capture every few seconds.</param>
     /// <param name="acceptDmaBuf">The send branch takes DMA-BUF frames, so a capture may keep them on the GPU.</param>
+    /// <param name="onSourceRate">
+    /// Receives every few seconds how many frames per second the compositor hands out, before any is
+    /// dropped here. PipeWire only.
+    /// </param>
     public static VideoSource? Create(VideoInput input, int framerate, Action<Exception> onError,
-        Action<double, string>? onRate = null, bool acceptDmaBuf = false) => input switch
+        Action<double, string>? onRate = null, bool acceptDmaBuf = false,
+        Action<double>? onSourceRate = null) => input switch
     {
-        PipeWireVideoInput pipeWire => CreatePipeWire(pipeWire, framerate, onError, onRate, acceptDmaBuf),
+        PipeWireVideoInput pipeWire => CreatePipeWire(pipeWire, framerate, onError, onRate, acceptDmaBuf, onSourceRate),
         MonitorVideoInput monitor => CreateScreenCapture("monitor-handle", monitor.Handle, isWindow: false, framerate, onRate),
         WindowVideoInput window => CreateScreenCapture("window-handle", window.Handle, isWindow: true, framerate, onRate),
         TestPatternVideoInput => TestPatternSource.Create(framerate),
@@ -83,7 +98,7 @@ internal static class VideoSourceFactory
     };
 
     private static VideoSource? CreatePipeWire(PipeWireVideoInput input, int framerate, Action<Exception> onError,
-        Action<double, string>? onRate, bool acceptDmaBuf)
+        Action<double, string>? onRate, bool acceptDmaBuf, Action<double>? onSourceRate)
     {
         if (input.Remote.IsInvalid || input.Remote.IsClosed)
             return null;
@@ -94,7 +109,8 @@ internal static class VideoSourceFactory
         // The only open end is the output of the appsrc, which becomes the output of the bin
         var bin = Global.ParseBinFromDescription(string.Format(System.Globalization.CultureInfo.InvariantCulture,
             PipeWireDescription, PipeWireKeepaliveMilliseconds, framerate,
-            dmaBufCaps != null ? "capsfilter name=" + DmaBufFilterName + " ! " : "video/x-raw ! ", acceptDmaBuf ? "" : "videoconvert ! "), true);
+            dmaBufCaps != null ? "capsfilter name=" + DmaBufFilterName + " ! " : "video/x-raw ! ", acceptDmaBuf ? "" : "videoconvert ! ",
+            acceptDmaBuf ? "false" : "true"), true);
 
         if (bin?.GetByName(PipeWireElementName) is not { } source ||
             bin.GetByName(BridgeSinkName) is not { } bridgeSink ||
@@ -113,7 +129,15 @@ internal static class VideoSourceFactory
         // The element duplicates the descriptor, so ours stays usable for the next start
         source.SetProperty("fd", input.Remote.DangerousGetHandle().ToInt32());
         source.SetProperty("path", input.NodeId.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        source.Dispose();
+
+        // The probe delegate is kept as long as the element is, so the wrapper stays undisposed
+        // A keepalive sends the last frame again, as the same buffer: it is not counted, a still
+        // screen gets no frames from the compositor
+        if (onSourceRate != null)
+            WatchRate(source, (rate, _) => onSourceRate(rate),
+                TimeSpan.FromMilliseconds(PipeWireKeepaliveMilliseconds * 0.9));
+        else
+            source.Dispose();
 
         // pipewiresrc offers DMA_DRM only to a sink that announces GstVideoMeta, which appsink does not
         if (acceptDmaBuf)
@@ -170,7 +194,18 @@ internal static class VideoSourceFactory
     // Keeps each probe delegate alive as long as the element it watches
     private static readonly ConditionalWeakTable<Element, PadProbeCallback> RateProbes = new();
 
-    private static void WatchRate(Element source, Action<double, string> onRate)
+    private static void WatchRate(Element source, Action<double, string> onRate) =>
+        WatchRate(source, (rate, pad) =>
+        {
+            using var caps = pad.GetCurrentCaps();
+            onRate(rate, caps?.ToString() ?? "");
+        }, repeatAfter: null);
+
+    /// <param name="repeatAfter">
+    /// Leaves out a buffer pushed again right after itself at least this long later. The time tells it
+    /// from a new frame that got the memory of the one before, freed in the meantime.
+    /// </param>
+    private static void WatchRate(Element source, Action<double, Pad> onRate, TimeSpan? repeatAfter)
     {
         using var pad = source.GetStaticPad("src");
 
@@ -179,16 +214,29 @@ internal static class VideoSourceFactory
 
         var clock = Stopwatch.StartNew();
         var frames = 0;
+        var last = IntPtr.Zero;
+        var lastAt = 0L;
 
-        PadProbeCallback callback = (probedPad, _) =>
+        PadProbeCallback callback = (probedPad, info) =>
         {
-            frames++;
+            if (repeatAfter is { } interval)
+            {
+                using var buffer = info.GetBuffer();
+                var current = buffer?.Handle ?? IntPtr.Zero;
+
+                if (current != last || Stopwatch.GetElapsedTime(lastAt) < interval)
+                    frames++;
+
+                last = current;
+                lastAt = Stopwatch.GetTimestamp();
+            }
+            else
+                frames++;
 
             if (clock.Elapsed < TimeSpan.FromSeconds(5))
                 return PadProbeReturn.Ok;
 
-            using var caps = probedPad.GetCurrentCaps();
-            onRate(frames / clock.Elapsed.TotalSeconds, caps?.ToString() ?? "");
+            onRate(frames / clock.Elapsed.TotalSeconds, probedPad);
             frames = 0;
             clock.Restart();
 
