@@ -27,6 +27,13 @@ internal sealed partial class WebRTCBinTuning
     /// </summary>
     private const int RtcpBudget = 50_000;
 
+    /// <summary>
+    /// The send buffer of the socket the media goes over, in bytes: a keyframe of a screen at
+    /// 20 Mbit/s and its retransmissions. Windows gives a UDP socket far less, and a full one stalled
+    /// the sending for good, see <see cref="WakeSender"/>. Linux caps it at net.core.wmem_max.
+    /// </summary>
+    private const int SendBufferBytes = 4 * 1024 * 1024;
+
     private readonly TransportCore _core;
     private readonly ILogger _logger;
 
@@ -80,6 +87,92 @@ internal sealed partial class WebRTCBinTuning
         catch (Exception exception)
         {
             LogIceKeepaliveFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// Gives the socket of the selected candidate pair <see cref="SendBufferBytes"/>. Called whenever
+    /// ICE picks a pair, as each may be another socket.
+    /// </summary>
+    public void WidenSendBuffer()
+    {
+        try
+        {
+            WithNiceAgent(agent =>
+            {
+                if (!NiceNative.TryGetSelectedSocket(agent, out _, out var socket))
+                    return;
+
+                try
+                {
+                    LogSendBuffer(_core.SessionId, SendBufferBytes, NiceNative.SetSendBuffer(socket, SendBufferBytes));
+                }
+                finally
+                {
+                    GstNative.Release(socket);
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            LogSendBufferFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// Wakes the sink of the transport, which may wait for good for a socket that took data again
+    /// long ago. Called when nothing we send leaves for a while.
+    /// </summary>
+    /// <remarks>
+    /// nicesink (libnice 0.1.24) waits for reliable-transport-writable whenever the socket reports it
+    /// is full, even over UDP. That signal follows FD_WRITE on Windows, which the system posts once
+    /// after a send failed, and GLib (2.82) clears its record of FD_WRITE only after WSASendTo
+    /// returned: a receive of the same socket on another thread may take the event in between, then
+    /// the send clears it, and nothing is sent again to bring a new one. All we send waited behind
+    /// the sink until the session was left, while what we receive kept coming. A wake for nothing
+    /// costs only a retry of the send.
+    /// </remarks>
+    /// <returns>The sink was woken.</returns>
+    public bool WakeSender()
+    {
+        try
+        {
+            var isWoken = false;
+
+            WithNiceAgent(agent =>
+            {
+                if (!NiceNative.TryGetSelectedSocket(agent, out var streamId, out var socket))
+                    return;
+
+                GstNative.Release(socket);
+                NiceNative.SignalWritable(agent, streamId);
+                isWoken = true;
+            });
+
+            return isWoken;
+        }
+        catch (Exception exception)
+        {
+            LogWakeSenderFailed(exception, _core.SessionId);
+            return false;
+        }
+    }
+
+    // The NiceAgent inside the ICE object of webrtcbin, for the length of the call
+    private void WithNiceAgent(Action<IntPtr> action)
+    {
+        var iceAgent = GstNative.GetObject(_core.WebRTC!.Handle, "ice-agent");
+        var niceAgent = iceAgent == IntPtr.Zero ? IntPtr.Zero : GstNative.GetObject(iceAgent, "agent");
+
+        try
+        {
+            if (niceAgent != IntPtr.Zero)
+                action(niceAgent);
+        }
+        finally
+        {
+            GstNative.Release(niceAgent);
+            GstNative.Release(iceAgent);
         }
     }
 
