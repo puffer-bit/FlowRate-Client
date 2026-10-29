@@ -3,7 +3,6 @@ using Shared.Enums;
 using Shared.Enums.User;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Push;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
