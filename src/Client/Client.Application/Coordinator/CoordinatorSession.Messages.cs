@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 
 
 namespace Client.Application.Coordinator;
