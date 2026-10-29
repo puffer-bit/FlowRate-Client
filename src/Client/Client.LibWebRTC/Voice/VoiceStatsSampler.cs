@@ -19,10 +19,10 @@ internal sealed class VoiceStatsSampler
     private int _readings;
 
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
-    /// <param name="isOutbound">Whether we send a track with the given SSRC.</param>
+    /// <param name="findOutbound">The track we send with the given SSRC.</param>
     /// <returns>The sample, or null on a reading between two samples.</returns>
     public TransportStatsSample? Read(VoiceStreamCounters counters, Func<uint, InboundTrack?> findInbound,
-        Func<uint, bool> isOutbound)
+        Func<uint, OutboundTrack?> findOutbound)
     {
         if (_readings++ % ReadingsPerSample != 0)
             return null;
@@ -49,10 +49,14 @@ internal sealed class VoiceStatsSampler
 
         // Only the streams that still carry packets: the SFU repeats its last report of a stopped one
         var reports = counters.Outbound
-            .Where(stream => isOutbound(stream.Ssrc) && stream.Packets > _previousOutbound.GetValueOrDefault(stream.Ssrc, long.MaxValue))
+            .Where(stream => findOutbound(stream.Ssrc) != null &&
+                             stream.Packets > _previousOutbound.GetValueOrDefault(stream.Ssrc, long.MaxValue))
             .ToList();
 
-        var outboundLoss = reports.Select(stream => stream.FractionLost).OfType<double>().DefaultIfEmpty(0).Max() * 100;
+        // A voice tells nothing of our own loss, see TransportStatsSample.OutboundLossPercent
+        var outboundLoss = reports
+            .Where(stream => findOutbound(stream.Ssrc)?.MediaType != MediaType.Audio)
+            .Select(stream => stream.FractionLost).OfType<double>().DefaultIfEmpty(0).Max() * 100;
         var roundTrips = reports.Select(stream => stream.RoundTripMs).OfType<double>().Where(ms => ms > 0).ToList();
 
         _previousInbound.Clear();
