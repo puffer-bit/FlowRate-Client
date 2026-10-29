@@ -35,6 +35,13 @@ public interface IWebRTCTransport : IDisposable
     event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     /// <summary>
+    /// Raised with the user and the source of an inbound video track when its decoder reports how it
+    /// decodes, before the first frame and again after it was rebuilt. Not raised where the transport
+    /// decodes without an <see cref="IVideoDecoder"/>. Raised on a thread of the track.
+    /// </summary>
+    event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
+
+    /// <summary>
     /// Raised with the ids of the inbound tracks the transport can receive from now on: their
     /// sections went through a negotiation round. The SFU must not send a track before that, since
     /// packets of a stream the transport does not know yet are attached to the wrong section, or
@@ -136,6 +143,12 @@ public interface IWebRTCTransport : IDisposable
     /// Stops or resumes sending an outbound track without touching its section or its producer.
     /// </summary>
     bool SetOutboundMuted(string outboundId, bool isMuted);
+
+    /// <summary>
+    /// Starts or stops the preview of a screen we show, see <see cref="IScreenCapture.SetPreviewShown"/>.
+    /// Nothing happens for an outbound that is no screen.
+    /// </summary>
+    void SetOutboundPreviewShown(string outboundId, bool isShown);
 
     Task<bool> WaitUntilConnectedAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
 }

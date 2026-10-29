@@ -1,66 +1,88 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Avalonia.OpenGL;
+using Client.Core.Media;
 
 namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Brings the shared Direct3D 11 textures of the decoder into the ANGLE context Avalonia renders
-/// with on Windows: each frame is copied, on the GPU and inside the keyed mutex, into a texture of
-/// ANGLE's own device, which is bound to an OpenGL texture once through an EGL image.
+/// with on Windows, without a copy: ANGLE opens each texture itself, by its share handle, as a
+/// pbuffer (<c>EGL_ANGLE_d3d_share_handle_client_buffer</c>), and the pbuffer is bound to an OpenGL
+/// texture for as long as the frame is drawn.
 /// </summary>
 /// <remarks>
-/// Runs on the render thread with the ANGLE context current. The copy keeps the mutex only for as
-/// long as it is queued: the writer gets the texture back with the writer key right after.
+/// <para>
+/// Nothing is done on ANGLE's Direct3D device but through EGL: ANGLE opens the texture on its own
+/// device and keeps its own state. The keyed mutex is the one ANGLE opened with the texture
+/// (<c>EGL_ANGLE_keyed_mutex</c>); it is taken with the reader key before the draw and given back
+/// with the writer key right after, so the decoder writes the texture again while the picture is on
+/// the screen in a texture of the renderer.
+/// </para>
+/// <para>Runs on the render thread with the ANGLE context current.</para>
 /// </remarks>
 internal sealed unsafe class AngleD3D11Import : IDisposable
 {
-    private const int DeviceExt = 0x322C;
-    private const int D3D11DeviceAngle = 0x33A1;
-    private const int D3D11TextureAngle = 0x3484;
+    private const int D3DTexture2DShareHandleAngle = 0x3200;
+    private const int DxgiKeyedMutexAngle = 0x33A2;
     private const int Extensions = 0x3055;
     private const int None = 0x3038;
+    private const int Width = 0x3057;
+    private const int Height = 0x3056;
+    private const int TextureFormat = 0x3080;
+    private const int TextureRgba = 0x305E;
+    private const int TextureTarget = 0x3081;
+    private const int Texture2D = 0x305F;
+    private const int BackBuffer = 0x3084;
+    private const int RedSize = 0x3024;
+    private const int GreenSize = 0x3023;
+    private const int BlueSize = 0x3022;
+    private const int AlphaSize = 0x3021;
+    private const int BindToTextureRgba = 0x303A;
+    private const int SurfaceType = 0x3033;
+    private const int PbufferBit = 0x0001;
 
-    private const uint FormatB8G8R8A8 = 87;
-    private const uint BindShaderResource = 0x8;
+    private const int GlTexture2D = 0x0DE1;
     private const uint AcquireTimeoutMilliseconds = 4;
-
-    private const int QueryInterfaceSlot = 0;
-    private const int ReleaseSlot = 2;
-    private const int CreateTexture2DSlot = 5;
-    private const int GetImmediateContextSlot = 40;
-    private const int OpenSharedResource1Slot = 48;
     private const int AcquireSyncSlot = 8;
     private const int ReleaseSyncSlot = 9;
-    private const int CopyResourceSlot = 47;
 
-    private static readonly Guid D3D11Device1 = new("a04bfb29-08ef-43d6-a49c-a9bdbdcbe686");
-    private static readonly Guid D3D11Texture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
-    private static readonly Guid DxgiKeyedMutex = new("9d8e1289-d7b3-465f-8126-250e349af85d");
+    // More pbuffers than the decoder has textures means it made new ones: the old ones are let go
+    private const int MaxOpened = 12;
+
+    private static readonly string[] RequiredExtensions =
+        ["EGL_ANGLE_d3d_share_handle_client_buffer", "EGL_ANGLE_keyed_mutex", "EGL_ANGLE_query_surface_pointer"];
 
     private readonly IntPtr _display;
-    private readonly IntPtr _device;
-    private readonly IntPtr _context;
-    private readonly delegate* unmanaged<IntPtr, IntPtr, int, IntPtr, int*, IntPtr> _createImage;
-    private readonly delegate* unmanaged<IntPtr, IntPtr, int> _destroyImage;
+    private readonly IntPtr _config;
+    private readonly delegate* unmanaged<IntPtr, int, IntPtr, IntPtr, int*, IntPtr> _createPbuffer;
+    private readonly delegate* unmanaged<IntPtr, IntPtr, int> _destroySurface;
+    private readonly delegate* unmanaged<IntPtr, IntPtr, int, int> _bindTexImage;
+    private readonly delegate* unmanaged<IntPtr, IntPtr, int, int> _releaseTexImage;
+    private readonly delegate* unmanaged<IntPtr, IntPtr, int, IntPtr*, int> _querySurfacePointer;
+    private readonly delegate* unmanaged<void> _flush;
+    private readonly delegate* unmanaged<int, uint, void> _bindTexture;
 
-    // Opened shared textures by their handles, with their mutexes
-    private readonly System.Collections.Generic.Dictionary<IntPtr, (IntPtr Texture, IntPtr Mutex)> _opened = new();
+    // The pbuffers ANGLE opened, by the share handles of their textures, with ANGLE's keyed mutexes
+    private readonly Dictionary<IntPtr, Opened> _opened = new();
 
-    // ANGLE's own copy of the frame and its OpenGL face
-    private IntPtr _copy;
-    private IntPtr _image;
-    private int _width;
-    private int _height;
+    // The pbuffer bound for the frame being drawn
+    private Opened? _reading;
 
-    private AngleD3D11Import(IntPtr display, IntPtr device, IntPtr context,
-        delegate* unmanaged<IntPtr, IntPtr, int, IntPtr, int*, IntPtr> createImage,
-        delegate* unmanaged<IntPtr, IntPtr, int> destroyImage)
+    private readonly record struct Opened(IntPtr Surface, IntPtr Mutex, int Width, int Height);
+
+    private AngleD3D11Import(IntPtr display, IntPtr config, GlInterface gl)
     {
         _display = display;
-        _device = device;
-        _context = context;
-        _createImage = createImage;
-        _destroyImage = destroyImage;
+        _config = config;
+        _createPbuffer = (delegate* unmanaged<IntPtr, int, IntPtr, IntPtr, int*, IntPtr>)gl.GetProcAddress("eglCreatePbufferFromClientBuffer");
+        _destroySurface = (delegate* unmanaged<IntPtr, IntPtr, int>)gl.GetProcAddress("eglDestroySurface");
+        _bindTexImage = (delegate* unmanaged<IntPtr, IntPtr, int, int>)gl.GetProcAddress("eglBindTexImage");
+        _releaseTexImage = (delegate* unmanaged<IntPtr, IntPtr, int, int>)gl.GetProcAddress("eglReleaseTexImage");
+        _querySurfacePointer = (delegate* unmanaged<IntPtr, IntPtr, int, IntPtr*, int>)gl.GetProcAddress("eglQuerySurfacePointerANGLE");
+        _flush = (delegate* unmanaged<void>)gl.GetProcAddress("glFlush");
+        _bindTexture = (delegate* unmanaged<int, uint, void>)gl.GetProcAddress("glBindTexture");
     }
 
     /// <summary>The step that failed last, for the log.</summary>
@@ -72,7 +94,7 @@ internal sealed unsafe class AngleD3D11Import : IDisposable
         return null;
     }
 
-    /// <summary>Whether the current context is ANGLE on Direct3D 11 that can import textures.</summary>
+    /// <summary>Whether the current context is ANGLE that can open shared Direct3D 11 textures.</summary>
     public static bool IsSupported(GlInterface gl) => Create(gl) is { } import && import.DisposeAndTrue();
 
     /// <returns>Null when the current context is not ANGLE on Direct3D 11 or lacks the extensions.</returns>
@@ -80,184 +102,163 @@ internal sealed unsafe class AngleD3D11Import : IDisposable
     {
         var getDisplay = (delegate* unmanaged<IntPtr>)gl.GetProcAddress("eglGetCurrentDisplay");
         var queryString = (delegate* unmanaged<IntPtr, int, IntPtr>)gl.GetProcAddress("eglQueryString");
-        var queryDisplay = (delegate* unmanaged<IntPtr, int, IntPtr*, int>)gl.GetProcAddress("eglQueryDisplayAttribEXT");
-        var queryDevice = (delegate* unmanaged<IntPtr, int, IntPtr*, int>)gl.GetProcAddress("eglQueryDeviceAttribEXT");
-        var createImage = (delegate* unmanaged<IntPtr, IntPtr, int, IntPtr, int*, IntPtr>)gl.GetProcAddress("eglCreateImageKHR");
-        var destroyImage = (delegate* unmanaged<IntPtr, IntPtr, int>)gl.GetProcAddress("eglDestroyImageKHR");
+        var chooseConfig = (delegate* unmanaged<IntPtr, int*, IntPtr*, int, int*, int>)gl.GetProcAddress("eglChooseConfig");
 
-        if (getDisplay == null || queryString == null || queryDisplay == null || queryDevice == null ||
-            createImage == null || destroyImage == null)
+        if (getDisplay == null || queryString == null || chooseConfig == null)
             return Fail("EGL entry points missing");
+
+        foreach (var name in (ReadOnlySpan<string>)["eglCreatePbufferFromClientBuffer", "eglDestroySurface",
+                     "eglBindTexImage", "eglReleaseTexImage", "eglQuerySurfacePointerANGLE", "glFlush", "glBindTexture"])
+        {
+            if (gl.GetProcAddress(name) == IntPtr.Zero)
+                return Fail($"no {name}");
+        }
 
         var display = getDisplay();
 
         if (display == IntPtr.Zero)
             return Fail("no current EGL display");
 
-        var extensions = System.Runtime.InteropServices.Marshal.PtrToStringAnsi(queryString(display, Extensions)) ?? "";
+        var extensions = Marshal.PtrToStringAnsi(queryString(display, Extensions)) ?? "";
 
-        if (!extensions.Contains("EGL_ANGLE_image_d3d11_texture", StringComparison.Ordinal))
-            return Fail("no EGL_ANGLE_image_d3d11_texture: " + extensions);
+        foreach (var extension in RequiredExtensions)
+        {
+            if (!extensions.Contains(extension, StringComparison.Ordinal))
+                return Fail($"no {extension}");
+        }
 
-        IntPtr eglDevice, d3dDevice;
+        // Any configuration of 8-bit RGBA pbuffers that bind to textures
+        var attributes = stackalloc int[]
+        {
+            RedSize, 8, GreenSize, 8, BlueSize, 8, AlphaSize, 8, BindToTextureRgba, 1, SurfaceType, PbufferBit, None
+        };
+        IntPtr config;
+        int count;
 
-        if (queryDisplay(display, DeviceExt, &eglDevice) == 0 || queryDevice(eglDevice, D3D11DeviceAngle, &d3dDevice) == 0 ||
-            d3dDevice == IntPtr.Zero)
-            return Fail("no Direct3D 11 device behind EGL");
+        if (chooseConfig(display, attributes, &config, 1, &count) == 0 || count < 1)
+            return Fail("no EGL configuration for pbuffers bound to textures");
 
-        var device1 = Query(d3dDevice, D3D11Device1);
-
-        if (device1 == IntPtr.Zero)
-            return Fail("no ID3D11Device1");
-
-        IntPtr context;
-        ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, void>)VTable(device1, GetImmediateContextSlot))(device1, &context);
-
-        return context == IntPtr.Zero ? Release(device1) : new AngleD3D11Import(display, device1, context, createImage, destroyImage);
+        return new AngleD3D11Import(display, config, gl);
     }
 
     /// <summary>
-    /// Copies the shared texture into ANGLE's one and returns the EGL image of it, made once per size.
+    /// Takes the shared texture for this frame and binds it to <paramref name="texture"/>; it stays
+    /// taken until <see cref="EndRead"/>.
     /// </summary>
-    /// <returns>Zero when the frame cannot be imported, or was not released in time.</returns>
-    public IntPtr Import(IntPtr sharedHandle, int width, int height, out bool isBroken)
+    /// <returns>False when the frame cannot be imported, or was not released in time.</returns>
+    public bool BeginRead(IntPtr sharedHandle, int width, int height, uint texture, out bool isBroken)
     {
         isBroken = false;
+        EndRead();
 
-        // Before the shared texture is looked up: a new size forgets the opened ones, and one taken
-        // before would be used after its release
-        if (!EnsureCopy(width, height))
+        if (!_opened.TryGetValue(sharedHandle, out var opened) || opened.Width != width || opened.Height != height)
         {
-            LastFailure ??= "copy texture or EGL image not created";
+            if (opened.Surface != IntPtr.Zero)
+                Destroy(sharedHandle, opened);
+
+            if (_opened.Count >= MaxOpened)
+                ForgetShared();
+
+            if (Open(sharedHandle, width, height) is not { } made)
+            {
+                isBroken = true;
+                return false;
+            }
+
+            opened = made;
+            _opened[sharedHandle] = opened;
+        }
+
+        var acquire = (delegate* unmanaged[Stdcall]<IntPtr, ulong, uint, int>)VTable(opened.Mutex, AcquireSyncSlot);
+
+        if (acquire(opened.Mutex, D3D11SharedVideoFrame.ReaderKey, AcquireTimeoutMilliseconds) != 0)
+            return false;
+
+        _bindTexture(GlTexture2D, texture);
+
+        if (_bindTexImage(_display, opened.Surface, BackBuffer) == 0)
+        {
+            ReleaseMutex(opened);
+            LastFailure = "eglBindTexImage failed";
             isBroken = true;
-            return IntPtr.Zero;
+            return false;
         }
 
-        if (!_opened.TryGetValue(sharedHandle, out var shared))
-        {
-            IntPtr texture;
-            var id = D3D11Texture2D;
-            var open = (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, Guid*, IntPtr*, int>)VTable(_device, OpenSharedResource1Slot);
-
-            var opened = open(_device, sharedHandle, &id, &texture);
-
-            if (opened < 0)
-            {
-                LastFailure = $"OpenSharedResource1 0x{opened:X8}";
-                isBroken = true;
-                return IntPtr.Zero;
-            }
-
-            var mutex = Query(texture, DxgiKeyedMutex);
-
-            if (mutex == IntPtr.Zero)
-            {
-                LastFailure = "no keyed mutex";
-                ComRelease(texture);
-                isBroken = true;
-                return IntPtr.Zero;
-            }
-
-            shared = (texture, mutex);
-            _opened[sharedHandle] = shared;
-        }
-
-        var acquire = (delegate* unmanaged[Stdcall]<IntPtr, ulong, uint, int>)VTable(shared.Mutex, AcquireSyncSlot);
-
-        if (acquire(shared.Mutex, Client.Core.Media.D3D11SharedVideoFrame.ReaderKey, AcquireTimeoutMilliseconds) != 0)
-            return IntPtr.Zero;
-
-        ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr, void>)VTable(_context, CopyResourceSlot))(_context, _copy, shared.Texture);
-        ((delegate* unmanaged[Stdcall]<IntPtr, ulong, int>)VTable(shared.Mutex, ReleaseSyncSlot))(
-            shared.Mutex, Client.Core.Media.D3D11SharedVideoFrame.WriterKey);
-
-        return _image;
+        _reading = opened;
+        return true;
     }
 
-    /// <summary>Forgets the shared textures the decoder stopped writing, after a size change.</summary>
+    /// <summary>
+    /// Gives the texture of the frame back to the decoder, once its draw is queued. Nothing happens
+    /// when no frame is taken.
+    /// </summary>
+    public void EndRead()
+    {
+        if (_reading is not { } opened)
+            return;
+
+        _reading = null;
+        _releaseTexImage(_display, opened.Surface, BackBuffer);
+
+        // The draw goes to the GPU before the decoder may write the texture again
+        _flush();
+        ReleaseMutex(opened);
+    }
+
+    private Opened? Open(IntPtr sharedHandle, int width, int height)
+    {
+        var attributes = stackalloc int[]
+        {
+            Width, width, Height, height, TextureFormat, TextureRgba, TextureTarget, Texture2D, None
+        };
+        var surface = _createPbuffer(_display, D3DTexture2DShareHandleAngle, sharedHandle, _config, attributes);
+
+        if (surface == IntPtr.Zero)
+        {
+            LastFailure = "eglCreatePbufferFromClientBuffer failed";
+            return null;
+        }
+
+        // ANGLE's own interface of the mutex, which it keeps as long as the pbuffer lives
+        IntPtr mutex;
+
+        if (_querySurfacePointer(_display, surface, DxgiKeyedMutexAngle, &mutex) == 0 || mutex == IntPtr.Zero)
+        {
+            _destroySurface(_display, surface);
+            LastFailure = "no keyed mutex of the pbuffer";
+            return null;
+        }
+
+        return new Opened(surface, mutex, width, height);
+    }
+
+    private static void ReleaseMutex(Opened opened) =>
+        ((delegate* unmanaged[Stdcall]<IntPtr, ulong, int>)VTable(opened.Mutex, ReleaseSyncSlot))(
+            opened.Mutex, D3D11SharedVideoFrame.WriterKey);
+
+    private void Destroy(IntPtr sharedHandle, Opened opened)
+    {
+        _destroySurface(_display, opened.Surface);
+        _opened.Remove(sharedHandle);
+    }
+
+    /// <summary>Lets go of the textures the decoder stopped writing, after a size change.</summary>
     public void ForgetShared()
     {
-        foreach (var (texture, mutex) in _opened.Values)
-        {
-            ComRelease(mutex);
-            ComRelease(texture);
-        }
+        EndRead();
+
+        foreach (var opened in _opened.Values)
+            _destroySurface(_display, opened.Surface);
 
         _opened.Clear();
     }
 
-    private bool EnsureCopy(int width, int height)
-    {
-        if (_copy != IntPtr.Zero && width == _width && height == _height)
-            return true;
-
-        DestroyCopy();
-        ForgetShared();
-
-        var description = stackalloc uint[11] { (uint)width, (uint)height, 1, 1, FormatB8G8R8A8, 1, 0, 0, BindShaderResource, 0, 0 };
-        IntPtr texture;
-
-        if (((delegate* unmanaged[Stdcall]<IntPtr, uint*, IntPtr, IntPtr*, int>)VTable(_device, CreateTexture2DSlot))(
-                _device, description, IntPtr.Zero, &texture) < 0)
-            return false;
-
-        var attributes = stackalloc int[1] { None };
-        var image = _createImage(_display, IntPtr.Zero, D3D11TextureAngle, texture, attributes);
-
-        if (image == IntPtr.Zero)
-        {
-            ComRelease(texture);
-            return false;
-        }
-
-        _copy = texture;
-        _image = image;
-        _width = width;
-        _height = height;
-        return true;
-    }
-
-    private void DestroyCopy()
-    {
-        if (_image != IntPtr.Zero)
-            _destroyImage(_display, _image);
-
-        ComRelease(_copy);
-        _image = _copy = IntPtr.Zero;
-    }
-
-    public void Dispose()
-    {
-        DestroyCopy();
-        ForgetShared();
-        ComRelease(_context);
-        ComRelease(_device);
-    }
+    public void Dispose() => ForgetShared();
 
     private bool DisposeAndTrue()
     {
         Dispose();
         return true;
-    }
-
-    private static AngleD3D11Import? Release(IntPtr instance)
-    {
-        ComRelease(instance);
-        return null;
-    }
-
-    private static IntPtr Query(IntPtr instance, Guid id)
-    {
-        IntPtr result;
-        var query = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)VTable(instance, QueryInterfaceSlot);
-
-        return query(instance, &id, &result) < 0 ? IntPtr.Zero : result;
-    }
-
-    private static void ComRelease(IntPtr instance)
-    {
-        if (instance != IntPtr.Zero)
-            ((delegate* unmanaged[Stdcall]<IntPtr, uint>)VTable(instance, ReleaseSlot))(instance);
     }
 
     private static IntPtr VTable(IntPtr instance, int slot) => ((IntPtr*)*(IntPtr*)instance)[slot];

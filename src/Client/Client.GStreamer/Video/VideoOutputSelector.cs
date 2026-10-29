@@ -48,8 +48,6 @@ internal static class VideoOutputSelector
     // What decoders output anyway; anything else (10-bit, 4:4:4) is converted by videoconvert
     private const string YuvCaps = "video/x-raw,format=(string){NV12,I420}";
 
-    private static readonly string[] SoftwareDecoders = ["openh264dec", "dav1ddec", "vp8dec", "vp9dec"];
-
     /// <param name="allowGpuSurfaces">False to deliver frames in memory whatever is supported.</param>
     /// <returns>Null when the system has no decoder for the codec.</returns>
     public static VideoOutput? Select(VideoCodec codec, bool allowGpuSurfaces = true)
@@ -132,7 +130,7 @@ internal static class VideoOutputSelector
             ? new VideoOutput(decoder, VideoOutputKind.MemoryYuv, $"{decoder} ! videoconvert ! {YuvCaps}")
             : new VideoOutput(decoder, VideoOutputKind.Memory, $"{decoder} ! videoconvert ! {MemoryCaps}");
 
-    private static bool IsSoftware(string decoder) => SoftwareDecoders.Contains(decoder);
+    private static bool IsSoftware(string decoder) => VideoElementNames.IsSoftware(decoder);
 
     private static bool Has(string factory) => ElementFactory.Find(factory) != null;
 }

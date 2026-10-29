@@ -71,14 +71,16 @@ public static class VideoSurfaceProbe
                 sharing.CanCreateSharedContext);
 
             // ANGLE refuses shared contexts, but the presenter draws in the renderer's own context, so it
-            // still uploads YUV and RGB frames. D3D11 frames are not taken there: copying into ANGLE's
-            // device behind its back showed black pictures and crashed the AMD driver, not reported as
-            // a failed import that would fall back
+            // still uploads YUV and RGB frames, and lets ANGLE open D3D11 frames by their share
+            // handles. Whether ANGLE can is only found out there, with the first frame: a missing
+            // extension or a texture it cannot open is reported as a failure, and the stream falls back
+            // to memory. (Copying into ANGLE's device behind its back instead showed black pictures and
+            // crashed the AMD driver.)
             if (!OperatingSystem.IsWindows())
                 return VideoSurfaceKinds.None;
 
             UsesGl = true;
-            return VideoSurfaceKinds.None;
+            return VideoSurfaceKinds.D3D11Shared;
         }
 
         var kinds = VideoSurfaceKinds.None;
@@ -95,7 +97,7 @@ public static class VideoSurfaceProbe
                 kinds |= VideoSurfaceKinds.DmaBuf;
 
             // ANGLE on Direct3D 11, which Avalonia renders with on Windows
-            if (OperatingSystem.IsWindows() && canImport && AngleD3D11Import.IsSupported(context.GlInterface))
+            if (OperatingSystem.IsWindows() && AngleD3D11Import.IsSupported(context.GlInterface))
                 kinds |= VideoSurfaceKinds.D3D11Shared;
         }
 
