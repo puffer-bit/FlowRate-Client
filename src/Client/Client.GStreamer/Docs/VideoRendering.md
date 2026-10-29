@@ -30,7 +30,7 @@ drawn from a bitmap, the way they always were.
 | `Client.Core/Media/VideoSurfaceSupport.cs` | What the screen can show without copying; failures reported back |
 | `Client.Core/Media/FramePacer.cs` | Which frame is shown on a refresh |
 | `Client.Core/Settings/VideoSettings.cs` | The Video tab of the settings; `VideoSettings.Current` is read when a branch is built |
-| `Client.Avalonia.Desktop/Views/Sessions/Hybrid/Video/` | `VideoView`, `GlVideoPresenter` + `GlVideoRenderer`, `AngleD3D11Import`, `BitmapVideoPresenter`, `VideoSurfaceProbe` |
+| `Client.Avalonia.Video/` | `VideoView`, `GlVideoPresenter` + `GlVideoRenderer`, `AngleD3D11Import`, `BitmapVideoPresenter`, `VideoSurfaceProbe` |
 
 ## Path of a frame
 

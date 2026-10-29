@@ -9,7 +9,7 @@ using Avalonia.Skia;
 using Client.Core.Media;
 using SkiaSharp;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Draws the frames of one stream on the render thread of the compositor, at every refresh of the

@@ -6,7 +6,7 @@
         <LangVersion>preview</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <RootNamespace>Client.VideoAnalyzersTest</RootNamespace>
+        <RootNamespace>Client.Avalonia.Video.Preview</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,11 +22,6 @@
         <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
         <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
         <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
-    </ItemGroup>
-
-    <!-- The video surface of the desktop app, built here as it is there: the app is an executable,
-         so its files are compiled in rather than referenced -->
-    <ItemGroup>
-        <Compile Include="..\Client.Avalonia.Desktop\Views\Sessions\Hybrid\Video\*.cs" LinkBase="Video" />
+        <ProjectReference Include="..\Client.Avalonia.Video\Client.Avalonia.Video.csproj" />
     </ItemGroup>
 </Project>

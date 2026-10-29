@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Client.Core.Sessions.Hybrid;
 
-namespace Client.VideoAnalyzersTest.Analyzers;
+namespace Client.Avalonia.Video.Preview.Analyzers;
 
 /// <param name="Framerate">How fast the pattern is fed meanwhile; 0 freezes it.</param>
 /// <param name="ClearsPicture">The surface is cleared, as when the decoder fails.</param>

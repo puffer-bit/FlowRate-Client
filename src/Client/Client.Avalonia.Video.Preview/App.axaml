@@ -1,6 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Client.VideoAnalyzersTest.App"
+             x:Class="Client.Avalonia.Video.Preview.App"
              RequestedThemeVariant="Dark">
     <Application.Styles>
         <FluentTheme />

@@ -7,10 +7,9 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
-using Client.VideoAnalyzersTest.Analyzers;
-using Client.Views.Sessions.Hybrid.Video;
+using Client.Avalonia.Video.Preview.Analyzers;
 
-namespace Client.VideoAnalyzersTest;
+namespace Client.Avalonia.Video.Preview;
 
 /// <summary>
 /// The video surface of the app fed with a test picture, with the issue badges over it switching

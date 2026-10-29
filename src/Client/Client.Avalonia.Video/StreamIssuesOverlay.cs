@@ -13,7 +13,7 @@ using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Core.Sessions.Hybrid;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Badges over a watched screen, one per area with trouble, coloured by the worst issue there; the

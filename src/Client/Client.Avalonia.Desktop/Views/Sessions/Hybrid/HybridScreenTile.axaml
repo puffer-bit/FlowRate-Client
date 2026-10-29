@@ -7,7 +7,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
-             xmlns:video="clr-namespace:Client.Views.Sessions.Hybrid.Video"
+             xmlns:video="clr-namespace:Client.Avalonia.Video;assembly=Client.Avalonia.Video"
              mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="270"
              x:Class="Client.Views.Sessions.Hybrid.HybridScreenTile"
              x:DataType="hybridVm:ScreenStreamVM"

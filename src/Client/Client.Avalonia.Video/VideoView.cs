@@ -8,7 +8,7 @@ using Avalonia.Threading;
 using Client.Core.Media;
 using Client.Core.Settings;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Shows the frames of one stream with the fastest presenter this system has, falling back to a

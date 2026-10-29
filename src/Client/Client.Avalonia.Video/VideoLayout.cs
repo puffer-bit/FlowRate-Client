@@ -1,7 +1,7 @@
 using System;
 using Avalonia;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 public enum StretchMode
 {

@@ -4,7 +4,7 @@ using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Client.Core.Media;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Shows frames with OpenGL on the render thread of the compositor, see <see cref="GlVideoRenderer"/>:
