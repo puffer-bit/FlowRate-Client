@@ -25,6 +25,12 @@ public sealed class StreamHealthAnalyzer
     // Fewer frames tell nothing about the drawing
     private const long MinFramesForDrops = 10;
 
+    // Drops while a frame came this much later than the fastest one, and later than this many frames,
+    // are the network's: the picture waits only a couple of frames, and the renderer keeps up with far
+    // more than a stream sends
+    private const double BurstyLateMs = 60;
+    private const double BurstyLateFrames = 4;
+
     private readonly int _userId;
     private readonly TimeSpan _startedAt;
     private readonly Dictionary<StreamIssueKind, Tracked> _tracked = [];
@@ -119,9 +125,15 @@ public sealed class StreamHealthAnalyzer
                 var share = (double)dropped / received;
 
                 if (share >= DropWarningShare)
-                    found.Add(new StreamIssue(StreamIssueKind.RendererBehind,
-                        share >= DropCriticalShare ? StreamIssueSeverity.Critical : StreamIssueSeverity.Warning,
-                        dropped / seconds, received / seconds));
+                {
+                    var severity = share >= DropCriticalShare ? StreamIssueSeverity.Critical : StreamIssueSeverity.Warning;
+                    var frameMs = seconds * 1000 / received;
+
+                    found.Add(current.LateMs >= Math.Max(BurstyLateMs, BurstyLateFrames * frameMs)
+                        ? new StreamIssue(StreamIssueKind.BurstyArrival, severity, current.LateMs)
+                        : new StreamIssue(StreamIssueKind.RendererBehind, severity, dropped / seconds,
+                            received / seconds));
+                }
             }
         }
 

@@ -569,6 +569,12 @@
   "hybrid.screen.issues.performance": "解码与绘制",
   "hybrid.screen.issues.packetLoss": "{percent}% 的数据包丢失",
   "hybrid.screen.issues.highJitter": "数据包到达不均匀，抖动 {ms} 毫秒",
+  "hybrid.screen.issues.burstyArrival": "帧成批到达，最多延迟 {ms} 毫秒，部分帧被丢弃",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "画面已损坏，已等待关键帧 {seconds} 秒",
   "hybrid.screen.issues.noSourceFrames": "已有 {seconds} 秒未收到主播的任何数据",
   "hybrid.screen.issues.noAudio": "屏幕带声音共享，但已有 {seconds} 秒没有声音",
