@@ -9,6 +9,12 @@ public enum StreamIssueKind
     /// <summary>The packets come unevenly, so the picture is held back to smooth them out.</summary>
     HighJitter,
 
+    /// <summary>
+    /// Frames are dropped because the network holds them back and lets them through in a bunch, more
+    /// than the picture waits for.
+    /// </summary>
+    BurstyArrival,
+
     /// <summary>A loss broke the picture, which stays frozen until the sender sends a keyframe.</summary>
     WaitingForKeyframe,
 
@@ -41,15 +47,16 @@ public enum StreamIssueSeverity
 }
 
 /// <param name="Value">
-/// The figure behind the issue: the percent lost, the jitter in ms, the seconds it lasts, or the
-/// frames dropped per second.
+/// The figure behind the issue: the percent lost, the jitter in ms, how late the latest frame came in
+/// ms, the seconds it lasts, or the frames dropped per second.
 /// </param>
 /// <param name="Total">The frames received per second, for the frames dropped of them; 0 otherwise.</param>
 public sealed record StreamIssue(StreamIssueKind Kind, StreamIssueSeverity Severity, double Value = 0, double Total = 0)
 {
     public StreamIssueArea Area => Kind switch
     {
-        StreamIssueKind.PacketLoss or StreamIssueKind.HighJitter or StreamIssueKind.WaitingForKeyframe =>
+        StreamIssueKind.PacketLoss or StreamIssueKind.HighJitter or StreamIssueKind.BurstyArrival
+            or StreamIssueKind.WaitingForKeyframe =>
             StreamIssueArea.Network,
         StreamIssueKind.NoSourceFrames => StreamIssueArea.Source,
         StreamIssueKind.NoAudio => StreamIssueArea.Audio,

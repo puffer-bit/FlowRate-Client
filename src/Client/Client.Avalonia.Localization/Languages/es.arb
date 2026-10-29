@@ -569,6 +569,12 @@
   "hybrid.screen.issues.performance": "Decodificación y dibujo",
   "hybrid.screen.issues.packetLoss": "Se pierde el {percent}% de los paquetes",
   "hybrid.screen.issues.highJitter": "Los paquetes llegan de forma irregular, jitter de {ms} ms",
+  "hybrid.screen.issues.burstyArrival": "Los fotogramas llegan a rachas, hasta {ms} ms tarde, y algunos se descartan",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "La imagen se rompió, esperando un fotograma clave desde hace {seconds} s",
   "hybrid.screen.issues.noSourceFrames": "No llega nada del transmisor desde hace {seconds} s",
   "hybrid.screen.issues.noAudio": "La pantalla se comparte con sonido, pero no llega desde hace {seconds} s",

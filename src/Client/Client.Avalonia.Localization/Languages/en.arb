@@ -795,6 +795,12 @@
       "ms": {}
     }
   },
+  "hybrid.screen.issues.burstyArrival": "Frames come in bunches, the latest {ms} ms late, some are dropped",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "The picture broke, waiting for a keyframe for {seconds} s",
   "@hybrid.screen.issues.waitingForKeyframe": {
     "placeholders": {
