@@ -60,7 +60,7 @@ internal static class ScreenEncodingBranch
         "queue max-size-buffers=2 leaky=downstream ! video/x-raw(memory:D3D11Memory) ! " +
         "videorate drop-only=true max-rate={0} ! tee name=split " +
 
-        "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
+        "split. ! queue max-size-buffers=1 leaky=downstream ! " +
         "d3d11convert ! video/x-raw(memory:D3D11Memory),format=NV12,height=[2,{1}],pixel-aspect-ratio=1/1 ! " +
         "{2} ! " +
         "{3} " +
