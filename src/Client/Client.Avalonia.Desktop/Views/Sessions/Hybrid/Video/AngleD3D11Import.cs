@@ -124,6 +124,15 @@ internal sealed unsafe class AngleD3D11Import : IDisposable
     {
         isBroken = false;
 
+        // Before the shared texture is looked up: a new size forgets the opened ones, and one taken
+        // before would be used after its release
+        if (!EnsureCopy(width, height))
+        {
+            LastFailure ??= "copy texture or EGL image not created";
+            isBroken = true;
+            return IntPtr.Zero;
+        }
+
         if (!_opened.TryGetValue(sharedHandle, out var shared))
         {
             IntPtr texture;
@@ -151,13 +160,6 @@ internal sealed unsafe class AngleD3D11Import : IDisposable
 
             shared = (texture, mutex);
             _opened[sharedHandle] = shared;
-        }
-
-        if (!EnsureCopy(width, height))
-        {
-            LastFailure ??= "copy texture or EGL image not created";
-            isBroken = true;
-            return IntPtr.Zero;
         }
 
         var acquire = (delegate* unmanaged[Stdcall]<IntPtr, ulong, uint, int>)VTable(shared.Mutex, AcquireSyncSlot);
