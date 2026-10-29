@@ -136,12 +136,67 @@ public sealed partial class PipeWireAudioAppProvider : IAudioAppProvider
     /// <param name="ownProcessId">Our process, whose streams are never offered.</param>
     internal static List<AudioApp> Parse(string json, int ownProcessId)
     {
-        using var document = JsonDocument.Parse(json);
+        var documents = ParseObjects(json);
 
+        try
+        {
+            return Parse(documents.Select(document => document.RootElement), ownProcessId);
+        }
+        finally
+        {
+            foreach (var document in documents)
+                document.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The objects of the array pw-dump writes, each read on its own. While the graph changes under it,
+    /// pw-dump may write an object into the middle of another, or a second array after the first, and
+    /// one broken object would cost the whole list. Its layout puts every object of the array between
+    /// a line "  {" and a line "  }", so a broken one is left out instead.
+    /// </summary>
+    private static List<JsonDocument> ParseObjects(string json)
+    {
+        var documents = new List<JsonDocument>();
+        var start = -1;
+        var position = 0;
+
+        while (position < json.Length)
+        {
+            var end = json.IndexOf('\n', position);
+            if (end < 0)
+                end = json.Length;
+
+            var line = json.AsSpan(position, end - position);
+
+            if (line is "  {")
+                start = position;
+            else if (start >= 0 && line is "  }" or "  },")
+            {
+                try
+                {
+                    documents.Add(JsonDocument.Parse(json.AsMemory(start, position + 3 - start)));
+                }
+                catch (JsonException)
+                {
+                    // Broken, see above
+                }
+
+                start = -1;
+            }
+
+            position = end + 1;
+        }
+
+        return documents;
+    }
+
+    private static List<AudioApp> Parse(IEnumerable<JsonElement> items, int ownProcessId)
+    {
         var clients = new Dictionary<long, JsonElement>();
         var streams = new List<(JsonElement Props, uint Serial)>();
 
-        foreach (var item in document.RootElement.EnumerateArray())
+        foreach (var item in items)
         {
             if (!item.TryGetProperty("info", out var info) || info.ValueKind != JsonValueKind.Object ||
                 !info.TryGetProperty("props", out var props) || props.ValueKind != JsonValueKind.Object)
