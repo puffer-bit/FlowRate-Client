@@ -362,7 +362,8 @@ internal sealed partial class OutgoingTracks
             if (output != null)
                 GstEncodedNative.WatchKeyFrameRequests(output, () =>
                 {
-                    // Only the first request of a wait is timed: the SFU repeats it until the keyframe comes
+                    // Only the first request of a wait is timed: the SFU repeats it until the keyframe
+                    // comes. The capture spaces the keyframes out, which the time includes
                     if (Interlocked.CompareExchange(ref keyFrameRequested, Stopwatch.GetTimestamp(), 0) == 0)
                         LogKeyFrameRequested(_core.SessionId, outbound.SSRC);
 
@@ -383,8 +384,9 @@ internal sealed partial class OutgoingTracks
             if (!gate.Push(frame with { Timestamp = -1 }))
                 return;
 
+            // The keyframe may have been the one dropped, which the capture would wait after
             LogVideoFramesDropped(_core.SessionId, outbound.SSRC, gate.Dropped);
-            capture.RequestKeyFrame();
+            capture.RequestKeyFrame(isUrgent: true);
         };
         capture.PreviewFrameReady += frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame);
 
@@ -754,7 +756,7 @@ internal sealed partial class OutgoingTracks
             if (_outgoingVideo.TryGetValue(outboundId, out var video))
             {
                 // What was encoded before the branch played went nowhere, the first keyframe with it
-                video.Capture.RequestKeyFrame();
+                video.Capture.RequestKeyFrame(isUrgent: true);
                 LogSendingVideo(_core.SessionId, index);
             }
             else
