@@ -33,6 +33,10 @@ internal sealed partial class WebRTCBinTuning
     // Held while the transport lives: disposing the wrapper disconnects the handler
     private Bin? _rtpbin;
 
+    // The jitter buffer of every stream we receive, by SSRC, for its statistics
+    private readonly Dictionary<uint, Element> _jitterBuffers = [];
+    private readonly Lock _jitterBuffersLock = new();
+
     public WebRTCBinTuning(TransportCore core, ILogger logger)
     {
         _core = core;
@@ -144,6 +148,16 @@ internal sealed partial class WebRTCBinTuning
             // jitter buffer, the session and the SSRC
             rtpbin.ConnectSignal("new-jitterbuffer", (_, args) =>
             {
+                if (args is [Element buffer, _, uint bufferSsrc])
+                {
+                    lock (_jitterBuffersLock)
+                    {
+                        _jitterBuffers.Remove(bufferSsrc, out var replaced);
+                        _jitterBuffers[bufferSsrc] = buffer;
+                        replaced?.Dispose();
+                    }
+                }
+
                 _core.Notify(() =>
                 {
                     if (args is not [Element jitterBuffer, _, uint ssrc] || findTrack(ssrc) is not { } track)
@@ -185,6 +199,12 @@ internal sealed partial class WebRTCBinTuning
     {
         try
         {
+            lock (_jitterBuffersLock)
+            {
+                if (_jitterBuffers.Remove(ssrc, out var buffer))
+                    buffer.Dispose();
+            }
+
             // Every section is bundled into the session of the first one
             _rtpbin?.EmitSignal("clear-ssrc", 0u, ssrc);
             LogSourceForgotten(_core.SessionId, ssrc);
@@ -192,6 +212,43 @@ internal sealed partial class WebRTCBinTuning
         catch (Exception exception)
         {
             LogRtpBinTuningFailed(exception, _core.SessionId);
+        }
+    }
+
+    /// <summary>
+    /// The packets of a stream we receive that its jitter buffer gave up for lost, and those that came
+    /// after it had, or null before its first packet.
+    /// </summary>
+    /// <remarks>
+    /// The inbound-rtp statistics of webrtcbin carry these as well, but they are not to be trusted:
+    /// webrtcbin hands every new jitter buffer to all the streams of the bundle (GStreamer 1.28 does
+    /// not compare the SSRC, see <see cref="ConfigureRtpBin"/>), so every stream reported the figures
+    /// of the last one made, a screen usually, and a voice showed the losses of a picture.
+    /// </remarks>
+    public (long Lost, long Late)? ReadJitterBuffer(uint ssrc)
+    {
+        lock (_jitterBuffersLock)
+        {
+            if (!_jitterBuffers.TryGetValue(ssrc, out var buffer))
+                return null;
+
+            try
+            {
+                using var stats = buffer.GetProperty<Structure>("stats");
+
+                if (stats == null)
+                    return null;
+
+                stats.GetUint64("num-lost", out var lost);
+                stats.GetUint64("num-late", out var late);
+
+                return ((long)lost, (long)late);
+            }
+            catch (Exception exception)
+            {
+                LogRtpBinTuningFailed(exception, _core.SessionId);
+                return null;
+            }
         }
     }
 
@@ -230,6 +287,14 @@ internal sealed partial class WebRTCBinTuning
     /// </summary>
     public void Release()
     {
+        lock (_jitterBuffersLock)
+        {
+            foreach (var buffer in _jitterBuffers.Values)
+                buffer.Dispose();
+
+            _jitterBuffers.Clear();
+        }
+
         _rtpbin?.Dispose();
         _rtpbin = null;
     }
