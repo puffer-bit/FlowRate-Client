@@ -100,6 +100,11 @@ public sealed class VoiceGate
     public bool IsOpen { get; private set; }
 
     /// <summary>
+    /// Whether the branch has the voice detection; without RNNoise in the runtime the gate goes by the level alone.
+    /// </summary>
+    public bool HasVoiceDetection => _detector != null;
+
+    /// <summary>
     /// Changes how a running gate decides. Null turns the gate off and opens it. New options are
     /// applied by the next level message, an open gate first waits out its hold time, so raising
     /// the threshold does not cut a word in half.

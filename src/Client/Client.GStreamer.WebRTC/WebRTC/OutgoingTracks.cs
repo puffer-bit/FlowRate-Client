@@ -289,6 +289,8 @@ internal sealed partial class OutgoingTracks
             var gate = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), detector,
                 voiceGate);
 
+            WarnIfNoVoiceDetection(gate, voiceGate);
+
             // Both level elements post to the same gate
             _gates[level.Handle] = gate;
 
@@ -563,9 +565,22 @@ internal sealed partial class OutgoingTracks
         // A gate with voice detection is held under both of its level elements
         foreach (var gate in _gates.Values.Distinct().Where(gate => gate.OutboundId == outboundId))
         {
-            if (gate.SetOptions(voiceGate))
-                LogVoiceGateOptionsChanged(_core.SessionId, voiceGate);
+            if (!gate.SetOptions(voiceGate))
+                continue;
+
+            LogVoiceGateOptionsChanged(_core.SessionId, voiceGate);
+            WarnIfNoVoiceDetection(gate, voiceGate);
         }
+    }
+
+    /// <summary>
+    /// A gate asked to open only for a voice in a runtime without RNNoise opens for any loud sound,
+    /// keys included, which is reported, since the user chose otherwise.
+    /// </summary>
+    private void WarnIfNoVoiceDetection(VoiceGate gate, VoiceGateOptions? voiceGate)
+    {
+        if (voiceGate is { IsVoiceDetectionEnabled: true } && !gate.HasVoiceDetection)
+            LogVoiceDetectionUnavailable(_core.SessionId);
     }
 
     /// <summary>
