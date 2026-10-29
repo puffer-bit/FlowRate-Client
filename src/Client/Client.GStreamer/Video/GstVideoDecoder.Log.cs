@@ -28,6 +28,10 @@ internal sealed partial class GstVideoDecoder
         "[Decoder {Name}] Frames as {Kind} cannot be shown ({Reason}), decoding into memory from the next keyframe")]
     private static partial void LogSurfaceFailed(ILogger logger, string name, VideoOutputKind kind, string? reason);
 
+    [LoggerMessage(LogLevel.Warning,
+        "[Decoder {Name}] The decoder fell behind, frames dropped up to the next keyframe ({Dropped} so far)")]
+    private static partial void LogFramesDropped(ILogger logger, string name, long dropped);
+
     [LoggerMessage(LogLevel.Warning, "[Decoder {Name}] Failed to rebuild the decoding pipeline")]
     private static partial void LogRebuildFailed(ILogger logger, Exception exception, string name);
 
