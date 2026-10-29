@@ -8,8 +8,9 @@ using ReactiveUI;
 namespace Client.ViewModels.Sessions.Hybrid;
 
 /// <summary>
-/// The quality of the connection of a hybrid session and its recent history, for the graphs of the
-/// statistics flyout.
+/// The quality of our own connection in a hybrid session and its recent history, for the graphs of the
+/// statistics flyout. What the other users lose on their way to the SFU is theirs, see
+/// <see cref="PeerStatsVM"/>.
 /// </summary>
 public class HybridSessionStatsVM : ReactiveObject
 {
@@ -134,12 +135,12 @@ public class HybridSessionStatsVM : ReactiveObject
             ? $"{Math.Ceiling(roundTrip):0} ms"
             : "—";
         IsOverTcp = sample.IsOverTcp;
-        InboundLossText = $"{sample.InboundLossPercent:0.#} %";
+        InboundLossText = $"{sample.OwnInboundLossPercent:0.#} %";
         OutboundLossText = $"{sample.OutboundLossPercent:0.#} %";
 
         // New lists, so that the graphs see a change
         RoundTripHistory = _history.Select(reading => reading.RoundTripMs).ToArray();
-        InboundLossHistory = _history.Select(reading => (double?)reading.InboundLossPercent).ToArray();
+        InboundLossHistory = _history.Select(reading => (double?)reading.OwnInboundLossPercent).ToArray();
         OutboundLossHistory = _history.Select(reading => (double?)reading.OutboundLossPercent).ToArray();
     }
 

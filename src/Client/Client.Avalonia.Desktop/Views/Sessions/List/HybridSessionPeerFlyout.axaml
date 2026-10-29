@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Sessions.List.HybridSessionPeerFlyout"
@@ -42,6 +43,20 @@
                 <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
                                       menus:FlyoutMenu.CloseOnClick="True"
                                       Click="OnPokeClick"/>
+
+                <Separator/>
+            </StackPanel>
+
+            <!-- Opened in a card of its own, like the poke -->
+            <StackPanel Spacing="2" IsVisible="{Binding CanShowConnectionStats}">
+                <!-- The same indicator as on our own statistics button, lit by how the user reaches us -->
+                <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      Click="OnStatsClick">
+                    <menus:MenuItemButton.IconContent>
+                        <indicators:SignalIndicator Level="{Binding ConnectionStats.SignalLevel, FallbackValue=0}"/>
+                    </menus:MenuItemButton.IconContent>
+                </menus:MenuItemButton>
 
                 <Separator/>
             </StackPanel>

@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Client.ViewModels.Sessions.List;
+using Client.Views.Sessions.Hybrid;
 
 namespace Client.Views.Sessions.List;
 
@@ -24,6 +25,19 @@ public partial class HybridSessionPeerFlyout : UserControl
         {
             Placement = PlacementMode.BottomEdgeAlignedRight,
             Content = new PokeCard { DataContext = peer }
+        }.ShowAt(target), DispatcherPriority.Background);
+    }
+
+    private void OnStatsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PeerVM { ConnectionStats: { } stats } ||
+            this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget is not { } target)
+            return;
+
+        Dispatcher.UIThread.Post(() => new Flyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Content = new PeerStatsFlyout { DataContext = stats }
         }.ShowAt(target), DispatcherPriority.Background);
     }
 }

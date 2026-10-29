@@ -251,6 +251,7 @@ public partial class MainWindowVM : ReactiveObject
         IPeerPlaybackService playback,
         IVoiceActivityService voiceActivity,
         IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         SessionListPreferences listPreferences,
         ChatSessionServices chatServices,
         Func<HybridSessionServices> hybridServices,
@@ -311,7 +312,7 @@ public partial class MainWindowVM : ReactiveObject
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
             _users.PokePeerCommand,
             ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
-            playback, voiceActivity, screenWatch, listPreferences,
+            playback, voiceActivity, screenWatch, peerStats, listPreferences,
             ChatReads,
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());

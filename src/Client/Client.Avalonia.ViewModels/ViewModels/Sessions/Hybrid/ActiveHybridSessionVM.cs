@@ -113,6 +113,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private readonly INotificationService _notifications;
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly IPeerPlaybackService _playbackService;
     private readonly IScreenSourceProvider? _screenSourceProvider;
     private readonly IAudioAppProvider? _audioApps;
@@ -151,6 +152,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         };
         _voiceActivity = services.VoiceActivity;
         _screenWatch = services.ScreenWatch;
+        _peerStats = services.PeerStats;
         _playbackService = services.Playback;
         Model = hybridSessionModel;
         _screenCastClient = services.CreateScreenCastClient?.Invoke();
@@ -460,6 +462,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 return;
 
             StatusBar.Stats.Add(sample);
+            _peerStats.Add(Model.Id, sample);
 
             var now = TimeSpan.FromMilliseconds(Environment.TickCount64);
 
@@ -648,6 +651,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         IsClosed = true;
 
         _subscriptions.Dispose();
+        _peerStats.Clear(Model.Id);
 
         if (_isJoined)
         {

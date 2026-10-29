@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions;
+using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Settings;
 
@@ -46,6 +47,7 @@ public static class DependencyInjection
             provider.GetRequiredService<INotificationService>(),
             provider.GetRequiredService<IVoiceActivityService>(),
             provider.GetRequiredService<IScreenWatchService>(),
+            provider.GetRequiredService<PeerStatsService>(),
             provider.GetRequiredService<IPeerPlaybackService>(),
             provider.GetRequiredService<IHybridSessionFactory>(),
             provider.GetService<IScreenSourceProvider>(),
@@ -57,6 +59,7 @@ public static class DependencyInjection
         // Resolved when a hybrid session is entered, see HybridSessionServices
         services.AddSingleton<Func<HybridSessionServices>>(provider => provider.GetRequiredService<HybridSessionServices>);
         services.AddSingleton<LastSessionKeeper>();
+        services.AddSingleton<PeerStatsService>();
         services.AddSingleton<SessionListPreferences>();
         services.AddSingleton<UpdaterVM>();
 

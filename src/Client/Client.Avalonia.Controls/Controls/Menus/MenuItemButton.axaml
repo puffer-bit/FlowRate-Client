@@ -43,6 +43,9 @@
                         <Image Grid.Column="0" Width="16" Height="16"
                                VerticalAlignment="Center"
                                Source="{TemplateBinding Icon}"/>
+                        <ContentPresenter Grid.Column="0" Width="16" Height="16"
+                                          VerticalAlignment="Center"
+                                          Content="{TemplateBinding IconContent}"/>
                         <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1"
                                           Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"
