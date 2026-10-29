@@ -103,6 +103,28 @@ public class StreamHealthAnalyzerTests
     }
 
     [Fact]
+    public void DropsOfFramesThatCameInABunchAreTheNetworks()
+    {
+        Read(Video());
+        Read(Video(), newFrames: 60, newDropped: 30, lateMs: 250);
+
+        var issue = Assert.Single(_analyzer.Issues);
+        Assert.Equal(StreamIssueKind.BurstyArrival, issue.Kind);
+        Assert.Equal(StreamIssueArea.Network, issue.Area);
+        Assert.Equal(250, issue.Value);
+    }
+
+    [Fact]
+    public void FramesLateByLessThanAFewFramesLeaveTheDropsToTheRenderer()
+    {
+        Read(Video());
+        // 30 frames a second: 100 ms is three frames
+        Read(Video(), newFrames: 60, newDropped: 30, lateMs: 100);
+
+        Assert.Equal([StreamIssueKind.RendererBehind], Kinds());
+    }
+
+    [Fact]
     public void OtherUsersStreamsAreIgnored()
     {
         Read(Sample(new InboundStreamSample(UserId + 1, MediaSourceType.Screen, MediaType.Video, 100, 30, 0, 0),
@@ -111,13 +133,15 @@ public class StreamHealthAnalyzerTests
         Assert.Empty(_analyzer.Issues);
     }
 
-    private void Read(TransportStatsSample sample, bool isAudioExpected = false, long newFrames = 60, long newDropped = 0)
+    private void Read(TransportStatsSample sample, bool isAudioExpected = false, long newFrames = 60, long newDropped = 0,
+        double lateMs = 0)
     {
         _now += Reading;
         _frames += newFrames;
         _dropped += newDropped;
 
-        _analyzer.Update(sample, new FrameStats(_frames, _frames - _dropped, _dropped, 0, 0), isAudioExpected, _now);
+        _analyzer.Update(sample, new FrameStats(_frames, _frames - _dropped, _dropped, 0, 0, lateMs), isAudioExpected,
+            _now);
     }
 
     private StreamIssueKind[] Kinds() => _analyzer.Issues.Select(issue => issue.Kind).ToArray();

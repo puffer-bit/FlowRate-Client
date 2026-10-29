@@ -569,6 +569,12 @@
   "hybrid.screen.issues.performance": "デコードと描画",
   "hybrid.screen.issues.packetLoss": "パケットの{percent}%が失われています",
   "hybrid.screen.issues.highJitter": "パケットの到着が不安定です（ジッター {ms} ms）",
+  "hybrid.screen.issues.burstyArrival": "フレームがまとめて届き、最大 {ms} ms 遅れるため一部が破棄されています",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "映像が乱れ、キーフレームを{seconds}秒待っています",
   "hybrid.screen.issues.noSourceFrames": "配信者から{seconds}秒間何も届いていません",
   "hybrid.screen.issues.noAudio": "音声付きで共有されていますが、{seconds}秒間音声が届いていません",

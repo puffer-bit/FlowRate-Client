@@ -5,7 +5,13 @@ namespace Client.Core.Media;
 /// <summary>
 /// Counters of a shown stream since it started.
 /// </summary>
-public readonly record struct FrameStats(long Received, long Shown, long Dropped, double ReceivedPerSecond, double ShownPerSecond);
+/// <param name="LateMs">
+/// How much later than the fastest one the latest frame of the last couple of seconds arrived, by
+/// their timestamps: near 0 for frames that come evenly, hundreds of ms for frames that the network
+/// holds back and lets through in a bunch. 0 without timestamps.
+/// </param>
+public readonly record struct FrameStats(long Received, long Shown, long Dropped, double ReceivedPerSecond,
+    double ShownPerSecond, double LateMs = 0);
 
 /// <summary>
 /// Decides which of the frames that arrived is shown on a refresh of the monitor.
@@ -47,6 +53,10 @@ public sealed class FramePacer<T> : IDisposable where T : class
     private long _received;
     private long _shown;
     private long _dropped;
+
+    // The latest frame of the last window, see FrameStats.LateMs
+    private long _lateTicks;
+    private long _lateSeenAt;
 
     private readonly Stopwatch _rateClock = Stopwatch.StartNew();
     private long _rateReceived;
@@ -103,6 +113,7 @@ public sealed class FramePacer<T> : IDisposable where T : class
 
                 _lastTimestamp = timestamp;
                 RememberDelay(ToTicks(timestamp), now);
+                RememberLateness(now - ToTicks(timestamp) - _delays.First!.Value.Delay, now);
 
                 _queue.Enqueue(new Entry(frame, timestamp, now));
 
@@ -209,7 +220,11 @@ public sealed class FramePacer<T> : IDisposable where T : class
                     _rateClock.Restart();
                 }
 
-                return new FrameStats(_received, _shown, _dropped, _receivedPerSecond, _shownPerSecond);
+                var lateMs = Stopwatch.GetTimestamp() - _lateSeenAt <= DelayWindowTicks
+                    ? _lateTicks * 1000.0 / Stopwatch.Frequency
+                    : 0;
+
+                return new FrameStats(_received, _shown, _dropped, _receivedPerSecond, _shownPerSecond, lateMs);
             }
         }
     }
@@ -228,6 +243,7 @@ public sealed class FramePacer<T> : IDisposable where T : class
             _delays.Clear();
             _lastTimestamp = -1;
             _frameInterval = 0;
+            _lateTicks = 0;
         }
 
         foreach (var item in dropped)
@@ -259,6 +275,16 @@ public sealed class FramePacer<T> : IDisposable where T : class
 
         while (_delays.First != null && now - _delays.First.Value.SeenAt > DelayWindowTicks && _delays.Count > 1)
             _delays.RemoveFirst();
+    }
+
+    // The largest lateness of the window; a smaller one replaces it once it is older than the window
+    private void RememberLateness(long lateness, long now)
+    {
+        if (lateness >= _lateTicks || now - _lateSeenAt > DelayWindowTicks)
+        {
+            _lateTicks = Math.Max(0, lateness);
+            _lateSeenAt = now;
+        }
     }
 
     private static long ToTicks(long nanoseconds) => NanosecondsToTicks(nanoseconds);

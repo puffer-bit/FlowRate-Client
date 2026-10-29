@@ -102,6 +102,7 @@ public sealed class StreamIssuesOverlay : StackPanel
         {
             StreamIssueKind.PacketLoss => Strings.Format("hybrid.screen.issues.packetLoss", ("percent", value)),
             StreamIssueKind.HighJitter => Strings.Format("hybrid.screen.issues.highJitter", ("ms", value)),
+            StreamIssueKind.BurstyArrival => Strings.Format("hybrid.screen.issues.burstyArrival", ("ms", value)),
             StreamIssueKind.WaitingForKeyframe =>
                 Strings.Format("hybrid.screen.issues.waitingForKeyframe", ("seconds", value)),
             StreamIssueKind.NoSourceFrames => Strings.Format("hybrid.screen.issues.noSourceFrames", ("seconds", value)),

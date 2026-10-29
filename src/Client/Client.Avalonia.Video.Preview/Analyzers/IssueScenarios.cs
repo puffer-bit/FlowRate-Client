@@ -28,6 +28,10 @@ public static class IssueScenarios
             new(StreamIssueKind.PacketLoss, StreamIssueSeverity.Critical, 18),
             new(StreamIssueKind.WaitingForKeyframe, StreamIssueSeverity.Critical, 4)
         ]),
+        new("Frames come in bunches", 40,
+        [
+            new(StreamIssueKind.BurstyArrival, StreamIssueSeverity.Warning, 240)
+        ]),
         new("Streamer sends nothing", 0,
         [
             new(StreamIssueKind.NoSourceFrames, StreamIssueSeverity.Critical, 6)
