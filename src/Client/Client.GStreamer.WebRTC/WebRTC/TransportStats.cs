@@ -1,4 +1,5 @@
 using Client.Core.Sessions.Hybrid;
+using Shared.Models.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 
@@ -391,7 +392,10 @@ internal sealed partial class TransportStats
             .OfType<RemoteReport>()
             .ToList();
 
-        var outboundLoss = reports.Count > 0 ? reports.Max(report => report.FractionLost) * 100 : 0;
+        // A voice tells nothing of our own loss, see TransportStatsSample.OutboundLossPercent
+        var outboundLoss = reports
+            .Where(report => _findOutbound(report.Ssrc)?.MediaType != MediaType.Audio)
+            .Select(report => report.FractionLost).DefaultIfEmpty(0).Max() * 100;
         var roundTrips = reports.Where(report => report.RoundTripMs > 0).Select(report => report.RoundTripMs).ToList();
 
         return new TransportStatsSample(roundTrips.Count > 0 ? roundTrips.Average() : null, inboundLoss, outboundLoss,

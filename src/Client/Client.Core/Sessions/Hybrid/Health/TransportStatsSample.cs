@@ -8,7 +8,11 @@ namespace Client.Core.Sessions.Hybrid;
 /// only about the streams we send.
 /// </param>
 /// <param name="InboundLossPercent">The share of the packets sent to us that never came.</param>
-/// <param name="OutboundLossPercent">The share of the packets we sent that the SFU reports lost.</param>
+/// <param name="OutboundLossPercent">
+/// The share of the packets of the videos we send that the SFU reports lost. Not of a voice: Opus is
+/// sent with in-band FEC, and for such a stream mediasoup reports the worst loss of the ones who hear
+/// it instead of its own, so the sender adds more FEC. A listener on a bad network showed our loss high.
+/// </param>
 /// <param name="Inbound">
 /// Every stream we receive that carried packets before; a stream that never carried any is not in it.
 /// </param>

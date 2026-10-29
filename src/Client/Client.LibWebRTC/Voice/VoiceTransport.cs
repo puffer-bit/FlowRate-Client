@@ -1026,7 +1026,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         lock (_lock)
         {
             sample = stats.Streams is { } streams
-                ? _sampler.Read(streams, FindInbound, ssrc => _outbounds.Values.Any(outbound => outbound.SSRC == ssrc))
+                ? _sampler.Read(streams, FindInbound,
+                    ssrc => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc))
                 : null;
         }
 
