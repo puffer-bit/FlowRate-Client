@@ -176,6 +176,18 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         }
     }
 
+    public void SetPreviewShown(bool isShown)
+    {
+        lock (_lock)
+        {
+            if (_isDisposed)
+                return;
+
+            using var valve = _branch.Bin.GetByName(ScreenEncodingBranch.PreviewValveName);
+            valve?.SetProperty("drop", !isShown);
+        }
+    }
+
     private void OnMessage(Message message)
     {
         var (error, debug) = message.Type == MessageType.Error ? message.ParseError() : message.ParseWarning();

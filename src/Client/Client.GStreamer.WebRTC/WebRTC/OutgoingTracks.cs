@@ -481,6 +481,13 @@ internal sealed partial class OutgoingTracks
         _negotiate();
     }
 
+    /// <summary>Starts or stops the preview of a screen we send.</summary>
+    public void SetPreviewShown(string outboundId, bool isShown)
+    {
+        if (_outgoingVideo.TryGetValue(outboundId, out var video))
+            video.Capture.SetPreviewShown(isShown);
+    }
+
     /// <summary>
     /// Stops or resumes sending an outbound track without touching its section or its producer.
     /// The sound goes silent at once; the valve follows a few frames later, so the encoder ends on

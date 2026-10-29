@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Client.Avalonia.Localization;
 using Client.Core.Media;
 using Client.Core.Settings;
 
@@ -22,13 +23,19 @@ public class VideoView : Panel
     private readonly BitmapVideoPresenter _bitmap = new() { IsVisible = false };
     private readonly Border _statsBox;
     private readonly TextBlock _statsText;
+    private readonly TextBlock _routeText;
+    private readonly TextBlock _fallbackText;
     private readonly DispatcherTimer _statsTimer;
 
     // Which presenter got the last frame; set on the thread of the stream
     private volatile IVideoPresenter? _active;
 
-    // Where the last frame came from, for the counter
-    private volatile string _source = "";
+    // The form of the last frame and how its decoder decodes, for the counter
+    private volatile VideoSurfaceKinds _surface;
+    private volatile VideoDecoding? _decoding;
+
+    // Whether the route is drawn as a path without copies, so its colour changes only when that does
+    private bool? _isRouteZeroCopy;
 
     public static readonly StyledProperty<StretchMode> StretchProperty =
         AvaloniaProperty.Register<VideoView, StretchMode>(nameof(Stretch), StretchMode.Uniform);
@@ -50,9 +57,12 @@ public class VideoView : Panel
 
         _statsText = new TextBlock { FontSize = 11 };
         _statsText.Bind(TextBlock.ForegroundProperty, _statsText.GetResourceObservable("PrimaryTextBrush"));
+        _routeText = new TextBlock { FontSize = 11 };
+        _fallbackText = new TextBlock { FontSize = 11, IsVisible = false, TextWrapping = TextWrapping.Wrap, MaxWidth = 360 };
+        _fallbackText.Bind(TextBlock.ForegroundProperty, _fallbackText.GetResourceObservable("WarningBrush"));
         _statsBox = new Border
         {
-            Child = _statsText,
+            Child = new StackPanel { Children = { _statsText, _routeText, _fallbackText } },
             Padding = new Thickness(6, 2),
             Margin = new Thickness(6),
             CornerRadius = new CornerRadius(4),
@@ -74,13 +84,13 @@ public class VideoView : Panel
     {
         IVideoPresenter? presenter = null;
 
-        _source = frame.Gpu switch
+        _surface = frame.Gpu switch
         {
-            DmaBufVideoFrame => "DMA-BUF",
-            GlCopyVideoFrame => "CUDA",
-            D3D11SharedVideoFrame => "D3D11",
-            MemoryYuvVideoFrame => "memory YUV",
-            _ => "memory"
+            DmaBufVideoFrame => VideoSurfaceKinds.DmaBuf,
+            GlCopyVideoFrame => VideoSurfaceKinds.CudaGl,
+            D3D11SharedVideoFrame => VideoSurfaceKinds.D3D11Shared,
+            MemoryYuvVideoFrame => VideoSurfaceKinds.YuvMemory,
+            _ => VideoSurfaceKinds.None
         };
 
         if (_fast != null && _fast.PushFrame(frame))
@@ -95,12 +105,15 @@ public class VideoView : Panel
         Dispatcher.UIThread.Post(ShowActive);
     }
 
-    /// <summary>Stops showing the last frame, once the stream it came from is over.</summary>
     /// <summary>
     /// The counters of the frames since the picture started, or null while nothing draws it.
     /// </summary>
     public FrameStats? Stats => _active?.Stats;
 
+    /// <summary>Tells the counter how the stream is decoded; any thread.</summary>
+    public void SetDecoding(VideoDecoding? decoding) => _decoding = decoding;
+
+    /// <summary>Stops showing the last frame, once the stream it came from is over.</summary>
     public void Clear()
     {
         _fast?.Clear();
@@ -154,11 +167,44 @@ public class VideoView : Panel
             return;
 
         var stats = active.Stats;
-        var presenter = ReferenceEquals(active, _bitmap) ? "bitmap" : "OpenGL";
 
-        // Shown / received, then where the frames come from and what draws them
-        _statsText.Text = string.Format(CultureInfo.InvariantCulture,
-            "{0:0} / {1:0} fps · {2} dropped · {3} → {4}", stats.ShownPerSecond, stats.ReceivedPerSecond,
-            stats.Dropped, _source, presenter);
+        _statsText.Text = Strings.Format("hybrid.screen.stats.frames",
+            ("shown", stats.ShownPerSecond.ToString("0", CultureInfo.InvariantCulture)),
+            ("received", stats.ReceivedPerSecond.ToString("0", CultureInfo.InvariantCulture)),
+            ("dropped", stats.Dropped));
+
+        // Who decodes, then the way to the screen: the form of the frames that really arrive, and
+        // whether the bitmap has to copy them. The preview of one's own screen has no decoder, and its
+        // way says nothing of how watched screens are shown
+        var decoding = _decoding;
+        _routeText.IsVisible = decoding != null;
+        _fallbackText.IsVisible = false;
+
+        if (decoding == null)
+            return;
+
+        var surface = _surface;
+        var isZeroCopy = surface is VideoSurfaceKinds.DmaBuf or VideoSurfaceKinds.CudaGl or VideoSurfaceKinds.D3D11Shared;
+        var route = isZeroCopy
+            ? Strings.Format("hybrid.screen.stats.zeroCopy", ("way", string.Join(", ", VideoElementNames.Of(surface))))
+            : Strings.Get(ReferenceEquals(active, _bitmap) ? "hybrid.screen.stats.memoryBitmap" : "hybrid.screen.stats.memory");
+
+        _routeText.Text = Strings.Format(decoding.IsHardware ? "hybrid.screen.stats.gpu" : "hybrid.screen.stats.cpu",
+            ("name", VideoElementNames.Of(decoding.Decoder)), ("route", route));
+
+        if (_isRouteZeroCopy != isZeroCopy)
+        {
+            _isRouteZeroCopy = isZeroCopy;
+            _routeText.Bind(TextBlock.ForegroundProperty,
+                _routeText.GetResourceObservable(isZeroCopy ? "SuccessBrush" : "PrimaryTextBrush"));
+        }
+
+        var failed = decoding.FailedSurface;
+        _fallbackText.IsVisible = VideoElementNames.Of(failed).Count > 0;
+
+        if (_fallbackText.IsVisible)
+            _fallbackText.Text = Strings.Format("hybrid.screen.stats.fallback",
+                ("way", string.Join(", ", VideoElementNames.Of(failed))),
+                ("reason", decoding.FailureReason ?? Strings.Get("hybrid.screen.stats.noReason")));
     }
 }

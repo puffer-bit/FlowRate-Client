@@ -493,6 +493,13 @@ public partial class ActiveHybridSessionVM
             stream.PushFrame(frame);
     }
 
+    // Raised on a thread of the track
+    private void OnVideoDecoding(int userId, MediaSourceType source, VideoDecoding decoding)
+    {
+        if (source == MediaSourceType.Screen && _screenStreamsByUser.TryGetValue(userId, out var stream))
+            stream.PushDecoding(decoding);
+    }
+
     private void NotifyScreenShareError(string text) =>
         ShowPopUp(NotificationPopUpVM.PopUpType.Error, text, "ScreenShareFailed");
 }

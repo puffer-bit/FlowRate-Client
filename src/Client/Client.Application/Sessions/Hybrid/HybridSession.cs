@@ -90,6 +90,8 @@ public partial class HybridSession : IHybridSession
 
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
+    public event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
+
     public event Action<TransportStatsSample>? StatsSampled;
 
     private static readonly TimeSpan ReconnectConnectTimeout = TimeSpan.FromSeconds(15);
@@ -177,6 +179,11 @@ public partial class HybridSession : IHybridSession
                 return;
 
             VideoFrameReady?.Invoke(userId, source, frame);
+        };
+        transport.VideoDecodingChanged += (userId, source, decoding) =>
+        {
+            if (transport == _webRTCService && !IsDisposed)
+                VideoDecodingChanged?.Invoke(userId, source, decoding);
         };
 
         // A new transport plays everything, while the user may have silenced the voices
@@ -357,6 +364,7 @@ public partial class HybridSession : IHybridSession
 
         _screenOutbound = outbound;
         LogScreenShareStarted(Model.Id, outbound.SSRC);
+        transport.SetOutboundPreviewShown(outbound.Id, IsWatchingScreen(outbound.UserId));
 
         // The picture goes out without the sound rather than not at all
         if (outbounds.Audio is { } audioOutbound && audioInput != null)
@@ -423,6 +431,7 @@ public partial class HybridSession : IHybridSession
         }
 
         LogScreenShareChanged(Model.Id, outbound.SSRC);
+        transport.SetOutboundPreviewShown(outbound.Id, IsWatchingScreen(outbound.UserId));
 
         // A sound that is dropped stays muted on its producer until the share ends
         if (audioOutbound != null)
@@ -529,6 +538,11 @@ public partial class HybridSession : IHybridSession
             return;
 
         _screenWatch?.Set(Model.Id, userId, isWatched);
+
+        // Our own screen is watched as its preview, which costs a download of every frame
+        if (_screenOutbound is { } screen && screen.UserId == userId)
+            _webRTCService.SetOutboundPreviewShown(screen.Id, isWatched);
+
         ScreenWatchChanged?.Invoke(userId, isWatched);
     }
 

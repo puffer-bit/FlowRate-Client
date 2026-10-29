@@ -48,17 +48,21 @@ public partial class HybridScreenTile : UserControl
         {
             _stream.FrameReady -= OnFrame;
             _stream.Cleared -= Picture.Clear;
+            _stream.DecodingChanged -= Picture.SetDecoding;
             _stream.ReadFrameStats = null;
         }
 
         _stream = stream;
         Picture.Clear();
+        Picture.SetDecoding(null);
 
         if (stream == null)
             return;
 
         stream.FrameReady += OnFrame;
         stream.Cleared += Picture.Clear;
+        stream.DecodingChanged += Picture.SetDecoding;
+        Picture.SetDecoding(stream.Decoding);
         stream.ReadFrameStats = () => Picture.Stats;
     }
 

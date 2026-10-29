@@ -33,7 +33,7 @@ public interface IScreenCapture : IDisposable
     /// <summary>The encoder and where the picture is scaled, for the log.</summary>
     string Description { get; }
 
-    /// <summary>What is sent, as the sharer sees it: at most 30 frames a second, in memory.</summary>
+    /// <summary>What is sent, as the sharer sees it: at the size and rate of the capture, in memory.</summary>
     event Action<RawVideoFrame>? PreviewFrameReady;
 
     /// <summary>Every encoded picture, in the order to send it.</summary>
@@ -47,6 +47,12 @@ public interface IScreenCapture : IDisposable
 
     /// <summary>Changes the bitrate of the encoder while it runs, where the encoder allows it.</summary>
     void SetBitrate(int kbps);
+
+    /// <summary>
+    /// Starts or stops the preview. A preview nobody looks at still costs the download of every frame
+    /// from the GPU, so it is stopped while our own screen is not watched. Shown at the start. Any thread.
+    /// </summary>
+    void SetPreviewShown(bool isShown);
 }
 
 /// <summary>
@@ -56,6 +62,12 @@ public interface IScreenCapture : IDisposable
 public interface IVideoDecoder : IDisposable
 {
     event Action<RawVideoFrame>? FrameReady;
+
+    /// <summary>
+    /// How the frames are decoded, raised before the first frame of the decoder and again before the
+    /// first frame after it was rebuilt to deliver them differently. Raised on a thread of the decoder.
+    /// </summary>
+    event Action<VideoDecoding>? DecodingChanged;
 
     /// <summary>
     /// The decoder cannot go on without a keyframe, as after it was rebuilt; the transport asks the

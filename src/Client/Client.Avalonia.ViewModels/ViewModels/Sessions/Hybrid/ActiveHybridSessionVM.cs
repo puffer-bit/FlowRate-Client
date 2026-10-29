@@ -166,6 +166,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             .Add(() => hybridSession.ScreenWatchChanged += OnScreenWatchChanged,
                 () => hybridSession.ScreenWatchChanged -= OnScreenWatchChanged)
             .Add(() => hybridSession.VideoFrameReady += OnVideoFrame, () => hybridSession.VideoFrameReady -= OnVideoFrame)
+            .Add(() => hybridSession.VideoDecodingChanged += OnVideoDecoding,
+                () => hybridSession.VideoDecodingChanged -= OnVideoDecoding)
             .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)

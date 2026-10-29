@@ -316,10 +316,77 @@
   "settings.video.presentationBuffer.title": "Frames waiting to be shown",
   "settings.video.presentationBuffer.description": "More frames smooth out an uneven network, but every frame adds a little delay.",
   "settings.video.frameStats.title": "Frame counter on screens",
-  "settings.video.frameStats.description": "Shows how many frames arrive, are shown and are dropped.",
+  "settings.video.frameStats.description": "Shows how many frames arrive, are shown and are dropped, what decodes them and whether they reach the screen without copying.",
   "settings.video.section.encoding": "Encoding",
   "settings.video.encoder.title": "Encoder",
   "settings.video.encoder.description": "Used for your own screen share; applies to the next share.",
+  "settings.video.automaticChoice": "Automatic: {choice}",
+  "@settings.video.automaticChoice": {
+    "placeholders": {
+      "choice": {}
+    }
+  },
+  "settings.video.choice.gpu": "{name}, video card ({element})",
+  "@settings.video.choice.gpu": {
+    "placeholders": {
+      "name": {},
+      "element": {}
+    }
+  },
+  "settings.video.choice.cpu": "{name}, processor ({element})",
+  "@settings.video.choice.cpu": {
+    "placeholders": {
+      "name": {},
+      "element": {}
+    }
+  },
+  "settings.video.zeroCopyStatus.title": "On this computer",
+  "settings.video.zeroCopyStatus.failed": "Turned off after an error: {ways}. Comes back after a restart",
+  "@settings.video.zeroCopyStatus.failed": {
+    "placeholders": {
+      "ways": {}
+    }
+  },
+  "settings.video.zeroCopyStatus.unavailable": "Not available: frames go through memory",
+  "settings.video.zeroCopyStatus.unknown": "Not checked yet",
+  "hybrid.screen.stats.frames": "{shown} / {received} fps · {dropped} dropped",
+  "@hybrid.screen.stats.frames": {
+    "placeholders": {
+      "shown": {},
+      "received": {},
+      "dropped": {}
+    }
+  },
+  "hybrid.screen.stats.gpu": "Video card ({name}) · {route}",
+  "@hybrid.screen.stats.gpu": {
+    "placeholders": {
+      "name": {},
+      "route": {}
+    }
+  },
+  "hybrid.screen.stats.cpu": "Processor ({name}) · {route}",
+  "@hybrid.screen.stats.cpu": {
+    "placeholders": {
+      "name": {},
+      "route": {}
+    }
+  },
+  "hybrid.screen.stats.zeroCopy": "without copying, {way}",
+  "@hybrid.screen.stats.zeroCopy": {
+    "placeholders": {
+      "way": {}
+    }
+  },
+  "hybrid.screen.stats.memory": "through memory",
+  "hybrid.screen.stats.memoryBitmap": "through memory, drawn without OpenGL",
+  "hybrid.screen.stats.fallback": "{way} did not work, frames go through memory: {reason}",
+  "@hybrid.screen.stats.fallback": {
+    "placeholders": {
+      "way": {},
+      "reason": {}
+    }
+  },
+  "hybrid.screen.stats.noReason": "the reason is in the log",
   "settings.storage.name": "Data and storage",
   "settings.storage.section.messages": "Messages",
   "settings.storage.keepMessages.title": "Keep messages on this device",

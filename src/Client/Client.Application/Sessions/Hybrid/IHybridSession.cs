@@ -153,6 +153,12 @@ public interface IHybridSession : IDisposable
     event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     /// <summary>
+    /// Raised with the user and the source of a watched screen when its decoder reports how it
+    /// decodes, before its first frame and again after it was rebuilt. Raised on a thread of the track.
+    /// </summary>
+    event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
+
+    /// <summary>
     /// Raised with how the media of the current transport fared, every few seconds while it runs.
     /// Raised on any thread.
     /// </summary>
