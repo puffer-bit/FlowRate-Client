@@ -37,6 +37,8 @@ internal sealed partial class TransportStats
     private readonly Func<uint, InboundTrack?> _findInbound;
     private readonly Func<uint, OutboundTrack?> _findOutbound;
     private readonly Func<uint, (long Lost, long Late)?> _readJitterBuffer;
+    private readonly Action _pairSelected;
+    private readonly Func<bool> _wakeSender;
     private readonly Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> _readSendQueues;
     private readonly Action _reportPeriod;
     private readonly Action<TransportStatsSample> _sampled;
@@ -62,6 +64,12 @@ internal sealed partial class TransportStats
     // there only while the socket does not take them, which over UDP it always does
     private const double SendQueueWarningMs = 100;
 
+    // Readings in a row with a backed up queue after which the sink of the transport is woken. Only
+    // on the timer thread
+    private const int StalledReadings = 2;
+    private int _backedUpReadings;
+    private bool _isWokenUp;
+
     private System.Threading.Timer? _timer;
     private volatile bool _isStopped;
     private int _readingInFlight;
@@ -69,11 +77,14 @@ internal sealed partial class TransportStats
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
     /// <param name="findOutbound">The outbound track with the given SSRC.</param>
     /// <param name="readJitterBuffer">What the jitter buffer of the stream with the given SSRC lost and got late.</param>
+    /// <param name="pairSelected">Called when ICE picks a candidate pair, the first or another one.</param>
+    /// <param name="wakeSender">Wakes the sink of the transport, see WebRTCBinTuning.WakeSender.</param>
     /// <param name="readSendQueues">What the last queue of every track we send holds.</param>
     /// <param name="reportPeriod">Logs the figures of the media itself, once per summary.</param>
     /// <param name="sampled">Takes the round trip and the loss of every reading, on a thread of webrtcbin.</param>
     public TransportStats(TransportCore core, Func<uint, InboundTrack?> findInbound,
         Func<uint, OutboundTrack?> findOutbound, Func<uint, (long Lost, long Late)?> readJitterBuffer,
+        Action pairSelected, Func<bool> wakeSender,
         Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, Action reportPeriod,
         Action<TransportStatsSample> sampled, ILogger logger)
     {
@@ -81,6 +92,8 @@ internal sealed partial class TransportStats
         _findInbound = findInbound;
         _findOutbound = findOutbound;
         _readJitterBuffer = readJitterBuffer;
+        _pairSelected = pairSelected;
+        _wakeSender = wakeSender;
         _readSendQueues = readSendQueues;
         _reportPeriod = reportPeriod;
         _sampled = sampled;
@@ -149,12 +162,37 @@ internal sealed partial class TransportStats
     /// </summary>
     private void ReportSendQueues()
     {
+        var isBackedUp = false;
+
         foreach (var (track, levelMs, packets) in _readSendQueues())
         {
             if (levelMs >= SendQueueWarningMs)
+            {
+                isBackedUp = true;
                 LogSendQueueBacklog(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs, packets);
+            }
             else
+            {
                 LogSendQueue(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs);
+            }
+        }
+
+        if (!isBackedUp)
+        {
+            // The wake is what let the packets go, which tells the stall was the lost FD_WRITE
+            if (_isWokenUp)
+                LogSenderResumed(_core.SessionId);
+
+            _backedUpReadings = 0;
+            _isWokenUp = false;
+            return;
+        }
+
+        // Woken again every time it stays stuck: the event may be lost once more
+        if (++_backedUpReadings >= StalledReadings && _wakeSender())
+        {
+            LogSenderWoken(_core.SessionId, _backedUpReadings);
+            _isWokenUp = true;
         }
     }
 
@@ -342,6 +380,7 @@ internal sealed partial class TransportStats
 
         var isFirst = _selectedPair == null;
         _selectedPair = description;
+        _pairSelected();
 
         if (isFirst)
             LogCandidatePair(_core.SessionId, local, remote);
