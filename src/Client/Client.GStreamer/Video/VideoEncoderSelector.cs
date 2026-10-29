@@ -173,10 +173,11 @@ public static class VideoEncoderSelector
             kbps => [("vbv-buffer-size", Format(WindowKbits(kbps)))]);
 
     // In its low-latency usages AMF makes a keyframe only when asked for one: its GOP size gives
-    // keyframes in the transcoding usage only
+    // keyframes in the transcoding usage only. A GOP of 0, an IDR at the start alone, keeps it so
+    // where the element does not take the usage
     private static Candidate Amf(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
-            [("usage", "ultra-low-latency"), ("rate-control", "cbr")]);
+            [("usage", "ultra-low-latency"), ("rate-control", "cbr"), ("gop-size", "0")]);
 
     // 1024 frames is the longest GOP VA-API takes
     private static Candidate Va(string factory) =>
@@ -193,10 +194,11 @@ public static class VideoEncoderSelector
     private static Candidate MediaFoundation(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")], [("rc-mode", "cbr")]);
 
-    // openh264 takes bit/s and has a mode tuned for screen content
+    // openh264 takes bit/s and has a mode tuned for screen content. Its scene change detection makes
+    // a keyframe of a switch of windows, as big as the frame it replaces, but one more burst
     private static readonly Candidate OpenH264 = new("openh264enc", false, kbps =>
         [("bitrate", Format(kbps * 1000)), ("usage-type", "screen"), ("rate-control", "bitrate"), ("complexity", "low")],
-        [("gop-size", "2147483647")]);
+        [("gop-size", "2147483647"), ("scene-change-detection", "false")]);
 
     // Presets 10 and above are the real-time ones
     private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>

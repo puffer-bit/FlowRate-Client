@@ -58,11 +58,11 @@ the whole branch.
 |---|---|---|---|---|
 | NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` | `gop-size=-1` | `vbv-buffer-size` |
 | NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` | `gop-size=-1` | `vbv-buffer-size` |
-| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage | |
+| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
 | VA-API | kbit/s | `rate-control=cbr` | `key-int-max=1024` | `cpb-size` |
 | Quick Sync | kbit/s | `rate-control=cbr` | `gop-size=65535` | `max-frame-size-i` |
 | Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` | the encoder's own | |
-| OpenH264 | bit/s | `usage-type=screen`, `rate-control=bitrate`, `complexity=low` | `gop-size=2147483647` | |
+| OpenH264 | bit/s | `usage-type=screen`, `rate-control=bitrate`, `complexity=low` | `gop-size=2147483647`, `scene-change-detection=false` | |
 
 Left to their defaults, NVENC and AMF are tuned for quality: a variable rate that sends a keyframe
 as a burst of several times the average frame, and frames held back for reordering.
