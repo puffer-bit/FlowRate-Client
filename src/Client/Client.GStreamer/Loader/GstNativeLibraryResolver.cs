@@ -125,6 +125,10 @@ public static partial class GstNativeLibraryResolver
     /// </summary>
     private static string? ToLinuxName(string libraryName)
     {
+        // libnice is versioned on its own
+        if (libraryName == "nice-10.dll")
+            return "libnice.so.10";
+
         var match = WindowsLibraryName().Match(libraryName);
         return match.Success ? $"lib{match.Groups["name"].Value}-{match.Groups["api"].Value}.so.0" : null;
     }

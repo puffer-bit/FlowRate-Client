@@ -160,7 +160,7 @@ try {
     foreach ($library in @("gstreamer-1.0-0.dll", "gstbase-1.0-0.dll", "gstapp-1.0-0.dll", "gstvideo-1.0-0.dll",
             "gstaudio-1.0-0.dll", "gstwebrtc-1.0-0.dll", "gstsdp-1.0-0.dll", "gstrtp-1.0-0.dll",
             "gstpbutils-1.0-0.dll", "gstcontroller-1.0-0.dll", "gstnet-1.0-0.dll", "gsttag-1.0-0.dll",
-            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll")) {
+            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll", "nice-10.dll")) {
         Copy-Item (Join-Path $bin $library) $destBin
     }
 
