@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Client.Application.Ports;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
@@ -330,7 +331,8 @@ internal sealed partial class OutgoingTracks
             return false;
         }
 
-        var branch = OutgoingVideoBranch.Build(outbound, codec, _sequenceNumbers.GetValueOrDefault(outbound.Id, -1));
+        var branch = OutgoingVideoBranch.Build(outbound, codec, settings.Framerate,
+            _sequenceNumbers.GetValueOrDefault(outbound.Id, -1));
 
         if (branch?.GetByName(OutgoingVideoBranch.SourceName) is not { } source)
         {
@@ -348,16 +350,40 @@ internal sealed partial class OutgoingTracks
             return true;
         }
 
-        // The keyframes the SFU asks for reach the appsrc from webrtcbin
+        // The keyframes the SFU asks for reach the appsrc from webrtcbin. When the first request of a
+        // wait came, logged with the keyframe that answers it: an encoder that ignores the requests
+        // leaves a new viewer without a picture until it makes a keyframe by itself
+        long keyFrameRequested = 0;
+
         using (var output = source.GetStaticPad("src"))
         {
             if (output != null)
-                GstEncodedNative.WatchKeyFrameRequests(output, capture.RequestKeyFrame);
+                GstEncodedNative.WatchKeyFrameRequests(output, () =>
+                {
+                    // Only the first request of a wait is timed: the SFU repeats it until the keyframe comes
+                    if (Interlocked.CompareExchange(ref keyFrameRequested, Stopwatch.GetTimestamp(), 0) == 0)
+                        LogKeyFrameRequested(_core.SessionId, outbound.SSRC);
+
+                    capture.RequestKeyFrame();
+                });
         }
 
         // Stamped again by the appsrc: the RTP timestamps follow the clock of this pipeline. The
-        // appsrc stays with the capture, which pushes into it until it is disposed
-        capture.EncodedFrameReady += frame => GstEncodedNative.Push(source, frame with { Timestamp = -1 });
+        // appsrc stays with the capture, which pushes into it until it is disposed. When the packets
+        // back up, the frames up to a keyframe are dropped and the encoder asked for one at once
+        var maxFrames = OutgoingVideoBranch.MaxQueuedFrames(settings.Framerate);
+        var gate = new EncodedFrameGate(source, maxFrames);
+        capture.EncodedFrameReady += frame =>
+        {
+            if (frame.IsKeyFrame && Interlocked.Exchange(ref keyFrameRequested, 0) is var requested and > 0)
+                LogKeyFrameEncoded(_core.SessionId, outbound.SSRC, (long)Stopwatch.GetElapsedTime(requested).TotalMilliseconds);
+
+            if (!gate.Push(frame with { Timestamp = -1 }))
+                return;
+
+            LogVideoFramesDropped(_core.SessionId, outbound.SSRC, gate.Dropped);
+            capture.RequestKeyFrame();
+        };
         capture.PreviewFrameReady += frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame);
 
         if (!capture.Start())
@@ -443,6 +469,12 @@ internal sealed partial class OutgoingTracks
 
         if (_outgoing.TryRemove(outboundId, out var outgoing))
             Task.Run(() => ReleaseOutgoing(outboundId, outgoing, video, meter));
+        else if (pending == null)
+        {
+            // A branch that never got linked: nothing else stops its capture
+            video?.Dispose();
+            meter?.Pad.Dispose();
+        }
 
         LogOutboundStopped(_core.SessionId);
 
@@ -683,6 +715,12 @@ internal sealed partial class OutgoingTracks
             if (result != PadLinkReturn.Ok)
             {
                 LogCaptureBranchLinkFailed(_core.SessionId, index, result);
+
+                // The capture would go on encoding into a branch that is gone, and Stop finds the
+                // branch neither pending nor sending, so it would never be stopped
+                if (_outgoingVideo.TryRemove(outboundId, out var unlinked))
+                    unlinked.Dispose();
+
                 pipeline.Remove(branch);
                 branch.Dispose();
                 continue;

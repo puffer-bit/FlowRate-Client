@@ -16,6 +16,16 @@ internal static class PipelineBranch
     /// <summary>Name of the payloader of a capture branch.</summary>
     public const string PayloaderName = "payloader";
 
+    private static long _branchCount;
+
+    /// <summary>
+    /// A name for a new capture branch of a track. The branch a track stopped with is released off
+    /// the thread that starts the next one and may still be in the pipeline, which refuses a second
+    /// element of the same name: the new branch stayed outside, and linking it failed.
+    /// </summary>
+    public static string OutgoingName(string outboundId) =>
+        $"outgoing_{outboundId}_{Interlocked.Increment(ref _branchCount)}";
+
     /// <summary>
     /// The sequence number the next branch of the same track has to start with.
     /// </summary>

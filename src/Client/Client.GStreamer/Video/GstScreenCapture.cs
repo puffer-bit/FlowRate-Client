@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Client.Application.Ports;
 using Client.Core.Media;
 using Client.GStreamer.Interop;
@@ -25,6 +26,13 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     private readonly IDisposable? _resource;
     private readonly Lock _lock = new();
 
+    // AMF in its low-latency usages makes a keyframe only when asked for one, whatever its GOP size, and
+    // the requests of the SFU may not come through: a viewer who joins, or whose decoder dropped the
+    // frames up to a keyframe, would wait until the capture starts over. One is asked for after this long
+    private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(2);
+    private long _lastKeyFrame = Stopwatch.GetTimestamp();
+    private readonly Action<EncodedVideoFrame> _onEncodedFrame;
+
     private GstBusWatcher? _bus;
     private AppSinkReader? _encodedReader;
     private VideoFramePump? _previewPump;
@@ -46,6 +54,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         _logger = logger;
 
         Description = $"{branch.Encoder.ToLaunchString()}, scaled on {branch.Scaler}";
+        _onEncodedFrame = OnEncodedFrame;
     }
 
     /// <returns>Null when the input cannot be captured or an element is missing.</returns>
@@ -113,8 +122,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
                 {
                     using var buffer = sample.GetBuffer();
 
-                    if (buffer != null && EncodedFrameReady is { } onFrame)
-                        GstEncodedNative.Read(buffer, onFrame);
+                    if (buffer != null && EncodedFrameReady != null)
+                        GstEncodedNative.Read(buffer, _onEncodedFrame);
                 },
                 exception => LogEncodedFrameFailed(_logger, exception, _name));
 
@@ -131,6 +140,21 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
         LogStarted(_logger, _name, Description);
         return true;
+    }
+
+    // On the thread of the reader
+    private void OnEncodedFrame(EncodedVideoFrame frame)
+    {
+        if (frame.IsKeyFrame)
+            _lastKeyFrame = Stopwatch.GetTimestamp();
+        else if (Stopwatch.GetElapsedTime(_lastKeyFrame) >= KeyFrameInterval)
+        {
+            // Asked for once per interval: the keyframe takes a few frames to come
+            _lastKeyFrame = Stopwatch.GetTimestamp();
+            RequestKeyFrame();
+        }
+
+        EncodedFrameReady?.Invoke(frame);
     }
 
     // Under the lock: the reader disposes the wrapper of the sink when it stops

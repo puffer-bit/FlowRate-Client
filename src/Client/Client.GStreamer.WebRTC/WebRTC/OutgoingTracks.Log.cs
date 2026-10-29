@@ -49,6 +49,16 @@ internal sealed partial class OutgoingTracks
         "[Session {SessionId}] Capturing the outgoing video, encoded with {Encoder}")]
     private partial void LogVideoEncoder(int sessionId, string encoder);
 
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] Video on ssrc {Ssrc} backed up before sending, frames dropped up to the next keyframe ({Dropped} so far)")]
+    private partial void LogVideoFramesDropped(int sessionId, uint ssrc, long dropped);
+
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Keyframe of ssrc {Ssrc} requested by the SFU")]
+    private partial void LogKeyFrameRequested(int sessionId, uint ssrc);
+
+    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Keyframe of ssrc {Ssrc} sent {Elapsed} ms after the request")]
+    private partial void LogKeyFrameEncoded(int sessionId, uint ssrc, long elapsed);
+
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to release the capture branch")]
     private partial void LogCaptureBranchReleaseFailed(Exception exception, int sessionId);
 

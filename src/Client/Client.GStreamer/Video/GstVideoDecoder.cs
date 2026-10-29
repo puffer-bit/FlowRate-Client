@@ -22,9 +22,12 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private const string SourceName = "input";
     private const string SinkName = "frames";
 
-    // The appsrc drops the oldest frames past a few, so a decoder that fell behind, or a stalled
-    // drawing, cannot leave the picture late for good; the gap that leaves is repaired like a loss.
-    // The frames keep the timestamps of their stream, and nothing waits for the clock
+    // Past a few queued frames the frames up to the next keyframe are dropped and one is asked for, so
+    // a decoder that fell behind, or a stalled drawing, cannot leave the picture late for good, nor
+    // broken until the sender's own next keyframe. The frames keep the timestamps of their stream,
+    // and nothing waits for the clock
+    private const int MaxQueuedFrames = 16;
+
     private const string Description =
         "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=false max-buffers=16 " +
         "max-bytes=0 leaky-type=downstream caps=\"{0}\" ! {1}{2} ! {3}";
@@ -35,7 +38,6 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private readonly Lock _lock = new();
 
     private Running? _running;
-    private bool _isWaitingForKeyFrame;
     private bool _isDisposed;
 
     public event Action<RawVideoFrame>? FrameReady;
@@ -65,22 +67,21 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
     public void Push(EncodedVideoFrame frame)
     {
+        long dropped;
+
         lock (_lock)
         {
             if (_running is not { } running)
                 return;
 
-            // A new decoder starts from a keyframe, and everything before one would only break it
-            if (_isWaitingForKeyFrame)
-            {
-                if (!frame.IsKeyFrame)
-                    return;
+            if (!running.Gate.Push(frame))
+                return;
 
-                _isWaitingForKeyFrame = false;
-            }
-
-            GstEncodedNative.Push(running.Source, frame);
+            dropped = running.Gate.Dropped;
         }
+
+        LogFramesDropped(_logger, _name, dropped);
+        KeyFrameNeeded?.Invoke();
     }
 
     /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
@@ -234,7 +235,9 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
                 }
 
                 _running = running;
-                _isWaitingForKeyFrame = true;
+
+                // A new decoder starts from a keyframe, and everything before one would only break it
+                running?.Gate.WaitForKeyFrame();
             }
 
             if (running == null)
@@ -281,6 +284,8 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
         public Element Source { get; } = source;
 
         public VideoOutput Output { get; } = output;
+
+        public EncodedFrameGate Gate { get; } = new(source, MaxQueuedFrames);
 
         /// <summary>A rebuild of this pipeline was scheduled.</summary>
         public bool IsReplaced { get; set; }
