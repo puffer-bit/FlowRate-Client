@@ -56,6 +56,35 @@ public class HybridSessionStatsVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "—";
 
+    /// <summary>
+    /// Whether the media goes over a TCP candidate pair; null while that is not known: before
+    /// the first reading, while ICE has not picked a pair, and without a connection.
+    /// </summary>
+    public bool? IsOverTcp
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(TransportText));
+            this.RaisePropertyChanged(nameof(TransportTip));
+        }
+    }
+
+    public string TransportText => IsOverTcp switch
+    {
+        true => "TCP",
+        false => "UDP",
+        null => "?"
+    };
+
+    public string TransportTip => IsOverTcp switch
+    {
+        true => Strings.Get("hybrid.stats.tcp"),
+        false => Strings.Get("hybrid.stats.udp"),
+        null => Strings.Get("hybrid.stats.transportUnknown")
+    };
+
     public string InboundLossText
     {
         get;
@@ -104,6 +133,7 @@ public class HybridSessionStatsVM : ReactiveObject
         RoundTripText = _history.LastOrDefault(reading => reading.RoundTripMs != null).RoundTripMs is { } roundTrip
             ? $"{Math.Ceiling(roundTrip):0} ms"
             : "—";
+        IsOverTcp = sample.IsOverTcp;
         InboundLossText = $"{sample.InboundLossPercent:0.#} %";
         OutboundLossText = $"{sample.OutboundLossPercent:0.#} %";
 
@@ -114,7 +144,11 @@ public class HybridSessionStatsVM : ReactiveObject
     }
 
     /// <summary>
-    /// Forgets the quality while there is no connection to measure; the history stays.
+    /// Forgets the quality and the protocol while there is no connection to measure; the history stays.
     /// </summary>
-    public void ResetQuality() => Quality = ConnectionQuality.Unknown;
+    public void ResetQuality()
+    {
+        Quality = ConnectionQuality.Unknown;
+        IsOverTcp = null;
+    }
 }

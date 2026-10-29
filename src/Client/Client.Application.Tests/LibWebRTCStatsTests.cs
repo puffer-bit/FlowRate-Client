@@ -38,7 +38,7 @@ public class LibWebRTCStatsTests
             streams.Inbound);
         Assert.Equal([new OutboundCounters(MicrophoneSsrc, 400, 0.25, 40), new OutboundCounters(OurScreenSsrc, 900, null, null)],
             streams.Outbound);
-        Assert.True(streams.IsOverTcp);
+        Assert.Equal(true, streams.IsOverTcp);
     }
 
     [Fact]
@@ -46,7 +46,16 @@ public class LibWebRTCStatsTests
     {
         var streams = StatsReader.Read(Report(received: 1, lost: 0, sent: 1, fractionLost: 0, overTcp: false)).Streams!;
 
-        Assert.False(streams.IsOverTcp);
+        Assert.Equal(false, streams.IsOverTcp);
+    }
+
+    [Fact]
+    public void ProtocolIsUnknownBeforeAPairIsSelected()
+    {
+        var report = Report(received: 1, lost: 0, sent: 1, fractionLost: 0, overTcp: true)
+            .Replace(",\"selectedCandidatePairId\":\"CP1\"", "");
+
+        Assert.Null(StatsReader.Read(report).Streams!.IsOverTcp);
     }
 
     [Fact]

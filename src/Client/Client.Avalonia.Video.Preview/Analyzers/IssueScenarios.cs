@@ -23,15 +23,6 @@ public static class IssueScenarios
         [
             new(StreamIssueKind.HighJitter, StreamIssueSeverity.Warning, 65)
         ]),
-        new("Connection over TCP", NormalFramerate,
-        [
-            new(StreamIssueKind.TcpTransport, StreamIssueSeverity.Warning)
-        ]),
-        new("TCP with loss", 45,
-        [
-            new(StreamIssueKind.TcpTransport, StreamIssueSeverity.Warning),
-            new(StreamIssueKind.PacketLoss, StreamIssueSeverity.Warning, 2.8)
-        ]),
         new("Heavy loss, frozen picture", 0,
         [
             new(StreamIssueKind.PacketLoss, StreamIssueSeverity.Critical, 18),
@@ -57,7 +48,6 @@ public static class IssueScenarios
         [
             new(StreamIssueKind.PacketLoss, StreamIssueSeverity.Warning, 6.1),
             new(StreamIssueKind.HighJitter, StreamIssueSeverity.Warning, 40),
-            new(StreamIssueKind.TcpTransport, StreamIssueSeverity.Warning),
             new(StreamIssueKind.NoAudio, StreamIssueSeverity.Warning, 6),
             new(StreamIssueKind.RendererBehind, StreamIssueSeverity.Warning, 10, 30)
         ])

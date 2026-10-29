@@ -12,9 +12,9 @@ namespace Client.Core.Sessions.Hybrid;
 /// <param name="Inbound">
 /// Every stream we receive that carried packets before; a stream that never carried any is not in it.
 /// </param>
-/// <param name="IsOverTcp">The media goes over a TCP candidate pair, where a lost packet holds back the ones after it.</param>
+/// <param name="IsOverTcp">The media goes over a TCP candidate pair, where a lost packet holds back the ones after it, or null while ICE has not picked a pair.</param>
 public readonly record struct TransportStatsSample(double? RoundTripMs, double InboundLossPercent,
-    double OutboundLossPercent, IReadOnlyList<InboundStreamSample>? Inbound = null, bool IsOverTcp = false)
+    double OutboundLossPercent, IReadOnlyList<InboundStreamSample>? Inbound = null, bool? IsOverTcp = null)
 {
     private const double GoodRoundTripMs = 150;
     private const double FairRoundTripMs = 300;

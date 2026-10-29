@@ -49,7 +49,7 @@ internal sealed partial class TransportStats
     private readonly Dictionary<uint, Counters> _previous = [];
     private double _previousTimestamp;
     private string? _selectedPair;
-    private bool _isOverTcp;
+    private bool? _isOverTcp;
 
     // The counters at the start of the current summary, by SSRC, and when it started
     private readonly Dictionary<uint, Counters> _summaryStart = [];

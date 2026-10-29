@@ -43,9 +43,6 @@ public sealed class StreamIssuesOverlay : StackPanel
         "M5.6,19.4 A9,9 0 1 1 18.4,19.4 M12,4 L12,6 M3,13 L5,13 M21,13 L19,13 " +
         "M13.1,11.9 L16.5,8.5 M13.5,13 A1.5,1.5 0 1 1 10.5,13 A1.5,1.5 0 1 1 13.5,13");
 
-    // The transport has no picture of its own, the name of the protocol says more
-    private const string TransportLabel = "TCP";
-
     private readonly Dictionary<StreamIssueArea, Badge> _badges = new();
 
     public IReadOnlyList<StreamIssue>? Issues
@@ -92,7 +89,6 @@ public sealed class StreamIssuesOverlay : StackPanel
     private static string AreaTitle(StreamIssueArea area) => area switch
     {
         StreamIssueArea.Network => Strings.Get("hybrid.screen.issues.network"),
-        StreamIssueArea.Transport => Strings.Get("hybrid.screen.issues.transport"),
         StreamIssueArea.Source => Strings.Get("hybrid.screen.issues.source"),
         StreamIssueArea.Audio => Strings.Get("hybrid.screen.issues.audio"),
         _ => Strings.Get("hybrid.screen.issues.performance")
@@ -108,7 +104,6 @@ public sealed class StreamIssuesOverlay : StackPanel
             StreamIssueKind.HighJitter => Strings.Format("hybrid.screen.issues.highJitter", ("ms", value)),
             StreamIssueKind.WaitingForKeyframe =>
                 Strings.Format("hybrid.screen.issues.waitingForKeyframe", ("seconds", value)),
-            StreamIssueKind.TcpTransport => Strings.Get("hybrid.screen.issues.tcpTransport"),
             StreamIssueKind.NoSourceFrames => Strings.Format("hybrid.screen.issues.noSourceFrames", ("seconds", value)),
             StreamIssueKind.NoAudio => Strings.Format("hybrid.screen.issues.noAudio", ("seconds", value)),
             StreamIssueKind.DecoderStalled => Strings.Format("hybrid.screen.issues.decoderStalled", ("seconds", value)),
@@ -124,8 +119,7 @@ public sealed class StreamIssuesOverlay : StackPanel
     private sealed class Badge
     {
         private readonly StreamIssueArea _area;
-        private readonly Path? _icon;
-        private readonly TextBlock? _label;
+        private readonly Path _icon;
         private readonly DoubleTransition _fade;
 
         // Counts the shows and hides, so a hide finishing late leaves a badge shown again alone
@@ -149,20 +143,6 @@ public sealed class StreamIssuesOverlay : StackPanel
                 IsVisible = false,
                 Transitions = [_fade]
             };
-
-            if (area == StreamIssueArea.Transport)
-            {
-                _label = new TextBlock
-                {
-                    Text = TransportLabel,
-                    FontSize = 13,
-                    FontWeight = FontWeight.Bold,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center
-                };
-                Control.Child = _label;
-                return;
-            }
 
             _icon = new Path
             {
@@ -193,11 +173,7 @@ public sealed class StreamIssuesOverlay : StackPanel
 
             var brush = issues.Any(issue => issue.Severity == StreamIssueSeverity.Critical) ? CriticalBrush : WarningBrush;
 
-            if (_icon != null)
-                _icon.Stroke = brush;
-
-            if (_label != null)
-                _label.Foreground = brush;
+            _icon.Stroke = brush;
 
             ToolTip.SetTip(Control, CreateTip(issues));
 
