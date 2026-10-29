@@ -489,6 +489,12 @@
   "hybrid.screen.issues.performance": "Декодирование и отрисовка",
   "hybrid.screen.issues.packetLoss": "Теряется {percent}% пакетов",
   "hybrid.screen.issues.highJitter": "Пакеты приходят неравномерно, джиттер {ms} мс",
+  "hybrid.screen.issues.burstyArrival": "Кадры приходят рывками, до {ms} мс с опозданием, часть выбрасывается",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "Картинка сломалась, ждём ключевой кадр уже {seconds} с",
   "hybrid.screen.issues.noSourceFrames": "От стримера ничего не приходит уже {seconds} с",
   "hybrid.screen.issues.noAudio": "Экран транслируется со звуком, но звука нет уже {seconds} с",
