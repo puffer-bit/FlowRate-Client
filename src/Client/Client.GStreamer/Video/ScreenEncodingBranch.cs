@@ -130,9 +130,9 @@ internal static class ScreenEncodingBranch
         encoder.Factory.StartsWith("va", StringComparison.Ordinal) && ElementFactory.Find("vapostproc") != null;
 
     /// <summary>
-    /// Changes the bitrate of the encoder of a running branch. The properties are the ones the
-    /// encoder gets for that bitrate when it is created; an encoder that does not take them while it
-    /// runs keeps its bitrate.
+    /// Changes the bitrate of the encoder of a running branch, and the bound of its frames with it.
+    /// The properties are the ones the encoder gets for that bitrate when it is created; an encoder
+    /// that does not take them while it runs keeps its bitrate.
     /// </summary>
     public static void SetBitrate(Bin branch, VideoCodec codec, VideoEncoderChoice encoder, int kbps)
     {
@@ -141,7 +141,7 @@ internal static class ScreenEncodingBranch
         if (element == null || SelectEncoder(codec, kbps, encoder.Factory) is not { } choice || choice.Factory != encoder.Factory)
             return;
 
-        foreach (var (name, value) in choice.Properties.Where(property => property.Name.Contains("bitrate", StringComparison.Ordinal)))
+        foreach (var (name, value) in choice.Properties.Where(property => VideoEncoderSelector.DependsOnBitrate(property.Name)))
             Global.UtilSetObjectArg(element, name, value);
     }
 

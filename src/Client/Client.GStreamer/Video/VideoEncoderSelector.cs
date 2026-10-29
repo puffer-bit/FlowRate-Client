@@ -45,8 +45,23 @@ public static class VideoEncoderSelector
     /// element takes it: a description with a property or a value the element does not know fails
     /// to parse, and with it the whole branch.
     /// </param>
+    /// <param name="Limit">
+    /// The properties that bound the size of a frame, by the bitrate, used where the element has them
+    /// (see <see cref="KeyFrameWindowMs"/>).
+    /// </param>
     private sealed record Candidate(string Factory, bool IsHardware, Func<int, (string, string)[]> Properties,
-        (string Name, string Value)[]? Tuning = null);
+        (string Name, string Value)[]? Tuning = null, Func<int, (string Name, string Value)[]>? Limit = null);
+
+    /// <summary>
+    /// How long the biggest frame, a keyframe, may take of the bitrate, in ms. Left to the encoders,
+    /// a keyframe of a screen of text is ten to fifty times the average frame, half a second of the
+    /// uplink sent in one burst, which loses packets and brings the PLI of one more keyframe. Bounded,
+    /// the keyframe comes out blurred and the next few frames sharpen it.
+    /// </summary>
+    private const int KeyFrameWindowMs = 100;
+
+    // The properties of Limit, which change with the bitrate
+    private static readonly HashSet<string> LimitProperties = ["vbv-buffer-size", "cpb-size", "max-frame-size-i"];
 
     // Whether the element of a factory takes a property with a value, once found out
     private static readonly ConcurrentDictionary<(string Factory, string Name, string Value), bool> Accepted = new();
@@ -70,7 +85,10 @@ public static class VideoEncoderSelector
 
             var tuning = (candidate.Tuning ?? []).Where(property => Accepts(candidate.Factory, property.Name, property.Value));
 
-            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning],
+            // Tried with the value that leaves the encoder its default, which every bitrate gives the same answer for
+            var limit = (candidate.Limit?.Invoke(bitrateKbps) ?? []).Where(property => Accepts(candidate.Factory, property.Name, "0"));
+
+            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning, ..limit],
                 candidate.IsHardware);
         }
 
@@ -95,6 +113,12 @@ public static class VideoEncoderSelector
     /// </summary>
     public static IReadOnlyList<string> GetKnownEncoders(VideoCodec codec, bool hardware) =>
         GetCandidates(codec).Where(c => c.IsHardware == hardware).Select(c => c.Factory).ToList();
+
+    /// <summary>
+    /// Whether the value of the property follows the bitrate the encoder was made for.
+    /// </summary>
+    public static bool DependsOnBitrate(string name) =>
+        name.Contains("bitrate", StringComparison.Ordinal) || LimitProperties.Contains(name);
 
     /// <summary>
     /// The parser that follows the encoder, or null when the codec needs none.
@@ -133,33 +157,46 @@ public static class VideoEncoderSelector
 
     // Hardware encoders take the bitrate in kbit/s. Left to their defaults, the NVENC and AMF ones
     // are tuned for quality: a variable rate that sends a keyframe as a burst of several times the
-    // average frame, and frames held back for reordering
+    // average frame, and frames held back for reordering.
+    //
+    // Keyframes are made only when asked for (see GstScreenCapture): every encoder that has a GOP of
+    // its own gets the longest there is, since its default (30 to 90 frames) made several keyframes a
+    // second at a high rate, each one a burst
     private static Candidate Nvidia(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
-            [("rate-control", "cbr"), ("tune", "ultra-low-latency"), ("zero-reorder-delay", "true")]);
+            [("rate-control", "cbr"), ("tune", "ultra-low-latency"), ("zero-reorder-delay", "true"), ("gop-size", "-1")],
+            kbps => [("vbv-buffer-size", Format(WindowKbits(kbps)))]);
 
     private static Candidate NvidiaLegacy(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("preset", "low-latency-hq"), ("zerolatency", "true")],
-            [("rc-mode", "cbr")]);
+            [("rc-mode", "cbr"), ("gop-size", "-1")],
+            kbps => [("vbv-buffer-size", Format(WindowKbits(kbps)))]);
 
     // In its low-latency usages AMF makes a keyframe only when asked for one: its GOP size gives
-    // keyframes in the transcoding usage only, so GstScreenCapture asks for one every 2 seconds
+    // keyframes in the transcoding usage only
     private static Candidate Amf(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
             [("usage", "ultra-low-latency"), ("rate-control", "cbr")]);
 
+    // 1024 frames is the longest GOP VA-API takes
     private static Candidate Va(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")]);
+        new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")],
+            [("key-int-max", "1024")],
+            kbps => [("cpb-size", Format(WindowKbits(kbps)))]);
 
+    // Quick Sync bounds a keyframe in kbytes
     private static Candidate Qsv(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")]);
+        new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")],
+            [("gop-size", "65535")],
+            kbps => [("max-frame-size-i", Format(Math.Max(1, WindowKbits(kbps) / 8)))]);
 
     private static Candidate MediaFoundation(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")], [("rc-mode", "cbr")]);
 
     // openh264 takes bit/s and has a mode tuned for screen content
     private static readonly Candidate OpenH264 = new("openh264enc", false, kbps =>
-        [("bitrate", Format(kbps * 1000)), ("usage-type", "screen"), ("rate-control", "bitrate"), ("complexity", "low")]);
+        [("bitrate", Format(kbps * 1000)), ("usage-type", "screen"), ("rate-control", "bitrate"), ("complexity", "low")],
+        [("gop-size", "2147483647")]);
 
     // Presets 10 and above are the real-time ones
     private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>
@@ -170,6 +207,9 @@ public static class VideoEncoderSelector
         [("target-bitrate", Format(kbps * 1000)), ("deadline", "1"), ("cpu-used", "8"), ("end-usage", "cbr")]);
 
     private static string Format(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    // What the bitrate carries in KeyFrameWindowMs, in kbit
+    private static int WindowKbits(int kbps) => Math.Max(1, (int)((long)kbps * KeyFrameWindowMs / 1000));
 
     /// <summary>
     /// Whether the element of <paramref name="factory"/> takes <paramref name="value"/> for
