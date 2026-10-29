@@ -12,9 +12,6 @@ public enum StreamIssueKind
     /// <summary>A loss broke the picture, which stays frozen until the sender sends a keyframe.</summary>
     WaitingForKeyframe,
 
-    /// <summary>The media goes over TCP, so a lost packet holds back everything after it.</summary>
-    TcpTransport,
-
     /// <summary>Nothing comes from the streamer while the connection is alive.</summary>
     NoSourceFrames,
 
@@ -32,7 +29,6 @@ public enum StreamIssueKind
 public enum StreamIssueArea
 {
     Network,
-    Transport,
     Source,
     Audio,
     Performance
@@ -55,7 +51,6 @@ public sealed record StreamIssue(StreamIssueKind Kind, StreamIssueSeverity Sever
     {
         StreamIssueKind.PacketLoss or StreamIssueKind.HighJitter or StreamIssueKind.WaitingForKeyframe =>
             StreamIssueArea.Network,
-        StreamIssueKind.TcpTransport => StreamIssueArea.Transport,
         StreamIssueKind.NoSourceFrames => StreamIssueArea.Source,
         StreamIssueKind.NoAudio => StreamIssueArea.Audio,
         _ => StreamIssueArea.Performance
