@@ -10,7 +10,8 @@ namespace Client.LibWebRTC.Voice;
 /// </summary>
 /// <remarks>
 /// The decoder is made with the first picture, on the thread that delivers them: nothing is decoded
-/// before libwebrtc has a keyframe of the stream.
+/// before libwebrtc has a keyframe of the stream. Until then a keyframe is asked for every second:
+/// libwebrtc does not ask by itself, and a viewer who joined would wait for the encoder to make one.
 /// </remarks>
 internal sealed class IncomingVideoStream : IDisposable
 {
@@ -25,6 +26,10 @@ internal sealed class IncomingVideoStream : IDisposable
     private bool _isDecoderMissing;
     private bool _isDisposed;
 
+    private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(1);
+    private readonly Timer _keyFrameTimer;
+    private bool _hasPicture;
+
     /// <param name="createDecoder">Makes the decoder, or gives null when there is none for the stream.</param>
     /// <param name="onFrame">Receives the decoded pictures, on a thread of the decoder.</param>
     /// <param name="onError">Receives a failure to hand a picture over, on the thread that delivers them.</param>
@@ -36,6 +41,7 @@ internal sealed class IncomingVideoStream : IDisposable
         _createDecoder = createDecoder;
         _onFrame = onFrame;
         _onError = onError;
+        _keyFrameTimer = new Timer(_ => RequestKeyFrame(), null, TimeSpan.Zero, KeyFrameInterval);
         _subscription = receiver.Receive(ssrc, OnPicture);
     }
 
@@ -44,6 +50,12 @@ internal sealed class IncomingVideoStream : IDisposable
     {
         try
         {
+            if (!_hasPicture)
+            {
+                _hasPicture = true;
+                _keyFrameTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            }
+
             EnsureDecoder()?.Push(frame);
         }
         catch (Exception exception)
@@ -107,6 +119,7 @@ internal sealed class IncomingVideoStream : IDisposable
             decoder = _decoder;
         }
 
+        _keyFrameTimer.Dispose();
         _subscription.Dispose();
 
         // A picture still being pushed finds the decoder stopped, which drops it

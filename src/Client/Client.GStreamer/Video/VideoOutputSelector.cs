@@ -106,7 +106,13 @@ internal static class VideoOutputSelector
 
         var head = decoderCaps == null ? decoder : $"{decoder} ! {decoderCaps}";
 
-        // Without a shared texture the GPU still converts to BGRA, so only the download is left to the CPU
+        // Without a shared texture the planes as decoded are downloaded for the screen to upload: NV12
+        // is under half of BGRA, and a screen of 144 fps fell behind on the download of BGRA
+        if ((surfaces & VideoSurfaceKinds.D3D11Shared) == 0 && VideoSurfaceSupport.Supports(VideoSurfaceKinds.YuvMemory) &&
+            Has("d3d11download"))
+            return new VideoOutput(decoder, VideoOutputKind.MemoryYuv, $"{head} ! d3d11download ! {YuvCaps}");
+
+        // Otherwise the GPU still converts to BGRA, so only the download is left to the CPU
         if ((surfaces & VideoSurfaceKinds.D3D11Shared) == 0)
             return Has("d3d11download")
                 ? new VideoOutput(decoder, VideoOutputKind.Memory,
