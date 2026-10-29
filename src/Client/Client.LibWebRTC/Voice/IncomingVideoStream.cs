@@ -19,6 +19,7 @@ internal sealed class IncomingVideoStream : IDisposable
     private readonly uint _ssrc;
     private readonly Func<IVideoDecoder?> _createDecoder;
     private readonly Action<RawVideoFrame> _onFrame;
+    private readonly Action<VideoDecoding> _onDecoding;
     private readonly Action<Exception> _onError;
     private readonly IDisposable _subscription;
     private readonly Lock _lock = new();
@@ -32,14 +33,16 @@ internal sealed class IncomingVideoStream : IDisposable
 
     /// <param name="createDecoder">Makes the decoder, or gives null when there is none for the stream.</param>
     /// <param name="onFrame">Receives the decoded pictures, on a thread of the decoder.</param>
+    /// <param name="onDecoding">Receives how the decoder decodes, on a thread of the decoder.</param>
     /// <param name="onError">Receives a failure to hand a picture over, on the thread that delivers them.</param>
     public IncomingVideoStream(IEncodedVideoReceiver receiver, uint ssrc, Func<IVideoDecoder?> createDecoder,
-        Action<RawVideoFrame> onFrame, Action<Exception> onError)
+        Action<RawVideoFrame> onFrame, Action<VideoDecoding> onDecoding, Action<Exception> onError)
     {
         _receiver = receiver;
         _ssrc = ssrc;
         _createDecoder = createDecoder;
         _onFrame = onFrame;
+        _onDecoding = onDecoding;
         _onError = onError;
         _keyFrameTimer = new Timer(_ => RequestKeyFrame(), null, TimeSpan.Zero, KeyFrameInterval);
         _subscription = receiver.Receive(ssrc, OnPicture);
@@ -79,6 +82,7 @@ internal sealed class IncomingVideoStream : IDisposable
         }
 
         decoder.FrameReady += _onFrame;
+        decoder.DecodingChanged += _onDecoding;
         decoder.KeyFrameNeeded += RequestKeyFrame;
 
         lock (_lock)
@@ -126,6 +130,7 @@ internal sealed class IncomingVideoStream : IDisposable
         if (decoder != null)
         {
             decoder.FrameReady -= _onFrame;
+            decoder.DecodingChanged -= _onDecoding;
             decoder.KeyFrameNeeded -= RequestKeyFrame;
             decoder.Dispose();
         }

@@ -53,6 +53,8 @@ internal sealed class OutgoingVideo : IVideoSendListener, IDisposable
 
     public void OnKeyFrameRequested() => _capture.RequestKeyFrame();
 
+    public void SetPreviewShown(bool isShown) => _capture.SetPreviewShown(isShown);
+
     /// <summary>Stops the capture, then the source it pushed into.</summary>
     public void Dispose()
     {
