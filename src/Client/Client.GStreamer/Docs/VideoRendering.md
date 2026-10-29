@@ -3,6 +3,7 @@
 How a shared screen gets from the decoder onto the screen of the viewer, and how it is sent at a
 high frame rate. The goal is a smooth picture at any rate, up to 1080p at 144 fps, without copying
 every frame through memory when the GPU can avoid it.
+How the encoders and decoders are chosen, and what the frame counter shows, is in `VideoCodecs.md`.
 
 Without zero copy the frames come in memory. With OpenGL they stay NV12 or I420 as the decoder
 wrote them and the shader turns them into RGB; only without OpenGL are they converted to BGRA and
@@ -104,8 +105,9 @@ without copying them into the default layout; without a meta the planes are wher
   means frames are drawn by `GlVideoPresenter`.
 - **Linux:** `DmaBuf` when it is an EGL context with `EGL_EXT_image_dma_buf_import` and
   `glEGLImageTargetTexture2DOES`; `CudaGl` when `libcuda.so.1` loads.
-- **Windows:** `D3D11Shared` when the context is ANGLE on Direct3D 11 with
-  `EGL_ANGLE_image_d3d11_texture` (Avalonia renders with ANGLE there by default).
+- **Windows:** `D3D11Shared` whenever OpenGL draws: Avalonia renders with ANGLE there by default,
+  and whether ANGLE opens shared textures (`EGL_ANGLE_d3d_share_handle_client_buffer`,
+  `EGL_ANGLE_keyed_mutex`) is found out with the first frame, see "Direct3D 11".
 - Any OpenGL presenter adds `YuvMemory`.
 - Otherwise nothing; frames come in memory as BGRA and `BitmapVideoPresenter` draws them.
 
@@ -190,23 +192,44 @@ Not run on hardware yet.
 
 ## Direct3D 11 (Windows)
 
-`D3D11SharedTextureWriter` keeps three BGRA textures created on the device of the decoder with
-`SHARED_NTHANDLE | SHARED_KEYEDMUTEX`. For every frame it takes a free one, copies the decoded
-texture into it on the GPU (`CopySubresourceRegion` under the device lock) and releases it with key 1.
+`D3D11SharedTextureWriter` keeps six BGRA textures created on the device of the decoder with
+`SHARED_KEYEDMUTEX`, which gives them share handles of the older kind
+(`IDXGIResource::GetSharedHandle`): ANGLE opens only those, not NT handles. For every frame it takes
+a free one, copies the decoded texture into it on the GPU (`CopySubresourceRegion` under the device
+lock) and releases it with key 1. The share handles are no kernel handles and are never closed.
 
-`AngleD3D11Import` works inside the ANGLE context of the render thread: it gets ANGLE's Direct3D 11
-device (`eglQueryDisplayAttribEXT(EGL_DEVICE_EXT)`, `eglQueryDeviceAttribEXT(EGL_D3D11_DEVICE_ANGLE)`),
-opens each shared texture once with `ID3D11Device1::OpenSharedResource1`, and for every frame takes
-key 1, copies it with `CopyResource` into a texture of ANGLE's device and releases key 0. That copy is
-bound to an OpenGL texture once per size through an EGL image (`EGL_D3D11_TEXTURE_ANGLE`) and drawn
-by the RGB shader without swapping channels.
+`AngleD3D11Import` hands each texture to ANGLE, which opens it on its own device:
+
+1. Once per texture, `eglCreatePbufferFromClientBuffer(EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE)`
+   makes a pbuffer of it (`EGL_ANGLE_d3d_share_handle_client_buffer`), with any 8-bit RGBA
+   configuration that binds to textures. `eglQuerySurfacePointerANGLE(EGL_DXGI_KEYED_MUTEX_ANGLE)`
+   gives the keyed mutex ANGLE opened with it (`EGL_ANGLE_keyed_mutex`).
+2. For every frame the renderer takes key 1 with a 4 ms timeout and binds the pbuffer to its input
+   texture with `eglBindTexImage`; the RGB shader draws it into the texture of its framebuffer
+   without swapping channels.
+3. Right after the draw it calls `eglReleaseTexImage` and `glFlush` and releases key 0, so the
+   decoder writes the texture again while the picture stays in the renderer's own texture.
+
+No call is made on ANGLE's Direct3D device but through EGL. The first version opened the textures
+itself on ANGLE's device (`OpenSharedResource1`) and copied them there with `CopyResource`, behind
+ANGLE's back: the pictures stayed black and the AMD driver crashed, without an error that would
+have fallen back to memory.
+
+ANGLE refuses contexts shared with the compositor, so the presenter draws in the compositor's own
+context, and the probe cannot ask that context for the extensions. On Windows it claims
+`D3D11Shared` whenever OpenGL draws, and the renderer finds out with the first frame: when an
+extension is missing, the pbuffer cannot be made or bound, the kind is reported as failed with the
+reason, and the stream is rebuilt in memory. Turning off **Show frames without copying** keeps
+the frames in memory from the start.
 
 A frame the pacer dropped, or that could not be taken in 4 ms, was never read, so its texture is still
 at key 1. The frame remembers whether the renderer took it (`MarkRead`), and the writer takes such a
-texture back with key 1 instead of 0. A texture still held by a frame on screen is skipped. All COM
-calls go through vtable function pointers, which NativeAOT allows.
+texture back with key 1 instead of 0. A texture still held by a frame on screen is skipped. The
+pbuffers are kept by share handle, all let go after a size change or past twelve of them (the
+decoder made new textures). All COM calls go through vtable function pointers, which NativeAOT
+allows.
 
-Not run on hardware yet.
+Written 2026-10-29, not run yet.
 
 ## Pacing
 
@@ -244,7 +267,8 @@ passes the keyframe requests that reach that appsrc on to `IScreenCapture.Reques
   `videorate` and the tee work on `memory:D3D11Memory`, `d3d11convert` scales and converts to NV12 for
   the encoder, and the preview is scaled to 720p BGRA by another `d3d11convert` before `d3d11download`.
   With another encoder, or when an element is missing, the branch is the one through memory. The log
-  says which (`scaled on the GPU (Direct3D 11)`). Written 2026-10-14, not run yet.
+  says which (`scaled on the GPU (Direct3D 11)`). Run on 2026-10-29 with `amfh264enc` (AMD): the
+  capture of 2560x1440 kept 144 fps.
 - **Linux:** PipeWire capture still comes through memory. The bundled `pipewiresrc` is built from
   PipeWire 0.3.65 for libpipewire 0.3.48, and knows no `DMA_DRM` caps, which the VA elements need to
   take a DMA-BUF. At 2560x1440 the capture gave 30-125 fps (KWin also sends a frame only when the
@@ -264,7 +288,7 @@ On an AMD RX 7700/7800 with a 165 Hz monitor, KDE:
 
 ## Not done or not verified
 
-- NVIDIA (CUDA) and Windows (Direct3D 11 receiving and sending): compiled, never run.
+- NVIDIA (CUDA), and Windows receiving through the share handles of ANGLE: compiled, never run.
 - P010 (10-bit) frames.
 - YUV in memory (written 2026-10-26): compiles, never run.
 - The desktop client in a real session; the parts were checked separately.

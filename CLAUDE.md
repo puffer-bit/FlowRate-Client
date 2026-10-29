@@ -48,7 +48,8 @@ on nothing.
   video player in the chat): `Video/` (capture, encoders, `GstVideoMedia`, decoders and frame output),
   `Audio/` (devices, microphone processing, voice gate, microphone test, the playback sink),
   `Interop/` and `Loader/` (loading the GStreamer runtime). Design notes:
-  `Client.GStreamer/Docs/VoiceGate.md`, `VideoRendering.md`.
+  `Client.GStreamer/Docs/VoiceGate.md`, `VideoRendering.md`, `VideoCodecs.md` (choice and tuning of
+  encoders and decoders, what the frame counter and the Video tab show).
 - Release builds ship their own GStreamer runtime, built outside git
   (`Client.GStreamer/Build/README.md`); Debug falls back to the system installation.
 - The libwebrtc library (WebRTC, its C++ wrapper and the C interface of `Client.LibWebRTC/Native` in

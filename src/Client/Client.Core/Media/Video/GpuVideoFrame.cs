@@ -119,8 +119,8 @@ public abstract class GlCopyVideoFrame : GpuVideoFrame
 }
 
 /// <summary>
-/// A BGRA frame in a Direct3D 11 texture that can be opened by another device through its NT
-/// handle; access is ordered by the keyed mutex of the texture.
+/// A BGRA frame in a Direct3D 11 texture that another device can open through its share handle;
+/// access is ordered by the keyed mutex of the texture.
 /// </summary>
 public abstract class D3D11SharedVideoFrame : GpuVideoFrame
 {
@@ -130,8 +130,8 @@ public abstract class D3D11SharedVideoFrame : GpuVideoFrame
     }
 
     /// <summary>
-    /// The NT handle of the texture. It stays the same for every frame written into that texture,
-    /// so an importer opens it once.
+    /// The share handle of the texture, of the older kind rather than an NT handle. It stays the same
+    /// for every frame written into that texture, so an importer opens it once.
     /// </summary>
     public IntPtr SharedHandle { get; }
 

@@ -15,6 +15,9 @@ internal static class ScreenEncodingBranch
     private const int PreviewMaxHeight = 16384;
 
     public const string PreviewSinkName = "preview";
+
+    // Closed while nobody looks at the preview: what it costs is the download of every frame
+    public const string PreviewValveName = "preview_valve";
     public const string EncodedSinkName = "encoded";
     private const string EncoderName = "encoder";
 
@@ -33,7 +36,7 @@ internal static class ScreenEncodingBranch
         "{2} ! " +
         "{3} " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! " +
+        "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
         "videoscale ! videoconvert ! " +
         VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
 
@@ -47,7 +50,7 @@ internal static class ScreenEncodingBranch
         "{2} ! " +
         "{3} " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! " +
+        "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
         "vapostproc ! " + VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
 
     // The same for a Direct3D 11 capture on Windows: the frames stay textures from the capture to the
@@ -57,12 +60,12 @@ internal static class ScreenEncodingBranch
         "queue max-size-buffers=2 leaky=downstream ! video/x-raw(memory:D3D11Memory) ! " +
         "videorate drop-only=true max-rate={0} ! tee name=split " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! " +
+        "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
         "d3d11convert ! video/x-raw(memory:D3D11Memory),format=NV12,height=[2,{1}],pixel-aspect-ratio=1/1 ! " +
         "{2} ! " +
         "{3} " +
 
-        "split. ! queue max-size-buffers=1 leaky=downstream ! " +
+        "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
         "d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{4}],pixel-aspect-ratio=1/1 ! " +
         "d3d11download ! " + VideoFramePump.FrameCaps + " ! {5}";
 

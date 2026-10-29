@@ -17,10 +17,10 @@ namespace Client.Avalonia.Video;
 /// </summary>
 /// <remarks>
 /// A frame that is due is brought into textures of the OpenGL context the user interface renders
-/// with: DMA-BUF planes through EGL images, CUDA frames copied on the GPU, Direct3D 11 frames copied
-/// inside ANGLE, frames in memory uploaded. A shader turns it into an RGB texture of its own
-/// framebuffer, which Skia then draws like any image. Skia is told afterwards that its OpenGL state
-/// was changed under it.
+/// with: DMA-BUF planes through EGL images, CUDA frames copied on the GPU, Direct3D 11 textures
+/// opened by ANGLE through their share handles, frames in memory uploaded. A shader turns it into
+/// an RGB texture of its own framebuffer, which Skia then draws like any image. Skia is told
+/// afterwards that its OpenGL state was changed under it.
 /// </remarks>
 internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 {
@@ -166,6 +166,9 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
                 else
                     next.Release();
 
+                // The decoder may write the shared texture again once the draw is queued
+                _angle?.EndRead();
+
                 // Skia finds its own state again on the next draw
                 grContext.ResetContext();
             }
@@ -219,7 +222,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
         if (OperatingSystem.IsLinux() && _gl.EglImageTargetTexture2D != null)
             _eglDisplay = EglDmaBuf.GetImportingDisplay();
 
-        if (OperatingSystem.IsWindows() && _gl.EglImageTargetTexture2D != null)
+        if (OperatingSystem.IsWindows())
             _angle = AngleD3D11Import.Create(glInterface);
 
         return true;
@@ -417,36 +420,32 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     {
         var gl = _gl!;
 
-        if (_angle == null || gl.EglImageTargetTexture2D == null)
+        if (_angle == null)
         {
             VideoSurfaceProbe.Logger?.LogWarning("Direct3D 11 frames cannot be imported: {Reason}",
-                gl.EglImageTargetTexture2D == null ? "no glEGLImageTargetTexture2DOES" : AngleD3D11Import.LastFailure);
-            VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared);
+                AngleD3D11Import.LastFailure);
+            VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared, AngleD3D11Import.LastFailure);
             return false;
         }
-
-        var image = _angle.Import(frame.SharedHandle, frame.Width, frame.Height, out var isBroken);
-
-        if (isBroken)
-        {
-            VideoSurfaceProbe.Logger?.LogWarning("Direct3D 11 frame import failed: {Reason}", AngleD3D11Import.LastFailure);
-            VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared);
-            return false;
-        }
-
-        // Not released in time: this one is skipped, the writer takes it back
-        if (image == IntPtr.Zero)
-            return false;
-
-        frame.MarkRead();
 
         if (_importedRgb == 0)
             _importedRgb = gl.CreateTexture();
 
         gl.ActiveTexture(GlFunctions.Texture0);
-        gl.BindTexture(GlFunctions.Texture2D, _importedRgb);
-        gl.EglImageTargetTexture2D(GlFunctions.Texture2D, image);
+        var isTaken = _angle.BeginRead(frame.SharedHandle, frame.Width, frame.Height, _importedRgb, out var isBroken);
 
+        if (isBroken)
+        {
+            VideoSurfaceProbe.Logger?.LogWarning("Direct3D 11 frame import failed: {Reason}", AngleD3D11Import.LastFailure);
+            VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared, AngleD3D11Import.LastFailure);
+            return false;
+        }
+
+        // Not released in time: this one is skipped, the writer takes it back
+        if (!isTaken)
+            return false;
+
+        frame.MarkRead();
         return true;
     }
 
