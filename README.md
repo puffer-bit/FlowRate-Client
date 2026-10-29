@@ -58,6 +58,7 @@ On Windows use `src/Scripts/powershell/publish.ps1` (`-Aot` for NativeAOT). The 
 | `Client.Avalonia.ViewModels` | view models shared by desktop and Android |
 | `Client.Avalonia.Desktop`, `Client.Avalonia.Android` | the applications |
 | `Client.Avalonia.Controls`, `.Styles`, `.Assets`, `.Localization` | UI parts |
+| `Client.Avalonia.Video` | the watched screen: frames drawn with OpenGL, ANGLE (D3D11) or from memory |
 | `Client.TestBot` | a headless client that plays test audio into a session |
 | `Shared` (submodule) | protocol types shared with the server |
 

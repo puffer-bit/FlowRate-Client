@@ -7,7 +7,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Client.Core.Media;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Shows frames in memory by copying them into a bitmap that the renderer uploads. It works

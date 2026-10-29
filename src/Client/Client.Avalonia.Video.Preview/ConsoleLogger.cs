@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace Client.VideoAnalyzersTest;
+namespace Client.Avalonia.Video.Preview;
 
 /// <summary>Prints what the video surface reports, so a failed fast path shows in the terminal.</summary>
 internal sealed class ConsoleLogger : ILogger

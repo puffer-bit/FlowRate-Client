@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Client.Core.Media;
 
-namespace Client.VideoAnalyzersTest;
+namespace Client.Avalonia.Video.Preview;
 
 /// <summary>
 /// Feeds a moving test picture to a surface from its own thread, as a stream would. The bar moves

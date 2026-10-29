@@ -1,7 +1,7 @@
 using System;
 using Avalonia;
 
-namespace Client.VideoAnalyzersTest;
+namespace Client.Avalonia.Video.Preview;
 
 internal static class Program
 {

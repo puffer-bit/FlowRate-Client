@@ -16,7 +16,7 @@ using Client.Views.Profile;
 using Client.Views.ServerSettings;
 using Client.Views.Sessions.Create;
 using Client.Views.Sessions.Hybrid;
-using Client.Views.Sessions.Hybrid.Video;
+using Client.Avalonia.Video;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Client.Views.Settings;
