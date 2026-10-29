@@ -7,6 +7,7 @@ using Client.Application.Coordinator.Users;
 using Client.Avalonia.Localization;
 using Shared.Validation;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -102,8 +103,24 @@ public class PeerVM : ReactiveObject
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanWatchScreen));
             this.RaisePropertyChanged(nameof(CanPoke));
+            this.RaisePropertyChanged(nameof(CanShowConnectionStats));
+            this.RaisePropertyChanged(nameof(ConnectionStats));
         }
     }
+
+    /// <summary>
+    /// The statistics of how the streams of the user reach us, kept by the session we are in.
+    /// </summary>
+    public Func<PeerStatsVM>? GetConnectionStats { get; init; }
+
+    /// <summary>Only another user of the session we are in sends us anything to measure.</summary>
+    public bool CanShowConnectionStats => IsInEnteredSession && !IsCurrentUser && GetConnectionStats != null;
+
+    /// <summary>
+    /// The statistics of the user while <see cref="CanShowConnectionStats"/>, otherwise null: a
+    /// session we are not in has none, and asking would keep empty ones for it.
+    /// </summary>
+    public PeerStatsVM? ConnectionStats => CanShowConnectionStats ? GetConnectionStats!() : null;
 
     /// <summary>
     /// The user speaks right now. Known only for the session we are in.
