@@ -70,12 +70,13 @@ public class LibWebRTCStatsTests
         Assert.Null(first.RoundTripMs);
 
         for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
-            Assert.Null(sampler.Read(Counters(150, 5, 150, 0.5), FindVoice, IsMicrophone));
+            Assert.Null(sampler.Read(Counters(150, 5, 150, 0.5), FindVoice, FindMicrophone));
 
         var sample = Read(sampler, received: 190, lost: 10, sent: 200, fractionLost: 0.05);
 
         Assert.Equal(10, sample.InboundLossPercent, 3);
-        Assert.Equal(5, sample.OutboundLossPercent, 3);
+        // The SFU reports the worst listener of a voice, not our own loss; the round trip is ours
+        Assert.Equal(0, sample.OutboundLossPercent);
         Assert.Equal(40, sample.RoundTripMs);
 
         var voice = Assert.Single(sample.Inbound!);
@@ -87,12 +88,12 @@ public class LibWebRTCStatsTests
     public void ScreenIsSampledWithItsKeyframeRequests()
     {
         var sampler = new VoiceStatsSampler();
-        sampler.Read(ScreenCounters(100, 0, 1), FindScreen, _ => false);
+        sampler.Read(ScreenCounters(100, 0, 1), FindScreen, _ => null);
 
         for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
-            sampler.Read(ScreenCounters(300, 2, 2), FindScreen, _ => false);
+            sampler.Read(ScreenCounters(300, 2, 2), FindScreen, _ => null);
 
-        var sample = Assert.IsType<TransportStatsSample>(sampler.Read(ScreenCounters(500, 5, 4), FindScreen, _ => false));
+        var sample = Assert.IsType<TransportStatsSample>(sampler.Read(ScreenCounters(500, 5, 4), FindScreen, _ => null));
 
         var screen = Assert.Single(sample.Inbound!);
         Assert.Equal(MediaType.Video, screen.MediaType);
@@ -108,13 +109,31 @@ public class LibWebRTCStatsTests
     }
 
     [Fact]
+    public void LossOfVideoWeSendIsOurs()
+    {
+        var sampler = new VoiceStatsSampler();
+        sampler.Read(Counters(100, 0, 100, null), FindVoice, FindVideo);
+
+        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+            sampler.Read(Counters(150, 0, 150, 0.5), FindVoice, FindVideo);
+
+        var sample = Assert.IsType<TransportStatsSample>(
+            sampler.Read(Counters(200, 0, 200, 0.05), FindVoice, FindVideo));
+
+        Assert.Equal(5, sample.OutboundLossPercent, 3);
+
+        static OutboundTrack? FindVideo(uint ssrc) =>
+            ssrc == MicrophoneSsrc ? Microphone with { SourceType = MediaSourceType.Screen, MediaType = MediaType.Video } : null;
+    }
+
+    [Fact]
     public void StoppedStreamDoesNotReportItsLastLoss()
     {
         var sampler = new VoiceStatsSampler();
         Read(sampler, received: 100, lost: 0, sent: 100, fractionLost: null);
 
         for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
-            sampler.Read(Counters(100, 0, 100, 0.5), FindVoice, IsMicrophone);
+            sampler.Read(Counters(100, 0, 100, 0.5), FindVoice, FindMicrophone);
 
         // The SFU repeats its last report of a stream we no longer send in
         var sample = Read(sampler, received: 100, lost: 0, sent: 100, fractionLost: 0.5);
@@ -125,7 +144,7 @@ public class LibWebRTCStatsTests
 
     private static TransportStatsSample Read(VoiceStatsSampler sampler, long received, long lost, long sent,
         double? fractionLost) =>
-        Assert.IsType<TransportStatsSample>(sampler.Read(Counters(received, lost, sent, fractionLost), FindVoice, IsMicrophone));
+        Assert.IsType<TransportStatsSample>(sampler.Read(Counters(received, lost, sent, fractionLost), FindVoice, FindMicrophone));
 
     private static VoiceStreamCounters Counters(long received, long lost, long sent, double? fractionLost) =>
         new([new InboundCounters(VoiceSsrc, received, lost, 20)],
@@ -133,7 +152,13 @@ public class LibWebRTCStatsTests
 
     private static InboundTrack? FindVoice(uint ssrc) => ssrc == VoiceSsrc ? Voice : null;
 
-    private static bool IsMicrophone(uint ssrc) => ssrc == MicrophoneSsrc;
+    private static readonly OutboundTrack Microphone = new()
+    {
+        Id = "out1", UserId = 1, SSRC = MicrophoneSsrc, SourceType = MediaSourceType.Microphone, MediaType = MediaType.Audio,
+        MimeType = "audio/opus", PayloadType = 100, ClockRate = 48000
+    };
+
+    private static OutboundTrack? FindMicrophone(uint ssrc) => ssrc == MicrophoneSsrc ? Microphone : null;
 
     // A report as libwebrtc writes it, with the 64-bit counters as strings in places
     private static string Report(long received, long lost, long sent, double fractionLost, bool overTcp) => $$"""
