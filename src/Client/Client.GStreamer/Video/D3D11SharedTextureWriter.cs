@@ -32,7 +32,9 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
     private const uint BindRenderTarget = 0x20;
     private const uint MiscSharedKeyedMutex = 0x100;
     private const uint WaitTimeout = 0x102;
-    private const uint AcquireTimeoutMilliseconds = 8;
+    // The mutex is taken under the lock of the device, which the decoder waits for: a slot the reader
+    // still holds is skipped rather than waited for
+    private const uint AcquireTimeoutMilliseconds = 0;
 
     // Slots of the vtables used here
     private const int QueryInterfaceSlot = 0;
@@ -102,7 +104,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
             _height = caps.Height;
         }
 
-        var slot = TakeSlot(device);
+        var slot = TakeSlot(device, gstDevice);
 
         if (slot == null)
             return null;
@@ -112,7 +114,17 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
         // Finishes what the converter still has queued for the texture
         if (gst_memory_map(memory, (IntPtr)mapInfo, MapRead | MapD3D11) == 0)
         {
-            Release(slot, D3D11SharedVideoFrame.WriterKey);
+            gst_d3d11_device_lock(gstDevice);
+
+            try
+            {
+                Release(slot, D3D11SharedVideoFrame.WriterKey);
+            }
+            finally
+            {
+                gst_d3d11_device_unlock(gstDevice);
+            }
+
             return null;
         }
 
@@ -149,7 +161,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
     }
 
     // The next slot the reader is done with, made on first use
-    private Slot? TakeSlot(IntPtr device)
+    private Slot? TakeSlot(IntPtr device, IntPtr gstDevice)
     {
         for (var attempt = 0; attempt < SlotCount; attempt++)
         {
@@ -171,8 +183,21 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
                 : slot.WasRead ? D3D11SharedVideoFrame.WriterKey
                 : D3D11SharedVideoFrame.ReaderKey;
 
+            // The mutex works on the context of the device: taken in the middle of a frame of the
+            // decoder, it leaves the driver waiting for good (AMD, 144 fps)
             var acquire = (delegate* unmanaged[Stdcall]<IntPtr, ulong, uint, int>)VTable(slot.Mutex, AcquireSyncSlot);
-            var result = acquire(slot.Mutex, key, AcquireTimeoutMilliseconds);
+            int result;
+
+            gst_d3d11_device_lock(gstDevice);
+
+            try
+            {
+                result = acquire(slot.Mutex, key, AcquireTimeoutMilliseconds);
+            }
+            finally
+            {
+                gst_d3d11_device_unlock(gstDevice);
+            }
 
             if (result == unchecked((int)WaitTimeout) || result < 0)
                 continue;
