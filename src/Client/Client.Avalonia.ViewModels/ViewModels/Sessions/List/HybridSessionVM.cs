@@ -14,6 +14,7 @@ using Client.Application.Sessions.Hybrid;
 using Client.Avalonia.Styles.Animation;
 using Client.ViewModels.Dialogs;
 using Result = Client.ViewModels.Dialogs.Result;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -105,6 +106,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     private readonly int _currentUserId;
     private readonly IPeerPlaybackService _playbackService;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
@@ -125,6 +127,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         int currentUserId,
         IPeerPlaybackService playbackService,
         IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> leaveSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editSessionCommand,
@@ -141,6 +144,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         _currentUserId = currentUserId;
         _playbackService = playbackService;
         _screenWatch = screenWatch;
+        _peerStats = peerStats;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
         _banUserCommand = banUserCommand;
@@ -185,7 +189,8 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             _viewProfileCommand, ToggleScreenWatch, KickPeer, BanPeer, AdmitPeer, PokePeer)
         {
             IsInEnteredSession = IsEntered,
-            IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId)
+            IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId),
+            GetConnectionStats = () => _peerStats.Get(Model.Id, peerModel.UserId)
         };
         ApplyAccess(added);
         Peers.Insert(SortedIndexOf(added), added);

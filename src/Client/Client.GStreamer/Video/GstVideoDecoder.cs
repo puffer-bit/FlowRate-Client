@@ -22,9 +22,12 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private const string SourceName = "input";
     private const string SinkName = "frames";
 
-    // The appsrc drops the oldest frames past a few, so a decoder that fell behind, or a stalled
-    // drawing, cannot leave the picture late for good; the gap that leaves is repaired like a loss.
-    // The frames keep the timestamps of their stream, and nothing waits for the clock
+    // Past a few queued frames the frames up to the next keyframe are dropped and one is asked for, so
+    // a decoder that fell behind, or a stalled drawing, cannot leave the picture late for good, nor
+    // broken until the sender's own next keyframe. The frames keep the timestamps of their stream,
+    // and nothing waits for the clock
+    private const int MaxQueuedFrames = 16;
+
     private const string Description =
         "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=false max-buffers=16 " +
         "max-bytes=0 leaky-type=downstream caps=\"{0}\" ! {1}{2} ! {3}";
@@ -35,10 +38,10 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private readonly Lock _lock = new();
 
     private Running? _running;
-    private bool _isWaitingForKeyFrame;
     private bool _isDisposed;
 
     public event Action<RawVideoFrame>? FrameReady;
+    public event Action<VideoDecoding>? DecodingChanged;
     public event Action? KeyFrameNeeded;
 
     private GstVideoDecoder(VideoCodec codec, string name, ILogger logger)
@@ -65,26 +68,28 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
     public void Push(EncodedVideoFrame frame)
     {
+        long dropped;
+
         lock (_lock)
         {
             if (_running is not { } running)
                 return;
 
-            // A new decoder starts from a keyframe, and everything before one would only break it
-            if (_isWaitingForKeyFrame)
-            {
-                if (!frame.IsKeyFrame)
-                    return;
+            if (!running.Gate.Push(frame))
+                return;
 
-                _isWaitingForKeyFrame = false;
-            }
-
-            GstEncodedNative.Push(running.Source, frame);
+            dropped = running.Gate.Dropped;
         }
+
+        LogFramesDropped(_logger, _name, dropped);
+        KeyFrameNeeded?.Invoke();
     }
 
     /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
-    private Running? Build(bool allowGpuSurfaces)
+    /// <param name="failedSurface">The GPU kind the previous pipeline failed with, for <see cref="DecodingChanged"/>.</param>
+    /// <param name="failureReason">Why it failed, when that is known.</param>
+    private Running? Build(bool allowGpuSurfaces, VideoSurfaceKinds failedSurface = VideoSurfaceKinds.None,
+        string? failureReason = null)
     {
         var output = VideoOutputSelector.Select(_codec, allowGpuSurfaces);
 
@@ -114,8 +119,11 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
         var bus = new GstBusWatcher(pipeline.GetBus(), MessageType.Error | MessageType.Warning, OnMessage,
             $"decoder_{_name}", _logger);
 
-        // The first frame of each pipeline is logged: whether the picture got through is not told otherwise
+        // The first frame of each pipeline is logged and reported: whether the picture got through is
+        // not told otherwise
         var isFirstFrame = true;
+        var decoding = new VideoDecoding(output.Decoder, !VideoElementNames.IsSoftware(output.Decoder),
+            ToSurfaceKind(output.Kind), failedSurface, failureReason);
         var pump = new VideoFramePump(sink, output.Kind, $"video_{_name}",
             frame =>
             {
@@ -123,6 +131,7 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
                 {
                     isFirstFrame = false;
                     LogFirstFrame(_logger, _name, frame.Width, frame.Height, output.Kind);
+                    DecodingChanged?.Invoke(decoding);
                 }
 
                 FrameReady?.Invoke(frame);
@@ -163,7 +172,8 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     // A pump found its frames cannot be delivered as they come; on its own thread
     private void OnPumpSurfaceFailed(VideoOutputKind kind)
     {
-        VideoSurfaceSupport.ReportFailure(ToSurfaceKind(kind));
+        VideoSurfaceSupport.ReportFailure(ToSurfaceKind(kind),
+            kind == VideoOutputKind.D3D11 ? D3D11SharedTextureWriter.LastFailure : null);
 
         // Reported already when the kind was taken out of the supported ones, but a kind the screen
         // never claimed to support is rebuilt here
@@ -205,13 +215,14 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
             previous = running;
         }
 
-        LogSurfaceFailed(_logger, _name, kind, kind == VideoOutputKind.D3D11 ? D3D11SharedTextureWriter.LastFailure : null);
+        var reason = VideoSurfaceSupport.FailureReason;
+        LogSurfaceFailed(_logger, _name, kind, reason);
 
         // Off the thread of the pump, which disposing the pump waits for
-        System.Threading.Tasks.Task.Run(() => Rebuild(previous));
+        System.Threading.Tasks.Task.Run(() => Rebuild(previous, ToSurfaceKind(kind), reason));
     }
 
-    private void Rebuild(Running previous)
+    private void Rebuild(Running previous, VideoSurfaceKinds failedSurface, string? failureReason)
     {
         try
         {
@@ -223,7 +234,7 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
             previous.Dispose();
 
-            var running = Build(false);
+            var running = Build(false, failedSurface, failureReason);
 
             lock (_lock)
             {
@@ -234,7 +245,9 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
                 }
 
                 _running = running;
-                _isWaitingForKeyFrame = true;
+
+                // A new decoder starts from a keyframe, and everything before one would only break it
+                running?.Gate.WaitForKeyFrame();
             }
 
             if (running == null)
@@ -281,6 +294,8 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
         public Element Source { get; } = source;
 
         public VideoOutput Output { get; } = output;
+
+        public EncodedFrameGate Gate { get; } = new(source, MaxQueuedFrames);
 
         /// <summary>A rebuild of this pipeline was scheduled.</summary>
         public bool IsReplaced { get; set; }

@@ -8,6 +8,7 @@ using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
+using Client.Core.Media;
 using Client.Core.Settings;
 using Client.Services;
 using ReactiveUI;
@@ -74,6 +75,13 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The ways without copying this computer has, or why there are none.</summary>
+    public string ZeroCopyStatus
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
     public IReadOnlyList<string> DecoderChoices { get; }
     public IReadOnlyList<string> EncoderChoices { get; }
 
@@ -98,8 +106,8 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
         _decoders = [null, ..mediaCapabilities.ScreenShareDecoders];
         _encoders = [null, ..mediaCapabilities.ScreenShareEncoders];
-        DecoderChoices = _decoders.Select(ChoiceText).ToList();
-        EncoderChoices = _encoders.Select(ChoiceText).ToList();
+        DecoderChoices = _decoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareDecoders)).ToList();
+        EncoderChoices = _encoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareEncoders)).ToList();
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
@@ -118,11 +126,40 @@ public class VideoControlVM : ReactiveObject, ISettingVM
             .Subscribe();
     }
 
-    private static string ChoiceText(string? element) => element ?? Strings.Get("settings.video.automatic");
+    // The automatic choice names the element it comes to: the first of the list, in order of preference
+    private static string ChoiceText(string? element, IReadOnlyList<string> available) => element == null
+        ? available.Count == 0
+            ? Strings.Get("settings.video.automatic")
+            : Strings.Format("settings.video.automaticChoice", ("choice", ChoiceText(available[0], available)))
+        : Strings.Format(VideoElementNames.IsSoftware(element) ? "settings.video.choice.cpu" : "settings.video.choice.gpu",
+            ("name", VideoElementNames.Of(element)), ("element", element));
+
+    // What this computer can show without copying, as the screen found out when the window opened
+    private static string ZeroCopyStatusText()
+    {
+        var failed = VideoElementNames.Of(VideoSurfaceSupport.FailedKinds);
+        var available = VideoElementNames.Of(VideoSurfaceSupport.Kinds);
+
+        if (failed.Count > 0)
+        {
+            var ways = string.Join(", ", failed);
+
+            return Strings.Format("settings.video.zeroCopyStatus.failed", ("ways",
+                VideoSurfaceSupport.FailureReason is { } reason ? $"{ways} ({reason})" : ways));
+        }
+
+        if (available.Count > 0)
+            return string.Join(", ", available);
+
+        return Strings.Get(VideoSurfaceSupport.IsProbed
+            ? "settings.video.zeroCopyStatus.unavailable"
+            : "settings.video.zeroCopyStatus.unknown");
+    }
 
     private async Task LoadAsync()
     {
         _isUpdating = true;
+        ZeroCopyStatus = ZeroCopyStatusText();
         Apply(await _videoService.GetSettingsAsync());
         _isUpdating = false;
     }

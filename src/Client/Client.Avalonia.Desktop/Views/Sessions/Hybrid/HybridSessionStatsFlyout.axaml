@@ -21,6 +21,24 @@
             <Setter Property="GridBrush" Value="{DynamicResource SecondaryTextBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         </Style>
+        <Style Selector="Border.transport">
+            <Setter Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.transport > TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="Border.transport.tcp">
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.transport.tcp > TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+        </Style>
         <Style Selector="Ellipse.legend">
             <Setter Property="Width" Value="8"/>
             <Setter Property="Height" Value="8"/>
@@ -42,7 +60,14 @@
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
             <StackPanel Grid.Column="0" Spacing="1">
                 <TextBlock Text="{l:Text hybrid.stats.ping}" Classes="caption"/>
-                <TextBlock Text="{Binding RoundTripText}" Classes="figure"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding RoundTripText}" Classes="figure"/>
+                    <!-- The protocol the media goes over: TCP holds packets back behind a lost one, "?" before ICE picks a pair -->
+                    <Border Classes="transport" Classes.tcp="{Binding IsOverTcp, TargetNullValue={x:False}}"
+                            ToolTip.Tip="{Binding TransportTip}">
+                        <TextBlock Text="{Binding TransportText}"/>
+                    </Border>
+                </StackPanel>
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="1">
                 <TextBlock Text="{l:Text hybrid.stats.lossIn}" Classes="caption"/>

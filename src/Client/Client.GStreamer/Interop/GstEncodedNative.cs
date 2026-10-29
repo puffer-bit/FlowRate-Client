@@ -57,7 +57,7 @@ public static unsafe class GstEncodedNative
 
     private const ulong ClockTimeNone = ulong.MaxValue;
 
-    private const int ProbeEventUpstream = 1 << 6;
+    private const int ProbeEventUpstream = 1 << 7;
     private const int ProbeDrop = 0;
     private const int ProbeOk = 1;
 

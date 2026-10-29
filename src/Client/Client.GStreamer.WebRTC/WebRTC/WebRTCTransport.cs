@@ -57,6 +57,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public event Action<int, bool>? SpeakingChanged;
 
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
+    public event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
 
     public event Action<IReadOnlyList<string>>? InboundsReady;
 
@@ -100,7 +101,9 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             _outgoing.AttachPending, _states.ObserveTransports, _incoming.OnRoundCompleted, logger);
         _speaking = new SpeakingIndicator(sessionId, CollectSpeaking,
             (userId, isSpeaking) => SpeakingChanged?.Invoke(userId, isSpeaking), logger);
-        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _outgoing.ReadSendQueues,
+        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _tuning.ReadJitterBuffer,
+            _tuning.WidenSendBuffer, _tuning.WakeSender,
+            _outgoing.ReadSendQueues,
             ReportMedia, sample => StatsSampled?.Invoke(sample), logger);
     }
 
@@ -162,7 +165,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
             _states.Connect(webrtc);
             _core.Player = new IncomingStreamPlayer(pipeline, _video, _logger, _core.SessionId, _incoming.ResolveSectionVolume,
-                OnIncomingVideoFrame, _isPlaybackEnabled);
+                OnIncomingVideoFrame, OnIncomingVideoDecoding, _isPlaybackEnabled);
             webrtc.PadAdded += OnPadAdded;
             webrtc.PadRemoved += OnPadRemoved;
 
@@ -270,6 +273,9 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
     public bool SetOutboundMuted(string outboundId, bool isMuted) => _outgoing.SetMuted(outboundId, isMuted);
 
+    public void SetOutboundPreviewShown(string outboundId, bool isShown) =>
+        _outgoing.SetPreviewShown(outboundId, isShown);
+
     public void SetOutboundVolume(string outboundId, double volume) => _outgoing.SetVolume(outboundId, volume);
 
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
@@ -291,6 +297,17 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
         if (inbound != null)
             VideoFrameReady?.Invoke(inbound.UserId, inbound.SourceType, frame);
+    }
+
+    private void OnIncomingVideoDecoding(uint mline, VideoDecoding decoding)
+    {
+        InboundTrack? inbound;
+
+        using (_sections.Enter())
+            inbound = _incoming.FindBySection(mline);
+
+        if (inbound != null)
+            VideoDecodingChanged?.Invoke(inbound.UserId, inbound.SourceType, decoding);
     }
 
     /// <summary>

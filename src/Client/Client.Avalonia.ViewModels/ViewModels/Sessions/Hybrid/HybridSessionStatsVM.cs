@@ -8,8 +8,9 @@ using ReactiveUI;
 namespace Client.ViewModels.Sessions.Hybrid;
 
 /// <summary>
-/// The quality of the connection of a hybrid session and its recent history, for the graphs of the
-/// statistics flyout.
+/// The quality of our own connection in a hybrid session and its recent history, for the graphs of the
+/// statistics flyout. What the other users lose on their way to the SFU is theirs, see
+/// <see cref="PeerStatsVM"/>.
 /// </summary>
 public class HybridSessionStatsVM : ReactiveObject
 {
@@ -55,6 +56,35 @@ public class HybridSessionStatsVM : ReactiveObject
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "—";
+
+    /// <summary>
+    /// Whether the media goes over a TCP candidate pair; null while that is not known: before
+    /// the first reading, while ICE has not picked a pair, and without a connection.
+    /// </summary>
+    public bool? IsOverTcp
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(TransportText));
+            this.RaisePropertyChanged(nameof(TransportTip));
+        }
+    }
+
+    public string TransportText => IsOverTcp switch
+    {
+        true => "TCP",
+        false => "UDP",
+        null => "?"
+    };
+
+    public string TransportTip => IsOverTcp switch
+    {
+        true => Strings.Get("hybrid.stats.tcp"),
+        false => Strings.Get("hybrid.stats.udp"),
+        null => Strings.Get("hybrid.stats.transportUnknown")
+    };
 
     public string InboundLossText
     {
@@ -104,17 +134,22 @@ public class HybridSessionStatsVM : ReactiveObject
         RoundTripText = _history.LastOrDefault(reading => reading.RoundTripMs != null).RoundTripMs is { } roundTrip
             ? $"{Math.Ceiling(roundTrip):0} ms"
             : "—";
-        InboundLossText = $"{sample.InboundLossPercent:0.#} %";
+        IsOverTcp = sample.IsOverTcp;
+        InboundLossText = $"{sample.OwnInboundLossPercent:0.#} %";
         OutboundLossText = $"{sample.OutboundLossPercent:0.#} %";
 
         // New lists, so that the graphs see a change
         RoundTripHistory = _history.Select(reading => reading.RoundTripMs).ToArray();
-        InboundLossHistory = _history.Select(reading => (double?)reading.InboundLossPercent).ToArray();
+        InboundLossHistory = _history.Select(reading => (double?)reading.OwnInboundLossPercent).ToArray();
         OutboundLossHistory = _history.Select(reading => (double?)reading.OutboundLossPercent).ToArray();
     }
 
     /// <summary>
-    /// Forgets the quality while there is no connection to measure; the history stays.
+    /// Forgets the quality and the protocol while there is no connection to measure; the history stays.
     /// </summary>
-    public void ResetQuality() => Quality = ConnectionQuality.Unknown;
+    public void ResetQuality()
+    {
+        Quality = ConnectionQuality.Unknown;
+        IsOverTcp = null;
+    }
 }

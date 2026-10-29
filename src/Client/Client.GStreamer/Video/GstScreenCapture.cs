@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Client.Application.Ports;
 using Client.Core.Media;
 using Client.GStreamer.Interop;
@@ -25,6 +26,30 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     private readonly IDisposable? _resource;
     private readonly Lock _lock = new();
 
+    // AMF in its low-latency usages makes a keyframe only when asked for one, whatever its GOP size, and
+    // the requests of the SFU may not come through: a viewer who joins, or whose decoder dropped the
+    // frames up to a keyframe, would wait until the capture starts over. One is asked for after this long
+    private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(2);
+    private long _lastKeyFrame = Stopwatch.GetTimestamp();
+    private readonly Action<EncodedVideoFrame> _onEncodedFrame;
+
+    // The SFU repeats a request until the keyframe reaches it, and every viewer whose picture broke
+    // asks as well. Each one answered at once made dozens of keyframes a second (49 PLI in two
+    // seconds), and the bursts of those big frames lost the packets that asked for more. So a request
+    // while one is on its way is left out, and one that comes this soon after a keyframe waits until
+    // this long has passed: that keyframe may be the one that was lost, or came before a new viewer.
+    // Under the lock.
+    private static readonly TimeSpan MinKeyFrameSpacing = TimeSpan.FromMilliseconds(500);
+    private long _lastEncodedKeyFrame;
+    private long _keyFrameAsked;
+    private volatile bool _isKeyFrameDeferred;
+
+    // What the encoder puts out, logged every few seconds next to what the capture delivers
+    private static readonly TimeSpan RateInterval = TimeSpan.FromSeconds(5);
+    private long _rateStart;
+    private int _encodedFrames;
+    private int _encodedKeyFrames;
+
     private GstBusWatcher? _bus;
     private AppSinkReader? _encodedReader;
     private VideoFramePump? _previewPump;
@@ -46,6 +71,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         _logger = logger;
 
         Description = $"{branch.Encoder.ToLaunchString()}, scaled on {branch.Scaler}";
+        _onEncodedFrame = OnEncodedFrame;
     }
 
     /// <returns>Null when the input cannot be captured or an element is missing.</returns>
@@ -56,7 +82,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && ScreenEncodingBranch.CanTakeDmaBuf(codec);
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(logger, exception, name),
-            (rate, caps) => LogCaptureRate(logger, name, rate, settings.Framerate, caps), isDmaBuf);
+            (rate, caps) => LogCaptureRate(logger, name, rate, settings.Framerate, caps), isDmaBuf,
+            rate => LogCompositorRate(logger, name, rate));
 
         if (source == null)
         {
@@ -113,8 +140,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
                 {
                     using var buffer = sample.GetBuffer();
 
-                    if (buffer != null && EncodedFrameReady is { } onFrame)
-                        GstEncodedNative.Read(buffer, onFrame);
+                    if (buffer != null && EncodedFrameReady != null)
+                        GstEncodedNative.Read(buffer, _onEncodedFrame);
                 },
                 exception => LogEncodedFrameFailed(_logger, exception, _name));
 
@@ -133,14 +160,87 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         return true;
     }
 
+    // On the thread of the reader
+    private void OnEncodedFrame(EncodedVideoFrame frame)
+    {
+        if (frame.IsKeyFrame)
+        {
+            _lastKeyFrame = Stopwatch.GetTimestamp();
+            _encodedKeyFrames++;
+
+            lock (_lock)
+            {
+                _lastEncodedKeyFrame = _lastKeyFrame;
+                _keyFrameAsked = 0;
+            }
+        }
+        else if (Stopwatch.GetElapsedTime(_lastKeyFrame) >= KeyFrameInterval)
+        {
+            // Asked for once per interval: the keyframe takes a few frames to come
+            _lastKeyFrame = Stopwatch.GetTimestamp();
+            RequestKeyFrame(isUrgent: true);
+        }
+        else if (_isKeyFrameDeferred)
+        {
+            lock (_lock)
+            {
+                if (!_isDisposed && _isKeyFrameDeferred &&
+                    Stopwatch.GetElapsedTime(_lastEncodedKeyFrame) >= MinKeyFrameSpacing)
+                    AskForKeyFrame();
+            }
+        }
+
+        // The first frame starts the count, so the setup of the pipeline is not counted as time
+        // the encoder put out nothing
+        if (_rateStart == 0)
+            _rateStart = Stopwatch.GetTimestamp();
+
+        _encodedFrames++;
+
+        if (Stopwatch.GetElapsedTime(_rateStart) >= RateInterval)
+        {
+            LogEncodedRate(_logger, _name, _encodedFrames / Stopwatch.GetElapsedTime(_rateStart).TotalSeconds,
+                _encodedKeyFrames);
+            _rateStart = Stopwatch.GetTimestamp();
+            _encodedFrames = 0;
+            _encodedKeyFrames = 0;
+        }
+
+        EncodedFrameReady?.Invoke(frame);
+    }
+
     // Under the lock: the reader disposes the wrapper of the sink when it stops
-    public void RequestKeyFrame()
+    public void RequestKeyFrame(bool isUrgent = false)
     {
         lock (_lock)
         {
-            if (!_isDisposed)
-                GstEncodedNative.RequestKeyFrame(_branch.Encoded);
+            if (_isDisposed)
+                return;
+
+            if (!isUrgent)
+            {
+                // The one asked for answers this request too
+                if (_keyFrameAsked != 0 && Stopwatch.GetElapsedTime(_keyFrameAsked) < MinKeyFrameSpacing)
+                    return;
+
+                // Made by the next frame after the spacing, see OnEncodedFrame
+                if (_lastEncodedKeyFrame != 0 && Stopwatch.GetElapsedTime(_lastEncodedKeyFrame) < MinKeyFrameSpacing)
+                {
+                    _isKeyFrameDeferred = true;
+                    return;
+                }
+            }
+
+            AskForKeyFrame();
         }
+    }
+
+    // Under the lock
+    private void AskForKeyFrame()
+    {
+        _isKeyFrameDeferred = false;
+        _keyFrameAsked = Stopwatch.GetTimestamp();
+        GstEncodedNative.RequestKeyFrame(_branch.Encoded);
     }
 
     public void SetBitrate(int kbps)
@@ -149,6 +249,18 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         {
             if (!_isDisposed)
                 ScreenEncodingBranch.SetBitrate(_branch.Bin, _codec, _branch.Encoder, kbps);
+        }
+    }
+
+    public void SetPreviewShown(bool isShown)
+    {
+        lock (_lock)
+        {
+            if (_isDisposed)
+                return;
+
+            using var valve = _branch.Bin.GetByName(ScreenEncodingBranch.PreviewValveName);
+            valve?.SetProperty("drop", !isShown);
         }
     }
 

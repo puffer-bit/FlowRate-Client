@@ -32,6 +32,9 @@ public class MenuItemButton : Button
     public static readonly StyledProperty<IImage?> IconProperty =
         AvaloniaProperty.Register<MenuItemButton, IImage?>(nameof(Icon));
 
+    public static readonly StyledProperty<object?> IconContentProperty =
+        AvaloniaProperty.Register<MenuItemButton, object?>(nameof(IconContent));
+
     public static readonly StyledProperty<KeyGesture?> GestureProperty =
         AvaloniaProperty.Register<MenuItemButton, KeyGesture?>(nameof(Gesture));
 
@@ -46,6 +49,15 @@ public class MenuItemButton : Button
     {
         get => GetValue(IconProperty);
         set => SetValue(IconProperty, value);
+    }
+
+    /// <summary>
+    /// A control in the place of the <see cref="Icon"/>, for an icon that changes with its data.
+    /// </summary>
+    public object? IconContent
+    {
+        get => GetValue(IconContentProperty);
+        set => SetValue(IconContentProperty, value);
     }
 
     public KeyGesture? Gesture

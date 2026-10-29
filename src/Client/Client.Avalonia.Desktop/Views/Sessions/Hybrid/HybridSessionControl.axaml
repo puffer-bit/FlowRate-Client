@@ -15,79 +15,6 @@
     x:DataType="hybridVm:ActiveHybridSessionVM"
     x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl">
 
-    <Control.Styles>
-        <!-- Each glow wanders along its own closed path and comes back to where it started, so the
-             loop shows no jump. Different paths and durations keep the picture from repeating.
-             The backdrop carries "moving" only while animations are switched on, and the glows
-             move only while the backdrop is shown -->
-        <Style Selector="Canvas.moving:shown > Ellipse.far">
-            <Style.Animations>
-                <Animation Duration="0:0:46" IterationCount="Infinite" Easing="SineEaseInOut">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="35%">
-                        <Setter Property="TranslateTransform.X" Value="220"/>
-                        <Setter Property="TranslateTransform.Y" Value="90"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="70%">
-                        <Setter Property="TranslateTransform.X" Value="80"/>
-                        <Setter Property="TranslateTransform.Y" Value="-70"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Canvas.moving:shown > Ellipse.middle">
-            <Style.Animations>
-                <Animation Duration="0:0:37" IterationCount="Infinite" Easing="SineEaseInOut">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="30%">
-                        <Setter Property="TranslateTransform.X" Value="-180"/>
-                        <Setter Property="TranslateTransform.Y" Value="-110"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="65%">
-                        <Setter Property="TranslateTransform.X" Value="-260"/>
-                        <Setter Property="TranslateTransform.Y" Value="60"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Canvas.moving:shown > Ellipse.near">
-            <Style.Animations>
-                <Animation Duration="0:0:29" IterationCount="Infinite" Easing="SineEaseInOut">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="40%">
-                        <Setter Property="TranslateTransform.X" Value="140"/>
-                        <Setter Property="TranslateTransform.Y" Value="-130"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="75%">
-                        <Setter Property="TranslateTransform.X" Value="-110"/>
-                        <Setter Property="TranslateTransform.Y" Value="-60"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="TranslateTransform.X" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="0"/>
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-    </Control.Styles>
-
     <Control.DataTemplates>
         <DataTemplate DataType="hybridVm:HybridSessionParticipantsListVM">
             <hybridViews:HybridSessionUsersListControl/>
@@ -115,21 +42,21 @@
             <Panel Grid.ColumnSpan="3" IsHitTestVisible="False" ClipToBounds="True">
                 <Viewbox Stretch="UniformToFill">
                     <Canvas x:Name="Backdrop" Width="1280" Height="720" anim:ShownState.Track="True">
-                        <Ellipse Classes="far" Width="900" Height="900"
+                        <Ellipse x:Name="FarGlow" Width="900" Height="900"
                                  Canvas.Left="-300" Canvas.Top="-340"
                                  Fill="{DynamicResource SessionGlowFarBrush}">
                             <Ellipse.RenderTransform>
                                 <TranslateTransform/>
                             </Ellipse.RenderTransform>
                         </Ellipse>
-                        <Ellipse Classes="middle" Width="760" Height="760"
+                        <Ellipse x:Name="MiddleGlow" Width="760" Height="760"
                                  Canvas.Left="760" Canvas.Top="-20"
                                  Fill="{DynamicResource SessionGlowMiddleBrush}">
                             <Ellipse.RenderTransform>
                                 <TranslateTransform/>
                             </Ellipse.RenderTransform>
                         </Ellipse>
-                        <Ellipse Classes="near" Width="620" Height="620"
+                        <Ellipse x:Name="NearGlow" Width="620" Height="620"
                                  Canvas.Left="120" Canvas.Top="360"
                                  Fill="{DynamicResource SessionGlowNearBrush}">
                             <Ellipse.RenderTransform>

@@ -316,10 +316,77 @@
   "settings.video.presentationBuffer.title": "Frames waiting to be shown",
   "settings.video.presentationBuffer.description": "More frames smooth out an uneven network, but every frame adds a little delay.",
   "settings.video.frameStats.title": "Frame counter on screens",
-  "settings.video.frameStats.description": "Shows how many frames arrive, are shown and are dropped.",
+  "settings.video.frameStats.description": "Shows how many frames arrive, are shown and are dropped, what decodes them and whether they reach the screen without copying.",
   "settings.video.section.encoding": "Encoding",
   "settings.video.encoder.title": "Encoder",
   "settings.video.encoder.description": "Used for your own screen share; applies to the next share.",
+  "settings.video.automaticChoice": "Automatic: {choice}",
+  "@settings.video.automaticChoice": {
+    "placeholders": {
+      "choice": {}
+    }
+  },
+  "settings.video.choice.gpu": "{name}, video card ({element})",
+  "@settings.video.choice.gpu": {
+    "placeholders": {
+      "name": {},
+      "element": {}
+    }
+  },
+  "settings.video.choice.cpu": "{name}, processor ({element})",
+  "@settings.video.choice.cpu": {
+    "placeholders": {
+      "name": {},
+      "element": {}
+    }
+  },
+  "settings.video.zeroCopyStatus.title": "On this computer",
+  "settings.video.zeroCopyStatus.failed": "Turned off after an error: {ways}. Comes back after a restart",
+  "@settings.video.zeroCopyStatus.failed": {
+    "placeholders": {
+      "ways": {}
+    }
+  },
+  "settings.video.zeroCopyStatus.unavailable": "Not available: frames go through memory",
+  "settings.video.zeroCopyStatus.unknown": "Not checked yet",
+  "hybrid.screen.stats.frames": "{shown} / {received} fps · {dropped} dropped",
+  "@hybrid.screen.stats.frames": {
+    "placeholders": {
+      "shown": {},
+      "received": {},
+      "dropped": {}
+    }
+  },
+  "hybrid.screen.stats.gpu": "Video card ({name}) · {route}",
+  "@hybrid.screen.stats.gpu": {
+    "placeholders": {
+      "name": {},
+      "route": {}
+    }
+  },
+  "hybrid.screen.stats.cpu": "Processor ({name}) · {route}",
+  "@hybrid.screen.stats.cpu": {
+    "placeholders": {
+      "name": {},
+      "route": {}
+    }
+  },
+  "hybrid.screen.stats.zeroCopy": "without copying, {way}",
+  "@hybrid.screen.stats.zeroCopy": {
+    "placeholders": {
+      "way": {}
+    }
+  },
+  "hybrid.screen.stats.memory": "through memory",
+  "hybrid.screen.stats.memoryBitmap": "through memory, drawn without OpenGL",
+  "hybrid.screen.stats.fallback": "{way} did not work, frames go through memory: {reason}",
+  "@hybrid.screen.stats.fallback": {
+    "placeholders": {
+      "way": {},
+      "reason": {}
+    }
+  },
+  "hybrid.screen.stats.noReason": "the reason is in the log",
   "settings.storage.name": "Data and storage",
   "settings.storage.section.messages": "Messages",
   "settings.storage.keepMessages.title": "Keep messages on this device",
@@ -713,7 +780,6 @@
   "hybrid.screen.expand": "Expand",
   "hybrid.screen.collapse": "Collapse",
   "hybrid.screen.issues.network": "Network",
-  "hybrid.screen.issues.transport": "Connection type",
   "hybrid.screen.issues.source": "Streamer",
   "hybrid.screen.issues.audio": "Sound",
   "hybrid.screen.issues.performance": "Decoding and drawing",
@@ -729,13 +795,18 @@
       "ms": {}
     }
   },
+  "hybrid.screen.issues.burstyArrival": "Frames come in bunches, the latest {ms} ms late, some are dropped",
+  "@hybrid.screen.issues.burstyArrival": {
+    "placeholders": {
+      "ms": {}
+    }
+  },
   "hybrid.screen.issues.waitingForKeyframe": "The picture broke, waiting for a keyframe for {seconds} s",
   "@hybrid.screen.issues.waitingForKeyframe": {
     "placeholders": {
       "seconds": {}
     }
   },
-  "hybrid.screen.issues.tcpTransport": "The connection goes over TCP: a lost packet holds back the ones after it",
   "hybrid.screen.issues.noSourceFrames": "Nothing comes from the streamer for {seconds} s",
   "@hybrid.screen.issues.noSourceFrames": {
     "placeholders": {
@@ -771,10 +842,20 @@
   "hybrid.stats.quality.poor": "Poor",
   "hybrid.stats.quality.unknown": "Not measured yet",
   "hybrid.stats.ping": "Ping",
+  "hybrid.stats.udp": "Media goes over UDP",
+  "hybrid.stats.tcp": "Media goes over TCP: a lost packet holds back the ones after it, so voice and screens may stutter",
+  "hybrid.stats.transportUnknown": "The protocol is not known yet: the connection has not picked a route",
   "hybrid.stats.lossIn": "Loss in",
   "hybrid.stats.lossOut": "Loss out",
   "hybrid.stats.pingGraph": "Ping over the last 2 minutes",
   "hybrid.stats.lossGraph": "Packet loss",
+  "hybrid.stats.peer.title": "Their connection",
+  "hybrid.stats.peer.silent": "Sends nothing",
+  "hybrid.stats.peer.loss": "Loss",
+  "hybrid.stats.peer.jitter": "Jitter",
+  "hybrid.stats.peer.lossGraph": "Packet loss on their way to the server",
+  "hybrid.stats.peer.jitterGraph": "Jitter of their packets",
+  "hybrid.stats.peer.hint": "What all users lose alike is counted as yours, so it is left out here. With a single user sending, the two cannot be told apart.",
   "hybrid.screen.change": "Change sharing",
   "hybrid.screen.watchFailed": "Failed to open the screen: {reason}",
   "@hybrid.screen.watchFailed": {

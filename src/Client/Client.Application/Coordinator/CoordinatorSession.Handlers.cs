@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 

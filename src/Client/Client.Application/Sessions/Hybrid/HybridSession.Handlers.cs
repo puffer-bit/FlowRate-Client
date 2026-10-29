@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Shared.Models.Media;
 using Client.Core.Users;
 using Shared.Enums;

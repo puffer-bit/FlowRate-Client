@@ -1,4 +1,5 @@
 using Client.Core.Sessions.Hybrid;
+using Shared.Models.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 
@@ -35,6 +36,9 @@ internal sealed partial class TransportStats
     private readonly TransportCore _core;
     private readonly Func<uint, InboundTrack?> _findInbound;
     private readonly Func<uint, OutboundTrack?> _findOutbound;
+    private readonly Func<uint, (long Lost, long Late)?> _readJitterBuffer;
+    private readonly Action _pairSelected;
+    private readonly Func<bool> _wakeSender;
     private readonly Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> _readSendQueues;
     private readonly Action _reportPeriod;
     private readonly Action<TransportStatsSample> _sampled;
@@ -49,7 +53,7 @@ internal sealed partial class TransportStats
     private readonly Dictionary<uint, Counters> _previous = [];
     private double _previousTimestamp;
     private string? _selectedPair;
-    private bool _isOverTcp;
+    private bool? _isOverTcp;
 
     // The counters at the start of the current summary, by SSRC, and when it started
     private readonly Dictionary<uint, Counters> _summaryStart = [];
@@ -60,23 +64,36 @@ internal sealed partial class TransportStats
     // there only while the socket does not take them, which over UDP it always does
     private const double SendQueueWarningMs = 100;
 
+    // Readings in a row with a backed up queue after which the sink of the transport is woken. Only
+    // on the timer thread
+    private const int StalledReadings = 2;
+    private int _backedUpReadings;
+    private bool _isWokenUp;
+
     private System.Threading.Timer? _timer;
     private volatile bool _isStopped;
     private int _readingInFlight;
 
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
     /// <param name="findOutbound">The outbound track with the given SSRC.</param>
+    /// <param name="readJitterBuffer">What the jitter buffer of the stream with the given SSRC lost and got late.</param>
+    /// <param name="pairSelected">Called when ICE picks a candidate pair, the first or another one.</param>
+    /// <param name="wakeSender">Wakes the sink of the transport, see WebRTCBinTuning.WakeSender.</param>
     /// <param name="readSendQueues">What the last queue of every track we send holds.</param>
     /// <param name="reportPeriod">Logs the figures of the media itself, once per summary.</param>
     /// <param name="sampled">Takes the round trip and the loss of every reading, on a thread of webrtcbin.</param>
     public TransportStats(TransportCore core, Func<uint, InboundTrack?> findInbound,
-        Func<uint, OutboundTrack?> findOutbound,
+        Func<uint, OutboundTrack?> findOutbound, Func<uint, (long Lost, long Late)?> readJitterBuffer,
+        Action pairSelected, Func<bool> wakeSender,
         Func<List<(OutboundTrack Track, double LevelMs, uint Packets)>> readSendQueues, Action reportPeriod,
         Action<TransportStatsSample> sampled, ILogger logger)
     {
         _core = core;
         _findInbound = findInbound;
         _findOutbound = findOutbound;
+        _readJitterBuffer = readJitterBuffer;
+        _pairSelected = pairSelected;
+        _wakeSender = wakeSender;
         _readSendQueues = readSendQueues;
         _reportPeriod = reportPeriod;
         _sampled = sampled;
@@ -145,12 +162,37 @@ internal sealed partial class TransportStats
     /// </summary>
     private void ReportSendQueues()
     {
+        var isBackedUp = false;
+
         foreach (var (track, levelMs, packets) in _readSendQueues())
         {
             if (levelMs >= SendQueueWarningMs)
+            {
+                isBackedUp = true;
                 LogSendQueueBacklog(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs, packets);
+            }
             else
+            {
                 LogSendQueue(_core.SessionId, track.SourceType.ToString(), track.SSRC, levelMs);
+            }
+        }
+
+        if (!isBackedUp)
+        {
+            // The wake is what let the packets go, which tells the stall was the lost FD_WRITE
+            if (_isWokenUp)
+                LogSenderResumed(_core.SessionId);
+
+            _backedUpReadings = 0;
+            _isWokenUp = false;
+            return;
+        }
+
+        // Woken again every time it stays stuck: the event may be lost once more
+        if (++_backedUpReadings >= StalledReadings && _wakeSender())
+        {
+            LogSenderWoken(_core.SessionId, _backedUpReadings);
+            _isWokenUp = true;
         }
     }
 
@@ -338,6 +380,7 @@ internal sealed partial class TransportStats
 
         var isFirst = _selectedPair == null;
         _selectedPair = description;
+        _pairSelected();
 
         if (isFirst)
             LogCandidatePair(_core.SessionId, local, remote);
@@ -391,7 +434,10 @@ internal sealed partial class TransportStats
             .OfType<RemoteReport>()
             .ToList();
 
-        var outboundLoss = reports.Count > 0 ? reports.Max(report => report.FractionLost) * 100 : 0;
+        // A voice tells nothing of our own loss, see TransportStatsSample.OutboundLossPercent
+        var outboundLoss = reports
+            .Where(report => _findOutbound(report.Ssrc)?.MediaType != MediaType.Audio)
+            .Select(report => report.FractionLost).DefaultIfEmpty(0).Max() * 100;
         var roundTrips = reports.Where(report => report.RoundTripMs > 0).Select(report => report.RoundTripMs).ToList();
 
         return new TransportStatsSample(roundTrips.Count > 0 ? roundTrips.Average() : null, inboundLoss, outboundLoss,
@@ -425,7 +471,7 @@ internal sealed partial class TransportStats
 
     private static double Kbps(long bytes, double seconds) => bytes * 8 / seconds / 1000;
 
-    private static Counters ReadInbound(Structure stats)
+    private Counters ReadInbound(Structure stats)
     {
         stats.GetUint("ssrc", out var ssrc);
         stats.GetUint64("packets-received", out var packets);
@@ -446,6 +492,10 @@ internal sealed partial class TransportStats
 
             buffer?.GetUint64("num-late", out late);
         }
+
+        // Those of the stream itself, see WebRTCBinTuning.ReadJitterBuffer
+        if (_readJitterBuffer(ssrc) is { } own)
+            (lost, late) = (own.Lost, (ulong)own.Late);
 
         return new Counters(ssrc, (long)packets, (long)bytes, lost, (long)late,
             nacks, plis, jitter * 1000);

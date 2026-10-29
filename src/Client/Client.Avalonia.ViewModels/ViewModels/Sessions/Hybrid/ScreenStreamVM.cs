@@ -182,6 +182,16 @@ public sealed class ScreenStreamVM : ReactiveObject
     public event Action<RawVideoFrame>? FrameReady;
 
     /// <summary>
+    /// Raised when the decoder of the screen reports how it decodes, on a thread of its track.
+    /// </summary>
+    public event Action<VideoDecoding>? DecodingChanged;
+
+    /// <summary>How the screen is decoded, as last reported; null before its first frame.</summary>
+    public VideoDecoding? Decoding => _decoding;
+
+    private volatile VideoDecoding? _decoding;
+
+    /// <summary>
     /// The stream ended or is no longer watched, so its last frame must not stay on the tile.
     /// </summary>
     public event Action? Cleared;
@@ -239,6 +249,12 @@ public sealed class ScreenStreamVM : ReactiveObject
     public void ToggleOverdrive() => IsOverdriveEnabled = !IsOverdriveEnabled;
 
     public void PushFrame(RawVideoFrame frame) => FrameReady?.Invoke(frame);
+
+    public void PushDecoding(VideoDecoding decoding)
+    {
+        _decoding = decoding;
+        DecodingChanged?.Invoke(decoding);
+    }
 
     /// <summary>
     /// Takes a reading of the transport statistics into what is wrong with the stream.

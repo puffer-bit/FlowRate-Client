@@ -37,4 +37,11 @@ internal sealed partial class TransportStats
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to read the transport statistics")]
     private partial void LogStatsReadFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Warning,
+        "[Session {SessionId}] Nothing we send left for {Readings} readings, the sink of the transport is woken")]
+    private partial void LogSenderWoken(int sessionId, int readings);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Sending resumed after the sink was woken")]
+    private partial void LogSenderResumed(int sessionId);
 }

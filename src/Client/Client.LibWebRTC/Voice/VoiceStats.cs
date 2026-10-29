@@ -12,10 +12,10 @@ public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCou
 /// <param name="Level">0..1, as the audioLevel of the statistics.</param>
 public readonly record struct VoiceLevel(string? Mid, double Level);
 
-/// <param name="IsOverTcp">The media goes over a TCP candidate pair.</param>
+/// <param name="IsOverTcp">The media goes over a TCP candidate pair, or null while none is selected.</param>
 /// <param name="AvailableOutgoingKbps">What the bandwidth estimate lets us send, or null before there is one.</param>
 public sealed record VoiceStreamCounters(IReadOnlyList<InboundCounters> Inbound, IReadOnlyList<OutboundCounters> Outbound,
-    bool IsOverTcp, double? AvailableOutgoingKbps = null);
+    bool? IsOverTcp, double? AvailableOutgoingKbps = null);
 
 /// <summary>The counters of a stream we receive since it started.</summary>
 /// <param name="KeyframeRequests">The keyframes we asked the sender of a picture for (PLI).</param>

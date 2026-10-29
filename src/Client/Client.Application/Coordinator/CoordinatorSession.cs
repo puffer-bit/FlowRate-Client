@@ -1,7 +1,6 @@
 using Client.Application.Coordinator.Users;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;

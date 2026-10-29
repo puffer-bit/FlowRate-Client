@@ -7,6 +7,7 @@ using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Services;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.ViewModels.Sessions;
 
@@ -34,6 +35,7 @@ public sealed record HybridSessionServices(
     INotificationService Notifications,
     IVoiceActivityService VoiceActivity,
     IScreenWatchService ScreenWatch,
+    PeerStatsService PeerStats,
     IPeerPlaybackService Playback,
     IHybridSessionFactory SessionFactory,
     IScreenSourceProvider? ScreenSources,

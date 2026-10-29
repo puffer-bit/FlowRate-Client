@@ -142,6 +142,8 @@ public static class VideoEncoderSelector
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("preset", "low-latency-hq"), ("zerolatency", "true")],
             [("rc-mode", "cbr")]);
 
+    // In its low-latency usages AMF makes a keyframe only when asked for one: its GOP size gives
+    // keyframes in the transcoding usage only, so GstScreenCapture asks for one every 2 seconds
     private static Candidate Amf(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
             [("usage", "ultra-low-latency"), ("rate-control", "cbr")]);

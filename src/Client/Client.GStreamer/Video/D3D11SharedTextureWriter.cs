@@ -6,7 +6,8 @@ namespace Client.GStreamer.Video;
 
 /// <summary>
 /// Copies BGRA frames of Direct3D 11 memory, on the GPU, into a few textures the compositor of the
-/// user interface opens through their NT handles.
+/// user interface opens through their share handles: ANGLE takes only the handles of the older kind
+/// (<c>IDXGIResource::GetSharedHandle</c>), not NT handles.
 /// </summary>
 /// <remarks>
 /// The textures carry a keyed mutex: the writer releases one with
@@ -30,22 +31,21 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
     private const uint BindShaderResource = 0x8;
     private const uint BindRenderTarget = 0x20;
     private const uint MiscSharedKeyedMutex = 0x100;
-    private const uint MiscSharedNtHandle = 0x800;
-    private const uint SharedResourceRead = 0x80000000;
-    private const uint SharedResourceWrite = 1;
     private const uint WaitTimeout = 0x102;
-    private const uint AcquireTimeoutMilliseconds = 8;
+    // The mutex is taken under the lock of the device, which the decoder waits for: a slot the reader
+    // still holds is skipped rather than waited for
+    private const uint AcquireTimeoutMilliseconds = 0;
 
     // Slots of the vtables used here
     private const int QueryInterfaceSlot = 0;
     private const int ReleaseSlot = 2;
     private const int CreateTexture2DSlot = 5;
-    private const int CreateSharedHandleSlot = 13;
+    private const int GetSharedHandleSlot = 8;
     private const int AcquireSyncSlot = 8;
     private const int ReleaseSyncSlot = 9;
     private const int CopySubresourceRegionSlot = 46;
 
-    private static readonly Guid DxgiResource1 = new("30961379-4609-4a41-998e-54fe567ee0c1");
+    private static readonly Guid DxgiResource = new("035f3ab4-482e-4e50-b41f-8a7f8bd8960b");
     private static readonly Guid DxgiKeyedMutex = new("9d8e1289-d7b3-465f-8126-250e349af85d");
 
     private readonly Slot?[] _slots = new Slot?[SlotCount];
@@ -104,7 +104,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
             _height = caps.Height;
         }
 
-        var slot = TakeSlot(device);
+        var slot = TakeSlot(device, gstDevice);
 
         if (slot == null)
             return null;
@@ -114,7 +114,17 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
         // Finishes what the converter still has queued for the texture
         if (gst_memory_map(memory, (IntPtr)mapInfo, MapRead | MapD3D11) == 0)
         {
-            Release(slot, D3D11SharedVideoFrame.WriterKey);
+            gst_d3d11_device_lock(gstDevice);
+
+            try
+            {
+                Release(slot, D3D11SharedVideoFrame.WriterKey);
+            }
+            finally
+            {
+                gst_d3d11_device_unlock(gstDevice);
+            }
+
             return null;
         }
 
@@ -151,7 +161,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
     }
 
     // The next slot the reader is done with, made on first use
-    private Slot? TakeSlot(IntPtr device)
+    private Slot? TakeSlot(IntPtr device, IntPtr gstDevice)
     {
         for (var attempt = 0; attempt < SlotCount; attempt++)
         {
@@ -173,8 +183,21 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
                 : slot.WasRead ? D3D11SharedVideoFrame.WriterKey
                 : D3D11SharedVideoFrame.ReaderKey;
 
+            // The mutex works on the context of the device: taken in the middle of a frame of the
+            // decoder, it leaves the driver waiting for good (AMD, 144 fps)
             var acquire = (delegate* unmanaged[Stdcall]<IntPtr, ulong, uint, int>)VTable(slot.Mutex, AcquireSyncSlot);
-            var result = acquire(slot.Mutex, key, AcquireTimeoutMilliseconds);
+            int result;
+
+            gst_d3d11_device_lock(gstDevice);
+
+            try
+            {
+                result = acquire(slot.Mutex, key, AcquireTimeoutMilliseconds);
+            }
+            finally
+            {
+                gst_d3d11_device_unlock(gstDevice);
+            }
 
             if (result == unchecked((int)WaitTimeout) || result < 0)
                 continue;
@@ -198,7 +221,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
             Format = FormatB8G8R8A8,
             SampleCount = 1,
             BindFlags = BindShaderResource | BindRenderTarget,
-            MiscFlags = MiscSharedKeyedMutex | MiscSharedNtHandle
+            MiscFlags = MiscSharedKeyedMutex
         };
 
         IntPtr texture;
@@ -213,16 +236,15 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
             return null;
         }
 
-        var resource = Query(texture, DxgiResource1);
+        var resource = Query(texture, DxgiResource);
         var mutex = Query(texture, DxgiKeyedMutex);
         var handle = IntPtr.Zero;
 
         if (resource != IntPtr.Zero)
         {
-            var share = (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, uint, IntPtr, IntPtr*, int>)
-                VTable(resource, CreateSharedHandleSlot);
+            var share = (delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)VTable(resource, GetSharedHandleSlot);
 
-            if (share(resource, IntPtr.Zero, SharedResourceRead | SharedResourceWrite, IntPtr.Zero, &handle) < 0)
+            if (share(resource, &handle) < 0)
                 handle = IntPtr.Zero;
 
             ComRelease(resource);
@@ -232,11 +254,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
         {
             ComRelease(mutex);
             ComRelease(texture);
-
-            if (handle != IntPtr.Zero)
-                CloseHandle(handle);
-
-            Broken(mutex == IntPtr.Zero ? "no keyed mutex" : "CreateSharedHandle failed");
+            Broken(mutex == IntPtr.Zero ? "no keyed mutex" : "GetSharedHandle failed");
             return null;
         }
 
@@ -303,6 +321,7 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
 
     public void Dispose() => DisposeSlots();
 
+    // The share handle is no kernel handle: it goes with the texture and is never closed
     private sealed class Slot(IntPtr texture, IntPtr mutex, IntPtr handle)
     {
         public IntPtr Texture { get; } = texture;
@@ -323,7 +342,6 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
             _isDestroyed = true;
             ComRelease(Mutex);
             ComRelease(Texture);
-            CloseHandle(Handle);
         }
     }
 
@@ -366,9 +384,6 @@ internal sealed unsafe class D3D11SharedTextureWriter : IDisposable
         public uint CpuAccessFlags;
         public uint MiscFlags;
     }
-
-    [DllImport("kernel32.dll")]
-    private static extern int CloseHandle(IntPtr handle);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern IntPtr gst_buffer_peek_memory(IntPtr buffer, uint index);

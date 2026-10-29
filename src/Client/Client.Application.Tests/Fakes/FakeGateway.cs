@@ -72,7 +72,7 @@ public class FakeGateway : DispatchProxy
     public IReadOnlyList<int> UserRoleIds { get; set; } = [];
 
     /// <summary>Hands the session an event as the server would send it.</summary>
-    public void Raise(Client.Core.Events.CoordinatorEvent coordinatorEvent) => _eventReceived?.Invoke(coordinatorEvent);
+    public void Raise(Client.Core.Coordinator.CoordinatorEvent coordinatorEvent) => _eventReceived?.Invoke(coordinatorEvent);
 
     /// <summary>Whether the socket is open, as the gateway under test would see it.</summary>
     public bool IsOpen { get; private set; }
@@ -95,7 +95,7 @@ public class FakeGateway : DispatchProxy
     public int OverlappingCalls => Volatile.Read(ref _overlappingCalls);
 
     private Action<string>? _connectionLost;
-    private Action<Client.Core.Events.CoordinatorEvent>? _eventReceived;
+    private Action<Client.Core.Coordinator.CoordinatorEvent>? _eventReceived;
     private int _runningCalls;
     private int _overlappingCalls;
 
@@ -218,10 +218,10 @@ public class FakeGateway : DispatchProxy
                 _connectionLost -= (Action<string>)args![0]!;
                 return null;
             case "add_EventReceived":
-                _eventReceived += (Action<Client.Core.Events.CoordinatorEvent>)args![0]!;
+                _eventReceived += (Action<Client.Core.Coordinator.CoordinatorEvent>)args![0]!;
                 return null;
             case "remove_EventReceived":
-                _eventReceived -= (Action<Client.Core.Events.CoordinatorEvent>)args![0]!;
+                _eventReceived -= (Action<Client.Core.Coordinator.CoordinatorEvent>)args![0]!;
                 return null;
             case nameof(IDisposable.Dispose):
                 return null;
