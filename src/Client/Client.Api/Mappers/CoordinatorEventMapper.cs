@@ -4,7 +4,7 @@ using Shared.Models.Notifications.CoordinatorInfo;
 using Shared.Models.Notifications.Heartbeat;
 using Shared.Models.Notifications.SessionInfo;
 using Shared.Models.Media;
-using Client.Core.Events;
+using Client.Core.Coordinator;
 
 namespace Client.Api.Mappers;
 

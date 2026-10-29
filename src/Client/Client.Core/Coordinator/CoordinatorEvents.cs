@@ -7,7 +7,7 @@ using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 
-namespace Client.Core.Events;
+namespace Client.Core.Coordinator;
 
 /// <summary>
 /// Something the coordinator reported on its own, outside of a request.

@@ -11,7 +11,6 @@ using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator;
