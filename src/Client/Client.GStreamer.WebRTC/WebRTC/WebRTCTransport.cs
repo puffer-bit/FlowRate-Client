@@ -101,7 +101,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
             _outgoing.AttachPending, _states.ObserveTransports, _incoming.OnRoundCompleted, logger);
         _speaking = new SpeakingIndicator(sessionId, CollectSpeaking,
             (userId, isSpeaking) => SpeakingChanged?.Invoke(userId, isSpeaking), logger);
-        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _outgoing.ReadSendQueues,
+        _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _tuning.ReadJitterBuffer,
+            _outgoing.ReadSendQueues,
             ReportMedia, sample => StatsSampled?.Invoke(sample), logger);
     }
 
