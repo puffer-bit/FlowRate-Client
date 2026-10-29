@@ -119,7 +119,7 @@ internal static class OutgoingAudioBranch
 
         encoding.SetProperty("name", EncodingName);
 
-        var branch = Bin.New($"outgoing_{outbound.Id}");
+        var branch = Bin.New(PipelineBranch.OutgoingName(outbound.Id));
         branch.Add(encoding);
 
         using (var output = encoding.GetStaticPad("src"))
