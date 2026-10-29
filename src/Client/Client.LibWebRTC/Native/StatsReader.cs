@@ -82,8 +82,8 @@ internal static class StatsReader
                     break;
 
                 case "local-candidate" or "remote-candidate":
-                    if (String(stats, "id") is { } candidateId)
-                        candidates[candidateId] = String(stats, "protocol") ?? string.Empty;
+                    if (String(stats, "id") is { } candidateId && String(stats, "protocol") is { } protocol)
+                        candidates[candidateId] = protocol;
                     break;
             }
         }
@@ -94,14 +94,18 @@ internal static class StatsReader
                 : stream)
             .ToList();
 
-        var isOverTcp = selectedPair != null && pairs.TryGetValue(selectedPair, out var pair) &&
-                        (IsTcp(pair.Local) || IsTcp(pair.Remote));
+        // Unknown until ICE selects a pair whose candidates are reported
+        bool? isOverTcp = selectedPair != null && pairs.TryGetValue(selectedPair, out var pair)
+                                               && Protocol(pair.Local) is { } localProtocol
+                                               && Protocol(pair.Remote) is { } remoteProtocol
+            ? localProtocol == "tcp" || remoteProtocol == "tcp"
+            : null;
 
         return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp,
             selectedPair != null && available.TryGetValue(selectedPair, out var kbps) ? kbps : null));
 
-        bool IsTcp(string? candidateId) =>
-            candidateId != null && candidates.GetValueOrDefault(candidateId) == "tcp";
+        string? Protocol(string? candidateId) =>
+            candidateId == null ? null : candidates.GetValueOrDefault(candidateId);
     }
 
     private static string? String(JsonElement stats, string name) =>

@@ -11,7 +11,6 @@ using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator;
@@ -114,6 +113,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private readonly INotificationService _notifications;
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly IPeerPlaybackService _playbackService;
     private readonly IScreenSourceProvider? _screenSourceProvider;
     private readonly IAudioAppProvider? _audioApps;
@@ -152,6 +152,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         };
         _voiceActivity = services.VoiceActivity;
         _screenWatch = services.ScreenWatch;
+        _peerStats = services.PeerStats;
         _playbackService = services.Playback;
         Model = hybridSessionModel;
         _screenCastClient = services.CreateScreenCastClient?.Invoke();
@@ -167,6 +168,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             .Add(() => hybridSession.ScreenWatchChanged += OnScreenWatchChanged,
                 () => hybridSession.ScreenWatchChanged -= OnScreenWatchChanged)
             .Add(() => hybridSession.VideoFrameReady += OnVideoFrame, () => hybridSession.VideoFrameReady -= OnVideoFrame)
+            .Add(() => hybridSession.VideoDecodingChanged += OnVideoDecoding,
+                () => hybridSession.VideoDecodingChanged -= OnVideoDecoding)
             .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)
@@ -459,6 +462,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 return;
 
             StatusBar.Stats.Add(sample);
+            _peerStats.Add(Model.Id, sample);
 
             var now = TimeSpan.FromMilliseconds(Environment.TickCount64);
 
@@ -647,6 +651,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         IsClosed = true;
 
         _subscriptions.Dispose();
+        _peerStats.Clear(Model.Id);
 
         if (_isJoined)
         {

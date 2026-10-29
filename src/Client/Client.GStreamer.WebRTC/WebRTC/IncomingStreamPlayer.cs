@@ -104,6 +104,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     private readonly bool _isPlaybackEnabled;
     private readonly Func<uint, double> _resolveVolume;
     private readonly Action<uint, RawVideoFrame> _onVideoFrame;
+    private readonly Action<uint, VideoDecoding> _onVideoDecoding;
 
     /// <param name="isPlaybackEnabled">
     /// Whether incoming audio is played on the output device. Headless clients such as the test bot
@@ -118,10 +119,15 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     /// Receives the decoded frames of the section with the given mline index, on a thread of the
     /// branch. The pixels are only valid during the call.
     /// </param>
+    /// <param name="onVideoDecoding">
+    /// Receives how the section with the given mline index is decoded, on a thread of the branch.
+    /// </param>
     public IncomingStreamPlayer(Pipeline pipeline, IVideoMedia video, ILogger logger, int sessionId,
-        Func<uint, double> resolveVolume, Action<uint, RawVideoFrame> onVideoFrame, bool isPlaybackEnabled = true)
+        Func<uint, double> resolveVolume, Action<uint, RawVideoFrame> onVideoFrame,
+        Action<uint, VideoDecoding> onVideoDecoding, bool isPlaybackEnabled = true)
     {
         _onVideoFrame = onVideoFrame;
+        _onVideoDecoding = onVideoDecoding;
         _pipeline = pipeline;
         _video = video;
         _logger = logger;
@@ -341,7 +347,10 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
                 var decoder = _video.CreateDecoder(codec, $"{_sessionId}_{padName}");
 
                 if (decoder != null)
+                {
                     decoder.FrameReady += frame => _onVideoFrame(mline, frame);
+                    decoder.DecodingChanged += decoding => _onVideoDecoding(mline, decoding);
+                }
 
                 return decoder;
             }, sink, $"video_{_sessionId}_{padName}",

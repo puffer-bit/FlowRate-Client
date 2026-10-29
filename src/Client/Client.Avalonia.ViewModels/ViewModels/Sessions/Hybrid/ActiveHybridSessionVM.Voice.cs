@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 using Client.Avalonia.Localization;
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Client.Core.Settings;
 using Client.Application.Sounds;
 using Client.ViewModels.Notifications;

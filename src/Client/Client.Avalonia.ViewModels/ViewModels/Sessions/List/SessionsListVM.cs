@@ -11,7 +11,6 @@ using Shared.Enums;
 using Shared.Models.Media;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
@@ -24,6 +23,7 @@ using Client.Services;
 using Client.ViewModels.Main;
 using Client.ViewModels.Dialogs;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -147,6 +147,7 @@ public partial class SessionsListVM : ReactiveObject
     private readonly IPeerPlaybackService _playbackService;
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly SessionListPreferences _preferences;
     private readonly ChatReadTracker _readTracker;
     private readonly ILogger<SessionsListVM> _logger;
@@ -163,6 +164,7 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand,
         ReactiveCommand<int?, RxVoid> createSessionCommand,
         IPeerPlaybackService playbackService, IVoiceActivityService voiceActivity, IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         SessionListPreferences preferences,
         ChatReadTracker readTracker,
         AccessVM access,
@@ -192,6 +194,7 @@ public partial class SessionsListVM : ReactiveObject
         _voiceActivity.Changed += OnSpeakingChanged;
         _screenWatch = screenWatch;
         _screenWatch.Changed += OnScreenWatchChanged;
+        _peerStats = peerStats;
         _deleteSessionCommand = ReactiveCommand
             .CreateFromTask<int>(DeleteSession);
         _toggleChatMuteCommand = ReactiveCommand
@@ -523,7 +526,7 @@ public partial class SessionsListVM : ReactiveObject
     private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
     {
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
-            _screenWatch, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
+            _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
             _banUserCommand, _admitPeerCommand, _pokePeerCommand);
         model.ApplyAccess(Access.Permissions);
