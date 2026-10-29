@@ -1,0 +1,10 @@
+--- a/modules/audio_device/win/audio_device_core_win.cc
++++ b/modules/audio_device/win/audio_device_core_win.cc
+@@ -2604,3 +2604,6 @@
+ bool AudioDeviceWindowsCore::BuiltInAECIsAvailable() const {
+-  return _dmo != nullptr;
++  // FlowRate: never the echo cancelling of Windows, as in Chromium. Its Voice Capture DMO records
++  // the microphone at 16 kHz with processing of its own, and once the recording started it cannot
++  // be turned off again: the voice stayed muffled whatever the options said
++  return false;
+ }
