@@ -15,7 +15,7 @@ Dependencies point inwards; each outer project registers its services in its own
 | Domain | `Client.Core` | models of coordinators (servers), sessions, users, chat, media, settings; no I/O |
 | Application | `Client.Application` | use cases; `Ports/` holds the interfaces every outer layer implements (gateway, WebRTC transport, audio devices, storage, updater, push, screen capture) |
 | Adapters | `Client.Api`, `Client.WebSockets`, `Client.Infrastructure`, `Client.GStreamer`, `Client.GStreamer.WebRTC`, `Client.LibWebRTC`, `Client.WebRTC`, `Client.OpenAL` | server connection, SQLite storage, media and the WebRTC transports, audio output |
-| Presentation | `Client.Avalonia.ViewModels`, `.Controls`, `.Styles`, `.Assets`, `.Localization` | view models and UI parts shared by both apps |
+| Presentation | `Client.Avalonia.ViewModels`, `.Controls`, `.Styles`, `.Assets`, `.Localization`, `.Video` | view models and UI parts shared by both apps; `.Video` draws the watched screen on the desktop |
 | Hosts | `Client.Avalonia.Desktop`, `Client.Avalonia.Android` | composition roots and platform services |
 
 `Client.Tools` (logging, environment, hardware id, app info) is referenced from everywhere and depends

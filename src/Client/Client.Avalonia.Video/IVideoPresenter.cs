@@ -1,6 +1,6 @@
 using Client.Core.Media;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Shows the frames of one stream.

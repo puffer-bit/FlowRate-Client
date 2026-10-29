@@ -3,7 +3,7 @@ using System.Buffers;
 using Client.Core.Media;
 using Client.Core.Settings;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// A frame waiting to be shown: the pixels copied out of the decoder, or a reference to a frame

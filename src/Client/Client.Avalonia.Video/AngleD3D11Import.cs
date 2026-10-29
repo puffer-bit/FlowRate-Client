@@ -1,7 +1,7 @@
 using System;
 using Avalonia.OpenGL;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Brings the shared Direct3D 11 textures of the decoder into the ANGLE context Avalonia renders

@@ -9,13 +9,13 @@ using Avalonia.Rendering.Composition;
 using Client.Core.Media;
 using Microsoft.Extensions.Logging;
 
-namespace Client.Views.Sessions.Hybrid.Video;
+namespace Client.Avalonia.Video;
 
 /// <summary>
 /// Finds out once, when the main window opens, how this system can show frames: which presenter
 /// draws them and what may reach it without being copied through memory.
 /// </summary>
-internal static class VideoSurfaceProbe
+public static class VideoSurfaceProbe
 {
     private static bool _isDone;
 
