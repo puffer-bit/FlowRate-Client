@@ -33,4 +33,14 @@ internal sealed partial class WebRTCBinTuning
 
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Source ssrc {Ssrc} dropped from the RTP manager")]
     private partial void LogSourceForgotten(int sessionId, uint ssrc);
+
+    [LoggerMessage(LogLevel.Information,
+        "[Session {SessionId}] Send buffer of the media socket set to {Bytes} bytes: {IsSet}")]
+    private partial void LogSendBuffer(int sessionId, int bytes, bool isSet);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to set the send buffer of the media socket")]
+    private partial void LogSendBufferFailed(Exception exception, int sessionId);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to wake the sender of the transport")]
+    private partial void LogWakeSenderFailed(Exception exception, int sessionId);
 }
