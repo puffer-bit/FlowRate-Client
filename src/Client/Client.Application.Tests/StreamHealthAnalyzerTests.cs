@@ -103,14 +103,6 @@ public class StreamHealthAnalyzerTests
     }
 
     [Fact]
-    public void TcpPairIsReported()
-    {
-        Read(Video() with { IsOverTcp = true });
-
-        Assert.Equal([StreamIssueKind.TcpTransport], Kinds());
-    }
-
-    [Fact]
     public void OtherUsersStreamsAreIgnored()
     {
         Read(Sample(new InboundStreamSample(UserId + 1, MediaSourceType.Screen, MediaType.Video, 100, 30, 0, 0),

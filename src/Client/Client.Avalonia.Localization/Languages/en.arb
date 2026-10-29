@@ -780,7 +780,6 @@
   "hybrid.screen.expand": "Expand",
   "hybrid.screen.collapse": "Collapse",
   "hybrid.screen.issues.network": "Network",
-  "hybrid.screen.issues.transport": "Connection type",
   "hybrid.screen.issues.source": "Streamer",
   "hybrid.screen.issues.audio": "Sound",
   "hybrid.screen.issues.performance": "Decoding and drawing",
@@ -802,7 +801,6 @@
       "seconds": {}
     }
   },
-  "hybrid.screen.issues.tcpTransport": "The connection goes over TCP: a lost packet holds back the ones after it",
   "hybrid.screen.issues.noSourceFrames": "Nothing comes from the streamer for {seconds} s",
   "@hybrid.screen.issues.noSourceFrames": {
     "placeholders": {
@@ -838,6 +836,9 @@
   "hybrid.stats.quality.poor": "Poor",
   "hybrid.stats.quality.unknown": "Not measured yet",
   "hybrid.stats.ping": "Ping",
+  "hybrid.stats.udp": "Media goes over UDP",
+  "hybrid.stats.tcp": "Media goes over TCP: a lost packet holds back the ones after it, so voice and screens may stutter",
+  "hybrid.stats.transportUnknown": "The protocol is not known yet: the connection has not picked a route",
   "hybrid.stats.lossIn": "Loss in",
   "hybrid.stats.lossOut": "Loss out",
   "hybrid.stats.pingGraph": "Ping over the last 2 minutes",

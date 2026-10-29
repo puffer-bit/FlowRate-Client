@@ -84,9 +84,6 @@ public sealed class StreamHealthAnalyzer
         var video = Find(sample, MediaType.Video);
         var videoPackets = video?.Packets ?? 0;
 
-        if (sample.IsOverTcp)
-            found.Add(new StreamIssue(StreamIssueKind.TcpTransport, StreamIssueSeverity.Warning));
-
         if (video is { } stream)
         {
             if (stream.LossPercent >= LossWarningPercent)
