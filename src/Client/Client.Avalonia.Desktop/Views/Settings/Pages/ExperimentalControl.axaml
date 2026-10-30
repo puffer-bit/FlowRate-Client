@@ -24,9 +24,9 @@
 
         <controls:SettingsHeader services:SettingText.Section="experimental.voice"/>
         <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="experimental.libWebRTC"
+            <ui:SettingsRow services:SettingText.Key="experimental.gstreamer"
                             IsEnabled="{Binding IsExperimentalEnabled}">
-                <CheckBox IsChecked="{Binding UseLibWebRTC}"/>
+                <CheckBox IsChecked="{Binding UseGStreamer}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
         <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
