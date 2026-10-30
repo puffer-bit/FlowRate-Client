@@ -383,8 +383,8 @@
                 Padding="8"
                 anim:Presence.Appear="Unfold"
                 anim:Presence.Leave="Fold"
-                anim:Presence.IsLeaving="{Binding OpenedSessions.IsHybridPanelLeaving, FallbackValue=False}"
-                IsVisible="{Binding OpenedSessions.HybridPanelSession, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                anim:Presence.IsLeaving="{Binding OpenedSessions?.IsHybridPanelLeaving, FallbackValue=False}"
+                IsVisible="{Binding OpenedSessions?.HybridPanelSession, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
             <Border.Styles>
                 <!-- The part that has not unfolded yet is cut off. A style and not a value of the
                      element: the end of a fold clears the value the element has -->
@@ -417,16 +417,16 @@
                                                         IsIndeterminate="True"
                                                         BorderThickness="3"
                                                         Foreground="{DynamicResource ProgressRingBrush}"
-                                                        IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsLoading, FallbackValue=False}"/>
+                                                        IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsLoading, FallbackValue=False}"/>
                         <indicators:SignalIndicator Width="24" Height="24"
-                                                    Level="{Binding OpenedSessions.HybridPanelSession.StatusBar.Stats.SignalLevel, FallbackValue=0}"
-                                                    IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsConnected, FallbackValue=False}"/>
+                                                    Level="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.Stats.SignalLevel, FallbackValue=0}"
+                                                    IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsConnected, FallbackValue=False}"/>
                         <Image Width="22" Height="22"
-                               Source="{Binding OpenedSessions.HybridPanelSession.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}">
+                               Source="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}">
                             <Image.IsVisible>
                                 <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                    <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsLoading" FallbackValue="False"/>
-                                    <Binding Path="!OpenedSessions.HybridPanelSession.StatusBar.IsConnected" FallbackValue="False"/>
+                                    <Binding Path="!OpenedSessions?.HybridPanelSession?.StatusBar.IsLoading" FallbackValue="False"/>
+                                    <Binding Path="!OpenedSessions?.HybridPanelSession?.StatusBar.IsConnected" FallbackValue="False"/>
                                 </MultiBinding>
                             </Image.IsVisible>
                         </Image>
@@ -439,45 +439,45 @@
                         <StackPanel Spacing="2" VerticalAlignment="Center">
                             <TextBlock FontSize="15" FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                       Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.SessionName, FallbackValue={x:Null}}"/>
+                                       Text="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.SessionName, FallbackValue={x:Null}}"/>
                             <TextBlock FontSize="12"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                       Text="{Binding OpenedSessions.HybridPanelSession.StatusBar.ShortStatusText, FallbackValue={x:Null}}"/>
+                                       Text="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ShortStatusText, FallbackValue={x:Null}}"/>
                         </StackPanel>
                     </Button>
 
                     <Button Grid.Column="2" Classes="hybridAction" Width="44" VerticalAlignment="Center"
-                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.CloseCommand, FallbackValue={x:Null}}">
+                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.CloseCommand, FallbackValue={x:Null}}">
                         <Image Width="22" Height="22" Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
                     </Button>
                 </Grid>
 
                 <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
                     <Button Classes="hybridAction"
-                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}">
+                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}">
                         <Panel>
                             <Image Width="22" Height="22" Source="{StaticResource MicrophoneIcon}"
-                                   IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsMicrophoneOn, FallbackValue=False}"/>
+                                   IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsMicrophoneOn, FallbackValue=False}"/>
                             <Image Width="22" Height="22" Source="{StaticResource CrossedMicrophoneIcon}"
-                                   IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsMicrophoneOn, FallbackValue=True}"/>
+                                   IsVisible="{Binding !OpenedSessions?.HybridPanelSession?.StatusBar.IsMicrophoneOn, FallbackValue=True}"/>
                         </Panel>
                     </Button>
 
                     <Button Classes="hybridAction"
-                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleSoundCommand, FallbackValue={x:Null}}">
+                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleSoundCommand, FallbackValue={x:Null}}">
                         <Panel>
                             <Image Width="22" Height="22" Source="{StaticResource HeadphonesIcon}"
-                                   IsVisible="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsSoundOn, FallbackValue=True}"/>
+                                   IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsSoundOn, FallbackValue=True}"/>
                             <Image Width="22" Height="22" Source="{StaticResource CrossedHeadphonesIcon}"
-                                   IsVisible="{Binding !OpenedSessions.HybridPanelSession.StatusBar.IsSoundOn, FallbackValue=False}"/>
+                                   IsVisible="{Binding !OpenedSessions?.HybridPanelSession?.StatusBar.IsSoundOn, FallbackValue=False}"/>
                         </Panel>
                     </Button>
 
                     <!-- Away from the keyboard and back with one tap, without a reason -->
                     <Button Classes="hybridAction"
-                            Classes.active="{Binding OpenedSessions.HybridPanelSession.StatusBar.IsAfk, FallbackValue=False}"
-                            Command="{Binding OpenedSessions.HybridPanelSession.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}">
+                            Classes.active="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsAfk, FallbackValue=False}"
+                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}">
                         <Image Width="22" Height="22" Source="{StaticResource AfkIcon}"/>
                     </Button>
                 </UniformGrid>

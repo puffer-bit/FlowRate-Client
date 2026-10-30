@@ -117,6 +117,8 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
 
                 _inputDevices = ReadDevices(monitor, _logger);
             }
+
+            LogDevicesRefreshed(string.Join(", ", _inputDevices.Select(d => d.Name)));
         }
         catch (Exception exception)
         {

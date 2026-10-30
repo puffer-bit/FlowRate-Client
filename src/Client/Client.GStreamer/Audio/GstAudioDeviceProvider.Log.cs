@@ -11,8 +11,12 @@ public sealed partial class GstAudioDeviceProvider
     [LoggerMessage(LogLevel.Error, "Failed to enumerate audio devices")]
     private partial void LogEnumerateFailed(Exception exception);
 
-    [LoggerMessage(LogLevel.Debug, "Input devices changed: {MessageType}")]
+    // The monitor reports every device it finds at its start as added, one message each
+    [LoggerMessage(LogLevel.Trace, "Input devices changed: {MessageType}")]
     private partial void LogDevicesChanged(MessageType messageType);
+
+    [LoggerMessage(LogLevel.Debug, "Input devices: {Devices}")]
+    private partial void LogDevicesRefreshed(string devices);
 
     [LoggerMessage(LogLevel.Error, "Failed to refresh audio devices")]
     private partial void LogRefreshFailed(Exception exception);
