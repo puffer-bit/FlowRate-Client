@@ -84,7 +84,10 @@ encoder wrote it (`patches/flowrate_keep_sps.patch`). With all of it a screen ar
 GStreamer: 7 ms from drawing to decoding on one machine, measured with the stamped test picture of
 `Client.TestBot`.
 
-`FLOWRATE_WEBRTC_LOG=verbose|info|warning|error` prints the log of libwebrtc to stderr.
+The log of libwebrtc goes into the journal of the application through `fr_set_log`, as much of it as
+the Logging and debug tab asks for, in a file of its own (`libwebrtc-*.txt`); on Android its libwebrtc
+takes the level only when it starts. `FLOWRATE_WEBRTC_LOG=verbose|info|warning|error` prints it to
+stderr besides, as the library has nothing else to print there.
 `FLOWRATE_WEBRTC_FIELD_TRIALS=Name/Value/...` replaces the field trials of `fr_initialize`.
 
 A screen that stops keeps its section, which goes on sending, nothing: the SFU only pauses its

@@ -23,6 +23,7 @@ public partial class ApplicationLoader
     private readonly IAppearanceService _appearanceService;
     private readonly IStorageService _storageService;
     private readonly IVideoService _videoService;
+    private readonly IDebugAndLogService _debugAndLogService;
     private readonly IHotKeysService _hotKeysService;
     private readonly IAudioSettingsRepository _audioSettings;
     private readonly ISoundService _soundService;
@@ -39,6 +40,7 @@ public partial class ApplicationLoader
         IAppearanceService appearanceService,
         IStorageService storageService,
         IVideoService videoService,
+        IDebugAndLogService debugAndLogService,
         IHotKeysService hotKeysService,
         IAudioSettingsRepository audioSettings,
         ISoundService soundService,
@@ -54,6 +56,7 @@ public partial class ApplicationLoader
         _appearanceService = appearanceService;
         _storageService = storageService;
         _videoService = videoService;
+        _debugAndLogService = debugAndLogService;
         _hotKeysService = hotKeysService;
         _audioSettings = audioSettings;
         _soundService = soundService;
@@ -114,6 +117,10 @@ public partial class ApplicationLoader
         // Back on the caller's (UI) thread: the theme touches Avalonia resources
         try
         {
+            // First: the level of the journal and the native logs the user asked for, so the rest of the
+            // start is written as they want it
+            await _debugAndLogService.ApplyAsync();
+
             // Before a chat is opened: what is kept of the chats and how much
             await _storageService.ApplyAsync();
 

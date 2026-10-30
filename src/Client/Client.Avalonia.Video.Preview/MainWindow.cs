@@ -79,7 +79,7 @@ public sealed class MainWindow : Window
     {
         // The surface picks its presenter from the probe, so it is created once the probe is done
         await VideoSurfaceProbe.RunAsync(this, new ConsoleLogger());
-        VideoSettings.Apply(VideoSettings.Current with { ShowFrameStats = true });
+        DebugSettings.Apply(DebugSettings.Current with { ShowFrameStats = true });
 
         _video = new VideoView();
         _videoHost.Children.Insert(0, _video);
