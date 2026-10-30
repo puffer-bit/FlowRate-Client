@@ -139,20 +139,20 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
-    public async Task UseLibWebRTCRoundTrip()
+    public async Task UseGStreamerRoundTrip()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new AudioSettingsRepository(database.Database);
 
-        // Nothing chosen yet: the voice goes over GStreamer
-        Assert.False(await repository.GetUseLibWebRTCAsync());
+        // Nothing chosen yet: the voice goes over libwebrtc
+        Assert.False(await repository.GetUseGStreamerAsync());
 
-        await repository.UpdateUseLibWebRTCAsync(true);
-        Assert.True(await repository.GetUseLibWebRTCAsync());
+        await repository.UpdateUseGStreamerAsync(true);
+        Assert.True(await repository.GetUseGStreamerAsync());
 
         // Saving the other audio settings keeps the choice
         await repository.SaveAsync(new AudioSettings { InputVolume = 0.5 });
-        Assert.True(await repository.GetUseLibWebRTCAsync());
+        Assert.True(await repository.GetUseGStreamerAsync());
     }
 
     [Fact]

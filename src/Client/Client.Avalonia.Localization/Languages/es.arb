@@ -818,8 +818,8 @@
   "settings.experimental.customTitleBar.title": "Barra de título propia",
   "settings.experimental.customTitleBar.description": "Los botones de la ventana están en la barra superior de la aplicación y la barra de título del sistema se oculta. Desactívalo para recuperar la barra de título del sistema. Se aplica al instante",
   "settings.experimental.section.voice": "Voz",
-  "settings.experimental.libWebRTC.title": "Voz y pantallas con libwebrtc",
-  "settings.experimental.libWebRTC.description": "La voz y las pantallas pasan por el motor de Chrome en lugar de GStreamer: su búfer de jitter, su supresión de ruido y su cancelación de eco, y su transporte para las pantallas, que GStreamer sigue capturando, codificando y decodificando. El sonido de una pantalla compartida también pasa por él, sin el procesamiento del micrófono. Se aplica a la próxima sesión a la que te unas",
+  "settings.experimental.gstreamer.title": "Voz y pantallas con GStreamer",
+  "settings.experimental.gstreamer.description": "El motor por el que pasaban la voz y las pantallas antes de libwebrtc: su propio búfer de jitter, supresión de ruido, cancelación de eco y transporte. Para comparar los dos o por si libwebrtc falla. Se aplica a la próxima sesión a la que te unas",
   "settings.experimental.libWebRTC.failed": "No se pudo cargar libwebrtc, la voz y las pantallas siguen con GStreamer: {reason}",
 
   "settings.accounting.name": "Perfiles, servidores y seguridad",

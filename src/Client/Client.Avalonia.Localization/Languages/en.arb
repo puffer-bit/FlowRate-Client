@@ -1346,8 +1346,8 @@
   "settings.experimental.customTitleBar.title": "Own window title bar",
   "settings.experimental.customTitleBar.description": "The window buttons sit in the top bar of the application and the title bar of the system is hidden. Turn off to get the title bar of the system back. Applies at once",
   "settings.experimental.section.voice": "Voice",
-  "settings.experimental.libWebRTC.title": "Voice and screens over libwebrtc",
-  "settings.experimental.libWebRTC.description": "Voice and screens go through the engine of Chrome instead of GStreamer: its jitter buffer, noise suppression and echo cancelling, and its transport for the screens, which GStreamer still captures, encodes and decodes. The sound of a shared screen goes through it too, untouched by the processing of the microphone. Applies to the next session joined",
+  "settings.experimental.gstreamer.title": "Voice and screens over GStreamer",
+  "settings.experimental.gstreamer.description": "The engine the voice and the screens went through before libwebrtc: its own jitter buffer, noise suppression and echo cancelling, and its own transport. For comparing the two, or for when libwebrtc misbehaves. Applies to the next session joined",
   "settings.experimental.libWebRTC.failed": "libwebrtc could not be loaded, the voice and the screens stay on GStreamer: {reason}",
   "@settings.experimental.libWebRTC.failed": {
     "placeholders": {
