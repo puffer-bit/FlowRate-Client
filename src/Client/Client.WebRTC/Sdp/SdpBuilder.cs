@@ -107,6 +107,10 @@ public static class SdpBuilder
         // The SSRC is only announced for streams the SFU sends.
         if (section.Direction == SdpDirection.SendOnly && section.SSRC.HasValue)
         {
+            // A stream of its own for each section: without msid libwebrtc puts every track into one
+            // stream and keeps the pictures of a screen in step with the voice of somebody else,
+            // as late as that voice is played
+            sdp.Append($"a=msid:flowrate-{section.Mid} flowrate-{section.Mid}").Append(LineBreak);
             sdp.Append($"a=ssrc:{section.SSRC.Value} cname:{section.Cname}").Append(LineBreak);
         }
     }

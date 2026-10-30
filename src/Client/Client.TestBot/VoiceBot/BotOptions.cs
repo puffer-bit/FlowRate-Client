@@ -34,6 +34,8 @@ internal sealed record BotOptions
           --screen                 Also share a screen: a moving test picture.
           --screen-interval <sec>  Stop and start the screen share every given number of seconds.
                                    Implies --screen. Default: off.
+          --screen-delay <sec>     Start the screen share that many seconds after joining, as a user
+                                   who talks first does. Implies --screen. Default: at once.
           --screen-fps <n>         Frame rate of the shared screen, one the dialog of the client
                                    offers (15, 30, 60, 144). Implies --screen. Default: 30.
           --screen-audio           Send a tone along with the shared screen. Implies --screen.
@@ -92,6 +94,7 @@ internal sealed record BotOptions
     public bool Listen { get; init; }
     public bool Screen { get; init; }
     public TimeSpan? ScreenInterval { get; init; }
+    public TimeSpan? ScreenDelay { get; init; }
     public int ScreenFramerate { get; init; } = Client.Core.Media.ScreenShareSettings.DefaultFramerate;
     public bool ScreenAudio { get; init; }
     public bool GpuFrames { get; init; }
@@ -113,7 +116,7 @@ internal sealed record BotOptions
     public static BotOptions? Parse(IReadOnlyList<string> args)
     {
         string? server = null, password = null, session = null, file = null;
-        int? rawRate = null, speakers = null, muteSeconds = null, screenSeconds = null, rejoinSeconds = null, watchSeconds = null;
+        int? rawRate = null, speakers = null, muteSeconds = null, screenSeconds = null, screenDelaySeconds = null, rejoinSeconds = null, watchSeconds = null;
         var watch = false;
         int rawChannels = 1, count = 1;
         double tone = 440, volume = 1;
@@ -195,6 +198,10 @@ internal sealed record BotOptions
                     break;
                 case "--screen-interval":
                     screenSeconds = ParseInt(name, Value(), 1, 3600);
+                    screen = true;
+                    break;
+                case "--screen-delay":
+                    screenDelaySeconds = ParseInt(name, Value(), 1, 3600);
                     screen = true;
                     break;
                 case "--screen-fps":
@@ -287,6 +294,7 @@ internal sealed record BotOptions
             GpuFrames = gpuFrames,
             GpuFramesFailAfter = gpuFailSeconds.HasValue ? TimeSpan.FromSeconds(gpuFailSeconds.Value) : null,
             ScreenInterval = screenSeconds.HasValue ? TimeSpan.FromSeconds(screenSeconds.Value) : null,
+            ScreenDelay = screenDelaySeconds.HasValue ? TimeSpan.FromSeconds(screenDelaySeconds.Value) : null,
             Watch = watch,
             WatchInterval = watchSeconds.HasValue ? TimeSpan.FromSeconds(watchSeconds.Value) : null,
             RejoinInterval = rejoinSeconds.HasValue ? TimeSpan.FromSeconds(rejoinSeconds.Value) : null,

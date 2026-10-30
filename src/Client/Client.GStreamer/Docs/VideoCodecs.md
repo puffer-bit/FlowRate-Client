@@ -54,17 +54,26 @@ property that only some versions of an element have (the `Tuning` of a candidate
 element of its own first (`Accepts`), since a property the element does not know fails the parse of
 the whole branch.
 
-| Encoder | Bitrate | Low latency |
-|---|---|---|
-| NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` |
-| NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` |
-| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` |
-| VA-API, Quick Sync | kbit/s | `rate-control=cbr` |
-| Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` |
-| OpenH264 | bit/s | `usage-type=screen`, `rate-control=bitrate`, `complexity=low` |
+| Encoder | Bitrate | Low latency | GOP | Frame size bound |
+|---|---|---|---|---|
+| NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` | `gop-size=-1` | `vbv-buffer-size` |
+| NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` | `gop-size=-1` | `vbv-buffer-size` |
+| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
+| VA-API | kbit/s | `rate-control=cbr` | `key-int-max=1024` | `cpb-size` |
+| Quick Sync | kbit/s | `rate-control=cbr` | `gop-size=65535` | `max-frame-size-i` |
+| Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` | the encoder's own | |
+| OpenH264 | bit/s | `usage-type=screen`, `rate-control=bitrate`, `complexity=low` | `gop-size=2147483647`, `scene-change-detection=false` | |
 
 Left to their defaults, NVENC and AMF are tuned for quality: a variable rate that sends a keyframe
 as a burst of several times the average frame, and frames held back for reordering.
+
+The GOP is the longest each encoder takes: a keyframe is made when a viewer asks for one (below), and
+the default GOPs (30 to 90 frames) made several of them a second at a high rate. The frame size bound
+is what the bitrate carries in 100 ms (`KeyFrameWindowMs`): left alone, a keyframe of a screen of text
+is ten to fifty times the average frame, up to half a second of the uplink in one burst, which loses
+packets, and each loss brings a PLI and one more keyframe. Bounded, the keyframe comes out blurred
+and the next few frames sharpen it. The GOP and the bound are used where the element has them, the
+same way as the tuning above; `SetBitrate` changes the bound with the bitrate.
 
 Whatever the encoder, the stream is constrained baseline (what the SFU announces,
 `profile-level-id 42e01f`, and what OpenH264 of a viewer always decodes), and `h264parse
@@ -103,10 +112,12 @@ starts unwatched, so with the preview closed.
 - A viewer who joins, or whose decoder lost frames, asks for a keyframe; the transport passes the
   request on to `IScreenCapture.RequestKeyFrame`, which sends a force-key-unit event from the sink of the
   encoded frames up to the encoder.
-- AMF in its low-latency usages makes keyframes only when asked, whatever its GOP size, and requests
-  of the SFU may get lost, so `GstScreenCapture` asks for one itself after 2 seconds without one.
-- `SetBitrate` sets the bitrate properties the encoder got when it was made, for the new rate. An
-  encoder that does not take them while it runs keeps its bitrate.
+- Keyframes are made only when asked for: the SFU asks when a viewer joins and repeats a request
+  until the keyframe reaches it. `GstScreenCapture` answers one request of a wait, and one that comes
+  less than 500 ms after a keyframe waits until then. A keyframe every 2 seconds on top of that was a
+  burst every 2 seconds, which lost packets on a slow uplink.
+- `SetBitrate` sets the bitrate properties the encoder got when it was made, and the frame size
+  bound, for the new rate. An encoder that does not take them while it runs keeps its bitrate.
 
 ## The decoder
 
