@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -515,6 +516,22 @@ int fr_initialize(void) {
     return 1;
 
   flowrate::ConfigureLogging();
+
+  // Read once, by everything created afterwards. FLOWRATE_WEBRTC_FIELD_TRIALS ("Name/Value/...")
+  // replaces them all, to try something out. Measured with the stamped test picture of TestBot:
+  // - abort_further: the first probe of a screen shared right after joining was capped at twice
+  //   the bitrate of the voice, and its result, about 150 kbit/s, replaced the start bitrate; the
+  //   screen then went below the network for 15 s, with 2 s of pictures queued in the pacer
+  // - ForcePlayoutDelay 0: a picture goes to the decoder as soon as it is whole, as in the GStreamer
+  //   transport. The timing of libwebrtc otherwise added 10-20 ms on a clean network, and on one
+  //   that reorders packets it ran away to 1-2 s
+  std::vector<libwebrtc::string> trials;
+  const char* custom = std::getenv("FLOWRATE_WEBRTC_FIELD_TRIALS");
+  trials.emplace_back(custom != nullptr ? custom
+                                        : "WebRTC-Bwe-ProbingConfiguration/abort_further:true/"
+                                          "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/");
+
+  LibWebRTC::InitializeWithFieldTrials(libwebrtc::vector<libwebrtc::string>(trials));
 
   if (!LibWebRTC::Initialize())
     return 0;

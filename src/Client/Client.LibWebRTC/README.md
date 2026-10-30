@@ -72,10 +72,20 @@ stream. Where the SFU reads the transport-wide sequence number (it says so with 
 every section we send in carries it, and libwebrtc estimates the bandwidth by the delays of its
 transport-cc feedback; an SFU that reads none is offered none, as libwebrtc would take the missing
 feedback for a network that delivers nothing. A screen that starts after the voice is probed up to its
-bitrate within a second or so; one that starts in the very round of the microphone is measured while
-only the voice is allocated and climbs slowly.
+bitrate within a second or so. One that starts in the very round of the microphone used to be probed
+while only the voice was allocated, at twice its bitrate, and the result of that probe replaced the
+start bitrate: the field trial `WebRTC-Bwe-ProbingConfiguration/abort_further:true/` stops that probe.
+
+A received picture goes to the decoder as soon as it is whole (`WebRTC-ForcePlayoutDelay` of 0), as
+in the GStreamer transport: the timing of libwebrtc held pictures 10-20 ms longer on a clean network
+and ran away to seconds on one that reorders packets. Every section the SFU sends in has a stream
+(`a=msid`) of its own, so libwebrtc keeps no screen in step with a voice. The SPS of H.264 goes as the
+encoder wrote it (`patches/flowrate_keep_sps.patch`). With all of it a screen arrives as fast as over
+GStreamer: 7 ms from drawing to decoding on one machine, measured with the stamped test picture of
+`Client.TestBot`.
 
 `FLOWRATE_WEBRTC_LOG=verbose|info|warning|error` prints the log of libwebrtc to stderr.
+`FLOWRATE_WEBRTC_FIELD_TRIALS=Name/Value/...` replaces the field trials of `fr_initialize`.
 
 A screen that stops keeps its section, which goes on sending, nothing: the SFU only pauses its
 producer, and the stream goes on with the next sequence number when it is back.
