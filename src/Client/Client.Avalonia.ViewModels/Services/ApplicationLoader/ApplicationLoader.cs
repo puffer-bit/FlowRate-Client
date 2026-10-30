@@ -28,6 +28,7 @@ public partial class ApplicationLoader
     private readonly ISoundService _soundService;
     private readonly IThemeService _themeService;
     private readonly ILanguageService _languageService;
+    private readonly ILibWebRTCLoader _libWebRTCLoader;
     private readonly ILogger<ApplicationLoader> _logger;
 
     public ApplicationLoader(
@@ -43,6 +44,7 @@ public partial class ApplicationLoader
         ISoundService soundService,
         IThemeService themeService,
         ILanguageService languageService,
+        ILibWebRTCLoader libWebRTCLoader,
         ILogger<ApplicationLoader> logger)
     {
         _mediaRuntimeLoader = mediaRuntimeLoader;
@@ -57,6 +59,7 @@ public partial class ApplicationLoader
         _soundService = soundService;
         _themeService = themeService;
         _languageService = languageService;
+        _libWebRTCLoader = libWebRTCLoader;
         _logger = logger;
     }
 
@@ -123,12 +126,15 @@ public partial class ApplicationLoader
             _themeService.ApplyAnimations(await _appearanceService.GetAnimationSettingsAsync());
             _themeService.ApplyInterfaceScale(await _appearanceService.GetInterfaceScaleAsync());
             ExperimentalFeatures.Apply(await _appearanceService.GetIsExperimentalEnabledAsync(),
-                await _appearanceService.GetUseCustomTitleBarAsync(), await _audioSettings.GetUseLibWebRTCAsync());
+                await _appearanceService.GetUseCustomTitleBarAsync(), await _audioSettings.GetUseGStreamerAsync());
         }
         catch (Exception exception)
         {
             LogThemeApplyFailed(exception);
         }
+
+        if (ExperimentalFeatures.UseLibWebRTC)
+            _ = LoadLibWebRTCAsync();
 
         try
         {
@@ -225,5 +231,13 @@ public partial class ApplicationLoader
             LogSettingsLoadFailed(exception);
             return DatabaseState.UnexpectedError;
         }
+    }
+
+    // Loaded at the start and not at the first session, so a libwebrtc that fails takes the voice to
+    // GStreamer before the audio settings show the options of libwebrtc. Back on the UI thread to tell it
+    private async Task LoadLibWebRTCAsync()
+    {
+        if (await Task.Run(_libWebRTCLoader.Load) is { } error)
+            ExperimentalFeatures.ReportLibWebRTCFailed(error);
     }
 }
