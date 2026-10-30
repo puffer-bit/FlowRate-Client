@@ -19,7 +19,7 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
 
         var row = await connection.QueryFirstOrDefaultAsync<VideoSettingsRow>("""
             SELECT IsHardwareDecodingEnabled, Decoder, Encoder, IsZeroCopyEnabled,
-                   IsTimedPresentationEnabled, PresentationBufferFrames, ShowFrameStats
+                   IsTimedPresentationEnabled, PresentationBufferFrames
             FROM VideoSettings WHERE Id = 1
             """);
 
@@ -33,8 +33,7 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
             Encoder = row.Encoder,
             IsZeroCopyEnabled = row.IsZeroCopyEnabled,
             IsTimedPresentationEnabled = row.IsTimedPresentationEnabled,
-            PresentationBufferFrames = row.PresentationBufferFrames,
-            ShowFrameStats = row.ShowFrameStats
+            PresentationBufferFrames = row.PresentationBufferFrames
         }.Normalize();
     }
 
@@ -44,17 +43,16 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
 
         await connection.ExecuteAsync("""
             INSERT INTO VideoSettings (Id, IsHardwareDecodingEnabled, Decoder, Encoder, IsZeroCopyEnabled,
-                                       IsTimedPresentationEnabled, PresentationBufferFrames, ShowFrameStats)
+                                       IsTimedPresentationEnabled, PresentationBufferFrames)
             VALUES (1, @IsHardwareDecodingEnabled, @Decoder, @Encoder, @IsZeroCopyEnabled,
-                    @IsTimedPresentationEnabled, @PresentationBufferFrames, @ShowFrameStats)
+                    @IsTimedPresentationEnabled, @PresentationBufferFrames)
             ON CONFLICT (Id) DO UPDATE SET
                 IsHardwareDecodingEnabled = excluded.IsHardwareDecodingEnabled,
                 Decoder = excluded.Decoder,
                 Encoder = excluded.Encoder,
                 IsZeroCopyEnabled = excluded.IsZeroCopyEnabled,
                 IsTimedPresentationEnabled = excluded.IsTimedPresentationEnabled,
-                PresentationBufferFrames = excluded.PresentationBufferFrames,
-                ShowFrameStats = excluded.ShowFrameStats
+                PresentationBufferFrames = excluded.PresentationBufferFrames
             """, new
             {
                 settings.IsHardwareDecodingEnabled,
@@ -62,11 +60,10 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
                 settings.Encoder,
                 settings.IsZeroCopyEnabled,
                 settings.IsTimedPresentationEnabled,
-                settings.PresentationBufferFrames,
-                settings.ShowFrameStats
+                settings.PresentationBufferFrames
             });
     }
 }
 
 internal sealed record VideoSettingsRow(bool IsHardwareDecodingEnabled, string? Decoder, string? Encoder,
-    bool IsZeroCopyEnabled, bool IsTimedPresentationEnabled, int PresentationBufferFrames, bool ShowFrameStats);
+    bool IsZeroCopyEnabled, bool IsTimedPresentationEnabled, int PresentationBufferFrames);

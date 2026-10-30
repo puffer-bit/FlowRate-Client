@@ -34,9 +34,6 @@ public sealed record VideoSettings
     /// <summary>How many frames wait to be shown, which evens out the network at the cost of delay.</summary>
     public int PresentationBufferFrames { get; init; } = 2;
 
-    /// <summary>The count of shown and dropped frames is drawn over every screen.</summary>
-    public bool ShowFrameStats { get; init; }
-
     /// <summary>
     /// The same settings with every value that cannot be chosen replaced by its default.
     /// </summary>

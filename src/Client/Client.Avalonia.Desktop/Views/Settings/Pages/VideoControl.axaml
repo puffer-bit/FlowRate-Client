@@ -51,9 +51,6 @@
                 <ComboBox MinWidth="120" ItemsSource="{Binding PresentationBufferChoices}"
                           SelectedIndex="{Binding PresentationBufferIndex}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="video.frameStats">
-                <CheckBox IsChecked="{Binding ShowFrameStats}"/>
-            </ui:SettingsRow>
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="video.encoding"/>

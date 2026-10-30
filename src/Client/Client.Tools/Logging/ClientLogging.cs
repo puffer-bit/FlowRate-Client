@@ -20,6 +20,21 @@ public static class ClientLogging
     // Every category of the GStreamer project goes to a file of its own
     private const string GStreamerCategoryPrefix = "Client.GStreamer";
 
+    /// <summary>
+    /// The category of the log of GStreamer itself, written to the file of GStreamer.
+    /// </summary>
+    public const string GStreamerNativeCategory = "Native.GStreamer";
+
+    /// <summary>
+    /// The category of the log of libwebrtc itself, written to a file of its own.
+    /// </summary>
+    public const string LibWebRTCNativeCategory = "Native.LibWebRTC";
+
+    // The native libraries choose themselves how much they say, see NativeLogLevel
+    private const string NativeCategoryPrefix = "Native";
+
+    private static volatile bool _isWritingToFiles = true;
+
 #if DEBUG
     private const string BuildConfiguration = "Debug";
 #else
@@ -43,9 +58,24 @@ public static class ClientLogging
     public static InMemoryLog Memory { get; } = new(5000);
 
     /// <summary>
-    /// Where the files of the journal are, or null when it is not written to files.
+    /// Where the files of the journal are, or null when the platform does not write them.
     /// </summary>
     public static string? LogDirectory { get; private set; }
+
+    /// <summary>
+    /// The level the journal starts with, before the settings are read.
+    /// </summary>
+    public static LogEventLevel DefaultLevel { get; } = new LoggingOptions().MinimumLevel;
+
+    /// <summary>
+    /// Whether the events go to the files at the moment; off, they still reach the console and
+    /// <see cref="Memory"/>. Means nothing where <see cref="LogDirectory"/> is null.
+    /// </summary>
+    public static bool IsWritingToFiles
+    {
+        get => _isWritingToFiles;
+        set => _isWritingToFiles = value;
+    }
 
     public static Serilog.Core.Logger CreateSerilogLogger(LoggingOptions options)
     {
@@ -62,15 +92,19 @@ public static class ClientLogging
         foreach (var (prefix, level) in options.Overrides)
             config.MinimumLevel.Override(prefix, level);
 
+        config.MinimumLevel.Override(NativeCategoryPrefix, LogEventLevel.Verbose);
+
         LogDirectory = options.WriteToFiles ? options.LogDirectory : null;
 
         if (options.WriteToFiles)
         {
             var isGStreamer = Matching.FromSource(GStreamerCategoryPrefix);
+            var isGStreamerNative = Matching.FromSource(GStreamerNativeCategory);
+            var isLibWebRTCNative = Matching.FromSource(LibWebRTCNativeCategory);
 
             // Sub-loggers: a filter on the root configuration would drop the events from every sink
             config.WriteTo.Logger(lc => lc
-                .Filter.ByIncludingOnly(isGStreamer)
+                .Filter.ByIncludingOnly(e => _isWritingToFiles && (isGStreamer(e) || isGStreamerNative(e)))
                 .WriteTo.File(Path.Combine(options.LogDirectory, "gstreamer-.txt"),
                     outputTemplate: FileTemplate,
                     rollingInterval: RollingInterval.Day,
@@ -80,7 +114,17 @@ public static class ClientLogging
                     retainedFileCountLimit: options.RetainedFileCount));
 
             config.WriteTo.Logger(lc => lc
-                .Filter.ByExcluding(isGStreamer)
+                .Filter.ByIncludingOnly(e => _isWritingToFiles && isLibWebRTCNative(e))
+                .WriteTo.File(Path.Combine(options.LogDirectory, "libwebrtc-.txt"),
+                    outputTemplate: FileTemplate,
+                    rollingInterval: RollingInterval.Day,
+                    rollOnFileSizeLimit: true,
+                    fileSizeLimitBytes: options.FileSizeLimitBytes * 2,
+                    retainedFileCountLimit: options.RetainedFileCount));
+
+            config.WriteTo.Logger(lc => lc
+                .Filter.ByIncludingOnly(e => _isWritingToFiles
+                                             && !isGStreamer(e) && !isGStreamerNative(e) && !isLibWebRTCNative(e))
                 .WriteTo.File(Path.Combine(options.LogDirectory, "app-.txt"),
                     outputTemplate: FileTemplate,
                     rollingInterval: RollingInterval.Day,

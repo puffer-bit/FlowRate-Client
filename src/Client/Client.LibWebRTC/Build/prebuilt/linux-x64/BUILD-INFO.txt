@@ -1,8 +1,8 @@
 libflowrate_webrtc.so, built by Build/linux/build.sh
-Date:      2026-10-30T11:44:44Z
+Date:      2026-10-30T12:29:38Z
 WebRTC:    webrtc-sdk/webrtc a545de45259b47dfac5f3635863e47cb601f1bb2
 Wrapper:   webrtc-sdk/libwebrtc libwebrtc.m150.7871.06
 Patches:   custom_audio_source_m150 add_libwebrtc_build_target fix_desktop_capture_compile flowrate_audio_processing flowrate_keep_sps flowrate_target
-FlowRate:  9b20eae
-SHA-256:   d1111675bcb3ce71ae991c82e03f1ba44fdb2a4790f9ed34c56735ca8bfcf7e4
+FlowRate:  eae65c9 (with uncommitted changes)
+SHA-256:   5110314fa990141e6d6edb2e459e0311f518df1b59580abfdc48309e9116e859
 GN args:  target_os="linux" target_cpu="x64" is_debug=false is_component_build=false symbol_level=0 enable_stripping=true enable_iterator_debugging=false treat_warnings_as_errors=false use_custom_libcxx=true use_custom_libcxx_for_host=true use_llvm_libatomic=false use_clang_modules=false use_rtti=true rtc_include_tests=true rtc_build_tools=false rtc_build_examples=false rtc_enable_protobuf=false rtc_use_x11=false rtc_use_pipewire=false libwebrtc_desktop_capture=false

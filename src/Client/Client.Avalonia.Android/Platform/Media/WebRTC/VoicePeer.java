@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.Loggable;
+import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
@@ -49,6 +51,12 @@ public final class VoicePeer {
          * listener releases it, at once or once it has drawn it.
          */
         void onPicture(String mid, Picture picture);
+    }
+
+    /** The log of libwebrtc, see setLog. */
+    public interface LogListener {
+        /** severity: 0 verbose, 1 info, 2 warning, 3 error, the order of Logging.Severity. */
+        void onLog(int severity, String tag, String message);
     }
 
     /**
@@ -97,13 +105,40 @@ public final class VoicePeer {
     private final Map<String, VideoTrack> screens = new ConcurrentHashMap<>();
     private final Map<String, VideoSink> screenSinks = new ConcurrentHashMap<>();
 
+    // What initialize gives libwebrtc for its log; 4 is LS_NONE
+    private static LogListener logListener;
+    private static int logSeverity = 4;
+
+    /**
+     * Passes the log of libwebrtc from minSeverity up (4: none) to the listener. libwebrtc takes it only
+     * when it is initialized, so once it is this changes nothing until the process starts again; returns
+     * whether it was in time.
+     */
+    public static synchronized boolean setLog(LogListener listener, int minSeverity) {
+        logListener = listener;
+        logSeverity = minSeverity;
+        return factory == null;
+    }
+
     /** Loads libwebrtc and opens the audio devices once per process. */
     public static synchronized void initialize(Context context) {
         if (factory != null)
             return;
 
-        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context)
-                .createInitializationOptions());
+        PeerConnectionFactory.InitializationOptions.Builder options =
+                PeerConnectionFactory.InitializationOptions.builder(context);
+
+        if (logListener != null && logSeverity < Logging.Severity.LS_NONE.ordinal()) {
+            final LogListener listener = logListener;
+            options.setInjectableLogger(new Loggable() {
+                @Override
+                public void onLogMessage(String message, Logging.Severity severity, String tag) {
+                    listener.onLog(severity.ordinal(), tag, message);
+                }
+            }, Logging.Severity.values()[logSeverity]);
+        }
+
+        PeerConnectionFactory.initialize(options.createInitializationOptions());
 
         JavaAudioDeviceModule audioDevices = JavaAudioDeviceModule.builder(context)
                 .setUseHardwareAcousticEchoCanceler(true)

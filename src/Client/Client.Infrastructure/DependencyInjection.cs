@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddSingleton<IPushKeysRepository, PushKeysRepository>();
         services.AddSingleton<IStorageSettingsRepository, StorageSettingsRepository>();
         services.AddSingleton<IVideoSettingsRepository, VideoSettingsRepository>();
+        services.AddSingleton<IDebugSettingsRepository, DebugSettingsRepository>();
         services.AddSingleton<IHotKeysSettingsRepository, HotKeysSettingsRepository>();
         services.AddSingleton<IMediaCache>(provider => new MediaCache(
             Path.Combine(databaseDirectory ?? AppDirectories.Data, MediaCache.FolderName),

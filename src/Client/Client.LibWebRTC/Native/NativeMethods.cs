@@ -35,6 +35,9 @@ internal static unsafe partial class NativeMethods
         public nint Audio;
     }
 
+    [LibraryImport(Library, EntryPoint = "fr_set_log")]
+    public static partial void SetLog(delegate* unmanaged<int, byte*, void> callback, int minSeverity);
+
     [LibraryImport(Library, EntryPoint = "fr_initialize")]
     public static partial int Initialize();
 

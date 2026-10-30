@@ -231,8 +231,7 @@ public class SettingsRepositoriesTests
             Encoder = "openh264enc",
             IsZeroCopyEnabled = false,
             IsTimedPresentationEnabled = false,
-            PresentationBufferFrames = 4,
-            ShowFrameStats = true
+            PresentationBufferFrames = 4
         };
         await repository.SaveAsync(changed);
 
@@ -244,6 +243,38 @@ public class SettingsRepositoriesTests
 
         Assert.Equal(new VideoSettings().PresentationBufferFrames, normalized.PresentationBufferFrames);
         Assert.Null(normalized.Decoder);
+    }
+
+    [Fact]
+    public async Task DebugSettingsRoundTrip()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new DebugSettingsRepository(database.Database);
+
+        Assert.Equal(new DebugSettings(), await repository.GetAsync());
+
+        var changed = new DebugSettings
+        {
+            JournalLevel = JournalLevel.Verbose,
+            WriteToFiles = false,
+            GStreamerLogLevel = NativeLogLevel.Warning,
+            LibWebRTCLogLevel = NativeLogLevel.Verbose,
+            ShowFrameStats = true
+        };
+        await repository.SaveAsync(changed);
+
+        Assert.Equal(changed, await repository.GetAsync());
+
+        // The level of the build again, and levels a newer build may have written read as off
+        await repository.SaveAsync(changed with
+        {
+            JournalLevel = null, GStreamerLogLevel = (NativeLogLevel)42, LibWebRTCLogLevel = (NativeLogLevel)(-1)
+        });
+        var normalized = await repository.GetAsync();
+
+        Assert.Null(normalized.JournalLevel);
+        Assert.Equal(NativeLogLevel.Off, normalized.GStreamerLogLevel);
+        Assert.Equal(NativeLogLevel.Off, normalized.LibWebRTCLogLevel);
     }
 
     [Fact]

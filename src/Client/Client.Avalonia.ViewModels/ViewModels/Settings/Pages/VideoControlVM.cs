@@ -69,12 +69,6 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool ShowFrameStats
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
     /// <summary>The ways without copying this computer has, or why there are none.</summary>
     public string ZeroCopyStatus
     {
@@ -118,8 +112,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
                 nameof(EncoderIndex),
                 nameof(IsZeroCopyEnabled),
                 nameof(IsTimedPresentationEnabled),
-                nameof(PresentationBufferIndex),
-                nameof(ShowFrameStats))
+                nameof(PresentationBufferIndex))
             .Where(_ => !_isUpdating)
             .Select(_ => Observable.FromAsync(() => _videoService.SaveSettingsAsync(ToSettings())))
             .Concat()
@@ -183,8 +176,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         IsZeroCopyEnabled = IsZeroCopyEnabled,
         IsTimedPresentationEnabled = IsTimedPresentationEnabled,
         PresentationBufferFrames = VideoSettings.PresentationBufferChoices[
-            Math.Clamp(PresentationBufferIndex, 0, VideoSettings.PresentationBufferChoices.Count - 1)],
-        ShowFrameStats = ShowFrameStats
+            Math.Clamp(PresentationBufferIndex, 0, VideoSettings.PresentationBufferChoices.Count - 1)]
     };
 
     private void Apply(VideoSettings settings)
@@ -197,7 +189,6 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         IsTimedPresentationEnabled = settings.IsTimedPresentationEnabled;
         PresentationBufferIndex = Math.Max(0,
             VideoSettings.PresentationBufferChoices.ToList().IndexOf(settings.PresentationBufferFrames));
-        ShowFrameStats = settings.ShowFrameStats;
     }
 
     private static int IndexOf(IReadOnlyList<string?> choices, string? value)
