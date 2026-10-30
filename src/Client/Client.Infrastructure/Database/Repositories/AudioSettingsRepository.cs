@@ -89,22 +89,22 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
             });
     }
 
-    public async Task<bool> GetUseLibWebRTCAsync()
+    public async Task<bool> GetUseGStreamerAsync()
     {
         await using var connection = await _database.OpenAsync();
 
         return await connection.QueryFirstOrDefaultAsync<bool?>(
-            "SELECT UseLibWebRTC FROM AudioSettings WHERE Id = 1") ?? false;
+            "SELECT UseGStreamer FROM AudioSettings WHERE Id = 1") ?? false;
     }
 
-    public async Task UpdateUseLibWebRTCAsync(bool useLibWebRTC)
+    public async Task UpdateUseGStreamerAsync(bool useGStreamer)
     {
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            INSERT INTO AudioSettings (Id, UseLibWebRTC) VALUES (1, @useLibWebRTC)
-            ON CONFLICT (Id) DO UPDATE SET UseLibWebRTC = excluded.UseLibWebRTC
-            """, new { useLibWebRTC });
+            INSERT INTO AudioSettings (Id, UseGStreamer) VALUES (1, @useGStreamer)
+            ON CONFLICT (Id) DO UPDATE SET UseGStreamer = excluded.UseGStreamer
+            """, new { useGStreamer });
     }
 }
 
