@@ -64,7 +64,7 @@
                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="{l:Text settings.title}"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
-                           Text="{Binding SelectedSetting.Name, FallbackValue={x:Null}}"
+                           Text="{Binding SelectedSetting?.Name}"
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 

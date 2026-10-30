@@ -568,7 +568,7 @@
                                 </StackPanel>
 
                                 <Button Grid.Row="0" Grid.Column="2" Classes="borderless forget"
-                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
+                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext)?.DeleteIdentityCommand}"
                                         CommandParameter="{Binding}">
                                     <Image Width="20" Height="20" Source="{StaticResource TrashIcon}"/>
                                 </Button>
@@ -632,7 +632,7 @@
                                 </StackPanel>
 
                                 <Button Grid.Row="0" Grid.Column="2" Classes="borderless forget"
-                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).ForgetCertificateCommand}"
+                                        Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext)?.ForgetCertificateCommand}"
                                         CommandParameter="{Binding}">
                                     <Image Width="20" Height="20" Source="{StaticResource TrashIcon}"/>
                                 </Button>

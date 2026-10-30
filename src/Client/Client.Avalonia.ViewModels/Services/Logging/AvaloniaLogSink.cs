@@ -23,13 +23,10 @@ public sealed class AvaloniaLogSink(AvaloniaLevel minimumLevel) : ILogSink
         if (!IsEnabled(level, area))
             return;
 
-        // The level enums of Avalonia and Serilog have the same members in the same order
+        // The level enums of Avalonia and Serilog have the same members in the same order. A binding
+        // through a view model that may be missing takes its data context from it or says so with ?.,
+        // so a warning of a binding is a mistake in the markup
         var journalLevel = (SerilogLevel)level;
-
-        // A binding to a view model that is not there yet, e.g. the panel of a session before one is
-        // opened, warns on every start; it is worth reading only while looking for a binding mistake
-        if (area == LogArea.Binding && level == AvaloniaLevel.Warning)
-            journalLevel = SerilogLevel.Debug;
 
         Serilog.Log.ForContext(Serilog.Core.Constants.SourceContextPropertyName, $"Avalonia.{area}")
             .ForContext("AvaloniaSource", source?.GetType().Name)
