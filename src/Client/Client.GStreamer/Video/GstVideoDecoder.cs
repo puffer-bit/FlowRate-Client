@@ -25,11 +25,13 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     // Past a few queued frames the frames up to the next keyframe are dropped and one is asked for, so
     // a decoder that fell behind, or a stalled drawing, cannot leave the picture late for good, nor
     // broken until the sender's own next keyframe. The frames keep the timestamps of their stream,
-    // and nothing waits for the clock
-    private const int MaxQueuedFrames = 16;
+    // and nothing waits for the clock. The jitter buffer lets out at once what it held for a
+    // retransmission, a few hundred ms of frames: 16 took such a bunch for a decoder that fell behind,
+    // and the picture stood until the next keyframe, up to the keyframe request delay of the SFU
+    private const int MaxQueuedFrames = 120;
 
     private const string Description =
-        "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=false max-buffers=16 " +
+        "appsrc name=" + SourceName + " is-live=true format=time do-timestamp=false max-buffers=120 " +
         "max-bytes=0 leaky-type=downstream caps=\"{0}\" ! {1}{2} ! {3}";
 
     private readonly VideoCodec _codec;
