@@ -315,8 +315,6 @@
   "settings.video.timedPresentation.description": "Frames are shown when their timestamps say, on the refresh of the monitor, not the moment they arrive. Makes the picture smoother.",
   "settings.video.presentationBuffer.title": "Frames waiting to be shown",
   "settings.video.presentationBuffer.description": "More frames smooth out an uneven network, but every frame adds a little delay.",
-  "settings.video.frameStats.title": "Frame counter on screens",
-  "settings.video.frameStats.description": "Shows how many frames arrive, are shown and are dropped, what decodes them and whether they reach the screen without copying.",
   "settings.video.section.encoding": "Encoding",
   "settings.video.encoder.title": "Encoder",
   "settings.video.encoder.description": "Used for your own screen share; applies to the next share.",
@@ -1318,6 +1316,51 @@
   "settings.hotKeys.waylandTitle": "Wayland limits hotkeys",
   "settings.hotKeys.recordTip": "Click and press the keys",
   "settings.debug.name": "Logging and debug",
+  "settings.debug.section.journal": "Journal",
+  "settings.debug.section.native": "Logs of the media libraries",
+  "settings.debug.section.screens": "Screens",
+  "settings.debug.level.title": "Journal level",
+  "settings.debug.level.description": "From which level messages are kept: Verbose keeps everything, Error only errors. By default it is Debug in development builds and Information in releases.",
+  "settings.debug.levels.default": "Default",
+  "settings.debug.levels.off": "Off",
+  "settings.debug.levels.verbose": "Verbose",
+  "settings.debug.levels.debug": "Debug",
+  "settings.debug.levels.information": "Information",
+  "settings.debug.levels.warning": "Warnings",
+  "settings.debug.levels.error": "Errors",
+  "settings.debug.writeToFiles.title": "Write the journal to files",
+  "settings.debug.writeToFiles.description": "Turned off, the last messages are still kept in memory and go into the archive.",
+  "settings.debug.files.title": "Journal files",
+  "settings.debug.files.description": "Old files are deleted by themselves. Clearing keeps the files being written now.",
+  "settings.debug.files.open": "Open folder",
+  "settings.debug.files.question": "Delete the old journal files? The ones being written now stay.",
+  "settings.debug.filesUsage": "{size}",
+  "@settings.debug.filesUsage": {
+    "placeholders": {
+      "size": {}
+    }
+  },
+  "settings.debug.archive.title": "Archive for a bug report",
+  "settings.debug.archive.description": "The journal files, a description of the system and these settings, and the last messages, in one zip to send with a report.",
+  "settings.debug.archive.save": "Save",
+  "settings.debug.archive.saved": "Saved: {name}",
+  "@settings.debug.archive.saved": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settings.debug.archive.failed": "Not saved: {error}",
+  "@settings.debug.archive.failed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "settings.debug.gstreamer.title": "GStreamer log",
+  "settings.debug.gstreamer.description": "What GStreamer says of capture, encoding and decoding, in a file of its own. From Information on it writes a lot, at Verbose on every frame.",
+  "settings.debug.libwebrtc.title": "libwebrtc log",
+  "settings.debug.libwebrtc.description": "What libwebrtc says of the connection, the sound and the screens, in a file of its own. On Android a more detailed level takes effect after the app restarts, if a call has been made since it started.",
+  "settings.debug.frameStats.title": "Frame counter on screens",
+  "settings.debug.frameStats.description": "Shows how many frames arrive, are shown and are dropped, what decodes them and whether they reach the screen without copying.",
   "settings.experimental.name": "Experimental features",
   "settings.about.name": "About",
   "settings.about.section.application": "Application",

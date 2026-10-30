@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Runtime.InteropServices;
 using Client.Tools.AppInfo;
 using Microsoft.Extensions.DependencyInjection;
@@ -144,12 +145,48 @@ public static class ClientLogging
     /// <param name="device">What the platform says of the device, e.g. the model of the phone; null on the desktop.</param>
     public static void LogStartup(string version, string? device = null)
     {
+        var culture = CultureInfo.CurrentUICulture.Name is { Length: > 0 } name ? name : "invariant";
+        device ??= DeviceInformation.Name;
+
+        Version = version;
+        Device = device;
+
         Log.ForContext(Constants.SourceContextPropertyName, typeof(ClientLogging).FullName).Information(
             "FlowRate {Version} ({Configuration}) started on {Platform} {OsDescription} ({OsArchitecture}), process {ProcessArchitecture}, " +
             "{Runtime}, {ProcessorCount} CPUs, culture {Culture}, device {Device}, journal level {Level}, files in {LogDirectory}",
             version, BuildConfiguration, DeviceInformation.Platform, RuntimeInformation.OSDescription, RuntimeInformation.OSArchitecture,
             RuntimeInformation.ProcessArchitecture, RuntimeInformation.FrameworkDescription, System.Environment.ProcessorCount,
-            CultureInfo.CurrentUICulture.Name is { Length: > 0 } culture ? culture : "invariant", device ?? DeviceInformation.Name, LevelSwitch.MinimumLevel, LogDirectory ?? "none");
+            culture, device, LevelSwitch.MinimumLevel, LogDirectory ?? "none");
+    }
+
+    /// <summary>The version of the client, as <see cref="LogStartup"/> got it.</summary>
+    public static string? Version { get; private set; }
+
+    /// <summary>The device, as <see cref="LogStartup"/> got it.</summary>
+    public static string? Device { get; private set; }
+
+    /// <summary>
+    /// What the application runs on and how the journal is kept, one fact a line, for a bug report.
+    /// </summary>
+    public static string DescribeEnvironment()
+    {
+        var text = new StringBuilder();
+
+        void Line(string name, object? value) => text.Append(name).Append(": ").AppendLine(value?.ToString());
+
+        Line("FlowRate", $"{Version ?? "unknown"} ({BuildConfiguration})");
+        Line("Platform", DeviceInformation.Platform);
+        Line("Device", Device ?? DeviceInformation.Name);
+        Line("System", $"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        Line("Process", RuntimeInformation.ProcessArchitecture);
+        Line("Runtime", RuntimeInformation.FrameworkDescription);
+        Line("CPUs", System.Environment.ProcessorCount);
+        Line("Culture", CultureInfo.CurrentUICulture.Name is { Length: > 0 } name ? name : "invariant");
+        Line("Journal level", LevelSwitch.MinimumLevel);
+        Line("Journal files", LogDirectory == null ? "none" : IsWritingToFiles ? LogDirectory : $"{LogDirectory} (off)");
+        Line("Written", DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture));
+
+        return text.ToString();
     }
 
     /// <summary>

@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.DebugAndLogsControl"
+             x:DataType="pagesVm:DebugAndLogsControlVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="debug.level">
+                <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
+                <ComboBox MinWidth="160" SelectedIndex="{Binding JournalLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsVisible="{Binding HasLogFiles}">
+                <CheckBox IsChecked="{Binding WriteToFiles}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.files" IsVisible="{Binding HasLogFiles}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding LogFilesText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Click="OnOpenFolder" Content="{l:Text settings.debug.files.open}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.archive">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12" MaxWidth="260" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding ArchiveText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding SaveArchiveCommand}" Content="{l:Text settings.debug.archive.save}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="debug.native"/>
+        <ui:SettingsCard>
+            <!-- The order of NativeLogLevel -->
+            <ui:SettingsRow services:SettingText.Key="debug.gstreamer" IsVisible="{Binding HasGStreamerLog}">
+                <ComboBox MinWidth="160" SelectedIndex="{Binding GStreamerLogLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsVisible="{Binding HasLibWebRTCLog}">
+                <ComboBox MinWidth="160" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="debug.screens"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="debug.frameStats">
+                <CheckBox IsChecked="{Binding ShowFrameStats}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+    </ui:SettingsPage>
+</UserControl>
