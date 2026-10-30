@@ -25,7 +25,7 @@ $wrapperTag = "libwebrtc.m150.7871.06"
 $webrtcCommit = "a545de45259b47dfac5f3635863e47cb601f1bb2" # webrtc-sdk/webrtc, m150_release
 $webrtcPatches = @("custom_audio_source_m150", "add_libwebrtc_build_target", "allow_176k4_192k_shared_mode_formats")
 # Our patches to WebRTC, in ..\patches
-$flowratePatches = @("flowrate_audio_processing", "flowrate_wasapi_autoconvert", "flowrate_no_builtin_aec")
+$flowratePatches = @("flowrate_audio_processing", "flowrate_keep_sps", "flowrate_wasapi_autoconvert", "flowrate_no_builtin_aec")
 # The Windows SDK this WebRTC builds with: SDK_VERSION of src\build\vs_toolchain.py, checked after the sync
 $sdkVersion = "10.0.26100.0"
 

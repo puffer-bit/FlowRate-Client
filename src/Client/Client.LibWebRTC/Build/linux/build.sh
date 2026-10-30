@@ -17,7 +17,7 @@ WRAPPER_TAG=libwebrtc.m150.7871.06
 WEBRTC_COMMIT=a545de45259b47dfac5f3635863e47cb601f1bb2 # webrtc-sdk/webrtc, m150_release
 WEBRTC_PATCHES=(custom_audio_source_m150 add_libwebrtc_build_target fix_desktop_capture_compile)
 # Our patches to WebRTC, in ../patches
-FLOWRATE_PATCHES=(flowrate_audio_processing)
+FLOWRATE_PATCHES=(flowrate_audio_processing flowrate_keep_sps)
 
 here=$(cd "$(dirname "$0")" && pwd)
 native="$here/../../Native"

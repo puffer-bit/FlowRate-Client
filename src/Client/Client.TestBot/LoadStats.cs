@@ -24,6 +24,10 @@ internal sealed partial class LoadStats(ILogger<LoadStats> logger)
     private readonly List<double> _chatLatencies = [];
     private readonly Lock _chatLatenciesLock = new();
 
+    // Times from drawing to decoding of the stamped video frames received since the last report
+    private readonly List<double> _videoLatencies = [];
+    private readonly Lock _videoLatenciesLock = new();
+
     public void Connected(TimeSpan took)
     {
         Interlocked.Increment(ref _connected);
@@ -64,7 +68,15 @@ internal sealed partial class LoadStats(ILogger<LoadStats> logger)
             _chatLatencies.Add(latency.TotalMilliseconds);
     }
 
-    public void VideoFrame() => Interlocked.Increment(ref _videoFrames);
+    /// <param name="latency">Milliseconds from drawing the test picture, when the frame carried its stamp.</param>
+    public void VideoFrame(double? latency)
+    {
+        Interlocked.Increment(ref _videoFrames);
+
+        if (latency is { } milliseconds)
+            lock (_videoLatenciesLock)
+                _videoLatencies.Add(milliseconds);
+    }
 
     /// <summary>
     /// Writes a report every <paramref name="interval"/> until <paramref name="cancellationToken"/> fires,
@@ -116,7 +128,17 @@ internal sealed partial class LoadStats(ILogger<LoadStats> logger)
                 Percentile(latencies, 0.5), Percentile(latencies, 0.95),
                 latencies.Length == 0 ? 0 : latencies[^1]);
 
-            LogVideoReport((frames - lastFrames) / seconds);
+            double[] videoLatencies;
+
+            lock (_videoLatenciesLock)
+            {
+                videoLatencies = _videoLatencies.Order().ToArray();
+                _videoLatencies.Clear();
+            }
+
+            LogVideoReport((frames - lastFrames) / seconds,
+                Percentile(videoLatencies, 0.5), Percentile(videoLatencies, 0.95),
+                videoLatencies.Length == 0 ? 0 : videoLatencies[^1]);
 
             (lastSent, lastFailed, lastReceived, lastFrames) = (sent, failed, received, frames);
         }
@@ -124,7 +146,7 @@ internal sealed partial class LoadStats(ILogger<LoadStats> logger)
 
     private static long Average(long total, int count) => count <= 0 ? 0 : total / count;
 
-    private static double Percentile(double[] sorted, double percentile) =>
+    public static double Percentile(double[] sorted, double percentile) =>
         sorted.Length == 0 ? 0 : sorted[(int)Math.Min(sorted.Length - 1, Math.Ceiling(percentile * sorted.Length) - 1)];
 
     [LoggerMessage(LogLevel.Information,
@@ -140,6 +162,7 @@ internal sealed partial class LoadStats(ILogger<LoadStats> logger)
     private partial void LogChatReport(long sent, long failed, long received, double sentRate, double failedRate,
         double receivedRate, double p50, double p95, double max);
 
-    [LoggerMessage(LogLevel.Information, "[stats] video: {Fps:0.#} frames/s received by all bots")]
-    private partial void LogVideoReport(double fps);
+    [LoggerMessage(LogLevel.Information,
+        "[stats] video: {Fps:0.#} frames/s received by all bots; latency p50 {P50:0} ms, p95 {P95:0} ms, max {Max:0} ms")]
+    private partial void LogVideoReport(double fps, double p50, double p95, double max);
 }
