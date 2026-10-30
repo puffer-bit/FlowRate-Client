@@ -1,0 +1,15 @@
+--- a/common_video/h264/sps_vui_rewriter.cc
++++ b/common_video/h264/sps_vui_rewriter.cc
+@@ -149,6 +149,12 @@
+ 
+   *sps = sps_state;
+ 
++  // FlowRate: the SPS stays as the encoder wrote it, sent and received. The bitstream restriction
++  // written here, a picture buffer of max_num_ref_frames, made the H.264 decoders of GStreamer hold
++  // every picture until the next one came: a frame of latency, 33 ms at 30 fps, on every screen
++  // that went through libwebrtc at either end
++  return ParseResult::kVuiOk;
++
+   // We're going to completely muck up alignment, so we need a BitBufferWriter
+   // to write with.
+   Buffer out_buffer =
