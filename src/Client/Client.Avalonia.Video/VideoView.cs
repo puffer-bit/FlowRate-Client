@@ -160,7 +160,7 @@ public class VideoView : Panel
 
     private void UpdateStats()
     {
-        var isShown = VideoSettings.Current.ShowFrameStats && _active != null;
+        var isShown = DebugSettings.Current.ShowFrameStats && _active != null;
         _statsBox.IsVisible = isShown;
 
         if (!isShown || _active is not { } active)

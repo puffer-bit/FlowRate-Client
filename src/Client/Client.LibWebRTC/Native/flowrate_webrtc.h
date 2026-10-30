@@ -53,6 +53,19 @@ typedef struct fr_peer_callbacks {
     fr_stats_callback stats;
 } fr_peer_callbacks;
 
+/*
+ * One message of the log of libwebrtc, without its line break. severity: 0 verbose, 1 info, 2 warning,
+ * 3 error. Comes on whatever thread of libwebrtc wrote it, often while it holds a lock: it must return
+ * quickly and must not call into this library.
+ */
+typedef void (*fr_log_callback)(int severity, const char* message);
+
+/*
+ * Passes the log of libwebrtc from min_severity up (as in fr_log_callback, 4 for none) to the callback,
+ * in place of the previous one; NULL stops it. May be called before fr_initialize, to have its log too.
+ */
+FR_API void fr_set_log(fr_log_callback callback, int min_severity);
+
 /* Loads libwebrtc and opens the audio devices once per process; 0 on failure. */
 FR_API int fr_initialize(void);
 
