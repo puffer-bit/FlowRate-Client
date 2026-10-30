@@ -67,7 +67,7 @@
 
         <controls:SettingsHeader services:SettingText.Section="hotKeys.actions"/>
         <ui:SettingsCard IsEnabled="{Binding AreHotKeysEnabled}">
-            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleMicrophone" Icon="{StaticResource MicrophoneIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext).Items[0]}"
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleMicrophone" Icon="{StaticResource MicrophoneIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext)?.Items[0]}"
                             x:DataType="pagesVm:HotKeyItemVM">
                 <StackPanel Spacing="6" HorizontalAlignment="Right">
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
@@ -135,7 +135,7 @@
                     </StackPanel>
                 </StackPanel>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleSound" Icon="{StaticResource HeadphonesIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext).Items[1]}"
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleSound" Icon="{StaticResource HeadphonesIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext)?.Items[1]}"
                             x:DataType="pagesVm:HotKeyItemVM">
                 <StackPanel Spacing="6" HorizontalAlignment="Right">
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
