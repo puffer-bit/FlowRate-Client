@@ -26,11 +26,9 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     private readonly IDisposable? _resource;
     private readonly Lock _lock = new();
 
-    // AMF in its low-latency usages makes a keyframe only when asked for one, whatever its GOP size, and
-    // the requests of the SFU may not come through: a viewer who joins, or whose decoder dropped the
-    // frames up to a keyframe, would wait until the capture starts over. One is asked for after this long
-    private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(2);
-    private long _lastKeyFrame = Stopwatch.GetTimestamp();
+    // Keyframes are made only when asked for: the SFU asks for one when a viewer joins and repeats a
+    // request until the keyframe reaches it. A keyframe every 2 s on top of that was a burst every 2 s,
+    // which lost packets on a slow uplink, and each loss brought a PLI and one more keyframe
     private readonly Action<EncodedVideoFrame> _onEncodedFrame;
 
     // The SFU repeats a request until the keyframe reaches it, and every viewer whose picture broke
@@ -165,20 +163,13 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     {
         if (frame.IsKeyFrame)
         {
-            _lastKeyFrame = Stopwatch.GetTimestamp();
             _encodedKeyFrames++;
 
             lock (_lock)
             {
-                _lastEncodedKeyFrame = _lastKeyFrame;
+                _lastEncodedKeyFrame = Stopwatch.GetTimestamp();
                 _keyFrameAsked = 0;
             }
-        }
-        else if (Stopwatch.GetElapsedTime(_lastKeyFrame) >= KeyFrameInterval)
-        {
-            // Asked for once per interval: the keyframe takes a few frames to come
-            _lastKeyFrame = Stopwatch.GetTimestamp();
-            RequestKeyFrame(isUrgent: true);
         }
         else if (_isKeyFrameDeferred)
         {

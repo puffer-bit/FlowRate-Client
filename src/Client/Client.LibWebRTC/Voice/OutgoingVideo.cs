@@ -9,8 +9,10 @@ namespace Client.LibWebRTC.Voice;
 /// </summary>
 internal sealed class OutgoingVideo : IVideoSendListener, IDisposable
 {
-    // Below it a screen is not worth looking at, whatever the network says
-    private const int MinBitrateKbps = 300;
+    // The encoder follows the estimate down to here. The encoder keeps to the bitrate itself and
+    // libwebrtc drops none of its pictures, so whatever it puts out above the estimate waits in the
+    // pacer: at 300, on a link that gave the screen 115 kbit/s, the pictures came seconds late
+    private const int MinBitrateKbps = 100;
 
     // A smaller change of the estimate is left alone: each one the encoder takes costs it a moment
     private const double BitrateStep = 0.1;

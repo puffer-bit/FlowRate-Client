@@ -41,6 +41,7 @@ disconnects.
 | `--mute-interval <sec>` | Mute and unmute every given number of seconds. Applies to the speaking bots only. Default: off. |
 | `--screen` | Also share a screen: a moving test picture, drawn by the bot itself. |
 | `--screen-interval <sec>` | Stop and start the screen share every given number of seconds. Implies `--screen`. Default: off. |
+| `--screen-delay <sec>` | Start the screen share that many seconds after joining, as a user who talks first does: libwebrtc then has a bandwidth estimate of the voice alone. Implies `--screen`. Default: at once. |
 | `--rejoin-interval <sec>` | Leave the session and join it again every given number of seconds, each time with a new transport. Default: off. |
 | `--ramp <ms>` | Pause between the starts of two bots, so that a crowd does not hit the login and join rate limits at once. Default: 0. |
 | `--no-voice` | Do not join a voice session: the bots only chat. Needs `--chat-interval`. |
@@ -69,6 +70,10 @@ Client.TestBot --server 127.0.0.1:26666 --file test_audio2.pcm --raw-rate 44100 
 # a chat message from every bot every 5 seconds, counters only
 Client.TestBot --server 127.0.0.1:26666 --count 200 --ramp 300 --speakers 10 --screen --watch \
   --chat-interval 5 --quiet
+
+# Latency of a screen over libwebrtc: two bots share and watch each other, the screens start after
+# the voice, as a user who talks first starts one
+Client.TestBot --server 127.0.0.1:26666 --count 2 --screen-delay 5 --watch --libwebrtc
 
 # Chat only: 300 users writing every 2 seconds
 Client.TestBot --server 127.0.0.1:26666 --count 300 --ramp 100 --no-voice --chat-interval 2 --quiet
@@ -113,6 +118,13 @@ Every `--stats-interval` seconds the bots report their counters together:
   cached file is then played with `multifilesrc loop=true` and split into 20 ms buffers.
 - **Video.** The bot decodes every screen shared in the session and reports every five seconds whose
   video arrives, its size and frame rate; with `--screen` that includes the preview of its own picture.
+- **Video latency.** The test picture carries the time it was drawn in its top row, as black and white
+  blocks (`TestPatternStamp`), and the bot reads it from every decoded frame: the reports add the time
+  from drawing to decoding (p50, p95, max), per user and for all bots in `[stats]`. The clock is the
+  monotonic one of the machine, so it is only exact when the sharing and the watching bots run on one
+  machine, in one process or several. Frames whose stamp cannot be read (GPU frames, a picture that is
+  not the test one) are counted as unstamped. To compare the engines on a bad network, impair the port
+  of the SFU with `tc netem`, e.g. on a local server: a filter on port 4433 of `lo`.
 - **Reconnects.** If the transport fails and the session rejoins, the bot starts the voice and the
   screen again.
 - **Failures.** One failing bot does not stop the others. The exit code is 0 on success, 1 when a
