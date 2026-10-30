@@ -67,9 +67,10 @@
 
         <controls:SettingsHeader services:SettingText.Section="hotKeys.actions"/>
         <ui:SettingsCard IsEnabled="{Binding AreHotKeysEnabled}">
-            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleMicrophone" Icon="{StaticResource MicrophoneIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext)?.Items[0]}"
-                            x:DataType="pagesVm:HotKeyItemVM">
-                <StackPanel Spacing="6" HorizontalAlignment="Right">
+            <!-- The row takes its item from the data context of the page and its content is typed by the
+                 item: a binding through #Page.DataContext would warn while the page is being left -->
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleMicrophone" Icon="{StaticResource MicrophoneIcon}" DataContext="{Binding Items[0]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
                         <!-- Its place is kept while nothing is assigned, so the field does not move -->
                         <Panel Width="28" VerticalAlignment="Center">
@@ -135,9 +136,8 @@
                     </StackPanel>
                 </StackPanel>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleSound" Icon="{StaticResource HeadphonesIcon}" DataContext="{Binding #Page.((pagesVm:HotKeysControlVM)DataContext)?.Items[1]}"
-                            x:DataType="pagesVm:HotKeyItemVM">
-                <StackPanel Spacing="6" HorizontalAlignment="Right">
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleSound" Icon="{StaticResource HeadphonesIcon}" DataContext="{Binding Items[1]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
                         <!-- Its place is kept while nothing is assigned, so the field does not move -->
                         <Panel Width="28" VerticalAlignment="Center">
