@@ -17,17 +17,28 @@ public static class ExperimentalFeatures
     public static bool UseCustomTitleBar { get; private set; }
 
     /// <summary>
-    /// Whether the voice of a session goes over libwebrtc instead of GStreamer. Read when a session
-    /// is joined; a platform with both engines applies it.
+    /// Whether the voice and the screens of a session go over libwebrtc, as they do unless the
+    /// experimental fallback to GStreamer is chosen or libwebrtc could not be loaded. Read when a
+    /// session is joined; a platform with both engines applies it.
     /// </summary>
     public static bool UseLibWebRTC { get; private set; }
 
+    /// <summary>
+    /// Why libwebrtc could not be loaded, or null. The voice and the screens go over GStreamer then,
+    /// until the application is restarted.
+    /// </summary>
+    public static string? LibWebRTCError { get; private set; }
+
     public static event Action? Changed;
 
-    public static void Apply(bool isEnabled, bool useCustomTitleBar, bool useLibWebRTC)
+    // The choice of the fallback, kept while libwebrtc being missing overrides it
+    private static bool _useGStreamer;
+
+    public static void Apply(bool isEnabled, bool useCustomTitleBar, bool useGStreamer)
     {
+        _useGStreamer = useGStreamer;
         useCustomTitleBar = isEnabled && useCustomTitleBar;
-        useLibWebRTC = isEnabled && useLibWebRTC;
+        var useLibWebRTC = !(isEnabled && useGStreamer) && LibWebRTCError == null;
 
         if (IsEnabled == isEnabled && UseCustomTitleBar == useCustomTitleBar && UseLibWebRTC == useLibWebRTC)
             return;
@@ -36,5 +47,15 @@ public static class ExperimentalFeatures
         UseCustomTitleBar = useCustomTitleBar;
         UseLibWebRTC = useLibWebRTC;
         Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Takes the voice and the screens to GStreamer, as libwebrtc could not be loaded. Called on the
+    /// UI thread, as <see cref="Changed"/> is raised there.
+    /// </summary>
+    public static void ReportLibWebRTCFailed(string error)
+    {
+        LibWebRTCError = error;
+        Apply(IsEnabled, UseCustomTitleBar, _useGStreamer);
     }
 }
