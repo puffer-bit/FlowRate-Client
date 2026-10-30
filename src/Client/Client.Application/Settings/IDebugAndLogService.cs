@@ -24,4 +24,25 @@ public interface IDebugAndLogService
     /// The native libraries of this platform whose log can be passed into the journal.
     /// </summary>
     IReadOnlyCollection<NativeLogSource> NativeLogSources { get; }
+
+    /// <summary>
+    /// Where the files of the journal are, or null where the platform writes none.
+    /// </summary>
+    string? LogDirectory { get; }
+
+    /// <summary>
+    /// What the files of the journal take, in bytes.
+    /// </summary>
+    Task<long> GetLogFilesSizeAsync();
+
+    /// <summary>
+    /// Deletes the files of the journal but the ones being written now.
+    /// </summary>
+    Task ClearLogFilesAsync();
+
+    /// <summary>
+    /// Writes a zip for a bug report: the files of the journal, the system and the settings of this tab,
+    /// and the last entries kept in memory.
+    /// </summary>
+    Task WriteArchiveAsync(Stream destination);
 }

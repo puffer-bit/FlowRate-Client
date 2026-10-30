@@ -242,6 +242,16 @@
                             </Grid>
                         </Button>
 
+                        <Button Classes="borderless category" Click="OnDebugClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource DebugIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.debug.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
                         <!-- Has no settings yet, as on the desktop: listed, but cannot be opened -->
                         <Button Classes="borderless category" IsEnabled="False">
                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
@@ -465,6 +475,62 @@
                                    Foreground="{DynamicResource SecondaryTextBrush}"
                                    Text="{Binding MediaCacheUsageText}"/>
                     </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <!-- ====== Logging and debug: the journal and the log of libwebrtc; the phone has no GStreamer and
+             no frame counter, and its folder of the journal is the application's own ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="DebugPage" IsVisible="False"
+                         x:DataType="pagesVm:DebugAndLogsControlVM">
+            <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="debug.level">
+                    <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding JournalLevelIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsVisible="{Binding HasLogFiles}">
+                    <ToggleSwitch IsChecked="{Binding WriteToFiles}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.files" IsVisible="{Binding HasLogFiles}">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding LogFilesText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.archive">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding SaveArchiveCommand}" Content="{l:Text settings.debug.archive.save}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right" TextWrapping="Wrap" MaxWidth="200"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding ArchiveText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="debug.native"/>
+            <ui:SettingsCard>
+                <!-- The order of NativeLogLevel -->
+                <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsVisible="{Binding HasLibWebRTCLog}">
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                    </ComboBox>
                 </ui:SettingsRow>
             </ui:SettingsCard>
         </ui:SettingsPage>

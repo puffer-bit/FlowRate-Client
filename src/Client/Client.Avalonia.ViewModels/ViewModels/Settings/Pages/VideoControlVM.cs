@@ -27,7 +27,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
         ("decoding", ["hardwareDecoding", "decoder", "zeroCopy"]),
-        ("presentation", ["timedPresentation", "presentationBuffer", "frameStats"]),
+        ("presentation", ["timedPresentation", "presentationBuffer"]),
         ("encoding", ["encoder"]));
 
     public bool IsHardwareDecodingEnabled
