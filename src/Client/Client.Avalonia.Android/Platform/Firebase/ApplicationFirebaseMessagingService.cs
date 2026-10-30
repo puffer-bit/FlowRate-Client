@@ -33,7 +33,7 @@ public class ApplicationFirebaseMessagingService : FirebaseMessagingService
         }
         catch (Exception exception)
         {
-            Log.Error(exception, "Failed to show a push notification");
+            Log.ForContext<ApplicationFirebaseMessagingService>().Error(exception, "Failed to show a push notification");
         }
     }
 }

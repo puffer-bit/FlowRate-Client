@@ -41,7 +41,7 @@ internal sealed partial class IncomingStreamPlayer
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Volume of section {Mline} set to {Volume}")]
     private partial void LogVolumeChanged(int sessionId, uint mline, double volume);
 
-    [LoggerMessage(LogLevel.Information,
+    [LoggerMessage(LogLevel.Debug,
         "[Session {SessionId}] Voice of user {UserId} (section {Mline}): {Buffers} buffers, delay at the mixer " +
         "min {MinMs:F0} / avg {AverageMs:F0} / max {MaxMs:F0} / last {LastMs:F0} ms of {DeadlineMs:F0} ms")]
     private partial void LogVoiceArrival(int sessionId, int userId, uint mline, int buffers,

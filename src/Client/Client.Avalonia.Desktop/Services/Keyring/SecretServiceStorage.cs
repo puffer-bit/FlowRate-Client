@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Client.Application.Ports;
+using Microsoft.Extensions.Logging;
 using Tmds.DBus.Protocol;
 
 namespace Client.Services.Keyring;
@@ -19,7 +20,7 @@ namespace Client.Services.Keyring;
 /// The session is "plain": the secret crosses the session bus unencrypted, which only processes of
 /// the same user can listen to.
 /// </remarks>
-internal sealed class SecretServiceStorage : ISecureStorage
+internal sealed partial class SecretServiceStorage : ISecureStorage
 {
     private const string Service = "org.freedesktop.secrets";
     private const string ServicePath = "/org/freedesktop/secrets";
@@ -37,10 +38,12 @@ internal sealed class SecretServiceStorage : ISecureStorage
     // An unlock dialog waits for the user
     private static readonly TimeSpan PromptTimeout = TimeSpan.FromMinutes(5);
 
+    private readonly ILogger<SecretServiceStorage> _logger;
     private readonly Task<bool> _availability;
 
-    public SecretServiceStorage()
+    public SecretServiceStorage(ILogger<SecretServiceStorage> logger)
     {
+        _logger = logger;
         _availability = Task.Run(IsServiceKnownAsync);
     }
 
@@ -184,10 +187,13 @@ internal sealed class SecretServiceStorage : ISecureStorage
         }
     }
 
-    private static async Task<bool> IsServiceKnownAsync()
+    private async Task<bool> IsServiceKnownAsync()
     {
         if (DBusAddress.Session is not { } address)
+        {
+            LogNoSessionBus();
             return false;
+        }
 
         try
         {
@@ -195,14 +201,29 @@ internal sealed class SecretServiceStorage : ISecureStorage
             await connection.ConnectAsync();
 
             // A keyring is often started by the bus on the first call
-            return Array.IndexOf(await connection.ListServicesAsync(), Service) >= 0 ||
-                   Array.IndexOf(await connection.ListActivatableServicesAsync(), Service) >= 0;
+            var isKnown = Array.IndexOf(await connection.ListServicesAsync(), Service) >= 0 ||
+                          Array.IndexOf(await connection.ListActivatableServicesAsync(), Service) >= 0;
+
+            if (!isKnown)
+                LogNoKeyring();
+
+            return isKnown;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            LogBusFailed(exception);
             return false;
         }
     }
+
+    [LoggerMessage(LogLevel.Information, "No D-Bus session bus, passwords are not kept in a keyring")]
+    private partial void LogNoSessionBus();
+
+    [LoggerMessage(LogLevel.Information, "No keyring (" + Service + ") on the session bus, passwords are not kept in it")]
+    private partial void LogNoKeyring();
+
+    [LoggerMessage(LogLevel.Warning, "Failed to ask the session bus for a keyring")]
+    private partial void LogBusFailed(Exception exception);
 
     private static async Task<string> OpenSessionAsync(DBusConnection connection)
     {

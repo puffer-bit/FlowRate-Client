@@ -203,7 +203,7 @@ public sealed class PictureView : Control
         _isEffectBroken = _effect == null;
 
         if (_isEffectBroken)
-            Android.Util.Log.Error("FlowRate", $"The shader of the screens does not compile: {errors}");
+            Serilog.Log.ForContext<PictureView>().Error("The shader of the screens does not compile: {Errors}", errors);
 
         return _effect;
     }

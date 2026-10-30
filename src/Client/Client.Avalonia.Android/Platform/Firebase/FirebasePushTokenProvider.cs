@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Android.Gms.Extensions;
 using Client.Application.Ports;
 using Firebase.Messaging;
+using Microsoft.Extensions.Logging;
 using Shared.Enums;
 
 namespace Client.Droid.Platform.Firebase;
@@ -10,7 +11,7 @@ namespace Client.Droid.Platform.Firebase;
 /// <summary>
 /// The Firebase Cloud Messaging token of this installation.
 /// </summary>
-internal sealed class FirebasePushTokenProvider : IPushTokenProvider
+internal sealed partial class FirebasePushTokenProvider(ILogger<FirebasePushTokenProvider> logger) : IPushTokenProvider
 {
     // The messaging service is created by the system, apart from the container: it reports here
     private static event Action<string>? TokenReplaced;
@@ -35,10 +36,14 @@ internal sealed class FirebasePushTokenProvider : IPushTokenProvider
 #pragma warning restore CS0618
             return token?.ToString();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             // No Google services on the device, or no network yet: the next login asks again
+            LogNoToken(exception.Message);
             return null;
         }
     }
+
+    [LoggerMessage(LogLevel.Information, "No push token from Firebase, notifications wait for the next login: {Reason}")]
+    private partial void LogNoToken(string reason);
 }

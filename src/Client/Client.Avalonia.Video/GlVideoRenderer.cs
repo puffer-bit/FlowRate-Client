@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using Avalonia;
@@ -422,8 +421,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
         if (_angle == null)
         {
-            VideoSurfaceProbe.Logger?.LogWarning("Direct3D 11 frames cannot be imported: {Reason}",
-                AngleD3D11Import.LastFailure);
+            VideoSurfaceProbe.LogD3D11Unsupported(VideoSurfaceProbe.Logger, AngleD3D11Import.LastFailure);
             VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared, AngleD3D11Import.LastFailure);
             return false;
         }
@@ -436,7 +434,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
         if (isBroken)
         {
-            VideoSurfaceProbe.Logger?.LogWarning("Direct3D 11 frame import failed: {Reason}", AngleD3D11Import.LastFailure);
+            VideoSurfaceProbe.LogD3D11ImportFailed(VideoSurfaceProbe.Logger, AngleD3D11Import.LastFailure);
             VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.D3D11Shared, AngleD3D11Import.LastFailure);
             return false;
         }

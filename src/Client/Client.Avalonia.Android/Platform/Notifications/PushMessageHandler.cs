@@ -10,6 +10,7 @@ using Client.Application.Push;
 using Client.Avalonia.Localization;
 using Client.Api;
 using Client.Infrastructure;
+using Client.Tools.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Client.Droid.Platform.Notifications;
@@ -26,8 +27,8 @@ internal static class PushMessageHandler
     /// The local storage and what a notification does without the interface: replies go over HTTP.
     /// </summary>
     public static readonly Lazy<ServiceProvider> Services = new(() => new ServiceCollection()
-        // The media cache, where the avatars are, asks for a logger
-        .AddLogging()
+        // The journal of the process, which the application object has started
+        .AddClientLogging(Serilog.Log.Logger)
         .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
         .AddApi()
         .AddTransient<PushReplies>()

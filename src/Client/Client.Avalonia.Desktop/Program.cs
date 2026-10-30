@@ -2,6 +2,8 @@
 using System;
 using Client.Avalonia.Icons;
 using Client.GStreamer.Loader;
+using Client.Tools.AppInfo;
+using Client.Services.Logging;
 using Client.Tools.Logging;
 using ReactiveUI.Avalonia;
 using Serilog;
@@ -24,6 +26,7 @@ sealed class Program
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = true });
         ClientLogging.LogUnhandledExceptions();
+        ClientLogging.LogStartup(AppInformation.GetClientBuildVersion());
 
         try
         {
@@ -48,7 +51,7 @@ sealed class Program
             .UsePlatformDetect()
             .WithInterFont()
             .WithEmojiFont()
-            .LogToTrace()
+            .LogToJournal()
             // The main window draws its own title bar; on X11 that needs the frame drawn by Avalonia too.
             // Avalonia 12.1 marks the option experimental
 #pragma warning disable AVALONIA_X11_CSD

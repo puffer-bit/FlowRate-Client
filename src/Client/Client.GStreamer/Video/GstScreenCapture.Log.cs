@@ -18,13 +18,13 @@ internal sealed partial class GstScreenCapture
     [LoggerMessage(LogLevel.Information, "[Capture {Name}] Capturing, encoded with {Description}")]
     private static partial void LogStarted(ILogger logger, string name, string description);
 
-    [LoggerMessage(LogLevel.Information, "[Capture {Name}] Capture delivers {Rate:0.0} fps of {Wanted}: {Caps}")]
+    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] Capture delivers {Rate:0.0} fps of {Wanted}: {Caps}")]
     private static partial void LogCaptureRate(ILogger logger, string name, double rate, int wanted, string caps);
 
-    [LoggerMessage(LogLevel.Information, "[Capture {Name}] The compositor hands out {Rate:0.0} fps")]
+    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The compositor hands out {Rate:0.0} fps")]
     private static partial void LogCompositorRate(ILogger logger, string name, double rate);
 
-    [LoggerMessage(LogLevel.Information, "[Capture {Name}] The encoder puts out {Rate:0.0} fps, {Keyframes} of them keyframes")]
+    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The encoder puts out {Rate:0.0} fps, {Keyframes} of them keyframes")]
     private static partial void LogEncodedRate(ILogger logger, string name, double rate, int keyframes);
 
     [LoggerMessage(LogLevel.Warning, "[Capture {Name}] Failed to hand over a captured frame")]

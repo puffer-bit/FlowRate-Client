@@ -13,6 +13,22 @@ public sealed class LoggingOptions
 
     public bool WriteToFiles { get; init; }
 
+    /// <summary>
+    /// The size at which a file of the application is continued in a new one; the file of GStreamer
+    /// may be twice as big.
+    /// </summary>
+    public long FileSizeLimitBytes { get; init; } = 50 * 1024 * 1024;
+
+    /// <summary>
+    /// How many files of each kind are kept, the oldest are deleted.
+    /// </summary>
+    public int RetainedFileCount { get; init; } = 10;
+
+    /// <summary>
+    /// ANSI colors in the console; logcat on Android shows them as garbage.
+    /// </summary>
+    public bool UseConsoleColors { get; init; } = true;
+
     public string LogDirectory { get; init; } = Path.Combine(AppDirectories.Data, "Logs");
 
     /// <summary>

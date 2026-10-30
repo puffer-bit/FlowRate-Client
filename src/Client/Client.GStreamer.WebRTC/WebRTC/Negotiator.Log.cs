@@ -4,7 +4,7 @@ namespace Client.GStreamer.WebRTC;
 
 internal sealed partial class Negotiator
 {
-    [LoggerMessage(LogLevel.Trace, "[Session {SessionId}] Remote description built:\n{Sdp}")]
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Remote description built:\n{Sdp}")]
     private partial void LogRemoteDescriptionBuilt(int sessionId, string sdp);
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to parse the generated remote description")]
@@ -28,7 +28,7 @@ internal sealed partial class Negotiator
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to apply the local description: {Error}")]
     private partial void LogLocalDescriptionApplyFailed(int sessionId, string error);
 
-    [LoggerMessage(LogLevel.Trace, "[Session {SessionId}] Local description:\n{Sdp}")]
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Local description:\n{Sdp}")]
     private partial void LogLocalDescription(int sessionId, string? sdp);
 
     [LoggerMessage(LogLevel.Error, "[Session {SessionId}] Failed to find the local fingerprint in the answer")]

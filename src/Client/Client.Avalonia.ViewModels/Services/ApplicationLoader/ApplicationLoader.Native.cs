@@ -12,8 +12,9 @@ public partial class ApplicationLoader
             
             return true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            LogOpenAlLoadFailed(exception);
             return false;
         }
     }

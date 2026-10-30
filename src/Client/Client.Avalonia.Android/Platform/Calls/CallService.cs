@@ -91,7 +91,7 @@ internal sealed class CallService : Service
         {
             // Off the screen the system refuses; the next change of the session tries again
             _isStarting = false;
-            Log.Warning(exception, "Failed to start the call service");
+            Log.ForContext<CallService>().Warning(exception, "Failed to start the call service");
         }
     }
 
@@ -157,7 +157,7 @@ internal sealed class CallService : Service
         catch (Exception exception) when (hasMicrophone)
         {
             // Off the screen the microphone is refused; the sound of the session is still played
-            Log.Warning(exception, "The call service is started without the microphone");
+            Log.ForContext<CallService>().Warning(exception, "The call service is started without the microphone");
             StartForeground(NotificationId, notification, GetTypes(false));
             _hasMicrophone = false;
         }

@@ -155,7 +155,6 @@ public partial class ApplicationLoader
         }
 
         LogLoaded(stopwatch.ElapsedMilliseconds);
-        //GstEnvironmentReport.Log(_logger);
         return ApplicationLoadResult.NoError;
     }
     
