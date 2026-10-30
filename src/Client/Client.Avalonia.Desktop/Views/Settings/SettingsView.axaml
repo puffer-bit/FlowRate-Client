@@ -37,6 +37,9 @@
         <DataTemplate DataType="pagesVm:StorageControlVM">
             <settingsPages:StorageControl/>
         </DataTemplate>
+        <DataTemplate DataType="pagesVm:DebugAndLogsControlVM">
+            <settingsPages:DebugAndLogsControl/>
+        </DataTemplate>
         <DataTemplate DataType="pagesVm:VideoControlVM">
             <settingsPages:VideoControl/>
         </DataTemplate>
