@@ -11,6 +11,7 @@ using Client.Core.Sessions.Hybrid;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Application.Sessions.Hybrid;
+using Client.GStreamer.Video;
 
 namespace Client.TestBot;
 
@@ -45,7 +46,7 @@ internal sealed partial class VoiceBot
     private readonly Lock _sharingUsersLock = new();
 
     // Frames received per user since the last report; touched on the threads of the video tracks
-    private readonly Dictionary<int, (int Count, int Width, int Height)> _receivedVideo = [];
+    private readonly Dictionary<int, ReceivedVideo> _receivedVideo = [];
     private readonly Lock _receivedVideoLock = new();
 
     // Users whose audio arrives right now, ourselves included; touched on a timer thread of the transport
@@ -132,10 +133,13 @@ internal sealed partial class VoiceBot
         }
 
         _sessionModel = await FindSessionAsync(_coordinator);
-        _isScreenWanted = _options.Screen;
+        _isScreenWanted = _options.Screen && _options.ScreenDelay == null;
         _isWatchWanted = _options.Watch;
 
         await JoinSessionAsync(cancellationToken);
+
+        if (_options.ScreenDelay is { } screenDelay)
+            _ = StartScreenLaterAsync(screenDelay, cancellationToken);
 
         if (!_options.Quiet)
             _ = ReportVideoForeverAsync(cancellationToken);
@@ -417,6 +421,21 @@ internal sealed partial class VoiceBot
             : $"failed to share the screen: {result}");
     }
 
+    private async Task StartScreenLaterAsync(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(delay, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        _isScreenWanted = true;
+        await StartScreenAsync();
+    }
+
     private async Task ToggleScreenForeverAsync(TimeSpan interval, CancellationToken cancellationToken)
     {
         try
@@ -450,12 +469,25 @@ internal sealed partial class VoiceBot
 
     private void OnVideoFrame(int userId, MediaSourceType source, RawVideoFrame frame)
     {
-        _stats.VideoFrame();
+        // Read before the frame is gone; the stamp says when the test picture was drawn, on this machine
+        var latency = frame.Gpu == null &&
+                      TestPatternStamp.TryRead(frame.DataPtr, frame.Width, frame.Height, frame.Stride, out var drawn)
+            ? (double?)(int)(TestPatternStamp.Now() - drawn)
+            : null;
+
+        // Our own preview never left the machine, so it stays out of the counters of all bots
+        _stats.VideoFrame(userId == _coordinator?.GetCurrentUser().Id ? null : latency);
 
         lock (_receivedVideoLock)
         {
-            _receivedVideo.TryGetValue(userId, out var received);
-            _receivedVideo[userId] = (received.Count + 1, frame.Width, frame.Height);
+            if (!_receivedVideo.TryGetValue(userId, out var received))
+                _receivedVideo[userId] = received = new ReceivedVideo();
+
+            received.Count++;
+            (received.Width, received.Height) = (frame.Width, frame.Height);
+
+            if (latency is { } milliseconds)
+                received.Latencies.Add(milliseconds);
         }
     }
 
@@ -472,7 +504,7 @@ internal sealed partial class VoiceBot
             {
                 await Task.Delay(interval, cancellationToken);
 
-                KeyValuePair<int, (int Count, int Width, int Height)>[] received;
+                KeyValuePair<int, ReceivedVideo>[] received;
 
                 lock (_receivedVideoLock)
                 {
@@ -480,9 +512,20 @@ internal sealed partial class VoiceBot
                     _receivedVideo.Clear();
                 }
 
+                var self = _coordinator?.GetCurrentUser().Id;
+
                 foreach (var (userId, video) in received)
-                    Log($"video of user {userId}: {video.Width}x{video.Height}, " +
-                        $"{video.Count / interval.TotalSeconds:0.#} fps");
+                {
+                    var latencies = video.Latencies.Order().ToArray();
+
+                    Log($"video of user {userId}{(userId == self ? " (own preview)" : "")}: " +
+                        $"{video.Width}x{video.Height}, {video.Count / interval.TotalSeconds:0.#} fps" +
+                        (latencies.Length == 0
+                            ? ""
+                            : $", latency p50 {LoadStats.Percentile(latencies, 0.5):0} ms, " +
+                              $"p95 {LoadStats.Percentile(latencies, 0.95):0} ms, max {latencies[^1]:0} ms" +
+                              (latencies.Length < video.Count ? $", {video.Count - latencies.Length} frames unstamped" : "")));
+                }
 
                 int[] heard;
 
@@ -713,4 +756,12 @@ internal sealed partial class VoiceBot
     // The bot reports progress as free text, it is a console tool
     [LoggerMessage(LogLevel.Information, "[{Bot}] {Message}")]
     private partial void LogBotMessage(string bot, string message);
+
+    private sealed class ReceivedVideo
+    {
+        public int Count;
+        public int Width;
+        public int Height;
+        public readonly List<double> Latencies = [];
+    }
 }
