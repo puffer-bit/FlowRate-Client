@@ -55,7 +55,8 @@
                     ToolTip.Tip="{l:Text hybrid.stats.open}">
                 <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedLeft">
-                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding Stats}"/>
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding}"
+                                                          SessionLogsRequested="OnSessionLogs"/>
                     </Flyout>
                 </Button.Flyout>
                 <Panel Width="24" Height="24">

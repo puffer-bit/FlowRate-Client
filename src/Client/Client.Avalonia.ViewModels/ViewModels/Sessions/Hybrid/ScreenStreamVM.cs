@@ -1,12 +1,14 @@
 using Client.Services;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Client.Application.Coordinator.Users;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using Shared.Models.Media;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -196,6 +198,15 @@ public sealed class ScreenStreamVM : ReactiveObject
     /// </summary>
     public event Action? Cleared;
 
+    /// <summary>
+    /// Raised with every window of the statistics of the media that this device measured of the
+    /// screen, on the UI thread; null parts while the transport reports none of it.
+    /// </summary>
+    public event Action<StreamPerf?, NetworkPerf?>? PerfChanged;
+
+    /// <summary>The latest window of the statistics of the screen, for a tile that shows it later.</summary>
+    public (StreamPerf? Stream, NetworkPerf? Network) Perf { get; private set; }
+
     /// <param name="setWatched">Starts or stops watching this screen.</param>
     /// <param name="toggleExpand">Expands this screen over the others, or brings them back.</param>
     public ScreenStreamVM(int userId, bool isSelf, string displayedName, IPeerPlaybackService playbackService,
@@ -274,6 +285,18 @@ public sealed class ScreenStreamVM : ReactiveObject
 
         if (_analyzer.Update(sample, ReadFrameStats?.Invoke(), isAudioExpected, now))
             Issues = _analyzer.Issues;
+    }
+
+    /// <summary>Takes the part of a window of the statistics of the media that is about this screen.</summary>
+    public void PushPerf(MediaPerfReport report)
+    {
+        var stream = IsSelf
+            ? report.Streams.FirstOrDefault(perf => perf.IsOwn && perf.SourceType == MediaSourceType.Screen)
+            : report.Streams.FirstOrDefault(perf =>
+                !perf.IsOwn && perf.UserId == UserId && perf.SourceType == MediaSourceType.Screen);
+
+        Perf = (stream, report.Network);
+        PerfChanged?.Invoke(stream, report.Network);
     }
 
     public void Clear() => Cleared?.Invoke();

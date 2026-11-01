@@ -109,6 +109,17 @@ internal sealed class IncomingVideoStream : IDisposable
         }
     }
 
+    /// <summary>What the decoder did since the previous call; null before it was made.</summary>
+    public DecoderPerf? TakePerf()
+    {
+        IVideoDecoder? decoder;
+
+        lock (_lock)
+            decoder = _isDisposed ? null : _decoder;
+
+        return decoder?.TakePerf();
+    }
+
     /// <summary>Stops taking pictures, then the decoder.</summary>
     public void Dispose()
     {

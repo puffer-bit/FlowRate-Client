@@ -4,6 +4,7 @@ using Android.App;
 using Android.Content;
 using Client.Application.Push;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Client.Droid.Platform.Notifications;
 
@@ -33,9 +34,11 @@ internal sealed class ChatMarkReadReceiver : BroadcastReceiver
                 await PushMessageHandler.Services.Value.GetRequiredService<PushReplies>()
                     .MarkReadAsync(read.CoordinatorInstanceId, read.ChatId, read.MessageId);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
                 // Nothing to show: the notification is gone already
+                Log.ForContext<ChatMarkReadReceiver>().Warning(exception,
+                    "Failed to mark chat {ChatId} read from a notification", read.ChatId);
             }
             finally
             {

@@ -230,7 +230,7 @@ public class VoicePeerWorkerTests
         public void SetMicrophoneVolume(double volume) { }
         public void SetVoiceGate(VoiceGateOptions? voiceGate) { }
         public void SetVolume(string mid, double volume) => VolumeAction?.Invoke();
-        public void RequestStats() { }
+        public void RequestStats(bool isDetailed) { }
         public void Dispose() => DisposeAction?.Invoke();
     }
 }

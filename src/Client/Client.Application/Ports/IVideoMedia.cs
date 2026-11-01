@@ -60,6 +60,12 @@ public interface IScreenCapture : IDisposable
     /// from the GPU, so it is stopped while our own screen is not watched. Shown at the start. Any thread.
     /// </summary>
     void SetPreviewShown(bool isShown);
+
+    /// <summary>
+    /// What the encoder did since the previous call, and starts the next window; null before it put
+    /// anything out. Any thread.
+    /// </summary>
+    EncoderPerf? TakePerf() => null;
 }
 
 /// <summary>
@@ -84,4 +90,10 @@ public interface IVideoDecoder : IDisposable
 
     /// <summary>Decodes the next picture of the stream. Called from one thread at a time.</summary>
     void Push(EncodedVideoFrame frame);
+
+    /// <summary>
+    /// What the decoder did since the previous call, and starts the next window; null before it was
+    /// given anything. Any thread.
+    /// </summary>
+    DecoderPerf? TakePerf() => null;
 }

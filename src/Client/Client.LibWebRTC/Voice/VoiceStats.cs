@@ -6,7 +6,27 @@ namespace Client.LibWebRTC.Voice;
 /// </summary>
 /// <param name="Levels">The level of each section that plays a voice, and of the microphone.</param>
 /// <param name="Streams">The counters, or null from a peer that reads levels only.</param>
-public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCounters? Streams = null);
+/// <param name="Entries">The objects of the reading the statistics of the media need, or null with the levels only.</param>
+public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCounters? Streams = null,
+    IReadOnlyList<StatsEntry>? Entries = null);
+
+/// <summary>
+/// One RTCStats object of a reading, with its numbers (flags as 0 and 1) and its texts by member.
+/// </summary>
+public sealed record StatsEntry(string Type, string Id, IReadOnlyDictionary<string, double> Numbers,
+    IReadOnlyDictionary<string, string> Texts)
+{
+    /// <summary>The types of the objects kept.</summary>
+    public static readonly IReadOnlySet<string> Types = new HashSet<string>
+    {
+        "inbound-rtp", "outbound-rtp", "remote-inbound-rtp", "candidate-pair", "local-candidate", "remote-candidate",
+        "transport"
+    };
+
+    public double? Number(string name) => Numbers.TryGetValue(name, out var value) ? value : null;
+
+    public string? Text(string name) => Texts.GetValueOrDefault(name);
+}
 
 /// <param name="Mid">The section, or null for our microphone.</param>
 /// <param name="Level">0..1, as the audioLevel of the statistics.</param>

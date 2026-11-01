@@ -8,6 +8,7 @@
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
              xmlns:video="clr-namespace:Client.Avalonia.Video;assembly=Client.Avalonia.Video"
+             xmlns:media="clr-namespace:Client.Avalonia.Controls.Media;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="270"
              x:Class="Client.Views.Sessions.Hybrid.HybridScreenTile"
              x:DataType="hybridVm:ScreenStreamVM"
@@ -104,6 +105,12 @@
                 <Border Background="Transparent" DoubleTapped="OnPictureDoubleTapped">
                     <video:VideoView x:Name="Picture" Stretch="Uniform"/>
                 </Border>
+                <!-- The statistics of the screen, as the debug settings ask; a click expands them -->
+                <media:StreamPerfOverlay x:Name="Perf"
+                                         IsExpandedTile="{Binding IsExpanded}"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Bottom"
+                                         Margin="8"/>
                 <!-- Under the bar at the top edge, out of its way -->
                 <video:StreamIssuesOverlay Issues="{Binding Issues}"
                                            HorizontalAlignment="Right"

@@ -6,14 +6,15 @@ namespace Client.LibWebRTC.Native;
 
 /// <summary>
 /// Reads the levels and the counters out of a report of the statistics of libwebrtc: a JSON array
-/// of the RTCStats objects of the WebRTC specification, and of the levels flowrate_webrtc adds.
+/// of the RTCStats objects of the WebRTC specification, and of the levels flowrate_webrtc adds. The
+/// objects the statistics of the media need are kept whole, see <see cref="StatsEntry"/>.
 /// </summary>
 /// <remarks>
 /// The levels of the voices are the ones of flowrate_webrtc, not the audioLevel of the statistics:
 /// libwebrtc takes that one after the playback volume, so a voice turned down would read quieter
 /// and a muted one would never read as speaking.
 /// </remarks>
-internal static class StatsReader
+public static class StatsReader
 {
     public static VoiceStats Read(string json)
     {
@@ -27,10 +28,14 @@ internal static class StatsReader
         var pairs = new Dictionary<string, (string? Local, string? Remote)>();
         var available = new Dictionary<string, double>();
         string? selectedPair = null;
+        var entries = new List<StatsEntry>();
 
         foreach (var stats in document.RootElement.EnumerateArray())
         {
             var kind = String(stats, "kind");
+
+            if (String(stats, "type") is { } type && StatsEntry.Types.Contains(type))
+                entries.Add(Entry(type, stats));
 
             switch (String(stats, "type"))
             {
@@ -102,10 +107,40 @@ internal static class StatsReader
             : null;
 
         return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp,
-            selectedPair != null && available.TryGetValue(selectedPair, out var kbps) ? kbps : null));
+            selectedPair != null && available.TryGetValue(selectedPair, out var kbps) ? kbps : null), entries);
 
         string? Protocol(string? candidateId) =>
             candidateId == null ? null : candidates.GetValueOrDefault(candidateId);
+    }
+
+    private static StatsEntry Entry(string type, JsonElement stats)
+    {
+        var numbers = new Dictionary<string, double>();
+        var texts = new Dictionary<string, string>();
+
+        foreach (var member in stats.EnumerateObject())
+        {
+            switch (member.Value.ValueKind)
+            {
+                case JsonValueKind.Number:
+                    numbers[member.Name] = member.Value.GetDouble();
+                    break;
+
+                case JsonValueKind.True or JsonValueKind.False:
+                    numbers[member.Name] = member.Value.GetBoolean() ? 1 : 0;
+                    break;
+
+                // The counters of 64 bits come as strings in some versions
+                case JsonValueKind.String when member.Value.GetString() is { } text:
+                    if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+                        numbers[member.Name] = number;
+                    else
+                        texts[member.Name] = text;
+                    break;
+            }
+        }
+
+        return new StatsEntry(type, String(stats, "id") ?? type, numbers, texts);
     }
 
     private static string? String(JsonElement stats, string name) =>

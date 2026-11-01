@@ -51,6 +51,31 @@
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
         </Style>
+        <!-- A sub-item of the category above it, which leads to a section of its page: lower, without an
+             icon and in secondary text, set in by a line under the icon of the category -->
+        <Style Selector="Button.category.sub">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="4,6,12,6"/>
+        </Style>
+        <Style Selector="Button.category.sub TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <!-- A straight line down the sub-items -->
+        <Style Selector="Path.sub-item-guide">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Stretch" Value="None"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Data" Value="M 32,0 L 32,60"/>
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Opacity" Value="0.6"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+        </Style>
+        <Style Selector="Path.sub-item-guide.last">
+            <Setter Property="Data" Value="M 32,0 L 32,44"/>
+        </Style>
         <Style Selector="Path.category-arrow">
             <Setter Property="Width" Value="6"/>
             <Setter Property="Height" Value="10"/>
@@ -241,6 +266,48 @@
                                 <Path Grid.Column="2" Classes="category-arrow"/>
                             </Grid>
                         </Button>
+
+                        <Button Classes="borderless category" Click="OnDebugClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource DebugIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.debug.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- Its sub-items, as DebugAndLogsControlVM.Anchors: they lead to the sections of its
+                             page and are set in by a line under its icon -->
+                        <StackPanel>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Path Grid.Column="0" Classes="sub-item-guide"/>
+                                <Button Grid.Column="1" Classes="borderless category sub" Tag="debug.journal" Click="OnDebugAnchorClick">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                        <TextBlock Grid.Column="0" Text="{l:Text settings.debug.section.journal}"/>
+                                        <Path Grid.Column="1" Classes="category-arrow"/>
+                                    </Grid>
+                                </Button>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Path Grid.Column="0" Classes="sub-item-guide"/>
+                                <Button Grid.Column="1" Classes="borderless category sub" Tag="debug.native" Click="OnDebugAnchorClick">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                        <TextBlock Grid.Column="0" Text="{l:Text settings.debug.section.native}"/>
+                                        <Path Grid.Column="1" Classes="category-arrow"/>
+                                    </Grid>
+                                </Button>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Path Grid.Column="0" Classes="sub-item-guide last"/>
+                                <Button Grid.Column="1" Classes="borderless category sub" Tag="debug.mediaOverlay" Click="OnDebugAnchorClick">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                        <TextBlock Grid.Column="0" Text="{l:Text settings.debug.anchors.media}"/>
+                                        <Path Grid.Column="1" Classes="category-arrow"/>
+                                    </Grid>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
 
                         <!-- Has no settings yet, as on the desktop: listed, but cannot be opened -->
                         <Button Classes="borderless category" IsEnabled="False">
@@ -465,6 +532,121 @@
                                    Foreground="{DynamicResource SecondaryTextBrush}"
                                    Text="{Binding MediaCacheUsageText}"/>
                     </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+        </ui:SettingsPage>
+
+        <!-- ====== Logging and debug: the journal and the log of libwebrtc, then the statistics of the
+             media; the phone has no GStreamer, and its folder of the journal is the application's own ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="DebugPage" IsVisible="False"
+                         x:DataType="pagesVm:DebugAndLogsControlVM">
+            <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="debug.level">
+                    <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding JournalLevelIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsVisible="{Binding HasLogFiles}">
+                    <ToggleSwitch IsChecked="{Binding WriteToFiles}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.files" IsVisible="{Binding HasLogFiles}">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding LogFilesText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.archive">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding SaveArchiveCommand}" Content="{l:Text settings.debug.archive.save}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right" TextWrapping="Wrap" MaxWidth="200"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding ArchiveText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="debug.native"/>
+            <ui:SettingsCard>
+                <!-- The order of NativeLogLevel -->
+                <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsVisible="{Binding HasLibWebRTCLog}">
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="debug.mediaOverlay"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfOverlay">
+                    <!-- The order of MediaPerfOverlayMode -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfOverlayIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.all}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.expanded}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfExpanded" IsEnabled="{Binding IsOverlayShown}">
+                    <ToggleSwitch IsChecked="{Binding IsMediaPerfExpanded}"/>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSections" IsEnabled="{Binding IsOverlayShown}">
+                    <StackPanel Spacing="2" HorizontalAlignment="Right">
+                        <CheckBox IsChecked="{Binding ShowNetworkSection}" Content="{l:Text settings.debug.mediaPerfSections.network}"/>
+                        <CheckBox IsChecked="{Binding ShowTransportSection}" Content="{l:Text settings.debug.mediaPerfSections.transport}"/>
+                        <CheckBox IsChecked="{Binding ShowCodecSection}" Content="{l:Text settings.debug.mediaPerfSections.codec}"/>
+                        <CheckBox IsChecked="{Binding ShowRenderSection}" Content="{l:Text settings.debug.mediaPerfSections.render}"/>
+                        <CheckBox IsChecked="{Binding ShowAudioSection}" Content="{l:Text settings.debug.mediaPerfSections.audio}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfInterval">
+                    <!-- DebugSettings.MediaPerfIntervals -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfIntervalIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.half}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.one}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.two}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfGraphs" IsEnabled="{Binding IsOverlayShown}">
+                    <ToggleSwitch IsChecked="{Binding ShowMediaPerfGraphs}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="debug.mediaJournal"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal">
+                    <!-- The order of MediaPerfJournalMode -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfJournalIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.summary}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.detailed}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSummary" IsEnabled="{Binding IsMediaJournalOn}">
+                    <!-- DebugSettings.MediaPerfSummaryPeriods -->
+                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfSummaryIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.five}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.ten}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.thirty}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.sixty}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfAnomalies">
+                    <ToggleSwitch IsChecked="{Binding LogMediaPerfAnomalies}"/>
                 </ui:SettingsRow>
             </ui:SettingsCard>
         </ui:SettingsPage>
