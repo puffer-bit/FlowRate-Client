@@ -75,6 +75,7 @@ internal sealed unsafe class GlFunctions
     public delegate* unmanaged<int, int, int, int, void> Viewport;
     public delegate* unmanaged<float, float, float, float, void> ClearColor;
     public delegate* unmanaged<int, void> Clear;
+    public delegate* unmanaged<void> Finish;
     public delegate* unmanaged<int, uint, void> BindFramebuffer;
     public delegate* unmanaged<int, uint*, void> GenFramebuffers;
     public delegate* unmanaged<int, uint*, void> DeleteFramebuffers;
@@ -138,6 +139,7 @@ internal sealed unsafe class GlFunctions
         functions.Viewport = (delegate* unmanaged<int, int, int, int, void>)Get("glViewport");
         functions.ClearColor = (delegate* unmanaged<float, float, float, float, void>)Get("glClearColor");
         functions.Clear = (delegate* unmanaged<int, void>)Get("glClear");
+        functions.Finish = (delegate* unmanaged<void>)Get("glFinish");
         functions.BindFramebuffer = (delegate* unmanaged<int, uint, void>)Get("glBindFramebuffer");
         functions.GenFramebuffers = (delegate* unmanaged<int, uint*, void>)Get("glGenFramebuffers");
         functions.DeleteFramebuffers = (delegate* unmanaged<int, uint*, void>)Get("glDeleteFramebuffers");

@@ -14,10 +14,6 @@ namespace Client.GStreamer.Video;
 /// </summary>
 internal sealed partial class GstScreenCapture : IScreenCapture
 {
-    // Off until it works: pipewiresrc 1.2.7 fails on the DMA_DRM format KWin picks ("unhandled format"),
-    // and BGRx memory straight into vapostproc comes out black
-    private static readonly bool IsDmaBufCaptureEnabled = false;
-
     private readonly string _name;
     private readonly VideoCodec _codec;
     private readonly ILogger _logger;
@@ -96,7 +92,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         string name, ILogger logger)
     {
         // A PipeWire capture keeps its frames on the GPU when the encoder can take them from there
-        var isDmaBuf = IsDmaBufCaptureEnabled && input is PipeWireVideoInput && ScreenEncodingBranch.CanTakeDmaBuf(codec);
+        var isDmaBuf = input is PipeWireVideoInput && ScreenEncodingBranch.CanTakeDmaBuf(codec) &&
+            VideoSourceFactory.RgbDmaBufCaps() != null;
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(logger, exception, name),
             (rate, caps) => LogCaptureRate(logger, name, rate, settings.Framerate, caps), isDmaBuf,
@@ -111,7 +108,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         // The screen capture of Windows hands out Direct3D 11 textures
         var branch = ScreenEncodingBranch.Build(codec, settings,
             isD3D11Source: OperatingSystem.IsWindows() && input is MonitorVideoInput or WindowVideoInput,
-            isDmaBufSource: isDmaBuf);
+            isDmaBufSource: isDmaBuf,
+            onError: exception => LogBranchParseFailed(logger, exception, name));
 
         if (branch == null)
         {
@@ -125,7 +123,14 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         pipeline.Add(source.Element);
         pipeline.Add(branch.Bin);
 
-        if (!source.Element.Link(branch.Bin))
+        using var vaEncoder = isDmaBuf ? branch.Bin.GetByName(ScreenEncodingBranch.EncoderName) : null;
+        var sharedVaContext = !isDmaBuf || (vaEncoder != null && GstVaContext.Prepare(pipeline, vaEncoder));
+        if (!sharedVaContext)
+            LogVaContextFailed(logger, name);
+        else if (isDmaBuf)
+            LogVaContextReady(logger, name);
+
+        if (!sharedVaContext || !source.Element.Link(branch.Bin))
         {
             LogBranchBuildFailed(logger, name);
             source.Resource?.Dispose();
@@ -155,9 +160,16 @@ internal sealed partial class GstScreenCapture : IScreenCapture
             _bus = new GstBusWatcher(_pipeline.GetBus(), MessageType.Error | MessageType.Warning, OnMessage,
                 $"capture_{_name}", _logger);
 
+            var loggedEncodedCaps = false;
             _encodedReader = new AppSinkReader(_branch.Encoded, $"encoded_{_name}",
                 sample =>
                 {
+                    if (!loggedEncodedCaps)
+                    {
+                        using var caps = sample.GetCaps();
+                        LogEncodedCaps(_logger, _name, caps?.ToString() ?? "");
+                        loggedEncodedCaps = true;
+                    }
                     using var buffer = sample.GetBuffer();
 
                     if (buffer != null && EncodedFrameReady != null)
@@ -165,9 +177,15 @@ internal sealed partial class GstScreenCapture : IScreenCapture
                 },
                 exception => LogEncodedFrameFailed(_logger, exception, _name));
 
-            _previewPump = new VideoFramePump(_branch.Preview, VideoOutputKind.Memory, $"preview_{_name}",
-                frame => PreviewFrameReady?.Invoke(frame),
-                exception => LogPreviewFrameFailed(_logger, exception, _name));
+            _previewPump = new VideoFramePump(_branch.Preview, _branch.PreviewKind, $"preview_{_name}",
+                frame => PreviewFrameReady?.Invoke(frame with { Timestamp = -1 }),
+                exception => LogPreviewFrameFailed(_logger, exception, _name),
+                kind =>
+                {
+                    var reason = $"Cannot deliver {kind} capture preview.";
+                    LogPreviewFrameFailed(_logger, new InvalidOperationException(reason), _name);
+                    VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.DmaBuf, reason);
+                });
 
             if (_pipeline.SetState(State.Playing) == StateChangeReturn.Failure)
             {

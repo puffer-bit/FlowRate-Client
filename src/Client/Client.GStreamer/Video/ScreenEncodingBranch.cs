@@ -16,7 +16,7 @@ internal static class ScreenEncodingBranch
 
     public const string PreviewSinkName = "preview";
 
-    // Closed while nobody looks at the preview: what it costs is the download of every frame
+    // Closed while nobody looks at the preview to avoid conversion and presentation work
     public const string PreviewValveName = "preview_valve";
     public const string EncodedSinkName = "encoded";
     public const string EncoderName = "encoder";
@@ -43,18 +43,18 @@ internal static class ScreenEncodingBranch
         "videoscale ! videoconvert ! " +
         VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
 
-    // The same for DMA-BUF frames of a capture, sent with a VA-API encoder: no CPU element touches
-    // them, the postprocessor converts and scales for the encoder and for the preview alike
+    // CaptureBridge already limits the variable-rate PipeWire stream. Do not pace it
+    // again or retain another GPU surface before the tee. Each consumer has its own
+    // single-frame queue; the encoder's output is never dropped.
     private const string VaDmaBufDescription =
-        "queue max-size-buffers=2 leaky=downstream ! " +
-        "videorate drop-only=true max-rate={0} ! tee name=split " +
+        "tee name=split " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! {6}" +
         "{2} ! " +
         "{3} " +
 
         "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
-        "vapostproc ! " + VideoFramePump.FrameCaps + ",height=[2,{4}],pixel-aspect-ratio=1/1 ! {5}";
+        "{7} ! {5}";
 
     // The same for a Direct3D 11 capture on Windows: the frames stay textures from the capture to the
     // encoder. d3d11convert scales and converts for the encoder, and the preview is scaled down on the
@@ -97,25 +97,32 @@ internal static class ScreenEncodingBranch
     /// <param name="Preview">Sink of the preview leg, for a <see cref="VideoFramePump"/>.</param>
     /// <param name="Encoded">Sink of the encoded frames.</param>
     /// <param name="Scaler">Where the picture is scaled and converted for the encoder, for the log.</param>
-    public sealed record Result(Bin Bin, Element Preview, Element Encoded, VideoEncoderChoice Encoder, string Scaler);
+    public sealed record Result(Bin Bin, Element Preview, Element Encoded, VideoEncoderChoice Encoder, string Scaler,
+        VideoOutputKind PreviewKind = VideoOutputKind.Memory);
 
     private static string Describe(VideoCodec codec, ScreenShareSettings settings, VideoEncoderChoice encoder,
         string scale, string description = Description) =>
         string.Format(CultureInfo.InvariantCulture, description, settings.Framerate, settings.MaxHeight,
             encoder.ToLaunchString(EncoderName), codec == VideoCodec.VP8 ? Vp8End : H264End, PreviewMaxHeight,
-            VideoFramePump.SinkDescription(PreviewSinkName),
-            string.Format(CultureInfo.InvariantCulture, scale, settings.MaxHeight));
+            description == VaDmaBufDescription
+                ? $"appsink name={PreviewSinkName} max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=false async=false processing-deadline=0"
+                : VideoFramePump.SinkDescription(PreviewSinkName),
+            string.Format(CultureInfo.InvariantCulture, scale, settings.MaxHeight),
+            (VideoSurfaceSupport.Supports(VideoSurfaceKinds.DmaBuf) && VideoSourceFactory.Nv12DmaBufExportCaps() != null)
+                ? "vapostproc ! video/x-raw(memory:DMABuf),format=DMA_DRM ! capsfilter name=preview_caps"
+                : "vapostproc ! " + VideoFramePump.FrameCaps);
 
     // An element that does not take what comes before it raises, so the next description can be tried:
     // an encoder of the list above may still refuse textures, as Media Foundation does without a GPU
-    private static Bin? Parse(string description)
+    private static Bin? Parse(string description, Action<Exception>? onError)
     {
         try
         {
             return Global.ParseBinFromDescription(description, true);
         }
-        catch (Gst.GLib.GException)
+        catch (Gst.GLib.GException exception)
         {
+            onError?.Invoke(exception);
             return null;
         }
     }
@@ -163,8 +170,9 @@ internal static class ScreenEncodingBranch
     /// </param>
     /// <returns>Null when an element is missing.</returns>
     public static Result? Build(VideoCodec codec, ScreenShareSettings settings, bool isD3D11Source = false,
-        bool isDmaBufSource = false)
+        bool isDmaBufSource = false, Action<Exception>? onError = null)
     {
+        Bin? ParseBranch(string description) => Parse(description, onError);
         var encoder = SelectEncoder(codec, settings.EffectiveBitrateKbps);
 
         if (encoder == null)
@@ -175,12 +183,13 @@ internal static class ScreenEncodingBranch
             : CpuScale;
         string scaler;
         Bin? branch = null;
+        var previewKind = VideoOutputKind.Memory;
 
         // Both legs end in their sinks, so the only open end is the input
         if (isD3D11Source && D3D11Encoders.Contains(encoder.Factory) &&
             ElementFactory.Find("d3d11convert") != null && ElementFactory.Find("d3d11download") != null)
         {
-            branch = Parse(Describe(codec, settings, encoder, CpuScale, D3D11Description));
+            branch = ParseBranch(Describe(codec, settings, encoder, CpuScale, D3D11Description));
             scaler = "GPU (Direct3D 11)";
         }
         else
@@ -190,13 +199,26 @@ internal static class ScreenEncodingBranch
 
         if (branch == null && isDmaBufSource && scale == VaScale)
         {
-            branch = Parse(Describe(codec, settings, encoder, scale, VaDmaBufDescription));
+            branch = ParseBranch(Describe(codec, settings, encoder, scale, VaDmaBufDescription));
             scaler = "GPU (VA-API, DMA-BUF)";
+            if (branch != null && VideoSurfaceSupport.Supports(VideoSurfaceKinds.DmaBuf) &&
+                VideoSourceFactory.Nv12DmaBufExportCaps() != null)
+                previewKind = VideoOutputKind.DmaBuf;
         }
+
+        if (previewKind == VideoOutputKind.DmaBuf)
+        {
+            using var filter = branch!.GetByName("preview_caps");
+            Global.UtilSetObjectArg(filter!, "caps", VideoSourceFactory.Nv12DmaBufExportCaps()!);
+        }
+
+        // A VA surface cannot be handed to the generic CPU branch unchanged.
+        if (branch == null && isDmaBufSource)
+            return null;
 
         if (branch == null)
         {
-            branch = Parse(Describe(codec, settings, encoder, scale));
+            branch = ParseBranch(Describe(codec, settings, encoder, scale));
             scaler = scale == VaScale ? "GPU (VA-API)" : "CPU";
         }
 
@@ -204,7 +226,7 @@ internal static class ScreenEncodingBranch
         if (branch == null && scale != CpuScale)
         {
             scaler = "CPU";
-            branch = Parse(Describe(codec, settings, encoder, CpuScale));
+            branch = ParseBranch(Describe(codec, settings, encoder, CpuScale));
         }
 
         if (branch?.GetByName(PreviewSinkName) is not { } preview)
@@ -220,6 +242,6 @@ internal static class ScreenEncodingBranch
             return null;
         }
 
-        return new Result(branch, preview, encoded, encoder, scaler);
+        return new Result(branch, preview, encoded, encoder, scaler, previewKind);
     }
 }

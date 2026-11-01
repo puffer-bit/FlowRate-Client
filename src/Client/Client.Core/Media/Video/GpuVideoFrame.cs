@@ -74,6 +74,13 @@ public abstract class DmaBufVideoFrame : GpuVideoFrame
     // fourcc of the DRM formats the frames come in
     public const uint FourccNv12 = 0x3231564E;
     public const uint FourccP010 = 0x30313050;
+    public const uint FourccArgb8888 = 0x34325241; // AR24
+    public const uint FourccXrgb8888 = 0x34325258; // XR24
+    public const uint FourccAbgr8888 = 0x34324241; // AB24
+    public const uint FourccXbgr8888 = 0x34324258; // XB24
+
+    public static bool IsRgbFormat(uint fourcc) => fourcc is
+        FourccArgb8888 or FourccXrgb8888 or FourccAbgr8888 or FourccXbgr8888;
 
     protected DmaBufVideoFrame(int width, int height, uint fourcc, ulong modifier, IReadOnlyList<DmaBufPlane> planes)
         : base(width, height)
@@ -89,7 +96,7 @@ public abstract class DmaBufVideoFrame : GpuVideoFrame
     /// <summary>The DRM modifier, which says how the planes are tiled.</summary>
     public ulong Modifier { get; }
 
-    /// <summary>The luma plane first, then the chroma one.</summary>
+    /// <summary>One plane for RGB; luma then chroma for NV12/P010.</summary>
     public IReadOnlyList<DmaBufPlane> Planes { get; }
 }
 
