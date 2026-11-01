@@ -53,10 +53,10 @@ internal sealed partial class OutgoingTracks
         "[Session {SessionId}] Video on ssrc {Ssrc} backed up before sending, frames dropped up to the next keyframe ({Dropped} so far)")]
     private partial void LogVideoFramesDropped(int sessionId, uint ssrc, long dropped);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Keyframe of ssrc {Ssrc} requested by the SFU")]
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Keyframe of ssrc {Ssrc} requested by the SFU")]
     private partial void LogKeyFrameRequested(int sessionId, uint ssrc);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Keyframe of ssrc {Ssrc} sent {Elapsed} ms after the request")]
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Keyframe of ssrc {Ssrc} sent {Elapsed} ms after the request")]
     private partial void LogKeyFrameEncoded(int sessionId, uint ssrc, long elapsed);
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Failed to release the capture branch")]
@@ -74,7 +74,7 @@ internal sealed partial class OutgoingTracks
     [LoggerMessage(LogLevel.Trace, "[Session {SessionId}] Voice gate open: {IsOpen}")]
     private partial void LogVoiceGateChanged(int sessionId, bool isOpen);
 
-    [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Outbound volume changed to {Volume}")]
+    [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Outbound volume changed to {Volume}")]
     private partial void LogOutboundVolumeChanged(int sessionId, double volume);
 
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Outbound input changed to {Input}, noise suppression {NoiseSuppression}")]

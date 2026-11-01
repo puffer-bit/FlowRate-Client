@@ -83,6 +83,14 @@ catch (Exception exception) when (exception is IOException or InvalidOperationEx
     return 1;
 }
 
+// The statistics of the media are read only while something shows or writes them
+if (options.PerfJournal != Client.Core.Settings.MediaPerfJournalMode.Off)
+    Client.Core.Settings.DebugSettings.Apply(Client.Core.Settings.DebugSettings.Current with
+    {
+        MediaPerfJournal = options.PerfJournal,
+        MediaPerfSummarySeconds = 5
+    });
+
 using var devices = new GstAudioDeviceProvider(services.GetRequiredService<ILogger<GstAudioDeviceProvider>>());
 var video = new GstVideoMedia(services.GetRequiredService<ILoggerFactory>());
 IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, video, services.GetRequiredService<ILogger<WebRTCTransport>>());

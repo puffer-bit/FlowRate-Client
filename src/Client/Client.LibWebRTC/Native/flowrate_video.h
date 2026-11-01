@@ -42,8 +42,8 @@ class VideoSource : public webrtc::RefCountInterface {
 
 webrtc::scoped_refptr<VideoSource> SourceOf(fr_video_source* source);
 
-// Prints the log of libwebrtc to stderr when FLOWRATE_WEBRTC_LOG says how much: verbose, info,
-// warning or error. Called by fr_initialize
+// Takes the configuration of the log of WebRTC, once: printed to stderr only when FLOWRATE_WEBRTC_LOG
+// says how much, verbose, info, warning or error. Called by fr_set_log and fr_initialize
 void ConfigureLogging();
 
 // Set by fr_initialize: the factory of the wrapper, whose factory of WebRTC the tracks of the sources

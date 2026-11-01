@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:DataType="mainVm:MainWindowVM"
+             x:Class="Client.Views.Main.StartupScreen"
+             Background="{DynamicResource GeneralBrush}"
+             IsVisible="{Binding IsStartupScreenShown}"
+             IsHitTestVisible="{Binding !IsStartupScreenLeaving}"
+             Classes.leaving="{Binding IsStartupScreenLeaving}">
+
+    <!-- Leaving, the screen fades out over the content while what it shows grows towards the viewer -->
+    <UserControl.Transitions>
+        <Transitions>
+            <DoubleTransition Property="Opacity" Duration="{anim:Motion ExtraLong}" Easing="{anim:Ease Exit}"/>
+        </Transitions>
+    </UserControl.Transitions>
+
+    <UserControl.Styles>
+        <Style Selector="StackPanel#Content">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion ExtraLong}" Easing="{anim:Ease Exit}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="UserControl.leaving">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector=".leaving StackPanel#Content">
+            <Setter Property="RenderTransform" Value="scale(1.08)"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Rises into its place when the window opens -->
+        <StackPanel x:Name="Content"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20"
+                    anim:Presence.Appear="Rise"
+                    anim:Presence.Duration="ExtraLong">
+            <!-- Turned by the compositor: the end of the start holds the UI thread for a while -->
+            <loadingIndicators:SpinnerRing Width="32" Height="32"
+                                           HorizontalAlignment="Center"
+                                           Thickness="3"
+                                           TrackBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                           Foreground="{DynamicResource ProgressRingBrush}"/>
+
+            <!-- The stage the start is at; a line of its own height even before the first one is told -->
+            <TextBlock Text="{Binding StartupStage}"
+                       MinHeight="18"
+                       FontSize="13"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
+
+        <TextBlock Text="{Binding Version}"
+                   Margin="0,0,0,16"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+    </Grid>
+</UserControl>

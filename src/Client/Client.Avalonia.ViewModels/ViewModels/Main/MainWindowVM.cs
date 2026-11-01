@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
 using Client.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -35,6 +36,7 @@ using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
+using Client.Tools.AppInfo;
 
 namespace Client.ViewModels.Main;
 
@@ -137,11 +139,7 @@ public partial class MainWindowVM : ReactiveObject
     public bool IsInitialized
     {
         get;
-        private set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(MenuVisibility));
-        }
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     /// <summary>
@@ -159,19 +157,35 @@ public partial class MainWindowVM : ReactiveObject
         }
     }
 
-    public bool GridOpacity
+    /// <summary>What the startup screen says the application is busy with, until it is initialized.</summary>
+    public string? StartupStage
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool MenuVisibility => IsInitialized && !IsContentFullScreen;
-
-    public double MenuOpacity
+    /// <summary>
+    /// The startup screen is in the window: it stays there through its fade out after the start, and
+    /// for good when the start failed.
+    /// </summary>
+    public bool IsStartupScreenShown
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = 0.6;
+    } = true;
+
+    /// <summary>The startup screen fades out: the content under it is ready to be seen.</summary>
+    public bool IsStartupScreenLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The version under the startup screen.</summary>
+    public string Version { get; } = AppInformation.GetClientVersion();
+
+    // The content is laid out from the start under the startup screen, not at its end
+    public bool MenuVisibility => !IsContentFullScreen;
 
     public UserModel? User
     {
@@ -359,13 +373,34 @@ public partial class MainWindowVM : ReactiveObject
     {
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
-        var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog));
+        ApplicationLoadResult result;
 
-        // The user chose to leave instead of typing the password
-        if (result == ApplicationLoadResult.DatabaseLocked)
+        // A database this build cannot open is not the end: the user may start with a new one
+        while (true)
         {
-            Environment.Exit(0);
-            return;
+            result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog),
+                stage => StartupStage = Strings.Get(stage switch
+                {
+                    ApplicationLoadStage.Database => "main.startup.stage.database",
+                    ApplicationLoadStage.Components => "main.startup.stage.components",
+                    _ => "main.startup.stage.settings"
+                }));
+
+            if (!ApplicationLoader.CanResetDatabase(result))
+                break;
+
+            if (!await OfferDatabaseResetAsync(result))
+            {
+                // Leaving instead of typing the password is the user's choice, not a failure
+                Environment.Exit(result == ApplicationLoadResult.DatabaseLocked ? 0 : -1);
+                return;
+            }
+
+            if (!await _applicationLoader.ResetDatabaseAsync())
+            {
+                result = ApplicationLoadResult.DatabaseError;
+                break;
+            }
         }
 
         if (result != ApplicationLoadResult.NoError)
@@ -380,8 +415,9 @@ public partial class MainWindowVM : ReactiveObject
         await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
-        GridOpacity = true;
-        MenuOpacity = 1;
+
+        // Not awaited: the startup screen fades out while the auto connection is already on its way
+        _ = HideStartupScreenAsync();
 
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
@@ -391,23 +427,46 @@ public partial class MainWindowVM : ReactiveObject
             await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
     }
 
-    private static string GetInitializationErrorMessage(ApplicationLoadResult result)
+    // The content under the screen has been laid out all along, so the screen leaves at once; it is out
+    // of the window after its fade, so its ring stops turning
+    private async Task HideStartupScreenAsync()
     {
-        var reason = result switch
-        {
-            ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
-            ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
-            ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
-            ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
-            ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
-            ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
-            ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
-            ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
-            _ => "main.startup.internalError"
-        };
-
-        return Strings.Format("main.startup.failed", ("reason", Strings.Get(reason)));
+        IsStartupScreenLeaving = true;
+        await Task.Delay(Motion.Get(MotionDuration.ExtraLong));
+        IsStartupScreenShown = false;
     }
+
+    /// <returns>Whether the user chose to start with a new database.</returns>
+    private async Task<bool> OfferDatabaseResetAsync(ApplicationLoadResult result)
+    {
+        // A forgotten password is no error, the user only gave up on it
+        var text = result == ApplicationLoadResult.DatabaseLocked
+            ? Strings.Get("main.startup.resetForgottenPassword")
+            : Strings.Format("main.startup.resetOffer", ("reason", Strings.Get(GetInitializationErrorReason(result))));
+
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(
+            result == ApplicationLoadResult.DatabaseLocked ? Icon.KeyQuestion : Icon.Fatal, Buttons.YesNo,
+            text, Strings.Get(result == ApplicationLoadResult.DatabaseLocked ? "main.startup.resetTitle" : "main.startup.title")));
+
+        return answer == Result.Yes;
+    }
+
+    private static string GetInitializationErrorMessage(ApplicationLoadResult result) =>
+        Strings.Format("main.startup.failed", ("reason", Strings.Get(GetInitializationErrorReason(result))));
+
+    /// <returns>The key of the text that names the reason.</returns>
+    private static string GetInitializationErrorReason(ApplicationLoadResult result) => result switch
+    {
+        ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
+        ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
+        ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
+        ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
+        ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
+        ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
+        ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
+        ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
+        _ => "main.startup.internalError"
+    };
 
     private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
         new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,

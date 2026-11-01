@@ -27,6 +27,7 @@ public static class DependencyInjection
     public static IServiceCollection AddGStreamer(this IServiceCollection services)
     {
         services.AddSingleton<IMediaRuntimeLoader, GstRuntimeLoader>();
+        services.AddSingleton<INativeLog, GstNativeLog>();
 
         services.AddSingleton<GstAudioDeviceProvider>();
         services.AddSingleton<IAudioDeviceProvider>(provider => provider.GetRequiredService<GstAudioDeviceProvider>());

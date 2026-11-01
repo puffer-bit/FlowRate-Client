@@ -18,4 +18,14 @@ public interface IEncodedVideoReceiver
 
     /// <summary>Asks the sender of the stream for a keyframe. Any thread.</summary>
     void RequestKeyFrame(uint ssrc);
+
+    /// <summary>
+    /// How long the pictures of the stream took since the previous call, and starts the next window;
+    /// null where the platform does not measure it or does not receive the stream. Any thread.
+    /// </summary>
+    VideoReceiveTiming? TakeTiming(uint ssrc) => null;
 }
+
+/// <param name="Wait">From the first packet of a picture to libwebrtc handing it out: jitter buffer and assembly.</param>
+/// <param name="Handoff">How long handing the picture to its decoder took.</param>
+public readonly record struct VideoReceiveTiming(TimingStats Wait, TimingStats Handoff);

@@ -1,0 +1,25 @@
+using Avalonia.Controls;
+using Avalonia.Input;
+
+namespace Client.Views.Main;
+
+/// <summary>
+/// What the main window shows over everything while the application starts: a ring and the stage the
+/// start is at. Fades out once the application is loaded.
+/// </summary>
+internal partial class StartupScreen : UserControl
+{
+    public StartupScreen()
+    {
+        InitializeComponent();
+    }
+
+    // The screen covers the title bar the window may draw itself, so the window is moved by the screen
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && TopLevel.GetTopLevel(this) is Window window)
+            window.BeginMoveDrag(e);
+    }
+}

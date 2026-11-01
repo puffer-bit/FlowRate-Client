@@ -165,6 +165,13 @@ public interface IHybridSession : IDisposable
     event Action<TransportStatsSample>? StatsSampled;
 
     /// <summary>
+    /// Raised with what the media of the current transport did over the last window, while the
+    /// statistics of the media are read (<see cref="Client.Core.Settings.DebugSettings.IsMediaPerfNeeded"/>).
+    /// Raised on any thread.
+    /// </summary>
+    event Action<MediaPerfReport>? PerfSampled;
+
+    /// <summary>
     /// Changes the gain of the running microphone. Without one nothing happens: the next start
     /// takes the volume it is given.
     /// </summary>

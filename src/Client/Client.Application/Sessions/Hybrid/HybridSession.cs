@@ -94,6 +94,10 @@ public partial class HybridSession : IHybridSession
 
     public event Action<TransportStatsSample>? StatsSampled;
 
+    public event Action<MediaPerfReport>? PerfSampled;
+
+    private readonly MediaPerfJournal _perfJournal;
+
     private static readonly TimeSpan ReconnectConnectTimeout = TimeSpan.FromSeconds(15);
 
     private const int ResumeInboundsAttempts = 3;
@@ -120,9 +124,11 @@ public partial class HybridSession : IHybridSession
         bool isPlaybackEnabled = true,
         IPeerPlaybackService? peerPlayback = null,
         IVoiceActivityService? voiceActivity = null,
-        IScreenWatchService? screenWatch = null)
+        IScreenWatchService? screenWatch = null,
+        ILogger<MediaPerfJournal>? perfLogger = null)
     {
         Model = sessionModel;
+        _perfJournal = new MediaPerfJournal(sessionModel.Id, (ILogger?)perfLogger ?? logger);
         _coordinatorSession = coordinatorSession;
         _transportFactory = transportFactory;
         _logger = logger;
@@ -167,6 +173,14 @@ public partial class HybridSession : IHybridSession
         {
             if (transport == _webRTCService && !IsDisposed)
                 StatsSampled?.Invoke(sample);
+        };
+        transport.PerfSampled += report =>
+        {
+            if (transport != _webRTCService || IsDisposed)
+                return;
+
+            _perfJournal.Add(report);
+            PerfSampled?.Invoke(report);
         };
         transport.VideoFrameReady += (userId, source, frame) =>
         {

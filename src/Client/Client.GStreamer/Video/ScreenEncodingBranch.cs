@@ -19,7 +19,10 @@ internal static class ScreenEncodingBranch
     // Closed while nobody looks at the preview: what it costs is the download of every frame
     public const string PreviewValveName = "preview_valve";
     public const string EncodedSinkName = "encoded";
-    private const string EncoderName = "encoder";
+    public const string EncoderName = "encoder";
+
+    // Where the capture comes in after the pacing, for the rate it delivers
+    public const string SplitName = "split";
 
     // videorate turns the uneven capture into a steady rate, which the rate control of the encoders
     // relies on. Both legs drop instead of queueing: a late frame of a screen is worth nothing.

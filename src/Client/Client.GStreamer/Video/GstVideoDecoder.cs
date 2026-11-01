@@ -21,6 +21,7 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 {
     private const string SourceName = "input";
     private const string SinkName = "frames";
+    private const string DecoderName = "decoder";
 
     // Past a few queued frames the frames up to the next keyframe are dropped and one is asked for, so
     // a decoder that fell behind, or a stalled drawing, cannot leave the picture late for good, nor
@@ -41,6 +42,11 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
     private Running? _running;
     private bool _isDisposed;
+
+    // The statistics of the media, over the pipelines of the decoder: a rebuild keeps counting
+    private long _perfTaken = System.Diagnostics.Stopwatch.GetTimestamp();
+    private long _perfPushed;
+    private long _perfDropped;
 
     public event Action<RawVideoFrame>? FrameReady;
     public event Action<VideoDecoding>? DecodingChanged;
@@ -77,6 +83,8 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
             if (_running is not { } running)
                 return;
 
+            _perfPushed++;
+
             if (!running.Gate.Push(frame))
                 return;
 
@@ -85,6 +93,40 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
         LogFramesDropped(_logger, _name, dropped);
         KeyFrameNeeded?.Invoke();
+    }
+
+    public DecoderPerf? TakePerf()
+    {
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        Running? running;
+        long pushed;
+        long dropped;
+        int queued;
+        int maxQueued;
+
+        lock (_lock)
+        {
+            if (_isDisposed || _running is not { } current)
+                return null;
+
+            running = current;
+            pushed = _perfPushed;
+            _perfPushed = 0;
+            dropped = current.Gate.Dropped - _perfDropped;
+            _perfDropped = current.Gate.Dropped;
+            queued = current.Gate.Queued;
+            maxQueued = current.Gate.TakeMaxQueued();
+        }
+
+        var seconds = System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Exchange(ref _perfTaken, now), now).TotalSeconds;
+
+        if (seconds <= 0)
+            return null;
+
+        var (_, output, durations) = running.Timer?.Take() ?? default;
+
+        return new DecoderPerf(running.Output.Decoder, !VideoElementNames.IsSoftware(running.Output.Decoder),
+            pushed / seconds, output / seconds, durations, queued, maxQueued, Math.Max(0, dropped));
     }
 
     /// <param name="allowGpuSurfaces">False to deliver the frames in memory whatever the screen supports.</param>
@@ -141,7 +183,12 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
             exception => LogFrameFailed(_logger, exception, _name),
             OnPumpSurfaceFailed);
 
-        var running = new Running(pipeline, source, pump, bus, output);
+        GstCodecTimer? timer;
+
+        using (var decoder = pipeline.GetByName(DecoderName))
+            timer = decoder == null ? null : GstCodecTimer.Attach(decoder);
+
+        var running = new Running(pipeline, source, pump, bus, output, timer);
 
         if (pipeline.SetState(State.Playing) == StateChangeReturn.Failure)
         {
@@ -157,8 +204,12 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     {
         // The parser fills in the caps the decoders negotiate on, such as the profile
         var parser = VideoEncoderSelector.GetParser(_codec) is { } factory ? $"{factory} ! " : "";
+        // Named for the statistics, which measure it
+        var chain = output.Chain.StartsWith(output.Decoder, StringComparison.Ordinal)
+            ? $"{output.Decoder} name={DecoderName}{output.Chain[output.Decoder.Length..]}"
+            : output.Chain;
         var description = string.Format(System.Globalization.CultureInfo.InvariantCulture, Description,
-            VideoEncoderSelector.GetEncodedCaps(_codec), parser, output.Chain, VideoFramePump.SinkDescription(SinkName));
+            VideoEncoderSelector.GetEncodedCaps(_codec), parser, chain, VideoFramePump.SinkDescription(SinkName));
 
         try
         {
@@ -291,8 +342,10 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
     /// <summary>One pipeline of the decoder, until it is replaced or the decoder is disposed.</summary>
     private sealed class Running(Pipeline pipeline, Element source, VideoFramePump pump, GstBusWatcher bus,
-        VideoOutput output) : IDisposable
+        VideoOutput output, GstCodecTimer? timer) : IDisposable
     {
+        public GstCodecTimer? Timer { get; } = timer;
+
         public Element Source { get; } = source;
 
         public VideoOutput Output { get; } = output;
@@ -304,6 +357,8 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
         public void Dispose()
         {
+            Timer?.Dispose();
+
             // Stopped first: the pump must not pull from a sink that is shutting down
             pump.Dispose();
             pipeline.SetState(State.Null);

@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
 using Client.Core.Media;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Client.Avalonia.Video;
 
@@ -15,7 +16,7 @@ namespace Client.Avalonia.Video;
 /// Finds out once, when the main window opens, how this system can show frames: which presenter
 /// draws them and what may reach it without being copied through memory.
 /// </summary>
-public static class VideoSurfaceProbe
+public static partial class VideoSurfaceProbe
 {
     private static bool _isDone;
 
@@ -23,7 +24,7 @@ public static class VideoSurfaceProbe
     public static bool UsesGl { get; private set; }
 
     /// <summary>Where presenters report why a fast path failed.</summary>
-    public static ILogger? Logger { get; private set; }
+    public static ILogger Logger { get; private set; } = NullLogger.Instance;
 
     public static async Task RunAsync(Visual window, ILogger? logger)
     {
@@ -31,17 +32,17 @@ public static class VideoSurfaceProbe
             return;
 
         _isDone = true;
-        Logger = logger;
+        Logger = logger ?? NullLogger.Instance;
         var kinds = VideoSurfaceKinds.None;
 
         try
         {
             if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
-                kinds = await ProbeGlAsync(compositor, logger);
+                kinds = await ProbeGlAsync(compositor, Logger);
         }
         catch (Exception exception)
         {
-            logger?.LogWarning(exception, "Failed to find out how video can reach the screen, frames are copied");
+            LogProbeFailed(Logger, exception);
             UsesGl = false;
             kinds = VideoSurfaceKinds.None;
         }
@@ -51,24 +52,22 @@ public static class VideoSurfaceProbe
             kinds |= VideoSurfaceKinds.YuvMemory;
 
         VideoSurfaceSupport.Set(kinds);
-        logger?.LogInformation("Video presenter: {Presenter}, frames without copying: {Kinds}",
-            UsesGl ? "OpenGL" : "bitmap", kinds);
+        LogProbed(Logger, UsesGl ? "OpenGL" : "bitmap", kinds);
     }
 
-    private static async Task<VideoSurfaceKinds> ProbeGlAsync(Compositor compositor, ILogger? logger)
+    private static async Task<VideoSurfaceKinds> ProbeGlAsync(Compositor compositor, ILogger logger)
     {
         var feature = await compositor.TryGetRenderInterfaceFeature(typeof(IOpenGlTextureSharingRenderInterfaceContextFeature));
 
         if (feature is not IOpenGlTextureSharingRenderInterfaceContextFeature sharing)
         {
-            logger?.LogInformation("The renderer shares no OpenGL context: {Feature}", feature?.GetType().FullName ?? "none");
+            LogNoSharing(logger, feature?.GetType().FullName ?? "none");
             return VideoSurfaceKinds.None;
         }
 
         if (!sharing.CanCreateSharedContext || sharing.CreateSharedContext() is not { } context)
         {
-            logger?.LogInformation("The renderer cannot create a shared OpenGL context ({CanCreate})",
-                sharing.CanCreateSharedContext);
+            LogNoSharedContext(logger, sharing.CanCreateSharedContext);
 
             // ANGLE refuses shared contexts, but the presenter draws in the renderer's own context, so it
             // still uploads YUV and RGB frames, and lets ANGLE open D3D11 frames by their share
@@ -90,8 +89,7 @@ public static class VideoSurfaceProbe
         {
             UsesGl = true;
             var canImport = context.GlInterface.GetProcAddress("glEGLImageTargetTexture2DOES") != IntPtr.Zero;
-            logger?.LogInformation("Shared OpenGL context: {Version}, image import {CanImport}",
-                context.Version, canImport);
+            LogSharedContext(logger, context.Version, canImport);
 
             if (OperatingSystem.IsLinux() && canImport && EglDmaBuf.GetImportingDisplay() != IntPtr.Zero)
                 kinds |= VideoSurfaceKinds.DmaBuf;

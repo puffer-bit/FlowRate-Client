@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.Loggable;
+import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
@@ -41,14 +43,24 @@ public final class VoicePeer {
 
         void onFailed(String error);
 
-        /** "mid=level;..." of the voices that arrive, and "local=level" of the microphone; levels 0..1. */
-        void onLevels(String levels);
+        /**
+         * "mid=level;..." of the voices that arrive, and "local=level" of the microphone; levels 0..1.
+         * report is the whole reading as a JSON array of RTCStats objects, as flowrate_webrtc gives it on
+         * the desktop, when it was asked for; otherwise null.
+         */
+        void onStats(String levels, String report);
 
         /**
          * A decoded picture of the screen of a section, on the decoding thread of its stream. The
          * listener releases it, at once or once it has drawn it.
          */
         void onPicture(String mid, Picture picture);
+    }
+
+    /** The log of libwebrtc, see setLog. */
+    public interface LogListener {
+        /** severity: 0 verbose, 1 info, 2 warning, 3 error, the order of Logging.Severity. */
+        void onLog(int severity, String tag, String message);
     }
 
     /**
@@ -97,13 +109,40 @@ public final class VoicePeer {
     private final Map<String, VideoTrack> screens = new ConcurrentHashMap<>();
     private final Map<String, VideoSink> screenSinks = new ConcurrentHashMap<>();
 
+    // What initialize gives libwebrtc for its log; 4 is LS_NONE
+    private static LogListener logListener;
+    private static int logSeverity = 4;
+
+    /**
+     * Passes the log of libwebrtc from minSeverity up (4: none) to the listener. libwebrtc takes it only
+     * when it is initialized, so once it is this changes nothing until the process starts again; returns
+     * whether it was in time.
+     */
+    public static synchronized boolean setLog(LogListener listener, int minSeverity) {
+        logListener = listener;
+        logSeverity = minSeverity;
+        return factory == null;
+    }
+
     /** Loads libwebrtc and opens the audio devices once per process. */
     public static synchronized void initialize(Context context) {
         if (factory != null)
             return;
 
-        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context)
-                .createInitializationOptions());
+        PeerConnectionFactory.InitializationOptions.Builder options =
+                PeerConnectionFactory.InitializationOptions.builder(context);
+
+        if (logListener != null && logSeverity < Logging.Severity.LS_NONE.ordinal()) {
+            final LogListener listener = logListener;
+            options.setInjectableLogger(new Loggable() {
+                @Override
+                public void onLogMessage(String message, Logging.Severity severity, String tag) {
+                    listener.onLog(severity.ordinal(), tag, message);
+                }
+            }, Logging.Severity.values()[logSeverity]);
+        }
+
+        PeerConnectionFactory.initialize(options.createInitializationOptions());
 
         JavaAudioDeviceModule audioDevices = JavaAudioDeviceModule.builder(context)
                 .setUseHardwareAcousticEchoCanceler(true)
@@ -265,13 +304,17 @@ public final class VoicePeer {
             voice.setVolume(volume);
     }
 
-    /** Reads how loud every voice is now, see Listener.onLevels. */
-    public void requestLevels() {
+    /** Reads how loud every voice is now and, when detailed, the whole reading; see Listener.onStats. */
+    public void requestStats(boolean isDetailed) {
         connection.getStats(report -> {
             StringBuilder levels = new StringBuilder();
+            StringBuilder json = isDetailed ? new StringBuilder("[") : null;
 
             for (RTCStats stats : report.getStatsMap().values()) {
                 Map<String, Object> members = stats.getMembers();
+
+                if (json != null)
+                    appendJson(json, stats);
 
                 if (!"audio".equals(members.get("kind")) || !(members.get("audioLevel") instanceof Double))
                     continue;
@@ -286,8 +329,57 @@ public final class VoicePeer {
                 levels.append('=').append(members.get("audioLevel")).append(';');
             }
 
-            listener.onLevels(levels.toString());
+            listener.onStats(levels.toString(), json == null ? null : json.append(']').toString());
         });
+    }
+
+    // The numbers, texts and flags of one RTCStats object; the maps and arrays are of no use to the client
+    private static void appendJson(StringBuilder json, RTCStats stats) {
+        if (json.length() > 1)
+            json.append(',');
+
+        json.append("{\"type\":");
+        appendString(json, stats.getType());
+        json.append(",\"id\":");
+        appendString(json, stats.getId());
+
+        for (Map.Entry<String, Object> member : stats.getMembers().entrySet()) {
+            Object value = member.getValue();
+
+            if (!(value instanceof Number || value instanceof String || value instanceof Boolean))
+                continue;
+
+            if (value instanceof Double && (((Double) value).isNaN() || ((Double) value).isInfinite()))
+                continue;
+
+            json.append(',');
+            appendString(json, member.getKey());
+            json.append(':');
+
+            if (value instanceof String)
+                appendString(json, (String) value);
+            else
+                json.append(value);
+        }
+
+        json.append('}');
+    }
+
+    private static void appendString(StringBuilder json, String text) {
+        json.append('"');
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (c == '"' || c == '\\')
+                json.append('\\').append(c);
+            else if (c < 0x20)
+                json.append(String.format("\\u%04x", (int) c));
+            else
+                json.append(c);
+        }
+
+        json.append('"');
     }
 
     public void close() {

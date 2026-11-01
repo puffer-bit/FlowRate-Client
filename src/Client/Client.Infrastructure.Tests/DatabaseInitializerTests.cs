@@ -16,7 +16,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(20L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal("wal", await database.ScalarAsync("PRAGMA journal_mode"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
     }
@@ -45,7 +45,33 @@ public class DatabaseInitializerTests
         Assert.Equal(DatabaseState.NoError, state);
         Assert.True(File.Exists(database.FilePath + ".ef-backup"));
         Assert.Null(await database.ScalarAsync("SELECT name FROM sqlite_master WHERE name = '__EFMigrationsHistory'"));
-        Assert.Equal(20L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
+    }
+
+    [Fact]
+    public async Task FrameCounterBecomesTheStatisticsOverTheScreens()
+    {
+        // A database of 021, where the frame counter was a column of the debug settings
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        await database.ExecuteAsync(string.Join(";",
+            new[]
+            {
+                "MediaPerfOverlay", "IsMediaPerfExpanded", "MediaPerfSections", "MediaPerfIntervalMs",
+                "ShowMediaPerfGraphs", "MediaPerfJournal", "MediaPerfSummarySeconds", "LogMediaPerfAnomalies"
+            }.Select(column => $"ALTER TABLE DebugSettings DROP COLUMN {column}")));
+        await database.ExecuteAsync(
+            "ALTER TABLE DebugSettings ADD COLUMN ShowFrameStats INTEGER NOT NULL DEFAULT 0; " +
+            "UPDATE DebugSettings SET ShowFrameStats = 1, LibWebRTCLogLevel = 3; PRAGMA user_version = 21");
+
+        var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
+
+        Assert.Equal(DatabaseState.NoError, state);
+        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(1L, await database.ScalarAsync("SELECT MediaPerfOverlay FROM DebugSettings"));
+        Assert.Equal(31L, await database.ScalarAsync("SELECT MediaPerfSections FROM DebugSettings"));
+        Assert.Equal(3L, await database.ScalarAsync("SELECT LibWebRTCLogLevel FROM DebugSettings"));
+        Assert.Equal(0L, await database.ScalarAsync(
+            "SELECT COUNT(*) FROM pragma_table_info('DebugSettings') WHERE name = 'ShowFrameStats'"));
     }
 
     [Fact]
@@ -69,5 +95,36 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.Corrupted, state);
+    }
+
+    [Fact]
+    public async Task ResetMovesTheFileAsideAndStartsANewOne()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        await database.ExecuteAsync("PRAGMA user_version = 99");
+        var initializer = new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance);
+
+        var backupPath = initializer.ResetDatabase();
+
+        Assert.True(File.Exists(backupPath));
+        Assert.StartsWith(database.FilePath + ".broken-", backupPath);
+        Assert.False(File.Exists(database.FilePath));
+
+        Assert.Equal(DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
+    }
+
+    [Fact]
+    public async Task ResetForgetsThePasswordOfTheOldFile()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        database.Database.Configure("secret", isFileLocked: false);
+        var initializer = new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance);
+
+        initializer.ResetDatabase();
+
+        Assert.Null(database.Database.Password);
+        Assert.Equal(DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        Assert.False(database.Database.IsFileEncrypted);
     }
 }

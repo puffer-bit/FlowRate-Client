@@ -188,7 +188,8 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
 
     public void SetVolume(string mid, double volume) => Run(peer => NativeMethods.PeerSetVolume(peer, mid, volume));
 
-    public void RequestStats() => Run(NativeMethods.PeerRequestStats);
+    // flowrate_webrtc reads it all every time
+    public void RequestStats(bool isDetailed) => Run(NativeMethods.PeerRequestStats);
 
     /// <summary>
     /// Silences the callbacks at once and destroys the peer in the background: it may be called on
