@@ -1,4 +1,7 @@
 {
+  "hybrid.logs.open": "Registros de sesión",
+  "hybrid.logs.empty": "Todavía no hay eventos de esta sesión. Se usa el nivel de registro de los ajustes de depuración.",
+  "hybrid.logs.follow": "Seguir nuevos eventos",
   "@@locale": "es",
   "@@x-translatedBy": "ai",
   "rejection.insufficientPermissions": "No puedes hacer eso.\n\nTus roles en este servidor no lo permiten. Pídeselo a quien gestiona los roles.",

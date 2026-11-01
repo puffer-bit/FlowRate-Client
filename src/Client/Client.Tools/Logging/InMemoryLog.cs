@@ -86,7 +86,9 @@ public sealed class InMemoryLog : ILogEventSink
         {
             entry = new LogEntry(++_sequence, logEvent.Timestamp, logEvent.Level, category,
                 lastDot < 0 ? category : category![(lastDot + 1)..], message.ToString(),
-                logEvent.Exception?.ToString());
+                logEvent.Exception?.ToString(),
+                logEvent.Properties.TryGetValue("SessionId", out var sessionValue)
+                && sessionValue is ScalarValue { Value: int sessionId } ? sessionId : null);
 
             _entries[_next] = entry;
             _next = (_next + 1) % _entries.Length;

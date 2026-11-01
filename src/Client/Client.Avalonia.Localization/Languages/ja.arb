@@ -1,4 +1,7 @@
 {
+  "hybrid.logs.open": "セッションログ",
+  "hybrid.logs.empty": "このセッションのイベントはまだありません。デバッグ設定のログレベルが適用されます。",
+  "hybrid.logs.follow": "新しいイベントを追跡",
   "@@locale": "ja",
   "@@x-translatedBy": "ai",
   "rejection.insufficientPermissions": "この操作は許可されていません。\n\nこのサーバーでのあなたのロールでは許可されていません。ロールを管理している人に依頼してください。",

@@ -1,4 +1,7 @@
 {
+  "hybrid.logs.open": "Session logs",
+  "hybrid.logs.empty": "No events for this session yet. Events appear at the journal level selected in debug settings.",
+  "hybrid.logs.follow": "Follow new events",
   "@@locale": "en",
   "connect.status.waitingForAction": "Waiting for action...",
   "connect.status.waitingForCertificate": "Waiting for certificate confirmation...",
