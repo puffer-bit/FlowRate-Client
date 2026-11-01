@@ -4,7 +4,7 @@ using Avalonia.Markup.Xaml;
 
 namespace Client.Avalonia.Video.Preview;
 
-public class App : Application
+public class App : global::Avalonia.Application
 {
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 

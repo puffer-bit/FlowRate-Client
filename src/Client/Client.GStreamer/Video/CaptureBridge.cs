@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Gst;
 using Client.GStreamer.Interop;
 
@@ -23,6 +24,8 @@ internal sealed class CaptureBridge : IDisposable
     private readonly Action<double, string>? _onRate;
     private readonly System.Diagnostics.Stopwatch _rateClock = System.Diagnostics.Stopwatch.StartNew();
     private int _frames;
+    private readonly double _frameInterval;
+    private double _nextFrame;
 
     /// <param name="sink">The appsink the capture chain ends in.</param>
     /// <param name="source">The appsrc the rest of the branch starts from. The bridge takes over the wrapper.</param>
@@ -30,10 +33,14 @@ internal sealed class CaptureBridge : IDisposable
     /// <param name="onRate">
     /// Receives every few seconds how many frames per second the capture delivers and their caps.
     /// </param>
-    public CaptureBridge(Element sink, Element source, Action<Exception> onError, Action<double, string>? onRate = null)
+    /// <param name="maxFramerate">Ceiling for forwarding frames; skipped samples are released immediately.</param>
+    public CaptureBridge(Element sink, Element source, Action<Exception> onError, Action<double, string>? onRate = null, int? maxFramerate = null)
     {
         _source = source;
         _onRate = onRate;
+        if (maxFramerate is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxFramerate));
+        _frameInterval = maxFramerate is { } rate ? (double)Stopwatch.Frequency / rate : 0;
 
         // A push is refused while the branch is not running; the next frame is tried again
         _reader = new AppSinkReader(sink, "capture_bridge", Forward, onError);
@@ -41,6 +48,19 @@ internal sealed class CaptureBridge : IDisposable
 
     private void Forward(Sample sample)
     {
+        // VFR capture negotiates framerate=0/1. Enforce the configured ceiling here,
+        // independent of videorate negotiation, without sleeping or retaining a sample.
+        // Carry the fractional remainder so 165 Hz -> 144 Hz does not become 82.5 Hz.
+        if (_frameInterval > 0)
+        {
+            var now = Stopwatch.GetTimestamp();
+            if (now < _nextFrame)
+                return;
+            _nextFrame = _nextFrame == 0
+                ? now + _frameInterval
+                : Math.Max(_nextFrame + _frameInterval, now);
+        }
+
         GstApp.PushSample(_source, sample);
 
         _frames++;

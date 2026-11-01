@@ -182,7 +182,10 @@ public static class VideoEncoderSelector
     // 1024 frames is the longest GOP VA-API takes
     private static Candidate Va(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")],
-            [("key-int-max", "1024")],
+            factory.Contains("h264", StringComparison.Ordinal)
+                ? [("key-int-max", "1024"), ("target-usage", "7"), ("ref-frames", "1"),
+                   ("num-slices", "4"), ("b-frames", "0")]
+                : [("key-int-max", "1024")],
             kbps => [("cpb-size", Format(WindowKbits(kbps)))]);
 
     // Quick Sync bounds a keyframe in kbytes

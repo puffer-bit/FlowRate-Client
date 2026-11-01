@@ -91,7 +91,20 @@ next one is tried (Media Foundation without a GPU refuses textures, for one).
    `memory:D3D11Memory`, `d3d11convert` scales and converts to NV12 for the encoder. Nothing goes
    through memory but the preview.
 2. **VA-API with DMA-BUF** (Linux): the capture hands out DMA-BUF and the encoder is a VA-API one;
-   `vapostproc` takes the buffers as they are.
+   `pipewiresrc` uses `min-buffers=1`, `always-copy=false` and negotiates RGB DRM formats
+   including GPU modifiers. Before the bridge and its queues, `vapostproc` imports and converts
+   into owned NV12 VA surfaces. This returns the scarce compositor buffers without waiting for
+   encoding or presentation. The bridge limits the rate after this GPU conversion with a fractional monotonic-clock
+   schedule, without retaining skipped frames. This enforces the configured ceiling even with
+   variable-rate caps (`framerate=0/1`), independently of caps negotiation. The VA capture branch tees directly into the encoder
+   and preview queues, without another input queue or videorate holding GPU surfaces.
+   Before starting, the encoder is opened in READY to query its VA display context, then closed.
+   That context is applied to the whole pipeline while it is still NULL. The appsink/appsrc
+   bridge otherwise breaks upstream context discovery, allowing separate VA displays and
+   expensive transfers between them. Startup logs confirm that the shared display was prepared.
+   VA H.264 also requests target-usage=7, one reference, four slices and no B frames where the
+   installed encoder accepts those properties. This favors throughput and latency over compression
+   efficiency, without reducing the capture resolution or configured frame rate.
 3. **VA-API**: the frames come in memory, `vapostproc` uploads, scales and converts them.
 4. **CPU**: `videoscale ! videoconvert` and then the encoder, whatever it is.
 
@@ -100,12 +113,18 @@ capture starts with.
 
 Both legs drop late frames instead of queueing them, except the sink of the encoded frames: a lost
 frame there would break every one up to the next keyframe, so it holds the encoder back instead.
-The preview leg keeps the size and rate of the capture and is downloaded into memory as BGRA, on
-Windows as well: at 2560x1440 and 144 fps that is about 2 GB/s read back from the GPU and uploaded
-again by the presenter, the most of what sharing costs the CPU. So a valve at the head of the leg
-(`preview_valve`) is closed while the sharer does not watch their own screen
-(`IScreenCapture.SetPreviewShown`, set by `HybridSession` with the watch of that screen); a share
-starts unwatched, so with the preview closed.
+The preview leg keeps the size and rate of the capture. On the Linux VA capture path, when the
+presenter supports DMA-BUF, it exports NV12 DMA-BUF to OpenGL without CPU readback. Local preview
+frames have no presentation timestamp (`-1`): the presenter uses the latest frame instead of
+retaining a network jitter queue. The preview sink retains at most one queued frame and no last
+sample. The shared renderer also supports RGB DMA-BUF and releases those buffers after GPU reads
+complete, as exercised by `Client.Avalonia.Video.Preview`.
+
+Other paths deliver BGRA memory as before. The preview valve (`preview_valve`) is closed while
+the sharer does not watch their own screen (`IScreenCapture.SetPreviewShown`); a share starts
+unwatched. The DMA-BUF capture path is selected for VA encoders with advertised RGB import caps;
+software encoders retain the memory capture path. Live capture, encoder and compositor rates
+remain available in the existing capture logs and media statistics.
 
 ### Keyframes and bitrate
 
