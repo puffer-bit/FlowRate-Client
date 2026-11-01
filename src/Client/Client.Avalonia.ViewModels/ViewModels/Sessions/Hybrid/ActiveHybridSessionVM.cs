@@ -11,6 +11,7 @@ using ReactiveUI;
 using ReactiveUI.Primitives;
 using Shared.Enums;
 using Client.Core.Coordinator;
+using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Application.Coordinator;
@@ -171,6 +172,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             .Add(() => hybridSession.VideoDecodingChanged += OnVideoDecoding,
                 () => hybridSession.VideoDecodingChanged -= OnVideoDecoding)
             .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
+            .Add(() => hybridSession.PerfSampled += OnPerfSampled, () => hybridSession.PerfSampled -= OnPerfSampled)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)
             .Add(() => coordinatorSession.HybridSessionReconfigured += OnSessionReconfigured,
@@ -468,6 +470,16 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
             foreach (var stream in ScreenStreams)
                 stream.Analyze(sample, _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
+        });
+
+    private void OnPerfSampled(MediaPerfReport report) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsClosed)
+                return;
+
+            foreach (var stream in ScreenStreams)
+                stream.PushPerf(report);
         });
 
     private void OnSessionStateChanged(HybridSessionState state) =>

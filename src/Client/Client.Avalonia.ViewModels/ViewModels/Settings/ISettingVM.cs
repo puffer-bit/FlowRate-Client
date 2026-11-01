@@ -22,6 +22,11 @@ public interface ISettingVM : IReactiveObject
     /// </summary>
     IReadOnlyList<SettingSearchEntry> SearchEntries => [];
 
+    /// <summary>
+    /// The sections of the page that the list of tabs offers as sub-items while the tab is open.
+    /// </summary>
+    IReadOnlyList<SettingAnchor> Anchors => [];
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; }
     
     /// <summary>

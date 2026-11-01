@@ -43,8 +43,12 @@ public final class VoicePeer {
 
         void onFailed(String error);
 
-        /** "mid=level;..." of the voices that arrive, and "local=level" of the microphone; levels 0..1. */
-        void onLevels(String levels);
+        /**
+         * "mid=level;..." of the voices that arrive, and "local=level" of the microphone; levels 0..1.
+         * report is the whole reading as a JSON array of RTCStats objects, as flowrate_webrtc gives it on
+         * the desktop, when it was asked for; otherwise null.
+         */
+        void onStats(String levels, String report);
 
         /**
          * A decoded picture of the screen of a section, on the decoding thread of its stream. The
@@ -300,13 +304,17 @@ public final class VoicePeer {
             voice.setVolume(volume);
     }
 
-    /** Reads how loud every voice is now, see Listener.onLevels. */
-    public void requestLevels() {
+    /** Reads how loud every voice is now and, when detailed, the whole reading; see Listener.onStats. */
+    public void requestStats(boolean isDetailed) {
         connection.getStats(report -> {
             StringBuilder levels = new StringBuilder();
+            StringBuilder json = isDetailed ? new StringBuilder("[") : null;
 
             for (RTCStats stats : report.getStatsMap().values()) {
                 Map<String, Object> members = stats.getMembers();
+
+                if (json != null)
+                    appendJson(json, stats);
 
                 if (!"audio".equals(members.get("kind")) || !(members.get("audioLevel") instanceof Double))
                     continue;
@@ -321,8 +329,57 @@ public final class VoicePeer {
                 levels.append('=').append(members.get("audioLevel")).append(';');
             }
 
-            listener.onLevels(levels.toString());
+            listener.onStats(levels.toString(), json == null ? null : json.append(']').toString());
         });
+    }
+
+    // The numbers, texts and flags of one RTCStats object; the maps and arrays are of no use to the client
+    private static void appendJson(StringBuilder json, RTCStats stats) {
+        if (json.length() > 1)
+            json.append(',');
+
+        json.append("{\"type\":");
+        appendString(json, stats.getType());
+        json.append(",\"id\":");
+        appendString(json, stats.getId());
+
+        for (Map.Entry<String, Object> member : stats.getMembers().entrySet()) {
+            Object value = member.getValue();
+
+            if (!(value instanceof Number || value instanceof String || value instanceof Boolean))
+                continue;
+
+            if (value instanceof Double && (((Double) value).isNaN() || ((Double) value).isInfinite()))
+                continue;
+
+            json.append(',');
+            appendString(json, member.getKey());
+            json.append(':');
+
+            if (value instanceof String)
+                appendString(json, (String) value);
+            else
+                json.append(value);
+        }
+
+        json.append('}');
+    }
+
+    private static void appendString(StringBuilder json, String text) {
+        json.append('"');
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (c == '"' || c == '\\')
+                json.append('\\').append(c);
+            else if (c < 0x20)
+                json.append(String.format("\\u%04x", (int) c));
+            else
+                json.append(c);
+        }
+
+        json.append('"');
     }
 
     public void close() {

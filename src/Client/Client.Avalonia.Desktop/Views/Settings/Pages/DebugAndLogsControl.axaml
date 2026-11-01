@@ -74,10 +74,62 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
-        <controls:SettingsHeader services:SettingText.Section="debug.screens"/>
+        <controls:SettingsHeader services:SettingText.Section="debug.mediaOverlay"/>
         <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="debug.frameStats">
-                <CheckBox IsChecked="{Binding ShowFrameStats}"/>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfOverlay">
+                <!-- The order of MediaPerfOverlayMode -->
+                <ComboBox MinWidth="200" SelectedIndex="{Binding MediaPerfOverlayIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.all}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.expanded}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfExpanded" IsEnabled="{Binding IsOverlayShown}">
+                <CheckBox IsChecked="{Binding IsMediaPerfExpanded}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSections" IsEnabled="{Binding IsOverlayShown}">
+                <WrapPanel MaxWidth="320" HorizontalAlignment="Right" ItemSpacing="12">
+                    <CheckBox IsChecked="{Binding ShowNetworkSection}" Content="{l:Text settings.debug.mediaPerfSections.network}"/>
+                    <CheckBox IsChecked="{Binding ShowTransportSection}" Content="{l:Text settings.debug.mediaPerfSections.transport}"/>
+                    <CheckBox IsChecked="{Binding ShowCodecSection}" Content="{l:Text settings.debug.mediaPerfSections.codec}"/>
+                    <CheckBox IsChecked="{Binding ShowRenderSection}" Content="{l:Text settings.debug.mediaPerfSections.render}"/>
+                    <CheckBox IsChecked="{Binding ShowAudioSection}" Content="{l:Text settings.debug.mediaPerfSections.audio}"/>
+                </WrapPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfInterval">
+                <!-- DebugSettings.MediaPerfIntervals -->
+                <ComboBox MinWidth="120" SelectedIndex="{Binding MediaPerfIntervalIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.half}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.one}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.two}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfGraphs" IsEnabled="{Binding IsOverlayShown}">
+                <CheckBox IsChecked="{Binding ShowMediaPerfGraphs}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="debug.mediaJournal"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal">
+                <!-- The order of MediaPerfJournalMode -->
+                <ComboBox MinWidth="200" SelectedIndex="{Binding MediaPerfJournalIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.summary}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.detailed}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSummary" IsEnabled="{Binding IsMediaJournalOn}">
+                <!-- DebugSettings.MediaPerfSummaryPeriods -->
+                <ComboBox MinWidth="120" SelectedIndex="{Binding MediaPerfSummaryIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.five}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.ten}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.thirty}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.sixty}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfAnomalies">
+                <CheckBox IsChecked="{Binding LogMediaPerfAnomalies}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
     </ui:SettingsPage>

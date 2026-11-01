@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -22,9 +21,6 @@ using Client.Services.Updates;
 using Client.Application.Ports;
 using Client.Tools.Logging;
 using Client.Views.Common;
-#if DEBUG
-using HotAvalonia;
-#endif
 using Microsoft.Extensions.DependencyInjection;
 using Client.Application.Settings;
 using Client.Application.Sounds;
@@ -48,12 +44,6 @@ public partial class App : global::Avalonia.Application
         new LanguageService().Apply(null);
 
         AvaloniaXamlLoader.Load(this);
-#if DEBUG
-        if (Debugger.IsAttached)
-        {
-            this.UseHotReload(); 
-        }
-#endif
     }
 
     public override void OnFrameworkInitializationCompleted()

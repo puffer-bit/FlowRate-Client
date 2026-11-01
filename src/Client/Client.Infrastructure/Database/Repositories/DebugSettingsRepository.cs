@@ -18,7 +18,9 @@ internal sealed class DebugSettingsRepository : IDebugSettingsRepository
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<DebugSettingsRow>("""
-            SELECT JournalLevel, WriteToFiles, GStreamerLogLevel, LibWebRTCLogLevel, ShowFrameStats
+            SELECT JournalLevel, WriteToFiles, GStreamerLogLevel, LibWebRTCLogLevel, MediaPerfOverlay,
+                   IsMediaPerfExpanded, MediaPerfSections, MediaPerfIntervalMs, ShowMediaPerfGraphs, MediaPerfJournal,
+                   MediaPerfSummarySeconds, LogMediaPerfAnomalies
             FROM DebugSettings WHERE Id = 1
             """);
 
@@ -31,7 +33,14 @@ internal sealed class DebugSettingsRepository : IDebugSettingsRepository
             WriteToFiles = row.WriteToFiles,
             GStreamerLogLevel = (NativeLogLevel)row.GStreamerLogLevel,
             LibWebRTCLogLevel = (NativeLogLevel)row.LibWebRTCLogLevel,
-            ShowFrameStats = row.ShowFrameStats
+            MediaPerfOverlay = (MediaPerfOverlayMode)row.MediaPerfOverlay,
+            IsMediaPerfExpanded = row.IsMediaPerfExpanded,
+            MediaPerfSections = (MediaPerfSections)row.MediaPerfSections,
+            MediaPerfIntervalMs = row.MediaPerfIntervalMs,
+            ShowMediaPerfGraphs = row.ShowMediaPerfGraphs,
+            MediaPerfJournal = (MediaPerfJournalMode)row.MediaPerfJournal,
+            MediaPerfSummarySeconds = row.MediaPerfSummarySeconds,
+            LogMediaPerfAnomalies = row.LogMediaPerfAnomalies
         }.Normalize();
     }
 
@@ -41,24 +50,44 @@ internal sealed class DebugSettingsRepository : IDebugSettingsRepository
 
         await connection.ExecuteAsync("""
             INSERT INTO DebugSettings (Id, JournalLevel, WriteToFiles, GStreamerLogLevel, LibWebRTCLogLevel,
-                                       ShowFrameStats)
-            VALUES (1, @JournalLevel, @WriteToFiles, @GStreamerLogLevel, @LibWebRTCLogLevel, @ShowFrameStats)
+                                       MediaPerfOverlay, IsMediaPerfExpanded, MediaPerfSections, MediaPerfIntervalMs,
+                                       ShowMediaPerfGraphs, MediaPerfJournal, MediaPerfSummarySeconds,
+                                       LogMediaPerfAnomalies)
+            VALUES (1, @JournalLevel, @WriteToFiles, @GStreamerLogLevel, @LibWebRTCLogLevel, @MediaPerfOverlay,
+                    @IsMediaPerfExpanded, @MediaPerfSections, @MediaPerfIntervalMs, @ShowMediaPerfGraphs,
+                    @MediaPerfJournal, @MediaPerfSummarySeconds, @LogMediaPerfAnomalies)
             ON CONFLICT (Id) DO UPDATE SET
                 JournalLevel = excluded.JournalLevel,
                 WriteToFiles = excluded.WriteToFiles,
                 GStreamerLogLevel = excluded.GStreamerLogLevel,
                 LibWebRTCLogLevel = excluded.LibWebRTCLogLevel,
-                ShowFrameStats = excluded.ShowFrameStats
+                MediaPerfOverlay = excluded.MediaPerfOverlay,
+                IsMediaPerfExpanded = excluded.IsMediaPerfExpanded,
+                MediaPerfSections = excluded.MediaPerfSections,
+                MediaPerfIntervalMs = excluded.MediaPerfIntervalMs,
+                ShowMediaPerfGraphs = excluded.ShowMediaPerfGraphs,
+                MediaPerfJournal = excluded.MediaPerfJournal,
+                MediaPerfSummarySeconds = excluded.MediaPerfSummarySeconds,
+                LogMediaPerfAnomalies = excluded.LogMediaPerfAnomalies
             """, new
             {
                 JournalLevel = (int?)settings.JournalLevel,
                 settings.WriteToFiles,
                 GStreamerLogLevel = (int)settings.GStreamerLogLevel,
                 LibWebRTCLogLevel = (int)settings.LibWebRTCLogLevel,
-                settings.ShowFrameStats
+                MediaPerfOverlay = (int)settings.MediaPerfOverlay,
+                settings.IsMediaPerfExpanded,
+                MediaPerfSections = (int)settings.MediaPerfSections,
+                settings.MediaPerfIntervalMs,
+                settings.ShowMediaPerfGraphs,
+                MediaPerfJournal = (int)settings.MediaPerfJournal,
+                settings.MediaPerfSummarySeconds,
+                settings.LogMediaPerfAnomalies
             });
     }
 }
 
 internal sealed record DebugSettingsRow(int? JournalLevel, bool WriteToFiles, int GStreamerLogLevel,
-    int LibWebRTCLogLevel, bool ShowFrameStats);
+    int LibWebRTCLogLevel, int MediaPerfOverlay, bool IsMediaPerfExpanded, int MediaPerfSections,
+    int MediaPerfIntervalMs, bool ShowMediaPerfGraphs, int MediaPerfJournal, int MediaPerfSummarySeconds,
+    bool LogMediaPerfAnomalies);

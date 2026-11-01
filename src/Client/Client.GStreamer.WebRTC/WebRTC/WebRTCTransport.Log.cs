@@ -18,4 +18,7 @@ public sealed partial class WebRTCTransport
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] {Element} warns: {Message} ({Debug})")]
     private partial void LogPipelineWarning(int sessionId, string element, string message, string? debug);
+
+    [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Could not read the statistics of the media")]
+    private partial void LogPerfFailed(Exception exception, int sessionId);
 }

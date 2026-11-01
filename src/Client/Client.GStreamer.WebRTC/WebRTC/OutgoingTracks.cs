@@ -90,6 +90,14 @@ internal sealed partial class OutgoingTracks
 
     public OutboundTrack? Find(string outboundId) => _outbounds.GetValueOrDefault(outboundId);
 
+    /// <summary>What the encoder of every screen we show did since the previous call.</summary>
+    public IReadOnlyList<(OutboundTrack Outbound, Client.Core.Media.EncoderPerf Perf)> TakeVideoPerf() =>
+        _outgoingVideo
+            .Select(video => (Outbound: Find(video.Key), Perf: video.Value.Capture.TakePerf()))
+            .Where(item => item is { Outbound: not null, Perf: not null })
+            .Select(item => (item.Outbound!, item.Perf!))
+            .ToList();
+
     public OutboundTrack? FindBySsrc(uint ssrc) => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc);
 
     /// <summary>

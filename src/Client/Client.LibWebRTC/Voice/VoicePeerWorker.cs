@@ -105,7 +105,7 @@ public sealed class VoicePeerWorker : IVoicePeer
     public void SetMicrophoneVolume(double volume) => Enqueue(peer => peer.SetMicrophoneVolume(volume));
     public void SetVoiceGate(VoiceGateOptions? voiceGate) => Enqueue(peer => peer.SetVoiceGate(voiceGate));
     public void SetVolume(string mid, double volume) => Enqueue(peer => peer.SetVolume(mid, volume));
-    public void RequestStats() => Enqueue(peer => peer.RequestStats());
+    public void RequestStats(bool isDetailed) => Enqueue(peer => peer.RequestStats(isDetailed));
 
     public void Dispose()
     {

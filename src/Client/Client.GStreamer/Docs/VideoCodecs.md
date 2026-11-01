@@ -133,22 +133,31 @@ failed before, with the reason when it is known.
 
 ## What the user sees
 
-- **Frame counter** (Video tab, "Frame counter on screens"): over every watched screen,
+- **Statistics of the media** ("Logging and debug" → "Media"): drawn over every screen, or only over
+  the expanded one, by `StreamPerfOverlay` (`Client.Avalonia.Controls`, shared with Android). A line
+  of the main values (frames shown/received, the delay on this device, loss, bitrate) expands with a
+  click, for every screen at once, into the network, the transport, the encoder or decoder, the
+  drawing and the sound of the screen, with graphs of the last 30 s. Only what this device measured
+  is shown; nothing goes through the server.
 
-  ```
-  144 / 144 fps · 0 dropped
-  Video card (Direct3D 11) · without copying, Direct3D 11
-  ```
+  The drawing part has the frame counters and the way of the frames: who decodes (from
+  `DecodingChanged`) and the way the frames really arrive in (from the frames themselves), "drawn
+  without OpenGL" when the bitmap presenter copies them, and after a fallback the kind that failed and
+  why (`VideoView.Route`).
 
-  The second line is green when the frames do not pass through memory. It names who decodes (from
-  `DecodingChanged`) and the way the frames really arrive in (from the frames themselves), and says
-  "drawn without OpenGL" when the bitmap presenter copies them. After a fallback a third line, in
-  the warning colour, names the kind that failed and why.
-
-  The report travels `IVideoDecoder.DecodingChanged` → the transport
+  The decoding report travels `IVideoDecoder.DecodingChanged` → the transport
   (`IWebRTCTransport.VideoDecodingChanged`, by user and source) → `IHybridSession` →
   `ScreenStreamVM.Decoding` → `VideoView.SetDecoding`. Android decodes in libwebrtc, without an
-  `IVideoDecoder`, and reports nothing.
+  `IVideoDecoder`, and reports nothing; its decoder is named by the statistics of libwebrtc
+  (`decoderImplementation`).
+
+  The statistics come from `IWebRTCTransport.PerfSampled` (`MediaPerfReport`), read only while the
+  overlay or the journal of the media is on: the encoder and the decoder are timed from outside by
+  `GstCodecTimer` (probes on their pads, matched by timestamp, or in order for the VA-API encoders,
+  which count their own timestamps), libwebrtc adds the RTCStats of its streams and, on the desktop,
+  the timings of `flowrate_video.cc` (`fr_video_source_take_stats`, `fr_video_take_receive_stats`).
+  `MediaPerfJournal` writes a summary of every stream and the anomalies into the journal, and every
+  reading into `media-yyyyMMdd.jsonl` when asked.
 - **On this computer** (under "Show frames without copying"): the ways without copying the screen
   found when the window opened (`VideoSurfaceSupport.Kinds`), "Not available" when there are none,
   or the kinds that failed in this run (`VideoSurfaceSupport.FailedKinds`, with the reason the first

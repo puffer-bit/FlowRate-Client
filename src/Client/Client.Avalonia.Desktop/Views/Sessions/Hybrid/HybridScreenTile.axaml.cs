@@ -15,6 +15,9 @@ public partial class HybridScreenTile : UserControl
     public HybridScreenTile()
     {
         InitializeComponent();
+
+        Perf.ReadFrames = () => Picture.Stats;
+        Perf.ReadRoute = () => Picture.Route;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -49,12 +52,14 @@ public partial class HybridScreenTile : UserControl
             _stream.FrameReady -= OnFrame;
             _stream.Cleared -= Picture.Clear;
             _stream.DecodingChanged -= Picture.SetDecoding;
+            _stream.PerfChanged -= Perf.SetPerf;
             _stream.ReadFrameStats = null;
         }
 
         _stream = stream;
         Picture.Clear();
         Picture.SetDecoding(null);
+        Perf.Reset();
 
         if (stream == null)
             return;
@@ -64,6 +69,8 @@ public partial class HybridScreenTile : UserControl
         stream.DecodingChanged += Picture.SetDecoding;
         Picture.SetDecoding(stream.Decoding);
         stream.ReadFrameStats = () => Picture.Stats;
+        stream.PerfChanged += Perf.SetPerf;
+        Perf.SetPerf(stream.Perf.Stream, stream.Perf.Network);
     }
 
     private void OnPictureDoubleTapped(object? sender, TappedEventArgs e)

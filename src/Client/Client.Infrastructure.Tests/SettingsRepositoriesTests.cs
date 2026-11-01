@@ -259,7 +259,14 @@ public class SettingsRepositoriesTests
             WriteToFiles = false,
             GStreamerLogLevel = NativeLogLevel.Warning,
             LibWebRTCLogLevel = NativeLogLevel.Verbose,
-            ShowFrameStats = true
+            MediaPerfOverlay = MediaPerfOverlayMode.ExpandedOnly,
+            IsMediaPerfExpanded = true,
+            MediaPerfSections = MediaPerfSections.Codec | MediaPerfSections.Render,
+            MediaPerfIntervalMs = 500,
+            ShowMediaPerfGraphs = false,
+            MediaPerfJournal = MediaPerfJournalMode.Detailed,
+            MediaPerfSummarySeconds = 30,
+            LogMediaPerfAnomalies = false
         };
         await repository.SaveAsync(changed);
 
@@ -268,9 +275,14 @@ public class SettingsRepositoriesTests
         // The level of the build again, and levels a newer build may have written read as off
         await repository.SaveAsync(changed with
         {
-            JournalLevel = null, GStreamerLogLevel = (NativeLogLevel)42, LibWebRTCLogLevel = (NativeLogLevel)(-1)
+            JournalLevel = null, GStreamerLogLevel = (NativeLogLevel)42, LibWebRTCLogLevel = (NativeLogLevel)(-1),
+            MediaPerfOverlay = (MediaPerfOverlayMode)7, MediaPerfIntervalMs = 123, MediaPerfSummarySeconds = 0
         });
         var normalized = await repository.GetAsync();
+
+        Assert.Equal(MediaPerfOverlayMode.Off, normalized.MediaPerfOverlay);
+        Assert.Equal(1000, normalized.MediaPerfIntervalMs);
+        Assert.Equal(10, normalized.MediaPerfSummarySeconds);
 
         Assert.Null(normalized.JournalLevel);
         Assert.Equal(NativeLogLevel.Off, normalized.GStreamerLogLevel);

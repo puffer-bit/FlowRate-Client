@@ -41,6 +41,17 @@ internal sealed class IncomingVideo : IDisposable
         }, onError);
     }
 
+    /// <summary>What the decoder did since the previous call; null before it was made.</summary>
+    public Client.Core.Media.DecoderPerf? TakePerf()
+    {
+        IVideoDecoder? decoder;
+
+        lock (_lock)
+            decoder = _isDisposed ? null : _decoder;
+
+        return decoder?.TakePerf();
+    }
+
     // On the reader thread
     private IVideoDecoder? EnsureDecoder()
     {

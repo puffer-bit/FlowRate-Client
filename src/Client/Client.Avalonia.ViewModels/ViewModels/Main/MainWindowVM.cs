@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
 using Client.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -35,6 +36,7 @@ using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
+using Client.Tools.AppInfo;
 
 namespace Client.ViewModels.Main;
 
@@ -137,11 +139,7 @@ public partial class MainWindowVM : ReactiveObject
     public bool IsInitialized
     {
         get;
-        private set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(MenuVisibility));
-        }
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     /// <summary>
@@ -159,19 +157,35 @@ public partial class MainWindowVM : ReactiveObject
         }
     }
 
-    public bool GridOpacity
+    /// <summary>What the startup screen says the application is busy with, until it is initialized.</summary>
+    public string? StartupStage
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool MenuVisibility => IsInitialized && !IsContentFullScreen;
-
-    public double MenuOpacity
+    /// <summary>
+    /// The startup screen is in the window: it stays there through its fade out after the start, and
+    /// for good when the start failed.
+    /// </summary>
+    public bool IsStartupScreenShown
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = 0.6;
+    } = true;
+
+    /// <summary>The startup screen fades out: the content under it is ready to be seen.</summary>
+    public bool IsStartupScreenLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The version under the startup screen.</summary>
+    public string Version { get; } = AppInformation.GetClientVersion();
+
+    // The content is laid out from the start under the startup screen, not at its end
+    public bool MenuVisibility => !IsContentFullScreen;
 
     public UserModel? User
     {
@@ -359,7 +373,13 @@ public partial class MainWindowVM : ReactiveObject
     {
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
-        var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog));
+        var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog),
+            stage => StartupStage = Strings.Get(stage switch
+            {
+                ApplicationLoadStage.Database => "main.startup.stage.database",
+                ApplicationLoadStage.Components => "main.startup.stage.components",
+                _ => "main.startup.stage.settings"
+            }));
 
         // The user chose to leave instead of typing the password
         if (result == ApplicationLoadResult.DatabaseLocked)
@@ -380,8 +400,9 @@ public partial class MainWindowVM : ReactiveObject
         await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
-        GridOpacity = true;
-        MenuOpacity = 1;
+
+        // Not awaited: the startup screen fades out while the auto connection is already on its way
+        _ = HideStartupScreenAsync();
 
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
@@ -389,6 +410,15 @@ public partial class MainWindowVM : ReactiveObject
         if ((await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
             await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
+    }
+
+    // The content under the screen has been laid out all along, so the screen leaves at once; it is out
+    // of the window after its fade, so its ring stops turning
+    private async Task HideStartupScreenAsync()
+    {
+        IsStartupScreenLeaving = true;
+        await Task.Delay(Motion.Get(MotionDuration.ExtraLong));
+        IsStartupScreenShown = false;
     }
 
     private static string GetInitializationErrorMessage(ApplicationLoadResult result)

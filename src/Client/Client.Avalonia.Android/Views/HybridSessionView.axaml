@@ -99,6 +99,7 @@
                                         <!-- A tap opens the picture over the whole display -->
                                         <Panel Background="Black" Tapped="OnPictureTapped">
                                             <views:PictureView Stream="{Binding}"/>
+                                            <views:ScreenPerfView Stream="{Binding}"/>
                                         </Panel>
 
                                         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8" Margin="8,4">
@@ -230,6 +231,7 @@
         <!-- One screen over the whole display; back or the button closes it -->
         <Panel Grid.Row="0" Grid.RowSpan="3" x:Name="FullscreenLayer" Background="Black" IsVisible="False">
             <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            <views:ScreenPerfView x:Name="FullscreenPerf" Stream="{x:Null}" IsFullscreen="True"/>
             <Button Classes="screen-action" Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top"
                     Opacity="0.7" Click="OnCloseFullscreenClick"
                     ToolTip.Tip="{l:Text hybrid.screen.collapse}">

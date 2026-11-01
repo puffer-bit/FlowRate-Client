@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.Application.Sounds;
@@ -70,12 +71,16 @@ public partial class ApplicationLoader
     /// Shows the dialog that asks for the password of an encrypted database the keyring does not
     /// open; true once the database is unlocked, false when the user gave up.
     /// </param>
-    public async Task<ApplicationLoadResult> InitializeAsync(Func<DatabasePasswordVM, Task<bool>> askDatabasePassword)
+    /// <param name="reportStage">Told on the caller's thread each time the start goes on to its next stage.</param>
+    public async Task<ApplicationLoadResult> InitializeAsync(Func<DatabasePasswordVM, Task<bool>> askDatabasePassword,
+        Action<ApplicationLoadStage>? reportStage = null)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         // Both steps are blocking native/SQLite calls: they run off the UI thread and in parallel
         var assembliesTask = Task.Run(LoadAssemblies);
+
+        reportStage?.Invoke(ApplicationLoadStage.Database);
 
         // Nothing reads the database before it is unlocked
         var unlock = await UnlockDatabaseAsync(askDatabasePassword);
@@ -84,6 +89,8 @@ public partial class ApplicationLoader
             await assembliesTask;
             return unlock;
         }
+
+        reportStage?.Invoke(ApplicationLoadStage.Components);
 
         var databaseTask = Task.Run(LoadDatabase);
         await Task.WhenAll(assembliesTask, databaseTask);
@@ -114,26 +121,33 @@ public partial class ApplicationLoader
             }
         }
 
+        reportStage?.Invoke(ApplicationLoadStage.Settings);
+
         // Back on the caller's (UI) thread: the theme touches Avalonia resources
         try
         {
             // First: the level of the journal and the native logs the user asked for, so the rest of the
             // start is written as they want it
             await _debugAndLogService.ApplyAsync();
+            await LetFrameThroughAsync();
 
             // Before a chat is opened: what is kept of the chats and how much
             await _storageService.ApplyAsync();
 
             // Before a session is joined: how its screens are decoded and shown
             await _videoService.ApplyAsync();
+            await LetFrameThroughAsync();
 
             _languageService.Apply(await _appearanceService.GetLanguageAsync());
             _themeService.ApplyTheme(await _appearanceService.GetCurrentThemeTypeAsync());
+            await LetFrameThroughAsync();
             _themeService.ApplyCustomColors(await _appearanceService.GetCustomColorsAsync());
+            await LetFrameThroughAsync();
             _themeService.ApplyAnimations(await _appearanceService.GetAnimationSettingsAsync());
             _themeService.ApplyInterfaceScale(await _appearanceService.GetInterfaceScaleAsync());
             ExperimentalFeatures.Apply(await _appearanceService.GetIsExperimentalEnabledAsync(),
                 await _appearanceService.GetUseCustomTitleBarAsync(), await _audioSettings.GetUseGStreamerAsync());
+            await LetFrameThroughAsync();
         }
         catch (Exception exception)
         {
@@ -146,6 +160,7 @@ public partial class ApplicationLoader
         try
         {
             _soundService.Apply(await _audioSettings.GetAsync());
+            await LetFrameThroughAsync();
         }
         catch (Exception exception)
         {
@@ -165,6 +180,12 @@ public partial class ApplicationLoader
         return ApplicationLoadResult.NoError;
     }
     
+    // Every step of applying the settings is short, but they would hold the UI thread for a number of frames
+    // all together: the continuations of their awaits come before the render. So a frame due goes through
+    // between the steps, and the startup screen does not stall
+    private static async Task LetFrameThroughAsync() =>
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
     private bool LoadAssemblies()
     {
         if (IsLoaded)

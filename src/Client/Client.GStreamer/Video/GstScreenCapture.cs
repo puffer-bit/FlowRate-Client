@@ -48,6 +48,18 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     private int _encodedFrames;
     private int _encodedKeyFrames;
 
+    // The statistics of the media, taken by the transport every window
+    private readonly GstCodecTimer? _encoderTimer;
+    private readonly GstBufferCounter? _captureCounter;
+    private readonly long _perfStarted = Stopwatch.GetTimestamp();
+    private long _perfTaken;
+    private long _perfBytes;
+    private long _perfFrames;
+    private long _perfKeyFrames;
+    private long _perfKeyFrameBytes;
+    private long _perfMaxKeyFrameBytes;
+    private int _targetKbps;
+
     private GstBusWatcher? _bus;
     private AppSinkReader? _encodedReader;
     private VideoFramePump? _previewPump;
@@ -70,6 +82,13 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
         Description = $"{branch.Encoder.ToLaunchString()}, scaled on {branch.Scaler}";
         _onEncodedFrame = OnEncodedFrame;
+        _perfTaken = _perfStarted;
+
+        using (var encoder = branch.Bin.GetByName(ScreenEncodingBranch.EncoderName))
+            _encoderTimer = encoder == null ? null : GstCodecTimer.Attach(encoder);
+
+        using (var split = branch.Bin.GetByName(ScreenEncodingBranch.SplitName))
+            _captureCounter = split == null ? null : GstBufferCounter.Attach(split, "sink");
     }
 
     /// <returns>Null when the input cannot be captured or an element is missing.</returns>
@@ -120,7 +139,10 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         // The pipeline holds them from here on
         source.Element.Dispose();
 
-        return new GstScreenCapture(name, codec, pipeline, branch, source.Resource, logger);
+        return new GstScreenCapture(name, codec, pipeline, branch, source.Resource, logger)
+        {
+            _targetKbps = settings.EffectiveBitrateKbps
+        };
     }
 
     public bool Start()
@@ -187,6 +209,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
             _rateStart = Stopwatch.GetTimestamp();
 
         _encodedFrames++;
+        CountForPerf(frame);
 
         if (Stopwatch.GetElapsedTime(_rateStart) >= RateInterval)
         {
@@ -198,6 +221,50 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         }
 
         EncodedFrameReady?.Invoke(frame);
+    }
+
+    // On the thread of the reader
+    private void CountForPerf(EncodedVideoFrame frame)
+    {
+        Interlocked.Add(ref _perfBytes, frame.Length);
+
+        if (!frame.IsKeyFrame)
+        {
+            Interlocked.Increment(ref _perfFrames);
+            return;
+        }
+
+        Interlocked.Increment(ref _perfKeyFrames);
+        Interlocked.Add(ref _perfKeyFrameBytes, frame.Length);
+
+        long largest;
+
+        do
+        {
+            largest = Interlocked.Read(ref _perfMaxKeyFrameBytes);
+        } while (frame.Length > largest &&
+                 Interlocked.CompareExchange(ref _perfMaxKeyFrameBytes, frame.Length, largest) != largest);
+    }
+
+    public EncoderPerf? TakePerf()
+    {
+        var now = Stopwatch.GetTimestamp();
+        var seconds = Stopwatch.GetElapsedTime(Interlocked.Exchange(ref _perfTaken, now), now).TotalSeconds;
+
+        if (seconds <= 0)
+            return null;
+
+        var bytes = Interlocked.Exchange(ref _perfBytes, 0);
+        var frames = Interlocked.Exchange(ref _perfFrames, 0);
+        var keyFrames = Interlocked.Exchange(ref _perfKeyFrames, 0);
+        var keyFrameBytes = Interlocked.Exchange(ref _perfKeyFrameBytes, 0);
+        var maxKeyFrame = Interlocked.Exchange(ref _perfMaxKeyFrameBytes, 0);
+        var captured = _captureCounter?.Take() ?? 0;
+        var (input, output, durations) = _encoderTimer?.Take() ?? (0, frames + keyFrames, default);
+
+        return new EncoderPerf(_branch.Encoder.Factory, _branch.Scaler, captured / seconds, input / seconds,
+            output / seconds, durations, bytes * 8 / 1000.0 / seconds, Volatile.Read(ref _targetKbps), (int)keyFrames,
+            (int)maxKeyFrame, frames > 0 ? (int)Math.Max(0, (bytes - keyFrameBytes) / frames) : 0);
     }
 
     // Under the lock: the reader disposes the wrapper of the sink when it stops
@@ -240,6 +307,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         {
             if (!_isDisposed)
                 ScreenEncodingBranch.SetBitrate(_branch.Bin, _codec, _branch.Encoder, kbps);
+
+            Volatile.Write(ref _targetKbps, kbps);
         }
     }
 
@@ -271,6 +340,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
             _isDisposed = true;
         }
+
+        _encoderTimer?.Dispose();
 
         // The readers and the feeding threads work on elements of the pipeline, so they stop first
         _encodedReader?.Dispose();

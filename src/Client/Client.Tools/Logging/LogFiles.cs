@@ -9,8 +9,9 @@ namespace Client.Tools.Logging;
 /// </summary>
 public static class LogFiles
 {
-    // The kinds of files ClientLogging writes, each continued in a new file by day and by size
-    private static readonly string[] Kinds = ["app-", "gstreamer-", "libwebrtc-"];
+    // The kinds of files ClientLogging writes, each continued in a new file by day and by size, and the
+    // statistics of the media of MediaPerfRecords, a file a day
+    private static readonly string[] Kinds = ["app-", "gstreamer-", "libwebrtc-", MediaPerfRecords.FilePrefix];
 
     /// <summary>
     /// The files of the journal, the newest first.
@@ -20,8 +21,9 @@ public static class LogFiles
         if (!Directory.Exists(directory))
             return [];
 
-        return new DirectoryInfo(directory).EnumerateFiles("*.txt")
-            .Where(file => Kinds.Any(kind => file.Name.StartsWith(kind, StringComparison.Ordinal)))
+        return new DirectoryInfo(directory).EnumerateFiles()
+            .Where(file => file.Extension is ".txt" or MediaPerfRecords.FileExtension &&
+                           Kinds.Any(kind => file.Name.StartsWith(kind, StringComparison.Ordinal)))
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .ToList();
     }

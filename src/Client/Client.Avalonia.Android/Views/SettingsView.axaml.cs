@@ -373,6 +373,17 @@ public partial class SettingsView : UserControl
         _ = ShowPageAsync(DebugPage, "settings.debug.name");
     }
 
+    // A sub-item of logging and debug: its page, at the section the sub-item names
+    private async void OnDebugAnchorClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.Tag is not string section)
+            return;
+
+        _debug?.LoadCommand.Execute().Subscribe();
+        await ShowPageAsync(DebugPage, "settings.debug.name");
+        Dispatcher.UIThread.Post(() => DebugPage.ScrollTo(section), DispatcherPriority.Loaded);
+    }
+
     // Through the documents of the system: the folder of the journal is the application's own
     private async Task<Stream?> PickArchiveTarget(string fileName)
     {

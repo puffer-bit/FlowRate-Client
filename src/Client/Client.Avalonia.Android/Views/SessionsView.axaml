@@ -449,7 +449,7 @@
 
                     <Button Grid.Column="2" Classes="hybridAction" Width="44" VerticalAlignment="Center"
                             Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.CloseCommand, FallbackValue={x:Null}}">
-                        <Image Width="22" Height="22" Margin="-4,0,0,0" Source="{StaticResource DoorWithRedArrowIcon}"/>
+                        <Image Width="22" Height="22" Source="{StaticResource DoorWithRedArrowIcon}"/>
                     </Button>
                 </Grid>
 
