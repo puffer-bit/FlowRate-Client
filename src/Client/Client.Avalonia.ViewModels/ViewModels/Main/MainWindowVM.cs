@@ -373,19 +373,34 @@ public partial class MainWindowVM : ReactiveObject
     {
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
-        var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog),
-            stage => StartupStage = Strings.Get(stage switch
-            {
-                ApplicationLoadStage.Database => "main.startup.stage.database",
-                ApplicationLoadStage.Components => "main.startup.stage.components",
-                _ => "main.startup.stage.settings"
-            }));
+        ApplicationLoadResult result;
 
-        // The user chose to leave instead of typing the password
-        if (result == ApplicationLoadResult.DatabaseLocked)
+        // A database this build cannot open is not the end: the user may start with a new one
+        while (true)
         {
-            Environment.Exit(0);
-            return;
+            result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog),
+                stage => StartupStage = Strings.Get(stage switch
+                {
+                    ApplicationLoadStage.Database => "main.startup.stage.database",
+                    ApplicationLoadStage.Components => "main.startup.stage.components",
+                    _ => "main.startup.stage.settings"
+                }));
+
+            if (!ApplicationLoader.CanResetDatabase(result))
+                break;
+
+            if (!await OfferDatabaseResetAsync(result))
+            {
+                // Leaving instead of typing the password is the user's choice, not a failure
+                Environment.Exit(result == ApplicationLoadResult.DatabaseLocked ? 0 : -1);
+                return;
+            }
+
+            if (!await _applicationLoader.ResetDatabaseAsync())
+            {
+                result = ApplicationLoadResult.DatabaseError;
+                break;
+            }
         }
 
         if (result != ApplicationLoadResult.NoError)
@@ -421,23 +436,37 @@ public partial class MainWindowVM : ReactiveObject
         IsStartupScreenShown = false;
     }
 
-    private static string GetInitializationErrorMessage(ApplicationLoadResult result)
+    /// <returns>Whether the user chose to start with a new database.</returns>
+    private async Task<bool> OfferDatabaseResetAsync(ApplicationLoadResult result)
     {
-        var reason = result switch
-        {
-            ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
-            ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
-            ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
-            ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
-            ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
-            ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
-            ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
-            ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
-            _ => "main.startup.internalError"
-        };
+        // A forgotten password is no error, the user only gave up on it
+        var text = result == ApplicationLoadResult.DatabaseLocked
+            ? Strings.Get("main.startup.resetForgottenPassword")
+            : Strings.Format("main.startup.resetOffer", ("reason", Strings.Get(GetInitializationErrorReason(result))));
 
-        return Strings.Format("main.startup.failed", ("reason", Strings.Get(reason)));
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(
+            result == ApplicationLoadResult.DatabaseLocked ? Icon.KeyQuestion : Icon.Fatal, Buttons.YesNo,
+            text, Strings.Get(result == ApplicationLoadResult.DatabaseLocked ? "main.startup.resetTitle" : "main.startup.title")));
+
+        return answer == Result.Yes;
     }
+
+    private static string GetInitializationErrorMessage(ApplicationLoadResult result) =>
+        Strings.Format("main.startup.failed", ("reason", Strings.Get(GetInitializationErrorReason(result))));
+
+    /// <returns>The key of the text that names the reason.</returns>
+    private static string GetInitializationErrorReason(ApplicationLoadResult result) => result switch
+    {
+        ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
+        ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
+        ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
+        ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
+        ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
+        ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
+        ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
+        ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
+        _ => "main.startup.internalError"
+    };
 
     private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
         new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,

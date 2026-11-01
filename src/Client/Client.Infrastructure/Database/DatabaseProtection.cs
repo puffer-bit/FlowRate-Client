@@ -92,7 +92,7 @@ internal sealed class DatabaseProtection : IDatabaseProtection
         var directory = Path.GetDirectoryName(Path.GetFullPath(_database.FilePath))!;
         var name = Path.GetFileName(_database.FilePath);
 
-        foreach (var pattern in new[] { name + ".v*.bak", name + ".ef-backup*" })
+        foreach (var pattern in new[] { name + ".v*.bak", name + ".ef-backup*", name + ".broken-*" })
         {
             foreach (var backup in Directory.EnumerateFiles(directory, pattern))
                 File.Delete(backup);
