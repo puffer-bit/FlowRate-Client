@@ -48,7 +48,54 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     public ISettingVM? SelectedSetting
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            // The two selections set each other, and stop once they agree
+            if (ReferenceEquals(field, value))
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+
+            // The line of the tab, unless one of its sub-items is picked already
+            if (SelectedNavigationItem?.Setting != value)
+                SelectedNavigationItem = NavigationItems.FirstOrDefault(line => line.Setting == value && !line.IsSubItem);
+
+            // Only the open tab shows its sub-items
+            foreach (var line in NavigationItems.Where(line => line.HasSubItems))
+                line.IsExpanded = line.Setting == value;
+        }
+    }
+
+    /// <summary>
+    /// The lines of the list of tabs: <see cref="SettingList"/>, with the sub-items of each tab under it.
+    /// </summary>
+    public IReadOnlyList<SettingNavItemVM> NavigationItems { get; private set; } = [];
+
+    public SettingNavItemVM? SelectedNavigationItem
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (value == null)
+                return;
+
+            SelectedSetting = value.Setting;
+            ShowSection(value);
+        }
+    }
+
+    /// <summary>
+    /// Scrolls the page to the section a sub-item leads to; the view calls it again when the sub-item
+    /// that is picked already is clicked.
+    /// </summary>
+    public void ShowSection(SettingNavItemVM item)
+    {
+        if (item.Anchor is { } anchor)
+            _ = TaskObservableExtensions.ToTask(ShowSetting.Handle(anchor.SectionKey));
     }
 
     /// <summary>
@@ -89,7 +136,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Asks the view to scroll to the setting with the given key on the tab that has just been opened.
+    /// Asks the view to scroll to the setting with the given key on the tab that has just been opened,
+    /// or to the header of a section, given its key.
     /// </summary>
     public Interaction<string, RxVoid> ShowSetting { get; } = new();
 
@@ -153,6 +201,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         foreach (var setting in SettingList)
             setting.PropertyChanged += OnSettingPropertyChanged;
 
+        NavigationItems = SettingNavItemVM.Build(SettingList);
+
         _ = LoadAllSettings();
     }
 
@@ -160,6 +210,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     {
         foreach (var setting in SettingList)
             setting.RaisePropertyChanged(nameof(ISettingVM.Name));
+        foreach (var line in NavigationItems)
+            line.RaisePropertyChanged(nameof(SettingNavItemVM.Name));
 
         // The index holds the texts of the previous language
         _searchIndex = null;

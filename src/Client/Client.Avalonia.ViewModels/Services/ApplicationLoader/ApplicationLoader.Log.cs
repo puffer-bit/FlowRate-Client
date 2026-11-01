@@ -20,6 +20,9 @@ public partial class ApplicationLoader
     [LoggerMessage(LogLevel.Error, "Failed to load the application libraries")]
     private partial void LogLibrariesLoadFailed(Exception exception);
 
+    [LoggerMessage(LogLevel.Error, "Failed to start OpenAL, the sounds of the interface are not played")]
+    private partial void LogOpenAlLoadFailed(Exception exception);
+
     [LoggerMessage(LogLevel.Error, "Failed to load the application settings")]
     private partial void LogSettingsLoadFailed(Exception exception);
 }

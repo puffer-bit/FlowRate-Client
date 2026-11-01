@@ -55,6 +55,14 @@ public interface IWebRTCTransport : IDisposable
     /// </summary>
     event Action<TransportStatsSample>? StatsSampled;
 
+    /// <summary>
+    /// Raised with what the media, its encoders and decoders did over the last window, every
+    /// <see cref="Client.Core.Settings.DebugSettings.MediaPerfInterval"/> while the statistics of the
+    /// media are shown or written (<see cref="Client.Core.Settings.DebugSettings.IsMediaPerfNeeded"/>).
+    /// Raised on a timer thread.
+    /// </summary>
+    event Action<MediaPerfReport>? PerfSampled;
+
     WebRTCConnectionState ConnectionState { get; }
 
     /// <summary>

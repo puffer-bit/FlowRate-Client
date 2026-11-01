@@ -24,7 +24,7 @@
     </UserControl.ContextFlyout>
     
     <UserControl.Styles>
-        <!-- A user away from the keyboard fades out, all but the AFK mark -->
+        <!-- A user away from the keyboard fades out, except the AFK mark and screen watch button -->
         <Style Selector="listViews|HybridSessionPeer :is(Control).afkDim">
             <Setter Property="Transitions">
                 <Transitions>
@@ -99,7 +99,7 @@
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
             <!-- The user shows a screen; everyone sees the mark, in the session or not. Inside the
                  session it starts and stops watching that screen, outside it is only a mark -->
-            <Button Classes="screenWatch afkDim"
+            <Button Classes="screenWatch"
                     Classes.watching="{Binding IsWatchingScreen}"
                     IsVisible="{Binding IsSharingScreen}"
                     IsHitTestVisible="{Binding CanWatchScreen}"

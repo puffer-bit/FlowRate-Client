@@ -53,6 +53,19 @@ typedef struct fr_peer_callbacks {
     fr_stats_callback stats;
 } fr_peer_callbacks;
 
+/*
+ * One message of the log of libwebrtc, without its line break. severity: 0 verbose, 1 info, 2 warning,
+ * 3 error. Comes on whatever thread of libwebrtc wrote it, often while it holds a lock: it must return
+ * quickly and must not call into this library.
+ */
+typedef void (*fr_log_callback)(int severity, const char* message);
+
+/*
+ * Passes the log of libwebrtc from min_severity up (as in fr_log_callback, 4 for none) to the callback,
+ * in place of the previous one; NULL stops it. May be called before fr_initialize, to have its log too.
+ */
+FR_API void fr_set_log(fr_log_callback callback, int min_severity);
+
 /* Loads libwebrtc and opens the audio devices once per process; 0 on failure. */
 FR_API int fr_initialize(void);
 
@@ -173,6 +186,35 @@ FR_API void fr_video_source_push(fr_video_source* source, const uint8_t* data, i
 
 /* Stops the source; no callback comes once it returns. A section that still sends it sends nothing. */
 FR_API void fr_video_source_destroy(fr_video_source* source);
+
+/* What became of the pictures of a source since the previous take, for the statistics of the media. */
+typedef struct fr_video_send_stats {
+    /* Pictures pushed, and the ones the encoder of a section took */
+    int64_t pushed;
+    int64_t encoded;
+    /* From a push to the encoder taking the picture, in microseconds: the sum and the longest */
+    int64_t queue_sum_us;
+    int64_t queue_max_us;
+} fr_video_send_stats;
+
+/* Fills stats and starts the next window. */
+FR_API void fr_video_source_take_stats(fr_video_source* source, fr_video_send_stats* stats);
+
+/* What became of the pictures of a stream we receive since the previous take. */
+typedef struct fr_video_receive_stats {
+    /* Pictures handed to the receiver of fr_set_video_receiver */
+    int64_t frames;
+    /* From the first packet of a picture coming in to it being handed out, in microseconds: jitter buffer
+       and assembly together */
+    int64_t wait_sum_us;
+    int64_t wait_max_us;
+    /* How long the receiver took over a picture, in microseconds */
+    int64_t handoff_sum_us;
+    int64_t handoff_max_us;
+} fr_video_receive_stats;
+
+/* Fills stats of the stream with the SSRC and starts the next window; 0 when no such stream is received. */
+FR_API int fr_video_take_receive_stats(uint32_t ssrc, fr_video_receive_stats* stats);
 
 /*
  * A sound we send whose samples come from outside, as the sound of a shown screen: no processing of

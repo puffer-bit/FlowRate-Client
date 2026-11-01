@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
@@ -48,6 +49,9 @@ public class SettingsPage : ItemsControl
     // Cleared to fold and unfold at once, when the result has to be there straight away
     private bool _isAnimated = true;
 
+    // The slide to a section that is under way
+    private DispatcherTimer? _slide;
+
     public static string? GetSearchKey(Control control) => control.GetValue(SearchKeyProperty);
 
     public static void SetSearchKey(Control control, string? value) => control.SetValue(SearchKeyProperty, value);
@@ -59,11 +63,21 @@ public class SettingsPage : ItemsControl
 
     /// <summary>
     /// Scrolls to the control marked with the key and, when it is a <see cref="SettingsRow"/>, flashes it.
-    /// A collapsed section the control is in is shown first.
+    /// A collapsed section the control is in is shown first. The key of a section brings its header
+    /// to the top of the page and unfolds the section.
     /// </summary>
     /// <returns>False when the page has no such control, e.g. it is not laid out yet.</returns>
     public bool ScrollTo(string key)
     {
+        foreach (var item in Items)
+        {
+            if (item is SettingsHeader header && header.SectionKey == key)
+            {
+                ScrollToSection(header);
+                return true;
+            }
+        }
+
         foreach (var visual in this.GetVisualDescendants())
         {
             if (visual is not Control control || GetSearchKey(control) != key)
@@ -84,6 +98,65 @@ public class SettingsPage : ItemsControl
         }
 
         return false;
+    }
+
+    private void ScrollToSection(SettingsHeader header)
+    {
+        if (header.IsCollapsed)
+        {
+            _isAnimated = false;
+            header.SetCurrentValue(SettingsHeader.IsCollapsedProperty, false);
+            _isAnimated = true;
+        }
+
+        // Laid out as it is now, so that the place of the header is not one from before the last scroll
+        UpdateLayout();
+
+        if (this.FindDescendantOfType<ScrollViewer>() is not { Content: Control content } scroller ||
+            header.TranslatePoint(default, content) is not { } position)
+        {
+            header.BringIntoView();
+            return;
+        }
+
+        // Measured in the content and not in the view, so asking again for the same section changes nothing
+        SlideTo(scroller, position.Y - header.Margin.Top);
+    }
+
+    // Slides the page so that the given place of its content is at the top, or as near as the end of
+    // the page lets it. The offset is set at every step, so it stays where the slide has ended
+    private void SlideTo(ScrollViewer scroller, double y)
+    {
+        _slide?.Stop();
+        _slide = null;
+
+        var from = scroller.Offset.Y;
+        var to = Math.Clamp(y, 0, Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height));
+
+        if (!Motion.IsEnabled || Math.Abs(to - from) < 1)
+        {
+            scroller.Offset = scroller.Offset.WithY(to);
+            return;
+        }
+
+        var duration = Motion.Get(MotionDuration.Medium);
+        var easing = Motion.Ease(MotionEase.Standard);
+        var clock = Stopwatch.StartNew();
+
+        var slide = _slide = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(15) };
+        slide.Tick += (_, _) =>
+        {
+            var progress = Math.Min(1, clock.Elapsed / duration);
+            scroller.Offset = scroller.Offset.WithY(from + (to - from) * easing.Ease(progress));
+
+            if (progress < 1)
+                return;
+
+            slide.Stop();
+            if (ReferenceEquals(_slide, slide))
+                _slide = null;
+        };
+        slide.Start();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

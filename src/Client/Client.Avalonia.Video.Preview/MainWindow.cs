@@ -5,8 +5,11 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Client.Avalonia.Controls.Media;
+using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
+using Shared.Models.Media;
 using Client.Avalonia.Video.Preview.Analyzers;
 
 namespace Client.Avalonia.Video.Preview;
@@ -33,6 +36,8 @@ public sealed class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
 
     private VideoView? _video;
+    private StreamPerfOverlay? _perf;
+    private DateTime _perfSampled;
     private PatternFeed? _feed;
     private int _scenario = -1;
     private DateTime _scenarioEnds;
@@ -79,10 +84,22 @@ public sealed class MainWindow : Window
     {
         // The surface picks its presenter from the probe, so it is created once the probe is done
         await VideoSurfaceProbe.RunAsync(this, new ConsoleLogger());
-        VideoSettings.Apply(VideoSettings.Current with { ShowFrameStats = true });
+        DebugSettings.Apply(DebugSettings.Current with
+        {
+            MediaPerfOverlay = MediaPerfOverlayMode.AllStreams,
+            IsMediaPerfExpanded = true
+        });
 
         _video = new VideoView();
         _videoHost.Children.Insert(0, _video);
+        _videoHost.Children.Insert(1, _perf = new StreamPerfOverlay
+        {
+            ReadFrames = () => _video.Stats,
+            ReadRoute = () => _video.Route,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(6)
+        });
         _feed = new PatternFeed(_video.PushFrame, IssueScenarios.NormalFramerate);
 
         NextScenario();
@@ -100,6 +117,26 @@ public sealed class MainWindow : Window
             NextScenario();
         else
             _countdownText.Text = $"Next in {left.TotalSeconds:0.0} s";
+
+        if (DateTime.UtcNow - _perfSampled >= TimeSpan.FromSeconds(1))
+        {
+            _perfSampled = DateTime.UtcNow;
+            _perf?.SetPerf(SamplePerf(), new NetworkPerf(18 + Random.Shared.Next(10), 6200, 90, 4100, false, "host", "host"));
+        }
+    }
+
+    // Made-up statistics of a watched screen, so every part of the overlay can be seen
+    private static StreamPerf SamplePerf()
+    {
+        var wobble = Random.Shared.NextDouble();
+        var decode = new LatencyStats(1.2 + wobble, 2.5 + wobble * 3, 6 + wobble * 10, 30);
+
+        return new StreamPerf(2, MediaSourceType.Screen, false,
+            new VideoReceivePerf(4000 + wobble * 300, 380, wobble * 3, 2, 20 + wobble * 30, 30, 0.4, 3, 30, 30, 0,
+                wobble > 0.9 ? 1 : 0, wobble > 0.9 ? 300 : 0, 2, 0, 0, 0, 0, 0,
+                WaitMs: new TimingStats(2 + wobble * 5, 12, 30), HandoffMs: new TimingStats(0.1, 0.4, 30)),
+            new DecoderPerf("vah264dec", true, 30, 30, decode, 0, wobble > 0.7 ? 3 : 1, 0),
+            Audio: new AudioReceivePerf(96, wobble, 2, 45, 40, wobble * 2, 0.2, 0.1, 0));
     }
 
     private void NextScenario()

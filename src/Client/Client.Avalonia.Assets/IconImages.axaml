@@ -9,6 +9,18 @@
 
     <!-- ===== Common ===== -->
 
+    <!-- Session journal. Source: Icons/LogsIcon.svg -->
+    <DrawingImage x:Key="LogsIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 3 H18 Q20 3 20 5 V19 Q20 21 18 21 H6 Q4 21 4 19 V5 Q4 3 6 3 Z M8 8 H16 M8 12 H16 M8 16 H13">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Single user outline. Source: Icons/BaseUserIcon.svg -->
     <DrawingImage x:Key="BaseUserIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -395,15 +407,14 @@
     <DrawingImage x:Key="DoorWithRedArrowIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
-            <GeometryDrawing Geometry="M5 3 H11.5 A1.5 1.5 0 0 1 13 4.5 V19.5 A1.5 1.5 0 0 1 11.5 21 H5 A1.5 1.5 0 0 1 3.5 19.5 V4.5 A1.5 1.5 0 0 1 5 3 Z">
+            <GeometryDrawing Geometry="M10 4 H5 A2 2 0 0 0 3 6 V18 A2 2 0 0 0 5 20 H10">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
-            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M9.5 12 A0.9 0.9 0 1 0 11.3 12 A0.9 0.9 0 1 0 9.5 12 Z"/>
-            <GeometryDrawing Geometry="M15 12 H21.5 M18.5 8.8 L21.7 12 L18.5 15.2">
+            <GeometryDrawing Geometry="M9 12 H21 M17 8 L21 12 L17 16">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#F44336" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                    <Pen Brush="#F44336" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>

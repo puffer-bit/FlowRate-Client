@@ -69,6 +69,7 @@ public partial class HybridSessionView : UserControl
         _fullscreen = stream;
         stream.PropertyChanged += OnFullscreenStreamChanged;
         FullscreenPicture.Stream = stream;
+        FullscreenPerf.Stream = stream;
         FullscreenLayer.IsVisible = true;
 
         if (MainActivity.Current is { } activity)
@@ -84,6 +85,7 @@ public partial class HybridSessionView : UserControl
         _fullscreen.PropertyChanged -= OnFullscreenStreamChanged;
         _fullscreen = null;
         FullscreenPicture.Stream = null;
+        FullscreenPerf.Stream = null;
         FullscreenLayer.IsVisible = false;
 
         if (MainActivity.Current is { } activity)

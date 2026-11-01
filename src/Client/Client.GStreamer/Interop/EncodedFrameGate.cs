@@ -25,6 +25,19 @@ public sealed class EncodedFrameGate(Element appsrc, ulong maxFrames)
     /// <summary>The frames dropped so far.</summary>
     public long Dropped { get; private set; }
 
+    /// <summary>The frames that waited in the appsrc at the last push.</summary>
+    public int Queued { get; private set; }
+
+    /// <summary>The most that waited since <see cref="TakeMaxQueued"/>.</summary>
+    private int _maxQueued;
+
+    public int TakeMaxQueued()
+    {
+        var max = _maxQueued;
+        _maxQueued = Queued;
+        return max;
+    }
+
     /// <summary>
     /// Drops the frames up to the next keyframe, as after a new decoder, whose caller asks for the
     /// keyframe itself.
@@ -46,7 +59,11 @@ public sealed class EncodedFrameGate(Element appsrc, ulong maxFrames)
 
         // Without room the keyframe would only push out the frames before it, and the appsrc would
         // still be full for the ones after it
-        if (GstNative.GetUInt64(appsrc.Handle, LevelProperty) >= maxFrames)
+        var level = GstNative.GetUInt64(appsrc.Handle, LevelProperty);
+        Queued = (int)Math.Min(level, int.MaxValue);
+        _maxQueued = Math.Max(_maxQueued, Queued);
+
+        if (level >= maxFrames)
         {
             _isWaitingForKeyFrame = true;
             return Drop();
