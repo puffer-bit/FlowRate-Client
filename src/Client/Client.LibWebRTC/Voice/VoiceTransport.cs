@@ -25,6 +25,14 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     // the levels in them
     private static readonly TimeSpan StatsInterval = TimeSpan.FromMilliseconds(200);
 
+    // How often a reading carries the counters of the streams: a peer that has to serialize them, as the
+    // one of Android, does it only then. The samples of the transport and the statistics of the media
+    // are made of these readings
+    private static readonly TimeSpan CountersInterval = TimeSpan.FromSeconds(1);
+
+    // A reading comes a little before or after its time
+    private const double IntervalSlack = 0.9;
+
     // As often as the GStreamer transport tells what its gate did
     private static readonly TimeSpan GateSummaryInterval = TimeSpan.FromMinutes(1);
 
@@ -62,6 +70,10 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private readonly Dictionary<int, long> _speakingUntil = [];
     private readonly TaskCompletionSource<bool> _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly VoiceStatsSampler _sampler = new();
+    private readonly MediaPerfSampler _perfSampler = new();
+    private long _countersRequested;
+    private long _countersSampled;
+    private long _perfSampled;
 
     private IVoicePeer? _peer;
     private TransportParameters? _transportParameters;
@@ -88,6 +100,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     public event Action<IReadOnlyList<string>>? InboundsReady;
     public event Action<TransportStatsSample>? StatsSampled;
+    public event Action<MediaPerfReport>? PerfSampled;
 
     public WebRTCConnectionState ConnectionState { get; private set; } = WebRTCConnectionState.New;
 
@@ -1007,9 +1020,11 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         lock (_lock)
             peer = _peer;
 
+        var isDetailed = IsDue(ref _countersRequested, Interval(CountersInterval));
+
         try
         {
-            peer?.RequestStats();
+            peer?.RequestStats(isDetailed);
         }
         catch (Exception)
         {
@@ -1017,19 +1032,40 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         }
     }
 
+    // The shorter of the counters and of the statistics of the media while they are measured
+    private static TimeSpan Interval(TimeSpan counters) =>
+        DebugSettings.Current.IsMediaPerfNeeded && DebugSettings.Current.MediaPerfInterval < counters
+            ? DebugSettings.Current.MediaPerfInterval
+            : counters;
+
+    // Whether the interval passed since the time kept in last, which is then moved to now
+    private static bool IsDue(ref long last, TimeSpan interval)
+    {
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        if (last != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(last, now) < interval * IntervalSlack)
+            return false;
+
+        last = now;
+        return true;
+    }
+
     private void OnStats(VoiceStats stats)
     {
         UpdateSpeaking(stats.Levels);
 
-        TransportStatsSample? sample;
+        TransportStatsSample? sample = null;
 
         lock (_lock)
         {
-            sample = stats.Streams is { } streams
-                ? _sampler.Read(streams, FindInbound,
-                    ssrc => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc))
-                : null;
+            if (stats.Streams is { } streams && IsDue(ref _countersSampled, CountersInterval))
+                sample = _sampler.Read(streams, FindInbound,
+                    ssrc => _outbounds.Values.FirstOrDefault(outbound => outbound.SSRC == ssrc));
         }
+
+        if (stats.Entries is { } entries && DebugSettings.Current.IsMediaPerfNeeded &&
+            IsDue(ref _perfSampled, DebugSettings.Current.MediaPerfInterval))
+            SamplePerf(entries);
 
         if (sample is { } reading)
         {
@@ -1051,6 +1087,43 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         }
 
         LogGateSummary();
+    }
+
+    /// <summary>
+    /// Takes what the encoders and decoders measured together with the reading, and passes the window
+    /// on. Called on the thread of the readings, one at a time.
+    /// </summary>
+    private void SamplePerf(IReadOnlyList<StatsEntry> entries)
+    {
+        Dictionary<uint, InboundTrack> inbounds;
+        Dictionary<uint, OutboundTrack> outbounds;
+        List<(uint Ssrc, IncomingVideoStream Stream)> streams;
+        List<(uint Ssrc, OutgoingVideo Video)> videos;
+
+        lock (_lock)
+        {
+            inbounds = _inbounds.Values.GroupBy(inbound => inbound.SSRC).ToDictionary(group => group.Key, group => group.Last());
+            outbounds = _outbounds.Values.GroupBy(outbound => outbound.SSRC).ToDictionary(group => group.Key, group => group.Last());
+            streams = _videoStreams
+                .Where(stream => _inbounds.ContainsKey(stream.Key))
+                .Select(stream => (_inbounds[stream.Key].SSRC, stream.Value))
+                .ToList();
+            videos = _outgoingVideos
+                .Where(video => _outbounds.ContainsKey(video.Key))
+                .Select(video => (_outbounds[video.Key].SSRC, video.Value))
+                .ToList();
+        }
+
+        // Outside the lock: the decoders and the captures take locks of their own
+        var decoders = streams.ToDictionary(item => item.Ssrc,
+            item => (item.Stream.TakePerf(), _videoReceiver?.TakeTiming(item.Ssrc)));
+        var encoders = videos.ToDictionary(item => item.Ssrc, item => item.Video.TakePerf());
+
+        var report = _perfSampler.Read(entries, new MediaPerfSources(inbounds.GetValueOrDefault,
+            outbounds.GetValueOrDefault, decoders, encoders));
+
+        if (report != null)
+            PerfSampled?.Invoke(report);
     }
 
     // The microphone of libwebrtc is one for the process, and so is its gate

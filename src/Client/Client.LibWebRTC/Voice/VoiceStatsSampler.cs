@@ -10,9 +10,10 @@ namespace Client.LibWebRTC.Voice;
 /// <remarks>Not thread-safe: the caller runs every call under one lock.</remarks>
 internal sealed class VoiceStatsSampler
 {
-    // The readings come for the speaking indicator, far more often than a sample is worth: one in
-    // ten is the 2 s of the GStreamer transport
-    public const int ReadingsPerSample = 10;
+    // The transport passes a reading with the counters every second (see VoiceTransport.CountersInterval),
+    // while the ones for the speaking indicator come far more often: one in two is the 2 s of the
+    // GStreamer transport
+    public const int ReadingsPerSample = 2;
 
     private readonly Dictionary<uint, InboundCounters> _previousInbound = [];
     private readonly Dictionary<uint, long> _previousOutbound = [];

@@ -5,6 +5,7 @@ using System.Linq;
 using Client.Application.Ports;
 using Client.Core.Media;
 using Client.Core.Settings;
+using Client.LibWebRTC.Native;
 using Client.LibWebRTC.Voice;
 using Com.Flowrate.Rtc;
 using Shared.Enums.WebRTC;
@@ -53,7 +54,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
 
     public void SetVolume(string mid, double volume) => _peer.SetVolume(mid, volume);
 
-    public void RequestStats() => _peer.RequestLevels();
+    public void RequestStats(bool isDetailed) => _peer.RequestStats(isDetailed);
 
     public void Dispose()
     {
@@ -84,8 +85,8 @@ internal sealed class AndroidVoicePeer : IVoicePeer
 
         public void OnFailed(string? error) => listener.OnFailed(error ?? "unknown");
 
-        /// <summary>"mid=level;...;local=level", see VoicePeer.Listener.onLevels.</summary>
-        public void OnLevels(string? levels)
+        /// <summary>"mid=level;...;local=level" and the whole reading, see VoicePeer.Listener.onStats.</summary>
+        public void OnStats(string? levels, string? report)
         {
             var parsed = new List<VoiceLevel>();
 
@@ -97,7 +98,8 @@ internal sealed class AndroidVoicePeer : IVoicePeer
                     parsed.Add(new VoiceLevel(parts[0] == "local" ? null : parts[0], level));
             }
 
-            listener.OnStats(new VoiceStats(parsed));
+            // The levels of the reading are the ones above: the report has them after the volume
+            listener.OnStats(report == null ? new VoiceStats(parsed) : StatsReader.Read(report) with { Levels = parsed });
         }
 
         // On the decoding thread of the stream, where an exception would reach libwebrtc

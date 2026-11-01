@@ -57,7 +57,11 @@ public interface IVoicePeer : IDisposable
     void SetVolume(string mid, double volume);
 
     /// <summary>Reads the statistics once; see <see cref="IVoicePeerListener.OnStats"/>.</summary>
-    void RequestStats();
+    /// <param name="isDetailed">
+    /// The reading should carry the counters of the streams as well, not only the levels. A peer whose
+    /// readings always carry them may ignore it.
+    /// </param>
+    void RequestStats(bool isDetailed);
 }
 
 public interface IVoicePeerListener

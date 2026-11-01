@@ -359,6 +359,15 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         return (branch, video);
     }
 
+    /// <summary>What the decoder of every watched screen did since the previous call, by its section.</summary>
+    public IReadOnlyList<(uint Mline, Client.Core.Media.DecoderPerf Perf)> TakeVideoPerf() =>
+        _branches.Values
+            .Where(branch => branch is { Mline: not null, Video: not null })
+            .Select(branch => (branch.Mline!.Value, branch.Video!.TakePerf()))
+            .Where(item => item.Item2 != null)
+            .Select(item => (item.Item1, item.Item2!))
+            .ToList();
+
     /// <summary>
     /// Sets the playback volume of the section with the given mline index. A section without a
     /// branch yet gets it from <see cref="_resolveVolume"/> once its pad appears.

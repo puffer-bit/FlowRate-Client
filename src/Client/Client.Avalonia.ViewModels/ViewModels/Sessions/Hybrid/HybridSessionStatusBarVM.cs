@@ -10,6 +10,8 @@ namespace Client.ViewModels.Sessions.Hybrid;
 
 public class HybridSessionStatusBarVM : ReactiveObject
 {
+    public int SessionId { get; init; }
+
     public string StatusBarText
     {
         get;

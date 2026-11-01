@@ -38,6 +38,28 @@ public sealed unsafe partial class NativeVideoReceiver(ILogger<NativeVideoReceiv
 
     public void RequestKeyFrame(uint ssrc) => NativeMethods.VideoRequestKeyFrame(ssrc);
 
+    public VideoReceiveTiming? TakeTiming(uint ssrc)
+    {
+        if (!NativeTimings.IsAvailable)
+            return null;
+
+        NativeMethods.VideoReceiveStats stats;
+
+        try
+        {
+            if (NativeMethods.VideoTakeReceiveStats(ssrc, &stats) == 0)
+                return null;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            NativeTimings.IsAvailable = false;
+            return null;
+        }
+
+        return new VideoReceiveTiming(NativeTimings.ToStats(stats.Frames, stats.WaitSumUs, stats.WaitMaxUs),
+            NativeTimings.ToStats(stats.Frames, stats.HandoffSumUs, stats.HandoffMaxUs));
+    }
+
     // On the decoding thread of the stream, where an exception would tear the process down; the
     // receivers catch their own
     [UnmanagedCallersOnly]

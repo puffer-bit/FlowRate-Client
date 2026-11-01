@@ -23,5 +23,6 @@
         <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
         <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
         <ProjectReference Include="..\Client.Avalonia.Video\Client.Avalonia.Video.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
     </ItemGroup>
 </Project>

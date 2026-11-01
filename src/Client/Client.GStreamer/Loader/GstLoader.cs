@@ -46,6 +46,7 @@ public partial class GstLoader
             Gst.App.GstApp.Initialize(options);
             Options = options;
             GstLogFilter.Install(logger);
+            GstNativeLog.OnLoaded();
 
             LogInitialized(logger, Gst.Global.VersionString(), GstNativeLibraryResolver.LibraryDirectory);
 

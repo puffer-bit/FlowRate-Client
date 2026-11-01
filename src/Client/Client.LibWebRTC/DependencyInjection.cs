@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<LibWebRTCRuntime>();
         services.AddSingleton<ILibWebRTCLoader>(provider => provider.GetRequiredService<LibWebRTCRuntime>());
         services.AddSingleton<NativeVideoReceiver>();
+        services.AddSingleton<INativeLog, LibWebRTCNativeLog>();
         services.AddSingleton<LibWebRTCTransportFactory>();
 
         return services;

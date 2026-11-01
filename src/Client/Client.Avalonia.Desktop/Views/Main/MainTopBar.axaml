@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:common="clr-namespace:Client.Views.Common"
@@ -57,12 +56,7 @@
 
         <Grid ColumnDefinitions="Auto, *, Auto">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2"
-                    IsEnabled="{Binding IsInitialized}" Opacity="{Binding MenuOpacity}">
-            <StackPanel.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </StackPanel.Transitions>
+                    IsEnabled="{Binding IsInitialized}">
             <Button Classes="topBar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <Image Source="{StaticResource PlugIcon}"/>
