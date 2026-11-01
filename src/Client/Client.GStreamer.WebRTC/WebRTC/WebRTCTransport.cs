@@ -38,6 +38,12 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     private readonly SpeakingIndicator _speaking;
     private readonly TransportStats _stats;
 
+    // The statistics of the media: only the encoders and decoders, and the network as TransportStats
+    // last read it; the counters of webrtcbin are left to the transport that stays, libwebrtc
+    private readonly Timer _perfTimer;
+    private long _perfTaken = System.Diagnostics.Stopwatch.GetTimestamp();
+    private TransportStatsSample? _lastSample;
+
     private readonly bool _isPlaybackEnabled;
     private readonly IVideoMedia _video;
     private readonly ILogger<WebRTCTransport> _logger;
@@ -62,6 +68,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public event Action<IReadOnlyList<string>>? InboundsReady;
 
     public event Action<TransportStatsSample>? StatsSampled;
+    public event Action<MediaPerfReport>? PerfSampled;
 
     public WebRTCConnectionState ConnectionState => _states.ConnectionState;
 
@@ -104,7 +111,56 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         _stats = new TransportStats(_core, _incoming.FindBySsrc, _outgoing.FindBySsrc, _tuning.ReadJitterBuffer,
             _tuning.WidenSendBuffer, _tuning.WakeSender,
             _outgoing.ReadSendQueues,
-            ReportMedia, sample => StatsSampled?.Invoke(sample), logger);
+            ReportMedia, sample =>
+            {
+                _lastSample = sample;
+                StatsSampled?.Invoke(sample);
+            }, logger);
+        _perfTimer = new Timer(_ => SamplePerf(), null, DebugSettings.Current.MediaPerfInterval, Timeout.InfiniteTimeSpan);
+    }
+
+    // On a timer thread; scheduled again each time, as the interval is a setting
+    private void SamplePerf()
+    {
+        try
+        {
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            var window = System.Diagnostics.Stopwatch.GetElapsedTime(Interlocked.Exchange(ref _perfTaken, now), now);
+
+            if (DebugSettings.Current.IsMediaPerfNeeded && !_core.IsDisposed)
+            {
+                var streams = new List<StreamPerf>();
+
+                foreach (var (outbound, perf) in _outgoing.TakeVideoPerf())
+                    streams.Add(new StreamPerf(outbound.UserId, outbound.SourceType, true, Encoder: perf));
+
+                foreach (var (mline, perf) in _core.Player?.TakeVideoPerf() ?? [])
+                {
+                    InboundTrack? inbound;
+
+                    using (_sections.Enter())
+                        inbound = _incoming.FindBySection(mline);
+
+                    if (inbound != null)
+                        streams.Add(new StreamPerf(inbound.UserId, inbound.SourceType, false, Decoder: perf));
+                }
+
+                var sample = _lastSample;
+                var network = sample is { } last ? new NetworkPerf(last.RoundTripMs, null, null, null, last.IsOverTcp) : null;
+
+                PerfSampled?.Invoke(new MediaPerfReport("GStreamer", window, network, streams,
+                    new Dictionary<int, AudioReceivePerf>()));
+            }
+        }
+        catch (Exception exception)
+        {
+            LogPerfFailed(exception, _core.SessionId);
+        }
+        finally
+        {
+            if (!_core.IsDisposed)
+                _perfTimer.Change(DebugSettings.Current.MediaPerfInterval, Timeout.InfiniteTimeSpan);
+        }
     }
 
     private bool Negotiate() => _negotiator.Negotiate();
@@ -376,6 +432,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
                 return;
 
             _core.IsDisposed = true;
+            _perfTimer.Dispose();
 
             pipeline = _core.Pipeline;
             webrtc = _core.WebRTC;

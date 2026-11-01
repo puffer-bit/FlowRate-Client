@@ -35,6 +35,25 @@ internal static unsafe partial class NativeMethods
         public nint Audio;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct VideoSendStats
+    {
+        public long Pushed;
+        public long Encoded;
+        public long QueueSumUs;
+        public long QueueMaxUs;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct VideoReceiveStats
+    {
+        public long Frames;
+        public long WaitSumUs;
+        public long WaitMaxUs;
+        public long HandoffSumUs;
+        public long HandoffMaxUs;
+    }
+
     [LibraryImport(Library, EntryPoint = "fr_set_log")]
     public static partial void SetLog(delegate* unmanaged<int, byte*, void> callback, int minSeverity);
 
@@ -107,6 +126,12 @@ internal static unsafe partial class NativeMethods
 
     [LibraryImport(Library, EntryPoint = "fr_video_source_push")]
     public static partial void VideoSourcePush(nint source, byte* data, int size, int isKeyFrame);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_source_take_stats")]
+    public static partial void VideoSourceTakeStats(nint source, VideoSendStats* stats);
+
+    [LibraryImport(Library, EntryPoint = "fr_video_take_receive_stats")]
+    public static partial int VideoTakeReceiveStats(uint ssrc, VideoReceiveStats* stats);
 
     [LibraryImport(Library, EntryPoint = "fr_video_source_destroy")]
     public static partial void VideoSourceDestroy(nint source);

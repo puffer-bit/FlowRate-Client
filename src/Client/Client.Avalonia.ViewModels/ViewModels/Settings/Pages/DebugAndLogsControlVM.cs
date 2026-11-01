@@ -19,7 +19,8 @@ namespace Client.ViewModels.Settings.Pages;
 
 /// <summary>
 /// The journal of the application: how much it keeps, its files and an archive of them for a bug
-/// report, the logs of GStreamer and libwebrtc in it, and what is drawn over the screens for debugging.
+/// report, the logs of GStreamer and libwebrtc in it; and the statistics of the media: what is drawn
+/// over the screens and what of it goes into the journal.
 /// </summary>
 public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
 {
@@ -36,7 +37,16 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("debug",
         ("journal", ["level", "writeToFiles", "files", "archive"]),
         ("native", NativeSearchKeys()),
-        ("screens", ["frameStats"]));
+        ("mediaOverlay", ["mediaPerfOverlay", "mediaPerfExpanded", "mediaPerfSections", "mediaPerfInterval", "mediaPerfGraphs"]),
+        ("mediaJournal", ["mediaPerfJournal", "mediaPerfSummary", "mediaPerfAnomalies"]));
+
+    // The statistics of the media begin with what is drawn over the screens
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("debug.journal", "settings.debug.section.journal"),
+        new("debug.native", "settings.debug.section.native"),
+        new("debug.mediaOverlay", "settings.debug.anchors.media")
+    ];
 
     // 0 is the level of the build, then JournalLevels
     public int JournalLevelIndex
@@ -64,7 +74,89 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool ShowFrameStats
+    // The order of MediaPerfOverlayMode
+    public int MediaPerfOverlayIndex
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsOverlayShown));
+        }
+    }
+
+    public bool IsOverlayShown => MediaPerfOverlayIndex != (int)MediaPerfOverlayMode.Off;
+
+    public bool IsMediaPerfExpanded
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowNetworkSection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowTransportSection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowCodecSection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowRenderSection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowAudioSection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    // Into DebugSettings.MediaPerfIntervals
+    public int MediaPerfIntervalIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowMediaPerfGraphs
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    // The order of MediaPerfJournalMode
+    public int MediaPerfJournalIndex
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsMediaJournalOn));
+        }
+    }
+
+    public bool IsMediaJournalOn => MediaPerfJournalIndex != (int)MediaPerfJournalMode.Off;
+
+    // Into DebugSettings.MediaPerfSummaryPeriods
+    public int MediaPerfSummaryIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool LogMediaPerfAnomalies
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -126,7 +218,18 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
                 nameof(WriteToFiles),
                 nameof(GStreamerLogLevelIndex),
                 nameof(LibWebRTCLogLevelIndex),
-                nameof(ShowFrameStats))
+                nameof(MediaPerfOverlayIndex),
+                nameof(IsMediaPerfExpanded),
+                nameof(ShowNetworkSection),
+                nameof(ShowTransportSection),
+                nameof(ShowCodecSection),
+                nameof(ShowRenderSection),
+                nameof(ShowAudioSection),
+                nameof(MediaPerfIntervalIndex),
+                nameof(ShowMediaPerfGraphs),
+                nameof(MediaPerfJournalIndex),
+                nameof(MediaPerfSummaryIndex),
+                nameof(LogMediaPerfAnomalies))
             .Where(_ => !_isUpdating)
             .Select(_ => Observable.FromAsync(() => _service.SaveSettingsAsync(ToSettings())))
             .Concat()
@@ -196,7 +299,20 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         WriteToFiles = WriteToFiles,
         GStreamerLogLevel = NativeLogLevels[Math.Clamp(GStreamerLogLevelIndex, 0, NativeLogLevels.Length - 1)],
         LibWebRTCLogLevel = NativeLogLevels[Math.Clamp(LibWebRTCLogLevelIndex, 0, NativeLogLevels.Length - 1)],
-        ShowFrameStats = ShowFrameStats
+        MediaPerfOverlay = (MediaPerfOverlayMode)Math.Clamp(MediaPerfOverlayIndex, 0, 2),
+        IsMediaPerfExpanded = IsMediaPerfExpanded,
+        MediaPerfSections = (ShowNetworkSection ? MediaPerfSections.Network : 0) |
+                            (ShowTransportSection ? MediaPerfSections.Transport : 0) |
+                            (ShowCodecSection ? MediaPerfSections.Codec : 0) |
+                            (ShowRenderSection ? MediaPerfSections.Render : 0) |
+                            (ShowAudioSection ? MediaPerfSections.Audio : 0),
+        MediaPerfIntervalMs = DebugSettings.MediaPerfIntervals[
+            Math.Clamp(MediaPerfIntervalIndex, 0, DebugSettings.MediaPerfIntervals.Length - 1)],
+        ShowMediaPerfGraphs = ShowMediaPerfGraphs,
+        MediaPerfJournal = (MediaPerfJournalMode)Math.Clamp(MediaPerfJournalIndex, 0, 2),
+        MediaPerfSummarySeconds = DebugSettings.MediaPerfSummaryPeriods[
+            Math.Clamp(MediaPerfSummaryIndex, 0, DebugSettings.MediaPerfSummaryPeriods.Length - 1)],
+        LogMediaPerfAnomalies = LogMediaPerfAnomalies
     };
 
     private void Apply(DebugSettings settings)
@@ -205,7 +321,18 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         WriteToFiles = settings.WriteToFiles;
         GStreamerLogLevelIndex = Math.Max(0, Array.IndexOf(NativeLogLevels, settings.GStreamerLogLevel));
         LibWebRTCLogLevelIndex = Math.Max(0, Array.IndexOf(NativeLogLevels, settings.LibWebRTCLogLevel));
-        ShowFrameStats = settings.ShowFrameStats;
+        MediaPerfOverlayIndex = (int)settings.MediaPerfOverlay;
+        IsMediaPerfExpanded = settings.IsMediaPerfExpanded;
+        ShowNetworkSection = settings.MediaPerfSections.HasFlag(MediaPerfSections.Network);
+        ShowTransportSection = settings.MediaPerfSections.HasFlag(MediaPerfSections.Transport);
+        ShowCodecSection = settings.MediaPerfSections.HasFlag(MediaPerfSections.Codec);
+        ShowRenderSection = settings.MediaPerfSections.HasFlag(MediaPerfSections.Render);
+        ShowAudioSection = settings.MediaPerfSections.HasFlag(MediaPerfSections.Audio);
+        MediaPerfIntervalIndex = Math.Max(0, Array.IndexOf(DebugSettings.MediaPerfIntervals, settings.MediaPerfIntervalMs));
+        ShowMediaPerfGraphs = settings.ShowMediaPerfGraphs;
+        MediaPerfJournalIndex = (int)settings.MediaPerfJournal;
+        MediaPerfSummaryIndex = Math.Max(0, Array.IndexOf(DebugSettings.MediaPerfSummaryPeriods, settings.MediaPerfSummarySeconds));
+        LogMediaPerfAnomalies = settings.LogMediaPerfAnomalies;
     }
 
     /// <summary>

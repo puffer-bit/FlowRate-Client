@@ -10,7 +10,18 @@ public interface IVideoSendSource : IDisposable
 {
     /// <summary>The next picture, in the codec of the section it is sent in. Any thread, one at a time.</summary>
     void Push(EncodedVideoFrame frame);
+
+    /// <summary>
+    /// What libwebrtc did with the pictures since the previous call, and starts the next window; null
+    /// where the platform does not measure it. Any thread.
+    /// </summary>
+    VideoSendTiming? TakeTiming() => null;
 }
+
+/// <param name="Pushed">Pictures pushed into the source.</param>
+/// <param name="Encoded">Pictures the encoder of the section took; the rest libwebrtc never sent on.</param>
+/// <param name="Queue">From a push to the encoder taking the picture.</param>
+public readonly record struct VideoSendTiming(long Pushed, long Encoded, TimingStats Queue);
 
 /// <summary>What libwebrtc wants of the encoder of a screen we send. Called on a thread of libwebrtc.</summary>
 public interface IVideoSendListener

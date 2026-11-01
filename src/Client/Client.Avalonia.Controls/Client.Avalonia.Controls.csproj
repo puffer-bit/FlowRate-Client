@@ -34,6 +34,8 @@
     <ItemGroup>
       <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
       <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
     </ItemGroup>
 
 </Project>

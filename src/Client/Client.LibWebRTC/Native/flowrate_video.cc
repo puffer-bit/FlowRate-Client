@@ -47,6 +47,22 @@ std::atomic<void*> g_context{nullptr};
 
 class PassthroughDecoder;
 
+// Durations of a window: their count, sum and longest, in microseconds
+struct Timing {
+  int64_t count = 0;
+  int64_t sum_us = 0;
+  int64_t max_us = 0;
+
+  void Add(int64_t us) {
+    if (us < 0)
+      return;
+
+    count++;
+    sum_us += us;
+    max_us = std::max(max_us, us);
+  }
+};
+
 // The decoders by the SSRC of their stream, for the keyframe requests. Never destroyed, as the
 // decoders may outlive the exit handlers on the threads of libwebrtc
 std::mutex& g_decoders_mutex = *new std::mutex();
@@ -69,17 +85,41 @@ class PassthroughDecoder : public webrtc::VideoDecoder {
 
   void RequestKeyFrame() { is_keyframe_requested_ = true; }
 
+  // Under g_decoders_mutex, which keeps the decoder alive
+  void TakeStats(fr_video_receive_stats* stats) {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    stats->frames = wait_.count;
+    stats->wait_sum_us = wait_.sum_us;
+    stats->wait_max_us = wait_.max_us;
+    stats->handoff_sum_us = handoff_.sum_us;
+    stats->handoff_max_us = handoff_.max_us;
+    wait_ = {};
+    handoff_ = {};
+  }
+
   // On the decoding thread of the stream
   int32_t Decode(const webrtc::EncodedImage& image, int64_t) override {
+    const int64_t now_us = webrtc::TimeMicros();
+
     // The stream of a decoder does not change, but it is only known from its packets
     if (!image.PacketInfos().empty())
       SetSsrc(image.PacketInfos().begin()->ssrc());
 
+    // From the first packet of the picture on: what the jitter buffer and the assembly held it
+    int64_t first_us = now_us;
+    for (const auto& packet : image.PacketInfos())
+      first_us = std::min(first_us, packet.receive_time().us());
+
     // 90 kHz, the clock of every video codec
     const int64_t timestamp_ns = unwrapper_.Unwrap(image.RtpTimestamp()) * 100000 / 9;
 
-    if (auto on_frame = g_on_frame.load(); on_frame != nullptr && ssrc_ != 0)
+    if (auto on_frame = g_on_frame.load(); on_frame != nullptr && ssrc_ != 0) {
       on_frame(g_context.load(), ssrc_, image.data(), static_cast<int>(image.size()), timestamp_ns, image.IsKey());
+
+      std::lock_guard<std::mutex> lock(stats_mutex_);
+      wait_.Add(now_us - first_us);
+      handoff_.Add(webrtc::TimeMicros() - now_us);
+    }
 
     // libwebrtc keeps its timing by the pictures it gets back: a blank one of the least size
     if (callback_ != nullptr) {
@@ -120,6 +160,9 @@ class PassthroughDecoder : public webrtc::VideoDecoder {
   webrtc::scoped_refptr<webrtc::I420Buffer> blank_;
   std::atomic<bool> is_keyframe_requested_{false};
   uint32_t ssrc_ = 0;
+  std::mutex stats_mutex_;
+  Timing wait_;
+  Timing handoff_;
 };
 
 // What the clients encode: H.264 of any common profile (the decoders take them all, and the profile
@@ -177,8 +220,32 @@ class SourceLink {
     is_closed_ = true;
   }
 
+  void CountPushed() {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    pushed_++;
+  }
+
+  // The time from the push of a picture to the encoder taking it
+  void CountEncoded(int64_t queue_us) {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    queue_.Add(queue_us);
+  }
+
+  void TakeStats(fr_video_send_stats* stats) {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    stats->pushed = pushed_;
+    stats->encoded = queue_.count;
+    stats->queue_sum_us = queue_.sum_us;
+    stats->queue_max_us = queue_.max_us;
+    pushed_ = 0;
+    queue_ = {};
+  }
+
  private:
   std::mutex mutex_;
+  std::mutex stats_mutex_;
+  int64_t pushed_ = 0;
+  Timing queue_;
   const fr_video_source_callbacks callbacks_;
   void* const context_;
   bool is_closed_ = false;
@@ -263,6 +330,9 @@ class PassthroughEncoder : public webrtc::VideoEncoder {
       return WEBRTC_VIDEO_CODEC_OK;
 
     last_id_ = picture->id();
+
+    // The time of a frame is its push, see EncodedVideoSource::Push
+    link_->CountEncoded(webrtc::TimeMicros() - frame.timestamp_us());
 
     const bool is_keyframe_wanted = frame_types != nullptr && !frame_types->empty() &&
                                     (*frame_types)[0] == webrtc::VideoFrameType::kVideoFrameKey;
@@ -379,6 +449,7 @@ class EncodedVideoSource : public VideoSource {
       timestamp_us = (last_ms_ + 1) * 1000;
 
     last_ms_ = timestamp_us / 1000;
+    link_->CountPushed();
 
     auto buffer = webrtc::make_ref_counted<EncodedBuffer>(width_, height_, webrtc::EncodedImageBuffer::Create(data, size),
                                                           is_keyframe, ++next_id_, link_);
@@ -397,6 +468,8 @@ class EncodedVideoSource : public VideoSource {
 
     link_->Close();
   }
+
+  void TakeStats(fr_video_send_stats* stats) { link_->TakeStats(stats); }
 
  private:
   const std::shared_ptr<SourceLink> link_;
@@ -565,6 +638,24 @@ fr_video_source* fr_video_source_create(const fr_video_source_callbacks* callbac
 void fr_video_source_push(fr_video_source* source, const uint8_t* data, int size, int is_keyframe) {
   static_cast<flowrate::EncodedVideoSource*>(reinterpret_cast<flowrate::VideoSource*>(source))
       ->Push(data, size, is_keyframe != 0);
+}
+
+void fr_video_source_take_stats(fr_video_source* source, fr_video_send_stats* stats) {
+  *stats = {};
+  static_cast<flowrate::EncodedVideoSource*>(reinterpret_cast<flowrate::VideoSource*>(source))->TakeStats(stats);
+}
+
+int fr_video_take_receive_stats(uint32_t ssrc, fr_video_receive_stats* stats) {
+  *stats = {};
+  std::lock_guard<std::mutex> lock(flowrate::g_decoders_mutex);
+
+  auto entry = flowrate::g_decoders.find(ssrc);
+
+  if (entry == flowrate::g_decoders.end())
+    return 0;
+
+  entry->second->TakeStats(stats);
+  return 1;
 }
 
 void fr_video_source_destroy(fr_video_source* source) {

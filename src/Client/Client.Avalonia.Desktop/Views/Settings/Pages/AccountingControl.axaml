@@ -53,10 +53,7 @@
                    Foreground="{DynamicResource SecondaryTextBrush}"
                    Text="{l:Text settings.accounting.noServers}"/>
         
-        <!-- The list keeps the command of its items in Tag: bound to the data context of the page, it
-             is quiet while the page is being left and has a view model of another tab for a moment,
-             a binding through #Root.DataContext warns then -->
-        <ItemsControl x:Name="Servers" ItemsSource="{Binding CoordinatorSessions}" Tag="{Binding DeleteIdentityCommand}">
+        <ItemsControl x:Name="Servers" ItemsSource="{Binding CoordinatorSessions}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Spacing="8"/>
@@ -85,7 +82,7 @@
                             
                             <Button Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"
                                     ToolTip.Tip="{l:Text settings.accounting.forgetServer.tooltip}"
-                                    Command="{Binding #Servers.Tag}"
+                                    Command="{Binding $parent[ItemsControl].((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
                                     CommandParameter="{Binding}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
@@ -139,7 +136,7 @@
                    Foreground="{DynamicResource SecondaryTextBrush}"
                    Text="{l:Text settings.accounting.noCertificates}"/>
         
-        <ItemsControl x:Name="Certificates" ItemsSource="{Binding TrustedCertificates}" Tag="{Binding ForgetCertificateCommand}">
+        <ItemsControl x:Name="Certificates" ItemsSource="{Binding TrustedCertificates}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Spacing="8"/>
@@ -161,7 +158,7 @@
                             
                             <Button Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"
                                     ToolTip.Tip="{l:Text settings.accounting.forgetCertificate.tooltip}"
-                                    Command="{Binding #Certificates.Tag}"
+                                    Command="{Binding $parent[ItemsControl].((pagesVm:AccountingControlVM)DataContext).ForgetCertificateCommand}"
                                     CommandParameter="{Binding}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>

@@ -63,13 +63,8 @@
         <mainViews:MainTopBar Grid.Row="0"/>
         
         <!-- Main Grid -->
-        <Grid Grid.Row="1" IsVisible="{Binding IsInitialized}" Opacity="{Binding GridOpacity}">
-            <Grid.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Grid.Transitions>
-            
+        <!-- Laid out from the start under the startup screen, which leaves once the application is loaded -->
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition MinWidth="240" MaxWidth="380" Width="{Binding IsContentFullScreen, Converter={StaticResource SidePanelWidthConverter}}" />
                 <ColumnDefinition Width="1"/>
@@ -168,5 +163,9 @@
              Left: what the application is doing, behind a ring while it is busy and a dot that is
              green once connected. Right: the ping -->
         <mainViews:MainStatusBar Grid.Row="2"/>
+
+        <!-- Over everything of the window while the application starts; dialogs are in the overlay layer
+             above it -->
+        <mainViews:StartupScreen Grid.Row="0" Grid.RowSpan="3"/>
     </Grid>
 </Window>

@@ -49,6 +49,33 @@ internal sealed unsafe class NativeVideoSource : IVideoSendSource
         }
     }
 
+    public VideoSendTiming? TakeTiming()
+    {
+        if (!NativeTimings.IsAvailable)
+            return null;
+
+        NativeMethods.VideoSendStats stats;
+
+        lock (_lock)
+        {
+            if (_isDisposed)
+                return null;
+
+            try
+            {
+                NativeMethods.VideoSourceTakeStats(_source, &stats);
+            }
+            catch (EntryPointNotFoundException)
+            {
+                NativeTimings.IsAvailable = false;
+                return null;
+            }
+        }
+
+        return new VideoSendTiming(stats.Pushed, stats.Encoded,
+            NativeTimings.ToStats(stats.Encoded, stats.QueueSumUs, stats.QueueMaxUs));
+    }
+
     /// <summary>
     /// The handle for one round of negotiation, which holds a reference of its own to it from then on;
     /// 0 once the source is disposed. Pair with <see cref="Release"/>.

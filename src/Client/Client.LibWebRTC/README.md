@@ -42,7 +42,9 @@ GStreamer transport, which decode on the GPU. libwebrtc only hands on pictures i
 stream starts at a keyframe and has no gaps. A decoder that needs a keyframe anyway asks for it through
 `fr_video_request_keyframe`: the next picture returns `WEBRTC_VIDEO_CODEC_OK_REQUEST_KEYFRAME`, and
 libwebrtc sends a PLI. The pictures are told apart by the SSRC of their packets, which the SFU gives
-each consumer of its own.
+each consumer of its own. For the statistics of the media each decoder also times its pictures: from
+the first packet of one to it leaving libwebrtc, and the handing over itself
+(`fr_video_take_receive_stats`, by SSRC).
 
 On Android the Java libwebrtc decodes the screens itself, with MediaCodec where the device can
 (`DefaultVideoDecoderFactory` without an EGL context, so the pictures come into memory). `VoicePeer.java`
@@ -57,7 +59,9 @@ the native buffer of a frame. libwebrtc carries it to the encoder of the stream 
 texture, and that encoder sends the picture as it is: libwebrtc packetizes, paces and resends it. What
 libwebrtc wants of an encoder goes back to the capture: a keyframe when the frame it asked to be one is
 not, and the bitrate of its estimate (`SetRates`), which `OutgoingVideo` passes on when it moved by a
-tenth. The estimate starts at the bitrate the user set, never goes above it and goes down on loss: the
+tenth. For the statistics the source counts the pictures pushed and the time each waited for the
+encoder (`fr_video_source_take_stats`); a library built before these returns null timings
+(`NativeTimings.IsAvailable`). The estimate starts at the bitrate the user set, never goes above it and goes down on loss: the
 section carries them as `x-google-start-bitrate` and `x-google-max-bitrate`.
 
 So that libwebrtc sends every picture it gets, the encoder says it keeps to the bitrate itself (a

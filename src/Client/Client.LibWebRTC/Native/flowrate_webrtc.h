@@ -187,6 +187,35 @@ FR_API void fr_video_source_push(fr_video_source* source, const uint8_t* data, i
 /* Stops the source; no callback comes once it returns. A section that still sends it sends nothing. */
 FR_API void fr_video_source_destroy(fr_video_source* source);
 
+/* What became of the pictures of a source since the previous take, for the statistics of the media. */
+typedef struct fr_video_send_stats {
+    /* Pictures pushed, and the ones the encoder of a section took */
+    int64_t pushed;
+    int64_t encoded;
+    /* From a push to the encoder taking the picture, in microseconds: the sum and the longest */
+    int64_t queue_sum_us;
+    int64_t queue_max_us;
+} fr_video_send_stats;
+
+/* Fills stats and starts the next window. */
+FR_API void fr_video_source_take_stats(fr_video_source* source, fr_video_send_stats* stats);
+
+/* What became of the pictures of a stream we receive since the previous take. */
+typedef struct fr_video_receive_stats {
+    /* Pictures handed to the receiver of fr_set_video_receiver */
+    int64_t frames;
+    /* From the first packet of a picture coming in to it being handed out, in microseconds: jitter buffer
+       and assembly together */
+    int64_t wait_sum_us;
+    int64_t wait_max_us;
+    /* How long the receiver took over a picture, in microseconds */
+    int64_t handoff_sum_us;
+    int64_t handoff_max_us;
+} fr_video_receive_stats;
+
+/* Fills stats of the stream with the SSRC and starts the next window; 0 when no such stream is received. */
+FR_API int fr_video_take_receive_stats(uint32_t ssrc, fr_video_receive_stats* stats);
+
 /*
  * A sound we send whose samples come from outside, as the sound of a shown screen: no processing of
  * the microphone touches it. Goes into a section through fr_peer_negotiate.

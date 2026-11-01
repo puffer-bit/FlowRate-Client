@@ -57,6 +57,11 @@ internal sealed record BotOptions
                                    connections, joins, chat sent/received and delivery time,
                                    received video frames. Default: 10.
           --quiet                  Only failures and the counters, nothing per bot.
+          --perf <summary|detailed>
+                                   Log the statistics of the media of each bot as the client does
+                                   with its debug setting: a summary of every stream and the
+                                   anomalies, or also every reading (media-*.jsonl next to the
+                                   files of the journal, where there are files). Default: off.
           --listen                 Play what the bot hears. By default incoming audio is only
                                    received and decoded, so several bots do not fill the speakers.
           --libwebrtc              Send and receive the voice over libwebrtc instead of GStreamer,
@@ -108,6 +113,7 @@ internal sealed record BotOptions
     public TimeSpan? ChatInterval { get; init; }
     public TimeSpan StatsInterval { get; init; } = TimeSpan.FromSeconds(10);
     public bool Quiet { get; init; }
+    public Client.Core.Settings.MediaPerfJournalMode PerfJournal { get; init; }
     public bool LibWebRTC { get; init; }
     public string? CreateSession { get; init; }
 
@@ -129,6 +135,7 @@ internal sealed record BotOptions
         int? gpuFailSeconds = null;
         var voice = true;
         var quiet = false;
+        var perfJournal = Client.Core.Settings.MediaPerfJournalMode.Off;
         var libWebRTC = false;
         string? createSession = null;
         string? chat = null;
@@ -244,6 +251,14 @@ internal sealed record BotOptions
                 case "--quiet":
                     quiet = true;
                     break;
+                case "--perf":
+                    perfJournal = Value() switch
+                    {
+                        "summary" => Client.Core.Settings.MediaPerfJournalMode.Summary,
+                        "detailed" => Client.Core.Settings.MediaPerfJournalMode.Detailed,
+                        _ => throw new ArgumentException("--perf must be summary or detailed")
+                    };
+                    break;
                 case "--libwebrtc":
                     libWebRTC = true;
                     break;
@@ -304,6 +319,7 @@ internal sealed record BotOptions
             ChatInterval = chatSeconds.HasValue ? TimeSpan.FromSeconds(chatSeconds.Value) : null,
             StatsInterval = TimeSpan.FromSeconds(statsSeconds),
             Quiet = quiet,
+            PerfJournal = perfJournal,
             LibWebRTC = libWebRTC,
             CreateSession = createSession
         };
