@@ -17,4 +17,5 @@ public sealed record LogEntry(
     string? Category,
     string? ShortCategory,
     string Message,
-    string? Exception);
+    string? Exception,
+    int? SessionId = null);

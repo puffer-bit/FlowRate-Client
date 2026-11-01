@@ -4,7 +4,7 @@
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              x:Class="Client.Views.Sessions.Hybrid.HybridSessionStatsFlyout"
-             x:DataType="hybridVm:HybridSessionStatsVM"
+             x:DataType="hybridVm:HybridSessionStatusBarVM"
              Width="320">
 
     <UserControl.Styles>
@@ -46,15 +46,23 @@
         </Style>
     </UserControl.Styles>
 
-    <StackPanel Spacing="10" Margin="4">
+    <StackPanel Spacing="10" Margin="4" x:DataType="hybridVm:HybridSessionStatsVM"
+                DataContext="{Binding $parent[UserControl].((hybridVm:HybridSessionStatusBarVM)DataContext).Stats}">
 
         <!-- The verdict, then the figures it comes from -->
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
             <indicators:SignalIndicator Grid.Column="0" Width="28" Height="28" Level="{Binding SignalLevel}"/>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
                 <TextBlock Text="{l:Text hybrid.stats.title}" Classes="caption"/>
-                <TextBlock Text="{Binding QualityText}" Classes="figure"/>
+                <TextBlock Text="{Binding QualityText}" Classes="figure" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
+            <Button Grid.Column="2" Click="OnSessionLogs"
+                    VerticalAlignment="Center" HorizontalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="18" Height="18" Source="{StaticResource LogsIcon}"/>
+                    <TextBlock Text="{l:Text hybrid.logs.open}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </Grid>
 
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">

@@ -69,7 +69,8 @@
                     ToolTip.Tip="{l:Text hybrid.stats.open}">
                 <Button.Flyout>
                     <Flyout Placement="TopEdgeAlignedLeft">
-                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding StatusBar.Stats, FallbackValue={x:Null}}"/>
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding StatusBar, FallbackValue={x:Null}}"
+                                                          SessionLogsRequested="OnSessionLogs"/>
                     </Flyout>
                 </Button.Flyout>
                 <!-- As wide as the avatar of the user card below -->

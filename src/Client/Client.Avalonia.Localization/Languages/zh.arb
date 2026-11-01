@@ -1,4 +1,7 @@
 {
+  "hybrid.logs.open": "会话日志",
+  "hybrid.logs.empty": "此会话暂无事件。使用调试设置中选择的日志级别。",
+  "hybrid.logs.follow": "跟随新事件",
   "@@locale": "zh",
   "@@x-translatedBy": "ai",
   "rejection.insufficientPermissions": "你无权执行此操作。\n\n你在此服务器上的角色不允许这样做。请联系管理角色的人。",

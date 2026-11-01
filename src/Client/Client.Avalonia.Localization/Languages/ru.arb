@@ -1,4 +1,7 @@
 {
+  "hybrid.logs.open": "Логи сессии",
+  "hybrid.logs.empty": "Событий этой сессии пока нет. События отображаются с уровнем журнала, выбранным в настройках отладки.",
+  "hybrid.logs.follow": "Следить за новыми событиями",
   "@@locale": "ru",
   "connect.status.waitingForAction": "Ожидание действия...",
   "connect.status.waitingForCertificate": "Ожидание подтверждения сертификата...",

@@ -9,6 +9,18 @@
 
     <!-- ===== Common ===== -->
 
+    <!-- Session journal. Source: Icons/LogsIcon.svg -->
+    <DrawingImage x:Key="LogsIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 3 H18 Q20 3 20 5 V19 Q20 21 18 21 H6 Q4 21 4 19 V5 Q4 3 6 3 Z M8 8 H16 M8 12 H16 M8 16 H13">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Single user outline. Source: Icons/BaseUserIcon.svg -->
     <DrawingImage x:Key="BaseUserIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

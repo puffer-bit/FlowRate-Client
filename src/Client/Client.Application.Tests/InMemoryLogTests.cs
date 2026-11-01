@@ -15,6 +15,23 @@ public class InMemoryLogTests
     }
 
     [Fact]
+    public void RetainsStructuredSessionIdWithoutMatchingUnrelatedText()
+    {
+        var (memory, logger) = Create(capacity: 10);
+        using (logger)
+        {
+            logger.Information("[Session {SessionId}] Voice started", 12);
+            logger.Information("[Session {SessionId}] Voice stopped", 123);
+            logger.Information("Unrelated text mentioning Session 12");
+            logger.ForContext("SessionId", 12).Warning("Transport failed");
+        }
+
+        var entries = memory.Snapshot();
+        Assert.Equal(new int?[] { 12, 123, null, 12 }, entries.Select(entry => entry.SessionId));
+        Assert.Equal(2, entries.Count(entry => entry.SessionId == 12));
+    }
+
+    [Fact]
     public void KeepsTheNewestEntriesOldestFirst()
     {
         var (memory, logger) = Create(capacity: 3);
