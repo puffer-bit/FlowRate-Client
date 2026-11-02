@@ -158,7 +158,8 @@ internal static class VideoSourceFactory
         if (acceptDmaBuf)
             Interop.GstVideoNative.AcceptVideoMeta(bridgeSink);
 
-        return new VideoSource(bin, new CaptureBridge(bridgeSink, bridgeSource, onError, onRate, framerate));
+        return new VideoSource(bin, new CaptureBridge(bridgeSink, bridgeSource, onError, onRate, framerate,
+            setEncoderFramerate: acceptDmaBuf));
     }
 
     // d3d11screencapturesrc paces itself at the rate it negotiates, and with nothing downstream to

@@ -56,16 +56,20 @@ the whole branch.
 
 | Encoder | Bitrate | Low latency | GOP | Frame size bound |
 |---|---|---|---|---|
-| NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` | `gop-size=-1` | `vbv-buffer-size` |
+| NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr` / `rc-mode=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` / `zerolatency=true` (names depend on plugin version) | `gop-size=-1` | `vbv-buffer-size` |
 | NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` | `gop-size=-1` | `vbv-buffer-size` |
 | AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
 | VA-API | kbit/s | `rate-control=cbr` | `key-int-max=1024` | `cpb-size` |
-| Quick Sync | kbit/s | `rate-control=cbr` | `gop-size=65535` | `max-frame-size-i` |
+| Quick Sync | kbit/s | `rate-control=cbr`, `low-latency=true` | `gop-size=65535` | `max-frame-size-i` |
 | Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` | the encoder's own | |
 | OpenH264 | bit/s | `usage-type=screen`, `rate-control=bitrate`, `complexity=low` | `gop-size=2147483647`, `scene-change-detection=false` | |
 
 Left to their defaults, NVENC and AMF are tuned for quality: a variable rate that sends a keyframe
 as a burst of several times the average frame, and frames held back for reordering.
+
+NVENC plugin versions use different names for rate control and zero latency. Both spellings are
+probed independently so a renamed property does not silently leave the encoder at its default.
+Quick Sync's low-latency mode is also enabled explicitly rather than relying on its default of off.
 
 The GOP is the longest each encoder takes: a keyframe is made when a viewer asks for one (below), and
 the default GOPs (30 to 90 frames) made several of them a second at a high rate. The frame size bound
@@ -98,6 +102,13 @@ next one is tried (Media Foundation without a GPU refuses textures, for one).
    schedule, without retaining skipped frames. This enforces the configured ceiling even with
    variable-rate caps (`framerate=0/1`), independently of caps negotiation. The VA capture branch tees directly into the encoder
    and preview queues, without another input queue or videorate holding GPU surfaces.
+   After enforcing the ceiling, the bridge advertises the configured nominal frame rate to the
+   encoder in a separate sample header. PipeWire keeps its original VFR caps: the change is confined
+   to the appsrc side of the bridge. GPU memory, timestamps, segment, colorimetry and memory
+   features are preserved; cached caps are rebuilt when the capture format or size changes.
+   This matters for VA H.264: with an unknown frame rate the encoder substitutes 30 fps for rate
+   control and output timing, even when the bridge forwards 144 frames/s
+   ([GStreamer 1.28.7 source](https://github.com/GStreamer/gstreamer/blob/1.28.7/subprojects/gst-plugins-bad/sys/va/gstvah264enc.c#L1507)).
    Before starting, the encoder is opened in READY to query its VA display context, then closed.
    That context is applied to the whole pipeline while it is still NULL. The appsink/appsrc
    bridge otherwise breaks upstream context discovery, allowing separate VA displays and

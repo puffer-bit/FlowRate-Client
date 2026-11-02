@@ -164,7 +164,8 @@ public static class VideoEncoderSelector
     // second at a high rate, each one a burst
     private static Candidate Nvidia(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
-            [("rate-control", "cbr"), ("tune", "ultra-low-latency"), ("zero-reorder-delay", "true"), ("gop-size", "-1")],
+            [("rate-control", "cbr"), ("rc-mode", "cbr"), ("tune", "ultra-low-latency"),
+             ("zero-reorder-delay", "true"), ("zerolatency", "true"), ("gop-size", "-1")],
             kbps => [("vbv-buffer-size", Format(WindowKbits(kbps)))]);
 
     private static Candidate NvidiaLegacy(string factory) =>
@@ -191,7 +192,7 @@ public static class VideoEncoderSelector
     // Quick Sync bounds a keyframe in kbytes
     private static Candidate Qsv(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("rate-control", "cbr")],
-            [("gop-size", "65535")],
+            [("low-latency", "true"), ("gop-size", "65535")],
             kbps => [("max-frame-size-i", Format(Math.Max(1, WindowKbits(kbps) / 8)))]);
 
     private static Candidate MediaFoundation(string factory) =>
