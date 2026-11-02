@@ -7,10 +7,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji;assembly=Client.Avalonia.Controls"
              x:DataType="chatVm:ChatComposerVM"
              x:Class="Client.Views.Sessions.Chat.ChatComposer">
 
     <UserControl.Styles>
+        <Style Selector="FlyoutPresenter.emoji-popup">
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
         <!-- ====== Composer ====== -->
         <Style Selector="Border.composer-box">
             <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
@@ -316,7 +320,7 @@
                     </StackPanel>
 
                     <!-- The buttons stay on the last line while the input grows -->
-                    <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="4">
+                    <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" Margin="4">
                         <Button Grid.Column="0"
                                 Classes="borderless composer-icon"
                                 VerticalAlignment="Bottom"
@@ -371,6 +375,26 @@
                                    Text="{Binding RemainingCharacters}"/>
 
                         <Button Grid.Column="3"
+                                x:Name="EmojiButton"
+                                Classes="borderless composer-icon"
+                                Width="32" Height="32" VerticalAlignment="Bottom"
+                                IsEnabled="{Binding CanWrite}"
+                                Click="OnEmojiButtonClick"
+                                ToolTip.Tip="{l:Text chat.emoji.open}"
+                                AutomationProperties.Name="{l:Text chat.emoji.open}">
+                            <Path Width="20" Height="20" Stretch="Uniform"
+                                  Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.7"
+                                  StrokeLineCap="Round" StrokeJoin="Round"
+                                  Data="M 10,1 A 9,9 0 1 1 10,19 A 9,9 0 1 1 10,1 M 6,11.5 Q 10,16 14,11.5 M 6.5,6.7 L 6.5,7.5 M 13.5,6.7 L 13.5,7.5"/>
+                            <FlyoutBase.AttachedFlyout>
+                                <Flyout Placement="TopEdgeAlignedRight"
+                                        FlyoutPresenterClasses="emoji-popup">
+                                    <emoji:EmojiPickerView x:Name="EmojiPicker" Width="360" Height="380"/>
+                                </Flyout>
+                            </FlyoutBase.AttachedFlyout>
+                        </Button>
+
+                        <Button Grid.Column="4"
                                 Classes="composer-send"
                                 Classes.sending="{Binding IsMessageSending}"
                                 VerticalAlignment="Bottom"

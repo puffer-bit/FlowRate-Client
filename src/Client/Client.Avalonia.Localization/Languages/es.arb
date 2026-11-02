@@ -1220,5 +1220,20 @@
   "accountSecurity.error.unexpected": "Error inesperado: {error}",
   "accountSecurity.error.proofPassword": "Introduce la contraseña actual",
   "accountSecurity.error.codeFormat": "Un código tiene 6 dígitos",
-  "accountSecurity.error.mismatch": "Las contraseñas no coinciden"
+  "accountSecurity.error.mismatch": "Las contraseñas no coinciden",
+  "chat.emoji.open": "Elegir emoji",
+  "chat.emoji.search": "Buscar emoji",
+  "chat.emoji.recent": "Recientes",
+  "chat.emoji.results": "Resultados de búsqueda",
+  "chat.emoji.empty": "No se encontraron emojis",
+  "chat.emoji.category.0": "Caras y emociones",
+  "chat.emoji.category.1": "Personas y cuerpo",
+  "chat.emoji.category.2": "Animales y naturaleza",
+  "chat.emoji.category.3": "Comida y bebida",
+  "chat.emoji.category.4": "Viajes y lugares",
+  "chat.emoji.category.5": "Actividades",
+  "chat.emoji.category.6": "Objetos",
+  "chat.emoji.category.7": "Símbolos",
+  "chat.emoji.category.8": "Banderas",
+  "chat.emoji.limit": "Este emoji superaría el límite de longitud del mensaje."
 }

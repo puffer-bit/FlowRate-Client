@@ -1219,5 +1219,20 @@
   "accountSecurity.error.unexpected": "Непредвиденная ошибка: {error}",
   "accountSecurity.error.proofPassword": "Введите текущий пароль",
   "accountSecurity.error.codeFormat": "Код — это 6 цифр",
-  "accountSecurity.error.mismatch": "Пароли не совпадают"
+  "accountSecurity.error.mismatch": "Пароли не совпадают",
+  "chat.emoji.open": "Выбрать эмодзи",
+  "chat.emoji.search": "Поиск эмодзи",
+  "chat.emoji.recent": "Недавние",
+  "chat.emoji.results": "Результаты поиска",
+  "chat.emoji.empty": "Эмодзи не найдены",
+  "chat.emoji.category.0": "Смайлы и эмоции",
+  "chat.emoji.category.1": "Люди и жесты",
+  "chat.emoji.category.2": "Животные и природа",
+  "chat.emoji.category.3": "Еда и напитки",
+  "chat.emoji.category.4": "Путешествия и места",
+  "chat.emoji.category.5": "Занятия",
+  "chat.emoji.category.6": "Предметы",
+  "chat.emoji.category.7": "Символы",
+  "chat.emoji.category.8": "Флаги",
+  "chat.emoji.limit": "Этот эмодзи не помещается в лимит длины сообщения."
 }
