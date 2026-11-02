@@ -528,7 +528,8 @@ int fr_initialize(void) {
   std::vector<libwebrtc::string> trials;
   const char* custom = std::getenv("FLOWRATE_WEBRTC_FIELD_TRIALS");
   trials.emplace_back(custom != nullptr ? custom
-                                        : "WebRTC-Bwe-ProbingConfiguration/abort_further:true/"
+                                        : "WebRTC-Bwe-ProbingConfiguration/abort_further:true,"
+                                          "skip_if_est_larger_than_fraction_of_max:1.0/"
                                           "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/");
 
   LibWebRTC::InitializeWithFieldTrials(libwebrtc::vector<libwebrtc::string>(trials));
