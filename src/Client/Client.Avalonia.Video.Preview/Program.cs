@@ -1,13 +1,29 @@
 using System;
 using Avalonia;
+using Client.GStreamer.Loader;
+using Microsoft.Extensions.Logging;
 
 namespace Client.Avalonia.Video.Preview;
 
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args) =>
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            Console.Error.WriteLine($"Unhandled preview exception: {e.ExceptionObject}");
+        try
+        {
+            // Register the bundled runtime before any GStreamer or native video calls.
+            GstNativeLibraryResolver.Register();
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        catch (Exception exception)
+        {
+            new ConsoleLogger().LogCritical(exception, "Video preview startup failed");
+            throw;
+        }
+    }
 
     // The same rendering as the desktop app, so the video surface picks the same presenter
     public static AppBuilder BuildAvaloniaApp()

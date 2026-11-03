@@ -69,6 +69,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     private uint _importedChroma;
     private uint _importedRgb;
     private IntPtr _eglDisplay;
+    private IntPtr _rgbImage;
     private IntPtr _lumaImage;
     private IntPtr _chromaImage;
     private AngleD3D11Import? _angle;
@@ -164,6 +165,16 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
                     drewSomething = RenderPicture();
                 else
                     next.Release();
+
+                if (_current?.Gpu is DmaBufVideoFrame rgb && DmaBufVideoFrame.IsRgbFormat(rgb.Fourcc))
+                {
+                    // The displayed picture is now in _outputTexture. Keeping the capture
+                    // sample until the next refresh pins one of KWin's scarce buffers.
+                    // Complete its GPU read before returning it: releasing immediately
+                    // after DrawArrays would let the compositor overwrite an in-flight read.
+                    _gl!.Finish();
+                    ReleaseCurrent();
+                }
 
                 // The decoder may write the shared texture again once the draw is queued
                 _angle?.EndRead();
@@ -296,10 +307,29 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     {
         var gl = _gl!;
 
-        if (_eglDisplay == IntPtr.Zero || gl.EglImageTargetTexture2D == null || frame.Planes.Count < 2)
+        if (_eglDisplay == IntPtr.Zero || gl.EglImageTargetTexture2D == null ||
+            frame.Planes.Count < (DmaBufVideoFrame.IsRgbFormat(frame.Fourcc) ? 1 : 2))
         {
             VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.DmaBuf);
             return false;
+        }
+
+        if (DmaBufVideoFrame.IsRgbFormat(frame.Fourcc))
+        {
+            var plane = frame.Planes[0];
+            _rgbImage = EglDmaBuf.CreateImage(_eglDisplay, frame.Width, frame.Height, frame.Fourcc,
+                plane.Fd, plane.Offset, plane.Pitch, frame.Modifier);
+            if (_rgbImage == IntPtr.Zero)
+            {
+                VideoSurfaceSupport.ReportFailure(VideoSurfaceKinds.DmaBuf,
+                    "EGL could not import the PipeWire RGB DMA-BUF format/modifier.");
+                return false;
+            }
+            if (_importedRgb == 0) _importedRgb = gl.CreateTexture();
+            gl.ActiveTexture(GlFunctions.Texture0);
+            gl.BindTexture(GlFunctions.Texture2D, _importedRgb);
+            gl.EglImageTargetTexture2D(GlFunctions.Texture2D, _rgbImage);
+            return true;
         }
 
         var isTenBit = frame.Fourcc == DmaBufVideoFrame.FourccP010;
@@ -481,6 +511,10 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
         switch (frame.Gpu)
         {
+            case DmaBufVideoFrame rgb when DmaBufVideoFrame.IsRgbFormat(rgb.Fourcc):
+                // EGL interprets the DRM channel order; no BGRA byte swap is needed.
+                DrawRgb(_importedRgb, false);
+                break;
             case DmaBufVideoFrame:
                 DrawYuv(frame.Gpu, _importedLuma, _importedChroma);
                 break;
@@ -599,6 +633,8 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
 
     private void DestroyImages()
     {
+        EglDmaBuf.DestroyImage(_eglDisplay, _rgbImage);
+        _rgbImage = IntPtr.Zero;
         EglDmaBuf.DestroyImage(_eglDisplay, _lumaImage);
         EglDmaBuf.DestroyImage(_eglDisplay, _chromaImage);
         _lumaImage = _chromaImage = IntPtr.Zero;

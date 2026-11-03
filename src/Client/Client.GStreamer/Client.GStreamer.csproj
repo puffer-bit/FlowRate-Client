@@ -33,4 +33,7 @@
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Client.Avalonia.Video.Preview" />
+    </ItemGroup>
 </Project>

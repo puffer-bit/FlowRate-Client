@@ -12,6 +12,15 @@ internal sealed partial class GstScreenCapture
     [LoggerMessage(LogLevel.Error, "[Capture {Name}] Failed to build the encoding branch: an element is missing or cannot be linked")]
     private static partial void LogBranchBuildFailed(ILogger logger, string name);
 
+    [LoggerMessage(LogLevel.Warning, "[Capture {Name}] Cannot link an encoding branch candidate")]
+    private static partial void LogBranchParseFailed(ILogger logger, Exception exception, string name);
+
+    [LoggerMessage(LogLevel.Error, "[Capture {Name}] Failed to prepare a shared VA display for capture and encoding")]
+    private static partial void LogVaContextFailed(ILogger logger, string name);
+
+    [LoggerMessage(LogLevel.Information, "[Capture {Name}] Capture, preview and encoder use a shared VA display")]
+    private static partial void LogVaContextReady(ILogger logger, string name);
+
     [LoggerMessage(LogLevel.Error, "[Capture {Name}] Failed to start the pipeline")]
     private static partial void LogStartFailed(ILogger logger, string name);
 
@@ -26,6 +35,9 @@ internal sealed partial class GstScreenCapture
 
     [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The encoder puts out {Rate:0.0} fps, {Keyframes} of them keyframes")]
     private static partial void LogEncodedRate(ILogger logger, string name, double rate, int keyframes);
+
+    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] Encoder caps: {Caps}")]
+    private static partial void LogEncodedCaps(ILogger logger, string name, string caps);
 
     [LoggerMessage(LogLevel.Warning, "[Capture {Name}] Failed to hand over a captured frame")]
     private static partial void LogCaptureFailed(ILogger logger, Exception exception, string name);
