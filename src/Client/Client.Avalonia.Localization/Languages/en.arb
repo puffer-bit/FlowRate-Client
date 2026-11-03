@@ -1797,5 +1797,24 @@
   },
   "accountSecurity.error.proofPassword": "Enter the current password",
   "accountSecurity.error.codeFormat": "A code is 6 digits",
-  "accountSecurity.error.mismatch": "The passwords do not match"
+  "accountSecurity.error.mismatch": "The passwords do not match",
+  "hybrid.audio.retry": "Try again",
+  "hybrid.audio.device": "Call audio device",
+  "hybrid.audio.hint": "The headset is used for both call audio and its microphone. In automatic mode, connected headsets take priority over the phone speaker.",
+  "hybrid.audio.automatic": "Automatic",
+  "hybrid.audio.active": "In use: {device}",
+  "hybrid.audio.waiting": "Waiting for call audio",
+  "hybrid.audio.switching": "Switching audio device…",
+  "hybrid.audio.failed": "Could not switch the audio device. Choose another device or try again.",
+  "hybrid.audio.bluetooth": "Bluetooth",
+  "hybrid.audio.wired": "Wired headphones",
+  "hybrid.audio.usb": "USB audio",
+  "hybrid.audio.speaker": "Phone speaker",
+  "hybrid.audio.earpiece": "Earpiece",
+  "hybrid.audio.other": "Audio device",
+  "@hybrid.audio.active": {
+    "placeholders": {
+      "device": {}
+    }
+  }
 }

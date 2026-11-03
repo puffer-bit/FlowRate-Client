@@ -1219,5 +1219,24 @@
   "accountSecurity.error.unexpected": "Непредвиденная ошибка: {error}",
   "accountSecurity.error.proofPassword": "Введите текущий пароль",
   "accountSecurity.error.codeFormat": "Код — это 6 цифр",
-  "accountSecurity.error.mismatch": "Пароли не совпадают"
+  "accountSecurity.error.mismatch": "Пароли не совпадают",
+  "hybrid.audio.retry": "Повторить попытку",
+  "hybrid.audio.device": "Устройство звука звонка",
+  "hybrid.audio.hint": "Гарнитура используется для звука звонка и микрофона. В автоматическом режиме подключённые наушники имеют приоритет перед динамиком телефона.",
+  "hybrid.audio.automatic": "Автоматически",
+  "hybrid.audio.active": "Используется: {device}",
+  "hybrid.audio.waiting": "Ожидание звука звонка",
+  "hybrid.audio.switching": "Переключение устройства…",
+  "hybrid.audio.failed": "Не удалось переключить звук. Выберите другое устройство или повторите попытку.",
+  "hybrid.audio.bluetooth": "Bluetooth",
+  "hybrid.audio.wired": "Проводные наушники",
+  "hybrid.audio.usb": "USB-аудио",
+  "hybrid.audio.speaker": "Динамик телефона",
+  "hybrid.audio.earpiece": "Разговорный динамик",
+  "hybrid.audio.other": "Аудиоустройство",
+  "@hybrid.audio.active": {
+    "placeholders": {
+      "device": {}
+    }
+  }
 }

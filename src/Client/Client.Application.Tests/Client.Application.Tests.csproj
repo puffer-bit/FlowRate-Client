@@ -21,4 +21,9 @@
         <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
     </ItemGroup>
 
+    <!-- Exercise Android route selection without requiring an Android runtime on the test host. -->
+    <ItemGroup>
+        <Compile Include="../Client.Avalonia.Android/Platform/Media/CallAudioRoutePolicy.cs" Link="Android/CallAudioRoutePolicy.cs" />
+    </ItemGroup>
+
 </Project>

@@ -21,6 +21,14 @@ public partial class HybridSessionView : UserControl
         InitializeComponent();
     }
 
+    public event Action? MenuRequested;
+    public event Action? StatsRequested;
+    public event Action? AudioDevicesRequested;
+
+    private void OnMenuClick(object? sender, RoutedEventArgs e) => MenuRequested?.Invoke();
+    private void OnStatsClick(object? sender, RoutedEventArgs e) => StatsRequested?.Invoke();
+    private void OnAudioDevicesClick(object? sender, RoutedEventArgs e) => AudioDevicesRequested?.Invoke();
+
     /// <summary>
     /// Raised by a tap on someone in the session.
     /// </summary>
