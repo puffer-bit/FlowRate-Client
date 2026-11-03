@@ -42,7 +42,9 @@ internal static partial class GstElementCheck
         "webrtcdsp",
         // RNNoise, bundled since the neural noise suppression. Without it the neural levels run as
         // the moderate one of webrtcdsp and the voice gate goes by the level alone
-        "audiornnoise"
+        "audiornnoise",
+        // Older runtimes can still join calls; the chat player reports unavailable decoders.
+        "fdkaacdec", "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
     ];
 
     // Missing only without PipeWire on the system, then screen sharing on Wayland is impossible anyway

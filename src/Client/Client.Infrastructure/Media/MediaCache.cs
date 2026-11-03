@@ -128,12 +128,14 @@ public sealed partial class MediaCache : IMediaCache
             : $"{path}.{Guid.NewGuid():N}{TemporaryExtension}";
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
             long written;
             bool complete;
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                             81920, FileOptions.Asynchronous))
+            await using (var stream = await Task.Run(() =>
+                         {
+                             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                             return new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                                 81920, FileOptions.Asynchronous);
+                         }))
             {
                 complete = await write(stream);
                 written = stream.Length;
@@ -141,11 +143,11 @@ public sealed partial class MediaCache : IMediaCache
 
             if (!complete)
             {
-                File.Delete(temporary);
+                await Task.Run(() => File.Delete(temporary));
                 return null;
             }
 
-            File.Move(temporary, path, overwrite: true);
+            await Task.Run(() => File.Move(temporary, path, overwrite: true));
 
             if (Interlocked.Add(ref _writtenSinceTrim, written) >= TrimInterval)
                 _ = Task.Run(Trim);
@@ -155,12 +157,12 @@ public sealed partial class MediaCache : IMediaCache
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogStoreFailed(exception, path);
-            TryDelete(temporary);
+            await Task.Run(() => TryDelete(temporary));
             return null;
         }
         catch
         {
-            TryDelete(temporary);
+            await Task.Run(() => TryDelete(temporary));
             throw;
         }
     }

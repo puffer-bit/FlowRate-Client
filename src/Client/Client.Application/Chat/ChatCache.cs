@@ -72,7 +72,10 @@ internal sealed partial class ChatCache : IChatCache
     {
         lock (_queueLock)
         {
-            var task = RunAfterAsync(_queue, operation);
+            // SQLite's async methods can finish synchronously, including disk I/O and lock waits.
+            // Schedule the whole operation off the caller's thread, even when the queue is empty.
+            var previous = _queue;
+            var task = Task.Run(() => RunAfterAsync(previous, operation));
             _queue = task;
             return task;
         }

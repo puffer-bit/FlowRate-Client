@@ -122,7 +122,7 @@ echo "== Collecting licenses"
 copy_licenses() {
     local name=$1 dir=$2
     mkdir -p "$OUT/licenses/$name"
-    find "$dir" -maxdepth 1 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' -o -iname 'PATENTS*' \) \
+    find "$dir" -maxdepth 1 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' -o -iname 'PATENTS*' -o -iname 'NOTICE*' \) \
         -exec cp {} "$OUT/licenses/$name/" \;
 }
 
@@ -133,6 +133,7 @@ for subproject in libnice openh264 orc webrtc-audio-processing abseil-cpp; do
         [[ -d "$dir" ]] && copy_licenses "$subproject" "$dir"
     done
 done
+copy_licenses fdk-aac "$SRC/fdk-aac"
 copy_licenses dav1d "$SRC/dav1d"
 copy_licenses svt-av1 "$SRC/svtav1"
 copy_licenses pipewire "$SRC/pipewire"
@@ -148,6 +149,7 @@ copy_licenses gst-plugins-rs "$SRC/gst-plugins-rs"
     echo "  source: https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"
     echo "PipeWire GStreamer plugin: MIT      source: https://gitlab.freedesktop.org/pipewire/pipewire"
     echo "libnice: LGPL-2.1 / MPL-1.1         source: https://libnice.freedesktop.org"
+    echo "FDK AAC: Fraunhofer FDK AAC license   source: https://github.com/mstorsjo/fdk-aac"
     echo "OpenH264: BSD-2-Clause              source: https://github.com/cisco/openh264"
     echo "dav1d: BSD-2-Clause                 source: https://code.videolan.org/videolan/dav1d"
     echo "SVT-AV1: BSD-3-Clause-Clear, AOM patent license   source: https://gitlab.com/AOMediaCodec/SVT-AV1"

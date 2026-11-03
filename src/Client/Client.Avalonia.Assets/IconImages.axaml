@@ -886,6 +886,13 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <DrawingImage x:Key="AudioPauseIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M6 5 H10 V19 H6 Z M14 5 H18 V19 H14 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Green play triangle. Source: Icons/PlayIcon.svg -->
     <DrawingImage x:Key="PlayIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

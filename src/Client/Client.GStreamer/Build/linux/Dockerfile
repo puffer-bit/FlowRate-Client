@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ca-certificates git curl pkg-config python3 python3-pip \
         ninja-build cmake nasm flex bison patchelf file xz-utils zstd \
-        libglib2.0-dev libssl-dev libopus-dev libvpx-dev libsrtp2-dev \
+        libmpg123-dev libglib2.0-dev libssl-dev libopus-dev libvpx-dev libsrtp2-dev \
         libva-dev libdrm-dev libpulse-dev libasound2-dev libffi-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -103,7 +103,10 @@ RUN git clone --depth 1 --branch "${PIPEWIRE_VERSION}" https://gitlab.freedeskto
 # A second build for libpipewire 1.2+, chosen by the loader where the system has it: its pipewiresrc
 # negotiates DMA-BUF modifiers (DMA_DRM caps), which the VA postprocessor takes without a copy
 ARG PIPEWIRE_MODERN_VERSION=1.2.7
+COPY patches/pipewire-caps-lifetime.patch /src/pipewire-caps-lifetime.patch
+# Keep an owned caps reference for format callbacks after the initial negotiation (PipeWire 1.6).
 RUN git clone --depth 1 --branch "${PIPEWIRE_MODERN_VERSION}" https://gitlab.freedesktop.org/pipewire/pipewire.git pipewire-modern \
+    && git -C pipewire-modern apply /src/pipewire-caps-lifetime.patch \
     && meson setup pipewire-modern/build pipewire-modern --prefix=/opt/pipewire-modern --libdir=lib --buildtype=release \
         -Dauto_features=disabled -Dgstreamer=enabled -Dsession-managers=[] \
         -Dexamples=disabled -Dtests=disabled -Dman=disabled -Ddocs=disabled \
@@ -124,6 +127,19 @@ RUN git clone --depth 1 --branch "gstreamer-${GST_VERSION}" https://gitlab.freed
     && cargo cinstall --release -p gst-plugin-dav1d -p gst-plugin-rtp -p gst-plugin-audiofx \
         --prefix="$PREFIX" --libdir=lib \
     && rm -rf target /root/.cargo/registry
+
+# AAC for MP4 attachments. Build after the main runtime so codec additions reuse its build cache.
+# FDK is a separate shared library under the Fraunhofer FDK AAC license.
+ARG FDK_AAC_VERSION=v2.0.3
+RUN mkdir fdk-aac \
+    && curl --retry 3 --connect-timeout 20 --max-time 180 -sSfL "https://codeload.github.com/mstorsjo/fdk-aac/tar.gz/refs/tags/${FDK_AAC_VERSION}" \
+        | tar -xz --strip-components=1 -C fdk-aac \
+    && cmake -S fdk-aac -B fdk-aac/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON \
+    && ninja -C fdk-aac/build install \
+    && PKG_CONFIG_PATH="/opt/libva-2.20.0/lib/pkgconfig:/opt/gst/lib/pkgconfig" meson configure gstreamer/build -Dgst-plugins-bad:fdkaac=enabled \
+    && PKG_CONFIG_PATH="/opt/libva-2.20.0/lib/pkgconfig:/opt/gst/lib/pkgconfig" ninja -C gstreamer/build subprojects/gst-plugins-bad/ext/fdkaac/libgstfdkaac.so \
+    && install -m 755 gstreamer/build/subprojects/gst-plugins-bad/ext/fdkaac/libgstfdkaac.so "$PREFIX/lib/gstreamer-1.0/"
 
 # Read by collect.sh for THIRD-PARTY-NOTICES.txt
 ENV GST_VERSION=${GST_VERSION}
