@@ -25,4 +25,10 @@
         <ProjectReference Include="..\Client.Avalonia.Video\Client.Avalonia.Video.csproj" />
         <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../Client.GStreamer/Client.GStreamer.csproj" />
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+        <Compile Include="../Client.Avalonia.Desktop/Services/ScreenCast/Linux/XdgDesktopPortalClient*.cs" Link="ScreenCast/%(Filename)%(Extension)" />
+    </ItemGroup>
+    <Import Project="../Client.GStreamer/Build/GStreamerRuntime.targets" />
 </Project>
