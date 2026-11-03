@@ -1220,5 +1220,20 @@
   "accountSecurity.error.unexpected": "予期しないエラー: {error}",
   "accountSecurity.error.proofPassword": "現在のパスワードを入力してください",
   "accountSecurity.error.codeFormat": "コードは6桁の数字です",
-  "accountSecurity.error.mismatch": "パスワードが一致しません"
+  "accountSecurity.error.mismatch": "パスワードが一致しません",
+  "chat.emoji.open": "絵文字を選択",
+  "chat.emoji.search": "絵文字を検索",
+  "chat.emoji.recent": "最近使った絵文字",
+  "chat.emoji.results": "検索結果",
+  "chat.emoji.empty": "絵文字が見つかりません",
+  "chat.emoji.category.0": "顔と感情",
+  "chat.emoji.category.1": "人と体",
+  "chat.emoji.category.2": "動物と自然",
+  "chat.emoji.category.3": "食べ物と飲み物",
+  "chat.emoji.category.4": "旅行と場所",
+  "chat.emoji.category.5": "アクティビティ",
+  "chat.emoji.category.6": "物",
+  "chat.emoji.category.7": "記号",
+  "chat.emoji.category.8": "旗",
+  "chat.emoji.limit": "この絵文字を追加するとメッセージの文字数制限を超えます。"
 }
