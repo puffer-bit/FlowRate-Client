@@ -15,6 +15,7 @@ using Client.Services;
 using Client.Services.HotKeys;
 using Client.Services.Keyring;
 using Client.Services.Media;
+using Client.Services.Chat;
 using Client.Services.ScreenCast;
 using Client.Services.Tray;
 using Client.Services.Updates;
@@ -77,6 +78,7 @@ public partial class App : global::Avalonia.Application
             desktop.Exit += (_, _) =>
             {
                 globalHotKeys.Dispose();
+                Services.GetRequiredService<ChatAudioSession>().Dispose();
                 _trayService.Dispose();
             };
         }
@@ -110,6 +112,7 @@ public partial class App : global::Avalonia.Application
 
         // The engine of each session follows the experimental setting
         services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
+        services.AddSingleton<ChatAudioSession>();
 
         // Over the one of AddApplication, which does nothing
         services.AddSingleton<IAppUpdater, VelopackUpdater>();

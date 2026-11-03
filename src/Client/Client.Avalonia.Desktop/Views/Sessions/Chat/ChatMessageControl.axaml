@@ -111,34 +111,38 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- The first click downloads an attachment; its check mark signals that another click opens it -->
+                <!-- Audio plays inline; other files are downloaded and opened from their cards. -->
                 <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatFileVM">
-                            <Button Classes="msg-file" Classes.error="{Binding HasError}"
-                                    Command="{Binding OpenCommand}"
-                                    ToolTip.Tip="{Binding ActionToolTip}">
-                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                                    <Border Grid.Column="0" Classes="msg-file-icon">
-                                        <Panel>
-                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
-                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
-                                            <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
-                                        </Panel>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                        <TextBlock Classes="msg-file-name" Text="{Binding FileName}"/>
-                                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !HasError}">
-                                            <TextBlock Classes="msg-file-size" Text="{Binding SizeText}"/>
-                                            <TextBlock Classes="msg-file-size" Text="{l:Text chat.file.saved}"
-                                                       IsVisible="{Binding IsSaved}"/>
+                            <StackPanel>
+                                <chatViews:ChatAudioPlayer IsVisible="{Binding IsAudio}"/>
+                                <chatViews:ChatVideoPlayer IsVisible="{Binding IsVideo}"/>
+                                <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
+                                        Command="{Binding OpenCommand}"
+                                        ToolTip.Tip="{Binding ActionToolTip}">
+                                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                        <Border Grid.Column="0" Classes="msg-file-icon">
+                                            <Panel>
+                                                <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
+                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
+                                                <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Classes="msg-file-name" Text="{Binding FileName}"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !HasError}">
+                                                <TextBlock Classes="msg-file-size" Text="{Binding SizeText}"/>
+                                                <TextBlock Classes="msg-file-size" Text="{l:Text chat.file.saved}"
+                                                           IsVisible="{Binding IsSaved}"/>
+                                            </StackPanel>
+                                            <TextBlock Classes="msg-file-error" Text="{Binding Error}"
+                                                       IsVisible="{Binding HasError}"/>
+                                            <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
                                         </StackPanel>
-                                        <TextBlock Classes="msg-file-error" Text="{Binding Error}"
-                                                   IsVisible="{Binding HasError}"/>
-                                        <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Button>
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

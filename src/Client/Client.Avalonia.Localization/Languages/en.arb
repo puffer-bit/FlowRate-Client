@@ -702,6 +702,10 @@
   "chat.image.saveFailed": "The image could not be saved.",
   "chat.attach.filter.all": "All files",
   "chat.attach.error.empty": "The file is empty",
+  "chat.audio.play": "Play",
+  "chat.audio.pause": "Pause",
+  "chat.audio.seek": "Seek",
+  "chat.audio.failed": "Could not play this audio file.",
   "chat.file.download": "Download",
   "chat.file.open": "Open file",
   "chat.file.openFailed": "The file could not be opened. Check that an application for this file type is installed.",
@@ -1843,5 +1847,9 @@
     "placeholders": {
       "device": {}
     }
-  }
+  },
+  "chat.video.play": "Play video",
+  "chat.video.pause": "Pause video",
+  "chat.video.seek": "Seek",
+  "chat.video.failed": "Could not play this video."
 }

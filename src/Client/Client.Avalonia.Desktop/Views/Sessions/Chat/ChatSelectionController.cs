@@ -128,9 +128,9 @@ internal sealed class ChatSelectionController
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // The scroll bar is dragged, not selected through; taking the pointer from its thumb would stop the drag
+        // Range controls own their pointer while dragging; text selection must not steal it.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
-            || (e.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) != null)
+            || (e.Source as Visual)?.FindAncestorOfType<RangeBase>(includeSelf: true) != null)
             return;
 
         Clear();

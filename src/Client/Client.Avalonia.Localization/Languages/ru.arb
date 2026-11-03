@@ -469,6 +469,10 @@
   "chat.image.saveFailed": "Не удалось сохранить изображение.",
   "chat.attach.filter.all": "Все файлы",
   "chat.attach.error.empty": "Файл пустой",
+  "chat.audio.play": "Воспроизвести",
+  "chat.audio.pause": "Пауза",
+  "chat.audio.seek": "Перемотка",
+  "chat.audio.failed": "Не удалось воспроизвести аудиофайл.",
   "chat.file.download": "Скачать",
   "chat.file.open": "Открыть файл",
   "chat.file.openFailed": "Не удалось открыть файл. Проверьте, установлено ли приложение для этого типа файлов.",
@@ -1265,5 +1269,9 @@
     "placeholders": {
       "device": {}
     }
-  }
+  },
+  "chat.video.play": "Воспроизвести видео",
+  "chat.video.pause": "Приостановить видео",
+  "chat.video.seek": "Перемотка",
+  "chat.video.failed": "Не удалось воспроизвести видео."
 }
