@@ -11,7 +11,7 @@ using Client.ViewModels.Sessions.Chat;
 
 namespace Client.Services.Chat;
 
-/// <summary>Owns playback for one visible video card. Accessed on the UI thread.</summary>
+/// <summary>Owns video playback independently of virtualized message cards. Accessed on the UI thread.</summary>
 public sealed class ChatVideoSession : IDisposable
 {
     private readonly IAudioSettingsRepository? _settings;
@@ -32,7 +32,7 @@ public sealed class ChatVideoSession : IDisposable
     public double Position => _playback?.Position ?? 0;
     public double Duration => _playback?.Duration ?? 0;
 
-    public Action<RawVideoFrame>? FrameReady { get; set; }
+    public event Action<RawVideoFrame>? FrameReady;
     private readonly object _frameLock = new();
     private byte[]? _lastPixels;
     private RawVideoFrame _lastFrame;

@@ -18,13 +18,19 @@ public sealed class ChatVideoPlayback : IDisposable
     private readonly VideoFramePump _pump;
     private bool _disposed;
 
-    public ChatVideoPlayback(string path, Action<RawVideoFrame> onFrame, double volume = 1)
+    public ChatVideoPlayback(string path, Action<RawVideoFrame> onFrame, double volume = 1, bool preview = false)
     {
         _pipeline = (Pipeline)Global.ParseLaunch("playbin");
         using var output = Global.ParseBinFromDescription(
-            "videoconvert ! video/x-raw,format=BGRA ! " +
+            (preview ? "videoconvert ! videoscale ! video/x-raw,format=BGRA,width=400,height=225,pixel-aspect-ratio=1/1 ! "
+                : "videoconvert ! video/x-raw,format=BGRA ! ") +
             "appsink name=frames max-buffers=2 drop=true wait-on-eos=false sync=true", true);
         _pipeline.SetProperty("video-sink", output);
+        if (preview)
+        {
+            using var silentOutput = Global.ParseLaunch("fakesink sync=false");
+            _pipeline.SetProperty("audio-sink", silentOutput);
+        }
         // The pump owns the sink wrapper until it stops.
         var sink = output.GetByName("frames")!;
         _pump = new VideoFramePump(sink, VideoOutputKind.Memory, "chat_video", onFrame,

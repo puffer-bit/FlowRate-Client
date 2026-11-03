@@ -79,6 +79,7 @@ public partial class App : global::Avalonia.Application
             {
                 globalHotKeys.Dispose();
                 Services.GetRequiredService<ChatAudioSession>().Dispose();
+                Services.GetRequiredService<ChatVideoSession>().Dispose();
                 _trayService.Dispose();
             };
         }
@@ -113,6 +114,7 @@ public partial class App : global::Avalonia.Application
         // The engine of each session follows the experimental setting
         services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
         services.AddSingleton<ChatAudioSession>();
+        services.AddSingleton<ChatVideoSession>();
 
         // Over the one of AddApplication, which does nothing
         services.AddSingleton<IAppUpdater, VelopackUpdater>();
