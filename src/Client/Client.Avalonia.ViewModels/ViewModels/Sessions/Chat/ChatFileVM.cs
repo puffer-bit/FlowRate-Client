@@ -20,6 +20,10 @@ public class ChatFileVM : ReactiveObject
     public ChatFileContent File { get; }
     public string FileName => File.FileName;
     public string SizeText { get; }
+    public bool IsVideo => Path.GetExtension(FileName).ToLowerInvariant() is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
+    public bool IsMedia => IsAudio || IsVideo;
+    public bool IsAudio => Path.GetExtension(FileName).ToLowerInvariant() is ".mp3" or ".wav";
+    public (string Coordinator, int FileId) PlaybackKey => (_coordinator, File.Id);
 
     public bool IsDownloading
     {
@@ -89,6 +93,7 @@ public class ChatFileVM : ReactiveObject
     private readonly Func<string, Task<bool>> _openFile;
     private readonly string _coordinator;
     private CancellationTokenSource? _download;
+    private bool _isFindingFile;
 
     /// <param name="pickSaveTarget">
     /// Asks where to save: it is given the suggested file name and returns the stream to write into,
@@ -103,12 +108,63 @@ public class ChatFileVM : ReactiveObject
         _cache = cache;
         _openFile = openFile;
         _coordinator = session.GetCurrentUser().CoordinatorInstanceId;
-        IsDownloaded = _cache.FindFile(_coordinator, File.Id, FileName) != null;
         SizeText = Services.SizeText.Format(file.Size);
 
         DownloadCommand = ReactiveCommand.CreateFromTask(DownloadOrCancel);
         // The command finishes immediately so another click can cancel the ongoing download.
         OpenCommand = ReactiveCommand.Create(() => { _ = OpenOrCancel(); });
+        _ = CheckDownloadedAsync();
+    }
+
+    private Task<string?> FindCachedFileAsync() =>
+        Task.Run(() => _cache.FindFile(_coordinator, File.Id, FileName));
+
+    private async Task CheckDownloadedAsync()
+    {
+        var path = await FindCachedFileAsync();
+        // A download may have started or finished while the initial disk lookup was pending.
+        if (_download == null && !IsDownloaded)
+            IsDownloaded = path != null;
+    }
+
+    /// <summary>Downloads media into the same cache used by file attachments.</summary>
+    public async Task<string?> GetPlaybackPathAsync(CancellationToken cancellationToken)
+    {
+        if (_download != null)
+            return null;
+
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _download = cancellation;
+        Error = null;
+        Progress = 0;
+        IsDownloading = true;
+        try
+        {
+            var (result, path) = await FetchAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (path != null)
+            {
+                Progress = 1;
+                return path;
+            }
+            if (result != MediaTransferResult.Canceled)
+                Error = Strings.Get(result == MediaTransferResult.NotFound ? "chat.file.gone" : "chat.file.downloadFailed");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Error = Strings.Get("chat.file.downloadFailed");
+            return null;
+        }
+        finally
+        {
+            _download = null;
+            IsDownloading = false;
+        }
     }
 
     private async Task OpenOrCancel()
@@ -119,8 +175,23 @@ public class ChatFileVM : ReactiveObject
             return;
         }
 
+        if (_isFindingFile)
+            return;
+
         Error = null;
-        var kept = _cache.FindFile(_coordinator, File.Id, FileName);
+        string? kept;
+        _isFindingFile = true;
+        try
+        {
+            kept = await FindCachedFileAsync();
+        }
+        finally
+        {
+            _isFindingFile = false;
+        }
+        if (_download != null)
+            return;
+
         IsDownloaded = kept != null;
         if (kept != null)
         {
@@ -169,7 +240,7 @@ public class ChatFileVM : ReactiveObject
     private async Task<(MediaTransferResult Result, string? Path)> FetchAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_cache.FindFile(_coordinator, File.Id, FileName) is { } kept)
+        if (await FindCachedFileAsync() is { } kept)
         {
             IsDownloaded = true;
             return (MediaTransferResult.NoError, kept);

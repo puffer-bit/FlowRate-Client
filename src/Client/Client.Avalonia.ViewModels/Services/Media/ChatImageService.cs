@@ -136,7 +136,7 @@ public sealed partial class ChatImageService : IChatImageService
         bool preview, IProgress<long>? progress, CancellationToken cancellationToken)
     {
         var coordinator = session.GetCurrentUser().CoordinatorInstanceId;
-        if (_cache.Find(coordinator, imageId, preview) is { } kept)
+        if (await Task.Run(() => _cache.Find(coordinator, imageId, preview), cancellationToken) is { } kept)
             return (MediaTransferResult.NoError, kept);
 
         var key = (coordinator, imageId, preview);

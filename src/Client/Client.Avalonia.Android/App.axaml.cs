@@ -17,6 +17,8 @@ namespace Client.Droid;
 
 public partial class App : global::Avalonia.Application
 {
+    internal static IServiceProvider? Services { get; private set; }
+
     public override void Initialize()
     {
         Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
@@ -33,6 +35,7 @@ public partial class App : global::Avalonia.Application
                 .AddClientLogging(Log.Logger)
                 .BuildServiceProvider();
 
+            Services = services;
             singleView.MainView = new MainView(services.GetRequiredService<MainWindowVM>(), services);
         }
 

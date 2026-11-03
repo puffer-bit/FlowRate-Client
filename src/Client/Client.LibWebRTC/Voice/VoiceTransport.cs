@@ -530,7 +530,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         if (capture == null)
         {
-            LogCaptureFailed(_sessionId, input);
+            LogCaptureFailed(_sessionId, input, codec, "Failed to create the capture; see the media backend logs");
             return false;
         }
 
@@ -544,7 +544,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         if (peer.CreateVideoSource(width, height, settings.Framerate, video) is not { } source)
         {
             capture.Dispose();
-            LogCaptureFailed(_sessionId, input);
+            LogCaptureFailed(_sessionId, input, codec,
+                $"Failed to create the libwebrtc video source ({width}x{height} at {settings.Framerate} fps)");
             return false;
         }
 
@@ -569,7 +570,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         if (!capture.Start())
         {
             StopOutbound(outbound.Id);
-            LogCaptureFailed(_sessionId, input);
+            LogCaptureFailed(_sessionId, input, codec, "Failed to start the capture; see the media backend logs");
             return false;
         }
 

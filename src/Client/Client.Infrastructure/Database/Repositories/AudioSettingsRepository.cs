@@ -89,6 +89,40 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
             });
     }
 
+    public async Task<double> GetChatAudioVolumeAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+        return await connection.QueryFirstOrDefaultAsync<double?>(
+            "SELECT ChatAudioVolume FROM AudioSettings WHERE Id = 1") ?? 1.0;
+    }
+
+    public async Task UpdateChatAudioVolumeAsync(double volume)
+    {
+        volume = double.IsFinite(volume) ? Math.Clamp(volume, 0, 1) : 1;
+        await using var connection = await _database.OpenAsync();
+        await connection.ExecuteAsync("""
+            INSERT INTO AudioSettings (Id, ChatAudioVolume) VALUES (1, @volume)
+            ON CONFLICT (Id) DO UPDATE SET ChatAudioVolume = excluded.ChatAudioVolume
+            """, new { volume });
+    }
+
+    public async Task<double> GetChatVideoVolumeAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+        return await connection.QueryFirstOrDefaultAsync<double?>(
+            "SELECT ChatVideoVolume FROM AudioSettings WHERE Id = 1") ?? 1.0;
+    }
+
+    public async Task UpdateChatVideoVolumeAsync(double volume)
+    {
+        volume = double.IsFinite(volume) ? Math.Clamp(volume, 0, 1) : 1;
+        await using var connection = await _database.OpenAsync();
+        await connection.ExecuteAsync("""
+            INSERT INTO AudioSettings (Id, ChatVideoVolume) VALUES (1, @volume)
+            ON CONFLICT (Id) DO UPDATE SET ChatVideoVolume = excluded.ChatVideoVolume
+            """, new { volume });
+    }
+
     public async Task<bool> GetUseGStreamerAsync()
     {
         await using var connection = await _database.OpenAsync();

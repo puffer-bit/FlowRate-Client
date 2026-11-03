@@ -64,3 +64,21 @@ rtpvp8depay
 
 # Screen capture
 d3d11screencapturesrc
+
+# Chat audio playback
+filesrc
+decodebin
+id3demux
+typefind
+mpegaudioparse
+mpg123audiodec
+wavparse
+
+# Chat video containers
+playbin
+qtdemux
+matroskademux
+avidemux
+
+# AAC audio in MP4 attachments
+fdkaacdec
