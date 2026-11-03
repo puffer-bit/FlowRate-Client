@@ -89,7 +89,7 @@
                         <StackPanel Spacing="6">
                             <TextBlock Classes="fieldLabel" Text="{l:Text sessionSettings.media.video}"/>
                             <CheckBox Content="{l:Text sessionSettings.media.nack}" IsChecked="{Binding IsVideoNackEnabled}"/>
-                            <CheckBox Margin="24,0,0,0" Content="{l:Text sessionSettings.media.videoRtx}"
+                            <CheckBox Content="{l:Text sessionSettings.media.videoRtx}"
                                       IsChecked="{Binding IsVideoRtxEnabled}" IsEnabled="{Binding IsVideoNackEnabled}"/>
                             <Grid ColumnDefinitions="*, 160" ColumnSpacing="12">
                                 <TextBlock Classes="hint" VerticalAlignment="Center" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.keyFrameDelay}"/>
@@ -105,7 +105,7 @@
                         <StackPanel Spacing="6">
                             <TextBlock Classes="fieldLabel" Text="{l:Text sessionSettings.media.audio}"/>
                             <CheckBox Content="{l:Text sessionSettings.media.opusFec}" IsChecked="{Binding IsOpusFecEnabled}"/>
-                            <Grid Margin="24,0,0,0" ColumnDefinitions="*, 160" ColumnSpacing="12" IsEnabled="{Binding IsOpusFecEnabled}">
+                            <Grid ColumnDefinitions="*, 160" ColumnSpacing="12" IsEnabled="{Binding IsOpusFecEnabled}">
                                 <TextBlock Classes="hint" VerticalAlignment="Center" Text="{l:Text sessionSettings.media.opusLoss}"/>
                                 <NumericUpDown Grid.Column="1"
                                                Value="{Binding OpusPacketLossPercent}"
@@ -113,7 +113,7 @@
                                                Increment="5" FormatString="0" ParsingNumberStyle="Integer"/>
                             </Grid>
                             <CheckBox Content="{l:Text sessionSettings.media.nack}" IsChecked="{Binding IsAudioNackEnabled}"/>
-                            <TextBlock Margin="24,0,0,0" Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.audioNack.hint}"/>
+                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.audioNack.hint}"/>
                             <CheckBox Content="{l:Text sessionSettings.media.voiceDtx}" IsChecked="{Binding IsVoiceDtxEnabled}"/>
                         </StackPanel>
 
