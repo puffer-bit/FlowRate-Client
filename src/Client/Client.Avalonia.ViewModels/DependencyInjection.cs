@@ -38,7 +38,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IChatCacheStore>(),
             provider.GetRequiredService<IChatMediaUploader>(),
             provider.GetRequiredService<IChatImageService>(),
-            provider.GetRequiredService<IDismissedPromptsRepository>()));
+            provider.GetRequiredService<IDismissedPromptsRepository>(),
+            provider.GetRequiredService<IMediaCache>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),

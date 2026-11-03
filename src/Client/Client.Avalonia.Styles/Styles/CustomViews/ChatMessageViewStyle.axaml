@@ -282,6 +282,8 @@
     <Style Selector="Button.msg-file Border.msg-file-icon Image">
         <Setter Property="Width" Value="18"/>
         <Setter Property="Height" Value="18"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.msg-file TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>

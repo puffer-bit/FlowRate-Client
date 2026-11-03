@@ -24,6 +24,17 @@
                               IsEnabled="{Binding HasCopyText}"
                               Command="{Binding Copy}"/>
 
+        <!-- Only when the menu was opened over an image of the message -->
+        <menus:MenuItemButton Icon="{StaticResource CopyImageIcon}" Content="{l:Text chat.menu.copyImage}"
+                              IsVisible="{Binding HasCopyImage}"
+                              Command="{Binding CopyImage}"/>
+
+        <!-- Only when the menu was opened over a file of the message -->
+        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                              IsVisible="{Binding HasContextFile}"
+                              IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
+                              Command="{Binding SaveFileAs}"/>
+
         <!-- Only when the menu was opened over a link of the message -->
         <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
                               IsVisible="{Binding HasCopyLink}"

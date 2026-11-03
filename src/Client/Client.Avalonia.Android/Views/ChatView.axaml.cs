@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Client.Avalonia.Localization;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Panels;
 using Client.Services;
 using Client.ViewModels.Sessions.Chat;
@@ -109,8 +111,13 @@ public partial class ChatView : UserControl
 
     private void OnMessageContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (e.Source is not StyledElement { DataContext: ChatMessageVM message })
+        var message = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
+        if (message == null)
             return;
+
+        message.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();
 
         e.Handled = true;
         TryCloseMenu();
@@ -158,7 +165,9 @@ public partial class ChatView : UserControl
             chat.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
                 interaction.SetOutput(await PickFiles())),
             chat.PickFileSaveTarget.RegisterHandler(async interaction =>
-                interaction.SetOutput(await PickSaveTarget(interaction.Input)))
+                interaction.SetOutput(await PickSaveTarget(interaction.Input))),
+            chat.OpenFileInteraction.RegisterHandler(async interaction =>
+                interaction.SetOutput(await ChatFileLauncher.OpenAsync(this, interaction.Input)))
         };
 
         // The viewer of an image is made anew for each image; saving asks this view where to
@@ -167,6 +176,15 @@ public partial class ChatView : UserControl
         subscriptions.Add(chat.WatchProperty(nameof(ActiveChatSessionVM.ImageViewer), x => x.ImageViewer)
             .Subscribe(viewer => viewerSubscription.Disposable = viewer?.PickSaveTarget.RegisterHandler(
                 async interaction => interaction.SetOutput(await PickSaveTarget(interaction.Input)))));
+
+        void FocusMention() => Dispatcher.UIThread.Post(() =>
+        {
+            MessageInput.Focus();
+            MessageInput.CaretIndex = MessageInput.Text?.Length ?? 0;
+            MessageInput.SelectionStart = MessageInput.SelectionEnd = MessageInput.CaretIndex;
+        }, DispatcherPriority.Background);
+        chat.Composer.MentionInserted += FocusMention;
+        subscriptions.Add(Disposable.Create(() => chat.Composer.MentionInserted -= FocusMention));
 
         // Choosing Reply moves the caret to the input so the answer can be typed right away
         subscriptions.Add(chat.Composer.WatchProperty(nameof(ChatComposerVM.ReplyPreview), x => x.ReplyPreview)

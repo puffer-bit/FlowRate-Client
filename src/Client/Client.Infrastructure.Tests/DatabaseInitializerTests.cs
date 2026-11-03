@@ -16,7 +16,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(23L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal("wal", await database.ScalarAsync("PRAGMA journal_mode"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
     }
@@ -45,7 +45,7 @@ public class DatabaseInitializerTests
         Assert.Equal(DatabaseState.NoError, state);
         Assert.True(File.Exists(database.FilePath + ".ef-backup"));
         Assert.Null(await database.ScalarAsync("SELECT name FROM sqlite_master WHERE name = '__EFMigrationsHistory'"));
-        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(23L, await database.ScalarAsync("PRAGMA user_version"));
     }
 
     [Fact]
@@ -53,6 +53,7 @@ public class DatabaseInitializerTests
     {
         // A database of 021, where the frame counter was a column of the debug settings
         await using var database = await TestDatabase.CreateMigratedAsync();
+        await database.ExecuteAsync("ALTER TABLE SavedCoordinators DROP COLUMN SaveOrder");
         await database.ExecuteAsync(string.Join(";",
             new[]
             {
@@ -66,12 +67,37 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(22L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(23L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT MediaPerfOverlay FROM DebugSettings"));
         Assert.Equal(31L, await database.ScalarAsync("SELECT MediaPerfSections FROM DebugSettings"));
         Assert.Equal(3L, await database.ScalarAsync("SELECT LibWebRTCLogLevel FROM DebugSettings"));
         Assert.Equal(0L, await database.ScalarAsync(
             "SELECT COUNT(*) FROM pragma_table_info('DebugSettings') WHERE name = 'ShowFrameStats'"));
+    }
+
+    [Fact]
+    public async Task ExistingCoordinatorsGainSaveOrderWithoutLosingTheirIdentities()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        await database.ExecuteAsync("""
+            ALTER TABLE SavedCoordinators DROP COLUMN SaveOrder;
+            INSERT INTO SavedCoordinators (CoordinatorId, Address, Port)
+                VALUES ('old', 'server.local', 5000), ('replacement', 'server.local', 5000);
+            INSERT INTO SavedIdentities (CoordinatorId, UserId, UserIdentity, Username)
+                VALUES ('old', 1, 'old-identity', 'old-user'),
+                       ('replacement', 1, 'new-identity', 'new-user');
+            PRAGMA user_version = 22;
+            """);
+
+        var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
+
+        Assert.Equal(DatabaseState.NoError, state);
+        Assert.Equal(23L, await database.ScalarAsync("PRAGMA user_version"));
+        var repository = new Client.Infrastructure.Database.Repositories.AccountingSettingsRepository(database.Database);
+        var coordinator = await repository.GetCoordinatorAsync("server.local", 5000);
+        Assert.Equal("replacement", coordinator!.CoordinatorId);
+        Assert.Equal("new-identity", Assert.Single(coordinator.Users).UserIdentity);
+        Assert.Equal(2L, await database.ScalarAsync("SELECT COUNT(*) FROM SavedIdentities"));
     }
 
     [Fact]

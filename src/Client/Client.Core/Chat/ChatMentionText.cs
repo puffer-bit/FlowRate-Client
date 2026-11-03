@@ -7,7 +7,7 @@ namespace Client.Core.Chat;
 /// A mention as it is shown: where its "@name" sits in the shown text, and whether it calls the
 /// current user (by name, or everyone).
 /// </summary>
-public readonly record struct ChatMentionSpan(int Start, int Length, bool IsSelf)
+public readonly record struct ChatMentionSpan(int Start, int Length, bool IsSelf, int? UserId = null)
 {
     public int End => Start + Length;
 }
@@ -52,7 +52,8 @@ public sealed record ChatMessageBody(string Text, IReadOnlyList<ChatMentionSpan>
             };
 
             bool isSelf = token.Kind != ChatMentionKind.User || token.UserId == currentUserId;
-            spans[i] = new ChatMentionSpan(builder.Length, name.Length + 1, isSelf);
+            spans[i] = new ChatMentionSpan(builder.Length, name.Length + 1, isSelf,
+                token.Kind == ChatMentionKind.User ? token.UserId : null);
             builder.Append('@').Append(name);
             position = token.End;
         }

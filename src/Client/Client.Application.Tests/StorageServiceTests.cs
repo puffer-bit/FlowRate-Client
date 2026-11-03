@@ -106,6 +106,9 @@ public class StorageServiceTests
         public Task<string?> StoreAsync(string coordinatorInstanceId, int imageId, bool preview, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
         public string? FindAvatar(string coordinatorInstanceId, string avatarId) => null;
+        public string? FindFile(string coordinatorInstanceId, int fileId, string fileName) => null;
+        public Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write) =>
+            Task.FromResult<string?>(null);
         public Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
     }

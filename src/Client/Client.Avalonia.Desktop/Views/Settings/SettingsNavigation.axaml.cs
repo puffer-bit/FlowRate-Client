@@ -46,8 +46,7 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         });
     }
 
-    // The last folding of each line of a sub-item. A fold holds its last frame, which keeps the line out
-    // of the layout, until the next folding cancels it
+    // The last folding of each line of a sub-item, cancelled when the next folding starts.
     private readonly Dictionary<Control, CancellationTokenSource> _folds = new();
 
     // The sub-items of a tab unfold under it as it is opened and fold back as it is closed, and the line
@@ -75,6 +74,11 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
             previous.Cancel();
             previous.Dispose();
         }
+
+        // Forward fill writes the collapsed values back to the control. Cancelling a completed
+        // animation does not remove them: restore the row before measuring or showing it again.
+        container.ClearValue(Layoutable.MaxHeightProperty);
+        container.ClearValue(Visual.OpacityProperty);
 
         if (!Motion.IsEnabled)
         {

@@ -39,6 +39,65 @@ public class AccountingSettingsRepositoryTests
     }
 
     [Fact]
+    public async Task ReplacedCoordinatorAtTheSameEndpointOffersItsSavedIdentity()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveUserAsync(Identity(7, "old-identity"));
+        await repository.SaveCoordinatorAsync(Coordinator("replacement"));
+        await repository.SaveUserAsync(new SavedUserModel
+        {
+            CoordinatorId = "replacement",
+            Id = 7,
+            UserIdentity = "new-identity",
+            Username = "new-user",
+            SessionToken = "new-token"
+        });
+
+        var coordinator = await repository.GetCoordinatorAsync("server.local", 5000);
+
+        Assert.NotNull(coordinator);
+        Assert.Equal("replacement", coordinator.CoordinatorId);
+        var user = Assert.Single(coordinator.Users);
+        Assert.Equal("new-identity", user.UserIdentity);
+        Assert.Equal("new-token", user.SessionToken);
+        var oldCoordinator = await repository.GetCoordinatorAsync("coordinator");
+        Assert.Equal("old-identity", Assert.Single(oldCoordinator!.Users).UserIdentity);
+
+        // Logging into the original coordinator again makes it the current one for the endpoint.
+        await repository.SaveCoordinatorAsync(Coordinator());
+        coordinator = await repository.GetCoordinatorAsync("server.local", 5000);
+        Assert.Equal("coordinator", coordinator!.CoordinatorId);
+        Assert.Equal("old-identity", Assert.Single(coordinator.Users).UserIdentity);
+    }
+
+    [Fact]
+    public async Task MostRecentlySavedCoordinatorIsSelectedOnlyForItsEndpoint()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveCoordinatorAsync(new SavedCoordinatorModel
+        {
+            CoordinatorId = "other-port",
+            Address = "server.local",
+            Port = 5001
+        });
+        await repository.SaveCoordinatorAsync(new SavedCoordinatorModel
+        {
+            CoordinatorId = "other-host",
+            Address = "other.local",
+            Port = 5000
+        });
+
+        Assert.Equal("coordinator", (await repository.GetCoordinatorAsync("server.local", 5000))!.CoordinatorId);
+        Assert.Equal("other-port", (await repository.GetCoordinatorAsync("server.local", 5001))!.CoordinatorId);
+        Assert.Equal("other-host", (await repository.GetCoordinatorAsync("other.local", 5000))!.CoordinatorId);
+        Assert.Null(await repository.GetCoordinatorAsync("missing.local", 5000));
+    }
+
+    [Fact]
     public async Task IdentityComesWithTheAvatarOfTheRememberedUser()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();

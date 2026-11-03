@@ -197,6 +197,32 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public bool HasCopyLink => CopyLinkText != null;
 
+    /// <summary>The image under the pointer when the message menu opens.</summary>
+    public ChatImageVM? CopyImageTarget
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasCopyImage));
+        }
+    }
+
+    public bool HasCopyImage => CopyImageTarget != null;
+
+    /// <summary>The file under the pointer when the message menu opens.</summary>
+    public ChatFileVM? ContextFile
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasContextFile));
+        }
+    }
+
+    public bool HasContextFile => ContextFile != null;
+
     /// <summary>
     /// Asked by the view before it opens a link of the message; false leaves the link closed.
     /// </summary>
@@ -204,6 +230,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public Interaction<RxVoid, RxVoid> CloseFlyoutInteraction { get; } = new();
     public Interaction<string, RxVoid> CopyMessageInteraction { get; } = new();
+    public Interaction<ChatImageVM, RxVoid> CopyImageInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> OpenReplyCommand { get; }
 
@@ -212,6 +239,13 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _deleteCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ChatComposerVM? _composer;
+
+    public bool CanMentionUser => _composer is { CanWrite: true, IsConnected: true };
+
+    public void MentionUser(int userId, string name) => _composer?.MentionUser(userId, name);
+
+    public void OpenUserProfile(int userId) => _viewProfileCommand.Execute(userId).Subscribe();
 
     private readonly int _currentUserId;
     private int _highlightVersion;
@@ -224,7 +258,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         Func<Uri, Task<bool>> confirmOpenLink,
         IReadOnlyList<ChatImageVM>? images = null,
-        IReadOnlyList<ChatFileVM>? files = null)
+        IReadOnlyList<ChatFileVM>? files = null,
+        ChatComposerVM? composer = null)
     {
         ConfirmOpenLink = confirmOpenLink;
         _currentUserId = currentUserId;
@@ -237,6 +272,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         _deleteCommand = deleteCommand;
         _jumpToMessageCommand = jumpToMessageCommand;
         _viewProfileCommand = viewProfileCommand;
+        _composer = composer;
 
         // A deleted original has nowhere to jump to
         OpenReplyCommand = ReactiveCommand.Create(OpenReply,
@@ -263,7 +299,17 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public void CopyLink() => _ = CopyLinkAsync();
 
+    public void CopyImage() => _ = CopyImageAsync();
+
+    public void SaveFileAs() => _ = SaveFileAsAsync();
+
     public void ViewProfile() => _ = ViewProfileAsync();
+
+    public void OpenSenderProfile()
+    {
+        if (!IsSenderDeleted)
+            OpenUserProfile(Message.SenderUserId);
+    }
 
     public async void Highlight()
     {
@@ -303,14 +349,29 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             await CopyMessageInteraction.Handle(CopyLinkText);
     }
 
+    private async Task CopyImageAsync()
+    {
+        var image = CopyImageTarget;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (image != null)
+            await CopyImageInteraction.Handle(image);
+    }
+
+    private async Task SaveFileAsAsync()
+    {
+        var file = ContextFile;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (file is { IsDownloading: false })
+            file.DownloadCommand.Execute().Subscribe();
+    }
+
     private async Task ViewProfileAsync()
     {
         await CloseFlyoutInteraction.Handle(RxVoid.Default);
 
-        if (IsSenderDeleted)
-            return;
-
-        _viewProfileCommand.Execute(Message.SenderUserId).Subscribe();
+        OpenSenderProfile();
     }
 
     private async Task StartReplyAsync()

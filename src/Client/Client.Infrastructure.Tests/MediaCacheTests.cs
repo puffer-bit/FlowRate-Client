@@ -64,6 +64,74 @@ public sealed class MediaCacheTests : IDisposable
         Assert.Equal(100, await cache.GetSizeAsync());
     }
 
+    [Fact]
+    public async Task Attachment_KeepsItsNameAndIsSeparateFromOtherMediaAndCoordinators()
+    {
+        var cache = Cache();
+        byte[] content = [0, 1, 127, 255];
+        var attachment = await cache.StoreFileAsync("coordinator", 5, "report.pdf", async stream =>
+        {
+            await stream.WriteAsync(content);
+            return true;
+        });
+        var image = await Store(cache, 5, 100, preview: false);
+        var other = await cache.StoreFileAsync("other", 5, "report.pdf", _ => Task.FromResult(true));
+
+        Assert.NotNull(attachment);
+        Assert.Equal("report.pdf", Path.GetFileName(attachment));
+        Assert.Equal(content, await File.ReadAllBytesAsync(attachment, TestContext.Current.CancellationToken));
+        Assert.Equal(attachment, cache.FindFile("coordinator", 5, "report.pdf"));
+        Assert.NotEqual(image, attachment);
+        Assert.NotEqual(other, attachment);
+        Assert.Null(cache.FindFile("coordinator", 6, "report.pdf"));
+    }
+
+    [Theory]
+    [InlineData("../report.pdf", "report.pdf")]
+    [InlineData("folder\\report.pdf", "report.pdf")]
+    [InlineData("..", "attachment")]
+    [InlineData("", "attachment")]
+    public async Task AttachmentName_StaysInsideItsCacheDirectory(string name, string expected)
+    {
+        var cache = Cache();
+        var path = await cache.StoreFileAsync("coordinator", 5, name, _ => Task.FromResult(true));
+
+        Assert.NotNull(path);
+        Assert.Equal(Path.Combine(_directory, "coordinator", "5.file", expected), path);
+    }
+
+    [Fact]
+    public async Task FailedAttachment_IsNotCachedAndLeavesNoPartialDownload()
+    {
+        var cache = Cache();
+        var path = await cache.StoreFileAsync("coordinator", 5, "report.pdf", async stream =>
+        {
+            await stream.WriteAsync(new byte[10]);
+            return false;
+        });
+
+        Assert.Null(path);
+        Assert.Null(cache.FindFile("coordinator", 5, "report.pdf"));
+        Assert.Empty(Directory.EnumerateFiles(_directory, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task AttachmentEndingInPart_IsCountedAndClearedAsACompletedFile()
+    {
+        var cache = Cache();
+        var path = await cache.StoreFileAsync("coordinator", 5, "download.part", async stream =>
+        {
+            await stream.WriteAsync(new byte[10]);
+            return true;
+        });
+
+        Assert.NotNull(path);
+        Assert.Equal(10, await cache.GetSizeAsync());
+        await cache.ClearAsync();
+        Assert.False(File.Exists(path));
+        Assert.Null(cache.FindFile("coordinator", 5, "download.part"));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("../0a1b")]

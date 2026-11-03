@@ -583,6 +583,10 @@
                 <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
                                       IsEnabled="{Binding HasCopyText}"
                                       Command="{Binding Copy}"/>
+                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                      IsVisible="{Binding HasContextFile}"
+                                      IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
+                                      Command="{Binding SaveFileAs}"/>
                 <!-- The profile is also where a user is renamed -->
                 <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
                                       IsEnabled="{Binding !IsSenderDeleted}"

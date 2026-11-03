@@ -45,7 +45,8 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
         await using var connection = await _database.OpenAsync();
 
         var coordinator = await connection.QueryFirstOrDefaultAsync<SavedCoordinatorRow>(
-            SelectCoordinators + " WHERE Address = @address AND Port = @port", new { address, port });
+            SelectCoordinators + " WHERE Address = @address AND Port = @port ORDER BY SaveOrder DESC LIMIT 1",
+            new { address, port });
 
         return coordinator == null ? null : await WithIdentitiesAsync(connection, coordinator);
     }
@@ -146,12 +147,14 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            INSERT INTO SavedCoordinators (CoordinatorId, Name, Address, Port)
-            VALUES (@CoordinatorId, @Name, @Address, @Port)
+            INSERT INTO SavedCoordinators (CoordinatorId, Name, Address, Port, SaveOrder)
+            VALUES (@CoordinatorId, @Name, @Address, @Port,
+                (SELECT COALESCE(MAX(SaveOrder), 0) + 1 FROM SavedCoordinators))
             ON CONFLICT (CoordinatorId) DO UPDATE SET
                 Name = excluded.Name,
                 Address = excluded.Address,
-                Port = excluded.Port
+                Port = excluded.Port,
+                SaveOrder = excluded.SaveOrder
             """, new { model.CoordinatorId, model.Name, model.Address, model.Port });
     }
 
