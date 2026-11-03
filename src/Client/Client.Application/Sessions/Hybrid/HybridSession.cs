@@ -147,8 +147,17 @@ public partial class HybridSession : IHybridSession
         State = HybridSessionState.WaitingForConnection;
     }
 
-    public void Connect(TransportParameters transportParameters)
+    public void Connect(TransportParameters? transportParameters)
     {
+        if (transportParameters == null)
+        {
+            _isWaitingForNode = true;
+            _isRejoinRequired = true;
+            State = HybridSessionState.WaitingForSfuNode;
+            ScheduleReconnect("joined while waiting for an SFU node");
+            return;
+        }
+
         if (_webRTCService.Connect(transportParameters))
             return;
 
@@ -761,14 +770,15 @@ public partial class HybridSession : IHybridSession
                     LogWaitingForNode(Model.Id);
                     State = HybridSessionState.WaitingForSfuNode;
 
-                    // Nothing is worth trying without a node, the server tells us when there is one
+                    // Notifications wake us immediately; periodically recheck in case recovery
+                    // arrived before the initial join response or another notification was missed.
                     await PauseAsync(ReconnectBackoff.LongestDelay, wake, cancellationToken);
                     wake = _reconnectWake.Task;
 
                     // A node that came back starts the attempts over, the first one at once
-                    attempt = 0;
+                    _isWaitingForNode = false;
+                    attempt = 1;
                     waitForRecovery = false;
-                    continue;
                 }
 
                 // Every second of the pause is a second of silence
@@ -781,7 +791,8 @@ public partial class HybridSession : IHybridSession
                 if (_isWaitingForNode)
                     continue;
 
-                State = HybridSessionState.Reconnecting;
+                if (State != HybridSessionState.WaitingForSfuNode)
+                    State = HybridSessionState.Reconnecting;
 
                 // A disconnected transport may come back on its own during the first pause, unless
                 // the server dropped what the node held for us
@@ -878,6 +889,13 @@ public partial class HybridSession : IHybridSession
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (result.IsSuccess && parameters == null)
+        {
+            _isWaitingForNode = true;
+            State = HybridSessionState.WaitingForSfuNode;
+            return (false, null);
+        }
 
         if (!result.IsSuccess || parameters == null)
         {

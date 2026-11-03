@@ -79,6 +79,8 @@ feedback for a network that delivers nothing. A screen that starts after the voi
 bitrate within a second or so. One that starts in the very round of the microphone used to be probed
 while only the voice was allocated, at twice its bitrate, and the result of that probe replaced the
 start bitrate: the field trial `WebRTC-Bwe-ProbingConfiguration/abort_further:true/` stops that probe.
+The same trial skips a probe when the estimate already exceeds its maximum: otherwise the default
+5 Mbit/s probe limit can lower an estimate that is already higher, even on a fast connection.
 
 A received picture goes to the decoder as soon as it is whole (`WebRTC-ForcePlayoutDelay` of 0), as
 in the GStreamer transport: the timing of libwebrtc held pictures 10-20 ms longer on a clean network

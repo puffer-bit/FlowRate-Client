@@ -311,7 +311,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 
                 // Off the UI thread: the first transport of a run loads the WebRTC plugins while
                 // it builds its pipeline, and the window would stand still for that long
-                await Task.Run(() => _hybridSession.Connect(result.Value!));
+                await Task.Run(() => _hybridSession.Connect(result.Value));
 
                 if (IsClosed)
                     return;
