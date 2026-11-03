@@ -12,6 +12,8 @@ public sealed partial class RememberedUsersRecorder
 {
     private readonly IRememberedUsersRepository _rememberedUsers;
     private readonly ILogger<RememberedUsersRecorder> _logger;
+    private readonly Lock _queueLock = new();
+    private Task _write = Task.CompletedTask;
 
     public RememberedUsersRecorder(IRememberedUsersRepository rememberedUsers, ILogger<RememberedUsersRecorder> logger)
     {
@@ -21,7 +23,18 @@ public sealed partial class RememberedUsersRecorder
 
     public void Track(ICoordinatorSession session)
     {
-        session.UsersReceived += users => _ = RememberAsync(users);
+        session.UsersReceived += users =>
+        {
+            lock (_queueLock)
+            {
+                var previous = _write;
+                _write = Task.Run(async () =>
+                {
+                    await previous.ConfigureAwait(false);
+                    await RememberAsync(users).ConfigureAwait(false);
+                });
+            }
+        };
     }
 
     private async Task RememberAsync(IEnumerable<UserModel> users)
