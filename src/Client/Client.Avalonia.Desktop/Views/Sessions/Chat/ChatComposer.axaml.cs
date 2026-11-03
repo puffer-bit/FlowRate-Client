@@ -158,6 +158,7 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
     {
         MessageInput.Focus();
         MessageInput.CaretIndex = MessageInput.Text?.Length ?? 0;
+        MessageInput.SelectionStart = MessageInput.SelectionEnd = MessageInput.CaretIndex;
     }
 
     /// <summary>

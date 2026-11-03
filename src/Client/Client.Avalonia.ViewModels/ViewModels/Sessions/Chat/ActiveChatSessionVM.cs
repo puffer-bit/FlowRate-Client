@@ -15,6 +15,7 @@ using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
@@ -153,6 +154,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     /// the stream to write into, or null when the user changed their mind.
     /// </summary>
     public Interaction<string, Stream?> PickFileSaveTarget { get; } = new();
+    public Interaction<string, bool> OpenFileInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> ScrollToEndCommand { get; }
 
@@ -169,6 +171,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     // The chat as last sent, for its permission overrides
     private ChatSessionModel _model;
     private readonly IChatImageService _images;
+    private readonly IMediaCache _mediaCache;
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly EventSubscriptions _subscriptions = new();
     private readonly int _currentUserId;
@@ -184,6 +187,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _readTracker = readTracker;
         _coordinatorSession = coordinatorSession;
         _images = services.Images;
+        _mediaCache = services.MediaCache;
         _viewProfileCommand = viewProfileCommand;
         _model = sessionModel;
         Id = sessionModel.Id;
@@ -248,7 +252,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         model.Files.Count == 0
             ? []
             : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
-                async fileName => await PickFileSaveTarget.Handle(fileName))).ToList();
+                async fileName => await PickFileSaveTarget.Handle(fileName), _mediaCache,
+                async path => await OpenFileInteraction.Handle(path))).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.
@@ -372,7 +377,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
             var messageVm = new ChatMessageVM(model, _currentUserId, _setReplyMessageCommand,
                 _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
-                ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model))
+                ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer)
             {
                 IsNew = isNew,
                 CanManageMessages = canManage

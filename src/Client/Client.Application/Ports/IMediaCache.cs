@@ -1,20 +1,20 @@
 namespace Client.Application.Ports;
 
 /// <summary>
-/// Images of messages and avatars kept as files between runs, so they are downloaded once. The oldest unused
+/// Message attachments and avatars kept as files between runs, so they are downloaded once. The oldest unused
 /// files go when the cache outgrows its limit.
 /// </summary>
 public interface IMediaCache
 {
     /// <summary>
-    /// How many bytes the kept images may take. Lowering it removes the images used longest ago.
+    /// How many bytes the cached media may take. Lowering it removes the files used longest ago.
     /// </summary>
     long SizeLimit { get; set; }
 
-    /// <summary>How many bytes the kept images take.</summary>
+    /// <summary>How many bytes the cached media take.</summary>
     Task<long> GetSizeAsync();
 
-    /// <summary>Removes every kept image.</summary>
+    /// <summary>Removes every cached media file.</summary>
     Task ClearAsync();
 
     /// <returns>The file of the image, or null when it is not kept.</returns>
@@ -32,4 +32,10 @@ public interface IMediaCache
 
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write);
+
+    /// <returns>The attachment with its original name, or null when it is not kept.</returns>
+    string? FindFile(string coordinatorInstanceId, int fileId, string fileName);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write);
 }

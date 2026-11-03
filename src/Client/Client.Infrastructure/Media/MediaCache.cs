@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace Client.Infrastructure.Media;
 
 /// <summary>
-/// Keeps the images in a directory, a subdirectory per coordinator. A file is written under a
-/// temporary name and renamed when complete, so a half-written image is never found.
+/// Keeps media in a directory, a subdirectory per coordinator. A file is written under a
+/// temporary name and renamed when complete, so an incomplete download is never found.
 /// </summary>
 public sealed partial class MediaCache : IMediaCache
 {
@@ -51,7 +51,7 @@ public sealed partial class MediaCache : IMediaCache
         {
             return Directory.Exists(_directory)
                 ? new DirectoryInfo(_directory).EnumerateFiles("*", SearchOption.AllDirectories)
-                    .Where(file => file.Extension != TemporaryExtension)
+                    .Where(file => !IsTemporary(file))
                     .Sum(file => file.Length)
                 : 0;
         }
@@ -70,7 +70,7 @@ public sealed partial class MediaCache : IMediaCache
         {
             // A download in progress keeps its unfinished file and is kept when it ends
             foreach (var file in new DirectoryInfo(_directory).EnumerateFiles("*", SearchOption.AllDirectories)
-                         .Where(file => file.Extension != TemporaryExtension))
+                         .Where(file => !IsTemporary(file)))
                 TryDelete(file.FullName);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -93,6 +93,13 @@ public sealed partial class MediaCache : IMediaCache
         Func<Stream, Task<bool>> write) =>
         StoreAsync(PathOfAvatar(coordinatorInstanceId, avatarId), write);
 
+    public string? FindFile(string coordinatorInstanceId, int fileId, string fileName) =>
+        Find(PathOfFile(coordinatorInstanceId, fileId, fileName));
+
+    public Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName,
+        Func<Stream, Task<bool>> write) =>
+        StoreAsync(PathOfFile(coordinatorInstanceId, fileId, fileName), write, namedFile: true);
+
     private static string? Find(string? path)
     {
         if (path == null || !File.Exists(path))
@@ -110,12 +117,15 @@ public sealed partial class MediaCache : IMediaCache
         return path;
     }
 
-    private async Task<string?> StoreAsync(string? path, Func<Stream, Task<bool>> write)
+    private async Task<string?> StoreAsync(string? path, Func<Stream, Task<bool>> write, bool namedFile = false)
     {
         if (path == null)
             return null;
 
-        var temporary = $"{path}.{Guid.NewGuid():N}{TemporaryExtension}";
+        // Named attachments can themselves end in .part; their temporary downloads live outside the .file directory.
+        var temporary = namedFile
+            ? Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(path)!)!, $"{Guid.NewGuid():N}{TemporaryExtension}")
+            : $"{path}.{Guid.NewGuid():N}{TemporaryExtension}";
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -174,10 +184,10 @@ public sealed partial class MediaCache : IMediaCache
 
             // A write in progress is younger than this
             var abandonedBefore = DateTime.UtcNow.AddHours(-1);
-            foreach (var file in files.Where(f => f.Extension == TemporaryExtension && f.LastWriteTimeUtc < abandonedBefore))
+            foreach (var file in files.Where(f => IsTemporary(f) && f.LastWriteTimeUtc < abandonedBefore))
                 TryDelete(file.FullName);
 
-            var kept = files.Where(f => f.Extension != TemporaryExtension).ToList();
+            var kept = files.Where(f => !IsTemporary(f)).ToList();
             var total = kept.Sum(f => f.Length);
             foreach (var file in kept.OrderBy(f => f.LastAccessTimeUtc))
             {
@@ -207,6 +217,21 @@ public sealed partial class MediaCache : IMediaCache
             ? PathOf(coordinatorInstanceId, avatarId + ".avatar")
             : null;
 
+    private string? PathOfFile(string coordinatorInstanceId, int fileId, string fileName)
+    {
+        var directory = PathOf(coordinatorInstanceId, fileId.ToString(CultureInfo.InvariantCulture) + ".file");
+        if (directory == null)
+            return null;
+
+        string name = Path.GetFileName(fileName.Replace('\\', '/'));
+        foreach (char invalid in Path.GetInvalidFileNameChars())
+            name = name.Replace(invalid, '_');
+        if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
+            name = "attachment";
+
+        return Path.Combine(directory, name);
+    }
+
     private string? PathOf(string coordinatorInstanceId, string fileName)
     {
         // The id comes from the server and becomes a directory name
@@ -226,6 +251,9 @@ public sealed partial class MediaCache : IMediaCache
         {
         }
     }
+
+    private static bool IsTemporary(FileInfo file) => file.Extension == TemporaryExtension
+        && file.Directory?.Name.EndsWith(".file", StringComparison.Ordinal) != true;
 
     [LoggerMessage(LogLevel.Warning, "The image was not kept as {Path}")]
     private partial void LogStoreFailed(Exception exception, string path);
