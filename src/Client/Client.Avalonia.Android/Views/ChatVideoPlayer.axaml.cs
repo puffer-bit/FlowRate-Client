@@ -109,13 +109,14 @@ public partial class ChatVideoPlayer : UserControl
 
     private void OnSeekPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (SeekSlider.IsEnabled && e.GetCurrentPoint(SeekSlider).Properties.IsLeftButtonPressed)
+        if (SeekSlider.IsEnabled && (e.Pointer.Type != PointerType.Mouse ||
+            e.GetCurrentPoint(SeekSlider).Properties.IsLeftButtonPressed))
             _seeking = true;
     }
 
     private void OnSeekReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton == MouseButton.Left)
+        if (e.Pointer.Type != PointerType.Mouse || e.InitialPressMouseButton == MouseButton.Left)
             CompleteSeek();
     }
 
@@ -141,13 +142,13 @@ public partial class ChatVideoPlayer : UserControl
 
     private void OnVolumePressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(VolumeSlider).Properties.IsLeftButtonPressed)
+        if (e.Pointer.Type != PointerType.Mouse || e.GetCurrentPoint(VolumeSlider).Properties.IsLeftButtonPressed)
             _changingVolume = true;
     }
 
     private void OnVolumeReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton == MouseButton.Left)
+        if (e.Pointer.Type != PointerType.Mouse || e.InitialPressMouseButton == MouseButton.Left)
             CompleteVolumeChange();
     }
 
