@@ -78,7 +78,7 @@
                     <Setter Property="IsEnabled" Value="{Binding Setting.IsEnabled}" />
                 </Style>
 
-                <!-- A tab, and under it its sub-items: lower, without an icon and in secondary text, set in by
+                <!-- A tab, and under it its sub-items: lower, without an icon, set in by
                      a line -->
                 <Style Selector="Grid.tab">
                     <Setter Property="Height" Value="40"/>
@@ -95,7 +95,7 @@
                 </Style>
                 <Style Selector="Grid.tab.sub > TextBlock">
                     <Setter Property="FontSize" Value="13"/>
-                    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected Grid.tab.sub > TextBlock">
                     <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
