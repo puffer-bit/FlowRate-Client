@@ -32,7 +32,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
         _peer = new VoicePeer(new PeerListener(listener));
         if (!isMicrophoneAllowed)
             _peer.SetMicrophoneEnabled(false);
-        VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, true);
+        AndroidCallAudioRouter.Instance.BeginCall();
     }
 
     // Only the microphone: no screen is sent from here
@@ -65,7 +65,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
         finally
         {
             _peer.Dispose();
-            VoicePeer.SetCommunicationMode(global::Android.App.Application.Context, false);
+            AndroidCallAudioRouter.Instance.EndCall();
         }
     }
 
