@@ -37,11 +37,12 @@ $installerUrl = "https://gstreamer.freedesktop.org/data/pkg/windows/$Version/msv
 # Plugins the client builds its pipelines from (file gst<name>.dll). Hardware plugins register their
 # elements only when the device is present. No GPL plugin is on the list (x264, x265, libav, ...).
 $plugins = @(
-    "fdkaac", "isomp4", "matroska", "avi", "playback", "typefindfunctions", "id3demux", "audioparsers", "wavparse", "mpg123",
+    "isomp4", "matroska", "avi", "playback", "typefindfunctions", "id3demux", "audioparsers", "wavparse", "mpg123",
     "coreelements", "app", "audioconvert", "audioresample", "audiomixer", "audiofx", "audiotestsrc", "volume", "level", "rawparse",
     "audiobuffersplit", "webrtcdsp", "autodetect", "videoconvertscale", "videorate",
     "opus", "rtp", "rtpmanager", "udp", "nice", "webrtc", "dtls", "srtp", "sctp", "sdpelem",
     "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp", "rsaudiofx",
+    # Media Foundation supplies mfaacdec for AAC in MP4 attachments; the installer has no fdkaac.
     "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
 )
 
@@ -49,7 +50,7 @@ $plugins = @(
 # licenses of everything it contains, x264 and ffmpeg included; only these are shipped.
 $licensePackages = @(
     "gstreamer-1.0", "gst-plugins-base-1.0", "gst-plugins-bad-1.0", "gst-plugins-rs",
-    "fdk-aac", "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
+    "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
     "opus", "webrtc-audio-processing", "abseil-cpp", "openh264", "libvpx", "dav1d", "svt-av1", "libnice", "libsrtp", "openssl"
 )
 
