@@ -38,8 +38,8 @@ public sealed partial class VoiceTransport
     [LoggerMessage(LogLevel.Information, "[Session {SessionId}] Screen sent on ssrc {Ssrc}, encoded by {Encoder}")]
     private partial void LogScreenStarted(int sessionId, uint ssrc, string encoder);
 
-    [LoggerMessage(LogLevel.Error, "[Session {SessionId}] The screen {Input} could not be captured")]
-    private partial void LogCaptureFailed(int sessionId, VideoInput input);
+    [LoggerMessage(LogLevel.Error, "[Session {SessionId}] The screen {Input} could not be captured with {Codec}: {Reason}")]
+    private partial void LogCaptureFailed(int sessionId, VideoInput input, VideoCodec codec, string reason);
 
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] The screen is encoded at {Kbps} kbit/s")]
     private partial void LogScreenBitrate(int sessionId, int kbps);
