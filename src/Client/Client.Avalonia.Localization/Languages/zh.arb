@@ -1220,5 +1220,20 @@
   "accountSecurity.error.unexpected": "意外错误：{error}",
   "accountSecurity.error.proofPassword": "请输入当前密码",
   "accountSecurity.error.codeFormat": "验证码为 6 位数字",
-  "accountSecurity.error.mismatch": "两次输入的密码不一致"
+  "accountSecurity.error.mismatch": "两次输入的密码不一致",
+  "chat.emoji.open": "选择表情",
+  "chat.emoji.search": "搜索表情",
+  "chat.emoji.recent": "最近使用",
+  "chat.emoji.results": "搜索结果",
+  "chat.emoji.empty": "未找到表情",
+  "chat.emoji.category.0": "笑脸与情感",
+  "chat.emoji.category.1": "人物与身体",
+  "chat.emoji.category.2": "动物与自然",
+  "chat.emoji.category.3": "食物与饮料",
+  "chat.emoji.category.4": "旅行与地点",
+  "chat.emoji.category.5": "活动",
+  "chat.emoji.category.6": "物品",
+  "chat.emoji.category.7": "符号",
+  "chat.emoji.category.8": "旗帜",
+  "chat.emoji.limit": "添加此表情将超出消息长度限制。"
 }

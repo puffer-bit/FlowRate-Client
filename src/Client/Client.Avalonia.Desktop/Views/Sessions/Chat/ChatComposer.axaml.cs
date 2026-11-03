@@ -1,12 +1,18 @@
 using System;
 using System.Linq;
+using System.IO;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Client.Views.Common;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using ReactiveUI.Primitives;
 using Client.ViewModels.Sessions.Chat;
+using Client.Avalonia.Controls.Emoji;
+using Client.Core.Chat;
+using Client.Tools.AppInfo;
+using Client.Avalonia.Localization;
 
 namespace Client.Views.Sessions.Chat;
 
@@ -16,9 +22,42 @@ namespace Client.Views.Sessions.Chat;
 /// </summary>
 internal partial class ChatComposer : ViewControl<ChatComposerVM>
 {
+    private static readonly Lazy<RecentEmoji> Recent = new(LoadRecentEmoji);
+    private Flyout EmojiFlyout => (Flyout)FlyoutBase.GetAttachedFlyout(EmojiButton)!;
+    private static string RecentPath => Path.Combine(AppDirectories.Data, "recent-emoji.txt");
+    private int _emojiSelectionStart;
+    private int _emojiSelectionEnd;
+    private ChatComposerVM? _emojiComposer;
+    private TopLevel? _emojiTopLevel;
+
     public ChatComposer()
     {
         InitializeComponent();
+
+        // Capture before the button or search takes focus; SelectedText preserves normal TextBox editing/undo.
+        EmojiButton.AddHandler(PointerPressedEvent, (_, _) => CaptureEmojiSelection(), RoutingStrategies.Tunnel);
+        EmojiFlyout.Opened += (_, _) =>
+        {
+            _emojiTopLevel = TopLevel.GetTopLevel(this);
+            if (_emojiTopLevel != null) _emojiTopLevel.SizeChanged += OnEmojiWindowSizeChanged;
+            SizeEmojiPicker();
+            EmojiPicker.Open(Recent.Value);
+        };
+        EmojiFlyout.Closed += (_, _) =>
+        {
+            if (_emojiTopLevel != null) _emojiTopLevel.SizeChanged -= OnEmojiWindowSizeChanged;
+            _emojiTopLevel = null;
+        };
+        SizeChanged += (_, _) => { if (EmojiFlyout.IsOpen) SizeEmojiPicker(); };
+        DetachedFromVisualTree += (_, _) => EmojiFlyout.Hide();
+        DataContextChanged += (_, _) => EmojiFlyout.Hide();
+        EmojiPicker.CloseRequested += (_, _) =>
+        {
+            EmojiFlyout.Hide();
+            MessageInput.Focus();
+        };
+        EmojiPicker.EmojiPicked += OnEmojiPicked;
+        EmojiPicker.RecentChanged += (_, _) => SaveRecentEmoji();
 
         // Tunnel: a TextBox that accepts returns inserts the line break itself before the event bubbles up
         MessageInput.AddHandler(KeyDownEvent, OnInputKeyDown, RoutingStrategies.Tunnel);
@@ -30,6 +69,81 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
             if (e.Property == TextBox.TextProperty || e.Property == TextBox.CaretIndexProperty)
                 ViewModel?.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
         };
+    }
+
+    private void CaptureEmojiSelection()
+    {
+        _emojiSelectionStart = MessageInput.SelectionStart;
+        _emojiSelectionEnd = MessageInput.SelectionEnd;
+        _emojiComposer = ViewModel;
+    }
+
+    private void OnEmojiButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (!MessageInput.IsEnabled || MessageInput.IsReadOnly) return;
+        // Keyboard activation does not have a preceding pointer press.
+        if (EmojiFlyout.IsOpen)
+        {
+            EmojiFlyout.Hide();
+            return;
+        }
+        CaptureEmojiSelection();
+        EmojiFlyout.ShowAt(EmojiButton);
+    }
+
+    private void OnEmojiWindowSizeChanged(object? sender, SizeChangedEventArgs e) => SizeEmojiPicker();
+
+    private void SizeEmojiPicker()
+    {
+        var window = _emojiTopLevel?.ClientSize ?? Bounds.Size;
+        EmojiPicker.Width = Math.Max(36, Math.Min(360, Math.Min(Bounds.Width, window.Width - 24) - 12));
+        EmojiPicker.Height = Math.Max(100, Math.Min(380, window.Height * 0.65));
+    }
+
+    private void OnEmojiPicked(object? sender, EmojiPickedEventArgs e)
+    {
+        if (!ReferenceEquals(_emojiComposer, ViewModel) || !MessageInput.IsEnabled || MessageInput.IsReadOnly)
+        {
+            EmojiFlyout.Hide();
+            return;
+        }
+
+        var text = MessageInput.Text ?? "";
+        int start = Math.Clamp(Math.Min(_emojiSelectionStart, _emojiSelectionEnd), 0, text.Length);
+        int end = Math.Clamp(Math.Max(_emojiSelectionStart, _emojiSelectionEnd), start, text.Length);
+        // Reject a whole sequence at the limit, instead of allowing TextBox to truncate a surrogate or joiner.
+        if (MessageInput.MaxLength > 0 && text.Length - (end - start) + e.Entry.Text.Length > MessageInput.MaxLength)
+        {
+            e.RejectionReason = Strings.Get("chat.emoji.limit");
+            return;
+        }
+
+        MessageInput.SelectionStart = start;
+        MessageInput.SelectionEnd = end;
+        MessageInput.SelectedText = e.Entry.Text;
+        MessageInput.CaretIndex = start + e.Entry.Text.Length;
+        // Keep the picker focused and continue the next insertion after this whole sequence.
+        _emojiSelectionStart = _emojiSelectionEnd = MessageInput.CaretIndex;
+        MessageInput.SelectionStart = MessageInput.SelectionEnd = MessageInput.CaretIndex;
+        e.Accepted = true;
+    }
+
+    private static RecentEmoji LoadRecentEmoji()
+    {
+        try { return new RecentEmoji(File.ReadLines(RecentPath)); }
+        catch (IOException) { return new RecentEmoji(); }
+        catch (UnauthorizedAccessException) { return new RecentEmoji(); }
+    }
+
+    private static void SaveRecentEmoji()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppDirectories.Data);
+            File.WriteAllLines(RecentPath, Recent.Value.Entries.Select(entry => entry.Text));
+        }
+        catch (IOException) { /* Picking still works when the profile cannot be written. */ }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>
