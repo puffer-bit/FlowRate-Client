@@ -446,10 +446,12 @@
             </ui:SettingsCard>
         </ui:SettingsPage>
 
-        <!-- ====== Voice and audio: the sounds of the interface only. There is no voice on Android yet,
-             and no sound packs: there is no folder here the user could put one into ====== -->
+        <!-- Voice routing and the sounds of the interface. -->
         <ui:SettingsPage Grid.Row="2" x:Name="AudioPage" IsVisible="False"
                          x:DataType="pagesVm:AudioControlVM">
+            <ui:SettingsCard>
+                <views:CallAudioDevicePicker Margin="12"/>
+            </ui:SettingsCard>
             <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
             <ui:SettingsCard>
                 <ui:SettingsRow services:SettingText.Key="audio.soundsEnabled">

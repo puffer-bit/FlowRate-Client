@@ -145,6 +145,10 @@
 
         <!-- Sheets lie over the status bar too. The menu of a message is written in the chat view and joins this layer in code -->
         <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="SheetLayer">
+            <views:BottomSheet x:Name="AudioDevicesMenu">
+                <views:CallAudioDevicePicker Margin="12"/>
+            </views:BottomSheet>
+
             <!-- Menu of the server, opened from its title in the menu: what the flyout of the desktop
                  shows, without what is not on Android yet -->
             <views:BottomSheet x:Name="ServerMenu">

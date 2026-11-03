@@ -9,6 +9,8 @@
     <!-- Voice -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- SCO call routing on Android 7–11; newer versions use AudioManager communication devices. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <!-- The voice session off the screen, see Platform/Calls/CallService -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
