@@ -3,20 +3,56 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:views="clr-namespace:Client.Droid.Views"
-             x:Class="Client.Droid.Views.ChatVideoPlayer" x:DataType="vm:ChatFileVM">
-    <Border MaxWidth="360" Padding="10" Margin="0,0,0,4" CornerRadius="8"
+             x:Class="Client.Droid.Views.ChatVideoPlayer"
+             x:DataType="vm:ChatFileVM">
+    <Border Width="320" Padding="10" Margin="0,0,0,4" CornerRadius="8"
             Background="{DynamicResource ColorOverlayMedium}">
         <StackPanel Spacing="6">
-            <views:AndroidVideoHost x:Name="VideoSurface" Height="200"/>
-            <Button Click="OnPlay" HorizontalAlignment="Stretch" ToolTip.Tip="{l:Text chat.video.play}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Image Source="{StaticResource PlayIcon}" Width="20" Height="20"/>
+            <views:PictureView x:Name="VideoSurface" Height="180" ClipToBounds="True"/>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <Button x:Name="PlayButton" Click="OnPlay" Width="36" Height="36"
+                        ToolTip.Tip="{l:Text chat.video.play}">
+                    <Panel>
+                        <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="20" Height="20" IsVisible="False"/>
+                        <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="20" Height="20"/>
+                        <Image x:Name="PauseImage" Source="{StaticResource AudioPauseIcon}" Width="20" Height="20" IsVisible="False"/>
+                    </Panel>
+                </Button>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                    <TextBlock Text="{Binding SizeText}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
                 </StackPanel>
-            </Button>
-            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="3" IsVisible="{Binding IsDownloading}"/>
-            <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}"/>
-            <TextBlock x:Name="PlaybackError" Text="{l:Text chat.video.failed}" IsVisible="False" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}"/>
+                <Button x:Name="VolumeButton" Grid.Column="2" Width="36" Height="36"
+                        ToolTip.Tip="{l:Text peer.volume}">
+                    <Image Source="{StaticResource HighVolumeIcon}" Width="18" Height="18"/>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="menuLabel" Text="{l:Text peer.volume}"/>
+                                <Grid Classes="menuRow" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="100"
+                                            ValueChanged="OnVolumeChanged" ToolTip.Tip="{l:Text peer.volume}"/>
+                                    <TextBlock x:Name="VolumeText" Grid.Column="1" Text="100%" MinWidth="34"
+                                               TextAlignment="Right" VerticalAlignment="Center" FontSize="11"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+            <Slider x:Name="SeekSlider" Minimum="0" Maximum="1" IsEnabled="False"
+                    ValueChanged="OnSeek" ToolTip.Tip="{l:Text chat.video.seek}"/>
+            <TextBlock x:Name="TimeText" Text="0:00 / 0:00" FontSize="11"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <TextBlock Text="{l:Text chat.file.saved}" IsVisible="{Binding IsSaved}" FontSize="11"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="3"
+                         IsVisible="{Binding IsDownloading}"/>
+            <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" FontSize="11"
+                       Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PlaybackError" Text="{l:Text chat.video.failed}" IsVisible="False"
+                       Foreground="{DynamicResource ErrorBrush}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
     </Border>
 </UserControl>
