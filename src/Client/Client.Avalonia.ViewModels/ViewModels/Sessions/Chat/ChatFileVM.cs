@@ -20,6 +20,10 @@ public class ChatFileVM : ReactiveObject
     public ChatFileContent File { get; }
     public string FileName => File.FileName;
     public string SizeText { get; }
+    public bool IsVideo => Path.GetExtension(FileName).ToLowerInvariant() is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
+    public bool IsMedia => IsAudio || IsVideo;
+    public bool IsAudio => Path.GetExtension(FileName).ToLowerInvariant() is ".mp3" or ".wav";
+    public (string Coordinator, int FileId) PlaybackKey => (_coordinator, File.Id);
 
     public bool IsDownloading
     {
@@ -109,6 +113,46 @@ public class ChatFileVM : ReactiveObject
         DownloadCommand = ReactiveCommand.CreateFromTask(DownloadOrCancel);
         // The command finishes immediately so another click can cancel the ongoing download.
         OpenCommand = ReactiveCommand.Create(() => { _ = OpenOrCancel(); });
+    }
+
+    /// <summary>Downloads media into the same cache used by file attachments.</summary>
+    public async Task<string?> GetPlaybackPathAsync(CancellationToken cancellationToken)
+    {
+        if (_download != null)
+            return null;
+
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _download = cancellation;
+        Error = null;
+        Progress = 0;
+        IsDownloading = true;
+        try
+        {
+            var (result, path) = await FetchAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (path != null)
+            {
+                Progress = 1;
+                return path;
+            }
+            if (result != MediaTransferResult.Canceled)
+                Error = Strings.Get(result == MediaTransferResult.NotFound ? "chat.file.gone" : "chat.file.downloadFailed");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Error = Strings.Get("chat.file.downloadFailed");
+            return null;
+        }
+        finally
+        {
+            _download = null;
+            IsDownloading = false;
+        }
     }
 
     private async Task OpenOrCancel()

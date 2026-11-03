@@ -10,6 +10,70 @@ namespace Client.Infrastructure.Tests;
 public class SettingsRepositoriesTests
 {
     [Fact]
+    public async Task ChatAudioVolumePersistsWithoutOverwritingOtherAudioSettings()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        Assert.Equal(1, await repository.GetChatAudioVolumeAsync());
+
+        await repository.UpdateChatAudioVolumeAsync(0.25);
+        await repository.SaveAsync(new AudioSettings { InputVolume = 1.5, SoundsVolume = 0.4 });
+        var reopened = new AudioSettingsRepository(database.Database);
+        Assert.Equal(0.25, await reopened.GetChatAudioVolumeAsync());
+
+        await reopened.UpdateChatAudioVolumeAsync(0.6);
+        var settings = await reopened.GetAsync();
+        Assert.Equal(1.5, settings.InputVolume);
+        Assert.Equal(0.4, settings.SoundsVolume);
+        Assert.Equal(0.6, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(2, 1)]
+    [InlineData(double.NaN, 1)]
+    public async Task ChatAudioVolumeIsClamped(double requested, double expected)
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        await repository.UpdateChatAudioVolumeAsync(requested);
+        Assert.Equal(expected, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Fact]
+    public async Task ChatVideoVolumePersistsWithoutOverwritingOtherAudioSettings()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        Assert.Equal(1, await repository.GetChatVideoVolumeAsync());
+
+        await repository.UpdateChatAudioVolumeAsync(0.8);
+        await repository.UpdateChatVideoVolumeAsync(0.25);
+        await repository.SaveAsync(new AudioSettings { InputVolume = 1.5, SoundsVolume = 0.4 });
+        var reopened = new AudioSettingsRepository(database.Database);
+        Assert.Equal(0.25, await reopened.GetChatVideoVolumeAsync());
+
+        await reopened.UpdateChatVideoVolumeAsync(0.6);
+        var settings = await reopened.GetAsync();
+        Assert.Equal(1.5, settings.InputVolume);
+        Assert.Equal(0.4, settings.SoundsVolume);
+        Assert.Equal(0.6, await repository.GetChatVideoVolumeAsync());
+        Assert.Equal(0.8, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(2, 1)]
+    [InlineData(double.NaN, 1)]
+    public async Task ChatVideoVolumeIsClamped(double requested, double expected)
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        await repository.UpdateChatVideoVolumeAsync(requested);
+        Assert.Equal(expected, await repository.GetChatVideoVolumeAsync());
+    }
+
+    [Fact]
     public async Task StorageSettingsStartWithTheDefaultsAndRoundTrip()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();

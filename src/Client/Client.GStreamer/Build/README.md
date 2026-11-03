@@ -65,6 +65,8 @@ libva itself is never bundled: it must match the VA drivers installed on the sys
 3. Check the license: `verify.sh` fails on a GPL plugin, `collect.sh` on a GPL library.
 4. Run `./build.sh`.
 
+AAC decoding for MP4 attachments uses `fdkaacdec` and the shared FDK AAC library built in the Dockerfile. Its Fraunhofer license text and source reference are included in the bundle. The codec is enabled after building that dependency, separately from `meson-options.txt`.
+
 ## Windows (win-x64)
 
 Run on Windows, no administrator rights needed:

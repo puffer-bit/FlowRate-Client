@@ -4,6 +4,7 @@
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Droid.Views.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
@@ -100,7 +101,10 @@
                 <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatFileVM">
-                            <Button Classes="msg-file" Classes.error="{Binding HasError}"
+                            <Panel>
+                            <views:ChatAudioPlayer IsVisible="{Binding IsAudio}"/>
+                            <views:ChatVideoPlayer IsVisible="{Binding IsVideo}"/>
+                            <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
                                     Command="{Binding OpenCommand}">
                                 <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                     <Border Grid.Column="0" Classes="msg-file-icon">
@@ -123,6 +127,7 @@
                                     </StackPanel>
                                 </Grid>
                             </Button>
+                            </Panel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
