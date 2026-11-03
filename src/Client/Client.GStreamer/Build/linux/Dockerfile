@@ -103,7 +103,10 @@ RUN git clone --depth 1 --branch "${PIPEWIRE_VERSION}" https://gitlab.freedeskto
 # A second build for libpipewire 1.2+, chosen by the loader where the system has it: its pipewiresrc
 # negotiates DMA-BUF modifiers (DMA_DRM caps), which the VA postprocessor takes without a copy
 ARG PIPEWIRE_MODERN_VERSION=1.2.7
+COPY patches/pipewire-caps-lifetime.patch /src/pipewire-caps-lifetime.patch
+# Keep an owned caps reference for format callbacks after the initial negotiation (PipeWire 1.6).
 RUN git clone --depth 1 --branch "${PIPEWIRE_MODERN_VERSION}" https://gitlab.freedesktop.org/pipewire/pipewire.git pipewire-modern \
+    && git -C pipewire-modern apply /src/pipewire-caps-lifetime.patch \
     && meson setup pipewire-modern/build pipewire-modern --prefix=/opt/pipewire-modern --libdir=lib --buildtype=release \
         -Dauto_features=disabled -Dgstreamer=enabled -Dsession-managers=[] \
         -Dexamples=disabled -Dtests=disabled -Dman=disabled -Ddocs=disabled \
