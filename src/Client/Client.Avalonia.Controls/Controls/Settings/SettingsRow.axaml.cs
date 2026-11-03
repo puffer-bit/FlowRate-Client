@@ -92,7 +92,7 @@ public class SettingsRow : ContentControl
 
     /// <summary>
     /// How deep the setting is nested under the rows above it: 0 for an independent setting,
-    /// 1 or 2 for one that refines the setting above. Nested rows are shifted to the right.
+    /// 1 or 2 for one that refines the setting above. Nested rows use the same alignment as other rows.
     /// </summary>
     public int IndentLevel
     {

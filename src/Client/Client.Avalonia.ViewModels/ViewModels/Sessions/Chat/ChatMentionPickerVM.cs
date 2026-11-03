@@ -149,6 +149,16 @@ public class ChatMentionPickerVM : ReactiveObject
         IsOpen = false;
     }
 
+    public string AppendUser(string? text, int userId, string name)
+    {
+        _pickedNames[name] = userId;
+        Close();
+        string prefix = text ?? string.Empty;
+        if (prefix.Length > 0 && !char.IsWhiteSpace(prefix[^1]))
+            prefix += " ";
+        return prefix + "@" + name + " ";
+    }
+
     /// <summary>
     /// Forgets the picked names, when the input starts a new message.
     /// </summary>

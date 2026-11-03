@@ -230,6 +230,17 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     /// </summary>
     public ChatMentionPickerVM MentionPicker { get; }
 
+    public event Action? MentionInserted;
+
+    public void MentionUser(int userId, string name)
+    {
+        if (!CanWrite || !IsConnected)
+            return;
+
+        InputtedText = MentionPicker.AppendUser(InputtedText, userId, name);
+        MentionInserted?.Invoke();
+    }
+
     public Interaction<RxVoid, IReadOnlyList<PickedFile>> PickAttachmentFiles { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> SendMessageCommand { get; }

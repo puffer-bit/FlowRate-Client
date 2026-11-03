@@ -68,6 +68,20 @@ public static class ChatMessageText
         return link >= 0 ? state.Runs[link].Text : null;
     }
 
+    public static ChatMentionSpan? GetMentionAt(TextBlock textBlock, Point position)
+    {
+        if (GetBody(textBlock) is not { } body || body.Mentions.Count == 0)
+            return null;
+
+        int character = FindCharacter(textBlock, position);
+        foreach (var mention in body.Mentions)
+        {
+            if (mention.UserId != null && character >= mention.Start && character < mention.End)
+                return mention;
+        }
+        return null;
+    }
+
     static ChatMessageText()
     {
         TextProperty.Changed.AddClassHandler<TextBlock>((textBlock, e) => Apply(textBlock, e.GetNewValue<string?>(), []));
@@ -84,9 +98,9 @@ public static class ChatMessageText
         var emoji = ChatEmoji.FindPresentation(text);
         var state = textBlock.GetValue(StateProperty);
 
-        if (links.Count == 0 && (mentions.Count > 0 || emoji.Count > 0))
+        if (links.Count == 0 && mentions.Count == 0 && emoji.Count > 0)
         {
-            // Mentions and emoji alone need no pointer handling
+            // Emoji alone need no pointer handling
             if (state != null)
             {
                 state.Reset([], []);
@@ -97,7 +111,7 @@ public static class ChatMessageText
             return;
         }
 
-        if (links.Count == 0)
+        if (links.Count == 0 && mentions.Count == 0)
         {
             // Setting the text also drops the runs of the message shown before
             if (state != null)
@@ -254,7 +268,13 @@ public static class ChatMessageText
 
         // A finger has no hover: the link would stay underlined after the tap
         if (e.Pointer.Type != PointerType.Touch)
+        {
             SetHovered(textBlock, state, FindLink(textBlock, state, position));
+            if (GetMentionAt(textBlock, position) != null)
+                textBlock.Cursor = new Cursor(StandardCursorType.Hand);
+            else if (state.Hovered < 0)
+                textBlock.ClearValue(InputElement.CursorProperty);
+        }
     }
 
     private static void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -272,12 +292,21 @@ public static class ChatMessageText
         if (!IsNear(position, state.PressedAt))
             return;
 
-        int link = FindLink(textBlock, state, position);
-        if (link < 0)
-            return;
-
         // A double click selects the word under it; the user is selecting, not following the link
         if (textBlock is SelectableTextBlock { SelectionStart: var start, SelectionEnd: var end } && start != end)
+            return;
+
+        if (GetMentionAt(textBlock, position) is { UserId: { } userId } mention
+            && textBlock.DataContext is ChatMessageVM message)
+        {
+            string name = GetText(textBlock)!.Substring(mention.Start + 1, mention.Length - 1);
+            ChatUserMenu.Open(textBlock, message, userId, name);
+            e.Handled = true;
+            return;
+        }
+
+        int link = FindLink(textBlock, state, position);
+        if (link < 0)
             return;
 
         _ = OpenAsync(textBlock, state.Links[link].Uri);
@@ -295,7 +324,10 @@ public static class ChatMessageText
     private static void OnPointerExited(object? sender, PointerEventArgs e)
     {
         if (sender is TextBlock textBlock && textBlock.GetValue(StateProperty) is { } state)
+        {
             SetHovered(textBlock, state, -1);
+            textBlock.ClearValue(InputElement.CursorProperty);
+        }
     }
 
     private static void OnPressCancelled(object? sender, RoutedEventArgs e)
@@ -327,17 +359,7 @@ public static class ChatMessageText
         if (state.Links.Count == 0)
             return -1;
 
-        // The selectable text moves its selection on a press and on a right click, which throws its
-        // text layout away; until it is measured again the layout has no runs and no link is found
-        if (!textBlock.IsMeasureValid)
-            textBlock.UpdateLayout();
-
-        var padding = textBlock.Padding;
-        var hit = textBlock.TextLayout.HitTestPoint(position - new Point(padding.Left, padding.Top));
-        if (!hit.IsInside)
-            return -1;
-
-        int character = hit.CharacterHit.FirstCharacterIndex;
+        int character = FindCharacter(textBlock, position);
 
         for (int i = 0; i < state.Links.Count; i++)
         {
@@ -346,6 +368,17 @@ public static class ChatMessageText
         }
 
         return -1;
+    }
+
+    private static int FindCharacter(TextBlock textBlock, Point position)
+    {
+        // A selection change invalidates the layout before the pointer handler runs.
+        if (!textBlock.IsMeasureValid)
+            textBlock.UpdateLayout();
+
+        var padding = textBlock.Padding;
+        var hit = textBlock.TextLayout.HitTestPoint(position - new Point(padding.Left, padding.Top));
+        return hit.IsInside ? hit.CharacterHit.FirstCharacterIndex : -1;
     }
 
     private static bool IsNear(Point a, Point b) =>

@@ -63,13 +63,24 @@
         <!-- Every user of the server, by name -->
         <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
             <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}"/>
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13"
-                       Foreground="{DynamicResource SecondaryTextBrush}"
-                       Text="{Binding TotalCount}"/>
+            <Border Grid.Column="1" VerticalAlignment="Center" Padding="10,4" CornerRadius="12"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}"
+                    BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="14" Height="14" Source="{StaticResource BaseUsersIcon}"/>
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding CountText}"/>
+                </StackPanel>
+            </Border>
             <TextBox Grid.Column="2" Width="200" VerticalAlignment="Center" Classes="search"
                      PlaceholderText="{l:Text serverSettings.users.filter}"
                      Text="{Binding Filter}"/>
         </Grid>
+
+        <TextBlock Text="{Binding RangeText}" FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding !!Users.Count}"/>
+
+        <TextBlock Text="{l:Text serverSettings.users.empty}" HorizontalAlignment="Center"
+                   Margin="0,16" Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding IsEmpty}"/>
 
         <loadingIndicators:ProgressRing Width="24" Height="24" HorizontalAlignment="Center"
                                         IsIndeterminate="True"
@@ -204,5 +215,12 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12" Margin="0,4,0,0"
+              IsVisible="{Binding HasMultiplePages}">
+            <Button Content="{l:Text serverSettings.users.previousPage}" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Grid.Column="1" Text="{Binding PageText}" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding NextPageCommand}"/>
+        </Grid>
     </ui:SettingsPage>
 </UserControl>

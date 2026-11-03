@@ -29,6 +29,7 @@
         <Grid ColumnDefinitions="46, *"> 
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
+                                x:Name="SenderAvatar" Tapped="OnAvatarTapped" Cursor="Hand"
                                 UserName="{Binding SenderName}"
                                 IsDeleted="{Binding IsSenderDeleted}"
                                 AvatarUrl="{Binding SenderAvatarUrl}"
@@ -40,6 +41,7 @@
                     <SelectableTextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
                                          Classes.deleted-user="{Binding IsSenderDeleted}"
                                          x:Name="NameTextBlock"
+                                         Cursor="Hand"
                                          ContextFlyout="{x:Null}"
                                          Text="{Binding SenderName}"
                                          Classes.role-colored="{Binding SenderColor, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -109,17 +111,18 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Files that are not shown; a click saves one where the user picks -->
+                <!-- The first click downloads an attachment; its check mark signals that another click opens it -->
                 <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatFileVM">
                             <Button Classes="msg-file" Classes.error="{Binding HasError}"
-                                    Command="{Binding DownloadCommand}"
+                                    Command="{Binding OpenCommand}"
                                     ToolTip.Tip="{Binding ActionToolTip}">
                                 <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                     <Border Grid.Column="0" Classes="msg-file-icon">
                                         <Panel>
-                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding !IsDownloading}"/>
+                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
                                             <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
                                         </Panel>
                                     </Border>

@@ -48,8 +48,15 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
                 vm.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
                     interaction.SetOutput(await PickFiles())).DisposeWith(subscriptions);
 
+                void FocusMention() => Dispatcher.UIThread.Post(Composer.FocusInputAtEnd, DispatcherPriority.Background);
+                vm.Composer.MentionInserted += FocusMention;
+                Disposable.Create(() => vm.Composer.MentionInserted -= FocusMention).DisposeWith(subscriptions);
+
                 vm.PickFileSaveTarget.RegisterHandler(async interaction =>
                     interaction.SetOutput(await PickSaveTarget(interaction.Input))).DisposeWith(subscriptions);
+
+                vm.OpenFileInteraction.RegisterHandler(async interaction =>
+                    interaction.SetOutput(await ChatFileLauncher.OpenAsync(this, interaction.Input))).DisposeWith(subscriptions);
 
                 // The viewer of an image is made anew for each image; saving asks this view where to
                 var viewerSubscription = new SerialDisposable().DisposeWith(subscriptions);
