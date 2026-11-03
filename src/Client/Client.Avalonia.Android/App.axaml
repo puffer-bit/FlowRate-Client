@@ -19,6 +19,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Menus/MenuItemButton.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/LoadingIndicators/ProgressRing.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="/Views/BottomSheet.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/ExpandableSection.axaml"/>

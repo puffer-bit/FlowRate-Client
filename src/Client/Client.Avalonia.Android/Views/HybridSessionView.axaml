@@ -6,6 +6,8 @@
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views"
              x:Class="Client.Droid.Views.HybridSessionView"
              x:DataType="hybridVm:ActiveHybridSessionVM"
@@ -49,12 +51,39 @@
     <!-- The session we are in: the screens shown in it, who is in it, and the microphone, the sound and
          the way out. Screens are only watched from here, not shared -->
     <Grid RowDefinitions="Auto, *, Auto">
-        <StackPanel Grid.Row="0" Margin="16,12" Spacing="2">
-            <TextBlock FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                       Text="{Binding StatusBar.SessionName}"/>
-            <TextBlock FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}"
-                       Text="{Binding StatusBar.StatusBarText}"/>
-        </StackPanel>
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" Margin="4,8,16,8">
+            <Button Grid.Column="0" Classes="borderless screen-action" Width="44" Height="44"
+                    Click="OnMenuClick">
+                <Path Classes="burger"/>
+            </Button>
+            <Button Grid.Column="1" Classes="borderless screen-action" Width="44" Height="44"
+                    Click="OnStatsClick" ToolTip.Tip="{l:Text hybrid.stats.open}">
+                <Panel Width="24" Height="24">
+                    <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                    IsIndeterminate="True" BorderThickness="3"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"
+                                                    IsVisible="{Binding StatusBar.IsLoading}"/>
+                    <indicators:SignalIndicator Width="22" Height="22"
+                                                Level="{Binding StatusBar.Stats.SignalLevel}"
+                                                IsVisible="{Binding StatusBar.IsConnected}"/>
+                    <Image Width="20" Height="20"
+                           Source="{Binding StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                        <Image.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!StatusBar.IsLoading"/>
+                                <Binding Path="!StatusBar.IsConnected"/>
+                            </MultiBinding>
+                        </Image.IsVisible>
+                    </Image>
+                </Panel>
+            </Button>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                <TextBlock FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                           Text="{Binding StatusBar.SessionName}"/>
+                <TextBlock FontSize="13" Foreground="{DynamicResource SecondaryTextBrush}"
+                           TextTrimming="CharacterEllipsis" Text="{Binding StatusBar.ShortStatusText}"/>
+            </StackPanel>
+        </Grid>
 
         <ScrollViewer Grid.Row="1">
             <StackPanel>
@@ -201,7 +230,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20" Margin="0,12,0,20">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12,0,20">
             <Button Classes="voice-action" Command="{Binding StatusBar.ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
                 <Panel>
@@ -220,6 +249,11 @@
                     <Image Width="24" Height="24" Source="{StaticResource CrossedHeadphonesIcon}"
                            IsVisible="{Binding !StatusBar.IsSoundOn}"/>
                 </Panel>
+            </Button>
+
+            <Button Classes="voice-action" Click="OnAudioDevicesClick"
+                    ToolTip.Tip="{l:Text hybrid.audio.device}">
+                <Image Width="24" Height="24" Source="{StaticResource GearIcon}"/>
             </Button>
 
             <Button Classes="voice-action" Command="{Binding StatusBar.CloseCommand}"

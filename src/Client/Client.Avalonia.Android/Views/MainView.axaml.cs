@@ -59,6 +59,7 @@ public partial class MainView : UserControl
     private AccountSecurityView? _securityView;
     private readonly List<LoginPromptVM> _loginPrompts = [];
     private SettingsView? _settingsView;
+    private HybridSessionStatsPage? _hybridStatsPage;
     private CreateSessionView? _createSessionView;
     private readonly IServiceProvider? _services;
     private TopLevel? _topLevel;
@@ -82,6 +83,7 @@ public partial class MainView : UserControl
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
         StatusMenu.Dismissed += () => TryClose(StatusMenu);
         PeerMenu.Dismissed += () => TryClose(PeerMenu);
+        AudioDevicesMenu.Dismissed += () => TryClose(AudioDevicesMenu);
 
         // Shown from here and not from the chat, which ends above the status bar
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
@@ -102,6 +104,9 @@ public partial class MainView : UserControl
         Sessions.StatusMenuRequested += () => StatusMenu.IsOpen = true;
         Sessions.PeerMenuRequested += OpenPeerMenu;
         _hybridView.PeerMenuRequested += OpenPeerMenu;
+        _hybridView.MenuRequested += OpenDrawer;
+        _hybridView.StatsRequested += OpenHybridStats;
+        _hybridView.AudioDevicesRequested += () => AudioDevicesMenu.IsOpen = true;
 
         // A tap on the session that is already shown changes nothing in the view model, but still means "go to it"
         Sessions.SessionTapped += () => Dispatcher.UIThread.Post(() =>
@@ -312,9 +317,19 @@ public partial class MainView : UserControl
     private void ShowCurrentScreen()
     {
         UpdateChatOnScreen();
+        if (_viewModel?.CurrentContent is not ActiveHybridSessionVM)
+            TryClose(AudioDevicesMenu);
+
+        // Statistics belong to the session that opened them.
+        if (_hybridStatsPage != null && (_viewModel?.CurrentContent is not ActiveHybridSessionVM currentHybrid
+            || !ReferenceEquals(_hybridStatsPage.DataContext, currentHybrid.StatusBar)))
+        {
+            _hybridStatsPage.DataContext = null;
+            _hybridStatsPage = null;
+        }
 
         var overlay = (Control?)_connectView ?? (Control?)_securityView ?? (Control?)_profileView
-                      ?? (Control?)_createSessionView ?? _settingsView;
+                      ?? (Control?)_createSessionView ?? (Control?)_settingsView ?? _hybridStatsPage;
         if (!ReferenceEquals(Overlay.Content, overlay))
         {
             // A form that closes leaves the way it came
@@ -354,6 +369,26 @@ public partial class MainView : UserControl
 
         Screen.Content = null;
         Home.IsVisible = true;
+    }
+
+    private void OpenHybridStats()
+    {
+        if (_hybridStatsPage != null || _viewModel?.CurrentContent is not ActiveHybridSessionVM hybrid)
+            return;
+
+        _hybridStatsPage = new HybridSessionStatsPage { DataContext = hybrid.StatusBar };
+        _hybridStatsPage.CloseRequested += CloseHybridStats;
+        ShowCurrentScreen();
+    }
+
+    private void CloseHybridStats()
+    {
+        if (_hybridStatsPage == null)
+            return;
+
+        _hybridStatsPage.DataContext = null;
+        _hybridStatsPage = null;
+        ShowCurrentScreen();
     }
 
     private void OpenDrawer() => Drawer.Classes.Set("open", true);
@@ -813,6 +848,13 @@ public partial class MainView : UserControl
             return;
         }
 
+        if (_hybridStatsPage != null)
+        {
+            CloseHybridStats();
+            e.Handled = true;
+            return;
+        }
+
         // An image opened over the chat covers everything of the chat
         if (_chatView.TryCloseImageViewer())
         {
@@ -830,7 +872,7 @@ public partial class MainView : UserControl
         // Over a session the menu the user opened is closed to get back to it. The menu back itself
         // led to stays, and so does the one without a session, see below
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
-            || TryClose(StatusMenu) || TryClose(PeerMenu)
+            || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(AudioDevicesMenu)
             || (_viewModel?.CurrentContent != null && !_isDrawerOpenedByBack && CloseDrawer()))
         {
             e.Handled = true;
