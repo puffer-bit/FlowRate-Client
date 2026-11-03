@@ -44,11 +44,13 @@ internal static partial class GstElementCheck
         // the moderate one of webrtcdsp and the voice gate goes by the level alone
         "audiornnoise",
         // Older runtimes can still join calls; the chat player reports unavailable decoders.
-        "fdkaacdec", "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
+        "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
     ];
 
-    // Missing only without PipeWire on the system, then screen sharing on Wayland is impossible anyway
-    private static readonly string[] OptionalLinux = ["pipewiresrc"];
+    private static readonly string[] OptionalWindows = ["mfaacdec"];
+
+    // PipeWire needs system support; older Linux runtimes may also lack the chat AAC decoder.
+    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec"];
 
     /// <summary>
     /// Logs what is missing and what encoders and decoders are available.
@@ -58,7 +60,8 @@ internal static partial class GstElementCheck
     public static bool Run(ILogger logger, bool isBundled)
     {
         var required = OperatingSystem.IsWindows() ? Required.Concat(RequiredWindows) : Required;
-        var optional = OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
+        var optional = OperatingSystem.IsWindows() ? Optional.Concat(OptionalWindows)
+            : OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
         if (isBundled)
             required = required.Concat(Av1);
         else

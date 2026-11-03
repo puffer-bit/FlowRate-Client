@@ -80,5 +80,5 @@ qtdemux
 matroskademux
 avidemux
 
-# AAC audio in MP4 attachments
-fdkaacdec
+# AAC audio in MP4 attachments, supplied by the Windows Media Foundation plugin
+mfaacdec

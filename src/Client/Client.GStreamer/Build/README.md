@@ -78,6 +78,12 @@ powershell -ExecutionPolicy Bypass -File collect.ps1
 
 The runtime is taken unmodified from the official GStreamer MSVC build.
 
+AAC decoding for MP4 attachments uses `mfaacdec` from the bundled `mediafoundation` plugin and the
+Windows Media Foundation AAC decoder. The official installer does not include `fdkaac`; the Windows
+bundle does not require the separate FDK AAC library used by the Linux build. `verify.ps1` requires
+`mfaacdec`, so missing Windows media components still fail verification rather than silently shipping
+without AAC support. The chat player's `playbin` selects the available decoder automatically.
+
 | File | Purpose |
 |---|---|
 | `collect.ps1` | the official installer (Inno Setup) cannot be unpacked without running it, so it installs it for the current user into a temporary folder, copies the plugins listed in `$plugins` together with the DLLs they import, collects licenses, uninstalls again, runs `verify.ps1` and packs the result |
