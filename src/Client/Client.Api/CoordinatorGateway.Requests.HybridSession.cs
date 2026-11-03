@@ -15,13 +15,12 @@ internal partial class CoordinatorGateway
         return response.Peers.ToDictionary(pair => pair.Key, pair => pair.Value.ToModel());
     }
 
-    public async Task<TransportParameters> JoinHybridSession(int sessionId, string clientEpoch)
+    public async Task<TransportParameters?> JoinHybridSession(int sessionId, string clientEpoch)
     {
         var request = new HybridSessionJoinRequest(sessionId) { ClientEpoch = clientEpoch };
         var response = await SendRequestAsync<HybridSessionJoinResponse>(request);
 
-        return response.TransportData?.ToModel()
-               ?? throw new UnexpectedResponseException("The join of a hybrid session carries no transport");
+        return response.TransportData?.ToModel();
     }
 
     public Task ConnectHybridSessionTransport(int sessionId, DtlsParameters dtlsParameters) =>

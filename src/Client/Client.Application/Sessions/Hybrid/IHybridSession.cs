@@ -24,7 +24,8 @@ public interface IHybridSession : IDisposable
     /// </summary>
     string ClientEpoch { get; }
 
-    void Connect(TransportParameters transportParameters);
+    /// <summary>A join without transport enters the session while waiting for an SFU node.</summary>
+    void Connect(TransportParameters? transportParameters);
     
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending the microphone to it.
