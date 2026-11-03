@@ -207,7 +207,7 @@ internal sealed partial class VoiceBot
         var joinStarted = Stopwatch.GetTimestamp();
         var (joinResult, transport) = await coordinator.JoinHybridSession(sessionModel.Id, session.ClientEpoch);
 
-        if (!joinResult.IsSuccess || transport == null)
+        if (!joinResult.IsSuccess)
             throw new InvalidOperationException($"{Name}: failed to join \"{sessionModel.Name}\": {joinResult}");
 
         session.Connect(transport);

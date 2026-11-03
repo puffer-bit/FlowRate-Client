@@ -272,7 +272,7 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> MoveSession(int sessionId, int? categoryId, int index);
     Task<RequestResult> MoveSessionCategory(int categoryId, int index);
     
-    Task<RequestResult<TransportParameters>> JoinHybridSession(int sessionId, string clientEpoch);
+    Task<RequestResult<TransportParameters?>> JoinHybridSession(int sessionId, string clientEpoch);
 
     Task<RequestResult> ConnectHybridSessionTransport(int sessionId, DtlsParameters dtlsParameters);
     Task<RequestResult<OutboundTrack>> StartVideoShareInHybridSession(int sessionId);
