@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Client.Application.Ports;
 using Gst;
 
@@ -34,12 +35,37 @@ internal static class VideoSourceFactory
     // Read once, and the probing instance is kept: disposing a fresh vapostproc crashed the client
     private static readonly Lazy<string?> DmaBufCapsOnce = new(ReadDmaBufCaps);
 
-    private static string? DmaBufCaps() => DmaBufCapsOnce.Value;
+    internal static string? DmaBufCaps() => DmaBufCapsOnce.Value;
 
-    private static string? ReadDmaBufCaps()
+    // Keep the compositor's RGB layout and modifiers until VA imports the frame.
+    internal static string? RgbDmaBufCaps()
+    {
+        var caps = DmaBufCaps();
+        if (caps == null) return null;
+        var formats = Regex.Matches(caps, @"\b(?:AR24|XR24|AB24|XB24)(?::0x[0-9a-fA-F]+)?")
+            .Select(match => match.Value).Distinct().ToArray();
+        return formats.Length == 0 ? null :
+            "video/x-raw(memory:DMABuf),format=DMA_DRM,drm-format=(string){" + string.Join(',', formats) + "}";
+    }
+
+    private static readonly Lazy<string?> DmaBufExportCapsOnce = new(() => ReadDmaBufCaps("src"));
+
+    internal static string? Nv12DmaBufExportCaps()
+    {
+        var caps = DmaBufExportCapsOnce.Value;
+        if (caps == null) return null;
+        var formats = Regex.Matches(caps, @"\bNV12(?::0x[0-9a-fA-F]+)?")
+            .Select(match => match.Value).Distinct().ToArray();
+        return formats.Length == 0 ? null :
+            "video/x-raw(memory:DMABuf),format=DMA_DRM,drm-format=(string){" + string.Join(',', formats) + "}";
+    }
+
+    private static string? ReadDmaBufCaps() => ReadDmaBufCaps("sink");
+
+    private static string? ReadDmaBufCaps(string padName)
     {
         var postprocessor = ElementFactory.Make("vapostproc", null);
-        var pad = postprocessor?.GetStaticPad("sink");
+        var pad = postprocessor?.GetStaticPad(padName);
         var caps = pad?.QueryCaps(null);
 
         var structures = caps?.ToString().Split(';', StringSplitOptions.TrimEntries)
@@ -51,30 +77,20 @@ internal static class VideoSourceFactory
         return structures is { Length: > 0 } ? string.Join("; ", structures) : null;
     }
 
-    // The capture chain ends in a sink of its own, see CaptureBridge. The rate is cut here already:
-    // a compositor delivers a frame per screen refresh, far more than is sent. Only dropped, never
-    // duplicated: a plain videorate fills the time before the first frame and every gap with copies,
-    // thousands of full-size frames at the start of a share. A drop-only videorate refuses a fixed
-    // framerate above the one of the capture, so none is set; plain video/x-raw keeps the frames in
-    // memory for a send branch that cannot take DMA-BUF. One that can leaves the format to the compositor.
-    //
-    // The buffers keep the timestamps of the capture, both halves run on the clock of one pipeline.
-    //
-    // A frame in memory is copied out of the buffer of PipeWire, which goes back to the compositor at
-    // once. KWin hands a stream only a few buffers, and the queues, the videorates and the bridge hold
-    // more than that: the compositor had none free for most of its frames, a share at 144 came out
-    // at 35 to 60 fps. A DMA-BUF frame stays as it is, its copy would leave the GPU; it would starve
-    // the compositor the same way, which is one more reason its capture is still off.
-    //
-    // The rate is cut right at the source, so what is dropped goes back at once and only the frames
-    // that are sent wait in the queue and get converted. The copy still takes every frame the
-    // compositor hands out: pipewiresrc makes it before anything here sees the frame.
+    // Memory capture keeps its copy before the queues. GPU capture instead converts RGB
+    // into an owned NV12 VA surface before the bridge: neither the encoder nor the preview
+    // may retain one of the compositor's scarce buffers. Rate limiting follows that import.
     private const string PipeWireDescription =
-        "pipewiresrc name=" + PipeWireElementName + " do-timestamp=true keepalive-time={0} always-copy={4} ! " +
-        "videorate drop-only=true max-rate={1} ! queue max-size-buffers=2 leaky=downstream ! {3}{2}" +
-        "appsink name=" + BridgeSinkName + " max-buffers=2 drop=true wait-on-eos=false sync=false async=false " +
-
+        "pipewiresrc name=" + PipeWireElementName + " do-timestamp=true min-buffers=1 keepalive-time={0} always-copy=true ! " +
+        "videorate drop-only=true max-rate={1} ! queue max-size-buffers=2 leaky=downstream ! videoconvert ! video/x-raw ! " +
+        "appsink name=" + BridgeSinkName + " max-buffers=2 drop=true enable-last-sample=false wait-on-eos=false sync=false async=false " +
         "appsrc name=" + BridgeSourceName + " is-live=true format=time max-buffers=2 leaky-type=downstream";
+
+    private const string PipeWireDmaBufDescription =
+        "pipewiresrc name=" + PipeWireElementName + " do-timestamp=true min-buffers=1 keepalive-time={0} always-copy=false ! " +
+        "capsfilter name=" + DmaBufFilterName + " ! vapostproc ! video/x-raw(memory:VAMemory),format=NV12 ! " +
+        "appsink name=" + BridgeSinkName + " max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=false async=false processing-deadline=0 " +
+        "appsrc name=" + BridgeSourceName + " is-live=true format=time max-buffers=1 leaky-type=downstream";
 
     /// <param name="onError">
     /// Receives the failures of a source that hands its frames over on a thread of its own.
@@ -103,14 +119,13 @@ internal static class VideoSourceFactory
         if (input.Remote.IsInvalid || input.Remote.IsClosed)
             return null;
 
-        var dmaBufCaps = acceptDmaBuf ? DmaBufCaps() : null;
+        var dmaBufCaps = acceptDmaBuf ? RgbDmaBufCaps() : null;
         acceptDmaBuf = dmaBufCaps != null;
 
         // The only open end is the output of the appsrc, which becomes the output of the bin
         var bin = Global.ParseBinFromDescription(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            PipeWireDescription, PipeWireKeepaliveMilliseconds, framerate,
-            dmaBufCaps != null ? "capsfilter name=" + DmaBufFilterName + " ! " : "video/x-raw ! ", acceptDmaBuf ? "" : "videoconvert ! ",
-            acceptDmaBuf ? "false" : "true"), true);
+            acceptDmaBuf ? PipeWireDmaBufDescription : PipeWireDescription,
+            PipeWireKeepaliveMilliseconds, framerate), true);
 
         if (bin?.GetByName(PipeWireElementName) is not { } source ||
             bin.GetByName(BridgeSinkName) is not { } bridgeSink ||
@@ -143,7 +158,8 @@ internal static class VideoSourceFactory
         if (acceptDmaBuf)
             Interop.GstVideoNative.AcceptVideoMeta(bridgeSink);
 
-        return new VideoSource(bin, new CaptureBridge(bridgeSink, bridgeSource, onError, onRate));
+        return new VideoSource(bin, new CaptureBridge(bridgeSink, bridgeSource, onError, onRate, framerate,
+            setEncoderFramerate: acceptDmaBuf));
     }
 
     // d3d11screencapturesrc paces itself at the rate it negotiates, and with nothing downstream to

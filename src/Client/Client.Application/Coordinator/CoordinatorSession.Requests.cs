@@ -87,7 +87,7 @@ public partial class CoordinatorSession
         IReadOnlyList<PermissionOverride> overrides) =>
         SendAsync(() => _gateway.ChangeSessionPermissions(sessionId, overrides));
 
-    public Task<RequestResult<TransportParameters>> JoinHybridSession(int sessionId, string clientEpoch) =>
+    public Task<RequestResult<TransportParameters?>> JoinHybridSession(int sessionId, string clientEpoch) =>
         SendAsync(() => _gateway.JoinHybridSession(sessionId, clientEpoch));
 
     public Task<RequestResult> ConnectHybridSessionTransport(int sessionId,

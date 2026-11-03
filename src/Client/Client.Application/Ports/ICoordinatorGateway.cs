@@ -165,7 +165,7 @@ public interface ICoordinatorGateway : IDisposable
     Task ConnectHybridSessionTransport(int sessionId,
         DtlsParameters dtlsParameters);
 
-    Task<TransportParameters> JoinHybridSession(int sessionId,
+    Task<TransportParameters?> JoinHybridSession(int sessionId,
         string clientEpoch);
     Task<OutboundTrack> StartVideoShareInHybridSession(int sessionId);
     Task StopVideoShareInHybridSession(int sessionId);
