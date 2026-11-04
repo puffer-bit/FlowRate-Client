@@ -801,8 +801,9 @@ fr_audio_source* fr_audio_source_create(void) {
   if (factory == nullptr)
     return nullptr;
 
-  // A custom source takes no part in the processing of the microphone, whatever these say
+  // Screen audio bypasses capture processing. Its sender must not change the shared microphone APM.
   RTCAudioOptions options;
+  options.apply_processing_options = false;
   options.echo_cancellation = false;
   options.noise_suppression = false;
   options.auto_gain_control = false;
