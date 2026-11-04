@@ -1,0 +1,29 @@
+diff --git a/libwebrtc/include/rtc_types.h b/libwebrtc/include/rtc_types.h
+--- a/libwebrtc/include/rtc_types.h
++++ b/libwebrtc/include/rtc_types.h
+@@ -115,4 +115,8 @@
+ struct RTCAudioOptions {
+   RTCAudioOptions() {}
+ 
++  // A custom screen source bypasses APM and must leave microphone options unset.
++  // Custom microphone sources still apply their processing options by default.
++  bool apply_processing_options = true;
++
+   bool echo_cancellation = true;
+diff --git a/libwebrtc/src/rtc_peerconnection_factory_impl.cc b/libwebrtc/src/rtc_peerconnection_factory_impl.cc
+--- a/libwebrtc/src/rtc_peerconnection_factory_impl.cc
++++ b/libwebrtc/src/rtc_peerconnection_factory_impl.cc
+@@ -236,6 +236,9 @@
+   auto rtc_options = webrtc::AudioOptions();
+-  rtc_options.echo_cancellation = options.echo_cancellation;
+-  rtc_options.auto_gain_control = options.auto_gain_control;
+-  rtc_options.noise_suppression = options.noise_suppression;
+-  rtc_options.highpass_filter = options.highpass_filter;
++  // Unset options do not overwrite the shared capture APM when this track sends.
++  if (options.apply_processing_options) {
++    rtc_options.echo_cancellation = options.echo_cancellation;
++    rtc_options.auto_gain_control = options.auto_gain_control;
++    rtc_options.noise_suppression = options.noise_suppression;
++    rtc_options.highpass_filter = options.highpass_filter;
++  }
+   webrtc::scoped_refptr<libwebrtc::LocalAudioSource> rtc_source_track =
