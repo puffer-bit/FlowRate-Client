@@ -103,6 +103,17 @@ The sound of a shown screen is captured by `IAudioMedia` (GStreamer: the process
 the streams of an application on PipeWire), cut into 10 ms and pushed into an `fr_audio_source` of its
 own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX,
 as the GStreamer transport does; nothing of the processing of the microphone touches it.
+Its source leaves audio processing options unset through `flowrate_screen_audio_options.patch`:
+libwebrtc applies sender options to the shared capture processor, so explicitly disabling AGC or
+echo cancellation for screen audio would also disable them for the microphone, even after the screen
+audio stops. Custom microphone sources continue to apply the user's processing settings.
+
+To check this regression on Windows, use two clients with libwebrtc and enable AGC and echo
+cancellation on the client sharing its screen. Compare its microphone volume before screen sharing,
+while sharing with audio, and after stopping. Repeat start/stop and test sharing without audio as a
+control. With speakers, check that the remote client's voice does not return through the sharing
+client's microphone. Repeat with headphones to distinguish acoustic echo from duplicate delivery.
+Also repeat with AGC and echo cancellation disabled: sharing must preserve these settings too.
 
 H.264 and VP8 go both ways, which are what the clients send. Android neither shows nor watches screens,
 as it has no `IVideoMedia`.

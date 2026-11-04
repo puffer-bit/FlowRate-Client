@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets">
 
     <Styles.Resources>
         <SolidColorBrush x:Key="MsgReplyBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.10"/>
@@ -107,7 +108,7 @@
          ☺ or ✔ written without the variation selector are in color too -->
     <Style Selector=":is(TextBlock).msg-body.jumbo">
         <Setter Property="FontSize" Value="40"/>
-        <Setter Property="FontFamily" Value="avares://Client.Avalonia.Assets/Fonts#Noto Color Emoji"/>
+        <Setter Property="FontFamily" Value="{x:Static icons:EmojiFont.Family}"/>
     </Style>
     <!-- A web address in the text; underlined while the pointer is over it -->
     <Style Selector=":is(TextBlock).msg-body Run.link">
