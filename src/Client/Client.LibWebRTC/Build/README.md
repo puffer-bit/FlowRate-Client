@@ -24,6 +24,7 @@ What goes in, pinned by both scripts:
 | `patches/flowrate_keep_sps.patch` | leaves the SPS of an H.264 screen as the encoder wrote it, sent and received: the picture buffer of one frame WebRTC writes into it made the decoders of GStreamer hold every picture until the next one came, a frame of latency at either end that went through libwebrtc |
 | `patches/flowrate_wasapi_autoconvert.patch` (Windows) | opens a device whose mix format matches none of the formats WebRTC tries (more than two channels, as a virtual 7.1 device has, or another rate) with the conversion of Windows instead of not at all |
 | `patches/flowrate_no_builtin_aec.patch` (Windows) | never uses the echo cancelling of Windows (its Voice Capture DMO records at 16 kHz and cannot be turned off once recording started), so the processing of WebRTC always runs on the full band |
+| `patches/flowrate_screen_audio_options.patch` | lets screen audio leave shared capture processing options unset, preserving microphone AGC, noise suppression and echo cancellation when screen audio starts and stops |
 
 Left out: the desktop capture of the wrapper, H.264 of WebRTC and, on Windows, the H.265 coder of
 Media Foundation. Screens are captured and encoded by GStreamer. The C++ runtime is linked in
@@ -83,7 +84,8 @@ The output is `prebuilt/win-x64/flowrate_webrtc.dll`. The script then runs `wind
 | `windows/build.ps1` | the same for Windows, after it has checked the prerequisites above |
 | `windows/verify.ps1` | loads `flowrate_webrtc.dll` from a folder with Windows alone on the search path and looks up every function of the header; opens no audio device. CI runs it on the published client |
 | `patches/flowrate_target.patch` | our change to the `BUILD.gn` of the wrapper, used by both scripts |
-| `patches/flowrate_audio_processing.patch`, `patches/flowrate_keep_sps.patch`, `patches/flowrate_wasapi_autoconvert.patch`, `patches/flowrate_no_builtin_aec.patch` | our changes to WebRTC, applied once like the patches of the wrapper; the last two on Windows only |
+| `patches/flowrate_audio_processing.patch`, `patches/flowrate_keep_sps.patch`, `patches/flowrate_screen_audio_options.patch` | shared changes to WebRTC and its wrapper, applied once like the patches of the wrapper |
+| `patches/flowrate_wasapi_autoconvert.patch`, `patches/flowrate_no_builtin_aec.patch` | additional Windows audio patches |
 | `LibWebRTCRuntime.targets` | copies `prebuilt/<rid>/` next to the executable on every build and publish |
 
 ### Moving to a newer WebRTC
