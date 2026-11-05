@@ -151,8 +151,9 @@ public interface ICoordinatorSession : IDisposable
     /// The token of the device's session kept with the saved identity; logs in without the second stage while the
     /// session lasts, and the identity takes over once it has ended.
     /// </param>
+    /// <param name="expectedCoordinatorId">The coordinator owning the saved identity; a different ID rejects the connection.</param>
     Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null,
-        string? sessionToken = null);
+        string? sessionToken = null, string? expectedCoordinatorId = null);
 
     /// <summary>
     /// Asks the user for the account password or a one-time code when a login, a reconnect too, needs them.

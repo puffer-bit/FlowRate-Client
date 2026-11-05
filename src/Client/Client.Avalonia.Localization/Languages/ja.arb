@@ -1235,5 +1235,7 @@
   "chat.emoji.category.6": "物",
   "chat.emoji.category.7": "記号",
   "chat.emoji.category.8": "旗",
-  "chat.emoji.limit": "この絵文字を追加するとメッセージの文字数制限を超えます。"
+  "chat.emoji.limit": "この絵文字を追加するとメッセージの文字数制限を超えます。",
+  "settings.accounting.forgetIdentity.title": "保存したアカウントを削除",
+  "settings.accounting.forgetIdentity.question": "この端末に保存した「{user}」のログイン情報を削除しますか？保存済みのパスワードとセッショントークンが削除されます。サーバー上のアカウントは残ります。"
 }

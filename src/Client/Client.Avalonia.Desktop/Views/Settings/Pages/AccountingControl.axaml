@@ -82,7 +82,7 @@
                             
                             <Button Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"
                                     ToolTip.Tip="{l:Text settings.accounting.forgetServer.tooltip}"
-                                    Command="{Binding $parent[ItemsControl].((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
+                                    Command="{Binding $parent[ItemsControl].((pagesVm:AccountingControlVM)DataContext).DeleteCoordinatorCommand}"
                                     CommandParameter="{Binding}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
@@ -108,7 +108,7 @@
                                 
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:SavedUserModel">
-                                        <Grid ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+                                        <Grid ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="8">
                                             <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
                                                    Source="{StaticResource UserIcon}"/>
                                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Username}"/>
@@ -117,6 +117,12 @@
                                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                                        TextTrimming="CharacterEllipsis"
                                                        Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"/>
+                                            <Button Grid.Column="3" VerticalAlignment="Center"
+                                                    ToolTip.Tip="{l:Text settings.accounting.forgetIdentity.title}"
+                                                    Command="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
+                                            </Button>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

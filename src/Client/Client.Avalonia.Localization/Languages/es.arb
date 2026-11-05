@@ -1235,5 +1235,7 @@
   "chat.emoji.category.6": "Objetos",
   "chat.emoji.category.7": "Símbolos",
   "chat.emoji.category.8": "Banderas",
-  "chat.emoji.limit": "Este emoji superaría el límite de longitud del mensaje."
+  "chat.emoji.limit": "Este emoji superaría el límite de longitud del mensaje.",
+  "settings.accounting.forgetIdentity.title": "Olvidar identidad",
+  "settings.accounting.forgetIdentity.question": "¿Olvidar la identidad guardada «{user}» en este dispositivo? Se eliminarán sus contraseñas guardadas y el token de sesión. La cuenta del servidor se conservará."
 }
