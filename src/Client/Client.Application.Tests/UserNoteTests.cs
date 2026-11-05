@@ -65,7 +65,8 @@ public class UserNoteTests
         Assert.NotNull(note.Error);
         Assert.False(note.IsSaved);
         Assert.False(note.IsBusy);
-        Assert.True(await note.SaveCommand.CanExecute.FirstAsync());
+        Assert.True(await note.SaveCommand.CanExecute.FirstAsync(canExecute => canExecute)
+            .ToTask(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
 
         repository.FailSave = false;
         await note.SaveCommand.Execute();
