@@ -8,6 +8,6 @@ public partial class SessionsListVM
     [LoggerMessage(LogLevel.Error, "Failed to get the peers of hybrid session {SessionId} ({SessionName}): {Result}")]
     private partial void LogPeersRequestFailed(int sessionId, string sessionName, RequestResult result);
 
-    [LoggerMessage(LogLevel.Warning, "Failed to get the unread counts of the chats: {Result}")]
+    [LoggerMessage(LogLevel.Warning, "Failed to load chat history for local unread counts: {Result}")]
     private partial void LogReadStatesLoadFailed(RequestResult result);
 }

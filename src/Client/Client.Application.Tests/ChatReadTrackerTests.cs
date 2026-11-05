@@ -10,17 +10,12 @@ public class ChatReadTrackerTests
     private const int Other = 2;
     private const int ChatId = 7;
 
-    private readonly ChatReadTracker _tracker = new(TimeSpan.Zero);
-    private readonly List<(int ChatId, int MessageId)> _sent = [];
+    private readonly ChatReadTracker _tracker = new();
 
     public ChatReadTrackerTests()
     {
-        _tracker.Attach(Me, (chatId, messageId) =>
-        {
-            _sent.Add((chatId, messageId));
-            return Task.CompletedTask;
-        });
-        _tracker.Load([new ChatReadState(ChatId, 10, 0, 0)]);
+        _tracker.AttachAsync("server", Me).GetAwaiter().GetResult();
+        _tracker.MarkRead(ChatId, 10);
     }
 
     private static ChatMessageModel Message(int id, int senderId, bool mentionsMe = false, bool here = false,
@@ -74,7 +69,7 @@ public class ChatReadTrackerTests
     }
 
     [Fact]
-    public void MarkRead_ClearsAtOnce_AndSendsThePosition()
+    public void MarkRead_ClearsAtOnce()
     {
         _tracker.OnMessageAdded(ChatId, Message(11, Other));
         ChatReadState? raised = null;
@@ -83,28 +78,60 @@ public class ChatReadTrackerTests
         _tracker.MarkRead(ChatId, 11);
 
         Assert.Equal(new ChatReadState(ChatId, 11, 0, 0), raised);
-        Assert.Equal([(ChatId, 11)], _sent);
     }
 
     [Fact]
-    public void MarkRead_OfWhatIsReadAlready_SendsNothing()
+    public void MarkRead_OfWhatIsReadAlready_DoesNotGoBack()
     {
         _tracker.MarkRead(ChatId, 10);
         _tracker.MarkRead(ChatId, 4);
 
-        Assert.Empty(_sent);
+        Assert.Equal(10, _tracker.Get(ChatId)!.LastReadMessageId);
     }
 
     [Fact]
-    public void ServerState_BehindThisDevice_IsIgnored()
+    public void HistoryAndLiveDelivery_CountEachMessageOnce()
     {
-        _tracker.MarkRead(ChatId, 20);
+        _tracker.OnMessageAdded(ChatId, Message(13, Other, mentionsMe: true));
+        _tracker.OnHistoryMessage(ChatId, Message(11, Other));
+        _tracker.OnHistoryMessage(ChatId, Message(12, Me));
+        _tracker.OnHistoryMessage(ChatId, Message(13, Other, mentionsMe: true));
 
-        _tracker.OnServerState(new ChatReadState(ChatId, 15, 3, 0));
-        Assert.Equal(20, _tracker.Get(ChatId)!.LastReadMessageId);
+        Assert.Equal(new ChatReadState(ChatId, 12, 1, 1), _tracker.Get(ChatId));
+    }
 
-        _tracker.OnServerState(new ChatReadState(ChatId, 25, 0, 0));
-        Assert.Equal(25, _tracker.Get(ChatId)!.LastReadMessageId);
+    [Fact]
+    public async Task ReadPositionSurvivesRestartAndIsIsolatedByServerAndAccount()
+    {
+        var repository = new MemoryReads();
+        var tracker = new ChatReadTracker(repository);
+        await tracker.AttachAsync("server", Me);
+        tracker.MarkRead(ChatId, 20);
+        tracker.Detach();
+        tracker = new ChatReadTracker(repository);
+        await tracker.AttachAsync("server", Me);
+        tracker.OnHistoryMessage(ChatId, Message(19, Other));
+        tracker.OnHistoryMessage(ChatId, Message(21, Other, mentionsMe: true));
+        Assert.Equal(new ChatReadState(ChatId, 20, 1, 1), tracker.Get(ChatId));
+
+        await tracker.AttachAsync("other-server", Me);
+        Assert.Null(tracker.Get(ChatId));
+        await tracker.AttachAsync("server", Other);
+        Assert.Null(tracker.Get(ChatId));
+    }
+
+    private sealed class MemoryReads : Client.Application.Ports.Repositories.IChatReadStateRepository
+    {
+        private readonly Dictionary<(string, int, int), ChatReadState> _states = new();
+        public Task<IReadOnlyList<ChatReadState>> GetAsync(string coordinatorInstanceId, int userId) =>
+            Task.FromResult<IReadOnlyList<ChatReadState>>(_states.Where(pair =>
+                pair.Key.Item1 == coordinatorInstanceId && pair.Key.Item2 == userId)
+                .Select(pair => pair.Value).ToArray());
+        public Task SetAsync(string coordinatorInstanceId, int userId, ChatReadState state)
+        {
+            _states[(coordinatorInstanceId, userId, state.ChatId)] = state;
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]

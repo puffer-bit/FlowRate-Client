@@ -6,7 +6,7 @@ namespace Client.Infrastructure.Database.Repositories;
 
 internal sealed class PushKeysRepository : IPushKeysRepository
 {
-    private const string SelectKeys = "SELECT KeyId, CoordinatorInstanceId, Key FROM PushKeys";
+    private const string SelectKeys = "SELECT KeyId, PushKeys.CoordinatorInstanceId, Key, UserId FROM PushKeys LEFT JOIN PushReadAccounts USING (CoordinatorInstanceId)";
 
     private readonly SqliteDatabase _database;
 
@@ -51,6 +51,11 @@ internal sealed class PushKeysRepository : IPushKeysRepository
                 KeyId = key.KeyId.ToLowerInvariant(),
                 Key = Convert.ToBase64String(key.Key)
             });
+        if (key.UserId is { } userId)
+            await connection.ExecuteAsync("""
+                INSERT INTO PushReadAccounts (CoordinatorInstanceId, UserId) VALUES (@CoordinatorInstanceId, @userId)
+                ON CONFLICT (CoordinatorInstanceId) DO UPDATE SET UserId = excluded.UserId
+                """, new { key.CoordinatorInstanceId, userId });
     }
 
     public async Task SetReplyTargetAsync(string coordinatorInstanceId, PushReplyTarget target)
@@ -85,9 +90,9 @@ internal sealed class PushKeysRepository : IPushKeysRepository
     }
 }
 
-internal sealed record PushKeyRow(string KeyId, string CoordinatorInstanceId, string Key)
+internal sealed record PushKeyRow(string KeyId, string CoordinatorInstanceId, string Key, long? UserId)
 {
-    public PushKey ToModel() => new(KeyId, CoordinatorInstanceId, Convert.FromBase64String(Key));
+    public PushKey ToModel() => new(KeyId, CoordinatorInstanceId, Convert.FromBase64String(Key), (int?)UserId);
 }
 
 internal sealed record PushReplyTargetRow(string? Address, long? Port, string? ReplyToken);
