@@ -811,11 +811,8 @@
   "source.audio.app.hint": "どのウィンドウを表示していても、選択したアプリケーションの音声のみが共有されます。",
   "source.audio.app.empty": "現在、音声を再生しているアプリケーションはありません。再生を始めるとリストに表示されます。",
   "source.bitrate.unit": "kbit/s",
-  "source.bitrate.tooLow": "選択した解像度とフレームレートには低すぎます。映像がブロック状に乱れることがあります。推奨は約 {bitrate} kbit/s です。配信は入力した値のまま開始されます。",
-  "source.bitrate.tooHigh": "選択した解像度とフレームレートに必要な値を大きく超えています。回線の遅い視聴者では映像が途切れることがあります。推奨は約 {bitrate} kbit/s です。配信は入力した値のまま開始されます。",
   "source.highFramerate.title": "高フレームレート",
   "source.highFramerate.message": "144 fps での配信は全員に高い負荷をかけます。GPU はより多くのフレームをエンコードし、配信には高速で安定した回線が必要です。視聴者が全フレームを見られるのは 144 Hz 以上のモニターだけです。低速な PC や回線では映像がカクつくことがあります。",
-  "source.bitrate.invalid": "1 から 999999 までの整数を入力してください。入力されるまでは自動のビットレート ({bitrate} kbit/s) が使われます。",
 
   "settings.title": "設定",
   "settings.loading": "データを読み込み中...",

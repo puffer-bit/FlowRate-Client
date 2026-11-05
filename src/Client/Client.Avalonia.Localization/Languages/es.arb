@@ -811,11 +811,8 @@
   "source.audio.app.hint": "Solo se comparte el sonido de la aplicación elegida, sea cual sea la ventana que muestres.",
   "source.audio.app.empty": "Ninguna aplicación reproduce sonido ahora mismo. Inicia la reproducción y aparecerá en la lista.",
   "source.bitrate.unit": "kbit/s",
-  "source.bitrate.tooLow": "Es poco para la resolución y los fotogramas elegidos: la imagen puede verse pixelada. Se recomiendan unos {bitrate} kbit/s. La transmisión usará tu valor de todos modos.",
-  "source.bitrate.tooHigh": "Es mucho más de lo que necesitan la resolución y los fotogramas elegidos: quienes tengan una conexión lenta pueden ver cortes. Se recomiendan unos {bitrate} kbit/s. La transmisión usará tu valor de todos modos.",
   "source.highFramerate.title": "Fotogramas altos",
   "source.highFramerate.message": "Transmitir a 144 fps exige mucho a todos: tu GPU codifica muchos más fotogramas, la transmisión necesita una conexión rápida y estable, y los espectadores solo verán la tasa completa en un monitor de 144 Hz o más. En equipos o conexiones lentos la imagen puede dar tirones.",
-  "source.bitrate.invalid": "Introduce un número entero de 1 a 999999. Hasta entonces se usa la tasa automática: {bitrate} kbit/s.",
 
   "settings.title": "Ajustes",
   "settings.loading": "Cargando datos...",
