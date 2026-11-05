@@ -483,7 +483,7 @@ public partial class MainWindowVM : ReactiveObject
     private void OnHybridSessionChanged(ActiveHybridSessionVM? session)
     {
         HybridSession = session;
-        SessionsList.SetEnteredHybridSession(session?.Model.Id);
+        SessionsList.SetEnteredHybridSession(session?.Model.Id, session?.StatusBar);
         RememberLastSession();
     }
 
