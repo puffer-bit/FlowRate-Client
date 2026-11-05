@@ -126,6 +126,7 @@ public partial class SessionsListVM : ReactiveObject
     private (int Id, bool IsHybrid)? _shownSession;
 
     private readonly ReactiveCommand<SessionModel, RxVoid> _showSessionCommand;
+    private readonly ReactiveCommand<int, RxVoid> _leaveChatCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveHybridSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editHybridSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
@@ -155,6 +156,7 @@ public partial class SessionsListVM : ReactiveObject
 
     public SessionsListVM(ReactiveCommand<RxVoid, RxVoid> connectCommand,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand,
         ReactiveCommand<int, RxVoid> leaveHybridSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editHybridSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
@@ -175,6 +177,7 @@ public partial class SessionsListVM : ReactiveObject
         Access.PermissionsUpdated += _ => ApplyAccess();
         ConnectCommand = connectCommand;
         _showSessionCommand = showSessionCommand;
+        _leaveChatCommand = leaveChatCommand;
         _leaveHybridSessionCommand = leaveHybridSessionCommand;
         _editHybridSessionCommand = editHybridSessionCommand;
         _editPermissionsCommand = editPermissionsCommand;
@@ -459,7 +462,8 @@ public partial class SessionsListVM : ReactiveObject
             _showSessionCommand,
             _deleteSessionCommand,
             _toggleChatMuteCommand,
-            _editPermissionsCommand)
+            _editPermissionsCommand,
+            _leaveChatCommand)
         {
             IsMuted = isMuted
         };

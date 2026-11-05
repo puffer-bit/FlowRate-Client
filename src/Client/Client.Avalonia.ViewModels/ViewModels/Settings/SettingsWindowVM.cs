@@ -184,7 +184,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         ResetAllSettingsCommand = ReactiveCommand.CreateFromTask(ResetAllSettings);
 
         SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity));
-        SettingList.Add(new BehaviorControlVM(behaviorService));
+        SettingList.Add(new BehaviorControlVM(behaviorService, accountingService));
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));
         SettingList.Add(new VideoControlVM(videoService, mediaCapabilities));
         SettingList.Add(new AppearanceControlVM(appearanceService, themeService, languageService));
