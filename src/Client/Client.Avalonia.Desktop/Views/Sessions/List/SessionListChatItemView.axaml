@@ -30,6 +30,7 @@
                     <StackPanel Spacing="2">
                         <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text sessions.openChat}"
                                               menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding !DataContext.IsShown, ElementName=Root}"
                                               Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
                         <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leaveChat}"

@@ -10,9 +10,7 @@ public partial class ChatSkeleton : UserControl
     private static readonly ChatSkeletonRow[] InitialRows = Enumerable.Range(0, 30)
         .Select(index => new ChatSkeletonRow(
             68 + index % 4 * 12,
-            new GridLength(2 + index % 3, GridUnitType.Star),
-            new GridLength(0.5 + index % 4 * 0.5, GridUnitType.Star),
-            index % 5 == 2))
+            new GridLength(2 + index % 3, GridUnitType.Star)))
         .ToArray();
 
     private static readonly ChatSkeletonRow[] OlderRows = InitialRows.Take(2).ToArray();
@@ -63,6 +61,4 @@ public partial class ChatSkeleton : UserControl
 
 public sealed record ChatSkeletonRow(
     double NameWidth,
-    GridLength FirstLineWidth,
-    GridLength LastLineWidth,
-    bool HasThirdLine);
+    GridLength MessageWidth);
