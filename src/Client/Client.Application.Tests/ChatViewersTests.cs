@@ -6,6 +6,7 @@ using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Sessions.Chat;
 using ReactiveUI;
+using ReactiveUI.Primitives.Concurrency;
 using System.Reactive.Linq;
 using Shared.Enums;
 using Xunit;
@@ -59,7 +60,7 @@ public sealed class ChatViewersTests
         {
             opened.Add(id);
             return closeProfile.Task;
-        });
+        }, outputScheduler: Sequencer.Immediate);
         using var vm = new ChatViewersVM(7, session, sharedProfile);
         vm.Open();
         var alice = vm.Users[0];
