@@ -44,6 +44,8 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
             {
                 Selection.Clear();
                 vm.ShowMessageBox.RegisterMessageBoxHandler(this).DisposeWith(subscriptions);
+                vm.StatusBar.ShowInfo.RegisterDialogHandler(this, () => new ChatInfoView())
+                    .DisposeWith(subscriptions);
 
                 vm.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
                     interaction.SetOutput(await PickFiles())).DisposeWith(subscriptions);

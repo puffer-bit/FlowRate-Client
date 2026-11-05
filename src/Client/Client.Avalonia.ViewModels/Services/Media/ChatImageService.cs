@@ -34,7 +34,7 @@ public sealed partial class ChatImageService : IChatImageService
     }
 
     public Task<ImagePreview?> CreateAsync(Func<Task<Stream>> openContent, CancellationToken cancellationToken = default) =>
-        Task.Run(async () =>
+        ImageDecoding.RunAsync(async () =>
         {
             try
             {
@@ -74,7 +74,7 @@ public sealed partial class ChatImageService : IChatImageService
         FetchAsync(session, imageId, preview: false, progress, cancellationToken);
 
     public Task<IImage?> DecodeAsync(Func<Task<Stream>> openContent, int maxSide) =>
-        Task.Run(async () =>
+        ImageDecoding.RunAsync(async () =>
         {
             try
             {
@@ -90,7 +90,7 @@ public sealed partial class ChatImageService : IChatImageService
 
     // The reduced copy is a still WebP: there is nothing to animate in it
     private Task<Bitmap?> DecodeStillAsync(string path) =>
-        Task.Run(() =>
+        ImageDecoding.RunAsync(() =>
         {
             try
             {

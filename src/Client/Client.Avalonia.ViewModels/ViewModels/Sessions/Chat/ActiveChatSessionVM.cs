@@ -566,6 +566,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Dispatcher.UIThread.Post(() =>
         {
             _model = session;
+            StatusBar.ApplySession(session);
             ApplyAccess(_coordinatorSession.Permissions);
         });
     }
@@ -590,7 +591,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public void Dispose()
     {
         _isDisposed = true;
-        StatusBar.Viewers?.Dispose();
+        StatusBar.Dispose();
         ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();

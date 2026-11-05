@@ -14,8 +14,8 @@ internal static class SkiaImages
     // A format that cannot be decoded reduced is decoded whole; more than this is not attempted
     private const long MaxDecodedPixels = 64L * 1024 * 1024;
 
-    // All the frames of one animation together, 64 MB; a longer one is reduced further to fit
-    private const double MaxAnimationPixels = 16.0 * 1024 * 1024;
+    // All the frames of one animation together, 16 MiB; a longer one is reduced further to fit
+    private const double MaxAnimationPixels = 4.0 * 1024 * 1024;
     private const int MaxFrames = 2000;
 
     // An animation that would have to be reduced below this is shown still instead

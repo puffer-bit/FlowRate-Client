@@ -87,7 +87,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IThemeService>(),
             provider.GetRequiredService<ILanguageService>(),
             provider.GetRequiredService<ICollapsedSectionsRepository>(),
-            provider.GetRequiredService<ILibWebRTCLoader>()));
+            provider.GetRequiredService<ILibWebRTCLoader>(),
+            provider.GetRequiredService<IReleaseNotesSource>()));
 
         return services;
     }

@@ -78,7 +78,7 @@ public sealed partial class AvatarService : IAvatarService
         }
     }
 
-    public Task<AvatarEditSession?> OpenEditorAsync(Func<Task<Stream>> openContent) => Task.Run(async () =>
+    public Task<AvatarEditSession?> OpenEditorAsync(Func<Task<Stream>> openContent) => ImageDecoding.RunAsync(async () =>
     {
         try
         {
@@ -97,7 +97,7 @@ public sealed partial class AvatarService : IAvatarService
     });
 
     public Task<(PreparedAvatar? Avatar, AvatarRejection Rejection)> PrepareAsync(Func<Task<Stream>> openContent) =>
-        Task.Run(async () =>
+        ImageDecoding.RunAsync(async () =>
         {
             try
             {
@@ -152,8 +152,12 @@ public sealed partial class AvatarService : IAvatarService
             if (path == null)
                 return null;
 
-            await using var content = File.OpenRead(path);
-            if (Pictures.Decode(content, Side) is not { } picture)
+            var picture = await ImageDecoding.RunAsync(() =>
+            {
+                using var content = File.OpenRead(path);
+                return Pictures.Decode(content, Side);
+            });
+            if (picture == null)
                 return null;
 
             _pictures[key] = new WeakReference<IImage>(picture);
