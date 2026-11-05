@@ -280,6 +280,19 @@
             </ItemsControl.Styles>
         </ItemsControl>
 
+        <loadingIndicators:ChatSkeleton Grid.Row="2"
+                                        Margin="4,0"
+                                        VerticalAlignment="Top"
+                                        IsVisible="{Binding IsInitialLoading}"/>
+
+        <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
+        <loadingIndicators:ChatSkeleton Grid.Row="2"
+                                        Margin="4,0"
+                                        VerticalAlignment="Top"
+                                        Background="{DynamicResource GeneralBrush}"
+                                        IsCompact="True"
+                                        IsVisible="{Binding IsLoadingOlder}"/>
+
         <!-- Shown while the chat has no messages -->
         <emptyStates:EmptyState Grid.Row="2"
                                 anim:Presence.Appear="Rise"
@@ -306,7 +319,7 @@
 
         <!-- Composer: the input and the send button in one rounded box. Enter starts a new line, as
              the keyboard of a phone has no other key for it; the button sends -->
-        <StackPanel Grid.Row="3" Margin="10,6,10,10" Spacing="6" IsVisible="{Binding !IsInitialLoading}">
+        <StackPanel Grid.Row="3" Margin="10,6,10,10" Spacing="6" IsEnabled="{Binding !IsInitialLoading}">
             <!-- Users to mention while a name after "@" is typed; a tap writes the name into the input -->
             <Border Classes="mention-list" IsVisible="{Binding Composer.MentionPicker.IsOpen}">
                 <ScrollViewer MaxHeight="220">
