@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddSingleton(databaseDirectory == null ? new SqliteDatabase() : SqliteDatabase.In(databaseDirectory));
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IDatabaseProtection, DatabaseProtection>();
+        services.AddSingleton<IReleaseNotesSource, Updates.GitHubReleaseNotesSource>();
 
         services.AddSingleton<IAccountingSettingsRepository, AccountingSettingsRepository>();
         services.AddSingleton<IAppearanceSettingsRepository, AppearanceSettingsRepository>();
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
         services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
         services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();
+        services.AddSingleton<IChatReadStateRepository, ChatReadStateRepository>();
         services.AddSingleton<ICoordinatorStateRepository, CoordinatorStateRepository>();
         services.AddSingleton<IPushKeysRepository, PushKeysRepository>();
         services.AddSingleton<IStorageSettingsRepository, StorageSettingsRepository>();

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
@@ -135,6 +136,25 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}"
+                              IsEnabled="{Binding CanReact}" Margin="0,4,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatReactionVM">
+                            <Button Classes="msg-reaction" Classes.mine="{Binding IsMine}"
+                                    Command="{Binding Toggle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding ReactionError}" IsVisible="{Binding HasReactionError}"
+                           Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
             </StackPanel>
         </Grid>
     </Border>

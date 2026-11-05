@@ -76,6 +76,7 @@ public sealed class ChatOpeningTests
                 { Id = 1, Username = "user", CoordinatorInstanceId = "coordinator" },
             "get_Permissions" => CoordinatorPermissions.None,
             "get_ConnectionStatus" => CoordinatorState.Connected,
+            nameof(ICoordinatorSession.GetChatTypingUsers) => new Dictionary<int, DateTimeOffset>(),
             _ when method.StartsWith("add_") || method.StartsWith("remove_") => null,
             _ => throw new InvalidOperationException(method)
         });
@@ -85,7 +86,7 @@ public sealed class ChatOpeningTests
         return new ActiveChatSessionVM(new ChatSessionModel
         {
             Id = 1, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
-        }, session, services, new ChatReadTracker(TimeSpan.Zero), command);
+        }, session, services, new ChatReadTracker(), command);
     }
 
     private static T Proxy<T>(Func<string, object?> call) where T : class

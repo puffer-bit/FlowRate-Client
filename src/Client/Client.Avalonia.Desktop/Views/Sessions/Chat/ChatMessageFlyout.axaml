@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              x:Class="Client.Views.Sessions.Chat.ChatMessageFlyout"
@@ -8,6 +9,32 @@
 
     <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
     <StackPanel Spacing="2">
+        <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
+                              IsVisible="{Binding CanReact}">
+            <menus:MenuItemButton.Flyout>
+                <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="reaction-picker">
+                    <ItemsControl ItemsSource="{Binding ReactionChoices}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatReactionVM">
+                                <menus:MenuItemButton Command="{Binding Choose}" menus:FlyoutMenu.CloseOnClick="True">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <menus:MenuItemButton.IconContent>
+                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMine}"/>
+                                    </menus:MenuItemButton.IconContent>
+                                </menus:MenuItemButton>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Flyout>
+            </menus:MenuItemButton.Flyout>
+        </menus:MenuItemButton>
+
         <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
                               Command="{Binding StartReply}"/>
         <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"

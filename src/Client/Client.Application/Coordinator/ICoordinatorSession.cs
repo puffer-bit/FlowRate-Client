@@ -73,7 +73,12 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>
     /// The read position of the user moved in a chat, here or on another device of the user.
     /// </summary>
+    /// <summary>Active authors and their original expiry times, including chats not opened yet.</summary>
+    IReadOnlyDictionary<int, DateTimeOffset> GetChatTypingUsers(int chatId);
+
+    event Action<int, int, bool>? ChatUserTyping;
     event Action<ChatReadState>? ChatReadStateChanged;
+    event Action<ChatViewersChangedEvent>? ChatViewersChanged;
 
     /// <summary>
     /// Every peer event of every hybrid session, including the ones raised separately above.
@@ -356,6 +361,9 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>Every user of the coordinator, banned ones too, by name.</summary>
     Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers();
 
+    Task<RequestResult<IReadOnlyList<UserModel>>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe);
+
     UserModel GetCurrentUser();
     SavedUserModel GetCurrentUserCredentials();
 
@@ -379,6 +387,8 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> DeleteUser(int userId);
     bool ValidateUsername(string username);
     
+    Task<RequestResult> SetChatTyping(int sessionId, bool isTyping);
+
     Task<RequestResult> SendChatMessage(NewChatMessage message);
 
     /// <summary>
@@ -422,6 +432,9 @@ public interface ICoordinatorSession : IDisposable
     /// Replaces the text of the user's own message. On success <see cref="TextMessageEdited"/> is raised.
     /// </summary>
     Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
+
+    /// <summary>Sets the current user's reaction; updates arrive through TextMessageEdited.</summary>
+    Task<RequestResult> SetMessageReaction(int chatId, int messageId, string emoji, bool isAdded);
 
     /// <summary>
     /// The read positions and unread counts of all chats of the user.

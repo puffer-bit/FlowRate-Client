@@ -162,6 +162,14 @@ internal partial class CoordinatorGateway
         }
     }
 
+    public async Task<IReadOnlyList<UserModel>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe)
+    {
+        var response = await SendRequestAsync<ChatViewersResponse>(
+            new ChatViewersRequest(chatId, subscriptionId, subscribe));
+        return response.Users.Select(user => user.ToModel()).ToList();
+    }
+
     public async Task<IReadOnlyList<UserModel>> GetAllUsers()
     {
         var response = await SendRequestAsync<CoordinatorUserListResponse>(new CoordinatorUserListRequest());
@@ -291,11 +299,17 @@ internal partial class CoordinatorGateway
         return (await SendRequestAsync<ChatSessionMessageResponse>(request)).Message.ToModel();
     }
 
+    public Task SetChatTyping(int sessionId, bool isTyping) =>
+        SendRequestAsync<ChatTypingResponse>(new ChatTypingRequest(sessionId, isTyping));
+
     public Task SendChatMessage(int sessionId, NewChatMessage newMessage) =>
         SendRequestAsync<SendMessageResponse>(new SendMessageRequest(sessionId, newMessage.ToDto()));
 
     public Task DeleteChatMessage(int sessionId, int messageId) =>
         SendRequestAsync<DeleteMessageResponse>(new DeleteMessageRequest(sessionId, messageId));
+
+    public Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded) =>
+        SendRequestAsync<SetMessageReactionResponse>(new SetMessageReactionRequest(sessionId, messageId, emoji, isAdded));
 
     public Task EditChatMessage(int sessionId, int messageId, string text) =>
         SendRequestAsync<EditMessageResponse>(new EditMessageRequest(sessionId, messageId, text));

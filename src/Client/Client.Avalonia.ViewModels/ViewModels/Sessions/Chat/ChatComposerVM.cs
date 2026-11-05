@@ -25,7 +25,7 @@ namespace Client.ViewModels.Sessions.Chat;
 /// The input of a chat: the text being typed, the files attached to it, the message it answers
 /// or edits, and sending all of that.
 /// </summary>
-public sealed class ChatComposerVM : ReactiveObject, IDisposable
+public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
 {
     public string InputWatermark => CanWrite
         ? Strings.Format("chat.input.watermark", ("chat", _chatName))
@@ -39,6 +39,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(InputWatermark));
+            if (!value) StopTyping();
         }
     } = true;
 
@@ -47,7 +48,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         get;
         set
         {
+            if (field == value)
+                return;
             this.RaiseAndSetIfChanged(ref field, value);
+            OnTypingInputChanged();
             this.RaisePropertyChanged(nameof(RemainingCharacters));
             this.RaisePropertyChanged(nameof(IsLengthCounterVisible));
             // A failed send is about the text that was there; editing it starts over
@@ -124,7 +128,11 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     public bool IsConnected
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (!value) StopTyping();
+        }
     }
 
     /// <summary>
@@ -375,7 +383,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         EditMessage = messageModel;
         EditPreview = new ChatReplyPreviewVM(messageModel, isEdit: true);
         EditPreview.RenderText(_senders.RenderText);
-        InputtedText = MentionPicker.Decode(messageModel.TextContent.Text, _senders.FindName);
+        SetRestoredText(MentionPicker.Decode(messageModel.TextContent.Text, _senders.FindName));
     }
 
     private void EndEdit()
@@ -385,7 +393,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
 
         EditMessage = null;
         EditPreview = null;
-        InputtedText = _draftText ?? string.Empty;
+        SetRestoredText(_draftText ?? string.Empty);
         _draftText = null;
     }
 
@@ -480,6 +488,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             return;
         }
 
+        StopTyping();
         IsMessageSending = true;
         SendError = null;
         using var cancellation = _sendCancellation = new CancellationTokenSource();
@@ -617,6 +626,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             return;
         }
 
+        StopTyping();
         IsMessageSending = true;
         try
         {
@@ -642,5 +652,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         }
     }
 
-    public void Dispose() => _sendCancellation?.Cancel();
+    public void Dispose()
+    {
+        StopTyping();
+        _typingDisposed = true;
+        _sendCancellation?.Cancel();
+    }
 }

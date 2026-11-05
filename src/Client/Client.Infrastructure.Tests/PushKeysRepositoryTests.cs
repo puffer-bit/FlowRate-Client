@@ -4,6 +4,7 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class PushKeysRepositoryTests
 {
     private static PushKey Key(string keyId, string coordinator, byte fill = 1) =>
@@ -15,13 +16,14 @@ public class PushKeysRepositoryTests
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new PushKeysRepository(database.Database);
 
-        await repository.SaveAsync(Key("ABCDEF", "coordinator", 7));
+        await repository.SaveAsync(Key("ABCDEF", "coordinator", 7) with { UserId = 42 });
 
         var byCoordinator = await repository.GetByCoordinatorAsync("coordinator");
         var byId = await repository.GetByKeyIdAsync("abcdef");
 
         Assert.NotNull(byCoordinator);
         Assert.Equal("abcdef", byCoordinator.KeyId);
+        Assert.Equal(42, byCoordinator.UserId);
         Assert.Equal(Enumerable.Repeat((byte)7, 32), byCoordinator.Key);
         Assert.Equal("coordinator", byId?.CoordinatorInstanceId);
         Assert.Null(await repository.GetByCoordinatorAsync("other"));

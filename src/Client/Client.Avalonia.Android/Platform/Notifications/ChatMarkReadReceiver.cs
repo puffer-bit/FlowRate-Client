@@ -9,9 +9,7 @@ using Serilog;
 namespace Client.Droid.Platform.Notifications;
 
 /// <summary>
-/// The "Mark as read" button of a chat notification: moves the read position of the user on the
-/// coordinator over HTTP, like <see cref="ChatReplyReceiver"/>, so the other devices of the user
-/// clear their counters too.
+/// The "Mark as read" button stores the read position on this device.
 /// </summary>
 [BroadcastReceiver(Enabled = true, Exported = false)]
 internal sealed class ChatMarkReadReceiver : BroadcastReceiver
@@ -21,18 +19,19 @@ internal sealed class ChatMarkReadReceiver : BroadcastReceiver
         if (context == null || ChatNotifications.ReadMarkRead(intent) is not { } read)
             return;
 
-        // The user is done with the messages either way; a position that did not reach the server
-        // is moved the next time the chat is opened
+        // Dismiss the notification immediately; persist the position below.
         ChatNotifications.Clear(context, read.CoordinatorInstanceId, read.ChatId);
 
-        // Keeps the process alive while the request goes; the system allows about ten seconds
+        // Keeps the process alive while the local position is saved.
         var pending = GoAsync();
         _ = Task.Run(async () =>
         {
             try
             {
-                await PushMessageHandler.Services.Value.GetRequiredService<PushReplies>()
+                var result = await PushMessageHandler.Services.Value.GetRequiredService<PushReplies>()
                     .MarkReadAsync(read.CoordinatorInstanceId, read.ChatId, read.MessageId);
+                if (result == Client.Core.Push.PushReplyResult.Sent)
+                    PushMessageHandler.ChatMarkedRead?.Invoke(read.CoordinatorInstanceId, read.ChatId, read.MessageId);
             }
             catch (Exception exception)
             {

@@ -174,7 +174,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         IThemeService themeService,
         ILanguageService languageService,
         ICollapsedSectionsRepository collapsedSectionsRepository,
-        ILibWebRTCLoader libWebRTCLoader)
+        ILibWebRTCLoader libWebRTCLoader,
+        IReleaseNotesSource releaseNotes)
     {
         _collapsedSectionsRepository = collapsedSectionsRepository;
         CloseWindow = new Interaction<RxVoid, RxVoid>();
@@ -184,7 +185,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         ResetAllSettingsCommand = ReactiveCommand.CreateFromTask(ResetAllSettings);
 
         SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity));
-        SettingList.Add(new BehaviorControlVM(behaviorService, accountingService));
+        var behavior = new BehaviorControlVM(behaviorService, accountingService);
+        SettingList.Add(behavior);
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));
         SettingList.Add(new VideoControlVM(videoService, mediaCapabilities));
         SettingList.Add(new AppearanceControlVM(appearanceService, themeService, languageService));
@@ -193,7 +195,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));
         SettingList.Add(new ExperimentalControlVM(appearanceService, audioService, libWebRTCLoader));
-        SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion()));
+        SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion(), releaseNotes, updatePreferences: behavior));
 
         Strings.LanguageChanged += OnLanguageChanged;
 

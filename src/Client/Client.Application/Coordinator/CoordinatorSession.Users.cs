@@ -28,6 +28,10 @@ public partial class CoordinatorSession
     public Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers() =>
         SendAsync(_gateway.GetAllUsers);
 
+    public Task<RequestResult<IReadOnlyList<UserModel>>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe) =>
+        SendAsync(() => _gateway.SetChatViewersSubscription(chatId, subscriptionId, subscribe));
+
     public UserModel GetCurrentUser() =>
         _currentUser ?? throw new InvalidOperationException("Not logged in to the coordinator");
 

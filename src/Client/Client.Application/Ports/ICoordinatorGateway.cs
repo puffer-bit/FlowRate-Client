@@ -128,6 +128,8 @@ public interface ICoordinatorGateway : IDisposable
     Task<List<UserModel>> SearchUsers(string query, int limit);
     /// <summary>Every user of the coordinator but the system one, by name.</summary>
     Task<IReadOnlyList<UserModel>> GetAllUsers();
+
+    Task<IReadOnlyList<UserModel>> SetChatViewersSubscription(int chatId, Guid subscriptionId, bool subscribe);
     /// <summary>Renames the given user, or the current one when <paramref name="userId"/> is null.</summary>
     Task<UserModel> ChangeUsername(string username, int? userId = null);
 
@@ -197,10 +199,13 @@ public interface ICoordinatorGateway : IDisposable
         int take);
     Task<ChatMessageModel> RequestChatMessage(int sessionId,
         int messageId);
+    Task SetChatTyping(int sessionId, bool isTyping);
+
     Task SendChatMessage(int sessionId,
         NewChatMessage newMessage);
     Task DeleteChatMessage(int sessionId,
         int messageId);
+    Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded);
     Task EditChatMessage(int sessionId,
         int messageId,
         string text);

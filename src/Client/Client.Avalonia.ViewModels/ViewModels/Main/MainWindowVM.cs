@@ -80,7 +80,7 @@ public partial class MainWindowVM : ReactiveObject
     /// <summary>
     /// The unread counts of the chats of the connection, shared by the list and the open chats.
     /// </summary>
-    public ChatReadTracker ChatReads { get; } = new(TimeSpan.FromSeconds(1));
+    public ChatReadTracker ChatReads { get; }
 
     // The chat last told that it is on screen
     private ActiveChatSessionVM? _chatOnScreen;
@@ -262,6 +262,7 @@ public partial class MainWindowVM : ReactiveObject
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
         IUserNotesRepository userNotes,
+        IChatReadStateRepository chatReads,
         INotificationService notifications,
         IHotKeysService hotKeys,
         PushRegistration pushRegistration,
@@ -278,6 +279,7 @@ public partial class MainWindowVM : ReactiveObject
         Func<ConnectWindowVM> createConnectWindow,
         Func<SettingsWindowVM> createSettings)
     {
+        ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
         _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;

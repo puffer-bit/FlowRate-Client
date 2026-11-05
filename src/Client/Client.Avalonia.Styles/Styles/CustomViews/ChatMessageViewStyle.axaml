@@ -10,6 +10,26 @@
         <SolidColorBrush x:Key="MsgHighlightBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.22"/>
     </Styles.Resources>
     
+    <Style Selector="Button.msg-reaction">
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="Margin" Value="0,0,4,4"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Background" Value="{DynamicResource MsgReplyBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-reaction.mine">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyPressedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.msg-reaction:pointerover, Button.msg-reaction:focus-visible">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyHoverBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-reaction:pressed">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyPressedBrush}"/>
+    </Style>
+
     <Style Selector="Border.msg-root">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="6,6,12,6"/>

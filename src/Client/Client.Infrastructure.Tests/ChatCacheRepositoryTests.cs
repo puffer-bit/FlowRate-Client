@@ -5,6 +5,7 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class ChatCacheRepositoryTests
 {
     private static readonly ChatCacheKey Chat = new("instance", 7);

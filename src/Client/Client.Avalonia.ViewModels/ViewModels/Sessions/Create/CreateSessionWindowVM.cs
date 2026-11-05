@@ -28,7 +28,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         new(SessionType.Hybrid, Strings.Get("session.type.hybrid"), Strings.Get("session.type.hybrid.description"), 8);
 
     public SessionTypeOptionVM ChatOption { get; } =
-        new(SessionType.Chat, Strings.Get("session.type.chat"), Strings.Get("session.type.chat.description"), 50);
+        new(SessionType.Chat, Strings.Get("session.type.chat"), Strings.Get("session.type.chat.description"), Limits.SessionCapacityUnlimited);
 
     public SessionTypeOptionVM SelectedType
     {
@@ -37,6 +37,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(IsChatSelected));
+            CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(Capacity);
         }
     }
 
@@ -112,12 +113,12 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
         SelectedType = initialType == SessionType.Chat ? ChatOption : HybridOption;
         SelectedType.IsSelected = true;
-        Capacity = SelectedType.DefaultCapacity;
+        Capacity = HybridOption.DefaultCapacity;
 
         var isValid = this.WatchProperties(nameof(Name), nameof(Capacity), nameof(Description), nameof(SelectedType))
             .Select(vm =>
                 SessionRules.ValidateName(vm.Name) == null
-                && SessionRules.ValidateCapacity(vm.Capacity) == null
+                && (vm.IsChatSelected || SessionRules.ValidateCapacity(vm.Capacity) == null)
                 && (vm.SelectedType.Type != SessionType.Chat || ValidateDescription(vm.Description) == null));
 
         CreateCommand = ReactiveCommand.CreateFromTask(CreateAsync, isValid);
@@ -134,7 +135,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
             GeneralError = null;
         }));
         _disposables.Add(this.WatchProperty(nameof(Capacity), vm => vm.Capacity)
-            .Subscribe(capacity => CapacityError = SessionRules.ValidateCapacity(capacity)));
+            .Subscribe(capacity => CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(capacity)));
         _disposables.Add(this.WatchProperty(nameof(Description), vm => vm.Description)
             .Subscribe(description => DescriptionError = ValidateDescription(description)));
     }
@@ -149,10 +150,6 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         option.IsSelected = true;
         SelectedType = option;
         GeneralError = null;
-
-        // Follow the default of the new type unless the user picked a number of their own
-        if (Capacity == previous.DefaultCapacity)
-            Capacity = option.DefaultCapacity;
     }
 
     private async Task CreateAsync()
@@ -162,7 +159,9 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         NameError = SessionRules.ValidateName(Name);
         GeneralError = null;
 
-        if (NameError != null || Capacity is not { } capacity)
+        CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(Capacity);
+        DescriptionError = IsChatSelected ? ValidateDescription(Description) : null;
+        if (NameError != null || CapacityError != null || DescriptionError != null)
             return;
 
         NewSessionOptions options = SelectedType.Type switch
@@ -173,7 +172,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         };
 
         var session = new NewSessionModel(Name.Trim(), _coordinatorSession.GetCurrentUser().Id,
-            (int)capacity, options, _categoryId);
+            IsChatSelected ? Limits.SessionCapacityUnlimited : (int)Capacity!.Value, options, _categoryId);
 
         var result = await _coordinatorSession.CreateSession(session);
 

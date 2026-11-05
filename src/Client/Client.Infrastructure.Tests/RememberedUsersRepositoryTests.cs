@@ -5,6 +5,7 @@ using Shared.Enums.User;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class RememberedUsersRepositoryTests
 {
     private static UserModel User(int id, string username = "user") => new()
