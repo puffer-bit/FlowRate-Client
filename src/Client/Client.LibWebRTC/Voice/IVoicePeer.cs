@@ -50,6 +50,13 @@ public interface IVoicePeer : IDisposable
     /// <summary>The gain of the microphone, 1 keeps it as it is.</summary>
     void SetMicrophoneVolume(double volume);
 
+    /// <summary>Releases capture when the last microphone section stops, while screens may remain.</summary>
+    void StopMicrophone()
+    {
+        SetVoiceGate(null);
+        SetMicrophoneEnabled(false);
+    }
+
     /// <summary>The voice gate of the microphone, or null to send it all the time.</summary>
     void SetVoiceGate(VoiceGateOptions? voiceGate);
 
