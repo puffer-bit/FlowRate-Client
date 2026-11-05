@@ -84,7 +84,7 @@
                 </StackPanel>
 
                 <!-- Capacity -->
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="6" IsVisible="{Binding !IsChatSelected}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <NumericUpDown Width="140"

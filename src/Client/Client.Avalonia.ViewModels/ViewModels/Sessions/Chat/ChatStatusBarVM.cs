@@ -1,14 +1,20 @@
+using System;
 using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Client.Avalonia.Localization;
 using ReactiveUI;
 using Client.Core.Sessions;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
 
-public class ChatStatusBarVM : ReactiveObject
+public class ChatStatusBarVM : ReactiveObject, IDisposable
 {
-    public string Name { get; }
+    public string Name => _session.Name;
     public ChatViewersVM? Viewers { get; init; }
+    public Interaction<ChatInfoWindowVM, RxVoid> ShowInfo { get; } = new();
+    public ReactiveCommand<RxVoid, RxVoid> OpenInfoCommand { get; }
 
     /// <summary>
     /// Messages are being fetched, either the first page or an older one.
@@ -29,7 +35,8 @@ public class ChatStatusBarVM : ReactiveObject
     public string StatusText => _typingNames.Count > 0
         ? Strings.Format(_typingNames.Count == 1 ? "chat.typing.one" : "chat.typing.many",
             ("names", string.Join(", ", _typingNames)))
-        : IsLoading ? Strings.Get("chat.loadingMessages") : _description ?? Strings.Get("session.type.chat");
+        : IsLoading ? Strings.Get("chat.loadingMessages")
+        : string.IsNullOrWhiteSpace(_session.Description) ? Strings.Get("session.type.chat") : _session.Description.Trim();
 
     public bool IsTyping => _typingNames.Count > 0;
 
@@ -42,13 +49,44 @@ public class ChatStatusBarVM : ReactiveObject
         UpdateTexts();
     }
 
-    // Null without a description, then the type of the session is shown in the current language
-    private readonly string? _description;
+    private ChatSessionModel _session;
+    private readonly ReactiveCommand<RxVoid, RxVoid> _openInfoCommand;
+    private bool _isInfoOpen;
 
     public ChatStatusBarVM(ChatSessionModel sessionModel)
     {
-        Name = sessionModel.Name;
-        _description = string.IsNullOrWhiteSpace(sessionModel.Description) ? null : sessionModel.Description.Trim();
+        _session = sessionModel;
+        _openInfoCommand = ReactiveCommand.CreateFromTask(OpenInfoAsync);
+        // Opening a dialog must not disable or dim the header for the dialog's lifetime.
+        OpenInfoCommand = ReactiveCommand.Create(() =>
+        {
+            if (!_isInfoOpen)
+                _openInfoCommand.Execute().Subscribe();
+        });
+    }
+
+    public void ApplySession(ChatSessionModel session)
+    {
+        _session = session;
+        this.RaisePropertyChanged(nameof(Name));
+        UpdateTexts();
+    }
+
+    private async Task OpenInfoAsync()
+    {
+        if (_isInfoOpen)
+            return;
+
+        _isInfoOpen = true;
+        try
+        {
+            using var info = new ChatInfoWindowVM(_session);
+            await ShowInfo.Handle(info);
+        }
+        finally
+        {
+            _isInfoOpen = false;
+        }
     }
 
     /// <summary>
@@ -58,5 +96,12 @@ public class ChatStatusBarVM : ReactiveObject
     {
         this.RaisePropertyChanged(nameof(StatusText));
         Viewers?.UpdateTexts();
+    }
+
+    public void Dispose()
+    {
+        OpenInfoCommand.Dispose();
+        _openInfoCommand.Dispose();
+        Viewers?.Dispose();
     }
 }

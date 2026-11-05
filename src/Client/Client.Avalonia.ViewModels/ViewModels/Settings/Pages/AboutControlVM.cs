@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Client.Application.Settings.Search;
+using Client.Application.Ports;
 using Client.Avalonia.Localization;
 using Client.Services;
 using Client.Tools.AppInfo;
@@ -15,9 +16,9 @@ namespace Client.ViewModels.Settings.Pages;
 
 /// <summary>
 /// The tab about the application itself: its version, the system it runs on, where its code is and
-/// what it is built from. It has nothing to load, save or reset.
+/// what it is built from, and its published release history.
 /// </summary>
-public class AboutControlVM : ReactiveObject, ISettingVM
+public class AboutControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => Strings.Get("settings.about.name");
     public SettingTabType Type => SettingTabType.About;
@@ -25,7 +26,10 @@ public class AboutControlVM : ReactiveObject, ISettingVM
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("about",
         ("application", ["version", "platform"]),
-        ("project", ["repository", "support"]));
+        ("project", ["repository", "support"]),
+        ("releaseNotes", ["releaseNotes"]));
+
+    public ReleaseHistoryVM ReleaseHistory { get; }
 
     public string Version { get; }
 
@@ -60,11 +64,12 @@ public class AboutControlVM : ReactiveObject, ISettingVM
     /// <param name="systemDescription">
     /// Release of the operating system, where the platform names it better than the runtime does.
     /// </param>
-    public AboutControlVM(string version, string? systemDescription = null)
+    public AboutControlVM(string version, IReleaseNotesSource releaseNotes, string? systemDescription = null, BehaviorControlVM? updatePreferences = null)
     {
         Version = version;
         PlatformDetails = systemDescription ?? RuntimeInformation.OSDescription;
         Libraries = FindLibraries();
+        ReleaseHistory = new ReleaseHistoryVM(releaseNotes, updatePreferences);
 
         LoadCommand = ReactiveCommand.CreateFromTask(() => Task.CompletedTask);
     }
@@ -122,4 +127,5 @@ public class AboutControlVM : ReactiveObject, ISettingVM
     }
 
     public Task ResetAllAsync() => Task.CompletedTask;
+    public void Dispose() => ReleaseHistory.Dispose();
 }

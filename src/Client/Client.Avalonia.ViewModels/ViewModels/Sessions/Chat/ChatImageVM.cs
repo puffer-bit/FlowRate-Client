@@ -91,7 +91,7 @@ public class ChatImageVM : ReactiveObject
         if (result != MediaTransferResult.NoError || path == null)
             return null;
 
-        return await Task.Run(() =>
+        return await ImageDecoding.RunAsync(() =>
         {
             using var content = File.OpenRead(path);
             using var decoded = SkiaImages.Decode(content, int.MaxValue);
