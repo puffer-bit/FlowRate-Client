@@ -1,4 +1,5 @@
 using Client.Services;
+using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
@@ -99,6 +100,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public string? ShownAvatarUrl => IsAvatarReset ? null : AvatarUrl;
 
     public AvatarPickerVM AvatarPicker { get; }
+    public UserNoteVM Note { get; }
 
     public bool IsBusy => _isBusy.Value;
 
@@ -150,8 +152,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         ReactiveCommand<int, RequestResult> resetAvatarCommand,
         CoordinatorPermissions permissions,
         ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
-            setUserRoleCommand)
+            setUserRoleCommand, IUserNotesRepository userNotes, string coordinatorInstanceId)
     {
+        Note = new UserNoteVM(userNotes, coordinatorInstanceId, user.Id);
         _changeUsernameCommand = changeUsernameCommand;
         _setUserRoleCommand = setUserRoleCommand;
         CanEdit = isCurrentUser || (permissions.Has(Permission.ManageUsers) && permissions.Outranks(user.RoleIds));
@@ -185,7 +188,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
                     && (vm.Name.Trim() != vm.Username || vm.IsAvatarReset || avatar != null));
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, hasChanges);
 
-        var notBusy = SaveCommand.IsExecuting.Select(busy => !busy);
+        var notBusy = SaveCommand.IsExecuting.CombineLatest(
+            Note.WatchProperty(nameof(UserNoteVM.IsBusy), note => note.IsBusy),
+            (profileBusy, noteBusy) => !profileBusy && !noteBusy);
         ResetAvatarCommand = ReactiveCommand.Create(ResetAvatar,
             this.WatchProperty(nameof(IsAvatarReset), vm => vm.IsAvatarReset)
                 .CombineLatest(AvatarPicker.WatchProperty(nameof(AvatarPickerVM.Avatar), picker => picker.Avatar),
@@ -316,5 +321,6 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         _isChangingRole.Dispose();
         ToggleRoleCommand.Dispose();
         AvatarPicker.Dispose();
+        Note.Dispose();
     }
 }

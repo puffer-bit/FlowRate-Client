@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddSingleton<ICollapsedSectionsRepository, CollapsedSectionsRepository>();
         services.AddSingleton<IDismissedPromptsRepository, DismissedPromptsRepository>();
         services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();
+        services.AddSingleton<IUserNotesRepository, UserNotesRepository>();
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
         services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
         services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();
