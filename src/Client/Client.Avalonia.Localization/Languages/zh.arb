@@ -811,11 +811,8 @@
   "source.audio.app.hint": "无论显示哪个窗口，都只共享所选应用程序的声音。",
   "source.audio.app.empty": "当前没有应用程序在播放声音。开始播放后，它会出现在列表中。",
   "source.bitrate.unit": "kbit/s",
-  "source.bitrate.tooLow": "对所选分辨率和帧率来说偏低：画面可能出现马赛克。建议约 {bitrate} kbit/s。直播仍会使用你设置的值。",
-  "source.bitrate.tooHigh": "远高于所选分辨率和帧率所需：网络较慢的观众可能会卡顿。建议约 {bitrate} kbit/s。直播仍会使用你设置的值。",
   "source.highFramerate.title": "高帧率",
   "source.highFramerate.message": "以 144 fps 共享对所有人要求都很高：你的显卡要编码多得多的帧，直播需要快速稳定的网络，观众只有在 144 Hz 及以上的显示器上才能看到完整帧率。在较慢的电脑或网络上画面可能会卡顿。",
-  "source.bitrate.invalid": "请输入 1 到 999999 之间的整数。在此之前使用自动码率：{bitrate} kbit/s。",
 
   "settings.title": "设置",
   "settings.loading": "正在加载数据...",

@@ -1157,26 +1157,8 @@
   "source.audio.app.hint": "Only the sound of the chosen application is shared, whatever window you show.",
   "source.audio.app.empty": "No application is playing sound right now. Start the playback and it appears in the list.",
   "source.bitrate.unit": "kbit/s",
-  "source.bitrate.tooLow": "This is low for the chosen resolution and frame rate: the picture may turn blocky. About {bitrate} kbit/s is recommended. The share will still use your value.",
-  "@source.bitrate.tooLow": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
-  "source.bitrate.tooHigh": "This is far more than the chosen resolution and frame rate need: viewers on a slow connection may see stutter. About {bitrate} kbit/s is recommended. The share will still use your value.",
   "source.highFramerate.title": "High frame rate",
   "source.highFramerate.message": "Sharing at 144 fps asks a lot of everyone involved: your GPU encodes far more frames, the stream needs a fast and stable connection, and viewers see the full rate only on a monitor of 144 Hz or more. On slower computers or connections the picture may stutter.",
-  "@source.bitrate.tooHigh": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
-  "source.bitrate.invalid": "Enter a whole number from 1 to 999999. Until then the automatic bitrate is used: {bitrate} kbit/s.",
-  "@source.bitrate.invalid": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
   "createSession.title": "New session",
   "createSession.hint": "Choose what the session is for and give it a name.",
   "createSession.field.type": "Type:",
