@@ -1,4 +1,9 @@
 {
+  "chat.viewers.title": "聊天访问权限",
+  "chat.viewers.count": "{count} 位用户",
+  "@chat.viewers.count": {"placeholders": {"count": {}}},
+  "chat.viewers.error": "无法加载用户。请重新打开列表。",
+  "chat.viewers.loading": "正在加载用户…",
   "hybrid.logs.open": "会话日志",
   "hybrid.logs.empty": "此会话暂无事件。使用调试设置中选择的日志级别。",
   "hybrid.logs.follow": "跟随新事件",

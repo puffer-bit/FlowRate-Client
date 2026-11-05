@@ -66,6 +66,7 @@ public partial class CoordinatorSession : ICoordinatorSession
 
     public event Action<int, int, bool>? ChatUserTyping;
     public event Action<ChatReadState>? ChatReadStateChanged;
+    public event Action<ChatViewersChangedEvent>? ChatViewersChanged;
     
     public event Action<PeerJoinedEvent>? HybridSessionPeerJoined;
     public event Action<PeerLeftEvent>? HybridSessionPeerLeft;

@@ -20,9 +20,23 @@
         </DataTemplate>
     </Control.DataTemplates>
     
-    <Grid RowDefinitions="Auto, *, Auto">
+    <UserControl.Styles>
+        <Style Selector="Border.chat-viewers-panel">
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.chat-viewers-panel.open">
+            <Setter Property="Width" Value="260"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto" ColumnDefinitions="*, Auto">
         <ContentControl
-            Grid.Row="0"
+            Grid.Row="0" Grid.ColumnSpan="2"
             Content="{Binding StatusBar}"
             Height="56"/>
         
@@ -99,9 +113,17 @@
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 
+        <!-- The audience takes its own column, keeping both the timeline and composer beside it. -->
+        <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="2"
+                Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.Viewers.IsOpen}"
+                ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.Viewers.IsOpen}">
+            <chatViews:ChatViewersPanel Width="260" HorizontalAlignment="Left"
+                                        DataContext="{Binding StatusBar.Viewers}"/>
+        </Border>
+
         <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag
              moves the zoomed one, a click beside it or Esc closes it -->
-        <ContentControl Grid.Row="0" Grid.RowSpan="3"
+        <ContentControl Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="2"
                         x:Name="ImageViewerHost"
                         Focusable="True"
                         IsVisible="{Binding IsImageViewerOpen}"

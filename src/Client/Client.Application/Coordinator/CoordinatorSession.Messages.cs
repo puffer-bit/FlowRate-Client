@@ -99,6 +99,10 @@ public partial class CoordinatorSession
                 ChatUserTyping?.Invoke(typing.ChatId, typing.UserId, typing.IsTyping);
                 break;
 
+            case ChatViewersChangedEvent viewers:
+                ChatViewersChanged?.Invoke(viewers);
+                break;
+
             case ChatReadStateChangedEvent readChanged:
                 ChatReadStateChanged?.Invoke(readChanged.State);
                 break;

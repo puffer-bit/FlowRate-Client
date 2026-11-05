@@ -1,4 +1,9 @@
 {
+  "chat.viewers.title": "チャットへのアクセス",
+  "chat.viewers.count": "{count} 人のユーザー",
+  "@chat.viewers.count": {"placeholders": {"count": {}}},
+  "chat.viewers.error": "ユーザーを読み込めません。リストを開き直してください。",
+  "chat.viewers.loading": "ユーザーを読み込み中…",
   "hybrid.logs.open": "セッションログ",
   "hybrid.logs.empty": "このセッションのイベントはまだありません。デバッグ設定のログレベルが適用されます。",
   "hybrid.logs.follow": "新しいイベントを追跡",

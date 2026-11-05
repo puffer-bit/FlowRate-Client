@@ -43,6 +43,8 @@ internal static class CoordinatorEventMapper
         ChatSessionMessageEditedNotification edited => new ChatMessageEditedEvent(edited.ChatId, edited.Message.ToModel()),
         ChatSessionMessageDeletedNotification deleted => new ChatMessageDeletedEvent(deleted.ChatId, deleted.MessageId, deleted.Revision),
         ChatSessionUserTypingNotification typing => new ChatUserTypingEvent(typing.ChatId, typing.UserId, typing.IsTyping),
+        ChatViewersChangedNotification changed => new ChatViewersChangedEvent(changed.ChatId,
+            changed.SubscriptionId, changed.Upserted.Select(user => user.ToModel()).ToList(), changed.Removed),
         ChatReadStateChangedNotification readChanged => new ChatReadStateChangedEvent(readChanged.State.ToModel()),
 
         HybridSessionStateChangedNotification changed => new SessionNodeStateChangedEvent(changed.SessionId, changed.State),

@@ -8,6 +8,7 @@ namespace Client.ViewModels.Sessions.Chat;
 public class ChatStatusBarVM : ReactiveObject
 {
     public string Name { get; }
+    public ChatViewersVM? Viewers { get; init; }
 
     /// <summary>
     /// Messages are being fetched, either the first page or an older one.
@@ -53,5 +54,9 @@ public class ChatStatusBarVM : ReactiveObject
     /// <summary>
     /// Puts the texts into the language that has just been chosen.
     /// </summary>
-    public void UpdateTexts() => this.RaisePropertyChanged(nameof(StatusText));
+    public void UpdateTexts()
+    {
+        this.RaisePropertyChanged(nameof(StatusText));
+        Viewers?.UpdateTexts();
+    }
 }
