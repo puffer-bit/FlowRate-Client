@@ -129,7 +129,8 @@
                             <Button Grid.Column="1" Width="44" MinHeight="44"
                                     HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                     IsEnabled="{Binding IsIdentityQrAvailable}"
-                                    ToolTip.Tip="QR" AutomationProperties.Name="QR">
+                                    ToolTip.Tip="{l:Text settings.accounting.exportIdentityQr}"
+                            AutomationProperties.Name="{l:Text settings.accounting.exportIdentityQr}">
                                 <Image Width="24" Height="24" Source="{StaticResource QrCodeIcon}"/>
                             </Button>
                         </Grid>

@@ -80,39 +80,26 @@ public class ChatMediaPlaybackTests
     }
 
     [Fact]
-    public void Disconnect_StopsLoading_AndAnOldDisconnectCannotStopRestartedPlayback()
+    public Task Disconnect_StopsLoading_AndAnOldDisconnectCannotStopRestartedPlayback() => TestUiThread.RunAsync(() =>
     {
-        // The dispatcher belongs to a single dedicated thread for this test.
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                var dispatcher = Dispatcher.CurrentDispatcher;
-                using var playback = new ChatMediaPlayback();
-                var coordinator = CreateCoordinator();
-                var file = File(coordinator, 1);
-                var media = new Media(playback) { IsLoading = true };
-                playback.Begin(media, file);
-                coordinator.Handlers.Single()(CoordinatorState.Reconnecting);
-                dispatcher.RunJobs();
-                Assert.Equal(1, media.Stops);
-                Assert.Null(playback.Current);
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        using var playback = new ChatMediaPlayback();
+        var coordinator = CreateCoordinator();
+        var file = File(coordinator, 1);
+        var media = new Media(playback) { IsLoading = true };
+        playback.Begin(media, file);
+        coordinator.Handlers.Single()(CoordinatorState.Reconnecting);
+        dispatcher.RunJobs();
+        Assert.Equal(1, media.Stops);
+        Assert.Null(playback.Current);
 
-                playback.Begin(media, file);
-                coordinator.Handlers.Single()(CoordinatorState.Disconnected);
-                playback.Stop();
-                playback.Begin(media, file);
-                dispatcher.RunJobs();
-                Assert.Same(media, playback.Current);
-            }
-            catch (Exception exception) { failure = exception; }
-        });
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
-        if (failure != null)
-            throw failure;
-    }
+        playback.Begin(media, file);
+        coordinator.Handlers.Single()(CoordinatorState.Disconnected);
+        playback.Stop();
+        playback.Begin(media, file);
+        dispatcher.RunJobs();
+        Assert.Same(media, playback.Current);
+    });
 
     private static Coordinator CreateCoordinator() => (Coordinator)(object)DispatchProxy.Create<ICoordinatorSession, Coordinator>();
 

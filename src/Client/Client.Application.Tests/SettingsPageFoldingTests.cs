@@ -8,7 +8,7 @@ namespace Client.Application.Tests;
 public class SettingsPageFoldingTests
 {
     [Fact]
-    public void WrappedHeaderFoldsOnlyItsOwnSectionAndKeepsItsRowVisible()
+    public Task WrappedHeaderFoldsOnlyItsOwnSectionAndKeepsItsRowVisible() => TestUiThread.RunAsync(() =>
     {
         var page = new SettingsPage();
         var first = new SettingsHeader { SectionKey = "first" };
@@ -37,10 +37,10 @@ public class SettingsPageFoldingTests
 
         Assert.True(body.IsVisible);
         Assert.DoesNotContain("wrapped", collapsed);
-    }
+    });
 
     [Fact]
-    public void RestoredWrappedSectionDoesNotHideFollowingHeaderOrOverrideVisibilityBinding()
+    public Task RestoredWrappedSectionDoesNotHideFollowingHeaderOrOverrideVisibilityBinding() => TestUiThread.RunAsync(() =>
     {
         var page = new SettingsPage();
         var header = new SettingsHeader { SectionKey = "wrapped" };
@@ -64,5 +64,5 @@ public class SettingsPageFoldingTests
 
         Assert.True(body.IsVisible);
         Assert.False(hiddenBody.IsVisible);
-    }
+    });
 }

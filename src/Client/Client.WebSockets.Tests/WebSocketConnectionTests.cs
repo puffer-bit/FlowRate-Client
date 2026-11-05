@@ -149,16 +149,19 @@ public class WebSocketConnectionTests
     [Fact]
     public async Task AbortedConnection_RaisesDisconnected()
     {
-        await using var server = await TestWebSocketServer.StartAsync((socket, _) =>
+        var abort = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var server = await TestWebSocketServer.StartAsync(async (socket, _) =>
         {
+            // Test an established connection closing, rather than a failed HTTP upgrade.
+            await abort.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
             socket.Abort();
-            return Task.CompletedTask;
         });
 
         await using var connection = new WebSocketConnection();
         var disconnected = DisconnectedTask(connection);
 
         await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
+        abort.SetResult();
 
         var info = await disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Null(info.CloseStatus);

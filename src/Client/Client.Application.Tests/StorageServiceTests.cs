@@ -77,8 +77,10 @@ public class StorageServiceTests
     [Fact]
     public async Task Usage_AndClearing()
     {
-        _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1).Replace([Message(1), Message(2)], 2, true);
-        await _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1).LoadNewestAsync(1);
+        var cache = _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1);
+        cache.Replace([Message(1), Message(2)], 2, true);
+        // Reads on the same cache wait for its queued writes.
+        await cache.LoadNewestAsync(1);
         _mediaCache.Size = 700;
 
         Assert.Equal(new StorageUsage(2, 20, 700), await _service.GetUsageAsync());
