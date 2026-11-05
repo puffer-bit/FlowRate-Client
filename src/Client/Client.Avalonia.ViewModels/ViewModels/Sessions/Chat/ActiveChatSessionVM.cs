@@ -132,6 +132,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             Composer.IsConnected = value;
+            foreach (var message in _messageVms.Values)
+                message.RefreshReactionAccess();
         }
     }
 
@@ -184,7 +186,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public ActiveChatSessionVM(ChatSessionModel sessionModel, ICoordinatorSession coordinatorSession,
         ChatSessionServices services, ChatReadTracker readTracker,
-        ReactiveCommand<int, RxVoid> viewProfileCommand)
+        ReactiveCommand<int, RxVoid> viewProfileCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null)
     {
         _dismissedPrompts = services.DismissedPrompts;
         _readTracker = readTracker;
@@ -215,7 +218,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             message => _coordinatorSession.DeleteChatMessage(message.ChatId, message.Id));
         ScrollToEndCommand = ReactiveCommand.Create(ScrollToEnd);
 
-        StatusBar = new ChatStatusBarVM(sessionModel);
+        StatusBar = new ChatStatusBarVM(sessionModel)
+        {
+            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId)
+        };
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder)
             .Subscribe(loading => StatusBar.IsLoading = loading);
@@ -223,6 +229,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         // Subscribe before the first page so nothing sent meanwhile is missed; duplicates are dropped by id
         _subscriptions
             .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
+            .Add(() => coordinatorSession.ChatUserTyping += OnChatUserTyping,
+                () => coordinatorSession.ChatUserTyping -= OnChatUserTyping)
             .Add(() => coordinatorSession.TextMessageAdded += OnTextMessageAdded,
                 () => coordinatorSession.TextMessageAdded -= OnTextMessageAdded)
             .Add(() => coordinatorSession.TextMessageEdited += OnTextMessageEdited,
@@ -236,6 +244,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
+
+        RestoreTyping();
 
     }
 
@@ -388,6 +398,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
                 ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer)
             {
+                IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
+                SetReaction = async (emoji, added) =>
+                    (await _coordinatorSession.SetMessageReaction(model.ChatId, model.Id, emoji, added)).IsSuccess,
                 IsNew = isNew,
                 CanManageMessages = canManage
             };
@@ -452,6 +465,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _senders.Apply(messageVm);
 
         Composer.ApplySenders();
+        UpdateTypingNames();
     }
 
     private void RemoveMessage(int messageId)
@@ -534,6 +548,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public void CloseSession()
     {
+        Composer.StopTyping();
+        StatusBar.Viewers?.Close();
+        ClearTyping();
     }
 
     // Raised on the transport thread
@@ -549,6 +566,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Dispatcher.UIThread.Post(() =>
         {
             _model = session;
+            StatusBar.ApplySession(session);
             ApplyAccess(_coordinatorSession.Permissions);
         });
     }
@@ -558,6 +576,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     {
         var granted = permissions.InSession(_model);
         Composer.CanWrite = granted.HasFlag(Permission.SendMessages);
+        foreach (var message in _messageVms.Values)
+        {
+            message.IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived;
+            message.RefreshReactionAccess();
+        }
         Composer.CanAttachFiles = granted.HasFlag(Permission.AttachFiles);
 
         var canManage = granted.HasFlag(Permission.ManageMessages);
@@ -568,6 +591,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public void Dispose()
     {
         _isDisposed = true;
+        StatusBar.Dispose();
+        ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();
         _readTracker.SetReading(Id, false);

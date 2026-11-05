@@ -97,7 +97,7 @@
                     </StackPanel>
 
                     <!-- Capacity: the hint goes under the field, there is no room beside it -->
-                    <StackPanel Spacing="6">
+                    <StackPanel Spacing="6" IsVisible="{Binding !IsChatSelected}">
                         <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
                         <NumericUpDown Value="{Binding Capacity}"
                                        Minimum="{Binding CapacityMin}"

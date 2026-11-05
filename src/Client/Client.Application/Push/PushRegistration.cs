@@ -108,6 +108,10 @@ public sealed partial class PushRegistration
             {
                 key = new PushKey(Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(Limits.PushKeyIdLength)),
                     coordinator.Id, RandomNumberGenerator.GetBytes(Limits.PushKeyLength));
+            }
+            if (key.UserId != session.GetCurrentUser().Id)
+            {
+                key = key with { UserId = session.GetCurrentUser().Id };
                 await _keys.SaveAsync(key);
             }
 

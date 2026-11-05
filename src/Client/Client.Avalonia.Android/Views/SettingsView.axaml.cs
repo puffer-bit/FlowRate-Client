@@ -98,7 +98,8 @@ public partial class SettingsView : UserControl
         _accounting = new AccountingControlVM(services.GetRequiredService<IAccountingService>(),
             services.GetRequiredService<IDatabaseSecurityService>());
 
-        _about = new AboutControlVM(ApplicationDetails.Version, ApplicationDetails.SystemDescription);
+        _about = new AboutControlVM(ApplicationDetails.Version,
+            services.GetRequiredService<IReleaseNotesSource>(), ApplicationDetails.SystemDescription, _behavior);
 
         _accounting.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await showMessageBox(context.Input)));
@@ -158,7 +159,11 @@ public partial class SettingsView : UserControl
     /// <summary>
     /// Lets go of the services the pages listen to, once the settings are closed for good.
     /// </summary>
-    public void Release() => _audio?.Dispose();
+    public void Release()
+    {
+        _audio?.Dispose();
+        _about?.Dispose();
+    }
 
     /// <summary>
     /// Raised when the user leaves the settings from the list of categories.
@@ -300,6 +305,8 @@ public partial class SettingsView : UserControl
     // A page slides in over the list of categories and back out of it
     private async Task ShowPageAsync(Control? page, string titleKey)
     {
+        if (page == AboutPage && _about != null)
+            _ = _about.ReleaseHistory.EnsureLoadedAsync();
         var from = _shown;
         var to = page ?? Categories;
 
@@ -397,6 +404,12 @@ public partial class SettingsView : UserControl
 
     private void OnAccountingClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AccountingPage, "settings.accounting.name");
+
+    private void OnReleaseClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: Uri url })
+            _ = _topLevel?.Launcher.LaunchUriAsync(url);
+    }
 
     private void OnAboutClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AboutPage, "settings.about.name");

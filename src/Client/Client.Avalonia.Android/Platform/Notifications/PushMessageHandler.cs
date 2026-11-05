@@ -40,6 +40,8 @@ internal static class PushMessageHandler
     /// </summary>
     public static (string CoordinatorInstanceId, int ChatId)? ChatOnScreen { get; set; }
 
+    public static Action<string, int, int>? ChatMarkedRead { get; set; }
+
     public static async Task HandleAsync(Context context, IDictionary<string, string> data)
     {
         if (!data.TryGetValue("v", out var version) || version != SupportedVersion

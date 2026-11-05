@@ -14,6 +14,9 @@ namespace Client.Core.Coordinator;
 /// </summary>
 public abstract record CoordinatorEvent;
 
+public sealed record ChatViewersChangedEvent(int ChatId, Guid SubscriptionId,
+    IReadOnlyList<UserModel> Upserted, IReadOnlyList<int> Removed) : CoordinatorEvent;
+
 public sealed record ServerClosingEvent(string? Message) : CoordinatorEvent;
 
 /// <summary>
@@ -72,6 +75,8 @@ public sealed record ChatMessageEditedEvent(int ChatId, ChatMessageModel Message
 
 /// <param name="Revision">The revision of the chat the deletion took.</param>
 public sealed record ChatMessageDeletedEvent(int ChatId, int MessageId, long Revision) : CoordinatorEvent;
+
+public sealed record ChatUserTypingEvent(int ChatId, int UserId, bool IsTyping) : CoordinatorEvent;
 
 /// <summary>
 /// The read position of the user moved in a chat, on this device or on another one.
