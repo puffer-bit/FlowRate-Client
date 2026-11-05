@@ -1851,5 +1851,8 @@
   "chat.video.play": "Play video",
   "chat.video.pause": "Pause video",
   "chat.video.seek": "Seek",
-  "chat.video.failed": "Could not play this video."
+  "chat.video.failed": "Could not play this video.",
+  "chat.media.stop": "Stop and rewind",
+  "chat.media.close": "End playback",
+  "chat.media.failed": "Media playback failed."
 }

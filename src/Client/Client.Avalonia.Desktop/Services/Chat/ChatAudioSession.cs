@@ -1,4 +1,5 @@
 using System;
+using Client.Services;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Client.Services.Chat;
 
 /// <summary>Owns chat playback independently of virtualized message cards. Accessed on the UI thread.</summary>
-public sealed class ChatAudioSession : IDisposable
+public sealed class ChatAudioSession : IDisposable, IChatMediaSession
 {
     private readonly IAudioSettingsRepository _settings;
     private readonly ILogger<ChatAudioSession> _logger;
@@ -21,6 +22,7 @@ public sealed class ChatAudioSession : IDisposable
     private CancellationTokenSource? _loading;
     private (string Coordinator, int FileId)? _key;
     private bool _disposed;
+    private readonly ChatMediaPlayback? _global;
 
     public event Action? Changed;
     public double Volume { get; private set; } = 1;
@@ -30,8 +32,9 @@ public sealed class ChatAudioSession : IDisposable
     public double Position => _playback?.Position ?? 0;
     public double Duration => _playback?.Duration ?? 0;
 
-    public ChatAudioSession(IAudioSettingsRepository settings, ILogger<ChatAudioSession> logger)
+    public ChatAudioSession(IAudioSettingsRepository settings, ILogger<ChatAudioSession> logger, ChatMediaPlayback? global = null)
     {
+        _global = global;
         _settings = settings;
         _logger = logger;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
@@ -93,6 +96,8 @@ public sealed class ChatAudioSession : IDisposable
         }
 
         Stop();
+        if (_global != null && !_global.Begin(this, file))
+            return;
         _key = file.PlaybackKey;
         using var cancellation = new CancellationTokenSource();
         _loading = cancellation;
@@ -104,7 +109,10 @@ public sealed class ChatAudioSession : IDisposable
             var path = await file.GetPlaybackPathAsync(cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             if (path == null)
+            {
+                Stop();
                 return;
+            }
             _playback = new ChatAudioPlayback(path, Volume);
             _timer.Start();
             Refresh();
@@ -166,6 +174,7 @@ public sealed class ChatAudioSession : IDisposable
         ReleasePlayback();
         _key = null;
         HasError = false;
+        _global?.End(this);
         Changed?.Invoke();
     }
 

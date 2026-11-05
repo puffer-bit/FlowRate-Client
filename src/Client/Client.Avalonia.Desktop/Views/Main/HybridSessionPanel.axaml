@@ -61,9 +61,7 @@
               x:DataType="hybridVm:ActiveHybridSessionVM"
               DataContext="{Binding $parent[Border].((sessionsVm:OpenedSessions)DataContext).HybridPanelSession}">
 
-            <!-- The state of the connection, which opens its statistics, the session, and the way out
-                 of it across from its name. No spacing between the first two, so the texts start where
-                 those of the user card below do -->
+            <!-- Connection statistics, the session name and status, and the way out of the session. -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
             <Button Grid.Column="0" Classes="ghost" Padding="6"
                     ToolTip.Tip="{l:Text hybrid.stats.open}">
@@ -95,7 +93,7 @@
                 </Panel>
             </Button>
 
-            <Button Grid.Column="1" Classes="ghost" Padding="2,6,6,6"
+            <Button Grid.Column="1" Classes="ghost" Padding="8,6,6,6"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                     Command="{Binding $parent[UserControl].((mainVm:MainWindowVM)DataContext).ShowHybridSessionCommand}"
                     ToolTip.Tip="{l:Text sessions.return}">
