@@ -34,10 +34,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         ("microphone", ["inputDevice", "inputVolume", IsLibWebRTC ? "webRtcNoiseSuppression" : "noiseSuppression",
             "echoCancellation", "autoGainControl"]),
         ("voiceActivity", IsLibWebRTC
-            ? ["voiceGate", "adaptiveThreshold"]
-            : ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
-        ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
-        ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
+            ? ["voiceGate", "testMicrophone", "inputLevel", "voiceThreshold", "hearMyself", "adaptiveThreshold"]
+            : ["voiceGate", "testMicrophone", "inputLevel", "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
+        ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]));
 
     public ObservableCollection<AudioInputDeviceItem> InputDevices { get; } = new();
 
