@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Client.Core.Sessions.Hybrid;
+using Shared.Models.Media;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -12,6 +13,7 @@ namespace Client.ViewModels.Sessions.Hybrid;
 public sealed class PeerStatsService
 {
     private readonly Dictionary<(int SessionId, int UserId), PeerStatsVM> _peers = [];
+    private readonly Dictionary<int, InboundStreamSample> _jitterStreams = [];
 
     /// <summary>
     /// The statistics of a user, empty until the session reads its transport.
@@ -30,13 +32,24 @@ public sealed class PeerStatsService
     /// </summary>
     public void Add(int sessionId, TransportStatsSample sample)
     {
+        var losses = sample.SenderLossByUser();
+        _jitterStreams.Clear();
         foreach (var stream in sample.Inbound ?? [])
+        {
             Get(sessionId, stream.UserId);
+
+            // Keep the first active stream, preferring the first video over audio.
+            if (stream.Packets > 0 &&
+                (!_jitterStreams.TryGetValue(stream.UserId, out var selected) ||
+                 selected.MediaType != MediaType.Video && stream.MediaType == MediaType.Video))
+                _jitterStreams[stream.UserId] = stream;
+        }
 
         foreach (var ((session, userId), peer) in _peers)
         {
             if (session == sessionId)
-                peer.Add(sample, userId);
+                peer.Add(losses.TryGetValue(userId, out var loss) ? loss : null,
+                    _jitterStreams.TryGetValue(userId, out var stream) ? stream.JitterMs : null);
         }
     }
 

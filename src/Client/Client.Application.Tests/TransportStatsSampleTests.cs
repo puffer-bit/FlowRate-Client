@@ -46,6 +46,29 @@ public class TransportStatsSampleTests
     [Fact]
     public void AUserWithoutStreamsHasNoLoss() => Assert.Null(Sample(Stream(1, 90, 10)).SenderLossPercent(2));
 
+    [Fact]
+    public void BatchLossPreservesSingleSenderAndLowPacketSenders()
+    {
+        var losses = Sample(Stream(1, 90, 10), Stream(2, 5, 0, MediaType.Audio)).SenderLossByUser();
+
+        Assert.Equal(10, losses[1], 3);
+        Assert.Equal(0, losses[2], 3);
+    }
+
+    [Fact]
+    public void BatchLossSubtractsSharedLossAfterCombiningEachUsersStreams()
+    {
+        var losses = Sample(Stream(1, 90, 10), Stream(1, 100, 0, MediaType.Audio),
+            Stream(2, 90, 10), Stream(3, 5, 0, MediaType.Audio)).SenderLossByUser();
+
+        Assert.Equal(0, losses[1], 3);
+        Assert.Equal(5, losses[2], 3);
+        Assert.Equal(0, losses[3], 3);
+    }
+
+    [Fact]
+    public void EmptyReadingHasNoSenderLoss() => Assert.Empty(new TransportStatsSample(null, 0, 0).SenderLossByUser());
+
     private static TransportStatsSample Sample(params InboundStreamSample[] streams) =>
         new(20, 0, 0, streams);
 
