@@ -657,11 +657,27 @@
 
         <ui:SettingsPage Grid.Row="2" x:Name="AccountingPage" IsVisible="False"
                          x:DataType="pagesVm:AccountingControlVM">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="8">
             <controls:SettingsHeader services:SettingText.Section="accounting.savedServers" ui:SettingsPage.SearchKey="accounting.savedServers"/>
+            <Border Grid.Column="1" VerticalAlignment="Center" Padding="10,4" CornerRadius="12"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}"
+                    BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="14" Height="14" Source="{StaticResource ServerIcon}"/>
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ServersPage.CountText}"/>
+                </StackPanel>
+            </Border>
+            <TextBox Grid.Row="1" Grid.ColumnSpan="2" VerticalAlignment="Center" Classes="search"
+                     PlaceholderText="{l:Text settings.accounting.searchServers}" Text="{Binding ServersPage.Filter}"/>
+        </Grid>
+        <TextBlock Text="{Binding ServersPage.RangeText}" FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding ServersPage.HasItems}"/>
+        <TextBlock Text="{l:Text settings.accounting.noMatches}" TextWrapping="Wrap"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding ServersPage.HasNoMatches}"/>
             <TextBlock Classes="empty"
                        IsVisible="{Binding !CoordinatorSessions.Count}"
                        Text="{l:Text settings.accounting.noServers}"/>
-            <ItemsControl ItemsSource="{Binding CoordinatorSessions}">
+            <ItemsControl ItemsSource="{Binding ServersPage.Items}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="8"/>
@@ -755,12 +771,35 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,4,0,0"
+              IsVisible="{Binding ServersPage.HasMultiplePages}">
+            <Button Content="{l:Text serverSettings.users.previousPage}" Command="{Binding ServersPage.PreviousPageCommand}"/>
+            <TextBlock Grid.Column="1" Text="{Binding ServersPage.PageText}" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding ServersPage.NextPageCommand}"/>
+        </Grid>
 
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="8">
             <controls:SettingsHeader services:SettingText.Section="accounting.trustedCertificates" ui:SettingsPage.SearchKey="accounting.trustedCertificates"/>
+            <Border Grid.Column="1" VerticalAlignment="Center" Padding="10,4" CornerRadius="12"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}"
+                    BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="14" Height="14" Source="{StaticResource KeyIcon}"/>
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding CertificatesPage.CountText}"/>
+                </StackPanel>
+            </Border>
+            <TextBox Grid.Row="1" Grid.ColumnSpan="2" VerticalAlignment="Center" Classes="search"
+                     PlaceholderText="{l:Text settings.accounting.searchCertificates}" Text="{Binding CertificatesPage.Filter}"/>
+        </Grid>
+        <TextBlock Text="{Binding CertificatesPage.RangeText}" FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding CertificatesPage.HasItems}"/>
+        <TextBlock Text="{l:Text settings.accounting.noMatches}" TextWrapping="Wrap"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding CertificatesPage.HasNoMatches}"/>
             <TextBlock Classes="empty"
                        IsVisible="{Binding !TrustedCertificates.Count}"
                        Text="{l:Text settings.accounting.noCertificates}"/>
-            <ItemsControl ItemsSource="{Binding TrustedCertificates}">
+            <ItemsControl ItemsSource="{Binding CertificatesPage.Items}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="8"/>
@@ -807,6 +846,13 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,4,0,0"
+              IsVisible="{Binding CertificatesPage.HasMultiplePages}">
+            <Button Content="{l:Text serverSettings.users.previousPage}" Command="{Binding CertificatesPage.PreviousPageCommand}"/>
+            <TextBlock Grid.Column="1" Text="{Binding CertificatesPage.PageText}" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding CertificatesPage.NextPageCommand}"/>
+        </Grid>
         </ui:SettingsPage>
 
         <!-- ====== About the application: the same facts as on the desktop ====== -->
