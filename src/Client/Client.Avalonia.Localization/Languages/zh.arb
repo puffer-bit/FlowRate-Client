@@ -507,6 +507,8 @@
   "session.type.hybrid": "语音和视频",
   "session.type.hybrid.description": "通话、共享屏幕和摄像头",
 
+  "chat.typing.one": "{names} 正在输入…",
+  "chat.typing.many": "{names} 正在输入…",
   "chat.loadingMessages": "正在加载消息...",
   "chat.notice.limitReached": "消息已达到 {limit} 个字符的上限。",
   "chat.attach.turnedOff": "此聊天已停用附件",

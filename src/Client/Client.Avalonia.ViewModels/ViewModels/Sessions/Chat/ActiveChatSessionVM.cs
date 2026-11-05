@@ -223,6 +223,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         // Subscribe before the first page so nothing sent meanwhile is missed; duplicates are dropped by id
         _subscriptions
             .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
+            .Add(() => coordinatorSession.ChatUserTyping += OnChatUserTyping,
+                () => coordinatorSession.ChatUserTyping -= OnChatUserTyping)
             .Add(() => coordinatorSession.TextMessageAdded += OnTextMessageAdded,
                 () => coordinatorSession.TextMessageAdded -= OnTextMessageAdded)
             .Add(() => coordinatorSession.TextMessageEdited += OnTextMessageEdited,
@@ -236,6 +238,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
+
+        RestoreTyping();
 
     }
 
@@ -452,6 +456,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _senders.Apply(messageVm);
 
         Composer.ApplySenders();
+        UpdateTypingNames();
     }
 
     private void RemoveMessage(int messageId)
@@ -534,6 +539,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public void CloseSession()
     {
+        Composer.StopTyping();
+        ClearTyping();
     }
 
     // Raised on the transport thread
@@ -568,6 +575,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public void Dispose()
     {
         _isDisposed = true;
+        ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();
         _readTracker.SetReading(Id, false);

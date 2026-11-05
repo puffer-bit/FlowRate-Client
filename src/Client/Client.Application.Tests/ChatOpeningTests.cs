@@ -76,6 +76,7 @@ public sealed class ChatOpeningTests
                 { Id = 1, Username = "user", CoordinatorInstanceId = "coordinator" },
             "get_Permissions" => CoordinatorPermissions.None,
             "get_ConnectionStatus" => CoordinatorState.Connected,
+            nameof(ICoordinatorSession.GetChatTypingUsers) => new Dictionary<int, DateTimeOffset>(),
             _ when method.StartsWith("add_") || method.StartsWith("remove_") => null,
             _ => throw new InvalidOperationException(method)
         });

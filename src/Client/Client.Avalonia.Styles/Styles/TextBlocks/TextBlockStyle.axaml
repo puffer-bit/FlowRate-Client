@@ -38,6 +38,14 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
+    <Style Selector="TextBlock.chat-status">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.chat-status.typing">
+        <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
     <!-- Selected text is purple with white text, as in the rest of the theme -->
     <Style Selector="SelectableTextBlock">
         <Setter Property="SelectionBrush" Value="{DynamicResource TextSelectionBrush}"/>

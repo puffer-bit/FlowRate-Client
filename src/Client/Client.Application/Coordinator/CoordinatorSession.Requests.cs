@@ -176,6 +176,24 @@ public partial class CoordinatorSession
         return result;
     }
 
+    public async Task<RequestResult> SetChatTyping(int sessionId, bool isTyping)
+    {
+        // Transient activity must not interrupt typing with a rejection dialog.
+        try
+        {
+            await _gateway.SetChatTyping(sessionId, isTyping);
+            return RequestResult.Success;
+        }
+        catch (RequestFailedException exception)
+        {
+            return new RequestResult(exception.Code, exception.Fields);
+        }
+        catch (TimeoutException)
+        {
+            return ErrorCode.TimedOut;
+        }
+    }
+
     public Task<RequestResult> SendChatMessage(NewChatMessage message) =>
         SendAsync(() => _gateway.SendChatMessage(message.ChatId, message));
 
