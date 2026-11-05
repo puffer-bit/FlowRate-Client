@@ -291,6 +291,9 @@ internal partial class CoordinatorGateway
         return (await SendRequestAsync<ChatSessionMessageResponse>(request)).Message.ToModel();
     }
 
+    public Task SetChatTyping(int sessionId, bool isTyping) =>
+        SendRequestAsync<ChatTypingResponse>(new ChatTypingRequest(sessionId, isTyping));
+
     public Task SendChatMessage(int sessionId, NewChatMessage newMessage) =>
         SendRequestAsync<SendMessageResponse>(new SendMessageRequest(sessionId, newMessage.ToDto()));
 

@@ -72,6 +72,7 @@ public partial class ActiveChatSessionVM
 
         Dispatcher.UIThread.Post(() =>
         {
+            RemoveTyping(message.SenderUserId);
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
             if (AddMessages([message], isNew: true) == 0)
@@ -92,6 +93,7 @@ public partial class ActiveChatSessionVM
 
         Dispatcher.UIThread.Post(() =>
         {
+            RemoveTyping(message.SenderUserId);
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
             ApplyChanges([message]);
@@ -119,6 +121,7 @@ public partial class ActiveChatSessionVM
             IsConnected = state == CoordinatorState.Connected;
             if (!IsConnected)
             {
+                ClearTyping();
                 _wasDisconnected = true;
                 return;
             }

@@ -34,12 +34,13 @@
                                                     BorderThickness="2"
                                                     IsVisible="{Binding IsLoading}"/>
                     <TextBlock Grid.Column="1"
+                               Classes="chat-status"
+                               Classes.typing="{Binding IsTyping}"
                                Text="{Binding StatusText}"
                                FontSize="12"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"
-                               MaxLines="1"
-                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                               MaxLines="1"/>
                 </Grid>
             </StackPanel>
         </Grid>

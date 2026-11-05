@@ -461,6 +461,8 @@
   "session.type.chat.description": "Сообщения, ответы и вложения",
   "session.type.hybrid": "Голос и видео",
   "session.type.hybrid.description": "Разговор, показ экрана и камера",
+  "chat.typing.one": "{names} печатает…",
+  "chat.typing.many": "{names} печатают…",
   "chat.loadingMessages": "Загрузка сообщений...",
   "chat.notice.limitReached": "Сообщение достигло предела в {limit} символов.",
   "chat.attach.turnedOff": "Вложения в этом чате отключены",

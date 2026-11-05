@@ -507,6 +507,8 @@
   "session.type.hybrid": "Voz y vídeo",
   "session.type.hybrid.description": "Habla, comparte la pantalla y la cámara",
 
+  "chat.typing.one": "{names} está escribiendo…",
+  "chat.typing.many": "{names} están escribiendo…",
   "chat.loadingMessages": "Cargando mensajes...",
   "chat.notice.limitReached": "El mensaje ha alcanzado el límite de {limit} caracteres.",
   "chat.attach.turnedOff": "Los adjuntos están desactivados en este chat",

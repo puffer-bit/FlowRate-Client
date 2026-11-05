@@ -678,6 +678,8 @@
   "session.type.chat.description": "Messages, replies and attachments",
   "session.type.hybrid": "Voice and video",
   "session.type.hybrid.description": "Talk, share the screen and the camera",
+  "chat.typing.one": "{names} is typing…",
+  "chat.typing.many": "{names} are typing…",
   "chat.loadingMessages": "Loading messages...",
   "chat.notice.limitReached": "The message has reached the limit of {limit} characters.",
   "@chat.notice.limitReached": {

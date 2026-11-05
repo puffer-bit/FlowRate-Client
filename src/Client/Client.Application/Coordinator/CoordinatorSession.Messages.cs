@@ -78,16 +78,25 @@ public partial class CoordinatorSession
             
             case ChatMessageAddedEvent messageAdded:
                 messageAdded.Message.IsMine = messageAdded.Message.SenderUserId == GetCurrentUser().Id;
+                _chatTyping.Update(messageAdded.ChatId, messageAdded.Message.SenderUserId, false);
                 TextMessageAdded?.Invoke(messageAdded.ChatId, messageAdded.Message);
                 break;
 
             case ChatMessageEditedEvent messageEdited:
                 messageEdited.Message.IsMine = messageEdited.Message.SenderUserId == GetCurrentUser().Id;
+                _chatTyping.Update(messageEdited.ChatId, messageEdited.Message.SenderUserId, false);
                 TextMessageEdited?.Invoke(messageEdited.ChatId, messageEdited.Message);
                 break;
 
             case ChatMessageDeletedEvent messageDeleted:
                 TextMessageDeleted?.Invoke(messageDeleted.ChatId, messageDeleted.MessageId, messageDeleted.Revision);
+                break;
+
+            case ChatUserTypingEvent typing:
+                if (ConnectionStatus != CoordinatorState.Connected || typing.UserId == GetCurrentUser().Id)
+                    break;
+                _chatTyping.Update(typing.ChatId, typing.UserId, typing.IsTyping);
+                ChatUserTyping?.Invoke(typing.ChatId, typing.UserId, typing.IsTyping);
                 break;
 
             case ChatReadStateChangedEvent readChanged:

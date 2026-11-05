@@ -1,3 +1,4 @@
+using Client.Application.Chat;
 using Client.Application.Coordinator.Users;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
@@ -21,6 +22,8 @@ public partial class CoordinatorSession : ICoordinatorSession
                 return;
 
             field = value;
+            if (value != CoordinatorState.Connected)
+                _chatTyping.Clear();
             StateChanged?.Invoke(value);
 
             // A measurement taken on a connection that is gone says nothing about the next one
@@ -57,6 +60,11 @@ public partial class CoordinatorSession : ICoordinatorSession
     public event Action<int, ChatMessageModel>? TextMessageAdded;
     public event Action<int, ChatMessageModel>? TextMessageEdited;
     public event Action<int, int, long>? TextMessageDeleted;
+    private readonly ChatTypingTracker _chatTyping = new();
+
+    public IReadOnlyDictionary<int, DateTimeOffset> GetChatTypingUsers(int chatId) => _chatTyping.Get(chatId);
+
+    public event Action<int, int, bool>? ChatUserTyping;
     public event Action<ChatReadState>? ChatReadStateChanged;
     
     public event Action<PeerJoinedEvent>? HybridSessionPeerJoined;
@@ -125,6 +133,7 @@ public partial class CoordinatorSession : ICoordinatorSession
     
     public void Dispose()
     {
+        _chatTyping.Clear();
         _lifetime.Cancel();
         _connectionMessages.Writer.TryComplete();
 

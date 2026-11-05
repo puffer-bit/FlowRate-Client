@@ -507,6 +507,8 @@
   "session.type.hybrid": "音声とビデオ",
   "session.type.hybrid.description": "通話、画面共有、カメラ",
 
+  "chat.typing.one": "{names} が入力中…",
+  "chat.typing.many": "{names} が入力中…",
   "chat.loadingMessages": "メッセージを読み込み中...",
   "chat.notice.limitReached": "メッセージが上限の {limit} 文字に達しました。",
   "chat.attach.turnedOff": "このチャットでは添付ファイルが無効になっています",

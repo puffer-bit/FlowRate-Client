@@ -197,6 +197,8 @@ public interface ICoordinatorGateway : IDisposable
         int take);
     Task<ChatMessageModel> RequestChatMessage(int sessionId,
         int messageId);
+    Task SetChatTyping(int sessionId, bool isTyping);
+
     Task SendChatMessage(int sessionId,
         NewChatMessage newMessage);
     Task DeleteChatMessage(int sessionId,

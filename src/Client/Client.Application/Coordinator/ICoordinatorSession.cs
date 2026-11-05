@@ -73,6 +73,10 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>
     /// The read position of the user moved in a chat, here or on another device of the user.
     /// </summary>
+    /// <summary>Active authors and their original expiry times, including chats not opened yet.</summary>
+    IReadOnlyDictionary<int, DateTimeOffset> GetChatTypingUsers(int chatId);
+
+    event Action<int, int, bool>? ChatUserTyping;
     event Action<ChatReadState>? ChatReadStateChanged;
 
     /// <summary>
@@ -379,6 +383,8 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> DeleteUser(int userId);
     bool ValidateUsername(string username);
     
+    Task<RequestResult> SetChatTyping(int sessionId, bool isTyping);
+
     Task<RequestResult> SendChatMessage(NewChatMessage message);
 
     /// <summary>
