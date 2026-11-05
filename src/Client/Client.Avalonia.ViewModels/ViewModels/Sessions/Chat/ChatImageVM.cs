@@ -99,6 +99,17 @@ public class ChatImageVM : ReactiveObject
         });
     }
 
+    /// <summary>Saves the original file, preserving its format and animation.</summary>
+    public async Task SaveOriginalAsync(Stream target)
+    {
+        var (result, path) = await _images.FetchOriginalAsync(_session, Image.Id);
+        if (result != MediaTransferResult.NoError || path == null)
+            throw new IOException("The original image could not be downloaded.");
+
+        await using var source = File.OpenRead(path);
+        await source.CopyToAsync(target);
+    }
+
     // The bitmap is native memory the collector does not count, so it is freed at once rather than
     // when the collector comes around to it; a render still drawing it holds a reference of its own
     private void Release(IImage? picture)

@@ -28,6 +28,9 @@
         <menus:MenuItemButton Icon="{StaticResource CopyImageIcon}" Content="{l:Text chat.menu.copyImage}"
                               IsVisible="{Binding HasCopyImage}"
                               Command="{Binding CopyImage}"/>
+        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                              IsVisible="{Binding HasCopyImage}"
+                              Command="{Binding SaveImageAs}"/>
 
         <!-- Only when the menu was opened over a file of the message -->
         <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
