@@ -7,6 +7,7 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class SettingsRepositoriesTests
 {
     [Fact]

@@ -8,6 +8,7 @@ using Client.ViewModels.Sessions.Chat;
 using ReactiveUI;
 using ReactiveUI.Primitives.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using Shared.Enums;
 using Xunit;
 
@@ -49,7 +50,7 @@ public sealed class ChatViewersTests
     });
 
     [Fact]
-    public Task OpenProfileDoesNotDisableAudienceRowsWhileTheDialogIsOpen() => TestUiThread.RunAsync(() =>
+    public async Task OpenProfileDoesNotDisableAudienceRowsWhileTheDialogIsOpen()
     {
         var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
         var fake = (AudienceSession)session;
@@ -62,13 +63,16 @@ public sealed class ChatViewersTests
             return closeProfile.Task;
         }, outputScheduler: Sequencer.Immediate);
         using var vm = new ChatViewersVM(7, session, sharedProfile);
-        vm.Open();
+        await TestUiThread.RunAsync(vm.Open);
         var alice = vm.Users[0];
         var bob = vm.Users[1];
         try
         {
-            using var execution = alice.ViewProfile.Execute().Subscribe();
-            Dispatcher.UIThread.RunJobs();
+            Task? execution = null;
+            await TestUiThread.RunAsync(() => execution = alice.ViewProfile.Execute().ToTask());
+            await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await alice.ViewProfile.CanExecute.FirstAsync(enabled => enabled).ToTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.Equal(1, Assert.Single(opened));
             Assert.False(closeProfile.Task.IsCompleted);
             Assert.False(((ICommand)sharedProfile).CanExecute(2));
@@ -78,7 +82,7 @@ public sealed class ChatViewersTests
             Assert.Single(fake.Requests);
         }
         finally { closeProfile.TrySetResult(); }
-    });
+    }
 
     [Fact]
     public async Task DeltaBeforeSnapshotIsAppliedAfterIt()
