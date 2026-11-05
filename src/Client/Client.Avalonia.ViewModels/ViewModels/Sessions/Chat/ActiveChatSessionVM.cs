@@ -144,6 +144,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private readonly ChatReadTracker _readTracker;
     private readonly ChatSenderDirectory _senders;
     private Task<int>? _loadingOlder;
+    private Task? _initialLoad;
+    private bool _isDisposed;
 
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
     public Interaction<RxVoid, RxVoid> ScrollToEndInteraction { get; } = new();
@@ -234,8 +236,15 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
 
-        _ = LoadInitialPage(fromCache: true);
     }
+
+    /// <summary>
+    /// Starts history loading once, after navigation has displayed the chat.
+    /// Called on the UI thread; creating the view model does not start I/O.
+    /// </summary>
+    public Task EnsureLoadedAsync() => _isDisposed
+        ? Task.CompletedTask
+        : _initialLoad ??= LoadInitialPage(fromCache: true);
 
     private void OpenImage(ChatImageVM image) =>
         ImageViewer = new ChatImageViewerVM(image, _coordinatorSession, _images, CloseImageViewer);
@@ -551,6 +560,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public void Dispose()
     {
+        _isDisposed = true;
         _subscriptions.Dispose();
         _senders.Dispose();
         _readTracker.SetReading(Id, false);
