@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
@@ -564,6 +565,12 @@ public partial class MainWindowVM : ReactiveObject
         {
             case ActiveChatSessionVM chat:
                 SessionsList.SetShownSession(chat.Id, false);
+                // Let the new content complete layout and rendering before starting history work.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (CurrentContent == chat)
+                        _ = chat.EnsureLoadedAsync();
+                }, DispatcherPriority.Background);
                 break;
             case ActiveHybridSessionVM hybrid:
                 SessionsList.SetShownSession(hybrid.Model.Id, true);
