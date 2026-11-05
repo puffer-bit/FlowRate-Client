@@ -1,11 +1,10 @@
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using Client.Avalonia.Localization;
 using Client.Application.Sounds;
+using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Services;
 using Client.ViewModels.Notifications;
-using Shared.Enums;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 

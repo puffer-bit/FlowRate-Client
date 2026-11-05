@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
-using Client.Avalonia.Localization;
-using Client.Core.Coordinator;
 
 namespace Client.ViewModels.ServerSettings;
 
@@ -206,46 +205,4 @@ public sealed class RoleEditorVM : ReactiveObject
         (Permission.ShareVideo, "roles.permission.shareVideo", "roles.permission.shareVideo.description"),
         (Permission.PokeMembers, "roles.permission.poke", "roles.permission.poke.description")
     ];
-}
-
-/// <summary>One permission in the role editor.</summary>
-public sealed class PermissionOptionVM(Permission permission, string title, string description, Action onChanged)
-    : ReactiveObject
-{
-    public Permission Permission { get; } = permission;
-    public string Title { get; } = title;
-    public string Description { get; } = description;
-
-    public bool IsChecked
-    {
-        get;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            onChanged();
-        }
-    }
-
-    public bool IsEnabled
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-}
-
-/// <summary>One color offered in the role editor; null for none.</summary>
-public sealed class RoleColorVM(int? color, Action<RoleColorVM> select) : ReactiveObject
-{
-    /// <summary>0xRRGGBB, or null for no color.</summary>
-    public int? Color { get; } = color;
-
-    public bool IsNone => Color == null;
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public void Select() => select(this);
 }

@@ -13,13 +13,11 @@ using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
-using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Shared.Enums.User;
-using Result = Client.ViewModels.Dialogs.Result;
 
 namespace Client.ViewModels.Main;
 

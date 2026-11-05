@@ -1,31 +1,26 @@
-﻿using Client.Application.Push;
-using Client.Core.Coordinator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Application.Chat;
+using Client.Application.Coordinator;
+using Client.Application.Coordinator.Users;
+using Client.Application.Push;
+using Client.Application.Sessions.Hybrid;
+using Client.Application.Settings;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
-using Client.Services;
-using Microsoft.Extensions.Logging;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
-using Shared.Permissions;
+using Client.Core.Coordinator;
 using Client.Core.Push;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
 using Client.Core.Users;
-using Client.Application.Chat;
-using Client.Application.Coordinator;
-using Client.Application.Coordinator.Users;
-using Client.Application.Sessions.Hybrid;
-using Client.Application.Settings;
+using Client.Services;
+using Client.Tools.AppInfo;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.ViewModels.Notifications;
 using Client.ViewModels.Profile;
 using Client.ViewModels.ServerSettings;
@@ -36,7 +31,12 @@ using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
-using Client.Tools.AppInfo;
+using Microsoft.Extensions.Logging;
+using ReactiveUI;
+using Shared.Permissions;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
 
@@ -307,8 +307,7 @@ public partial class MainWindowVM : ReactiveObject
                 RequestResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
                     change.Capacity, change.IsHostMustApprove, change.Media));
-        _changeSessionPermissionsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>(
+        _changeSessionPermissionsCommand = ReactiveCommand.CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>(
                 change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
         // Leaves only the session asked for: the menu may have been opened before we moved to another one

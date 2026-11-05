@@ -4,16 +4,17 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
-using Shared.Enums;
-using Client.Avalonia.Localization;
 using Client.Application.Coordinator;
+using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.ServerSettings;
 
@@ -211,10 +212,7 @@ public sealed class ServerSettingsVM : ReactiveObject, IDisposable
         _coordinatorSession.CoordinatorReconfigured += OnCoordinatorReconfigured;
         _coordinatorSession.PermissionsChanged += OnPermissionsChanged;
         if (CanViewSettings)
-        {
-            LoadCommand.Execute().Subscribe();
-            Users.LoadCommand.Execute().Subscribe();
-        }
+            LoadTabs();
     }
 
     // Raised on the transport thread
@@ -223,11 +221,14 @@ public sealed class ServerSettingsVM : ReactiveObject, IDisposable
         var couldView = CanViewSettings;
         ApplyAccess(permissions);
         if (CanViewSettings && !couldView)
-        {
-            LoadCommand.Execute().Subscribe();
-            Users.LoadCommand.Execute().Subscribe();
-        }
+            LoadTabs();
     });
+
+    private void LoadTabs()
+    {
+        LoadCommand.Execute().Subscribe();
+        Users.LoadCommand.Execute().Subscribe();
+    }
 
     private void ApplyAccess(CoordinatorPermissions permissions)
     {

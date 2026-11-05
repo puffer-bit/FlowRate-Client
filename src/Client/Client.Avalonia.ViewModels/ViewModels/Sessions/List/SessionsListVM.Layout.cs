@@ -1,5 +1,3 @@
-using Client.Core.Coordinator;
-using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,11 +5,14 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
+using Client.Core.Sessions;
+using Client.ViewModels.Dialogs;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
-using Client.Core.Sessions;
-using Client.ViewModels.Dialogs;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -144,6 +145,21 @@ public partial class SessionsListVM
                 rootEnd++;
         }
 
+        ApplyRows(desired);
+
+        UpdateFolding();
+        RefreshCategoryCounts();
+        RestoreSelection();
+
+        if (_categoryToRename is { } renamed && _categories.TryGetValue(renamed, out var created))
+        {
+            _categoryToRename = null;
+            created.BeginRename();
+        }
+    }
+
+    private void ApplyRows(IReadOnlyList<ISessionListRow> desired)
+    {
         _isRebuildingRows = true;
         try
         {
@@ -166,16 +182,6 @@ public partial class SessionsListVM
         finally
         {
             _isRebuildingRows = false;
-        }
-
-        UpdateFolding();
-        RefreshCategoryCounts();
-        RestoreSelection();
-
-        if (_categoryToRename is { } renamed && _categories.TryGetValue(renamed, out var created))
-        {
-            _categoryToRename = null;
-            created.BeginRename();
         }
     }
 

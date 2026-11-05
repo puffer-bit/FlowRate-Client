@@ -1,90 +1,30 @@
-using Client.Avalonia.Localization;
-using Client.Services;
-using Client.Application.Settings.Search;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using ReactiveUI;
-using Client.Core.Media;
-using Client.Core.Settings;
 using Client.Application.Ports;
 using Client.Application.Settings;
+using Client.Application.Settings.Search;
 using Client.Application.Sounds;
+using Client.Avalonia.Localization;
+using Client.Core.Media;
+using Client.Core.Settings;
+using Client.Services;
+using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
 
-public class AudioInputDeviceItem
-{
-    /// <summary>
-    /// Null for the system default device.
-    /// </summary>
-    public AudioDeviceInfo? Device { get; }
-    public string Name { get; }
-    public bool IsAvailable { get; }
-
-    public AudioInputDeviceItem(AudioDeviceInfo? device, string name, bool isAvailable)
-    {
-        Device = device;
-        Name = name;
-        IsAvailable = isAvailable;
-    }
-}
-
-public class SoundPackItem
-{
-    /// <summary>
-    /// Null for the built-in sounds.
-    /// </summary>
-    public string? Name { get; }
-    public string Title { get; }
-
-    public SoundPackItem(string? name, string title)
-    {
-        Name = name;
-        Title = title;
-    }
-}
-
-public class SoundItemVM : ReactiveObject
-{
-    public SoundEvent Event { get; }
-    public string Title { get; }
-    public ReactiveCommand<RxVoid, RxVoid> PlayCommand { get; }
-
-    public bool IsEnabled
-    {
-        get;
-        set
-        {
-            if (field == value)
-                return;
-
-            this.RaiseAndSetIfChanged(ref field, value);
-            _changed();
-        }
-    } = true;
-
-    private readonly Action _changed;
-
-    public SoundItemVM(SoundEvent soundEvent, string title, ISoundService soundService, Action changed)
-    {
-        Event = soundEvent;
-        Title = title;
-        _changed = changed;
-        PlayCommand = ReactiveCommand.Create(() => soundService.Preview(soundEvent));
-    }
-}
-
 public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 {
+    private static readonly TimeSpan SettingsSaveDelay = TimeSpan.FromMilliseconds(300);
+
     public string Name => SettingText.TabName("audio");
     public SettingTabType Type => SettingTabType.Audio;
     public bool IsEnabled => true;
@@ -100,7 +40,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
 
     public ObservableCollection<AudioInputDeviceItem> InputDevices { get; } = new();
-    
+
     public AudioInputDeviceItem? SelectedInputDevice
     {
         get;
@@ -109,13 +49,13 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public double MinInputVolumePercent => AudioSettings.MinInputVolume * 100;
     public double MaxInputVolumePercent => AudioSettings.MaxInputVolume * 100;
-    
+
     public double InputVolumePercent
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = 100;
-    
+
     /// <summary>
     /// Whether the voice goes over libwebrtc, whose microphone has fewer choices: one noise
     /// suppression, on or off, and no voice detection.
@@ -264,7 +204,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public ReactiveCommand<RxVoid, RxVoid> ToggleTestCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
@@ -273,11 +213,11 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private readonly ISoundService _soundService;
     private readonly ISoundPackCatalog _soundPackCatalog;
     private readonly CompositeDisposable _disposables = new();
-    
+
     // The chosen device as saved. Saves read it instead of SelectedInputDevice, which the combo box
     // briefly resets to null while the device list is rebuilt.
     private (string Id, string Name)? _savedInputDevice;
-    
+
     // The chosen pack as saved, for the same reason as the device
     private string? _savedSoundPack;
 
@@ -304,60 +244,54 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _soundService = soundService;
         _audioService = audioService;
         _microphoneTester = microphoneTester;
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
-        
-        ToggleTestCommand = ReactiveCommand
-            .Create(ToggleTest);
 
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
+        ToggleTestCommand = ReactiveCommand.Create(ToggleTest);
+
+        ObserveSettingsChanges(soundToggles);
+        ObserveMicrophoneTest();
+
+        _audioService.InputDevicesChanged += OnInputDevicesChanged;
+        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
+        _microphoneTester.LevelChanged += OnInputLevelChanged;
+        _microphoneTester.GateChanged += OnTestGateChanged;
+        _microphoneTester.Failed += OnTestFailed;
+    }
+
+    private IObservable<RxVoid> WatchUserChanges<T>(string propertyName, Func<AudioControlVM, T> read) =>
+        this.WatchProperty(propertyName, read)
+            .Where(_ => !_isUpdating)
+            .Select(_ => RxVoid.Default);
+
+    private void ObserveSettingsChanges(IObservable<RxVoid> soundToggles)
+    {
         var deviceChanges = this.WatchProperty(nameof(SelectedInputDevice), x => x.SelectedInputDevice)
             .Where(item => item != null && !_isUpdating)
             .Do(item => _savedInputDevice = item!.Device == null ? null : (item.Device.Id, item.Device.Name))
             .Select(_ => RxVoid.Default);
 
-        var volumeChanges = this.WatchProperty(nameof(InputVolumePercent), x => x.InputVolumePercent)
-            .Where(_ => !_isUpdating)
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .Select(_ => RxVoid.Default);
+        var volumeChanges = WatchUserChanges(nameof(InputVolumePercent), x => x.InputVolumePercent)
+            .Throttle(SettingsSaveDelay);
 
-        var gateChanges = this.WatchProperty(nameof(IsVoiceGateEnabled), x => x.IsVoiceGateEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var gateChanges = WatchUserChanges(nameof(IsVoiceGateEnabled), x => x.IsVoiceGateEnabled);
 
-        var voiceDetectionChanges = this.WatchProperty(nameof(IsVoiceDetectionEnabled), x => x.IsVoiceDetectionEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var voiceDetectionChanges = WatchUserChanges(nameof(IsVoiceDetectionEnabled), x => x.IsVoiceDetectionEnabled);
 
-        var adaptiveThresholdChanges = this.WatchProperty(nameof(IsAdaptiveThresholdEnabled), x => x.IsAdaptiveThresholdEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var adaptiveThresholdChanges = WatchUserChanges(nameof(IsAdaptiveThresholdEnabled), x => x.IsAdaptiveThresholdEnabled);
 
-        var thresholdChanges = this.WatchProperty(nameof(VoiceGateThresholdDb), x => x.VoiceGateThresholdDb)
-            .Where(_ => !_isUpdating)
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .Select(_ => RxVoid.Default);
+        var thresholdChanges = WatchUserChanges(nameof(VoiceGateThresholdDb), x => x.VoiceGateThresholdDb)
+            .Throttle(SettingsSaveDelay);
 
-        var noiseSuppressionChanges = this.WatchProperty(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var noiseSuppressionChanges = WatchUserChanges(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex);
 
-        var echoCancellationChanges = this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var echoCancellationChanges = WatchUserChanges(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled);
 
-        var autoGainControlChanges = this.WatchProperty(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var autoGainControlChanges = WatchUserChanges(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled);
 
-        var soundsEnabledChanges = this.WatchProperty(nameof(AreSoundsEnabled), x => x.AreSoundsEnabled)
-            .Where(_ => !_isUpdating)
-            .Select(_ => RxVoid.Default);
+        var soundsEnabledChanges = WatchUserChanges(nameof(AreSoundsEnabled), x => x.AreSoundsEnabled);
 
-        var soundsVolumeChanges = this.WatchProperty(nameof(SoundsVolumePercent), x => x.SoundsVolumePercent)
-            .Where(_ => !_isUpdating)
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .Select(_ => RxVoid.Default);
+        var soundsVolumeChanges = WatchUserChanges(nameof(SoundsVolumePercent), x => x.SoundsVolumePercent)
+            .Throttle(SettingsSaveDelay);
 
         var soundPackChanges = this.WatchProperty(nameof(SelectedSoundPack), x => x.SelectedSoundPack)
             .Where(item => item != null && !_isUpdating && item.Name != _savedSoundPack)
@@ -369,23 +303,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Select(_ => RxVoid.Default);
 
         // Each save writes the whole tab, one save at a time
-        _disposables.Add(deviceChanges
-            .Merge(volumeChanges)
-            .Merge(noiseSuppressionChanges)
-            .Merge(echoCancellationChanges)
-            .Merge(autoGainControlChanges)
-            .Merge(gateChanges)
-            .Merge(voiceDetectionChanges)
-            .Merge(adaptiveThresholdChanges)
-            .Merge(thresholdChanges)
-            .Merge(soundsEnabledChanges)
-            .Merge(soundsVolumeChanges)
-            .Merge(soundPackChanges)
-            .Merge(soundToggles.Where(_ => !_isUpdating))
+        _disposables.Add(Observable.Merge(deviceChanges, volumeChanges, noiseSuppressionChanges,
+                echoCancellationChanges, autoGainControlChanges, gateChanges, voiceDetectionChanges,
+                adaptiveThresholdChanges, thresholdChanges, soundsEnabledChanges, soundsVolumeChanges,
+                soundPackChanges, soundToggles.Where(_ => !_isUpdating))
             .Select(_ => Observable.FromAsync(SaveAsync))
             .Concat()
             .Subscribe());
-        
+
         // Lets the user hear the volume they stopped at, without waiting for the save
         _disposables.Add(soundsVolumeChanges
             .Subscribe(_ =>
@@ -393,43 +318,33 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
                 _soundService.Volume = (float)(SoundsVolumePercent / 100);
                 _soundService.Preview(NextVolumePreview());
             }));
+    }
 
-        // The test follows the settings right away, unlike saving
-        _disposables.Add(this.WatchProperty(nameof(SelectedInputDevice), x => x.SelectedInputDevice)
-            .Where(item => item != null && !_isUpdating && IsTestRunning)
-            .Subscribe(_ => StartTest()));
-
-        _disposables.Add(this.WatchProperty(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex)
-            .Where(_ => !_isUpdating && IsTestRunning)
-            .Subscribe(_ => StartTest()));
-
-        _disposables.Add(this.WatchProperty(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled)
-            .Where(_ => !_isUpdating && IsTestRunning)
-            .Subscribe(_ => StartTest()));
-
-        _disposables.Add(this.WatchProperty(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled)
-            .Where(_ => !_isUpdating && IsTestRunning)
+    private void ObserveMicrophoneTest()
+    {
+        // Device and processing changes restart the test immediately, without waiting for a save.
+        var deviceChanges = WatchUserChanges(nameof(SelectedInputDevice), x => x.SelectedInputDevice)
+            .Where(_ => SelectedInputDevice != null);
+        _disposables.Add(Observable.Merge(deviceChanges,
+                WatchUserChanges(nameof(NoiseSuppressionIndex), x => x.NoiseSuppressionIndex),
+                WatchUserChanges(nameof(IsEchoCancellationEnabled), x => x.IsEchoCancellationEnabled),
+                WatchUserChanges(nameof(IsAutoGainControlEnabled), x => x.IsAutoGainControlEnabled))
+            .Where(_ => IsTestRunning)
             .Subscribe(_ => StartTest()));
 
         // The gate of the test decides as the one of a call, with the same options
         _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(VoiceGateThresholdDb),
                 nameof(IsVoiceDetectionEnabled), nameof(IsAdaptiveThresholdEnabled))
             .Subscribe(_ => _microphoneTester.SetVoiceGate(TestVoiceGate)));
-        
+
         _disposables.Add(this.WatchProperty(nameof(InputVolumePercent), x => x.InputVolumePercent)
             .Subscribe(percent => _microphoneTester.SetVolume(percent / 100)));
-        
+
         _disposables.Add(this.WatchProperty(nameof(IsLoopbackEnabled), x => x.IsLoopbackEnabled)
             .Subscribe(_microphoneTester.SetLoopbackEnabled));
 
         _disposables.Add(this.WatchProperties(nameof(IsVoiceGateEnabled), nameof(IsTestRunning))
             .Subscribe(_ => ResetVoiceDetected()));
-        
-        _audioService.InputDevicesChanged += OnInputDevicesChanged;
-        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
-        _microphoneTester.LevelChanged += OnInputLevelChanged;
-        _microphoneTester.GateChanged += OnTestGateChanged;
-        _microphoneTester.Failed += OnTestFailed;
     }
 
     /// <summary>
@@ -567,14 +482,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void OnTestFailed(string error)
     {
         var devices = _audioService.GetInputDevices();
-        
+
         Dispatcher.UIThread.Post(() =>
         {
             var deviceId = SelectedInputDevice?.Device?.Id;
-            
+
             // Backends report an unplugged device in their own words, e.g. "target not found"
             var isDisconnected = deviceId != null && devices.All(d => d.Id != deviceId);
-            
+
             IsTestRunning = false;
             InputLevel = 0;
             TestError = isDisconnected
@@ -586,10 +501,22 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private async Task LoadAsync()
     {
         _isUpdating = true;
-        
+
         var settings = await _audioService.GetSettingsAsync();
-        _savedInputDevice = settings.InputDeviceId == null 
-            ? null 
+        Apply(settings);
+        RefreshSoundPacks();
+
+        // The first call starts the device monitor, which may take a while to reach the sound server
+        var devices = await Task.Run(_audioService.GetInputDevices);
+        RebuildInputDevices(devices);
+
+        _isUpdating = false;
+    }
+
+    private void Apply(AudioSettings settings)
+    {
+        _savedInputDevice = settings.InputDeviceId == null
+            ? null
             : (settings.InputDeviceId, settings.InputDeviceName ?? settings.InputDeviceId);
         InputVolumePercent = settings.InputVolume * 100;
         IsVoiceGateEnabled = settings.IsVoiceGateEnabled;
@@ -604,26 +531,19 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _savedSoundPack = settings.SoundPack;
         foreach (var sound in Sounds)
             sound.IsEnabled = !settings.DisabledSounds.Contains(SoundFiles.GetName(sound.Event));
-        RefreshSoundPacks();
-        
-        // The first call starts the device monitor, which may take a while to reach the sound server
-        var devices = await Task.Run(_audioService.GetInputDevices);
-        RebuildInputDevices(devices);
-        
-        _isUpdating = false;
     }
 
     private void OnInputDevicesChanged()
     {
         var devices = _audioService.GetInputDevices();
-        
+
         Dispatcher.UIThread.Post(() =>
         {
             var wasUpdating = _isUpdating;
             _isUpdating = true;
-            
+
             RebuildInputDevices(devices);
-            
+
             _isUpdating = wasUpdating;
         });
     }
@@ -631,9 +551,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void RebuildInputDevices(IReadOnlyList<AudioDeviceInfo> devices)
     {
         var defaultDevice = devices.FirstOrDefault(d => d.IsDefault);
-        
+
         InputDevices.Clear();
-        
+
         var systemDefault = new AudioInputDeviceItem(null,
             defaultDevice == null
                 ? Strings.Get("settings.audio.device.systemDefault")
@@ -686,7 +606,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         SoundPack = _savedSoundPack,
         DisabledSounds = Sounds.Where(sound => !sound.IsEnabled).Select(sound => SoundFiles.GetName(sound.Event)).ToArray()
     };
-    
+
     public async Task ResetAllAsync()
     {
         await _audioService.SaveSettingsAsync(new AudioSettings());
@@ -699,7 +619,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester.GateChanged -= OnTestGateChanged;
         _microphoneTester.Failed -= OnTestFailed;
         _microphoneTester.Stop();
-        
+
         _audioService.InputDevicesChanged -= OnInputDevicesChanged;
         ExperimentalFeatures.Changed -= OnExperimentalFeaturesChanged;
         _disposables.Dispose();

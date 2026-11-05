@@ -1,5 +1,6 @@
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -10,7 +11,7 @@ public class HybridSessionBitmapFlyoutVM : ReactiveObject
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = 1;
-    
+
     public float Volume
     {
         get;
@@ -19,7 +20,7 @@ public class HybridSessionBitmapFlyoutVM : ReactiveObject
             this.RaiseAndSetIfChanged(ref field, value);
         }
     }
-    
+
     public bool IsOverdriveEnabled
     {
         get;
@@ -48,7 +49,7 @@ public class HybridSessionBitmapFlyoutVM : ReactiveObject
     {
         ToggleMute = ReactiveCommand.Create(ToggleMuteState);
         ToggleOverdrive = ReactiveCommand.Create(ToggleOverdriveState);
-        
+
         Volume = (float)0.4;
     }
 

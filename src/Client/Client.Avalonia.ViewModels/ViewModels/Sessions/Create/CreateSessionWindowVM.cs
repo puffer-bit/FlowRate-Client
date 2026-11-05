@@ -1,44 +1,20 @@
-using Client.Services;
-using Client.Avalonia.Localization;
 using System;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Application.Coordinator;
+using Client.Avalonia.Localization;
+using Client.Core.Sessions;
+using Client.Services;
 using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
 using Shared.Enums;
 using Shared.Enums.WebRTC;
 using Shared.Validation;
-using Client.Core.Sessions;
-using Client.Application.Coordinator;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Create;
-
-/// <summary>
-/// A session type the dialog offers, shown as a selectable card.
-/// </summary>
-public sealed class SessionTypeOptionVM : ReactiveObject
-{
-    public SessionType Type { get; }
-    public string Title { get; }
-    public string Description { get; }
-    public int DefaultCapacity { get; }
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public SessionTypeOptionVM(SessionType type, string title, string description, int defaultCapacity)
-    {
-        Type = type;
-        Title = title;
-        Description = description;
-        DefaultCapacity = defaultCapacity;
-    }
-}
 
 public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 {
@@ -182,7 +158,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     private async Task CreateAsync()
     {
         await Task.Delay(1500);
-        
+
         NameError = SessionRules.ValidateName(Name);
         GeneralError = null;
 

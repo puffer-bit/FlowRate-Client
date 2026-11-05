@@ -1,5 +1,3 @@
-using Shared.Enums;
-using Client.Core.Coordinator;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,11 +6,14 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Connections;
 using ReactiveUI;
+using Shared.Enums;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Profile;
@@ -283,19 +284,18 @@ public sealed class AccountSecurityVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> BackCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
-    private async Task LoadAsync()
-    {
-        await RunAsync(async () =>
-        {
-            var (result, security) = await _session.GetAccountSecurity();
-            Apply(result, security);
-            if (!result.IsSuccess)
-                return result;
+    private Task LoadAsync() => RunAsync(LoadOverviewAsync);
 
-            var (sessionsResult, sessions) = await _session.GetAccountSessions();
-            ApplySessions(sessionsResult, sessions);
-            return sessionsResult;
-        });
+    private async Task<RequestResult> LoadOverviewAsync()
+    {
+        var (result, security) = await _session.GetAccountSecurity();
+        Apply(result, security);
+        if (!result.IsSuccess)
+            return result;
+
+        var (sessionsResult, sessions) = await _session.GetAccountSessions();
+        ApplySessions(sessionsResult, sessions);
+        return sessionsResult;
     }
 
     private void Begin(Change change)
@@ -477,46 +477,4 @@ public sealed class AccountSecurityVM : ReactiveObject
         { Error: ErrorCode.SessionNotFound } => Strings.Get("accountSecurity.error.sessionNotFound"),
         _ => Strings.Format("accountSecurity.error.failed", ("code", (int?)result.Error))
     };
-}
-
-public sealed class AccountPasskeyVM(AccountPasskey passkey)
-{
-    public int Id => passkey.Id;
-
-    public string Label => string.IsNullOrWhiteSpace(passkey.Label)
-        ? Strings.Get("accountSecurity.passkeys.unnamed")
-        : passkey.Label;
-
-    public string Details => passkey.LastUsedAtUtc is { } lastUsed
-        ? Strings.Format("accountSecurity.passkeys.usedAt", ("created", Format(passkey.CreatedAtUtc)),
-            ("used", Format(lastUsed)))
-        : Strings.Format("accountSecurity.passkeys.createdAt", ("created", Format(passkey.CreatedAtUtc)));
-
-    private static string Format(DateTime time) =>
-        Strings.FormatDateTime(time.Kind == DateTimeKind.Local ? time : DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
-}
-
-public sealed class AccountSessionVM(AccountSession session)
-{
-    public Guid Id => session.Id;
-    public bool IsCurrent => session.IsCurrent;
-    public bool IsOther => !session.IsCurrent;
-
-    public string Name => string.IsNullOrWhiteSpace(session.DeviceName)
-        ? Strings.Get("accountSecurity.sessions.unnamed")
-        : session.DeviceName;
-
-    /// <summary>"Linux · 0.8.0 · this device", "Android · 0.8.0 · online", or when it was last used, and from where.</summary>
-    public string Details => string.Join(" · ", new[]
-    {
-        session.Platform,
-        session.AppVersion,
-        session.IsCurrent ? Strings.Get("accountSecurity.sessions.current")
-        : session.IsOnline ? Strings.Get("accountSecurity.sessions.online")
-        : Strings.Format("accountSecurity.sessions.lastUsed", ("time", Format(session.LastUsedAtUtc))),
-        session.LastAddress
-    }.Where(part => !string.IsNullOrWhiteSpace(part)));
-
-    private static string Format(DateTime time) =>
-        Strings.FormatDateTime(DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
 }

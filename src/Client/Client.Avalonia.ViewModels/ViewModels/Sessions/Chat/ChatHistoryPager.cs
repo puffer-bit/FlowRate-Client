@@ -1,8 +1,7 @@
 using System.Threading.Tasks;
-using Shared.Enums;
-using Client.Core.Chat;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Core.Chat;
 
 namespace Client.ViewModels.Sessions.Chat;
 

@@ -7,7 +7,7 @@ namespace Client.Services;
 
 public class SettingTypeToIconConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not SettingTabType type)
             return null;
@@ -36,6 +36,6 @@ public class SettingTypeToIconConverter : IValueConverter
         return app.TryGetResource(key, app.ActualThemeVariant, out var icon) ? icon : null;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }

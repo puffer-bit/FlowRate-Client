@@ -1,7 +1,7 @@
-using ReactiveUI;
-using Shared.Enums;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using ReactiveUI;
+using Shared.Enums;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -11,22 +11,13 @@ public class HybridSessionParticipantVM : ReactiveObject, IParticipantVM
     public PeerModel PeerData { get; private set; }
     public UserModel? UserData { get; private set; }
 
-    public string DisplayedName
-    {
-        get => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
-    }
+    public string DisplayedName => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
 
-    public bool IsConnected
-    {
-        get => PeerData.State == HybridSessionPeerState.Connected;
-    }
+    public bool IsConnected => PeerData.State == HybridSessionPeerState.Connected;
 
     /// <summary>The user waits for the host to let them in.</summary>
-    public bool IsWaiting
-    {
-        get => PeerData.State == HybridSessionPeerState.WaitingForApprove;
-    }
-    
+    public bool IsWaiting => PeerData.State == HybridSessionPeerState.WaitingForApprove;
+
     /// <summary>
     /// The user speaks right now.
     /// </summary>
@@ -68,7 +59,7 @@ public class HybridSessionParticipantVM : ReactiveObject, IParticipantVM
         UserData = userData;
         IsSharingScreen = peerData.IsScreenShareActive;
     }
-    
+
     public void UpdateUserModel(UserModel? userModel)
     {
         UserData = userModel;

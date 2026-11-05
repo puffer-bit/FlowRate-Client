@@ -1,11 +1,12 @@
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Core.Chat;
+using Client.Services;
 using ReactiveUI;
 using Shared.Enums.User;
-using Client.Core.Chat;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -311,7 +312,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             OpenUserProfile(Message.SenderUserId);
     }
 
-    public async void Highlight()
+    public void Highlight() => _ = HighlightAsync();
+
+    private async Task HighlightAsync()
     {
         int version = ++_highlightVersion;
         IsHighlighted = true;

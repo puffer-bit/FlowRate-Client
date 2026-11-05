@@ -1,16 +1,17 @@
-using Client.Application.Settings.Search;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Subjects;
-using Avalonia.Media;
-using Client.Avalonia.Localization;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
+using Avalonia.Media;
+using Client.Application.Settings;
+using Client.Application.Settings.Search;
+using Client.Avalonia.Localization;
+using Client.Core.Settings.Themes;
 using Client.Services;
 using ReactiveUI;
-using Client.Core.Settings.Themes;
-using Client.Application.Settings;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -124,38 +125,48 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ResetColorsCommand { get; init; }
-    
+
     private readonly IAppearanceService _appearanceService;
     private readonly IThemeService _themeService;
     private readonly ILanguageService _languageService;
-    
+
     private bool _isLoaded;
 
     private readonly Subject<CustomColors> _customColorsToSave = new();
     private CustomColors _customColors = new();
     // Set while the pickers are filled by the view model, which is not a choice of the user
     private bool _isShowingColors;
-    
+
     public AppearanceControlVM(IAppearanceService appearanceService, IThemeService themeService,
         ILanguageService languageService)
     {
         _appearanceService = appearanceService;
         _themeService = themeService;
         _languageService = languageService;
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
 
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
+
+        ResetColorsCommand = ReactiveCommand.CreateFromTask(ResetColorsAsync,
+            this.WatchProperty(nameof(HasCustomColors), vm => vm.HasCustomColors));
+
+        SelectedLanguage = Languages[0];
+        ObserveThemeChanges();
+        ObserveColorChanges();
+        ObserveInterfaceChanges();
+    }
+
+    private void ObserveThemeChanges()
+    {
         // Apply and persist the preset only on user changes, not on initial load
         this.WatchProperty(nameof(SelectedThemeType), x => x.SelectedThemeType)
             .Where(_ => _isLoaded)
             .Select(themeType => Observable.FromAsync(() => ChangeThemeAsync(themeType)))
             .Concat()
             .Subscribe();
+    }
 
-        ResetColorsCommand = ReactiveCommand
-            .CreateFromTask(ResetColorsAsync, this.WatchProperty(nameof(HasCustomColors), x => x.HasCustomColors));
-
+    private void ObserveColorChanges()
+    {
         ObserveColor(this.WatchProperty(nameof(PrimaryColor), x => x.PrimaryColor),
             (colors, color) => colors with { Primary = color }, colors => colors.Primary);
         ObserveColor(this.WatchProperty(nameof(SecondaryColor), x => x.SecondaryColor),
@@ -177,7 +188,10 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
             .Select(colors => Observable.FromAsync(() => _appearanceService.UpdateCustomColorsAsync(colors)))
             .Concat()
             .Subscribe();
+    }
 
+    private void ObserveInterfaceChanges()
+    {
         // A combo box reports no selection while its items are rebuilt
         this.WatchProperties(nameof(IsAnimationEnabled), nameof(AnimationSpeedIndex))
             .Select(vm => (IsEnabled: vm.IsAnimationEnabled, SpeedIndex: vm.AnimationSpeedIndex))
@@ -193,8 +207,6 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
             .Select(percent => Observable.FromAsync(() => ChangeInterfaceScaleAsync(percent)))
             .Concat()
             .Subscribe();
-
-        SelectedLanguage = Languages[0];
 
         this.WatchProperty(nameof(SelectedLanguage), x => x.SelectedLanguage)
             .Where(language => _isLoaded && language != null)
@@ -293,7 +305,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
     public async Task ResetAllAsync()
     {
         const ThemeType defaultTheme = ThemeType.Dark;
-        
+
         // Applied here directly, so the change handler must not apply and save it a second time
         _isLoaded = false;
         SelectedThemeType = defaultTheme;
@@ -303,7 +315,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = InterfaceScale.Default;
         _isLoaded = true;
-        
+
         await ChangeThemeAsync(defaultTheme);
         await ChangeLanguageAsync(null);
         await ResetColorsAsync();

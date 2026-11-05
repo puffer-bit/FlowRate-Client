@@ -1,20 +1,22 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
+using Client.Application.Coordinator.Users;
+using Client.Application.Sessions.Hybrid;
+using Client.Avalonia.Styles.Animation;
 using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
-using Client.Application.Coordinator.Users;
-using Client.Application.Sessions.Hybrid;
-using Client.Avalonia.Styles.Animation;
 using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.ViewModels.Sessions.Hybrid;
+using ReactiveUI;
+using Shared.Enums;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -89,7 +91,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
     // What the current user may do, as of the last ApplyAccess
     private CoordinatorPermissions _permissions = CoordinatorPermissions.None;
-    
+
     public bool IsCorrupted
     {
         get;
@@ -112,16 +114,16 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
-    
+
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
-    
+
     // Reactive commands
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> LeaveSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditSessionCommand { get; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
-    
+
     public HybridSessionVM(
         HybridSessionModel model,
         int currentUserId,
@@ -159,7 +161,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         EditPermissionsCommand = editPermissionsCommand;
         DeleteSessionCommand = deleteSessionCommand;
     }
-    
+
     /// <summary>
     /// Joins this session, or brings it back on screen when we are already in it.
     /// </summary>
@@ -303,11 +305,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         if (isWatching)
             Connect();
     }
-    
+
     public async Task RemovePeerFromSession(int userId)
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId && !p.IsLeaving);
-        if (peer == null) 
+        if (peer == null)
             return;
 
         if (SelectedPeer == peer)
@@ -340,7 +342,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         if (oldIndex != newIndex)
             Peers.Move(oldIndex, newIndex);
     }
-    
+
     public void ApplyPlayback(int userId, PeerPlayback playback)
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId);

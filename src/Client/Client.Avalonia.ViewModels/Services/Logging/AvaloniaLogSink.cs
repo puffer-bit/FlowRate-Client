@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Logging;
-using Serilog;
+
 using AvaloniaLevel = Avalonia.Logging.LogEventLevel;
 using SerilogLevel = Serilog.Events.LogEventLevel;
 

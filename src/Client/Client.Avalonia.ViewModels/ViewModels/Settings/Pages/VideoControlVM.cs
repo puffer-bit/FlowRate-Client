@@ -12,6 +12,7 @@ using Client.Core.Media;
 using Client.Core.Settings;
 using Client.Services;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -105,6 +106,11 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
+        ObserveSettingsChanges();
+    }
+
+    private void ObserveSettingsChanges()
+    {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(IsHardwareDecodingEnabled),

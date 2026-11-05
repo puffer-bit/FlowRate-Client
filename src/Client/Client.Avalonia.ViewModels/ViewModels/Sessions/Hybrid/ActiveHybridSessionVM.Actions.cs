@@ -1,5 +1,3 @@
-using Client.Core.Coordinator;
-using Client.Avalonia.Styles.Animation;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,13 +8,13 @@ using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Sounds;
 using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
+using Client.Core.Coordinator;
 using Client.Core.Media;
 using Client.Core.Users;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
-using Shared.Models.Media;
 using Client.ViewModels.Notifications;
+using ReactiveUI;
+using Shared.Models.Media;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 

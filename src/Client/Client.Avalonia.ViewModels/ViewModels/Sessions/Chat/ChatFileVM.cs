@@ -6,8 +6,8 @@ using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
-using Client.Services;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;

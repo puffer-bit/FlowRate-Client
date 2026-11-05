@@ -1,32 +1,32 @@
-using Client.Avalonia.Localization;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using Microsoft.Extensions.Logging;
-using ReactiveUI;
-using Shared.Enums;
-using Shared.Models.Media;
+using Client.Application.Chat;
+using Client.Application.Coordinator;
+using Client.Application.Coordinator.Users;
+using Client.Application.Sessions.Hybrid;
+using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
-using Client.Application.Chat;
-using Client.Application.Coordinator;
-using Client.Application.Coordinator.Users;
-using Client.Application.Sessions.Hybrid;
-using Client.Avalonia.Styles.Animation;
 using Client.Services;
-using Client.ViewModels.Main;
 using Client.ViewModels.Dialogs;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
+using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Hybrid;
+using Microsoft.Extensions.Logging;
+using ReactiveUI;
+using Shared.Enums;
+using Shared.Models.Media;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
-
 
 public partial class SessionsListVM : ReactiveObject
 {
@@ -107,7 +107,7 @@ public partial class SessionsListVM : ReactiveObject
                 Dispatcher.UIThread.Post(RestoreSelection);
         }
     }
-    
+
     /// <summary>
     /// The sessions of the coordinator, in no particular order. <see cref="Rows"/> is what the list shows.
     /// </summary>
@@ -135,7 +135,7 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
     private readonly ReactiveCommand<int, RxVoid> _toggleChatMuteCommand;
-    
+
     private ICoordinatorSession? _coordinatorSession;
     private readonly EventSubscriptions _coordinatorSubscriptions = new();
 
@@ -195,16 +195,14 @@ public partial class SessionsListVM : ReactiveObject
         _screenWatch = screenWatch;
         _screenWatch.Changed += OnScreenWatchChanged;
         _peerStats = peerStats;
-        _deleteSessionCommand = ReactiveCommand
-            .CreateFromTask<int>(DeleteSession);
-        _toggleChatMuteCommand = ReactiveCommand
-            .CreateFromTask<int>(ToggleChatMute);
-        
+        _deleteSessionCommand = ReactiveCommand.CreateFromTask<int>(DeleteSession);
+        _toggleChatMuteCommand = ReactiveCommand.CreateFromTask<int>(ToggleChatMute);
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
         CreateCategoryCommand = ReactiveCommand.CreateFromTask(CreateCategory);
         CreateSessionCommand = ReactiveCommand.Create(() => { _createSessionCommand.Execute(null).Subscribe(); });
         MoveTargets.Add(new MoveTargetVM(null, Strings.Get("sessions.category.none"), MoveToCategory));
-        
+
         Rows.CollectionChanged += (_, _) =>
         {
             this.RaisePropertyChanged(nameof(IsEmpty));
@@ -249,7 +247,7 @@ public partial class SessionsListVM : ReactiveObject
 
         State = SessionsListState.Reconnecting;
     }
-    
+
     public async Task AttachCoordinator(ICoordinatorSession coordinatorSession)
     {
         if (!IsStale)
@@ -300,12 +298,12 @@ public partial class SessionsListVM : ReactiveObject
                 () => session.HybridSessionUpdated -= OnHybridSessionUpdated)
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
     }
-    
+
     public void DetachCoordinator()
     {
         State = SessionsListState.Offline;
         ErrorMessage = null;
-        
+
         ClearList();
         Unsubscribe();
         _readTracker.Detach();
@@ -317,7 +315,7 @@ public partial class SessionsListVM : ReactiveObject
         _coordinatorSession = null;
         _attachId++;
     }
-    
+
     private async Task LoadSessionList(ICoordinatorSession coordinatorSession, int attachId)
     {
         // A list kept through a reconnect is replaced only once the new one has come
@@ -339,7 +337,7 @@ public partial class SessionsListVM : ReactiveObject
                         : Strings.Get("sessions.fetch.serverError"));
                     return;
                 }
-                
+
                 var coordinatorInstanceId = coordinatorSession.GetCurrentUser().CoordinatorInstanceId;
                 var mutedChatIds = await _preferences.LoadMutedChatsAsync(coordinatorInstanceId);
                 var collapsedCategoryIds = await _preferences.LoadCollapsedCategoriesAsync(coordinatorInstanceId);
@@ -354,10 +352,10 @@ public partial class SessionsListVM : ReactiveObject
                     if (attachId != _attachId)
                         return;
 
-                    if (sessionModel.SessionType == SessionType.Hybrid 
+                    if (sessionModel.SessionType == SessionType.Hybrid
                         && sessionModel is HybridSessionModel hybridSessionModel)
                         await AddNewHybridSession(hybridSessionModel);
-                    else if (sessionModel.SessionType == SessionType.Chat 
+                    else if (sessionModel.SessionType == SessionType.Chat
                              && sessionModel is ChatSessionModel chatSessionModel)
                         AddChatSession(chatSessionModel, mutedChatIds.Contains(chatSessionModel.Id));
                 }
@@ -423,7 +421,7 @@ public partial class SessionsListVM : ReactiveObject
         ErrorMessage = message;
         State = SessionsListState.Failed;
     }
-    
+
     private async Task AddNewHybridSession(HybridSessionModel hybridSessionModel)
     {
         var model = AddHybridSessionVM(hybridSessionModel);
@@ -456,8 +454,8 @@ public partial class SessionsListVM : ReactiveObject
     private void AddChatSession(ChatSessionModel chatSessionModel, bool isMuted)
     {
         var model = new ChatSessionVM(
-            chatSessionModel, 
-            _showSessionCommand, 
+            chatSessionModel,
+            _showSessionCommand,
             _deleteSessionCommand,
             _toggleChatMuteCommand,
             _editPermissionsCommand)
@@ -467,7 +465,7 @@ public partial class SessionsListVM : ReactiveObject
         if (_readTracker.Get(chatSessionModel.Id) is { } readState)
             model.ApplyReadState(readState);
         model.ApplyAccess(Access.Permissions);
-        
+
         MarkShown(model);
         model.MoveTargets = MoveTargets;
         Sessions.Add(model);
@@ -610,7 +608,7 @@ public partial class SessionsListVM : ReactiveObject
             RebuildRows();
         });
     }
-    
+
     /// <summary>
     /// The sessions of the list by their id, of one kind.
     /// </summary>
@@ -741,10 +739,10 @@ public partial class SessionsListVM : ReactiveObject
 
     private void UpdatePeerScreenShare(int sessionId, int userId, bool isActive) =>
         PostToHybrid(sessionId, session => session.UpdatePeerScreenShare(userId, isActive));
-    
+
     private async Task DeleteSession(int sessionId)
     {
-        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo, 
+        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
                 Strings.Get("sessions.delete.question"),
                 Strings.Get("sessions.delete.title"))) == Result.Yes)
         {

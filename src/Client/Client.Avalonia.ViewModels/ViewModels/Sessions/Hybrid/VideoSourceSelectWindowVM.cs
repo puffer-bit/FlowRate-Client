@@ -1,4 +1,3 @@
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,15 +5,17 @@ using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
-using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.Avalonia.Localization;
 using Client.Core.Media;
-using Avalonia.Threading;
+using Client.Services;
+using Client.ViewModels.Dialogs;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -322,10 +323,9 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         PickSystemSourceCommand = ReactiveCommand.CreateFromTask(PickSystemSourceAsync);
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(null); });
         GoLive = ReactiveCommand.CreateFromTask(ConfirmAsync,
-            Observable.Select(
-                this.WatchProperties(nameof(SelectedWindow), nameof(SelectedMonitor), nameof(IsMonitorsMode),
-                    nameof(SystemInput), nameof(IsPicking)),
-                vm => !vm.IsPicking && (UsesSystemPicker
+            this.WatchProperties(nameof(SelectedWindow), nameof(SelectedMonitor), nameof(IsMonitorsMode),
+                    nameof(SystemInput), nameof(IsPicking))
+                .Select(vm => !vm.IsPicking && (UsesSystemPicker
                     ? vm.SystemInput != null
                     : (vm.IsMonitorsMode ? vm.SelectedMonitor : vm.SelectedWindow) != null)));
     }
