@@ -189,4 +189,31 @@ public class CoordinatorSessionLoginTests
         Assert.Equal("new-password", gateway.SecondStageAnswers[^1].Password);
         Assert.Equal("new-password", session.AccountPasswordToSave);
     }
+    [Fact]
+    public async Task SavedIdentity_CannotAttachToAnotherCoordinatorAtTheSameAddress()
+    {
+        var (session, _) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, "#identity", null, expectedCoordinatorId: "old-coordinator");
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Null(session.CoordinatorModel);
+            Assert.Equal("old-coordinator", session.CoordinatorMismatch!.ExpectedCoordinatorId);
+        }
+    }
+
+    [Fact]
+    public async Task Reconnect_RejectsAReplacementCoordinatorEvenWithoutAPinnedCertificate()
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, null);
+            Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+            gateway.ActiveCoordinatorId = "replacement";
+            await ReconnectAsync(session);
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Equal(FakeGateway.CoordinatorId, session.CoordinatorModel!.Id);
+        }
+    }
 }

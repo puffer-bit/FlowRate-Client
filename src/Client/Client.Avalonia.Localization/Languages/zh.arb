@@ -1235,5 +1235,7 @@
   "chat.emoji.category.6": "物品",
   "chat.emoji.category.7": "符号",
   "chat.emoji.category.8": "旗帜",
-  "chat.emoji.limit": "添加此表情将超出消息长度限制。"
+  "chat.emoji.limit": "添加此表情将超出消息长度限制。",
+  "settings.accounting.forgetIdentity.title": "忘记身份",
+  "settings.accounting.forgetIdentity.question": "要忘记此设备上保存的身份“{user}”吗？其保存的密码和会话令牌将被删除。服务器上的账户将保留。"
 }

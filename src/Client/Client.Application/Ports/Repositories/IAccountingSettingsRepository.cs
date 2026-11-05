@@ -6,7 +6,6 @@ namespace Client.Application.Ports.Repositories;
 public interface IAccountingSettingsRepository
 {
     Task<IReadOnlyList<SavedCoordinatorModel>> GetAllCoordinatorsAsync();
-    Task<SavedCoordinatorModel?> GetCoordinatorAsync(string address, int port);
     Task<SavedCoordinatorModel?> GetCoordinatorAsync(string coordinatorId);
     Task<(SavedCoordinatorModel Model, SavedUserModel User)?> GetCoordinatorInstanceAsync(
         (string CoordinatorId, int UserId) identityIdsPair);
@@ -26,6 +25,7 @@ public interface IAccountingSettingsRepository
     Task SetUserIdentityAsync(string coordinatorId, int userId, string userIdentity);
     Task SaveCoordinatorAsync(SavedCoordinatorModel model);
     Task DeleteCoordinatorAsync(string coordinatorId);
+    Task DeleteUserAsync(string coordinatorId, int userId);
     
     Task<DatabaseSettings> GetDatabaseSettingsAsync();
     Task UpdateDatabaseSettingsAsync(DatabaseSettings databaseSettings);

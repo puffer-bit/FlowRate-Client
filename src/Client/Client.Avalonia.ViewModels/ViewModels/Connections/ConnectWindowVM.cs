@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,8 +35,8 @@ public class ConnectWindowVM : ReactiveObject
             this.RaiseAndSetIfChanged(ref field, value);
 
             // The server password saved with the identity is filled in; "New*" keeps what was typed
-            if (value?.Password is { Length: > 0 } password)
-                Password = password;
+            if (value?.UserIdentity != null)
+                Password = value.Password;
         }
     }
 
@@ -132,6 +133,7 @@ public class ConnectWindowVM : ReactiveObject
                 Port = value.Port == DefaultPort ? null : value.Port.ToString();
                 ServerAddress = value.Host;
             }
+            ValidateEndpoint();
         }
     }
 
@@ -222,7 +224,7 @@ public class ConnectWindowVM : ReactiveObject
             Dispatcher.UIThread.Post(() =>
             {
                 foreach (var server in savedServers)
-                    SavedServers.Add(new SavedServerItem(server.Name, UriParsing.FormatHost(server.Address), server.Port));
+                    SavedServers.Add(new SavedServerItem(server.CoordinatorId, server.Name, UriParsing.FormatHost(server.Address), server.Port));
             });
 
             var lastIdentity = await _behaviorService.GetAutoConnectInstance();
@@ -233,8 +235,7 @@ public class ConnectWindowVM : ReactiveObject
 
                 Dispatcher.UIThread.Post(() =>
                 {
-                    Port = coordinator.Port == DefaultPort ? null : coordinator.Port.ToString();
-                    ServerAddress = UriParsing.FormatHost(coordinator.Address);
+                    SelectedSavedServer = SavedServers.FirstOrDefault(s => s.CoordinatorId == coordinator.CoordinatorId);
                 });
             }
         });
@@ -318,8 +319,9 @@ public class ConnectWindowVM : ReactiveObject
         string? identity = SelectedIdentity?.UserIdentity;
         var accountPassword = SelectedIdentity?.AccountPassword;
         var sessionToken = SelectedIdentity?.SessionToken;
+        var expectedCoordinatorId = SelectedIdentity?.CoordinatorId is { Length: > 0 } id ? id : null;
         await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-            sessionToken);
+            sessionToken, expectedCoordinatorId);
 
         _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -330,7 +332,7 @@ public class ConnectWindowVM : ReactiveObject
 
             ConnectionStatus = Strings.Get("main.status.waitingForServer");
             await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-                sessionToken);
+                sessionToken, expectedCoordinatorId);
 
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
         }
@@ -443,16 +445,19 @@ public class ConnectWindowVM : ReactiveObject
         IsAddressValid = isValid;
         IsFormValid = isValid && PasswordError == null;
 
-        if (isValid && _identitiesEndpoint != $"{_parsedAddress}:{_parsedPort}")
+        if (_identitiesEndpoint != IdentityLookupKey)
             FindIdentitiesCommand.Execute().Subscribe();
     }
 
+    private string? SelectedCoordinatorId => SelectedSavedServer is { } server
+        && UriParsing.ParseServerAddress(server.Host).Item1?.Host == _parsedAddress
+        && server.Port == _parsedPort ? server.CoordinatorId : null;
+
+    private string IdentityLookupKey => $"{SelectedCoordinatorId}:{_parsedAddress}:{_parsedPort}";
+
     private async Task FindIdentities()
     {
-        if (!IsAddressValid)
-            return;
-
-        _identitiesEndpoint = $"{_parsedAddress}:{_parsedPort}";
+        _identitiesEndpoint = IdentityLookupKey;
         var lookup = ++_identitiesLookup;
         IsLoadingIdentities = true;
 
@@ -460,22 +465,30 @@ public class ConnectWindowVM : ReactiveObject
         {
             // The previous server's identity must not stay selected while it is no longer in the list
             SelectedIdentity = null;
+            Password = null;
             Identities.Clear();
             Identities.Add(new SavedUserModel { UserIdentity = null!, Username = Strings.Get("connect.identity.new")});
 
-            var savedCoordinatorModel = await _accountingService.GetSavedCoordinator(_parsedAddress!, (int)_parsedPort!);
-            var lastIdentity = savedCoordinatorModel == null ? null : await _behaviorService.GetAutoConnectInstance();
+            var coordinators = IsAddressValid
+                ? await _accountingService.GetSavedCoordinatorsAsync(_parsedAddress!, _parsedPort!.Value)
+                : [];
+            var lastIdentity = await _behaviorService.GetAutoConnectInstance();
 
             // A lookup for an endpoint typed in the meantime owns the list now
             if (lookup != _identitiesLookup)
                 return;
 
-            if (savedCoordinatorModel != null)
+            foreach (var coordinator in coordinators)
             {
-                foreach (var match in savedCoordinatorModel.Users)
+                foreach (var match in coordinator.Users)
                 {
+                    match.CoordinatorLabel = coordinators.Count > 1
+                        ? string.IsNullOrWhiteSpace(coordinator.Name) ? coordinator.CoordinatorId
+                            : coordinators.Count(c => c.Name == coordinator.Name) > 1
+                                ? $"{coordinator.Name}, {coordinator.CoordinatorId}" : coordinator.Name
+                        : null;
                     Identities.Add(match);
-                    if (lastIdentity != null && match.UserIdentity == lastIdentity.Value.User.UserIdentity)
+                    if (lastIdentity != null && match.CoordinatorId == lastIdentity.Value.Coordinator.CoordinatorId && match.Id == lastIdentity.Value.User.Id)
                         SelectedIdentity = match;
                 }
             }

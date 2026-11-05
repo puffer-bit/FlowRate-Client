@@ -134,7 +134,7 @@ public class DatabaseInitializerTests
         Assert.Equal(DatabaseState.NoError, state);
         Assert.Equal(25L, await database.ScalarAsync("PRAGMA user_version"));
         var repository = new Client.Infrastructure.Database.Repositories.AccountingSettingsRepository(database.Database);
-        var coordinator = await repository.GetCoordinatorAsync("server.local", 5000);
+        var coordinator = await repository.GetCoordinatorAsync("replacement");
         Assert.Equal("replacement", coordinator!.CoordinatorId);
         Assert.Equal("new-identity", Assert.Single(coordinator.Users).UserIdentity);
         Assert.Equal(2L, await database.ScalarAsync("SELECT COUNT(*) FROM SavedIdentities"));

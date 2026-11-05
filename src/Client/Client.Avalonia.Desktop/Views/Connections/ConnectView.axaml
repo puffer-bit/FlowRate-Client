@@ -108,7 +108,7 @@
                                                     AvatarUrl="{Binding AvatarUrl}"/>
                                 <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                                     <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                               Text="{Binding Username}"/>
+                                               Text="{Binding SelectionLabel}"/>
                                     <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
                                          The entry that registers a new user has none -->
                                     <TextBlock Classes="hint" TextWrapping="NoWrap"
@@ -121,7 +121,6 @@
                 </ComboBox>
             </StackPanel>
 
-            <CheckBox Content="{l:Text connect.saveToProfiles}"/>
         </StackPanel>
 
         <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>

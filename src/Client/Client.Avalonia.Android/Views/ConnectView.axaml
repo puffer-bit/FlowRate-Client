@@ -44,6 +44,18 @@
                 <!-- Form -->
                 <StackPanel Spacing="20" IsEnabled="{Binding !IsBusy}">
 
+                    <ComboBox ItemsSource="{Binding SavedServers}" SelectedItem="{Binding SelectedSavedServer}"
+                              IsVisible="{Binding !!SavedServers.Count}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="connectVm:SavedServerItem">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Classes="hint" Text="{Binding Endpoint}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
                     <!-- Address and port -->
                     <StackPanel Spacing="6">
                         <Grid ColumnDefinitions="*, 96" ColumnSpacing="10">
@@ -102,7 +114,7 @@
                                                             AvatarUrl="{Binding AvatarUrl}"/>
                                         <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                                             <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                                       Text="{Binding Username}"/>
+                                                       Text="{Binding SelectionLabel}"/>
                                             <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
                                                  The entry that registers a new user has none -->
                                             <TextBlock Classes="hint" TextWrapping="NoWrap"

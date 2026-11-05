@@ -1276,5 +1276,7 @@
   "chat.video.failed": "Не удалось воспроизвести видео.",
   "chat.media.stop": "Остановить и перемотать в начало",
   "chat.media.close": "Завершить воспроизведение",
-  "chat.media.failed": "Не удалось воспроизвести файл."
+  "chat.media.failed": "Не удалось воспроизвести файл.",
+  "settings.accounting.forgetIdentity.title": "Забыть личность",
+  "settings.accounting.forgetIdentity.question": "Забыть сохранённую личность «{user}» на этом устройстве? Её сохранённые пароли и токен сессии будут удалены. Учётная запись на сервере останется."
 }

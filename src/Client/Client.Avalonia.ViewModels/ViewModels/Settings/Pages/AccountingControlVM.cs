@@ -67,7 +67,8 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
     public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; set; } = [];
     public ObservableCollection<TrustedCertificateItem> TrustedCertificates { get; } = [];
 
-    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteIdentityCommand { get; init; }
+    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteCoordinatorCommand { get; init; }
+    public ReactiveCommand<SavedUserModel, RxVoid> DeleteIdentityCommand { get; }
     public ReactiveCommand<TrustedCertificateItem, RxVoid> ForgetCertificateCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ChangeDatabasePasswordCommand { get; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
@@ -83,7 +84,8 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
 
-        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteIdentity);
+        DeleteCoordinatorCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteCoordinator);
+        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedUserModel>(DeleteIdentity);
 
         ForgetCertificateCommand = ReactiveCommand.CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
 
@@ -222,7 +224,7 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             Strings.Get("settings.accounting.keyringPassword.title")));
     }
 
-    private async Task DeleteIdentity(SavedCoordinatorModel coordinator)
+    private async Task DeleteCoordinator(SavedCoordinatorModel coordinator)
     {
         var name = coordinator.Name ?? $"{coordinator.Address}:{coordinator.Port}";
         var consequence = coordinator.Users.Count switch
@@ -240,6 +242,18 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
 
         await _accountingService.RemoveCoordinatorInstanceAsync(coordinator.CoordinatorId);
         CoordinatorSessions.Remove(coordinator);
+    }
+
+    private async Task DeleteIdentity(SavedUserModel user)
+    {
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+            Strings.Format("settings.accounting.forgetIdentity.question", ("user", user.Username)),
+            Strings.Get("settings.accounting.forgetIdentity.title")));
+        if (answer != Result.Yes)
+            return;
+
+        await _accountingService.RemoveUserIdentityAsync(user.CoordinatorId, user.Id);
+        await LoadAsync();
     }
 
     private async Task ForgetCertificate(TrustedCertificateItem item)
