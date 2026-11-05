@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
@@ -52,7 +53,7 @@ public sealed class ChatInfoTests
     });
 
     [Fact]
-    public Task HeaderStaysEnabledWhileInfoIsOpenAndDoesNotOpenDuplicates() => TestUiThread.RunAsync(() =>
+    public async Task HeaderStaysEnabledWhileInfoIsOpenAndDoesNotOpenDuplicates()
     {
         using var status = new ChatStatusBarVM(Chat("Description"));
         using var closed = new ReplaySubject<ReactiveUI.Primitives.RxVoid>(1);
@@ -63,24 +64,34 @@ public sealed class ChatInfoTests
             return closed.Do(_ => context.SetOutput(ReactiveUI.Primitives.RxVoid.Default));
         });
         var command = (ICommand)status.OpenInfoCommand;
-        command.Execute(null);
-        Dispatcher.UIThread.RunJobs();
+
+        async Task ClickHeader()
+        {
+            Task? execution = null;
+            await TestUiThread.RunAsync(() => execution = status.OpenInfoCommand.Execute().ToTask());
+            await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await status.OpenInfoCommand.CanExecute.FirstAsync(enabled => enabled).ToTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+
+        await ClickHeader();
         Assert.Equal(1, opened);
         Assert.True(command.CanExecute(null));
 
-        command.Execute(null);
-        Dispatcher.UIThread.RunJobs();
+        await ClickHeader();
         Assert.Equal(1, opened);
         Assert.True(command.CanExecute(null));
 
-        closed.OnNext(ReactiveUI.Primitives.RxVoid.Default);
-        closed.OnCompleted();
-        Dispatcher.UIThread.RunJobs();
+        await TestUiThread.RunAsync(() =>
+        {
+            closed.OnNext(ReactiveUI.Primitives.RxVoid.Default);
+            closed.OnCompleted();
+            Dispatcher.UIThread.RunJobs();
+        });
         Assert.True(command.CanExecute(null));
-        command.Execute(null);
-        Dispatcher.UIThread.RunJobs();
+        await ClickHeader();
         Assert.Equal(2, opened);
-    });
+    }
 
     [Fact]
     public Task ChatCreationDoesNotRequireCapacityAndHybridStillDoes() => TestUiThread.RunAsync(() =>

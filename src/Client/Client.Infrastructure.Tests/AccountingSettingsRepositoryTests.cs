@@ -7,6 +7,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class AccountingSettingsRepositoryTests
 {
     private static SavedCoordinatorModel Coordinator(string id = "coordinator", string? name = "Main") => new()

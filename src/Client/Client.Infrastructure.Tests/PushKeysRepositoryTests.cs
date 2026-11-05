@@ -4,6 +4,7 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class PushKeysRepositoryTests
 {
     private static PushKey Key(string keyId, string coordinator, byte fill = 1) =>

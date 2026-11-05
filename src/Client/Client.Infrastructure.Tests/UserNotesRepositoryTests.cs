@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class UserNotesRepositoryTests
 {
     [Fact]
