@@ -17,19 +17,19 @@ public class UserNoteTests
         await note.LoadCommand.Execute();
         Assert.True(note.IsLoaded);
         Assert.Equal("Existing note", note.Text);
-        Assert.False(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, false);
 
         note.Text = "Updated\nMultiline note";
-        Assert.True(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, true);
         await note.SaveCommand.Execute();
 
         Assert.Equal(("coordinator-instance", 42, "Updated\nMultiline note"), Assert.Single(repository.Writes));
         Assert.Equal(("coordinator-instance", 42), Assert.Single(repository.Reads));
         Assert.True(note.IsSaved);
-        Assert.False(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, false);
         note.Text = "Another change";
         Assert.False(note.IsSaved);
-        Assert.True(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, true);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class UserNoteTests
         Assert.False(note.IsLoaded);
         Assert.NotNull(note.Error);
         Assert.False(note.IsBusy);
-        Assert.False(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, false);
         Assert.Empty(repository.Writes);
 
         repository.FailLoad = false;
@@ -65,8 +65,7 @@ public class UserNoteTests
         Assert.NotNull(note.Error);
         Assert.False(note.IsSaved);
         Assert.False(note.IsBusy);
-        Assert.True(await note.SaveCommand.CanExecute.FirstAsync(canExecute => canExecute)
-            .ToTask(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        await WaitForSaveAvailabilityAsync(note, true);
 
         repository.FailSave = false;
         await note.SaveCommand.Execute();
@@ -87,7 +86,7 @@ public class UserNoteTests
         Assert.Equal(string.Empty, Assert.Single(repository.Writes).Text);
         Assert.Equal(string.Empty, note.Text);
         Assert.True(note.IsSaved);
-        Assert.False(await note.SaveCommand.CanExecute.FirstAsync());
+        await WaitForSaveAvailabilityAsync(note, false);
     }
 
     [Fact]
@@ -153,6 +152,14 @@ public class UserNoteTests
         Assert.Equal(["First", "Latest"], repository.Writes.Select(write => write.Text));
         Assert.Equal("Latest", repository.Text);
         Assert.True(note.IsSaved);
+    }
+
+    private static async Task WaitForSaveAvailabilityAsync(UserNoteVM note, bool expected)
+    {
+        // ReactiveCommand delivers availability changes on its output scheduler.
+        await note.SaveCommand.CanExecute.FirstAsync(canExecute => canExecute == expected)
+            .ToTask(TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
     private sealed class Notes : IUserNotesRepository
