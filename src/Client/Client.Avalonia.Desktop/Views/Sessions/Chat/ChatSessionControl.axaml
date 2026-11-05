@@ -3,6 +3,7 @@
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
              xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -135,7 +136,22 @@
                                 Command="{Binding CloseCommand}"/>
 
                         <images:ZoomableImage Grid.Row="1" Padding="24"
-                                              Source="{Binding Picture}"/>
+                                              Source="{Binding Picture}">
+                            <images:ZoomableImage.ContextFlyout>
+                                <Flyout>
+                                    <StackPanel Spacing="2">
+                                        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Content="{l:Text chat.menu.saveFileAs}"
+                                                              Command="{Binding SaveCommand}"/>
+                                        <menus:MenuItemButton Icon="{StaticResource CopyImageIcon}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Content="{l:Text chat.menu.copyImage}"
+                                                              Command="{Binding CopyCommand}"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </images:ZoomableImage.ContextFlyout>
+                        </images:ZoomableImage>
 
                         <Border Grid.Row="0" Classes="image-viewer-bar">
                             <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
