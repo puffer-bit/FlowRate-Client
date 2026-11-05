@@ -184,7 +184,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public ActiveChatSessionVM(ChatSessionModel sessionModel, ICoordinatorSession coordinatorSession,
         ChatSessionServices services, ChatReadTracker readTracker,
-        ReactiveCommand<int, RxVoid> viewProfileCommand)
+        ReactiveCommand<int, RxVoid> viewProfileCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null)
     {
         _dismissedPrompts = services.DismissedPrompts;
         _readTracker = readTracker;
@@ -215,7 +216,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             message => _coordinatorSession.DeleteChatMessage(message.ChatId, message.Id));
         ScrollToEndCommand = ReactiveCommand.Create(ScrollToEnd);
 
-        StatusBar = new ChatStatusBarVM(sessionModel);
+        StatusBar = new ChatStatusBarVM(sessionModel)
+        {
+            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId)
+        };
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder)
             .Subscribe(loading => StatusBar.IsLoading = loading);
@@ -540,6 +544,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public void CloseSession()
     {
         Composer.StopTyping();
+        StatusBar.Viewers?.Close();
         ClearTyping();
     }
 
@@ -575,6 +580,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public void Dispose()
     {
         _isDisposed = true;
+        StatusBar.Viewers?.Dispose();
         ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();

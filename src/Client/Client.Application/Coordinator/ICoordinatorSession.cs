@@ -78,6 +78,7 @@ public interface ICoordinatorSession : IDisposable
 
     event Action<int, int, bool>? ChatUserTyping;
     event Action<ChatReadState>? ChatReadStateChanged;
+    event Action<ChatViewersChangedEvent>? ChatViewersChanged;
 
     /// <summary>
     /// Every peer event of every hybrid session, including the ones raised separately above.
@@ -359,6 +360,9 @@ public interface ICoordinatorSession : IDisposable
 
     /// <summary>Every user of the coordinator, banned ones too, by name.</summary>
     Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers();
+
+    Task<RequestResult<IReadOnlyList<UserModel>>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe);
 
     UserModel GetCurrentUser();
     SavedUserModel GetCurrentUserCredentials();

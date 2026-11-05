@@ -1,4 +1,9 @@
 {
+  "chat.viewers.title": "Acceso al chat",
+  "chat.viewers.count": "{count} usuarios",
+  "@chat.viewers.count": {"placeholders": {"count": {}}},
+  "chat.viewers.error": "No se pudieron cargar los usuarios. Vuelve a abrir la lista.",
+  "chat.viewers.loading": "Cargando usuarios…",
   "hybrid.logs.open": "Registros de sesión",
   "hybrid.logs.empty": "Todavía no hay eventos de esta sesión. Se usa el nivel de registro de los ajustes de depuración.",
   "hybrid.logs.follow": "Seguir nuevos eventos",

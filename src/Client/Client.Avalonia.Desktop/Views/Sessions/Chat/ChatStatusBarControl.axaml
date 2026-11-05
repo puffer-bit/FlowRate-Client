@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,7 +11,7 @@
              x:Class="Client.Views.Sessions.Chat.ChatStatusBarControl">
     <!-- The background spans the whole width; only the content is inset -->
     <Border Background="{DynamicResource GeneralBrush}" Padding="12,0">
-        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
+        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
 
             <Image Grid.Column="0" Width="36" Height="36" Source="{StaticResource HashIcon}"/>
 
@@ -43,6 +44,11 @@
                                MaxLines="1"/>
                 </Grid>
             </StackPanel>
+            <ToggleButton Grid.Column="2" Width="36" Height="36" Padding="8"
+                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.viewers.title}"
+                          IsChecked="{Binding Viewers.IsOpen, Mode=TwoWay}">
+                <Image Source="{StaticResource BaseUsersIcon}"/>
+            </ToggleButton>
         </Grid>
     </Border>
 </UserControl>

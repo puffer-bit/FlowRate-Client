@@ -162,6 +162,14 @@ internal partial class CoordinatorGateway
         }
     }
 
+    public async Task<IReadOnlyList<UserModel>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe)
+    {
+        var response = await SendRequestAsync<ChatViewersResponse>(
+            new ChatViewersRequest(chatId, subscriptionId, subscribe));
+        return response.Users.Select(user => user.ToModel()).ToList();
+    }
+
     public async Task<IReadOnlyList<UserModel>> GetAllUsers()
     {
         var response = await SendRequestAsync<CoordinatorUserListResponse>(new CoordinatorUserListRequest());

@@ -14,6 +14,9 @@ namespace Client.Core.Coordinator;
 /// </summary>
 public abstract record CoordinatorEvent;
 
+public sealed record ChatViewersChangedEvent(int ChatId, Guid SubscriptionId,
+    IReadOnlyList<UserModel> Upserted, IReadOnlyList<int> Removed) : CoordinatorEvent;
+
 public sealed record ServerClosingEvent(string? Message) : CoordinatorEvent;
 
 /// <summary>

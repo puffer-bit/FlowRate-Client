@@ -1,4 +1,9 @@
 {
+  "chat.viewers.title": "Chat access",
+  "chat.viewers.count": "{count} users",
+  "@chat.viewers.count": {"placeholders": {"count": {}}},
+  "chat.viewers.error": "Unable to load users. Reopen the list to retry.",
+  "chat.viewers.loading": "Loading users…",
   "hybrid.logs.open": "Session logs",
   "hybrid.logs.empty": "No events for this session yet. Events appear at the journal level selected in debug settings.",
   "hybrid.logs.follow": "Follow new events",
