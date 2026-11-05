@@ -120,6 +120,7 @@ public partial class SessionsListVM : ReactiveObject
 
     // The hybrid session we are in, marked in the list; kept so that items added later are marked too
     private int? _enteredHybridSessionId;
+    private HybridSessionStatusBarVM? _enteredHybridSessionControls;
 
     // The session the main window shows, kept for the same reason
     private (int Id, bool IsHybrid)? _shownSession;
@@ -488,9 +489,10 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
     /// </summary>
-    public void SetEnteredHybridSession(int? sessionId)
+    public void SetEnteredHybridSession(int? sessionId, HybridSessionStatusBarVM? controls = null)
     {
         _enteredHybridSessionId = sessionId;
+        _enteredHybridSessionControls = controls;
 
         foreach (var session in Sessions.OfType<HybridSessionVM>())
             MarkEntered(session);
@@ -498,8 +500,11 @@ public partial class SessionsListVM : ReactiveObject
         UpdateFolding();
     }
 
-    private void MarkEntered(HybridSessionVM session) =>
+    private void MarkEntered(HybridSessionVM session)
+    {
         session.IsEntered = session.Model.Id == _enteredHybridSessionId;
+        session.SetSessionControls(session.IsEntered ? _enteredHybridSessionControls : null);
+    }
 
     /// <summary>
     /// Marks the session the main window shows, or none, and moves the selection of the list to it.
