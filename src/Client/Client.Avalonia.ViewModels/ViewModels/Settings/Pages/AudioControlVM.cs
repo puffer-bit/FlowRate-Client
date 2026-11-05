@@ -31,11 +31,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     // Only the rows the engine of the voice shows
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
-        ("microphone", ["inputDevice", "inputVolume", IsLibWebRTC ? "webRtcNoiseSuppression" : "noiseSuppression",
+        ("microphone", ["inputDevice", "inputVolume", "noiseSuppression",
             "echoCancellation", "autoGainControl"]),
-        ("voiceActivity", IsLibWebRTC
-            ? ["voiceGate", "adaptiveThreshold"]
-            : ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
+        ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
         ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
 
@@ -56,40 +54,12 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = 100;
 
-    /// <summary>
-    /// Whether the voice goes over libwebrtc, whose microphone has fewer choices: one noise
-    /// suppression, on or off, and no voice detection.
-    /// </summary>
-    public bool IsLibWebRTC
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = ExperimentalFeatures.UseLibWebRTC;
-
-    // Index into the noise suppression choices of the view, in the order of NoiseSuppressionLevel
+    // Stored enum values match the order of the suppression choices in the view.
     public int NoiseSuppressionIndex
     {
         get;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsWebRtcNoiseSuppressionEnabled));
-        }
+        set => this.RaiseAndSetIfChanged(ref field, value);
     } = (int)NoiseSuppressionLevel.Moderate;
-
-    /// <summary>
-    /// The noise suppression of libwebrtc, which runs for every level but off. Switching it on
-    /// picks the default level, so a level chosen for GStreamer stays as long as it is left on.
-    /// </summary>
-    public bool IsWebRtcNoiseSuppressionEnabled
-    {
-        get => NoiseSuppression != NoiseSuppressionLevel.Off;
-        set
-        {
-            if (value != IsWebRtcNoiseSuppressionEnabled)
-                NoiseSuppressionIndex = (int)(value ? new AudioSettings().NoiseSuppression : NoiseSuppressionLevel.Off);
-        }
-    }
 
     public bool IsEchoCancellationEnabled
     {
@@ -252,7 +222,6 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         ObserveMicrophoneTest();
 
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
-        ExperimentalFeatures.Changed += OnExperimentalFeaturesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
         _microphoneTester.GateChanged += OnTestGateChanged;
         _microphoneTester.Failed += OnTestFailed;
@@ -416,7 +385,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     private void StartTest()
     {
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
-            InputVolumePercent / 100, IsLoopbackEnabled, TestNoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled,
+            InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled,
             IsAutoGainControlEnabled));
         IsTestRunning = TestError == null;
         InputLevel = 0;
@@ -447,32 +416,10 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         Dispatcher.UIThread.Post(() => IsVoiceDetected = isOpen && IsVoiceGateEnabled && IsTestRunning);
     }
 
-    // The test runs on GStreamer whatever the engine of the voice. For libwebrtc it does what
-    // libwebrtc does: the moderate level of the WebRTC suppression, which is the one libwebrtc runs,
-    // and a gate by the loudness alone
+    // Desktop calls and the test use the same GStreamer microphone processing.
     private VoiceGateOptions? TestVoiceGate => IsVoiceGateEnabled
-        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled && !IsLibWebRTC, IsAdaptiveThresholdEnabled)
+        ? new VoiceGateOptions(VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled)
         : null;
-
-    private NoiseSuppressionLevel TestNoiseSuppression =>
-        IsLibWebRTC && NoiseSuppression != NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.Moderate : NoiseSuppression;
-
-    private void OnExperimentalFeaturesChanged()
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (IsLibWebRTC == ExperimentalFeatures.UseLibWebRTC)
-                return;
-
-            IsLibWebRTC = ExperimentalFeatures.UseLibWebRTC;
-            this.RaisePropertyChanged(nameof(SearchEntries));
-
-            if (IsTestRunning)
-                StartTest();
-            else
-                _microphoneTester.SetVoiceGate(TestVoiceGate);
-        });
-    }
 
     private void ResetVoiceDetected()
     {
@@ -621,7 +568,6 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester.Stop();
 
         _audioService.InputDevicesChanged -= OnInputDevicesChanged;
-        ExperimentalFeatures.Changed -= OnExperimentalFeaturesChanged;
         _disposables.Dispose();
     }
 }

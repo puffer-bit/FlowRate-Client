@@ -1,3 +1,5 @@
+using Client.Core.Media;
+
 namespace Client.LibWebRTC.Voice;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Client.LibWebRTC.Voice;
 /// <param name="Streams">The counters, or null from a peer that reads levels only.</param>
 /// <param name="Entries">The objects of the reading the statistics of the media need, or null with the levels only.</param>
 public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCounters? Streams = null,
-    IReadOnlyList<StatsEntry>? Entries = null);
+    IReadOnlyList<StatsEntry>? Entries = null, VoiceGateSummary? GateSummary = null);
 
 /// <summary>
 /// One RTCStats object of a reading, with its numbers (flags as 0 and 1) and its texts by member.

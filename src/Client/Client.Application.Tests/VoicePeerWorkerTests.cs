@@ -12,6 +12,29 @@ public class VoicePeerWorkerTests
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     [Fact]
+    public async Task StoppingCaptureReachesThePlatformPeerWithoutClosingItsTransport()
+    {
+        var done = Completion();
+        var calls = new ConcurrentQueue<string>();
+        using var worker = new VoicePeerWorker(_ => new TestPeer
+        {
+            StopMicrophoneAction = () => calls.Enqueue("release capture"),
+            VolumeAction = () =>
+            {
+                calls.Enqueue("playback volume");
+                done.TrySetResult();
+            },
+            DisposeAction = () => calls.Enqueue("dispose")
+        }, new TestListener());
+
+        worker.StopMicrophone();
+        worker.SetVolume("0", 0.5);
+        await done.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["release capture", "playback volume"], calls.ToArray());
+    }
+
+    [Fact]
     public async Task NativeCallbackReturnsBeforeApplicationCallbackRuns()
     {
         var nativeReturned = Completion();
@@ -219,6 +242,7 @@ public class VoicePeerWorkerTests
         public Action<bool>? MicrophoneAction { get; init; }
         public Action? VolumeAction { get; init; }
         public Action? DisposeAction { get; init; }
+        public Action? StopMicrophoneAction { get; init; }
         public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
         {
             NegotiateAction?.Invoke();
@@ -228,6 +252,7 @@ public class VoicePeerWorkerTests
         public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
             bool isAutoGainControlEnabled) => true;
         public void SetMicrophoneVolume(double volume) { }
+        public void StopMicrophone() => StopMicrophoneAction?.Invoke();
         public void SetVoiceGate(VoiceGateOptions? voiceGate) { }
         public void SetVolume(string mid, double volume) => VolumeAction?.Invoke();
         public void RequestStats(bool isDetailed) { }
