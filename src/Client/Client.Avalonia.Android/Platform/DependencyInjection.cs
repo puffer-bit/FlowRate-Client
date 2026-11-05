@@ -19,6 +19,7 @@ internal static class DependencyInjection
     {
         services.AddSingleton<IMediaRuntimeLoader, NoMediaRuntimeLoader>();
         services.AddSingleton<IAudioPlayerService, SilentAudioPlayerService>();
+        services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
         services.AddSingleton<ISoundPlayer, AndroidSoundPlayer>();
