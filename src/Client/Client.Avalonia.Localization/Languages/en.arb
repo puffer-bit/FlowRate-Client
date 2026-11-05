@@ -1205,6 +1205,8 @@
   "hybrid.fullscreen": "Full screen",
   "settings.search.placeholder": "Search settings",
   "settings.search.nothingFound": "Nothing found",
+  "settings.accounting.identityActions": "Account actions",
+  "settings.accounting.exportIdentityQr": "Export to QR code",
   "settings.accounting.name": "Profiles, servers and security",
   "settings.accounting.section.database": "Database and identities settings",
   "settings.accounting.encryptIdentity.title": "Encrypt user identity (Experimental)",
