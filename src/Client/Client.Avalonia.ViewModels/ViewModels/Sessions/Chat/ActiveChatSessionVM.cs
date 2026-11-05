@@ -132,6 +132,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             Composer.IsConnected = value;
+            foreach (var message in _messageVms.Values)
+                message.RefreshReactionAccess();
         }
     }
 
@@ -396,6 +398,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
                 ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer)
             {
+                IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
+                SetReaction = async (emoji, added) =>
+                    (await _coordinatorSession.SetMessageReaction(model.ChatId, model.Id, emoji, added)).IsSuccess,
                 IsNew = isNew,
                 CanManageMessages = canManage
             };
@@ -570,6 +575,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     {
         var granted = permissions.InSession(_model);
         Composer.CanWrite = granted.HasFlag(Permission.SendMessages);
+        foreach (var message in _messageVms.Values)
+        {
+            message.IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived;
+            message.RefreshReactionAccess();
+        }
         Composer.CanAttachFiles = granted.HasFlag(Permission.AttachFiles);
 
         var canManage = granted.HasFlag(Permission.ManageMessages);

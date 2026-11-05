@@ -561,6 +561,8 @@
   "chat.send.tooLong": "メッセージが長すぎます: {length} 文字 (上限 {limit} 文字)。",
   "chat.send.timedOut": "メッセージは送信されませんでした: サーバーが時間内に応答しませんでした。",
   "chat.send.refused": "メッセージは送信されませんでした: サーバーに拒否されました。",
+  "chat.menu.react": "リアクション",
+  "chat.reaction.failed": "リアクションを更新できませんでした。もう一度お試しください。",
   "chat.menu.reply": "返信",
   "chat.menu.edit": "編集",
   "chat.editing": "メッセージを編集中",

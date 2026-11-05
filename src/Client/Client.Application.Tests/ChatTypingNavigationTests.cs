@@ -41,6 +41,14 @@ public sealed class ChatTypingNavigationTests
         Assert.Equal(9, Assert.Single(session.GetChatTypingUsers(7)).Key);
         Assert.Equal(10, Assert.Single(session.GetChatTypingUsers(8)).Key);
 
+        fake.Raise(new ChatMessageEditedEvent(7, new ChatMessageModel
+        {
+            Id = 1, ChatId = 7, SenderUserId = 9, SentTime = DateTime.UtcNow,
+            Images = [], Video = [], Files = [], UsersIds = [],
+            Reactions = [new ChatReaction { UserId = 10, Emoji = "👍" }]
+        }));
+        Assert.Equal(9, Assert.Single(session.GetChatTypingUsers(7)).Key);
+
         fake.Raise(new ChatMessageAddedEvent(7, new ChatMessageModel
         {
             Id = 1, ChatId = 7, SenderUserId = 9, SentTime = DateTime.UtcNow,

@@ -433,6 +433,9 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
 
+    /// <summary>Sets the current user's reaction; updates arrive through TextMessageEdited.</summary>
+    Task<RequestResult> SetMessageReaction(int chatId, int messageId, string emoji, bool isAdded);
+
     /// <summary>
     /// The read positions and unread counts of all chats of the user.
     /// </summary>

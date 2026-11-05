@@ -561,6 +561,8 @@
   "chat.send.tooLong": "El mensaje es demasiado largo: {length} caracteres de {limit} permitidos.",
   "chat.send.timedOut": "El mensaje no se envió: el servidor no respondió a tiempo.",
   "chat.send.refused": "El mensaje no se envió: el servidor lo rechazó.",
+  "chat.menu.react": "Reaccionar",
+  "chat.reaction.failed": "No se pudo actualizar la reacción. Inténtalo de nuevo.",
   "chat.menu.reply": "Responder",
   "chat.menu.edit": "Editar",
   "chat.editing": "Editando mensaje",

@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Client.Avalonia.Localization;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Core.Chat;
@@ -22,6 +25,10 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanEdit));
+            this.RaisePropertyChanged(nameof(CanReact));
+            this.RaisePropertyChanged(nameof(Reactions));
+            this.RaisePropertyChanged(nameof(ReactionChoices));
+            this.RaisePropertyChanged(nameof(HasReactions));
             this.RaisePropertyChanged(nameof(CanDelete));
             this.RaisePropertyChanged(nameof(HasText));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
@@ -243,6 +250,57 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ChatComposerVM? _composer;
 
+    public Func<string, bool, Task<bool>>? SetReaction { get; init; }
+
+    public bool IsReactionAllowed { get; set; } = true;
+
+    public bool CanReact => IsReactionAllowed && SetReaction != null && Message is { IsSystem: false, IsReadOnly: false, IsDeleted: false }
+                            && _composer is { CanWrite: true, IsConnected: true };
+
+    public IReadOnlyList<ChatReactionVM> Reactions => Message.Reactions
+        .GroupBy(reaction => reaction.Emoji)
+        .Select(group => new ChatReactionVM(group.Key, group.Select(r => r.UserId).Distinct().Count(),
+            group.Any(r => r.UserId == _currentUserId), ReactAsync)).ToList();
+
+    public IReadOnlyList<ChatReactionVM> ReactionChoices => ChatReactionEmoji.All.Select(emoji =>
+        new ChatReactionVM(emoji, Message.Reactions.Count(r => r.Emoji == emoji),
+            Message.Reactions.Any(r => r.Emoji == emoji && r.UserId == _currentUserId), ReactAsync)).ToList();
+
+    public bool HasReactions => Message.Reactions.Count > 0;
+
+    public string? ReactionError
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasReactionError));
+        }
+    }
+    public bool HasReactionError => ReactionError != null;
+    private bool _isSettingReaction;
+
+    private async Task ReactAsync(string emoji, bool closeMenu)
+    {
+        if (closeMenu)
+            await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        if (!CanReact || _isSettingReaction)
+            return;
+
+        _isSettingReaction = true;
+        ReactionError = null;
+        try
+        {
+            var add = !Message.Reactions.Any(r => r.UserId == _currentUserId && r.Emoji == emoji);
+            if (!await SetReaction!(emoji, add))
+                ReactionError = Strings.Get("chat.reaction.failed");
+        }
+        finally
+        {
+            _isSettingReaction = false;
+        }
+    }
+
     public bool CanMentionUser => _composer is { CanWrite: true, IsConnected: true };
 
     public void MentionUser(int userId, string name) => _composer?.MentionUser(userId, name);
@@ -282,6 +340,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
                 ? Observable.Return(false)
                 : Reply.WatchProperty(nameof(ChatReplyPreviewVM.IsDeleted), reply => !reply.IsDeleted));
     }
+
+    public void RefreshReactionAccess() => this.RaisePropertyChanged(nameof(CanReact));
 
     public void SetCopyText(string? text, bool isTextSelected)
     {
