@@ -42,6 +42,15 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         }
     }
 
+    private HybridSessionStatusBarVM? _sessionControls;
+
+    public void SetSessionControls(HybridSessionStatusBarVM? controls)
+    {
+        _sessionControls = controls;
+        foreach (var peer in Peers)
+            peer.SetSessionControls(controls);
+    }
+
     public bool IsShown
     {
         get;
@@ -194,6 +203,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId),
             GetConnectionStats = () => _peerStats.Get(Model.Id, peerModel.UserId)
         };
+        added.SetSessionControls(_sessionControls);
         ApplyAccess(added);
         Peers.Insert(SortedIndexOf(added), added);
     }

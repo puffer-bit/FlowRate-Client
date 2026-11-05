@@ -93,11 +93,23 @@ public class PeerVM : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(SelfSession));
             this.RaisePropertyChanged(nameof(CanWatchScreen));
             this.RaisePropertyChanged(nameof(CanPoke));
             this.RaisePropertyChanged(nameof(CanShowConnectionStats));
             this.RaisePropertyChanged(nameof(ConnectionStats));
         }
+    }
+
+    private HybridSessionStatusBarVM? _sessionControls;
+
+    /// <summary>The active session controls, available only on our own row.</summary>
+    public HybridSessionStatusBarVM? SelfSession => IsCurrentUser && IsInEnteredSession ? _sessionControls : null;
+
+    public void SetSessionControls(HybridSessionStatusBarVM? controls)
+    {
+        _sessionControls = controls;
+        this.RaisePropertyChanged(nameof(SelfSession));
     }
 
     /// <summary>

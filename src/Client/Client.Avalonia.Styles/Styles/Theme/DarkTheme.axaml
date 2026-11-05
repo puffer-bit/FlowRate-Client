@@ -162,6 +162,7 @@
             <SolidColorBrush x:Key="SessionDragSourceBrush" Color="{DynamicResource ColorOverlay}" />
             <SolidColorBrush x:Key="SessionDragGhostBrush" Color="{DynamicResource ColorDarkVeryDark}" />
             <SolidColorBrush x:Key="SessionDragGhostBorderBrush" Color="{DynamicResource ColorPrimary}" />
+            <BoxShadows x:Key="SessionDragShadow">0 8 24 0 #66000000, 0 2 6 0 #40000000</BoxShadows>
             <SolidColorBrush x:Key="MessageBoxDetailBrush" Color="{DynamicResource ColorOverlayMedium}" />
             <!-- Text selection in every text box and selectable text; the Fluent default is blue -->
             <SolidColorBrush x:Key="TextSelectionBrush" Color="{DynamicResource ColorPrimary}" />
@@ -171,6 +172,7 @@
             
             <!-- Вспомогательные системные цвета -->
             <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}" />
+            <SolidColorBrush x:Key="AfkActiveBackgroundBrush" Color="#806515" />
             <!-- Scroll bar thumb: faint at rest, brighter under the pointer, accent while dragged -->
             <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
             <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{DynamicResource ColorOverlayGray}" />

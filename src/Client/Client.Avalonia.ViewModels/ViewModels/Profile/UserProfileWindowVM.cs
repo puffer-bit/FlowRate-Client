@@ -1,4 +1,5 @@
 using Client.Services;
+using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
@@ -81,6 +82,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     /// </summary>
     /// <summary>The status of the user when the profile was opened.</summary>
     public UserStatus Status { get; }
+    public string StatusText => UserStatusText.Of(Status);
 
     public string? AvatarUrl
     {
@@ -98,6 +100,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public string? ShownAvatarUrl => IsAvatarReset ? null : AvatarUrl;
 
     public AvatarPickerVM AvatarPicker { get; }
+    public UserNoteVM Note { get; }
 
     public bool IsBusy => _isBusy.Value;
 
@@ -110,6 +113,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public ObservableCollection<UserRoleVM> Roles { get; } = new();
 
     public bool HasRoles => Roles.Count > 0;
+    public IEnumerable<UserRoleVM> AssignedRoles => Roles.Where(role => role.IsAssigned);
+    public IEnumerable<UserRoleVM> ManageableRoles => Roles.Where(role => role.CanChange);
+    public bool CanManageRoles => Roles.Any(role => role.CanChange);
 
     public bool IsChangingRole => _isChangingRole.Value;
 
@@ -135,6 +141,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public Interaction<RxVoid, RxVoid> FocusName { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> EditCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ChangeAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ResetAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CancelEditCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
@@ -146,8 +153,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         ReactiveCommand<int, RequestResult> resetAvatarCommand,
         CoordinatorPermissions permissions,
         ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
-            setUserRoleCommand)
+            setUserRoleCommand, IUserNotesRepository userNotes, string coordinatorInstanceId)
     {
+        Note = new UserNoteVM(userNotes, coordinatorInstanceId, user.Id);
         _changeUsernameCommand = changeUsernameCommand;
         _setUserRoleCommand = setUserRoleCommand;
         CanEdit = isCurrentUser || (permissions.Has(Permission.ManageUsers) && permissions.Outranks(user.RoleIds));
@@ -172,6 +180,16 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         EditCommand = ReactiveCommand.CreateFromTask(StartEditingAsync,
             this.WatchProperty(nameof(IsEditing), vm => vm.IsEditing).Select(editing => !editing && CanEdit));
+        ChangeAvatarCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await AvatarPicker.ChooseAvatarCommand.Execute();
+            if (!IsEditing && (AvatarPicker.Picked != null || AvatarPicker.AvatarError != null))
+            {
+                Name = Username;
+                NameError = null;
+                IsEditing = true;
+            }
+        }, Observable.Return(IsCurrentUser));
         ToggleRoleCommand = ReactiveCommand.CreateFromTask<UserRoleVM>(ToggleRoleAsync);
         _isChangingRole = ToggleRoleCommand.IsExecuting.ToProperty(this, nameof(IsChangingRole));
 
@@ -181,7 +199,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
                     && (vm.Name.Trim() != vm.Username || vm.IsAvatarReset || avatar != null));
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, hasChanges);
 
-        var notBusy = SaveCommand.IsExecuting.Select(busy => !busy);
+        var notBusy = SaveCommand.IsExecuting.CombineLatest(
+            Note.WatchProperty(nameof(UserNoteVM.IsBusy), note => note.IsBusy),
+            (profileBusy, noteBusy) => !profileBusy && !noteBusy);
         ResetAvatarCommand = ReactiveCommand.Create(ResetAvatar,
             this.WatchProperty(nameof(IsAvatarReset), vm => vm.IsAvatarReset)
                 .CombineLatest(AvatarPicker.WatchProperty(nameof(AvatarPickerVM.Avatar), picker => picker.Avatar),
@@ -221,6 +241,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         foreach (var each in Roles)
             each.IsAssigned = roleIds.Contains(each.Role.Id);
+
+        this.RaisePropertyChanged(nameof(AssignedRoles));
     }
 
     private async Task StartEditingAsync()
@@ -309,6 +331,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         _isBusy.Dispose();
         _isChangingRole.Dispose();
         ToggleRoleCommand.Dispose();
+        ChangeAvatarCommand.Dispose();
         AvatarPicker.Dispose();
+        Note.Dispose();
     }
 }

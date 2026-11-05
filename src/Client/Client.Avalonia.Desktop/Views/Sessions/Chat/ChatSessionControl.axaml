@@ -4,6 +4,7 @@
              xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
              xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -65,6 +66,19 @@
             </ItemsControl.Styles>
         </ItemsControl>
         
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Top"
+                                        IsVisible="{Binding IsInitialLoading}"/>
+
+        <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Top"
+                                        Background="{DynamicResource GeneralBrush}"
+                                        IsCompact="True"
+                                        IsVisible="{Binding IsLoadingOlder}"/>
+
         <!-- Shown while the chat has no messages; laid out like the placeholder of the main window -->
         <emptyStates:EmptyState Grid.Row="1"
                                 anim:Presence.Appear="Rise"
@@ -81,7 +95,7 @@
 
         <!-- Composer: one rounded box holds the reply bar, the attachments and the input row,
              floating over the bottom of the chat; its outline lights up while the input has focus -->
-        <Panel Grid.Row="2" IsVisible="{Binding !IsInitialLoading}">
+        <Panel Grid.Row="2" IsEnabled="{Binding !IsInitialLoading}">
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 

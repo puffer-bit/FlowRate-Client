@@ -46,7 +46,7 @@ public partial class MainWindowVM
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
         await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-            user.AccountPassword, user.SessionToken);
+            user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -59,7 +59,7 @@ public partial class MainWindowVM
 
             await StatusLine.SetAsync(Connecting, true);
             await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-                user.AccountPassword, user.SessionToken);
+                user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)

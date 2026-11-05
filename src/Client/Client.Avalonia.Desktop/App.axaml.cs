@@ -113,6 +113,7 @@ public partial class App : global::Avalonia.Application
 
         // The engine of each session follows the experimental setting
         services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
+        services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
 

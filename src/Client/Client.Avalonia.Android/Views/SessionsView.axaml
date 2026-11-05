@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Client.Droid.Views"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
@@ -82,7 +83,8 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, 1, *, Auto, 1, Auto">
+    <Grid RowDefinitions="Auto, 1, Auto, *, Auto, 1, Auto">
+        <views:GlobalChatPlayer Grid.Row="2"/>
 
         <!-- The server, as at the top of the side panel of the desktop. A tap opens its menu, or the
              connect form while there is no server -->
@@ -146,7 +148,7 @@
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-        <Grid Grid.Row="2" DataContext="{Binding SessionsList}">
+        <Grid Grid.Row="3" DataContext="{Binding SessionsList}">
             <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
                 <Image Source="{StaticResource PlugIcon}"/>
                 <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
@@ -378,7 +380,7 @@
         <!-- The voice session we are in, as under the list of the desktop: its state, a way back to it
              and out of it, and the microphone, the sound and AFK. It unfolds when we join and folds
              back when we leave, so the list above gives way smoothly -->
-        <Border Grid.Row="3" Classes="hybridPanel"
+        <Border Grid.Row="4" Classes="hybridPanel"
                 BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
                 Padding="8"
                 anim:Presence.Appear="Unfold"
@@ -433,7 +435,7 @@
                     </Panel>
 
                     <!-- A tap brings the session back on screen -->
-                    <Button Grid.Column="1" Classes="borderless" Padding="6"
+                    <Button Grid.Column="1" Classes="borderless" Padding="10,6,6,6"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                             Click="OnHybridPanelClick">
                         <StackPanel Spacing="2" VerticalAlignment="Center">
@@ -484,11 +486,11 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="4" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="5" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- The signed-in user and the settings, as at the bottom of the side panel of the desktop.
              A tap on the user opens the profile, a long press the choice of the status -->
-        <Grid Grid.Row="5" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
+        <Grid Grid.Row="6" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
         <Button Grid.Column="0"
                 Classes="borderless"
                 Padding="8,6"

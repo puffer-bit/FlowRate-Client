@@ -12,6 +12,8 @@ public sealed class MoveTargetVM : ReactiveObject
 {
     public int? CategoryId { get; }
 
+    public bool IsUncategorized => CategoryId is null;
+
     public string Name
     {
         get;

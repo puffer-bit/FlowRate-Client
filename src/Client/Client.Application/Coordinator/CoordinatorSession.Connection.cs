@@ -26,7 +26,7 @@ public partial class CoordinatorSession
     private abstract record ConnectionMessage(TaskCompletionSource? Completion = null);
 
     private sealed record ConnectRequested(string Address, int Port, string? UserIdentity, string? Password,
-        string? AccountPassword, string? SessionToken, TaskCompletionSource Completion) : ConnectionMessage(Completion);
+        string? AccountPassword, string? SessionToken, string? ExpectedCoordinatorId, TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
     private sealed record DisconnectRequested(TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
@@ -103,10 +103,12 @@ public partial class CoordinatorSession
     // Canceled when the session is disposed; never disposed itself, the loop still reads it afterwards
     private readonly CancellationTokenSource _lifetime = new();
 
+    private string? _expectedCoordinatorId;
+
     public Task Connect(string address, int port, string? userIdentity, string? password,
-        string? accountPassword = null, string? sessionToken = null) =>
+        string? accountPassword = null, string? sessionToken = null, string? expectedCoordinatorId = null) =>
         PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, accountPassword,
-            sessionToken, completion));
+            sessionToken, expectedCoordinatorId, completion));
 
     public Task Disconnect() => PostAndWait(completion => new DisconnectRequested(completion));
 
@@ -199,6 +201,7 @@ public partial class CoordinatorSession
         _isAccountPasswordRemembered = connect.AccountPassword != null;
         _accountPasswordToSave = connect.AccountPassword;
         _sessionToken = connect.SessionToken;
+        _expectedCoordinatorId = connect.ExpectedCoordinatorId;
         ConnectionStatus = CoordinatorState.Connecting;
         LogConnectStarted(LogName, connect.Address, connect.Port);
 
@@ -690,11 +693,19 @@ public partial class CoordinatorSession
             var coordinatorInfo = await _gateway.GetCoordinatorInfo().WaitAsync(cancellationToken)
                                   ?? throw new ApplicationException("Failed to update coordinator info");
 
-            if (trusted != null && !await CheckCoordinatorBindingAsync(trusted, coordinatorInfo))
+            var expectedId = _expectedCoordinatorId ?? (userIdentity != null ? trusted?.CoordinatorId : null);
+            if (expectedId != null && expectedId != coordinatorInfo.Id)
             {
+                CoordinatorMismatch = new CoordinatorMismatch(address, port, expectedId, coordinatorInfo.Id,
+                    coordinatorInfo.Name);
+                LogCoordinatorMismatch(LogName, address, port, expectedId, coordinatorInfo.Id);
                 await _gateway.DisconnectWebSocketAsync();
                 return CoordinatorState.CoordinatorMismatch;
             }
+
+            if (trusted != null)
+                await _trustedCertificates.BindCoordinatorAsync(address, port, coordinatorInfo.Id);
+            _expectedCoordinatorId = coordinatorInfo.Id;
 
             await LoadRolesAsync(cancellationToken);
 
@@ -741,27 +752,5 @@ public partial class CoordinatorSession
             await _gateway.DisconnectWebSocketAsync();
             throw;
         }
-    }
-
-    /// <summary>
-    /// Binds the coordinator on the first login behind a trusted certificate, later makes sure the
-    /// address still leads to it.
-    /// </summary>
-    /// <returns>False when another coordinator answered.</returns>
-    private async Task<bool> CheckCoordinatorBindingAsync(ServerCertificateModel trusted, CoordinatorSessionModel coordinator)
-    {
-        if (trusted.CoordinatorId == null)
-        {
-            await _trustedCertificates.BindCoordinatorAsync(trusted.Host, trusted.Port, coordinator.Id);
-            return true;
-        }
-
-        if (trusted.CoordinatorId == coordinator.Id)
-            return true;
-
-        CoordinatorMismatch = new CoordinatorMismatch(trusted.Host, trusted.Port, trusted.CoordinatorId, coordinator.Id,
-            coordinator.Name);
-        LogCoordinatorMismatch(LogName, trusted.Host, trusted.Port, trusted.CoordinatorId, coordinator.Id);
-        return false;
     }
 }

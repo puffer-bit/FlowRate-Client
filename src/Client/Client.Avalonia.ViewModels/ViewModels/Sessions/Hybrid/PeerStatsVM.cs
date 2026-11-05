@@ -4,7 +4,6 @@ using System.Linq;
 using Client.Avalonia.Localization;
 using Client.Core.Sessions.Hybrid;
 using ReactiveUI;
-using Shared.Models.Media;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -21,6 +20,8 @@ public class PeerStatsVM : ReactiveObject
     private const double FairJitterMs = 80;
 
     private readonly Queue<(double? LossPercent, double? JitterMs)> _history = new();
+    private int _historyViewers;
+    private bool _historyChanged;
 
     public ConnectionQuality Quality
     {
@@ -82,16 +83,8 @@ public class PeerStatsVM : ReactiveObject
     /// <summary>
     /// Takes a new reading of the session. Called on the UI thread.
     /// </summary>
-    public void Add(TransportStatsSample sample, int userId)
+    public void Add(double? loss, double? jitter)
     {
-        var loss = sample.SenderLossPercent(userId);
-        // The picture tells more than a voice, whose jitter is that of its few packets in silence
-        var streams = (sample.Inbound ?? []).Where(stream => stream.UserId == userId && stream.Packets > 0).ToList();
-        var jitter = streams.Count == 0
-            ? (double?)null
-            : streams.OrderByDescending(stream => stream.MediaType == MediaType.Video)
-                .First().JitterMs;
-
         _history.Enqueue((loss, jitter));
 
         while (_history.Count > HybridSessionStatsVM.HistoryLength)
@@ -101,7 +94,28 @@ public class PeerStatsVM : ReactiveObject
         LossText = loss is { } percent ? $"{percent:0.#} %" : "—";
         JitterText = jitter is { } ms ? $"{Math.Ceiling(ms):0} ms" : "—";
 
-        // New lists, so that the graphs see a change
+        _historyChanged = true;
+        if (_historyViewers > 0)
+            UpdateHistory();
+    }
+
+    /// <summary>Starts updating graph snapshots while a view shows them. Called on the UI thread.</summary>
+    public void ShowHistory()
+    {
+        if (++_historyViewers == 1 && _historyChanged)
+            UpdateHistory();
+    }
+
+    /// <summary>Stops updating graph snapshots once the last view closes.</summary>
+    public void HideHistory()
+    {
+        if (_historyViewers > 0)
+            _historyViewers--;
+    }
+
+    private void UpdateHistory()
+    {
+        _historyChanged = false;
         LossHistory = _history.Select(reading => reading.LossPercent).ToArray();
         JitterHistory = _history.Select(reading => reading.JitterMs).ToArray();
     }

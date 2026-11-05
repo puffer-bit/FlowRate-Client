@@ -25,6 +25,9 @@ public interface IAvatarService
     /// <param name="coordinatorInstanceId">Null means the coordinator of the attached session.</param>
     Task<IImage?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl);
 
+    /// <summary>Opens a still photo for editing; animations retain their original upload path.</summary>
+    Task<AvatarEditSession?> OpenEditorAsync(Func<Task<Stream>> openContent);
+
     /// <summary>
     /// Cuts the middle square out of a picked image and reduces it. An animated one is kept as it
     /// is, so it still moves; the avatar shows its middle all the same.

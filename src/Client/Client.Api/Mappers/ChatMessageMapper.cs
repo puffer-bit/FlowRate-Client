@@ -58,6 +58,7 @@ internal static class ChatMessageMapper
         return new ChatReplyContent
         {
             MessageId = dto.MessageId,
+            HasAttachments = dto.HasAttachments,
             IsDeleted = dto.IsDeleted,
             SenderUserId = dto.SenderUserId,
             SentTime = dto.SentTime,

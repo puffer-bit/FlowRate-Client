@@ -40,7 +40,16 @@
         <controls:SettingsHeader Text="{l:Text serverSettings.info.section.about}"/>
         <ui:SettingsCard>
             <ui:SettingsRow Title="{l:Text serverSettings.info.address}">
-                <TextBlock Classes="value" Text="{Binding Address}"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Classes="value" Text="{Binding Address}"/>
+                    <Button Classes="ghost" Width="28" Height="28" Padding="6"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="{l:Text main.server.copyAddress}"
+                            AutomationProperties.Name="{l:Text main.server.copyAddress}"
+                            Click="CopyAddress_Click">
+                        <Image Width="16" Height="16" Source="{StaticResource CopyIcon}"/>
+                    </Button>
+                </StackPanel>
             </ui:SettingsRow>
             <ui:SettingsRow Title="{l:Text main.server.info.version}">
                 <TextBlock Classes="value" Text="{Binding Version}"/>

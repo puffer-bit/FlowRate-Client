@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Coordinator;
+using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
@@ -51,6 +52,7 @@ public sealed class UserActions
     private readonly Func<ICoordinatorSession?> _session;
     private readonly Func<UserModel?> _currentUser;
     private readonly IAvatarService _avatars;
+    private readonly IUserNotesRepository _userNotes;
     private readonly INotificationService _notifications;
     private readonly AccessVM _access;
     private readonly Interaction<MessageBoxVM, Result> _showMessageBox;
@@ -65,11 +67,12 @@ public sealed class UserActions
         Interaction<MessageBoxVM, Result> showMessageBox,
         Interaction<EditProfileWindowVM, RxVoid> showEditProfile,
         Interaction<UserProfileWindowVM, RxVoid> showUserProfile,
-        Interaction<AccountSecurityVM, RxVoid> showAccountSecurity)
+        Interaction<AccountSecurityVM, RxVoid> showAccountSecurity, IUserNotesRepository userNotes)
     {
         _session = session;
         _currentUser = currentUser;
         _avatars = avatars;
+        _userNotes = userNotes;
         _notifications = notifications;
         _access = access;
         _showMessageBox = showMessageBox;
@@ -116,7 +119,12 @@ public sealed class UserActions
 
     private async Task ViewProfile(int userId)
     {
-        var user = await Session.GetUser(userId);
+        var session = Session;
+        var coordinatorInstanceId = session.CoordinatorModel?.Id;
+        if (string.IsNullOrWhiteSpace(coordinatorInstanceId))
+            return;
+
+        var user = await session.GetUser(userId);
 
         if (user == null)
         {
@@ -126,7 +134,9 @@ public sealed class UserActions
         }
 
         using var vm = new UserProfileWindowVM(user, user.Id == _currentUser()?.Id, _avatars, _changeUserUsernameCommand,
-            _setAvatarCommand, _resetAvatarCommand, _access.Permissions, _setUserRoleCommand);
+            _setAvatarCommand, _resetAvatarCommand, _access.Permissions, _setUserRoleCommand,
+            _userNotes, coordinatorInstanceId);
+        await vm.Note.LoadCommand.Execute();
         await _showUserProfile.Handle(vm);
     }
 

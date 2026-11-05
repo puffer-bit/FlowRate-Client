@@ -3,6 +3,10 @@ namespace Client.Core.Settings;
 public class SavedUserModel
 {
     public int Id { get; init; }
+
+    /// <summary>Coordinator label used to distinguish accounts at the same endpoint.</summary>
+    public string? CoordinatorLabel { get; set; }
+    public string SelectionLabel => CoordinatorLabel == null ? Username : $"{Username} ({CoordinatorLabel})";
     public string UserIdentity { get; init; } = string.Empty;
     public string Username { get; init; } = string.Empty;
     

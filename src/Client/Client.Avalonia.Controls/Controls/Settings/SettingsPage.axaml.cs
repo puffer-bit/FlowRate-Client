@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Client.Avalonia.Styles.Animation;
@@ -36,7 +38,7 @@ public class SettingsPage : ItemsControl
     {
         CollapsedSectionsProperty.Changed.AddClassHandler<SettingsPage>((page, _) => page.LoadCollapsedSections());
         SettingsHeader.IsCollapsedProperty.Changed.AddClassHandler<SettingsHeader>((header, _) =>
-            (header.Parent as SettingsPage)?.OnHeaderToggled(header));
+            header.FindLogicalAncestorOfType<SettingsPage>()?.OnHeaderToggled(header));
     }
 
     // What keeps each control of a collapsed section hidden. The control is hidden above its own
@@ -71,7 +73,7 @@ public class SettingsPage : ItemsControl
     {
         foreach (var item in Items)
         {
-            if (item is SettingsHeader header && header.SectionKey == key)
+            if (GetSectionHeader(item) is { } header && header.SectionKey == key)
             {
                 ScrollToSection(header);
                 return true;
@@ -173,7 +175,7 @@ public class SettingsPage : ItemsControl
         _isLoadingSections = true;
         foreach (var item in Items)
         {
-            if (item is SettingsHeader { SectionKey: { } key } header)
+            if (GetSectionHeader(item) is { SectionKey: { } key } header)
                 header.SetCurrentValue(SettingsHeader.IsCollapsedProperty, collapsed.Contains(key));
         }
         _isLoadingSections = false;
@@ -203,12 +205,17 @@ public class SettingsPage : ItemsControl
         SettingsHeader? header = null;
         foreach (var item in Items)
         {
-            if (item is SettingsHeader next)
+            if (GetSectionHeader(item) is { } next)
                 header = next;
             else if (item is Control control)
                 SetFolded(control, header is { IsCollapsed: true }, isAnimated);
         }
     }
+
+    // A section header can share a top-level row with its search field and counter.
+    // That row stays visible while the section below it is folded.
+    private static SettingsHeader? GetSectionHeader(object? item) => item as SettingsHeader ??
+        (item as Panel)?.Children.OfType<SettingsHeader>().FirstOrDefault();
 
     private void SetFolded(Control control, bool isFolded, bool isAnimated)
     {
@@ -255,7 +262,7 @@ public class SettingsPage : ItemsControl
         SettingsHeader? header = null;
         foreach (var candidate in Items)
         {
-            if (candidate is SettingsHeader next)
+            if (GetSectionHeader(candidate) is { } next)
                 header = next;
             if (ReferenceEquals(candidate, item))
                 return header;

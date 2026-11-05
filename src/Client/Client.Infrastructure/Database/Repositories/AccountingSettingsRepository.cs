@@ -40,17 +40,6 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
             .ToList();
     }
 
-    public async Task<SavedCoordinatorModel?> GetCoordinatorAsync(string address, int port)
-    {
-        await using var connection = await _database.OpenAsync();
-
-        var coordinator = await connection.QueryFirstOrDefaultAsync<SavedCoordinatorRow>(
-            SelectCoordinators + " WHERE Address = @address AND Port = @port ORDER BY SaveOrder DESC LIMIT 1",
-            new { address, port });
-
-        return coordinator == null ? null : await WithIdentitiesAsync(connection, coordinator);
-    }
-
     public async Task<SavedCoordinatorModel?> GetCoordinatorAsync(string coordinatorId)
     {
         await using var connection = await _database.OpenAsync();
@@ -156,6 +145,18 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
                 Port = excluded.Port,
                 SaveOrder = excluded.SaveOrder
             """, new { model.CoordinatorId, model.Name, model.Address, model.Port });
+    }
+
+    public async Task DeleteUserAsync(string coordinatorId, int userId)
+    {
+        await using var connection = await _database.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        await connection.ExecuteAsync("""
+            DELETE FROM SavedIdentities WHERE CoordinatorId = @coordinatorId AND UserId = @userId;
+            UPDATE BehaviorSettings SET AutoConnectCoordinatorId = NULL, AutoConnectUserId = NULL
+            WHERE AutoConnectCoordinatorId = @coordinatorId AND AutoConnectUserId = @userId;
+            """, new { coordinatorId, userId }, transaction);
+        transaction.Commit();
     }
 
     public async Task DeleteCoordinatorAsync(string coordinatorId)

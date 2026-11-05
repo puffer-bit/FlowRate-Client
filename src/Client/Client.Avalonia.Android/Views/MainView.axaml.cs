@@ -1,3 +1,4 @@
+using Client.Avalonia.Controls.Avatars;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -56,6 +57,7 @@ public partial class MainView : UserControl
 
     private ConnectView? _connectView;
     private ProfileView? _profileView;
+    private Action? _cancelAvatarEdit;
     private AccountSecurityView? _securityView;
     private readonly List<LoginPromptVM> _loginPrompts = [];
     private SettingsView? _settingsView;
@@ -662,6 +664,50 @@ public partial class MainView : UserControl
             context.SetOutput((await PickedFiles.FromAsync(files)).FirstOrDefault());
         });
 
+        using var editAvatar = profile.AvatarPicker.EditAvatar.RegisterHandler(async context =>
+        {
+            var session = context.Input;
+            var editor = new AvatarEditor();
+            editor.SetPicture(session.Picture);
+            var answer = new TaskCompletionSource<PreparedAvatar?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            editor.TransformRequested += mirror =>
+            {
+                session.Transform(mirror);
+                editor.SetPicture(session.Picture);
+            };
+            editor.ResetRequested += () =>
+            {
+                session.Reset();
+                editor.SetPicture(session.Picture);
+            };
+            editor.Accepted += () => answer.TrySetResult(session.Prepare(editor.Crop));
+            editor.Cancelled += () => answer.TrySetResult(null);
+            var backdrop = new Border
+            {
+                Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.FromArgb(180, 0, 0, 0)),
+                Child = new Border
+                {
+                    Background = view.FindResource("GeneralBrush") as global::Avalonia.Media.IBrush,
+                    CornerRadius = new CornerRadius(8),
+                    Margin = new Thickness(16),
+                    HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
+                    Child = editor
+                }
+            };
+            _cancelAvatarEdit = () => answer.TrySetResult(null);
+            DialogLayer.Children.Add(backdrop);
+            try
+            {
+                context.SetOutput(await answer.Task);
+            }
+            finally
+            {
+                DialogLayer.Children.Remove(backdrop);
+                _cancelAvatarEdit = null;
+            }
+        });
+
         _profileView = view;
         ShowCurrentScreen();
 
@@ -671,6 +717,7 @@ public partial class MainView : UserControl
         }
         finally
         {
+            _cancelAvatarEdit?.Invoke();
             _profileView = null;
             ShowCurrentScreen();
         }
@@ -784,6 +831,13 @@ public partial class MainView : UserControl
     // and pressed once more it leaves
     private void OnBackRequested(object? sender, RoutedEventArgs e)
     {
+        if (_cancelAvatarEdit != null)
+        {
+            _cancelAvatarEdit();
+            e.Handled = true;
+            return;
+        }
+
         if (_messageBoxes.Count > 0)
         {
             var (answer, backAnswer) = _messageBoxes[^1];

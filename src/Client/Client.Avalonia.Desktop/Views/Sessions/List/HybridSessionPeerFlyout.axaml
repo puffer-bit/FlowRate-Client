@@ -35,7 +35,50 @@
             <Separator/>
         </StackPanel>
 
-        <!-- Nothing to adjust or moderate about ourselves -->
+        <StackPanel Spacing="2" IsVisible="{Binding SelfSession, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <menus:MenuItemButton Icon="{StaticResource CrossedMicrophoneIcon}" Content="{l:Text call.microphoneOff}"
+                                  Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                  IsVisible="{Binding SelfSession.IsMicrophoneOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource MicrophoneIcon}" Content="{l:Text call.microphoneOn}"
+                                  Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                  IsVisible="{Binding !SelfSession.IsMicrophoneOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedHeadphonesIcon}" Content="{l:Text peer.muteSound}"
+                                  Command="{Binding SelfSession.ToggleSoundCommand}"
+                                  IsVisible="{Binding SelfSession.IsSoundOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
+                                  Command="{Binding SelfSession.ToggleSoundCommand}"
+                                  IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Click="OnAfkClick"
+                                  IsVisible="{Binding !SelfSession.IsAfk}"/>
+            <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleAfkCommand}"
+                                  IsVisible="{Binding SelfSession.IsAfk}"/>
+            <menus:MenuItemButton Icon="{StaticResource ScreenShareIcon}" Content="{l:Text hybrid.screen.start}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleScreenShareCommand}"
+                                  IsVisible="{Binding !SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text hybrid.screen.change}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ChangeScreenShareCommand}"
+                                  IsVisible="{Binding SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}" Content="{l:Text hybrid.screen.stop}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleScreenShareCommand}"
+                                  IsVisible="{Binding SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Click="OnSelfStatsClick">
+                <menus:MenuItemButton.IconContent>
+                    <indicators:SignalIndicator Level="{Binding SelfSession.Stats.SignalLevel, FallbackValue=0}"/>
+                </menus:MenuItemButton.IconContent>
+            </menus:MenuItemButton>
+            <Separator/>
+        </StackPanel>
+
+        <!-- Playback and moderation apply only to other participants. -->
         <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
 
             <!-- Only a peer of the session we are in; the message is asked in a card of its own -->

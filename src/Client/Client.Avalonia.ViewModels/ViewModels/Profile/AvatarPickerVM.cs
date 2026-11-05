@@ -51,6 +51,8 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
     /// </summary>
     public Interaction<RxVoid, PickedFile?> PickAvatarFile { get; } = new();
 
+    public Interaction<AvatarEditSession, PreparedAvatar?> EditAvatar { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> ChooseAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> RemoveAvatarCommand { get; }
 
@@ -96,6 +98,18 @@ public sealed class AvatarPickerVM : ReactiveObject, IDisposable
         if (file.Size > AvatarMaxFileSize)
         {
             AvatarError = Strings.Format("profile.avatar.tooLarge", ("size", AvatarMaxFileSize / (1024 * 1024)));
+            return;
+        }
+
+        using var editor = await _avatars.OpenEditorAsync(file.Open);
+        if (editor != null)
+        {
+            var edited = await EditAvatar.Handle(editor);
+            if (edited != null)
+            {
+                Picked = edited;
+                Avatar = edited.Picture;
+            }
             return;
         }
 

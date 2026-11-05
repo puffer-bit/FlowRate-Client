@@ -163,6 +163,26 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
     public IReadOnlyList<ScreenShareOptionVM> Framerates { get; }
 
+    public ScreenShareOptionVM? SelectedResolution
+    {
+        get => Resolutions.FirstOrDefault(option => option.IsSelected);
+        set
+        {
+            if (value != null && Resolutions.Contains(value))
+                SelectOption(Resolutions, value);
+        }
+    }
+
+    public ScreenShareOptionVM? SelectedFramerate
+    {
+        get => Framerates.FirstOrDefault(option => option.IsSelected);
+        set
+        {
+            if (value != null && Framerates.Contains(value))
+                SelectOption(Framerates, value);
+        }
+    }
+
     /// <summary>
     /// The user sets the bitrate; otherwise it is counted from the resolution and the frame rate.
     /// </summary>
@@ -200,17 +220,6 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
-
-    /// <summary>
-    /// What is wrong with the bitrate the user set. It does not stop the share: a bitrate that is
-    /// far from the recommended one is still used, and one that cannot be read gives way to the
-    /// automatic one.
-    /// </summary>
-    public string? BitrateWarning
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
 
     /// <summary>
     /// How the share is set up right now.
@@ -333,13 +342,21 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     /// <param name="group">The options made here, of which one is selected at a time.</param>
     private List<ScreenShareOptionVM> CreateOptions(IEnumerable<int> values, int selected,
         Func<int, string> label, Func<IReadOnlyList<ScreenShareOptionVM>> group, Func<int, bool>? isDemanding = null) =>
-        values.Select(value => new ScreenShareOptionVM(value, label(value), option =>
-        {
-            foreach (var other in group())
-                other.IsSelected = other == option;
+        values.Select(value => new ScreenShareOptionVM(value, label(value), option => SelectOption(group(), option))
+        { IsSelected = value == selected, IsDemanding = isDemanding?.Invoke(value) == true }).ToList();
 
-            UpdateBitrate();
-        }) { IsSelected = value == selected, IsDemanding = isDemanding?.Invoke(value) == true }).ToList();
+    private void SelectOption(IReadOnlyList<ScreenShareOptionVM> options, ScreenShareOptionVM selected)
+    {
+        if (selected.IsSelected)
+            return;
+
+        foreach (var option in options)
+            option.IsSelected = option == selected;
+
+        this.RaisePropertyChanged(nameof(SelectedResolution));
+        this.RaisePropertyChanged(nameof(SelectedFramerate));
+        UpdateBitrate();
+    }
 
     /// <returns>Null when what the user typed is not a bitrate that can be set.</returns>
     private int? ParseCustomBitrate() =>
@@ -349,7 +366,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
             : null;
 
     /// <summary>
-    /// Brings the recommended bitrate and the warning in line with the options.
+    /// Updates the automatic bitrate label for the current quality settings.
     /// </summary>
     private void UpdateBitrate()
     {
@@ -357,21 +374,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         if (Resolutions == null || Framerates == null)
             return;
 
-        var settings = Settings;
-        var recommended = ("bitrate", (object?)settings.RecommendedBitrateKbps);
-
-        AutoBitrateLabel = Strings.Format("source.bitrate.auto", recommended);
-
-        if (!IsCustomBitrate)
-            BitrateWarning = null;
-        else if (settings.BitrateKbps is not { } bitrate)
-            BitrateWarning = Strings.Format("source.bitrate.invalid", recommended);
-        else if (settings.IsBitrateTooLow(bitrate))
-            BitrateWarning = Strings.Format("source.bitrate.tooLow", recommended);
-        else if (settings.IsBitrateTooHigh(bitrate))
-            BitrateWarning = Strings.Format("source.bitrate.tooHigh", recommended);
-        else
-            BitrateWarning = null;
+        AutoBitrateLabel = Strings.Format("source.bitrate.auto", ("bitrate", (object?)Settings.RecommendedBitrateKbps));
     }
 
     public void LoadSources()

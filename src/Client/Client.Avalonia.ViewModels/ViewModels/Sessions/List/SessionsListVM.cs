@@ -120,11 +120,13 @@ public partial class SessionsListVM : ReactiveObject
 
     // The hybrid session we are in, marked in the list; kept so that items added later are marked too
     private int? _enteredHybridSessionId;
+    private HybridSessionStatusBarVM? _enteredHybridSessionControls;
 
     // The session the main window shows, kept for the same reason
     private (int Id, bool IsHybrid)? _shownSession;
 
     private readonly ReactiveCommand<SessionModel, RxVoid> _showSessionCommand;
+    private readonly ReactiveCommand<int, RxVoid> _leaveChatCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveHybridSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editHybridSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
@@ -154,6 +156,7 @@ public partial class SessionsListVM : ReactiveObject
 
     public SessionsListVM(ReactiveCommand<RxVoid, RxVoid> connectCommand,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand,
         ReactiveCommand<int, RxVoid> leaveHybridSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editHybridSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
@@ -174,6 +177,7 @@ public partial class SessionsListVM : ReactiveObject
         Access.PermissionsUpdated += _ => ApplyAccess();
         ConnectCommand = connectCommand;
         _showSessionCommand = showSessionCommand;
+        _leaveChatCommand = leaveChatCommand;
         _leaveHybridSessionCommand = leaveHybridSessionCommand;
         _editHybridSessionCommand = editHybridSessionCommand;
         _editPermissionsCommand = editPermissionsCommand;
@@ -458,7 +462,8 @@ public partial class SessionsListVM : ReactiveObject
             _showSessionCommand,
             _deleteSessionCommand,
             _toggleChatMuteCommand,
-            _editPermissionsCommand)
+            _editPermissionsCommand,
+            _leaveChatCommand)
         {
             IsMuted = isMuted
         };
@@ -488,9 +493,10 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
     /// </summary>
-    public void SetEnteredHybridSession(int? sessionId)
+    public void SetEnteredHybridSession(int? sessionId, HybridSessionStatusBarVM? controls = null)
     {
         _enteredHybridSessionId = sessionId;
+        _enteredHybridSessionControls = controls;
 
         foreach (var session in Sessions.OfType<HybridSessionVM>())
             MarkEntered(session);
@@ -498,8 +504,11 @@ public partial class SessionsListVM : ReactiveObject
         UpdateFolding();
     }
 
-    private void MarkEntered(HybridSessionVM session) =>
+    private void MarkEntered(HybridSessionVM session)
+    {
         session.IsEntered = session.Model.Id == _enteredHybridSessionId;
+        session.SetSessionControls(session.IsEntered ? _enteredHybridSessionControls : null);
+    }
 
     /// <summary>
     /// Marks the session the main window shows, or none, and moves the selection of the list to it.

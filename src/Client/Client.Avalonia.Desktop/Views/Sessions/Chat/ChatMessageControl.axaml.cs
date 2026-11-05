@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Client.Avalonia.Styles.Animation;
@@ -60,6 +61,35 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
                 if (!copied)
                     await MessageBoxInteraction.ShowAsync(new MessageBoxVM(Icon.Error, Buttons.Ok,
                         Strings.Get("chat.image.copyFailed"), Strings.Get("chat.menu.copyImage")), this);
+
+                interaction.SetOutput(RxVoid.Default);
+            }).DisposeWith(disposables);
+
+            ViewModel!.SaveImageInteraction.RegisterHandler(async interaction =>
+            {
+                try
+                {
+                    var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+                    if (storage != null)
+                    {
+                        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+                        {
+                            Title = Strings.Get("chat.menu.saveFileAs"),
+                            SuggestedFileName = interaction.Input.Image.FileName,
+                            ShowOverwritePrompt = true
+                        });
+                        if (file != null)
+                        {
+                            await using var target = await file.OpenWriteAsync();
+                            await interaction.Input.SaveOriginalAsync(target);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    await MessageBoxInteraction.ShowAsync(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("chat.image.saveFailed"), Strings.Get("chat.menu.saveFileAs")), this);
+                }
 
                 interaction.SetOutput(RxVoid.Default);
             }).DisposeWith(disposables);

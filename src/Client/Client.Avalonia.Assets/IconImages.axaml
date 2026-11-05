@@ -9,6 +9,25 @@
 
     <!-- ===== Common ===== -->
 
+    <!-- QR code. Source: Icons/QrCodeIcon.svg -->
+    <DrawingImage x:Key="QrCodeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M3 3h6v1h-6Z M3 8h6v1h-6Z M3 4h1v4h-1Z M8 4h1v4h-1Z M5 5h2v2h-2Z M15 3h6v1h-6Z M15 8h6v1h-6Z M15 4h1v4h-1Z M20 4h1v4h-1Z M17 5h2v2h-2Z M3 15h6v1h-6Z M3 20h6v1h-6Z M3 16h1v4h-1Z M8 16h1v4h-1Z M5 17h2v2h-2Z M11 3h2v2h-2Z M11 5h2v2h-2Z M9 9h2v2h-2Z M13 9h2v2h-2Z M17 9h2v2h-2Z M19 9h2v2h-2Z M3 11h2v2h-2Z M5 11h2v2h-2Z M9 11h2v2h-2Z M11 11h2v2h-2Z M15 11h2v2h-2Z M19 11h2v2h-2Z M11 13h2v2h-2Z M13 13h2v2h-2Z M15 13h2v2h-2Z M17 13h2v2h-2Z M9 15h2v2h-2Z M13 15h2v2h-2Z M17 15h2v2h-2Z M19 15h2v2h-2Z M11 17h2v2h-2Z M15 17h2v2h-2Z M19 17h2v2h-2Z M9 19h2v2h-2Z M11 19h2v2h-2Z M15 19h2v2h-2Z M17 19h2v2h-2Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="MediaStopIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 5 H18 Q19 5 19 6 V18 Q19 19 18 19 H6 Q5 19 5 18 V6 Q5 5 6 5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Session journal. Source: Icons/LogsIcon.svg -->
     <DrawingImage x:Key="LogsIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -917,6 +936,23 @@
             <GeometryDrawing Geometry="M14 6 L17 9">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Pencil over a dimmed photo; keep contrast in both themes. -->
+    <DrawingImage x:Key="PencilOnImageIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M16.5 3.5 A2.12 2.12 0 0 1 19.5 6.5 L7.5 18.5 L3 20 L4.5 15.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M14 6 L17 9">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>

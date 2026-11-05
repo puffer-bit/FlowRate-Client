@@ -17,6 +17,7 @@ namespace Client.ViewModels.Sessions.Chat;
 /// </summary>
 public class ChatFileVM : ReactiveObject
 {
+    public ICoordinatorSession CoordinatorSession => _session;
     public ChatFileContent File { get; }
     public string FileName => File.FileName;
     public string SizeText { get; }
