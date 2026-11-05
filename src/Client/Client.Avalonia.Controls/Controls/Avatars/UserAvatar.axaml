@@ -58,9 +58,12 @@
                                RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     </Border>
 
+                    <ContentPresenter Content="{TemplateBinding Overlay}"
+                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+
                     <!-- Drawn at 20px and scaled as the initial is, so the badge keeps its share of the avatar.
                          Kept inside the bounds, unlike the speaking ring: the two are never shown together -->
-                    <Viewbox Stretch="Uniform"
+                    <Viewbox Stretch="Uniform" IsHitTestVisible="False"
                              IsVisible="{Binding StatusIcon, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Panel Width="20" Height="20">
                             <Border Width="8" Height="8"

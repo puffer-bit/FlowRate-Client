@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:local="clr-namespace:Client.Avalonia.Controls.Avatars"
+             x:Class="Client.Avalonia.Controls.Avatars.AvatarEditor"
+             MaxWidth="440" MaxHeight="620" Background="{DynamicResource GeneralBrush}">
+    <Grid RowDefinitions="Auto,1,*,1,Auto">
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Width="20" Height="20" Source="{StaticResource PencilIcon}" VerticalAlignment="Center"/>
+                <TextBlock Text="{l:Text profile.avatar.editTitle}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Classes="hint" Text="{l:Text profile.avatar.editHint}" TextWrapping="Wrap"/>
+        </StackPanel>
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12" Margin="20,16">
+                <Viewbox Stretch="Uniform" MaxHeight="280">
+                    <local:AvatarCropCanvas x:Name="CropCanvas" Width="280" Height="280" Focusable="True"/>
+                </Viewbox>
+                <TextBlock Classes="fieldLabel" Text="{l:Text profile.avatar.zoom}"/>
+                <Slider x:Name="ZoomSlider" Minimum="1" Maximum="5" Value="1" SmallChange="0.1"/>
+                <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                    <Button x:Name="RotateButton" Content="{l:Text profile.avatar.rotate}"/>
+                    <Button x:Name="MirrorButton" Content="{l:Text profile.avatar.mirror}"/>
+                    <Button x:Name="ResetButton" Content="{l:Text profile.avatar.resetAll}"/>
+                </WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="20,12">
+            <Button x:Name="CancelButton" IsCancel="True">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.cancel}"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="SaveButton" Classes="primary" IsDefault="True" MinWidth="110">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Width="16" Height="16" Source="{StaticResource DisketteIcon}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{l:Text common.save}"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

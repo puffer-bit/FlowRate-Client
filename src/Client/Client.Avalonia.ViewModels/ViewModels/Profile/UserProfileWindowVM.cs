@@ -141,6 +141,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public Interaction<RxVoid, RxVoid> FocusName { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> EditCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ChangeAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ResetAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CancelEditCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
@@ -179,6 +180,16 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         EditCommand = ReactiveCommand.CreateFromTask(StartEditingAsync,
             this.WatchProperty(nameof(IsEditing), vm => vm.IsEditing).Select(editing => !editing && CanEdit));
+        ChangeAvatarCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await AvatarPicker.ChooseAvatarCommand.Execute();
+            if (!IsEditing && (AvatarPicker.Picked != null || AvatarPicker.AvatarError != null))
+            {
+                Name = Username;
+                NameError = null;
+                IsEditing = true;
+            }
+        }, Observable.Return(IsCurrentUser));
         ToggleRoleCommand = ReactiveCommand.CreateFromTask<UserRoleVM>(ToggleRoleAsync);
         _isChangingRole = ToggleRoleCommand.IsExecuting.ToProperty(this, nameof(IsChangingRole));
 
@@ -320,6 +331,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         _isBusy.Dispose();
         _isChangingRole.Dispose();
         ToggleRoleCommand.Dispose();
+        ChangeAvatarCommand.Dispose();
         AvatarPicker.Dispose();
         Note.Dispose();
     }

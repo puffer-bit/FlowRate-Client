@@ -1,4 +1,5 @@
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using Client.Application.Ports.Repositories;
 using Client.ViewModels.Profile;
 using Xunit;
@@ -88,11 +89,77 @@ public class UserNoteTests
         Assert.False(await note.SaveCommand.CanExecute.FirstAsync());
     }
 
+    [Fact]
+    public async Task TypingAutomaticallySavesTheLatestText()
+    {
+        var repository = new Notes();
+        using var note = new UserNoteVM(repository, "server", 7);
+        await note.LoadCommand.Execute();
+        var saved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        note.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(note.IsSaved) && note.IsSaved)
+                saved.TrySetResult();
+        };
+
+        note.Text = "First draft";
+        note.Text = "Latest draft";
+        Assert.Empty(repository.Writes);
+        await saved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Equal("Latest draft", Assert.Single(repository.Writes).Text);
+        Assert.True(note.IsSaved);
+    }
+
+    [Fact]
+    public async Task ClosingBeforeTheDelaySavesThePendingDraft()
+    {
+        var repository = new Notes();
+        var note = new UserNoteVM(repository, "server", 7);
+        await note.LoadCommand.Execute();
+        note.Text = "Save on close";
+
+        note.Dispose();
+
+        Assert.Equal("Save on close", Assert.Single(repository.Writes).Text);
+    }
+
+    [Fact]
+    public async Task TextEnteredDuringASaveIsWrittenAfterTheEarlierVersion()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repository = new Notes
+        {
+            BeforeWrite = async text =>
+            {
+                if (text == "First")
+                {
+                    started.TrySetResult();
+                    await finish.Task;
+                }
+            }
+        };
+        using var note = new UserNoteVM(repository, "server", 7);
+        await note.LoadCommand.Execute();
+        note.Text = "First";
+        var saving = note.SaveCommand.Execute().ToTask();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        note.Text = "Latest";
+        finish.TrySetResult();
+        await saving;
+
+        Assert.Equal(["First", "Latest"], repository.Writes.Select(write => write.Text));
+        Assert.Equal("Latest", repository.Text);
+        Assert.True(note.IsSaved);
+    }
+
     private sealed class Notes : IUserNotesRepository
     {
         public string? Text { get; set; }
         public bool FailLoad { get; set; }
         public bool FailSave { get; set; }
+        public Func<string, Task>? BeforeWrite { get; init; }
         public List<(string Coordinator, int UserId)> Reads { get; } = [];
         public List<(string Coordinator, int UserId, string Text)> Writes { get; } = [];
 
@@ -102,13 +169,14 @@ public class UserNoteTests
             return FailLoad ? Task.FromException<string?>(new IOException("Read failed")) : Task.FromResult(Text);
         }
 
-        public Task SetAsync(string coordinatorInstanceId, int userId, string text)
+        public async Task SetAsync(string coordinatorInstanceId, int userId, string text)
         {
+            if (BeforeWrite != null)
+                await BeforeWrite(text);
             if (FailSave)
-                return Task.FromException(new IOException("Write failed"));
+                throw new IOException("Write failed");
             Writes.Add((coordinatorInstanceId, userId, text));
             Text = text;
-            return Task.CompletedTask;
         }
     }
 }
