@@ -171,6 +171,7 @@
             
             <!-- Вспомогательные системные цвета -->
             <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}" />
+            <SolidColorBrush x:Key="AfkActiveBackgroundBrush" Color="#806515" />
             <!-- Scroll bar thumb: faint at rest, brighter under the pointer, accent while dragged -->
             <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
             <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{DynamicResource ColorOverlayGray}" />
