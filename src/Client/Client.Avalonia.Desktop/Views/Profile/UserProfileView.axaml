@@ -143,6 +143,33 @@
                 </Border>
 
                 <Border Padding="12" CornerRadius="8" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <StackPanel Spacing="6" IsEnabled="{Binding !Note.IsBusy}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text profile.note.title}"/>
+                            <Button Grid.Column="1" Command="{Binding Note.SaveCommand}">
+                                <Panel>
+                                    <TextBlock Text="{l:Text common.save}" IsVisible="{Binding !Note.IsBusy}"/>
+                                    <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                                    IsIndeterminate="True" BorderThickness="2"
+                                                                    IsVisible="{Binding Note.IsBusy}"/>
+                                </Panel>
+                            </Button>
+                        </Grid>
+                        <TextBlock Classes="hint" Text="{l:Text profile.note.hint}"/>
+                        <TextBox Text="{Binding Note.Text}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
+                                 IsEnabled="{Binding Note.IsLoaded}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 PlaceholderText="{l:Text profile.note.placeholder}"/>
+                        <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
+                        <TextBlock Classes="fieldError" Text="{Binding Note.Error}"
+                                   IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Command="{Binding Note.LoadCommand}" IsVisible="{Binding !Note.IsLoaded}"
+                                HorizontalAlignment="Left" Content="{l:Text serverSettings.users.retry}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" CornerRadius="8" Background="{DynamicResource SettingsCardBackgroundBrush}">
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
                         <TextBlock Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
                                    Text="{l:Text profile.field.firstConnected}"/>

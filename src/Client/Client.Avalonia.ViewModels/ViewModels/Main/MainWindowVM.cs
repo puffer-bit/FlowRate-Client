@@ -8,6 +8,7 @@ using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Push;
+using Client.Application.Ports.Repositories;
 using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Avalonia.Localization;
@@ -260,6 +261,7 @@ public partial class MainWindowVM : ReactiveObject
         ICoordinatorFactory coordinatorFactory,
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
+        IUserNotesRepository userNotes,
         INotificationService notifications,
         IHotKeysService hotKeys,
         PushRegistration pushRegistration,
@@ -294,7 +296,7 @@ public partial class MainWindowVM : ReactiveObject
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
-            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow);
+            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow, userNotes);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
