@@ -994,8 +994,11 @@
 
   "settings.behavior.name": "アプリの動作",
   "settings.behavior.section.autoConnection": "自動接続",
-  "settings.behavior.autoConnect.title": "前回のコーディネーターへの自動接続を許可 (実験的)",
-  "settings.behavior.resetConnection.title": "記憶した接続をリセット",
+  "settings.behavior.autoConnect.title": "アプリ起動時に自動接続する",
+  "settings.behavior.server.title": "サーバー",
+  "settings.behavior.server.placeholder": "保存済みサーバーを選択",
+  "settings.behavior.identity.title": "ID",
+  "settings.behavior.identity.placeholder": "保存済みIDを選択",
   "settings.behavior.section.manualConnection": "手動接続",
   "settings.behavior.fallbackServers.title": "予備サーバーがある場合は接続を許可",
   "settings.behavior.fallbackWarning.title": "予備サーバーに接続する前に警告する",

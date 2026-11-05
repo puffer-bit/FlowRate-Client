@@ -387,7 +387,9 @@ public class ConnectWindowVM : ReactiveObject
                     CoordinatorId = coordinatorSessionModel.Id
                 });
 
-            await _behaviorService.SetLastIdentityAsync((coordinatorSessionModel.Id, userModel.Id));
+            // Keep the explicit startup target when another server is connected manually.
+            if (await _behaviorService.GetAutoConnectInstance() == null)
+                await _behaviorService.SetLastIdentityAsync((coordinatorSessionModel.Id, userModel.Id));
         }
         catch (Exception e)
         {

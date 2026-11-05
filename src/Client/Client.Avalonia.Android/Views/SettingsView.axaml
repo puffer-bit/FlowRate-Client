@@ -9,6 +9,7 @@
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
              xmlns:models="clr-namespace:Client.Core.Settings;assembly=Client.Core"
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views"
@@ -425,10 +426,78 @@
                 <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">
                     <ToggleSwitch IsChecked="{Binding IsAutoConnectedEnabled}"/>
                 </ui:SettingsRow>
-                <ui:SettingsRow services:SettingText.Key="behavior.resetConnection">
-                    <Button Command="{Binding ResetSavedCoordinator}" IsEnabled="{Binding IsSavedCoordinatorExists}"
-                            Content="{l:Text common.reset}"/>
-                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="behavior.server"
+                            IsExpanded="{Binding IsAutoConnectedEnabled}"
+                            IsEnabled="{Binding IsAutoConnectedEnabled}">
+                <ComboBox Width="180" HorizontalAlignment="Right"
+                          PlaceholderText="{l:Text settings.behavior.server.placeholder}"
+                          ItemsSource="{Binding SavedServers}"
+                          SelectedItem="{Binding SelectedServer, Mode=TwoWay}">
+                    <ComboBox.SelectionBoxItemTemplate>
+                        <DataTemplate x:DataType="models:SavedCoordinatorModel">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                                <Image Width="20" Height="20" Source="{StaticResource PlanetIcon}"/>
+                                <Panel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Text="{Binding Address}" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                </Panel>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.SelectionBoxItemTemplate>
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:SavedCoordinatorModel">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                <Image Width="24" Height="24" VerticalAlignment="Center" Source="{StaticResource PlanetIcon}"/>
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding Name}"
+                                               IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Classes="hint"><Run Text="{Binding Address}"/><Run Text=":"/><Run Text="{Binding Port}"/></TextBlock>
+                                    <TextBlock Classes="hint" Text="{Binding CoordinatorId}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.identity"
+                            IsExpanded="{Binding IsAutoConnectedEnabled}"
+                            IsEnabled="{Binding IsAutoConnectedEnabled}">
+                <ComboBox Width="180" HorizontalAlignment="Right"
+                          PlaceholderText="{l:Text settings.behavior.identity.placeholder}"
+                          ItemsSource="{Binding Identities}"
+                          SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                    <ComboBox.SelectionBoxItemTemplate>
+                        <DataTemplate x:DataType="models:SavedUserModel">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                                <avatars:UserAvatar Width="22" Height="22" UserName="{Binding Username}"
+                                                    Coordinator="{Binding CoordinatorId}" AvatarUrl="{Binding AvatarUrl}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding SelectionLabel}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.SelectionBoxItemTemplate>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:SavedUserModel">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                        UserName="{Binding Username}"
+                                                        Coordinator="{Binding CoordinatorId}"
+                                                        AvatarUrl="{Binding AvatarUrl}"/>
+                                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Text="{Binding SelectionLabel}"/>
+                                        <!-- Show only the edges of the credential to distinguish saved identities. -->
+                                        <TextBlock Classes="hint" TextWrapping="NoWrap"
+                                                   Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
+                                                   IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
             </ui:SettingsCard>
 
             <controls:SettingsHeader services:SettingText.Section="behavior.manualConnection"/>

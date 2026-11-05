@@ -994,8 +994,11 @@
 
   "settings.behavior.name": "应用行为",
   "settings.behavior.section.autoConnection": "自动连接",
-  "settings.behavior.autoConnect.title": "允许自动连接到上次的协调器（实验性）",
-  "settings.behavior.resetConnection.title": "重置已记住的连接",
+  "settings.behavior.autoConnect.title": "应用启动时自动连接",
+  "settings.behavior.server.title": "服务器",
+  "settings.behavior.server.placeholder": "选择已保存的服务器",
+  "settings.behavior.identity.title": "身份",
+  "settings.behavior.identity.placeholder": "选择已保存的身份",
   "settings.behavior.section.manualConnection": "手动连接",
   "settings.behavior.fallbackServers.title": "允许连接到备用服务器（如果存在）",
   "settings.behavior.fallbackWarning.title": "连接到备用服务器前发出提醒",

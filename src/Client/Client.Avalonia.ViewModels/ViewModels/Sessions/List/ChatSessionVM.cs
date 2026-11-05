@@ -162,12 +162,14 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> ToggleMuteCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
+    public ReactiveCommand<int, RxVoid> LeaveChatCommand { get; }
 
     public ChatSessionVM(SessionModel model,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> deleteSessionCommand,
         ReactiveCommand<int, RxVoid> toggleMuteCommand,
-        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand)
+        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand)
     {
         Model = model;
 
@@ -177,6 +179,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
         DeleteSessionCommand = deleteSessionCommand;
         ToggleMuteCommand = toggleMuteCommand;
         EditPermissionsCommand = editPermissionsCommand;
+        LeaveChatCommand = leaveChatCommand;
     }
 
     public void ApplyReadState(ChatReadState state)

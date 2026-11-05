@@ -322,6 +322,11 @@ public partial class MainWindowVM : ReactiveObject
 
         SessionsList = new SessionsListVM(ConnectCommand,
             ReactiveCommand.Create<SessionModel>(OpenSession),
+            ReactiveCommand.Create<int>(chatId =>
+            {
+                if (CurrentContent is ActiveChatSessionVM chat && chat.Id == chatId)
+                    ChangeContent(null);
+            }),
             leaveHybridSessionCommand,
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),

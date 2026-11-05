@@ -994,8 +994,11 @@
 
   "settings.behavior.name": "Comportamiento de la aplicación",
   "settings.behavior.section.autoConnection": "Conexión automática",
-  "settings.behavior.autoConnect.title": "Permitir la conexión automática al último coordinador (experimental)",
-  "settings.behavior.resetConnection.title": "Restablecer la conexión recordada",
+  "settings.behavior.autoConnect.title": "Conectarse automáticamente al iniciar la aplicación",
+  "settings.behavior.server.title": "Servidor",
+  "settings.behavior.server.placeholder": "Elige un servidor guardado",
+  "settings.behavior.identity.title": "Identidad",
+  "settings.behavior.identity.placeholder": "Elige una identidad guardada",
   "settings.behavior.section.manualConnection": "Conexión manual",
   "settings.behavior.fallbackServers.title": "Permitir la conexión al servidor de reserva si existe",
   "settings.behavior.fallbackWarning.title": "Avisar antes de conectar al servidor de reserva",
