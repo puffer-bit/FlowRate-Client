@@ -172,6 +172,11 @@ public partial class MainView : UserControl
         viewModel.ChatMessageReceived += OnChatMessageReceived;
         viewModel.IsWindowActive = MainActivity.IsInFront;
         viewModel.ChatReads.StateChanged += OnChatReadStateChanged;
+        PushMessageHandler.ChatMarkedRead = (coordinatorId, chatId, messageId) => Dispatcher.UIThread.Post(() =>
+        {
+            if (viewModel.ConnectedCoordinatorId == coordinatorId)
+                viewModel.ChatReads.MarkRead(chatId, messageId);
+        });
 
         // The voice session goes on off the screen, with a notification of its own
         _ = new CallTracker(viewModel);
@@ -192,7 +197,7 @@ public partial class MainView : UserControl
                 _services?.GetService<IMediaCache>());
     }
 
-    // A chat read here or on another device needs its notification no more. Raised on any thread
+    // A chat read on this device needs its notification no more. Raised on any thread
     private void OnChatReadStateChanged(ChatReadState state)
     {
         if (state.UnreadCount == 0 && _viewModel?.ConnectedCoordinatorId is { } coordinatorId)

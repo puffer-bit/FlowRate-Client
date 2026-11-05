@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
         services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
         services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();
+        services.AddSingleton<IChatReadStateRepository, ChatReadStateRepository>();
         services.AddSingleton<ICoordinatorStateRepository, CoordinatorStateRepository>();
         services.AddSingleton<IPushKeysRepository, PushKeysRepository>();
         services.AddSingleton<IStorageSettingsRepository, StorageSettingsRepository>();

@@ -261,18 +261,17 @@ public partial class SessionsListVM : ReactiveObject
         Unsubscribe();
         var attachId = _attachId;
         var session = _coordinatorSession = coordinatorSession;
-        _readTracker.Attach(session.GetCurrentUser().Id, (chatId, messageId) => session.MarkChatRead(chatId, messageId));
+        await _readTracker.AttachAsync(session.GetCurrentUser().CoordinatorInstanceId, session.GetCurrentUser().Id);
+        if (attachId != _attachId)
+            return;
         _coordinatorSubscriptions
             // Before the list, so that no message comes between the counts and the subscription
             .Add(() => session.TextMessageAdded += _readTracker.OnMessageAdded,
                 () => session.TextMessageAdded -= _readTracker.OnMessageAdded)
-            .Add(() => session.ChatReadStateChanged += _readTracker.OnServerState,
-                () => session.ChatReadStateChanged -= _readTracker.OnServerState)
             // Before the list as well: a layout newer than the one the list comes with replaces it
             .Add(() => session.SessionLayoutChanged += OnSessionLayoutChanged,
                 () => session.SessionLayoutChanged -= OnSessionLayoutChanged);
         await LoadSessionList(session, attachId);
-        await LoadReadStates(session, attachId);
 
         // Detached while loading: the connection is gone and the handlers were taken off already
         if (attachId != _attachId)
@@ -301,6 +300,8 @@ public partial class SessionsListVM : ReactiveObject
             .Add(() => session.HybridSessionUpdated += OnHybridSessionUpdated,
                 () => session.HybridSessionUpdated -= OnHybridSessionUpdated)
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
+
+        await LoadReadStates(session, attachId);
     }
 
     public void DetachCoordinator()
@@ -397,14 +398,36 @@ public partial class SessionsListVM : ReactiveObject
         if (attachId != _attachId || State != SessionsListState.Loaded)
             return;
 
-        var (result, states) = await coordinatorSession.RequestChatReadStates();
-        if (attachId != _attachId)
-            return;
-
-        if (result.IsSuccess && states != null)
-            _readTracker.Load(states);
-        else
-            LogReadStatesLoadFailed(result);
+        foreach (var chat in Sessions.OfType<ChatSessionVM>().ToArray())
+        {
+            var position = _readTracker.Get(chat.Model.Id)?.LastReadMessageId ?? 0;
+            int? before = null;
+            while (true)
+            {
+                var (result, page) = await coordinatorSession.RequestChatHistoryPage(chat.Model.Id, before,
+                    Shared.Validation.Limits.ChatHistoryMaxTake);
+                if (attachId != _attachId)
+                    return;
+                if (!result.IsSuccess || page == null)
+                {
+                    LogReadStatesLoadFailed(result);
+                    break;
+                }
+                if (page.Messages.Count == 0)
+                    break;
+                foreach (var message in page.Messages.OrderBy(message => message.Id))
+                    _readTracker.OnHistoryMessage(chat.Model.Id, message);
+                var oldest = page.Messages.Min(message => message.Id);
+                if (oldest <= position || page.Messages.Any(message => !message.IsSystem &&
+                        message.SenderUserId == coordinatorSession.GetCurrentUser().Id) ||
+                    (before.HasValue && oldest >= before.Value))
+                    break;
+                before = oldest;
+            }
+            if (_readTracker.Get(chat.Model.Id) is { } state)
+                chat.ApplyReadState(state);
+        }
+        RefreshCategoryCounts();
     }
 
     // Raised on the socket thread or the UI thread

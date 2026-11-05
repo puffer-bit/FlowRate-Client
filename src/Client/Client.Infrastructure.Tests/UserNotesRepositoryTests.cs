@@ -54,7 +54,7 @@ public class UserNotesRepositoryTests
             .VerifyDatabaseAsync();
 
         Assert.Equal(Client.Application.Ports.DatabaseState.NoError, state);
-        Assert.Equal(26L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(27L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         var repository = new UserNotesRepository(database.Database);
         await repository.SetAsync("server", 7, "New note");

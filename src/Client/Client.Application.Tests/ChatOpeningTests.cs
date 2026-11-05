@@ -86,7 +86,7 @@ public sealed class ChatOpeningTests
         return new ActiveChatSessionVM(new ChatSessionModel
         {
             Id = 1, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
-        }, session, services, new ChatReadTracker(TimeSpan.Zero), command);
+        }, session, services, new ChatReadTracker(), command);
     }
 
     private static T Proxy<T>(Func<string, object?> call) where T : class
