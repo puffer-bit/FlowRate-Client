@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Settings;
@@ -19,7 +20,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("behavior",
-        ("autoConnection", ["autoConnect", "resetConnection"]),
+        ("autoConnection", ["autoConnect", "server", "identity"]),
         ("manualConnection", ["fallbackServers", "fallbackWarning", "propagatedWarning"]),
         ("tray", ["closeAction"]),
         ("updates", ["updateCheck", "updateChannel"]));
@@ -68,29 +69,58 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool IsSavedCoordinatorExists
+    public IReadOnlyList<SavedCoordinatorModel> SavedServers
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
+    public SavedCoordinatorModel? SelectedServer
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(Identities));
+            SelectedIdentity = value?.Users.FirstOrDefault();
+        }
+    }
+
+    public IReadOnlyList<SavedUserModel> Identities => SelectedServer?.Users ?? [];
+
+    public SavedUserModel? SelectedIdentity
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ReactiveCommand<RxVoid, RxVoid> ResetSavedCoordinator { get; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IBehaviorService _behaviorService;
+    private readonly IAccountingService _accountingService;
 
     // Set while the view model fills its own properties, so that only user changes get saved
     private bool _isUpdating = true;
 
-    public BehaviorControlVM(IBehaviorService behaviorService)
+    public BehaviorControlVM(IBehaviorService behaviorService, IAccountingService accountingService)
     {
         _behaviorService = behaviorService;
 
-        ResetSavedCoordinator = ReactiveCommand.CreateFromTask(ResetLastIdentity);
+        _accountingService = accountingService;
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         ObserveSettingsChanges();
+
+        this.WatchProperty(nameof(SelectedIdentity), x => x.SelectedIdentity)
+            .Where(_ => !_isUpdating)
+            .Select(identity => Observable.FromAsync(() => identity == null
+                ? _behaviorService.RemoveLastIdentityAsync()
+                : _behaviorService.SetLastIdentityAsync((identity.CoordinatorId, identity.Id))))
+            .Concat()
+            .Subscribe();
     }
 
     private void ObserveSettingsChanges()
@@ -114,10 +144,19 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     {
         _isUpdating = true;
 
-        Apply(await _behaviorService.GetSettingsAsync());
-        IsSavedCoordinatorExists = await _behaviorService.GetAutoConnectInstance() != null;
-
-        _isUpdating = false;
+        try
+        {
+            Apply(await _behaviorService.GetSettingsAsync());
+            var saved = await _behaviorService.GetAutoConnectInstance();
+            SavedServers = (await _accountingService.GetAllSavedCoordinatorsAsync())
+                .Where(server => server.Users.Count > 0).ToList();
+            SelectedServer = SavedServers.FirstOrDefault(server => server.CoordinatorId == saved?.Coordinator.CoordinatorId);
+            SelectedIdentity = SelectedServer?.Users.FirstOrDefault(user => user.Id == saved?.User.Id);
+        }
+        finally
+        {
+            _isUpdating = false;
+        }
     }
 
     private BehaviorSettings ToSettings() => new()
@@ -140,12 +179,6 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         CloseButtonActionIndex = (int)settings.CloseButtonAction;
         IsUpdateCheckOnStartupEnabled = settings.IsUpdateCheckOnStartupEnabled;
         UpdateChannelIndex = (int)settings.UpdateChannel;
-    }
-
-    private async Task ResetLastIdentity()
-    {
-        await _behaviorService.RemoveLastIdentityAsync();
-        IsSavedCoordinatorExists = false;
     }
 
     public async Task ResetAllAsync()

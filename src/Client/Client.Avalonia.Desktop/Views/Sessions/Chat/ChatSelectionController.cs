@@ -128,8 +128,9 @@ internal sealed class ChatSelectionController
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Range controls own their pointer while dragging; text selection must not steal it.
+        // Buttons and range controls own their pointer gesture; text selection must not steal it.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
+            || (e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) != null
             || (e.Source as Visual)?.FindAncestorOfType<RangeBase>(includeSelf: true) != null)
             return;
 

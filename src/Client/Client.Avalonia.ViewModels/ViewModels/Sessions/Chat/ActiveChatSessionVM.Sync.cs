@@ -5,6 +5,7 @@ using Client.Application.Chat;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Services;
+using ReactiveUI;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -33,10 +34,22 @@ public partial class ActiveChatSessionVM
     /// </summary>
     private async Task LoadInitialPage(bool fromCache)
     {
-        var cached = fromCache ? await _pager.LoadCachedAsync() : null;
-        var page = cached ?? await _pager.LoadOlderAsync(null);
+        // Even an async API can do synchronous disk work or request serialization before its
+        // first await. Keep the entire fetch off the UI thread, including cache hits.
+        var (cached, page) = await Task.Run(async () =>
+        {
+            var cachedPage = fromCache ? await _pager.LoadCachedAsync() : null;
+            var loadedPage = cachedPage ?? await _pager.LoadOlderAsync(null);
+            return (cachedPage, loadedPage);
+        });
+        if (_isDisposed)
+            return;
+
         await UiThread.RunAsync(() =>
         {
+            if (_isDisposed)
+                return;
+
             if (page != null)
             {
                 AddMessages(page.Messages);
@@ -198,9 +211,11 @@ public partial class ActiveChatSessionVM
         await UiThread.RunAsync(() =>
         {
             _messageVms.Clear();
+            _newestMessageId = 0;
             _pager.Reset();
             _seenRevision = 0;
-            RebuildTimeline();
+            _timeline.Clear();
+            this.RaisePropertyChanged(nameof(HasMessages));
             IsInitialLoading = true;
         });
 

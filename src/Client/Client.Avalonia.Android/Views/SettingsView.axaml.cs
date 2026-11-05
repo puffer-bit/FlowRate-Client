@@ -87,7 +87,7 @@ public partial class SettingsView : UserControl
             services.GetRequiredService<IAppearanceService>(),
             services.GetRequiredService<IThemeService>(),
             services.GetRequiredService<ILanguageService>());
-        _behavior = new BehaviorControlVM(services.GetRequiredService<IBehaviorService>());
+        _behavior = new BehaviorControlVM(services.GetRequiredService<IBehaviorService>(), services.GetRequiredService<IAccountingService>());
         _audio = new AudioControlVM(
             services.GetRequiredService<IAudioService>(),
             services.GetRequiredService<IMicrophoneTester>(),

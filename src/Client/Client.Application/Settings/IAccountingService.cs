@@ -6,9 +6,8 @@ namespace Client.Application.Settings;
 
 public interface IAccountingService
 {
-    Task<SavedCoordinatorModel?> GetSavedCoordinator(
-        string address, 
-        int port);
+    Task<IReadOnlyList<SavedCoordinatorModel>> GetSavedCoordinatorsAsync(string address, int port);
+    Task RemoveUserIdentityAsync(string coordinatorId, int userId);
     Task<IReadOnlyList<SavedCoordinatorModel>> GetAllSavedCoordinatorsAsync();
     Task SaveCoordinatorInstanceAsync(
         SavedCoordinatorModel instanceModel, SavedUserModel userModel);

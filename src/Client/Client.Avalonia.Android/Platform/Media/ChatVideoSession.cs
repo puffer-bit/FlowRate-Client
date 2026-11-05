@@ -1,4 +1,5 @@
 using System;
+using Client.Services;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Client.Droid.Platform.Media;
 
 /// <summary>Owns chat playback independently of virtualized message cards. Accessed on the UI thread.</summary>
-public sealed class ChatVideoSession : IDisposable
+public sealed class ChatVideoSession : IDisposable, IChatMediaSession
 {
     private readonly IAudioSettingsRepository _settings;
     private readonly ILogger<ChatVideoSession> _logger;
@@ -21,6 +22,7 @@ public sealed class ChatVideoSession : IDisposable
     private CancellationTokenSource? _loading;
     private (string Coordinator, int FileId)? _key;
     private bool _disposed;
+    private readonly ChatMediaPlayback? _global;
 
     private readonly object _frameLock = new();
     private GpuVideoFrame? _lastFrame;
@@ -53,8 +55,9 @@ public sealed class ChatVideoSession : IDisposable
     public double Position => _playback?.Position ?? 0;
     public double Duration => _playback?.Duration ?? 0;
 
-    public ChatVideoSession(IAudioSettingsRepository settings, ILogger<ChatVideoSession> logger)
+    public ChatVideoSession(IAudioSettingsRepository settings, ILogger<ChatVideoSession> logger, ChatMediaPlayback? global = null)
     {
+        _global = global;
         _settings = settings;
         _logger = logger;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
@@ -116,6 +119,8 @@ public sealed class ChatVideoSession : IDisposable
         }
 
         Stop();
+        if (_global != null && !_global.Begin(this, file))
+            return;
         _key = file.PlaybackKey;
         using var cancellation = new CancellationTokenSource();
         _loading = cancellation;
@@ -127,7 +132,10 @@ public sealed class ChatVideoSession : IDisposable
             var path = await file.GetPlaybackPathAsync(cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             if (path == null)
+            {
+                Stop();
                 return;
+            }
             _playback = new ChatVideoPlayback(path, Volume, OnFrame);
             _timer.Start();
             Refresh();
@@ -194,6 +202,7 @@ public sealed class ChatVideoSession : IDisposable
         ReleasePlayback();
         _key = null;
         HasError = false;
+        _global?.End(this);
         Changed?.Invoke();
     }
 

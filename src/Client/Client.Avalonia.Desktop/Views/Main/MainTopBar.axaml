@@ -4,6 +4,7 @@
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:chat="clr-namespace:Client.Views.Sessions.Chat"
              x:DataType="mainVm:MainWindowVM"
              x:Class="Client.Views.Main.MainTopBar">
 
@@ -54,7 +55,7 @@
             </Style>
         </Border.Styles>
 
-        <Grid ColumnDefinitions="Auto, *, Auto">
+        <Grid ColumnDefinitions="Auto, *, Auto, Auto">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2"
                     IsEnabled="{Binding IsInitialized}">
             <Button Classes="topBar" Command="{Binding ConnectCommand}" IsVisible="{Binding !IsConnected}">
@@ -114,7 +115,10 @@
             </Button>
         </StackPanel>
 
-        <common:WindowCaptionButtons Grid.Column="2"/>
+        <Panel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+            <chat:GlobalChatPlayer/>
+        </Panel>
+        <common:WindowCaptionButtons x:Name="CaptionButtons" Grid.Column="3" Margin="6,0,0,0"/>
         </Grid>
     </Border>
 </UserControl>

@@ -232,6 +232,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public Interaction<RxVoid, RxVoid> CloseFlyoutInteraction { get; } = new();
     public Interaction<string, RxVoid> CopyMessageInteraction { get; } = new();
     public Interaction<ChatImageVM, RxVoid> CopyImageInteraction { get; } = new();
+    public Interaction<ChatImageVM, RxVoid> SaveImageInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> OpenReplyCommand { get; }
 
@@ -302,6 +303,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public void CopyImage() => _ = CopyImageAsync();
 
+    public void SaveImageAs() => _ = SaveImageAsAsync();
+
     public void SaveFileAs() => _ = SaveFileAsAsync();
 
     public void ViewProfile() => _ = ViewProfileAsync();
@@ -359,6 +362,15 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
         if (image != null)
             await CopyImageInteraction.Handle(image);
+    }
+
+    private async Task SaveImageAsAsync()
+    {
+        var image = CopyImageTarget;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (image != null)
+            await SaveImageInteraction.Handle(image);
     }
 
     private async Task SaveFileAsAsync()

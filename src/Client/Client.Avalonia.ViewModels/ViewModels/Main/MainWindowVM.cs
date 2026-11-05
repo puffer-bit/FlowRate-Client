@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Push;
+using Client.Application.Ports.Repositories;
 using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Avalonia.Localization;
@@ -259,6 +261,7 @@ public partial class MainWindowVM : ReactiveObject
         ICoordinatorFactory coordinatorFactory,
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
+        IUserNotesRepository userNotes,
         INotificationService notifications,
         IHotKeysService hotKeys,
         PushRegistration pushRegistration,
@@ -293,7 +296,7 @@ public partial class MainWindowVM : ReactiveObject
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
-            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow);
+            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow, userNotes);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
@@ -319,6 +322,11 @@ public partial class MainWindowVM : ReactiveObject
 
         SessionsList = new SessionsListVM(ConnectCommand,
             ReactiveCommand.Create<SessionModel>(OpenSession),
+            ReactiveCommand.Create<int>(chatId =>
+            {
+                if (CurrentContent is ActiveChatSessionVM chat && chat.Id == chatId)
+                    ChangeContent(null);
+            }),
             leaveHybridSessionCommand,
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
@@ -480,7 +488,7 @@ public partial class MainWindowVM : ReactiveObject
     private void OnHybridSessionChanged(ActiveHybridSessionVM? session)
     {
         HybridSession = session;
-        SessionsList.SetEnteredHybridSession(session?.Model.Id);
+        SessionsList.SetEnteredHybridSession(session?.Model.Id, session?.StatusBar);
         RememberLastSession();
     }
 
@@ -564,6 +572,12 @@ public partial class MainWindowVM : ReactiveObject
         {
             case ActiveChatSessionVM chat:
                 SessionsList.SetShownSession(chat.Id, false);
+                // Let the new content complete layout and rendering before starting history work.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (CurrentContent == chat)
+                        _ = chat.EnsureLoadedAsync();
+                }, DispatcherPriority.Background);
                 break;
             case ActiveHybridSessionVM hybrid:
                 SessionsList.SetShownSession(hybrid.Model.Id, true);

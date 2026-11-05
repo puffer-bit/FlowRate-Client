@@ -79,13 +79,31 @@ public readonly record struct TransportStatsSample(double? RoundTripMs, double I
     /// </summary>
     public double? SenderLossPercent(int userId)
     {
+        return SenderLossByUser().TryGetValue(userId, out var loss) ? loss : null;
+    }
+
+    /// <summary>
+    /// The sender-side loss of all users, computed together for a reading of the peer list.
+    /// </summary>
+    public Dictionary<int, double> SenderLossByUser()
+    {
         var users = LossByUser();
+        var senders = 0;
+        var ownLoss = double.PositiveInfinity;
+        foreach (var user in users.Values)
+        {
+            if (user.Packets < MinPacketsForLoss)
+                continue;
 
-        if (!users.TryGetValue(userId, out var user))
-            return null;
+            senders++;
+            ownLoss = Math.Min(ownLoss, user.LossPercent);
+        }
 
-        var senders = users.Values.Count(other => other.Packets >= MinPacketsForLoss);
-        return senders > 1 ? Math.Max(0, user.LossPercent - OwnInboundLossPercent) : user.LossPercent;
+        var losses = new Dictionary<int, double>(users.Count);
+        foreach (var (userId, user) in users)
+            losses.Add(userId, senders > 1 ? Math.Max(0, user.LossPercent - ownLoss) : user.LossPercent);
+
+        return losses;
     }
 
     /// <summary>

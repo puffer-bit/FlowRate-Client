@@ -157,8 +157,10 @@ public class FakeGateway : DispatchProxy
         return new MediaUploadOutcome(MediaTransferResult.NoError, id);
     }
 
+    public string ActiveCoordinatorId { get; set; } = CoordinatorId;
+
     private UserModel LoggedInUser() =>
-        new() { Id = 1, CoordinatorInstanceId = CoordinatorId, Username = "alice", RoleIds = UserRoleIds };
+        new() { Id = 1, CoordinatorInstanceId = ActiveCoordinatorId, Username = "alice", RoleIds = UserRoleIds };
 
     private AuthenticationResult Authenticate(string? userIdentity, string? sessionToken)
     {
@@ -256,7 +258,7 @@ public class FakeGateway : DispatchProxy
                 Challenge = AccountPassword == null ? null : new LoginChallenge(true, false, false);
                 return Task.FromResult(new AccountSecurity(AccountPassword != null, false, false, false, []));
             case nameof(ICoordinatorGateway.GetCoordinatorInfo):
-                return Task.FromResult<CoordinatorSessionModel?>(new CoordinatorSessionModel { Id = CoordinatorId, Name = "Test" });
+                return Task.FromResult<CoordinatorSessionModel?>(new CoordinatorSessionModel { Id = ActiveCoordinatorId, Name = "Test" });
             case nameof(ICoordinatorGateway.RegisterPushToken):
                 Registered.Add(((string)args![0]!, (PushPlatform)args[1]!, (PushKey)args[2]!));
                 return PushError is { } pushError ? Fail<string?>(pushError) : Task.FromResult<string?>(ReplyToken);

@@ -141,9 +141,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     // Loaded messages by id; touched only on the UI thread
     private readonly Dictionary<int, ChatMessageVM> _messageVms = new();
+    private int _newestMessageId;
     private readonly ChatReadTracker _readTracker;
     private readonly ChatSenderDirectory _senders;
     private Task<int>? _loadingOlder;
+    private Task? _initialLoad;
+    private bool _isDisposed;
 
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
     public Interaction<RxVoid, RxVoid> ScrollToEndInteraction { get; } = new();
@@ -234,8 +237,15 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
 
-        _ = LoadInitialPage(fromCache: true);
     }
+
+    /// <summary>
+    /// Starts history loading once, after navigation has displayed the chat.
+    /// Called on the UI thread; creating the view model does not start I/O.
+    /// </summary>
+    public Task EnsureLoadedAsync() => _isDisposed
+        ? Task.CompletedTask
+        : _initialLoad ??= LoadInitialPage(fromCache: true);
 
     private void OpenImage(ChatImageVM image) =>
         ImageViewer = new ChatImageViewerVM(image, _coordinatorSession, _images, CloseImageViewer);
@@ -296,8 +306,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     }
 
     /// <summary>
-    /// Applies the current state of messages by their ids: removes, replaces or adds them. The list is
-    /// rebuilt once for all of them, so a long run of changes after a gap does not rebuild it for each.
+    /// Applies the current state of messages by their ids with local removals and batched inserts.
     /// </summary>
     private void ApplyChanges(IReadOnlyList<ChatMessageModel> changes)
     {
@@ -331,7 +340,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             if (message.IsDeleted)
             {
                 Composer.OnMessageRemoved(message.Id);
-                removed |= _messageVms.Remove(message.Id);
+                removed |= RemoveLoadedMessage(message.Id);
                 continue;
             }
 
@@ -361,9 +370,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 _senders.Apply(messageVm);
         }
 
-        // Adding rebuilds the list, which then takes the removals too
+        // Adding publishes the count change too; deletion-only batches need their own notification.
         if (AddMessages(added) == 0 && removed)
-            RebuildTimeline();
+            this.RaisePropertyChanged(nameof(HasMessages));
     }
 
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
@@ -383,6 +392,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 CanManageMessages = canManage
             };
             _messageVms.Add(model.Id, messageVm);
+            _newestMessageId = Math.Max(_newestMessageId, model.Id);
             addedVms.Add(messageVm);
         }
 
@@ -394,7 +404,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         foreach (var messageVm in addedVms)
             _senders.Apply(messageVm);
 
-        RebuildTimeline();
+        _timeline.AddRange(addedVms);
+        this.RaisePropertyChanged(nameof(HasMessages));
         UpdateReading();
         return addedVms.Count;
     }
@@ -412,7 +423,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         bool isReading = IsOnScreen && !IsScrolledUp && !IsInitialLoading;
         _readTracker.SetReading(Id, isReading);
         if (isReading && _messageVms.Count > 0)
-            _readTracker.MarkRead(Id, _messageVms.Keys.Max());
+            _readTracker.MarkRead(Id, _newestMessageId);
     }
 
     // The counts came from the server, maybe with messages this chat shows already as read
@@ -454,14 +465,19 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         Composer.OnMessageRemoved(messageId);
 
-        if (_messageVms.Remove(messageId))
-            RebuildTimeline();
+        if (RemoveLoadedMessage(messageId))
+            this.RaisePropertyChanged(nameof(HasMessages));
     }
 
-    private void RebuildTimeline()
+    private bool RemoveLoadedMessage(int messageId)
     {
-        _timeline.Update(_messageVms.Values);
-        this.RaisePropertyChanged(nameof(HasMessages));
+        if (!_messageVms.Remove(messageId, out var message))
+            return false;
+
+        _timeline.Remove(message);
+        if (messageId == _newestMessageId)
+            _newestMessageId = _messageVms.Count > 0 ? _messageVms.Keys.Max() : 0;
+        return true;
     }
 
     /// <summary>
@@ -551,6 +567,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public void Dispose()
     {
+        _isDisposed = true;
         _subscriptions.Dispose();
         _senders.Dispose();
         _readTracker.SetReading(Id, false);

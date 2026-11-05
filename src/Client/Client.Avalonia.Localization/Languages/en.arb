@@ -281,6 +281,12 @@
     }
   },
   "profile.avatar.notAnImage": "The file could not be read as an image",
+  "profile.avatar.editTitle": "Edit avatar",
+  "profile.avatar.editHint": "Drag the photo to choose the area. Use the slider to zoom.",
+  "profile.avatar.zoom": "Zoom",
+  "profile.avatar.rotate": "Rotate",
+  "profile.avatar.mirror": "Mirror",
+  "profile.avatar.resetAll": "Reset all",
   "profile.avatar.fileType": "Images",
   "profile.avatar.pickerTitle": "Choose an avatar",
   "profile.avatar.uploadFailed": "The image did not reach the server. Try again.",
@@ -629,6 +635,12 @@
   "profile.avatar.change": "Change",
   "profile.avatar.chooseImage": "Choose image",
   "profile.avatar.reset": "Reset avatar",
+  "profile.note.title": "Personal note",
+  "profile.note.hint": "Only on this device. This note is not sent to the server.",
+  "profile.note.placeholder": "What would you like to remember about this person?",
+  "profile.note.saved": "Saved on this device",
+  "profile.note.loadFailed": "Could not load the note. Try again.",
+  "profile.note.saveFailed": "Could not save the note. Your text is still here; try again.",
   "profile.field.name": "Name:",
   "profile.field.firstConnected": "First connected:",
   "profile.field.lastConnected": "Last connected:",
@@ -931,6 +943,7 @@
   "sessions.join": "Join the session",
   "sessions.leave": "Leave the session",
   "sessions.openChat": "Open the chat",
+  "sessions.leaveChat": "Leave the chat",
   "sessions.fetch.rateLimited": "Failed to fetch sessions. Too many requests, try again in a few seconds.",
   "sessions.fetch.serverError": "Failed to fetch sessions. Server error.",
   "sessions.fetch.timedOut": "Session list update timed out.",
@@ -1157,26 +1170,8 @@
   "source.audio.app.hint": "Only the sound of the chosen application is shared, whatever window you show.",
   "source.audio.app.empty": "No application is playing sound right now. Start the playback and it appears in the list.",
   "source.bitrate.unit": "kbit/s",
-  "source.bitrate.tooLow": "This is low for the chosen resolution and frame rate: the picture may turn blocky. About {bitrate} kbit/s is recommended. The share will still use your value.",
-  "@source.bitrate.tooLow": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
-  "source.bitrate.tooHigh": "This is far more than the chosen resolution and frame rate need: viewers on a slow connection may see stutter. About {bitrate} kbit/s is recommended. The share will still use your value.",
   "source.highFramerate.title": "High frame rate",
   "source.highFramerate.message": "Sharing at 144 fps asks a lot of everyone involved: your GPU encodes far more frames, the stream needs a fast and stable connection, and viewers see the full rate only on a monitor of 144 Hz or more. On slower computers or connections the picture may stutter.",
-  "@source.bitrate.tooHigh": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
-  "source.bitrate.invalid": "Enter a whole number from 1 to 999999. Until then the automatic bitrate is used: {bitrate} kbit/s.",
-  "@source.bitrate.invalid": {
-    "placeholders": {
-      "bitrate": {}
-    }
-  },
   "createSession.title": "New session",
   "createSession.hint": "Choose what the session is for and give it a name.",
   "createSession.field.type": "Type:",
@@ -1223,6 +1218,11 @@
   "hybrid.fullscreen": "Full screen",
   "settings.search.placeholder": "Search settings",
   "settings.search.nothingFound": "Nothing found",
+  "settings.accounting.identityActions": "Account actions",
+  "settings.accounting.exportIdentityQr": "Export to QR code",
+  "settings.accounting.searchServers": "Search saved servers",
+  "settings.accounting.searchCertificates": "Search certificates",
+  "settings.accounting.noMatches": "No matches found.",
   "settings.accounting.name": "Profiles, servers and security",
   "settings.accounting.section.database": "Database and identities settings",
   "settings.accounting.encryptIdentity.title": "Encrypt user identity (Experimental)",
@@ -1253,8 +1253,11 @@
   "settings.accounting.trustedCertificates.description": "Server certificates you chose to trust",
   "settings.behavior.name": "Application behavior",
   "settings.behavior.section.autoConnection": "Auto connection behavior",
-  "settings.behavior.autoConnect.title": "Allow auto connection to last coordinator (Experimental)",
-  "settings.behavior.resetConnection.title": "Reset remembered connection",
+  "settings.behavior.autoConnect.title": "Connect automatically when the application starts",
+  "settings.behavior.server.title": "Server",
+  "settings.behavior.server.placeholder": "Choose a saved server",
+  "settings.behavior.identity.title": "Identity",
+  "settings.behavior.identity.placeholder": "Choose a saved identity",
   "settings.behavior.section.manualConnection": "Manual connection behavior",
   "settings.behavior.fallbackServers.title": "Allow connect to fallback server if exists",
   "settings.behavior.fallbackWarning.title": "Warning before connect to fallback server",
@@ -1851,5 +1854,10 @@
   "chat.video.play": "Play video",
   "chat.video.pause": "Pause video",
   "chat.video.seek": "Seek",
-  "chat.video.failed": "Could not play this video."
+  "chat.video.failed": "Could not play this video.",
+  "chat.media.stop": "Stop and rewind",
+  "chat.media.close": "End playback",
+  "chat.media.failed": "Media playback failed.",
+  "settings.accounting.forgetIdentity.title": "Forget identity",
+  "settings.accounting.forgetIdentity.question": "Forget the saved identity “{user}” on this device? Its saved passwords and session token will be removed. The account on the server will remain."
 }

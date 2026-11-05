@@ -10,6 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
         <PackageReference Include="xunit.v3" Version="3.2.2" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -19,6 +20,7 @@
         <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
         <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
         <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
     </ItemGroup>
 
     <!-- Exercise Android route selection without requiring an Android runtime on the test host. -->

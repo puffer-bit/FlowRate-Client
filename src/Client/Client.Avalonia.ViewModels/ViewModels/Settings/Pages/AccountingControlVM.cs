@@ -17,7 +17,7 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
 
-public class AccountingControlVM : ReactiveObject, ISettingVM
+public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => SettingText.TabName("accounting");
     public SettingTabType Type => SettingTabType.Accounting;
@@ -64,10 +64,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; set; } = [];
+    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; } = [];
     public ObservableCollection<TrustedCertificateItem> TrustedCertificates { get; } = [];
 
-    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteIdentityCommand { get; init; }
+    public SettingsListPageVM<SavedCoordinatorModel> ServersPage { get; }
+    public SettingsListPageVM<TrustedCertificateItem> CertificatesPage { get; }
+
+    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteCoordinatorCommand { get; init; }
+    public ReactiveCommand<SavedUserModel, RxVoid> DeleteIdentityCommand { get; }
     public ReactiveCommand<TrustedCertificateItem, RxVoid> ForgetCertificateCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ChangeDatabasePasswordCommand { get; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
@@ -83,7 +87,16 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
 
-        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteIdentity);
+        ServersPage = new(CoordinatorSessions, (server, filter) =>
+            Contains(server.Name, filter) || Contains($"{server.Address}:{server.Port}", filter) ||
+            Contains(server.CoordinatorId, filter) || server.Users.Any(user => Contains(user.Username, filter)));
+        CertificatesPage = new(TrustedCertificates, (certificate, filter) =>
+            Contains(certificate.Address, filter) || Contains(certificate.Subject, filter) ||
+            Contains(certificate.Coordinator, filter) || Contains(certificate.Certificate.Fingerprint, filter) ||
+            Contains(certificate.Fingerprint, filter));
+
+        DeleteCoordinatorCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteCoordinator);
+        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedUserModel>(DeleteIdentity);
 
         ForgetCertificateCommand = ReactiveCommand.CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
 
@@ -222,7 +235,7 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             Strings.Get("settings.accounting.keyringPassword.title")));
     }
 
-    private async Task DeleteIdentity(SavedCoordinatorModel coordinator)
+    private async Task DeleteCoordinator(SavedCoordinatorModel coordinator)
     {
         var name = coordinator.Name ?? $"{coordinator.Address}:{coordinator.Port}";
         var consequence = coordinator.Users.Count switch
@@ -240,6 +253,18 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
 
         await _accountingService.RemoveCoordinatorInstanceAsync(coordinator.CoordinatorId);
         CoordinatorSessions.Remove(coordinator);
+    }
+
+    private async Task DeleteIdentity(SavedUserModel user)
+    {
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+            Strings.Format("settings.accounting.forgetIdentity.question", ("user", user.Username)),
+            Strings.Get("settings.accounting.forgetIdentity.title")));
+        if (answer != Result.Yes)
+            return;
+
+        await _accountingService.RemoveUserIdentityAsync(user.CoordinatorId, user.Id);
+        await LoadAsync();
     }
 
     private async Task ForgetCertificate(TrustedCertificateItem item)
@@ -293,4 +318,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             TrustedCertificates.Add(new TrustedCertificateItem(certificate, coordinatorName));
         }
     }
+
+    private static bool Contains(string? text, string filter) =>
+        text?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true;
+
+    public void Dispose()
+    {
+        ServersPage.Dispose();
+        CertificatesPage.Dispose();
+    }
+
 }

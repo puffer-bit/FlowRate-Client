@@ -46,7 +46,7 @@
     </UserControl.Styles>
 
     <ui:SettingsPage>
-        <controls:SettingsHeader Text="{l:Text serverSettings.users.section.limits}"/>
+        <controls:SettingsHeader Text="{l:Text serverSettings.users.section.limits}" SectionKey="serverSettings.users.limits"/>
         <ui:SettingsCard IsEnabled="{Binding CanEditLimits}">
             <ui:SettingsRow Title="{l:Text serverSettings.users.maxOnline}"
                             Description="{l:Text serverSettings.users.maxOnline.description}">
@@ -62,7 +62,7 @@
 
         <!-- Every user of the server, by name -->
         <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
-            <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}"/>
+            <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}" SectionKey="serverSettings.users.list"/>
             <Border Grid.Column="1" VerticalAlignment="Center" Padding="10,4" CornerRadius="12"
                     Background="{DynamicResource SettingsCardBackgroundBrush}"
                     BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
