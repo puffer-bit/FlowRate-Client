@@ -33,6 +33,7 @@ public class ConnectWindowVM : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsIdentityQrAvailable));
 
             // The server password saved with the identity is filled in; "New*" keeps what was typed
             if (value?.UserIdentity != null)
@@ -41,6 +42,7 @@ public class ConnectWindowVM : ReactiveObject
     }
 
     public bool IsIdentitiesSelectable => Identities.Count > 1;
+    public bool IsIdentityQrAvailable => !string.IsNullOrEmpty(SelectedIdentity?.UserIdentity);
 
     // Connecting before the saved identities are listed would go out as "New*"
     public bool IsLoadingIdentities

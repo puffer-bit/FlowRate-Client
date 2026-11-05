@@ -102,29 +102,37 @@
                          entry then registers a new user -->
                     <StackPanel Spacing="6" IsVisible="{Binding IsIdentitiesSelectable}">
                         <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.identity}"/>
-                        <ComboBox HorizontalAlignment="Stretch"
-                                  ItemsSource="{Binding Identities}"
-                                  SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="models:SavedUserModel">
-                                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                                        <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
-                                                            UserName="{Binding Username}"
-                                                            Coordinator="{Binding CoordinatorId}"
-                                                            AvatarUrl="{Binding AvatarUrl}"/>
-                                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                            <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                                       Text="{Binding SelectionLabel}"/>
-                                            <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
-                                                 The entry that registers a new user has none -->
-                                            <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                                       Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
-                                                       IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                            <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding Identities}"
+                                      SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:SavedUserModel">
+                                        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                            <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                                UserName="{Binding Username}"
+                                                                Coordinator="{Binding CoordinatorId}"
+                                                                AvatarUrl="{Binding AvatarUrl}"/>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                           Text="{Binding SelectionLabel}"/>
+                                                <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
+                                                     The entry that registers a new user has none -->
+                                                <TextBlock Classes="hint" TextWrapping="NoWrap"
+                                                           Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
+                                                           IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="1" Width="44" MinHeight="44"
+                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                    IsEnabled="{Binding IsIdentityQrAvailable}"
+                                    ToolTip.Tip="QR" AutomationProperties.Name="QR">
+                                <Image Width="24" Height="24" Source="{StaticResource QrCodeIcon}"/>
+                            </Button>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
 

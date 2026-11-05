@@ -771,6 +771,8 @@
   "hybrid.fullscreen": "На весь экран",
   "settings.search.placeholder": "Поиск настроек",
   "settings.search.nothingFound": "Ничего не найдено",
+  "settings.accounting.identityActions": "Действия с аккаунтом",
+  "settings.accounting.exportIdentityQr": "Экспорт в QR-код",
   "settings.accounting.name": "Профили, серверы и безопасность",
   "settings.accounting.section.database": "База данных и учётные записи",
   "settings.accounting.encryptIdentity.title": "Шифровать учётную запись (экспериментально)",
