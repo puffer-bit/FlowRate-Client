@@ -111,6 +111,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public ObservableCollection<UserRoleVM> Roles { get; } = new();
 
     public bool HasRoles => Roles.Count > 0;
+    public IEnumerable<UserRoleVM> AssignedRoles => Roles.Where(role => role.IsAssigned);
+    public IEnumerable<UserRoleVM> ManageableRoles => Roles.Where(role => role.CanChange);
+    public bool CanManageRoles => Roles.Any(role => role.CanChange);
 
     public bool IsChangingRole => _isChangingRole.Value;
 
@@ -222,6 +225,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         foreach (var each in Roles)
             each.IsAssigned = roleIds.Contains(each.Role.Id);
+
+        this.RaisePropertyChanged(nameof(AssignedRoles));
     }
 
     private async Task StartEditingAsync()
