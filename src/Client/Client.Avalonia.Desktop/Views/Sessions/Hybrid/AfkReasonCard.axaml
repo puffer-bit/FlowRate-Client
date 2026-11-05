@@ -5,6 +5,7 @@
              xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              x:DataType="hybridVm:HybridSessionStatusBarVM"
+             menus:FlyoutMenu.SubmitButton="{Binding #ConfirmButton}"
              x:Class="Client.Views.Sessions.Hybrid.AfkReasonCard">
 
     <!-- Going away from the keyboard: what happens, a reason picked with one press or typed, and the way out -->
@@ -75,7 +76,7 @@
             <TextBlock Classes="afkCaption" HorizontalAlignment="Right" Text="{Binding AfkReasonCounter}"/>
         </StackPanel>
 
-        <Button Classes="primary"
+        <Button x:Name="ConfirmButton" Classes="primary"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
                 Padding="10,8"

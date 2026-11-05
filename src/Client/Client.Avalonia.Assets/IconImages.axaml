@@ -941,6 +941,23 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Pencil over a dimmed photo; keep contrast in both themes. -->
+    <DrawingImage x:Key="PencilOnImageIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M16.5 3.5 A2.12 2.12 0 0 1 19.5 6.5 L7.5 18.5 L3 20 L4.5 15.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M14 6 L17 9">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Arrow down onto a line (updates). Source: Icons/DownloadIcon.svg -->
     <DrawingImage x:Key="DownloadIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

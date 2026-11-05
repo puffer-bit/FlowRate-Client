@@ -78,6 +78,24 @@ public sealed partial class AvatarService : IAvatarService
         }
     }
 
+    public Task<AvatarEditSession?> OpenEditorAsync(Func<Task<Stream>> openContent) => Task.Run(async () =>
+    {
+        try
+        {
+            var bytes = await ReadAllAsync(openContent);
+            using var codec = SKCodec.Create(new MemoryStream(bytes, writable: false));
+            if (codec == null || codec.FrameCount > 1)
+                return null;
+            using var decoded = SkiaImages.Decode(codec, PickedMaxSide);
+            return decoded == null ? null : new AvatarEditSession(decoded.Bitmap.Copy());
+        }
+        catch (Exception exception)
+        {
+            LogDecodeFailed(exception);
+            return null;
+        }
+    });
+
     public Task<(PreparedAvatar? Avatar, AvatarRejection Rejection)> PrepareAsync(Func<Task<Stream>> openContent) =>
         Task.Run(async () =>
         {

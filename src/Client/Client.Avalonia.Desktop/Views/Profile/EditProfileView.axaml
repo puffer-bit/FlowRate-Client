@@ -13,41 +13,13 @@
              Background="{DynamicResource GeneralBrush}"
              Width="460">
 
-    <UserControl.Styles>
-        <!-- The avatar itself opens the file picker; a dimmed layer with a hint shows on hover -->
-        <Style Selector="Button.avatarPicker">
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="32"/>
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.avatarPicker /template/ ContentPresenter">
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style Selector="Button.avatarPicker:pointerover /template/ ContentPresenter">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.avatarPicker Border.avatarHover">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.avatarPicker:pointerover Border.avatarHover">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-    </UserControl.Styles>
-
     <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="16,12,16,10" Spacing="4">
+        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Image Width="20" Height="20" Source="{StaticResource BaseUserIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
             </StackPanel>
             <TextBlock Classes="hint" Text="{l:Text profile.edit.hint}"/>
         </StackPanel>
@@ -55,34 +27,24 @@
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <ScrollViewer Grid.Row="2" MaxHeight="480" HorizontalScrollBarVisibility="Disabled">
-            <Border Margin="16,12,16,16" Padding="12" CornerRadius="8"
+            <Border Margin="20,16" Padding="12" CornerRadius="8"
                     Background="{DynamicResource SettingsCardBackgroundBrush}">
                 <StackPanel Spacing="12" IsEnabled="{Binding !IsBusy}">
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                        <Button Classes="avatarPicker" Width="64" Height="64" HorizontalAlignment="Center"
-                                Command="{Binding AvatarPicker.ChooseAvatarCommand}"
-                                ToolTip.Tip="{l:Text profile.avatar.choose}">
-                            <Panel>
-                                <avatars:UserAvatar Width="64" Height="64"
-                                                    UserName="{Binding Name}"
-                                                    AvatarUrl="{Binding ShownAvatarUrl}"
-                                                    Source="{Binding AvatarPicker.Avatar}"/>
-                                <Border Classes="avatarHover" CornerRadius="32"
-                                        Background="{DynamicResource DialogBackdropBrush}">
-                                    <TextBlock Text="{l:Text profile.avatar.change}" FontSize="12" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource OnAccentTextBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </Panel>
-                        </Button>
+                        <avatars:UserAvatar Width="64" Height="64"
+                                            UserName="{Binding Name}"
+                                            AvatarUrl="{Binding ShownAvatarUrl}"
+                                            Source="{Binding AvatarPicker.Avatar}">
+                            <avatars:UserAvatar.Overlay>
+                                <avatars:AvatarEditButton Command="{Binding AvatarPicker.ChooseAvatarCommand}"/>
+                            </avatars:UserAvatar.Overlay>
+                        </avatars:UserAvatar>
 
                         <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
                             <SelectableTextBlock VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
                                                  Text="{Binding UserId, StringFormat='ID: {0}'}"
                                                  IsVisible="{Binding UserId, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                             <WrapPanel ItemSpacing="8" LineSpacing="8">
-                                <Button Command="{Binding AvatarPicker.ChooseAvatarCommand}"
-                                        Content="{l:Text profile.avatar.chooseImage}"/>
                                 <Button Classes="ghost" Command="{Binding RemoveAvatarCommand}"
                                         Content="{l:Text common.remove}"/>
                             </WrapPanel>
@@ -109,7 +71,7 @@
         <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="4" Margin="16,10" ColumnDefinitions="*, Auto">
+        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto">
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                 <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
                     <StackPanel Orientation="Horizontal" Spacing="4">

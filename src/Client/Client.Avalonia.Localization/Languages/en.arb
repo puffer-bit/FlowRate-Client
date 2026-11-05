@@ -281,6 +281,12 @@
     }
   },
   "profile.avatar.notAnImage": "The file could not be read as an image",
+  "profile.avatar.editTitle": "Edit avatar",
+  "profile.avatar.editHint": "Drag the photo to choose the area. Use the slider to zoom.",
+  "profile.avatar.zoom": "Zoom",
+  "profile.avatar.rotate": "Rotate",
+  "profile.avatar.mirror": "Mirror",
+  "profile.avatar.resetAll": "Reset all",
   "profile.avatar.fileType": "Images",
   "profile.avatar.pickerTitle": "Choose an avatar",
   "profile.avatar.uploadFailed": "The image did not reach the server. Try again.",

@@ -364,7 +364,15 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="listVm:MoveTargetVM">
-                                <menus:MenuItemButton Content="{Binding Name}" Click="OnMoveTargetClick"/>
+                                <StackPanel>
+                                    <menus:MenuItemButton Content="{l:Text sessions.category.none}"
+                                                          Icon="{StaticResource DashInCircleIcon}"
+                                                          IsVisible="{Binding IsUncategorized}"
+                                                          Click="OnMoveTargetClick"/>
+                                    <menus:MenuItemButton Content="{Binding Name}"
+                                                          IsVisible="{Binding !IsUncategorized}"
+                                                          Click="OnMoveTargetClick"/>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

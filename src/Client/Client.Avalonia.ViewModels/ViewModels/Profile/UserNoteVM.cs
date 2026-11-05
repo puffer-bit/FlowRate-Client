@@ -1,5 +1,6 @@
 using System;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
@@ -15,14 +16,27 @@ public sealed class UserNoteVM : ReactiveObject, IDisposable
     private readonly IUserNotesRepository _repository;
     private readonly string _coordinatorInstanceId;
     private readonly int _userId;
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
+    private CancellationTokenSource? _pendingSave;
+    private bool _disposed;
 
     public string Text
     {
         get;
         set
         {
-            this.RaiseAndSetIfChanged(ref field, value ?? string.Empty);
+            value ??= string.Empty;
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
             IsSaved = false;
+            if (IsLoaded && !_disposed)
+            {
+                _pendingSave?.Cancel();
+                _pendingSave?.Dispose();
+                _pendingSave = new CancellationTokenSource();
+                _ = AutoSaveAsync(_pendingSave.Token);
+            }
         }
     } = string.Empty;
 
@@ -93,19 +107,39 @@ public sealed class UserNoteVM : ReactiveObject, IDisposable
         }
     }
 
-    private async Task SaveAsync()
+    private async Task AutoSaveAsync(CancellationToken cancellationToken)
     {
-        IsBusy = true;
-        IsSaved = false;
-        Error = null;
-        var text = string.IsNullOrWhiteSpace(Text) ? string.Empty : Text;
         try
         {
-            await _repository.SetAsync(_coordinatorInstanceId, _userId, text);
-            SavedText = text;
-            if (string.IsNullOrWhiteSpace(Text))
-                Text = string.Empty;
-            IsSaved = Text == SavedText;
+            await Task.Delay(TimeSpan.FromMilliseconds(400), cancellationToken);
+            await SaveAsync();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        await _saveGate.WaitAsync();
+        try
+        {
+            if (!IsLoaded || Text == SavedText)
+                return;
+            IsBusy = true;
+            IsSaved = false;
+            Error = null;
+            // Serialize writes and include text entered while an earlier version was being saved.
+            while (Text != SavedText)
+            {
+                var draft = Text;
+                var text = string.IsNullOrWhiteSpace(draft) ? string.Empty : draft;
+                await _repository.SetAsync(_coordinatorInstanceId, _userId, text);
+                SavedText = text;
+                if (Text == draft && text.Length == 0)
+                    Text = string.Empty;
+            }
+            IsSaved = true;
         }
         catch (Exception)
         {
@@ -114,11 +148,20 @@ public sealed class UserNoteVM : ReactiveObject, IDisposable
         finally
         {
             IsBusy = false;
+            _saveGate.Release();
         }
     }
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _pendingSave?.Cancel();
+        _pendingSave?.Dispose();
+        // Closing the profile must also save text whose debounce has not elapsed yet.
+        if (IsLoaded && Text != SavedText)
+            _ = SaveAsync();
         LoadCommand.Dispose();
         SaveCommand.Dispose();
     }
