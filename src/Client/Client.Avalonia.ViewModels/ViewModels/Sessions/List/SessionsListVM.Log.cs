@@ -1,6 +1,5 @@
 using Client.Core.Coordinator;
 using Microsoft.Extensions.Logging;
-using Shared.Enums;
 
 namespace Client.ViewModels.Sessions.List;
 

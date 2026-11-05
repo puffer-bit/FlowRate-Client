@@ -4,10 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Media;
-using Client.Avalonia.Controls.Avatars;
-using Client.Avalonia.Controls.Images;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Client.Avalonia.Controls.Avatars;
 using Client.Core.Chat;
 using Client.Core.Users;
 using Microsoft.Extensions.Logging;
@@ -15,51 +14,6 @@ using Shared.Validation;
 using SkiaSharp;
 
 namespace Client.Services;
-
-/// <summary>
-/// A picture picked for an avatar, made as small as an avatar is shown.
-/// </summary>
-/// <param name="Picture">What the dialog shows until the picture is saved; owned by the receiver.</param>
-/// <param name="Encoded">What goes to the server.</param>
-public sealed record PreparedAvatar(IImage Picture, byte[] Encoded, string MimeType);
-
-/// <summary>Why a picked file cannot be an avatar.</summary>
-public enum AvatarRejection
-{
-    None,
-    NotAnImage,
-
-    /// <summary>
-    /// An animation goes to the server as it is, since it cannot be encoded again, and the server
-    /// takes no more than <see cref="Limits.AvatarMaxSize"/>.
-    /// </summary>
-    AnimationTooLarge
-}
-
-/// <summary>
-/// The avatars of users as the interface needs them: fetched from the coordinator once, kept in
-/// the media cache and shared by every place that shows the same user.
-/// </summary>
-public interface IAvatarService
-{
-    /// <summary>
-    /// The session avatars are downloaded through, or null when there is none. Avatars kept from
-    /// earlier are still shown without it.
-    /// </summary>
-    void Attach(ICoordinatorSession? session);
-
-    /// <summary>
-    /// The picture at <see cref="UserModel.AvatarUrl"/>, or null when there is none or it cannot be had now.
-    /// </summary>
-    /// <param name="coordinatorInstanceId">Null means the coordinator of the attached session.</param>
-    Task<IImage?> LoadAsync(string? coordinatorInstanceId, string? avatarUrl);
-
-    /// <summary>
-    /// Cuts the middle square out of a picked image and reduces it. An animated one is kept as it
-    /// is, so it still moves; the avatar shows its middle all the same.
-    /// </summary>
-    Task<(PreparedAvatar? Avatar, AvatarRejection Rejection)> PrepareAsync(Func<Task<Stream>> openContent);
-}
 
 public sealed partial class AvatarService : IAvatarService
 {

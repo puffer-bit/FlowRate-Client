@@ -1,4 +1,3 @@
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,9 +5,11 @@ using Client.Application.Coordinator.Users;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using Client.Services;
 using ReactiveUI;
-using ReactiveUI.Primitives;
 using Shared.Models.Media;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 

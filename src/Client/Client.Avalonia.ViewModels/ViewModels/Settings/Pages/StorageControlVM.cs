@@ -11,6 +11,7 @@ using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
+
 using Result = Client.ViewModels.Dialogs.Result;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -110,6 +111,11 @@ public class StorageControlVM : ReactiveObject, ISettingVM
             () => ClearAsync("clearMedia", _storageService.ClearMediaCacheAsync),
             this.WatchProperty(nameof(HasMediaCache), vm => vm.HasMediaCache));
 
+        ObserveSettingsChanges();
+    }
+
+    private void ObserveSettingsChanges()
+    {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(IsChatCacheEnabled),

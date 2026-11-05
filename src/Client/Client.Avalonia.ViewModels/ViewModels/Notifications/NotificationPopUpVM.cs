@@ -1,10 +1,10 @@
-using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
-using Client.Services;
 using Client.Avalonia.Styles.Animation;
+using Client.Services;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Notifications;
 
@@ -22,21 +22,19 @@ public class NotificationPopUpVM : ReactiveObject
     private readonly TaskCompletionSource<bool> _tcs = new();
 
     public Task<bool> Result => _tcs.Task;
-    
-    private string? _tag;
+
     public string? Tag
     {
-        get => _tag;
-        set => this.RaiseAndSetIfChanged(ref _tag, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
-    private PopUpType _type;
+
     public PopUpType Type
     {
-        get => _type;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _type, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(IconKey));
         }
     }
@@ -51,27 +49,24 @@ public class NotificationPopUpVM : ReactiveObject
         _ => IconType.Info
     });
 
-    private string? _message;
     public string? Message
     {
-        get => _message;
-        set => this.RaiseAndSetIfChanged(ref _message, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    private bool _isButtonsAvailable;
     public bool IsButtonsAvailable
     {
-        get => _isButtonsAvailable;
-        set => this.RaiseAndSetIfChanged(ref _isButtonsAvailable, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    private bool _isLoading;
     public bool IsLoading
     {
-        get => _isLoading;
-        set => this.RaiseAndSetIfChanged(ref _isLoading, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     /// <summary>
     /// The notification is playing its leave animation and is removed from the list right after it.
     /// </summary>
@@ -84,7 +79,7 @@ public class NotificationPopUpVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
     public ReactiveCommand<RxVoid, bool> YesCommand { get; }
     public ReactiveCommand<RxVoid, bool> NoCommand { get; }
-    
+
     public NotificationPopUpVM(PopUpType type, string? message, ObservableCollection<NotificationPopUpVM> notificationsCollection, string? tag = null)
     {
         CloseCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -95,11 +90,11 @@ public class NotificationPopUpVM : ReactiveObject
         });
         YesCommand = ReactiveCommand.Create(() => _tcs.TrySetResult(true));
         NoCommand  = ReactiveCommand.Create(() => _tcs.TrySetResult(false));
-        
+
         Type = type;
         Tag = tag;
         Message = message;
-        
+
         IsLoading = type == PopUpType.Loading;
         IsButtonsAvailable = type == PopUpType.Question;
     }

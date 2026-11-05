@@ -1,19 +1,20 @@
-using Client.Core.Coordinator;
 using System;
-using System.Reactive.Linq;
 using System.Collections.Generic;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Profile;
 using ReactiveUI;
-using ReactiveUI.Primitives;
 using Shared.Enums;
 using Shared.Enums.User;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
 
@@ -99,8 +100,7 @@ public sealed class UserActions
         ManageSecurityCommand = ReactiveCommand.CreateFromTask(ManageSecurity, isConnected);
         _resetAvatarCommand = ReactiveCommand.CreateFromTask<int, RequestResult>(
             userId => Session.ResetAvatar(userId));
-        _setUserRoleCommand = ReactiveCommand
-            .CreateFromTask<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>(
+        _setUserRoleCommand = ReactiveCommand.CreateFromTask<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>(
                 change => Session.SetUserRole(change.UserId, change.RoleId, change.Has));
     }
 
@@ -134,7 +134,7 @@ public sealed class UserActions
     private async Task ManageSecurity()
     {
         var vm = new AccountSecurityVM(Session);
-        ObservableExtensions.Subscribe(vm.LoadCommand.Execute());
+        vm.LoadCommand.Execute().Subscribe();
         await _showAccountSecurity.Handle(vm);
     }
 

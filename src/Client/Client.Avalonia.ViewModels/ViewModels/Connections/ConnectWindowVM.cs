@@ -1,22 +1,23 @@
-using Client.Services;
-using Client.Avalonia.Localization;
-using Avalonia.Threading;
 using System;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Client.Tools.Parsing;
-using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
-using ReactiveUI.Primitives.Concurrency;
-using Shared.Validation;
-using Client.Core.Coordinator;
-using Client.Core.Settings;
+using Avalonia.Threading;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Application.Settings;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
+using Client.Core.Settings;
+using Client.Services;
+using Client.Tools.Parsing;
 using Client.ViewModels.Dialogs;
+using ReactiveUI;
+using ReactiveUI.Primitives.Concurrency;
+using Shared.Validation;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Connections;
 
@@ -116,7 +117,7 @@ public class ConnectWindowVM : ReactiveObject
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public ObservableCollection<SavedServerItem> SavedServers { get; } = [];
 
     public SavedServerItem? SelectedSavedServer
@@ -148,7 +149,7 @@ public class ConnectWindowVM : ReactiveObject
     }
 
     public ObservableCollection<SavedUserModel> Identities { get; } = [];
-    
+
     public bool IsAddressValid
     {
         get;
@@ -160,7 +161,7 @@ public class ConnectWindowVM : ReactiveObject
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     private string? _parsedAddress;
     private int? _parsedPort;
     private int? _addressPort;
@@ -183,17 +184,17 @@ public class ConnectWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
     private ReactiveCommand<RxVoid, RxVoid> FindIdentitiesCommand { get; }
-    
+
     private readonly ICoordinatorFactory _coordinatorFactory;
-    private readonly IAccountingService _accountingService; 
-    private readonly IBehaviorService _behaviorService; 
-    
+    private readonly IAccountingService _accountingService;
+    private readonly IBehaviorService _behaviorService;
+
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
-    
+
     public ConnectWindowVM(
-        IAccountingService accountingService, 
-        ICoordinatorFactory coordinatorFactory, 
+        IAccountingService accountingService,
+        ICoordinatorFactory coordinatorFactory,
         IBehaviorService behaviorService)
     {
         _accountingService = accountingService;
@@ -202,18 +203,18 @@ public class ConnectWindowVM : ReactiveObject
 
         CloseWindow = new Interaction<ICoordinatorSession?, RxVoid>();
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
-        
+
         ConnectCommand = ReactiveCommand.CreateFromTask(
-            ConnectAsync, 
+            ConnectAsync,
             this.WatchProperty(nameof(IsLoadingIdentities), x => !x.IsLoadingIdentities));
-        
+
         CloseCommand = ReactiveCommand.CreateFromTask(HandleCloseWindow,
             ConnectCommand.IsExecuting.Select(busy => !busy));
 
         _isBusy = ConnectCommand.IsExecuting.ToProperty(this, nameof(IsBusy));
-        
+
         FindIdentitiesCommand = ReactiveCommand.CreateFromTask(FindIdentities);
-        
+
         Task.Run(async () =>
         {
             var savedServers = await _accountingService.GetAllSavedCoordinatorsAsync();
@@ -225,12 +226,12 @@ public class ConnectWindowVM : ReactiveObject
             });
 
             var lastIdentity = await _behaviorService.GetAutoConnectInstance();
-    
+
             if (lastIdentity != null)
             {
                 var coordinator = lastIdentity.Value.Coordinator;
-        
-                Dispatcher.UIThread.Post(() => 
+
+                Dispatcher.UIThread.Post(() =>
                 {
                     Port = coordinator.Port == DefaultPort ? null : coordinator.Port.ToString();
                     ServerAddress = UriParsing.FormatHost(coordinator.Address);
@@ -242,7 +243,7 @@ public class ConnectWindowVM : ReactiveObject
 
     private async Task ConnectAsync()
     {
-        if (!IsFormValid) 
+        if (!IsFormValid)
             return;
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
@@ -254,29 +255,10 @@ public class ConnectWindowVM : ReactiveObject
 
         try
         {
-            ConnectionStatus = Strings.Get("main.status.waitingForServer");
-
-            string? identity = SelectedIdentity?.UserIdentity;
-            var accountPassword = SelectedIdentity?.AccountPassword;
-            var sessionToken = SelectedIdentity?.SessionToken;
-            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-                sessionToken);
-
-            _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-            if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
+            if (!await ConnectWithCertificateAsync(session))
             {
-                if (!await ConfirmCertificateAsync(session))
-                {
-                    session.Dispose();
-                    return;
-                }
-
-                ConnectionStatus = Strings.Get("main.status.waitingForServer");
-                await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-                    sessionToken);
-
-                _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                session.Dispose();
+                return;
             }
 
             if (session.ConnectionStatus == CoordinatorState.CoordinatorMismatch)
@@ -294,27 +276,9 @@ public class ConnectWindowVM : ReactiveObject
                 return;
             }
 
-            if (session.ConnectionStatus is CoordinatorState.AuthenticationFailed or CoordinatorState.Denied
-                or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated or CoordinatorState.PasskeyRequired)
-            {
-                var message = Strings.Get(session.ConnectionStatus switch
-                {
-                    CoordinatorState.Denied => "connect.failed.banned",
-                    CoordinatorState.PasskeyRequired => "connect.failed.passkeyRequired",
-                    CoordinatorState.ClientOutdated => "connect.failed.clientOutdated",
-                    CoordinatorState.ServerOutdated => "connect.failed.serverOutdated",
-                    _ => "connect.failed.authFailed"
-                });
-                session.Dispose();
-                await HandleConnectionError(message);
-                return;
-            }
-            
             if (session.ConnectionStatus != CoordinatorState.Connected)
             {
-                var message = session.ConnectionStatus == CoordinatorState.Rejected && rejection != null
-                    ? RequestRejectionMessages.GetForConnection(rejection.Code)
-                    : Strings.Get("connect.failed.unavailable");
+                var message = DescribeConnectionFailure(session.ConnectionStatus, rejection);
                 session.Dispose();
                 await HandleConnectionError(message);
                 return;
@@ -347,6 +311,45 @@ public class ConnectWindowVM : ReactiveObject
         }
     }
 
+    private async Task<bool> ConnectWithCertificateAsync(ICoordinatorSession session)
+    {
+        ConnectionStatus = Strings.Get("main.status.waitingForServer");
+
+        string? identity = SelectedIdentity?.UserIdentity;
+        var accountPassword = SelectedIdentity?.AccountPassword;
+        var sessionToken = SelectedIdentity?.SessionToken;
+        await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
+            sessionToken);
+
+        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+        if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
+        {
+            if (!await ConfirmCertificateAsync(session))
+                return false;
+
+            ConnectionStatus = Strings.Get("main.status.waitingForServer");
+            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
+                sessionToken);
+
+            _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+        }
+
+        return true;
+    }
+
+    private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection) =>
+        state switch
+        {
+            CoordinatorState.AuthenticationFailed => Strings.Get("connect.failed.authFailed"),
+            CoordinatorState.Denied => Strings.Get("connect.failed.banned"),
+            CoordinatorState.PasskeyRequired => Strings.Get("connect.failed.passkeyRequired"),
+            CoordinatorState.ClientOutdated => Strings.Get("connect.failed.clientOutdated"),
+            CoordinatorState.ServerOutdated => Strings.Get("connect.failed.serverOutdated"),
+            CoordinatorState.Rejected when rejection != null => RequestRejectionMessages.GetForConnection(rejection.Code),
+            _ => Strings.Get("connect.failed.unavailable")
+        };
+
     /// <returns>True when the user trusted the certificate the server presented.</returns>
     private Task<bool> ConfirmCertificateAsync(ICoordinatorSession session)
     {
@@ -368,7 +371,7 @@ public class ConnectWindowVM : ReactiveObject
                     Address = _parsedAddress!,
                     Port = coordinatorSessionModel.Port,
                     Name = coordinatorSessionModel.Name,
-                }, 
+                },
                 new SavedUserModel()
                 {
                     Id = userModel.Id,
@@ -387,22 +390,22 @@ public class ConnectWindowVM : ReactiveObject
             await HandleConnectionWarning(Strings.Format("connect.saveFailed", ("error", e.Message)));
         }
     }
-    
+
     private async Task HandleConnectionError(string message)
     {
         await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok, message, Strings.Get("common.error")));
     }
-    
+
     private async Task HandleConnectionWarning(string message)
     {
         await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok, message, Strings.Get("common.warning")));
     }
-    
+
     private async Task HandleCloseWindow()
     {
         await CloseWindow.Handle(null);
     }
-    
+
     /// <summary>
     /// Moves a port typed into the address field over to the port field, once the user is done typing.
     /// </summary>
@@ -441,9 +444,9 @@ public class ConnectWindowVM : ReactiveObject
         IsFormValid = isValid && PasswordError == null;
 
         if (isValid && _identitiesEndpoint != $"{_parsedAddress}:{_parsedPort}")
-            ObservableExtensions.Subscribe(FindIdentitiesCommand.Execute());
+            FindIdentitiesCommand.Execute().Subscribe();
     }
-    
+
     private async Task FindIdentities()
     {
         if (!IsAddressValid)
@@ -492,7 +495,7 @@ public class ConnectWindowVM : ReactiveObject
     private async Task FinalizeConnectionError(ICoordinatorSession session, string message)
     {
         await HandleConnectionError(message);
-    
+
         await session.Disconnect();
         session.Dispose();
     }

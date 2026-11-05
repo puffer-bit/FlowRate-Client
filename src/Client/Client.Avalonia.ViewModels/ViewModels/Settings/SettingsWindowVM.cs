@@ -7,19 +7,20 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using Client.Avalonia.Localization;
-using Client.Services;
-using ReactiveUI;
-using ReactiveUI.Primitives;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.Application.Settings;
-using Client.Application.Sounds;
 using Client.Application.Settings.Search;
-using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
-using Client.ViewModels.Settings.Pages;
+using Client.Application.Sounds;
+using Client.Avalonia.Localization;
+using Client.Services;
 using Client.Tools.AppInfo;
+using Client.ViewModels.Dialogs;
+using Client.ViewModels.Settings.Pages;
+using ReactiveUI;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings;
 
@@ -31,17 +32,17 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ObservableCollection<ISettingVM> SettingList { get; } = new ObservableCollection<ISettingVM>();
+    public ObservableCollection<ISettingVM> SettingList { get; } = new();
 
     /// <summary>
     /// The keys of the sections that are collapsed on the tabs. The view changes the collection as
     /// the sections are collapsed and shown, and every change is saved.
     /// </summary>
-    public ObservableCollection<string> CollapsedSections { get; } = new ObservableCollection<string>();
-    
+    public ObservableCollection<string> CollapsedSections { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ResetAllSettingsCommand { get; init; }
-    
+
     public Interaction<RxVoid, RxVoid> CloseWindow { get; init; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; init; }
 
@@ -178,12 +179,10 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         _collapsedSectionsRepository = collapsedSectionsRepository;
         CloseWindow = new Interaction<RxVoid, RxVoid>();
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
-        
-        CloseCommand = ReactiveCommand
-            .CreateFromTask(CloseAsync);
-        ResetAllSettingsCommand = ReactiveCommand
-            .CreateFromTask(ResetAllSettings);
-        
+
+        CloseCommand = ReactiveCommand.CreateFromTask(CloseAsync);
+        ResetAllSettingsCommand = ReactiveCommand.CreateFromTask(ResetAllSettings);
+
         SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity));
         SettingList.Add(new BehaviorControlVM(behaviorService));
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));
@@ -244,10 +243,10 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         CollapsedSections.CollectionChanged += OnCollapsedSectionsChanged;
 
         SelectedSetting = SettingList.FirstOrDefault(c => c.IsEnabled);
-        
+
         IsLoaded = true;
     }
-    
+
     private void OnCollapsedSectionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         foreach (string key in e.OldItems ?? Array.Empty<string>())
@@ -300,7 +299,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
 
     private async Task ResetAllSettings()
     {
-        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo, 
+        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Get("settings.reset.question"), Strings.Get("common.warning"))) == Result.Yes)
         {
             foreach (var setting in SettingList)

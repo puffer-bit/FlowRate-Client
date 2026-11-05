@@ -1,12 +1,13 @@
-using Client.Services;
-using Client.Application.Settings.Search;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using Client.Core.Settings;
 using Client.Application.Settings;
+using Client.Application.Settings.Search;
+using Client.Core.Settings;
+using Client.Services;
+using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -28,32 +29,32 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsAutoConnectedToFallbackServersEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsFallbackConnectionWarningEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsPropagatedConnectionWarningEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     // Index into the close button choices of the view, in the order of CloseButtonAction
     public int CloseButtonActionIndex
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsUpdateCheckOnStartupEnabled
     {
         get;
@@ -72,25 +73,28 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public ReactiveCommand<RxVoid, RxVoid> ResetSavedCoordinator { get; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
-    
+
     private readonly IBehaviorService _behaviorService;
-    
+
     // Set while the view model fills its own properties, so that only user changes get saved
     private bool _isUpdating = true;
-    
+
     public BehaviorControlVM(IBehaviorService behaviorService)
     {
         _behaviorService = behaviorService;
-        
-        ResetSavedCoordinator = ReactiveCommand
-            .CreateFromTask(ResetLastIdentity);
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
 
+        ResetSavedCoordinator = ReactiveCommand.CreateFromTask(ResetLastIdentity);
+
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
+
+        ObserveSettingsChanges();
+    }
+
+    private void ObserveSettingsChanges()
+    {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(IsAutoConnectedEnabled),
@@ -105,14 +109,14 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
             .Concat()
             .Subscribe();
     }
-    
+
     private async Task LoadAsync()
     {
         _isUpdating = true;
-        
+
         Apply(await _behaviorService.GetSettingsAsync());
         IsSavedCoordinatorExists = await _behaviorService.GetAutoConnectInstance() != null;
-        
+
         _isUpdating = false;
     }
 
@@ -137,21 +141,21 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IsUpdateCheckOnStartupEnabled = settings.IsUpdateCheckOnStartupEnabled;
         UpdateChannelIndex = (int)settings.UpdateChannel;
     }
-    
+
     private async Task ResetLastIdentity()
     {
         await _behaviorService.RemoveLastIdentityAsync();
         IsSavedCoordinatorExists = false;
     }
-    
+
     public async Task ResetAllAsync()
     {
         var defaults = new BehaviorSettings();
-        
+
         _isUpdating = true;
         Apply(defaults);
         _isUpdating = false;
-        
+
         await _behaviorService.SaveSettingsAsync(defaults);
     }
 }

@@ -1,14 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Services;
-using System;
-using System.Collections.Generic;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -84,14 +85,13 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         _audioService = audioService;
         _libWebRTCLoader = libWebRTCLoader;
 
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         // Apply and persist only on user changes, not on initial load
         this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar), nameof(UseGStreamer))
             .Where(_ => _isLoaded)
-            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar, vm.UseGStreamer))
-            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2, values.Item3)))
+            .Select(vm => (IsEnabled: vm.IsExperimentalEnabled, vm.UseCustomTitleBar, vm.UseGStreamer))
+            .Select(values => Observable.FromAsync(() => ChangeAsync(values.IsEnabled, values.UseCustomTitleBar, values.UseGStreamer)))
             .Concat()
             .Subscribe();
 

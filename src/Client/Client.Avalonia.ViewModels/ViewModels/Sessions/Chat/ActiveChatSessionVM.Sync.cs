@@ -5,7 +5,6 @@ using Client.Application.Chat;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Services;
-using Shared.Enums;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;

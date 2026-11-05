@@ -10,32 +10,10 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using ReactiveUI;
-using Shared.Enums.User;
 using Shared.Models.DataTransferObjects.ChatSession.Messages.Mentions;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;
-
-/// <summary>
-/// One line of the mention list: a user, or everyone / those online.
-/// </summary>
-public class ChatMentionSuggestionVM : ReactiveObject
-{
-    /// <summary>The name written after "@".</summary>
-    public required string Name { get; init; }
-    public int? UserId { get; init; }
-    public string? AvatarUrl { get; init; }
-    public UserStatus? Status { get; init; }
-    public string? Hint { get; init; }
-    public bool HasHint => Hint != null;
-    public bool IsGroup => UserId == null;
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-}
 
 /// <summary>
 /// Mentions in the input of a chat. The input holds them as "@name", the way they are shown; the

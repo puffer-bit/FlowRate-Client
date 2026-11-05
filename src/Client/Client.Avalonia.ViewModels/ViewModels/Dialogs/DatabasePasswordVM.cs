@@ -1,24 +1,13 @@
 using System;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Avalonia.Localization;
 using Client.Services;
 using ReactiveUI;
 
+using RxVoid = ReactiveUI.Primitives.RxVoid;
+
 namespace Client.ViewModels.Dialogs;
-
-public enum DatabasePasswordPurpose
-{
-    /// <summary>At start: the encrypted database waits for its password.</summary>
-    Unlock,
-
-    /// <summary>The database is to be encrypted with a new password.</summary>
-    Create,
-
-    /// <summary>The encrypted database gets another password.</summary>
-    Change
-}
 
 /// <summary>
 /// Asks for the password of the database. The dialog stays open while the password is put to use,

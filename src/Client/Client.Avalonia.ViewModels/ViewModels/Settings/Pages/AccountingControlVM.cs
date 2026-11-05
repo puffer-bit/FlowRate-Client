@@ -1,17 +1,18 @@
-using Client.Application.Ports;
-using Client.Application.Settings;
-using Client.Application.Settings.Search;
-using Client.Avalonia.Localization;
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Application.Ports;
+using Client.Application.Settings;
+using Client.Application.Settings.Search;
+using Client.Avalonia.Localization;
 using Client.Core.Settings;
+using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -34,19 +35,19 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
 
     public bool IsDatabaseEncryptionEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsDatabasePasswordSaveEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsDatabaseLockEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
@@ -65,36 +66,32 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
 
     public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; set; } = [];
     public ObservableCollection<TrustedCertificateItem> TrustedCertificates { get; } = [];
-    
+
     public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteIdentityCommand { get; init; }
     public ReactiveCommand<TrustedCertificateItem, RxVoid> ForgetCertificateCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ChangeDatabasePasswordCommand { get; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
     public Interaction<DatabasePasswordVM, bool> AskDatabasePassword { get; } = new();
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
-    
+
     private readonly IAccountingService _accountingService;
     private readonly IDatabaseSecurityService _databaseSecurity;
     private bool _isUpdating = true;
-    
+
     public AccountingControlVM(IAccountingService accountingService, IDatabaseSecurityService databaseSecurity)
     {
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
-        
-        DeleteIdentityCommand = ReactiveCommand
-            .CreateFromTask<SavedCoordinatorModel>(DeleteIdentity);
 
-        ForgetCertificateCommand = ReactiveCommand
-            .CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
+        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteIdentity);
 
-        ChangeDatabasePasswordCommand = ReactiveCommand
-            .CreateFromTask(ChangeDatabasePasswordAsync,
+        ForgetCertificateCommand = ReactiveCommand.CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
+
+        ChangeDatabasePasswordCommand = ReactiveCommand.CreateFromTask(ChangeDatabasePasswordAsync,
                 this.WatchProperties(nameof(IsDatabaseEncryptionEnabled), nameof(IsDatabaseBusy))
                     .Select(vm => vm.IsDatabaseEncryptionEnabled && !vm.IsDatabaseBusy));
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
+
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         // Each change is a dialog or a rewrite of the file: one at a time, and the box shows the
         // outcome rather than the click
@@ -105,7 +102,7 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         OnUserChange(nameof(IsDatabaseLockEnabled), vm => vm.IsDatabaseLockEnabled,
             isLocked => _databaseSecurity.SetFileLockedAsync(isLocked));
     }
-    
+
     public async Task ResetAllAsync()
     {
         // A reset of the settings neither decrypts the data nor forgets where its password is kept
@@ -233,14 +230,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             0 => Strings.Get("settings.accounting.forgetServer.noAccounts"),
             var count => Strings.Format("settings.accounting.forgetServer.accounts", ("count", count))
         };
-        
+
         var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
             Strings.Format("settings.accounting.forgetServer.question", ("server", name), ("consequence", consequence)),
             Strings.Get("settings.accounting.forgetServer.title")));
 
         if (answer != Result.Yes)
             return;
-        
+
         await _accountingService.RemoveCoordinatorInstanceAsync(coordinator.CoordinatorId);
         CoordinatorSessions.Remove(coordinator);
     }
@@ -267,22 +264,22 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         var databaseSettings = await _databaseSecurity.GetSettingsAsync();
 
         _isUpdating = true;
-        
+
         IsDatabaseEncryptionEnabled = databaseSettings.IsDatabaseEncryptionEnabled;
         IsDatabasePasswordSaveEnabled = databaseSettings.IsDatabasePasswordSaveEnabled;
         IsDatabaseLockEnabled = databaseSettings.IsDatabaseLockEnabled;
-        
+
         _isUpdating = false;
     }
-    
+
     private async Task LoadAsync()
     {
         await ApplyDatabaseSettingsAsync();
-        
+
         var coordinators = await _accountingService.GetAllSavedCoordinatorsAsync();
-        
-        CoordinatorSessions.Clear(); 
-        foreach (var item in coordinators) 
+
+        CoordinatorSessions.Clear();
+        foreach (var item in coordinators)
         {
             CoordinatorSessions.Add(item);
         }

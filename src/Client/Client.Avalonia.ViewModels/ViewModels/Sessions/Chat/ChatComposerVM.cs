@@ -11,10 +11,12 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Services;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -488,52 +490,58 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             if (!await UploadAttachments(attachments, cancellation.Token))
                 return;
 
-            var message = new NewChatMessage
-            {
-                ChatId = _chatId,
-                SenderUserId = _session.GetCurrentUser().Id,
-                SentTime = DateTime.UtcNow,
-                TextContent = textContent,
-                ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
-                Images = attachments.Where(attachment => attachment.IsImage)
-                    .Select(attachment => attachment.Upload.Image!).ToList(),
-                Files = attachments.Where(attachment => attachment.IsFile)
-                    .Select(attachment => attachment.FileUpload.File!).ToList()
-            };
-
+            var message = CreateMessage(textContent, attachments);
             var result = await _session.SendChatMessage(message);
-            switch (result)
-            {
-                case { IsSuccess: true }:
-                    InputtedText = string.Empty;
-                    MentionPicker.Reset();
-                    Attachments.Clear();
-                    ResetReply();
-                    break;
-                // A rejection is reported by the main window
-                case { IsRejected: true }:
-                    break;
-                // The server does not hold the uploads anymore, so the next try sends the files again
-                case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
-                    foreach (var attachment in attachments)
-                        attachment.ResetUpload();
-                    SendError = Strings.Get("chat.send.imagesLost");
-                    break;
-                // The text and the files stay in the composer for another try
-                default:
-                    SendError = Strings.Get(result switch
-                    {
-                        { Error: ErrorCode.TimedOut } => "chat.send.timedOut",
-                        { Error: ErrorCode.AttachmentsNotAllowed } => "chat.attach.turnedOff",
-                        _ => "chat.send.refused"
-                    });
-                    break;
-            }
+            ApplySendResult(result, attachments);
         }
         finally
         {
             _sendCancellation = null;
             IsMessageSending = false;
+        }
+    }
+
+    private NewChatMessage CreateMessage(ChatTextContent? textContent, IReadOnlyList<ChatAttachmentVM> attachments) => new()
+    {
+        ChatId = _chatId,
+        SenderUserId = _session.GetCurrentUser().Id,
+        SentTime = DateTime.UtcNow,
+        TextContent = textContent,
+        ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
+        Images = attachments.Where(attachment => attachment.IsImage)
+            .Select(attachment => attachment.Upload.Image!).ToList(),
+        Files = attachments.Where(attachment => attachment.IsFile)
+            .Select(attachment => attachment.FileUpload.File!).ToList()
+    };
+
+    private void ApplySendResult(RequestResult result, IReadOnlyList<ChatAttachmentVM> attachments)
+    {
+        switch (result)
+        {
+            case { IsSuccess: true }:
+                InputtedText = string.Empty;
+                MentionPicker.Reset();
+                Attachments.Clear();
+                ResetReply();
+                break;
+            // A rejection is reported by the main window
+            case { IsRejected: true }:
+                break;
+            // The server does not hold the uploads anymore, so the next try sends the files again
+            case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
+                foreach (var attachment in attachments)
+                    attachment.ResetUpload();
+                SendError = Strings.Get("chat.send.imagesLost");
+                break;
+            // The text and the files stay in the composer for another try
+            default:
+                SendError = Strings.Get(result switch
+                {
+                    { Error: ErrorCode.TimedOut } => "chat.send.timedOut",
+                    { Error: ErrorCode.AttachmentsNotAllowed } => "chat.attach.turnedOff",
+                    _ => "chat.send.refused"
+                });
+                break;
         }
     }
 

@@ -1,12 +1,13 @@
-using Client.Core.Coordinator;
-using Shared.Enums;
 using System.Collections.Generic;
-using ReactiveUI;
-using ReactiveUI.Primitives;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.ViewModels.Dialogs;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -153,24 +154,23 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
 
     public string UnreadCountText => CountText(UnreadCount);
     public string MentionCountText => "@" + CountText(MentionCount);
-    
+
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
-    
+
     // Reactive commands
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> ToggleMuteCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
-    
-    
-    public ChatSessionVM(SessionModel model, 
-        ReactiveCommand<SessionModel, RxVoid> showSessionCommand, 
+
+    public ChatSessionVM(SessionModel model,
+        ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> deleteSessionCommand,
         ReactiveCommand<int, RxVoid> toggleMuteCommand,
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand)
     {
         Model = model;
-        
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
 
         ShowSessionCommand = showSessionCommand;

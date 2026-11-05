@@ -1,13 +1,13 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
 using Client.Core.Coordinator;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using ReactiveUI;
+using Shared.Enums;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -15,7 +15,7 @@ public class HybridSessionParticipantsListVM : ReactiveObject
 {
     // UI Collections
     public ObservableCollection<HybridSessionParticipantVM> Participants { get; set; } = new();
-    
+
     // UI Commands
     public ReactiveCommand<HybridSessionParticipantVM, RxVoid> ApproveParticipant { get; }
     public ReactiveCommand<HybridSessionParticipantVM, RxVoid> RejectParticipant { get; }
@@ -54,7 +54,7 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     public void AddPeerToSession(PeerModel peerModel)
     {
         var peer = Participants.FirstOrDefault(p => p.PeerData.UserId == peerModel.UserId);
-        if (peer != null) 
+        if (peer != null)
             return;
 
         var added = new HybridSessionParticipantVM(peerModel, peerModel.UserId == _currentUserId);
@@ -83,16 +83,16 @@ public class HybridSessionParticipantsListVM : ReactiveObject
         participant.CanApprove = !participant.IsCurrentUser && participant.IsWaiting
                                  && _permissions.CanInSession(Permission.ApproveMembers, _isHost);
     }
-    
+
     public void RemovePeerFromSession(int userId)
     {
         var peer = Participants.FirstOrDefault(p => p.PeerData.UserId == userId);
-        if (peer == null) 
+        if (peer == null)
             return;
 
         Participants.Remove(peer);
     }
-    
+
     /// <summary>
     /// Attaches the user data to the peer of that user. Matched by user id, since the server reuses
     /// peer ids once a peer leaves.

@@ -12,6 +12,7 @@ using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
+
 using Result = Client.ViewModels.Dialogs.Result;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -212,6 +213,11 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         ClearLogFilesCommand = ReactiveCommand.CreateFromTask(ClearLogFilesAsync);
         SaveArchiveCommand = ReactiveCommand.CreateFromTask(SaveArchiveAsync);
 
+        ObserveSettingsChanges();
+    }
+
+    private void ObserveSettingsChanges()
+    {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(JournalLevelIndex),

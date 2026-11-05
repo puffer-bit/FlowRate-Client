@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
-using Shared.Enums;
-using Shared.Permissions;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Sessions;
+using ReactiveUI;
+using Shared.Enums;
+using Shared.Permissions;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Permissions;
 
@@ -135,86 +136,3 @@ public sealed class SessionPermissionsWindowVM : ReactiveObject, IDisposable
 
 internal sealed record SessionPermissionOption(Permission Permission, string Title, bool IsChatOnly = false,
     bool IsHybridOnly = false);
-
-/// <summary>The override of one role in the dialog.</summary>
-public sealed class SessionRoleOverrideVM
-{
-    private readonly RoleModel _role;
-    // Flags the dialog does not show are kept as they were
-    private readonly PermissionOverride _hidden;
-
-    public string Name => _role.Name;
-    public int? Color => _role.Color;
-    public bool IsEditable { get; }
-    public IReadOnlyList<SessionPermissionStateVM> Permissions { get; }
-
-    internal SessionRoleOverrideVM(RoleModel role, PermissionOverride current,
-        IReadOnlyList<SessionPermissionOption> options, Func<Permission, bool> canChange)
-    {
-        _role = role;
-        var shown = options.Aggregate(Permission.None, (all, option) => all | option.Permission);
-        _hidden = current with { Allow = current.Allow & ~shown, Deny = current.Deny & ~shown };
-
-        IsEditable = canChange(Permission.None);
-        Permissions = options.Select(option => new SessionPermissionStateVM(option.Permission,
-                Strings.Get(option.Title),
-                current.Allow.HasFlag(option.Permission) ? PermissionState.Allow
-                : current.Deny.HasFlag(option.Permission) ? PermissionState.Deny
-                : PermissionState.Inherit,
-                canChange(option.Permission)))
-            .ToList();
-    }
-
-    public PermissionOverride ToOverride() => Permissions.Aggregate(_hidden, (o, p) => p.State switch
-    {
-        PermissionState.Allow => o with { Allow = o.Allow | p.Permission },
-        PermissionState.Deny => o with { Deny = o.Deny | p.Permission },
-        _ => o
-    });
-}
-
-public enum PermissionState
-{
-    Inherit,
-    Allow,
-    Deny
-}
-
-/// <summary>One permission of a role in the dialog: as on the coordinator, allowed or denied.</summary>
-public sealed class SessionPermissionStateVM(Permission permission, string title, PermissionState state,
-    bool isEditable) : ReactiveObject
-{
-    public Permission Permission { get; } = permission;
-    public string Title { get; } = title;
-    public bool IsEditable { get; } = isEditable;
-
-    public PermissionState State
-    {
-        get;
-        private set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsInherited));
-            this.RaisePropertyChanged(nameof(IsAllowed));
-            this.RaisePropertyChanged(nameof(IsDenied));
-        }
-    } = state;
-
-    public bool IsInherited
-    {
-        get => State == PermissionState.Inherit;
-        set { if (value) State = PermissionState.Inherit; }
-    }
-
-    public bool IsAllowed
-    {
-        get => State == PermissionState.Allow;
-        set { if (value) State = PermissionState.Allow; }
-    }
-
-    public bool IsDenied
-    {
-        get => State == PermissionState.Deny;
-        set { if (value) State = PermissionState.Deny; }
-    }
-}
