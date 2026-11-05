@@ -7,85 +7,62 @@
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
-             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="320"
+             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="380"
              x:Class="Client.Views.Profile.UserProfileView"
              x:DataType="profileVm:UserProfileWindowVM"
              Background="{DynamicResource GeneralBrush}"
              Width="460">
 
-    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+    <Grid RowDefinitions="Auto,1,Auto">
+        <ScrollViewer Grid.Row="0" MaxHeight="560" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,12,16,16" Spacing="10">
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="{l:Text main.profile.title}"/>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource BaseUserIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
-            </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text profile.view.hint}"/>
-        </StackPanel>
+                <Border Padding="12" CornerRadius="8" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <StackPanel Spacing="10" IsEnabled="{Binding !IsBusy}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <avatars:UserAvatar Width="64" Height="64" VerticalAlignment="Top"
+                                                UserName="{Binding Name}"
+                                                AvatarUrl="{Binding ShownAvatarUrl}"
+                                                Source="{Binding AvatarPicker.Avatar}"
+                                                Status="{Binding Status}"/>
+                            <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                                <SelectableTextBlock FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                     Text="{Binding Username}" IsVisible="{Binding !IsEditing}"/>
+                                <TextBlock Classes="hint" Text="{Binding StatusText}"/>
+                                <SelectableTextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                     Text="{Binding UserId, StringFormat='ID: {0}'}"/>
+                            </StackPanel>
+                        </Grid>
 
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+                        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+                            <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                <Button Command="{Binding AvatarPicker.ChooseAvatarCommand}"
+                                        Content="{l:Text profile.avatar.chooseImage}" IsVisible="{Binding IsCurrentUser}"/>
+                                <Button Classes="ghost" Command="{Binding ResetAvatarCommand}"
+                                        Content="{l:Text profile.avatar.reset}"/>
+                            </WrapPanel>
+                            <TextBlock Classes="hint" Text="{l:Text profile.avatar.resetsOnSave}"
+                                       IsVisible="{Binding IsAvatarReset}"/>
+                            <TextBlock Classes="fieldError" Text="{Binding AvatarPicker.AvatarError}"
+                                       IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        </StackPanel>
 
-        <!-- Profile -->
-        <Grid Grid.Row="2" Margin="20,18" ColumnDefinitions="Auto, *" ColumnSpacing="20" IsEnabled="{Binding !IsBusy}">
-
-            <!-- Avatar -->
-            <StackPanel Grid.Column="0" Spacing="8" Width="112">
-                <avatars:UserAvatar Width="96" Height="96" HorizontalAlignment="Center"
-                                    UserName="{Binding Username}"
-                                    AvatarUrl="{Binding ShownAvatarUrl}"
-                                    Source="{Binding AvatarPicker.Avatar}"
-                                    Status="{Binding Status}"/>
-
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        Command="{Binding AvatarPicker.ChooseAvatarCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="IsEditing"/>
-                            <Binding Path="IsCurrentUser"/>
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <TextBlock Text="{l:Text profile.avatar.chooseImage}" FontSize="12"/>
-                </Button>
-
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        Command="{Binding ResetAvatarCommand}"
-                        IsVisible="{Binding IsEditing}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text profile.avatar.reset}" FontSize="12"/>
+                        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                            <TextBox x:Name="NameInput" PlaceholderText="{l:Text profile.name.short}"
+                                     Text="{Binding Name}"
+                                     Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <TextBlock Classes="fieldError" Text="{Binding NameError}"
+                                       IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <TextBlock Classes="hint" Text="{Binding NameHint}"
+                                       IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
+                        </StackPanel>
                     </StackPanel>
-                </Button>
+                </Border>
 
-                <TextBlock Classes="hint" TextAlignment="Center" Text="{l:Text profile.avatar.resetsOnSave}"
-                           IsVisible="{Binding IsAvatarReset}"/>
-
-                <TextBlock Classes="fieldError" TextAlignment="Center" Text="{Binding AvatarPicker.AvatarError}"
-                           IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Spacing="14">
-
-                <!-- Name -->
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
-
-                    <SelectableTextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"
-                                         Text="{Binding Username}"
-                                         IsVisible="{Binding !IsEditing}"/>
-
-                    <StackPanel Spacing="6" IsVisible="{Binding IsEditing}">
-                        <TextBox x:Name="NameInput"
-                                 PlaceholderText="{l:Text profile.name.short}"
-                                 Text="{Binding Name}"
-                                 Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Classes="fieldError" Text="{Binding NameError}"
-                                   IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Classes="hint" Text="{Binding NameHint}"
-                                   IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
-                    </StackPanel>
-                </StackPanel>
-
+                <Border Padding="12" CornerRadius="8" Background="{DynamicResource SettingsCardBackgroundBrush}"
+                        IsVisible="{Binding HasRoles}" IsEnabled="{Binding !IsBusy}">
                 <!-- Roles: those the user has, and those the current user may give; a click gives or takes -->
                 <StackPanel Spacing="6" IsVisible="{Binding HasRoles}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.roles}"/>
@@ -118,29 +95,28 @@
                                IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
 
-                <!-- Connections -->
-                <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                    <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.firstConnected}"/>
-                        <TextBlock Text="{Binding FirstConnected}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.lastConnected}"/>
-                        <TextBlock Text="{Binding LastConnected}"/>
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-        </Grid>
+                </Border>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+                <Border Padding="12" CornerRadius="8" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                        <TextBlock Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.firstConnected}"/>
+                        <SelectableTextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                             Text="{Binding FirstConnected}"/>
+                        <TextBlock Grid.Row="1" Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.lastConnected}"/>
+                        <SelectableTextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                             Text="{Binding LastConnected}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto">
-            <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
-                                 Text="{Binding UserId, StringFormat='ID: {0}'}"/>
-
+        <Grid Grid.Row="2" Margin="16,10" ColumnDefinitions="*">
             <!-- Viewing -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" IsVisible="{Binding !IsEditing}">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !IsEditing}">
                 <Button Command="{Binding CloseCommand}" IsCancel="{Binding !IsEditing}" HorizontalContentAlignment="Left">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
@@ -158,7 +134,7 @@
             </StackPanel>
 
             <!-- Editing -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsEditing}">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEditing}">
                 <Button Command="{Binding CancelEditCommand}" IsCancel="{Binding IsEditing}" HorizontalContentAlignment="Left">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>

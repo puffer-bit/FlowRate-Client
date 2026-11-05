@@ -81,6 +81,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     /// </summary>
     /// <summary>The status of the user when the profile was opened.</summary>
     public UserStatus Status { get; }
+    public string StatusText => UserStatusText.Of(Status);
 
     public string? AvatarUrl
     {
