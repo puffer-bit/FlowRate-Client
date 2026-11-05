@@ -308,6 +308,9 @@ internal partial class CoordinatorGateway
     public Task DeleteChatMessage(int sessionId, int messageId) =>
         SendRequestAsync<DeleteMessageResponse>(new DeleteMessageRequest(sessionId, messageId));
 
+    public Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded) =>
+        SendRequestAsync<SetMessageReactionResponse>(new SetMessageReactionRequest(sessionId, messageId, emoji, isAdded));
+
     public Task EditChatMessage(int sessionId, int messageId, string text) =>
         SendRequestAsync<EditMessageResponse>(new EditMessageRequest(sessionId, messageId, text));
 

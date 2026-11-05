@@ -759,6 +759,8 @@
   "createSession.description.watermark": "О чём этот чат",
   "createSession.create": "Создать",
   "createSession.creating": "Создание...",
+  "chat.menu.react": "Реакция",
+  "chat.reaction.failed": "Не удалось изменить реакцию. Попробуйте ещё раз.",
   "chat.menu.reply": "Ответить",
   "chat.menu.edit": "Изменить",
   "chat.editing": "Изменение сообщения",

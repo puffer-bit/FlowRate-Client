@@ -4,6 +4,7 @@
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -150,6 +151,25 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}"
+                              IsEnabled="{Binding CanReact}" Margin="0,4,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatReactionVM">
+                            <Button Classes="msg-reaction" Classes.mine="{Binding IsMine}"
+                                    Command="{Binding Toggle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding ReactionError}" IsVisible="{Binding HasReactionError}"
+                           Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
             </StackPanel>
             
             <!-- A continuation of a sequence shows its time at the start, on hover only. The hidden text

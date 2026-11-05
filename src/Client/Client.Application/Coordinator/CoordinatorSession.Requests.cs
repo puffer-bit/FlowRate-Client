@@ -200,6 +200,9 @@ public partial class CoordinatorSession
     public Task<RequestResult> DeleteChatMessage(int sessionId, int messageId) =>
         SendAsync(() => _gateway.DeleteChatMessage(sessionId, messageId));
 
+    public Task<RequestResult> SetMessageReaction(int chatId, int messageId, string emoji, bool isAdded) =>
+        SendAsync(() => _gateway.SetMessageReaction(chatId, messageId, emoji, isAdded));
+
     public Task<RequestResult> EditChatMessage(int sessionId, int messageId, ChatTextContent text) =>
         SendAsync(() => _gateway.EditChatMessage(sessionId, messageId, text.Text));
 

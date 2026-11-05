@@ -84,7 +84,7 @@ public partial class CoordinatorSession
 
             case ChatMessageEditedEvent messageEdited:
                 messageEdited.Message.IsMine = messageEdited.Message.SenderUserId == GetCurrentUser().Id;
-                _chatTyping.Update(messageEdited.ChatId, messageEdited.Message.SenderUserId, false);
+                // Reaction updates use this event too and must not stop the author's typing activity.
                 TextMessageEdited?.Invoke(messageEdited.ChatId, messageEdited.Message);
                 break;
 

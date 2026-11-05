@@ -9,6 +9,18 @@
 
     <!-- ===== Common ===== -->
 
+    <!-- Add a reaction: a smile with a plus. Source: Icons/AddReactionIcon.svg -->
+    <DrawingImage x:Key="AddReactionIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M21 12 A9 9 0 1 1 12 3 M8 14 Q12 18 16 14 M8 9 H8.01 M15 9 H15.01 M19 2 V8 M16 5 H22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- QR code. Source: Icons/QrCodeIcon.svg -->
     <DrawingImage x:Key="QrCodeIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

@@ -561,6 +561,8 @@
   "chat.send.tooLong": "消息过长：{length} 个字符，上限为 {limit} 个。",
   "chat.send.timedOut": "消息未发送：服务器未及时响应。",
   "chat.send.refused": "消息未发送：服务器拒绝了它。",
+  "chat.menu.react": "添加回应",
+  "chat.reaction.failed": "无法更新回应，请重试。",
   "chat.menu.reply": "回复",
   "chat.menu.edit": "编辑",
   "chat.editing": "正在编辑消息",

@@ -1188,6 +1188,8 @@
   "createSession.description.watermark": "What the chat is about",
   "createSession.create": "Create",
   "createSession.creating": "Creating...",
+  "chat.menu.react": "React",
+  "chat.reaction.failed": "Could not update the reaction. Try again.",
   "chat.menu.reply": "Reply",
   "chat.menu.edit": "Edit",
   "chat.editing": "Editing message",

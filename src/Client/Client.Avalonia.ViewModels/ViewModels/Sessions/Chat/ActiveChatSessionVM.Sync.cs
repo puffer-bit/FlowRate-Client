@@ -93,7 +93,7 @@ public partial class ActiveChatSessionVM
 
         Dispatcher.UIThread.Post(() =>
         {
-            RemoveTyping(message.SenderUserId);
+            // Reactions also arrive as message updates; typing ends through its own activity event.
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
             ApplyChanges([message]);
