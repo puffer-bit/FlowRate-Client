@@ -42,19 +42,9 @@
                             <Border Classes="placeholder" Width="{Binding NameWidth}" HorizontalAlignment="Left"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="{Binding FirstLineWidth}"/>
+                                    <ColumnDefinition Width="{Binding MessageWidth}"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Classes="placeholder"/>
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="{Binding LastLineWidth}"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Classes="placeholder"/>
-                            </Grid>
-                            <Grid ColumnDefinitions="*,2*" IsVisible="{Binding HasThirdLine}">
                                 <Border Classes="placeholder"/>
                             </Grid>
                         </StackPanel>
