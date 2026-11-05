@@ -60,14 +60,34 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
                 vm.OpenFileInteraction.RegisterHandler(async interaction =>
                     interaction.SetOutput(await ChatFileLauncher.OpenAsync(this, interaction.Input))).DisposeWith(subscriptions);
 
-                // The viewer of an image is made anew for each image; saving asks this view where to
+                // Each image viewer registers its platform interactions while it is open.
                 var viewerSubscription = new SerialDisposable().DisposeWith(subscriptions);
                 ObservableExtensions.Subscribe(
                     vm.WatchProperty(nameof(ActiveChatSessionVM.ImageViewer), x => x.ImageViewer),
                     viewer =>
                     {
-                        viewerSubscription.Disposable = viewer?.PickSaveTarget.RegisterHandler(async interaction =>
-                            interaction.SetOutput(await PickSaveTarget(interaction.Input)));
+                        var viewerHandlers = new CompositeDisposable();
+                        viewerSubscription.Disposable = viewerHandlers;
+                        if (viewer != null)
+                        {
+                            viewerHandlers.Add(viewer.PickSaveTarget.RegisterHandler(async interaction =>
+                                interaction.SetOutput(await PickSaveTarget(interaction.Input))));
+                            viewerHandlers.Add(viewer.CopyImageInteraction.RegisterHandler(async interaction =>
+                            {
+                                var copied = false;
+                                try
+                                {
+                                    using var bitmap = await interaction.Input.LoadOriginalBitmapAsync();
+                                    if (bitmap != null)
+                                        copied = await ClipboardAccess.SetBitmapAsync(this, bitmap);
+                                }
+                                catch (Exception)
+                                {
+                                    // Loading and clipboard failures are reported by the viewer.
+                                }
+                                interaction.SetOutput(copied);
+                            }));
+                        }
 
                         // The keys go to the viewer while it is open, not to the input under it
                         if (viewer != null)
