@@ -17,7 +17,7 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
 
-public class AccountingControlVM : ReactiveObject, ISettingVM
+public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => SettingText.TabName("accounting");
     public SettingTabType Type => SettingTabType.Accounting;
@@ -64,8 +64,11 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; set; } = [];
+    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; } = [];
     public ObservableCollection<TrustedCertificateItem> TrustedCertificates { get; } = [];
+
+    public SettingsListPageVM<SavedCoordinatorModel> ServersPage { get; }
+    public SettingsListPageVM<TrustedCertificateItem> CertificatesPage { get; }
 
     public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteCoordinatorCommand { get; init; }
     public ReactiveCommand<SavedUserModel, RxVoid> DeleteIdentityCommand { get; }
@@ -83,6 +86,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
     {
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
+
+        ServersPage = new(CoordinatorSessions, (server, filter) =>
+            Contains(server.Name, filter) || Contains($"{server.Address}:{server.Port}", filter) ||
+            Contains(server.CoordinatorId, filter) || server.Users.Any(user => Contains(user.Username, filter)));
+        CertificatesPage = new(TrustedCertificates, (certificate, filter) =>
+            Contains(certificate.Address, filter) || Contains(certificate.Subject, filter) ||
+            Contains(certificate.Coordinator, filter) || Contains(certificate.Certificate.Fingerprint, filter) ||
+            Contains(certificate.Fingerprint, filter));
 
         DeleteCoordinatorCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteCoordinator);
         DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedUserModel>(DeleteIdentity);
@@ -307,4 +318,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             TrustedCertificates.Add(new TrustedCertificateItem(certificate, coordinatorName));
         }
     }
+
+    private static bool Contains(string? text, string filter) =>
+        text?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true;
+
+    public void Dispose()
+    {
+        ServersPage.Dispose();
+        CertificatesPage.Dispose();
+    }
+
 }
