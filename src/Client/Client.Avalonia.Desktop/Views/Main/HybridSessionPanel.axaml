@@ -52,6 +52,9 @@
             <Style Selector="Button.hybridAction.sharing /template/ ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
             </Style>
+            <Style Selector="Button.hybridAction.afk /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AfkActiveBackgroundBrush}"/>
+            </Style>
             <Style Selector="Button.hybridAction.leave:pointerover /template/ ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
             </Style>
@@ -151,7 +154,7 @@
                         </Button.Flyout>
                         <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
                     </Button>
-                    <Button Classes="hybridAction sharing"
+                    <Button Classes="hybridAction afk"
                             IsVisible="{Binding StatusBar.IsAfk, FallbackValue=False}"
                             Command="{Binding StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"
                             ToolTip.Tip="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}">

@@ -135,16 +135,6 @@
 
         <!-- Footer -->
         <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
-            <!-- What the connection is waiting for at the moment -->
-            <!-- The indicator is as wide as its dot, so the dot starts at the left edge of the form;
-                 the glow around it is painted past the bounds -->
-            <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" IsVisible="{Binding IsBusy}">
-                <loadingIndicators:PulseLoadingIndicator Grid.Column="0" Width="10"
-                                                         Color="{DynamicResource ButtonMainBrush}"/>
-                <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
-                           Text="{Binding ConnectionStatus}"/>
-            </Grid>
-
             <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
