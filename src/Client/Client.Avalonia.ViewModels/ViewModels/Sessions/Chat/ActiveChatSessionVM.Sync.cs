@@ -5,6 +5,7 @@ using Client.Application.Chat;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Services;
+using ReactiveUI;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -210,9 +211,11 @@ public partial class ActiveChatSessionVM
         await UiThread.RunAsync(() =>
         {
             _messageVms.Clear();
+            _newestMessageId = 0;
             _pager.Reset();
             _seenRevision = 0;
-            RebuildTimeline();
+            _timeline.Clear();
+            this.RaisePropertyChanged(nameof(HasMessages));
             IsInitialLoading = true;
         });
 
