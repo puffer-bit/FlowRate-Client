@@ -11,7 +11,7 @@ public partial class SourceTextTests
     // Texts that are the same in every language
     private static readonly string[] AllowedLiterals =
     [
-        "Client.Avalonia.Desktop", "TestServer", "Welcome to Avalonia!", "ID: {0}"
+        "Client.Avalonia.Desktop", "FlowRate", "TestServer", "Welcome to Avalonia!", "ID: {0}"
     ];
 
     // Elements whose content is a value and not a text
