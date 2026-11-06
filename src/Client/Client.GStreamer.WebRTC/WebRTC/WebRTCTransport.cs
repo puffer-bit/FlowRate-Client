@@ -227,7 +227,7 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
             // Also keeps the bus from piling up the messages nobody reads
             _busWatcher = new GstBusWatcher(pipeline.GetBus(),
-                MessageType.Element | MessageType.Error | MessageType.Warning, OnBusMessage,
+                MessageType.Element | MessageType.Error | MessageType.Warning | MessageType.Latency, OnBusMessage,
                 $"webrtc_transport_{_core.SessionId}", _logger);
 
             _speaking.Start();
@@ -248,6 +248,10 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     {
         switch (message.Type)
         {
+            case MessageType.Latency:
+                _core.Pipeline?.RecalculateLatency();
+                break;
+
             case MessageType.Element:
                 _outgoing.OnElementMessage(message);
                 break;

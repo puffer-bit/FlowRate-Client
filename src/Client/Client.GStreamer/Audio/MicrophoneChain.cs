@@ -59,17 +59,17 @@ public static class MicrophoneChain
     /// Name of the queue that holds the audio back by <see cref="VoiceGate.PreRoll"/> between the
     /// level element and the valve of the gate.
     /// </summary>
-    private const string GateDelayName = "gate_delay";
+    public const string GateDelayName = "gate_delay";
 
     // Where the voice detection leaves the gate, in front of the delay
     private const string GateSplitName = "gate_split";
 
     // The caps filter is spelled out: the short form of one cannot end a description, which it
     // does for a source that is not processed. A queue of a live source never drains once filled,
-    // so a stall would stay in the voice as latency for good; the short one makes the source drop
-    // the excess instead, and its timestamps go on over what it dropped.
+    // so a stall would stay in the voice as latency for good. Drop the oldest captured sound
+    // rather than blocking the source and moving the backlog into its hardware ringbuffer.
     private const string CaptureDescription =
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=100000000 ! audioconvert ! audioresample ! capsfilter caps=\"{1}\" ! {0}";
+        "queue leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=30000000 ! audioconvert ! audioresample ! capsfilter caps=\"{1}\" ! {0}";
 
     // The sound of a screen is music and films as often as speech, so it keeps both channels
     private const string ScreenCaps = "audio/x-raw,rate=48000,channels=2";
@@ -97,11 +97,11 @@ public static class MicrophoneChain
     // Starts closed, that is silent. The queue lets nothing out until it holds the pre-roll, so the
     // valve gets the audio that much later than level measures it. It adds the pre-roll to the
     // latency it reports, lets out all it holds at the end of the stream and empties on a flush.
-    // Its upper limit only guards against a stalled valve: the queue behind the encoder is leaky,
-    // so it never fills.
+    // VoiceGate selects the threshold from its options: zero while disabled, the pre-roll for
+    // a level gate, and the additional detector delay only while voice detection is enabled.
     private const string GateDescription =
         "level name=" + GateLevelName + " interval={0} ! {2}" +
-        "queue name=" + GateDelayName + " max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 " +
+        "queue name=" + GateDelayName + " leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=80000000 " +
         "min-threshold-time={1} ! " +
         "volume name=" + GateValveName + " mute=true ! ";
 
@@ -125,11 +125,9 @@ public static class MicrophoneChain
         var hasVoiceDetection = MicrophoneProcessing.HasNeural;
         var interval = (ulong)VoiceGate.LevelInterval.TotalNanoseconds;
 
-        // The delay is fixed with the chain: changed while the voice flows, it would leave a hole
-        // or a burst in it
+        // Start without a delay; the gate applies its options before audio starts flowing.
         var gate = string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
-            (ulong)(hasVoiceDetection ? VoiceGate.PreRoll + VoiceGate.VoiceDetectionDelay : VoiceGate.PreRoll)
-            .TotalNanoseconds,
+            0UL,
             hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "");
 
         var voiceDetection = hasVoiceDetection
@@ -251,7 +249,8 @@ public static class MicrophoneChain
     {
         // The fragment ends with a link, and without it the description would
         var description = string.Format(CaptureDescription,
-            isMicrophone ? MicrophoneProcessing.Fragment(noiseSuppression, echoProbe, isAutoGainControlEnabled) : "",
+            isMicrophone ? "audiobuffersplit output-buffer-duration=1/100 ! " +
+                           MicrophoneProcessing.Fragment(noiseSuppression, echoProbe, isAutoGainControlEnabled) : "",
             isStereo ? ScreenCaps : MicrophoneProcessing.Caps).TrimEnd(' ', '!');
 
         var processing = Global.ParseBinFromDescription(description, true);

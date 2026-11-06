@@ -207,7 +207,8 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     private void StartGate(Bin monitor, VoiceGateOptions? voiceGate)
     {
         if (Track(monitor.GetByName(MicrophoneChain.GateLevelName)) is not { } level ||
-            Track(monitor.GetByName(MicrophoneChain.GateValveName)) is not { } valve)
+            Track(monitor.GetByName(MicrophoneChain.GateValveName)) is not { } valve ||
+            Track(monitor.GetByName(MicrophoneChain.GateDelayName)) is not { } delay)
             return;
 
         var detector = Track(monitor.GetByName(MicrophoneChain.VoiceLevelName)) is { } voiceLevel &&
@@ -215,7 +216,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
             ? new VoiceGate.VoiceDetector(voiceLevel, voiceValve)
             : null;
 
-        _gate = new VoiceGate("microphone-test", level, valve, detector, voiceGate);
+        _gate = new VoiceGate("microphone-test", level, valve, delay, detector, voiceGate);
         _gateLevel = level.Handle;
         _voiceLevel = detector?.Level.Handle ?? IntPtr.Zero;
     }
@@ -420,12 +421,14 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                     }
 
                     // The gate hears a level every 10 ms, so all that came are taken
-                    while (!_isStopped && _bus.PopFiltered(MessageType.Error | MessageType.Element) is { } message)
+                    while (!_isStopped && _bus.PopFiltered(MessageType.Error | MessageType.Element | MessageType.Latency) is { } message)
                     {
                         using (message)
                         {
                             if (message.Type == MessageType.Error)
                                 _owner.OnBusError(_pipeline, message);
+                            else if (message.Type == MessageType.Latency)
+                                _pipeline.RecalculateLatency();
                             else
                                 _owner.OnElementMessage(message);
                         }
