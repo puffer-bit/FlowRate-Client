@@ -138,15 +138,22 @@ public partial class ApplicationLoader
             await _videoService.ApplyAsync();
             await LetFrameThroughAsync();
 
-            _languageService.Apply(await _appearanceService.GetLanguageAsync());
-            _themeService.ApplyTheme(await _appearanceService.GetCurrentThemeTypeAsync());
-            await LetFrameThroughAsync();
-            _themeService.ApplyCustomColors(await _appearanceService.GetCustomColorsAsync());
-            await LetFrameThroughAsync();
-            _themeService.ApplyAnimations(await _appearanceService.GetAnimationSettingsAsync());
-            _themeService.ApplyInterfaceScale(await _appearanceService.GetInterfaceScaleAsync());
-            ExperimentalFeatures.Apply(await _appearanceService.GetIsExperimentalEnabledAsync(),
-                await _appearanceService.GetUseCustomTitleBarAsync(), await _audioSettings.GetUseGStreamerAsync());
+            var language = await _appearanceService.GetLanguageAsync();
+            var theme = await _appearanceService.GetCurrentThemeTypeAsync();
+            var colors = await _appearanceService.GetCustomColorsAsync();
+            var animations = await _appearanceService.GetAnimationSettingsAsync();
+            var scale = await _appearanceService.GetInterfaceScaleAsync();
+            var experimental = await _appearanceService.GetIsExperimentalEnabledAsync();
+            var customTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
+            var useGStreamer = await _audioSettings.GetUseGStreamerAsync();
+
+            // Apply the complete appearance together, without rendering intermediate settings.
+            _languageService.Apply(language);
+            _themeService.ApplyAnimations(animations);
+            _themeService.ApplyTheme(theme);
+            _themeService.ApplyCustomColors(colors);
+            _themeService.ApplyInterfaceScale(scale);
+            ExperimentalFeatures.Apply(experimental, customTitleBar, useGStreamer);
             await LetFrameThroughAsync();
         }
         catch (Exception exception)

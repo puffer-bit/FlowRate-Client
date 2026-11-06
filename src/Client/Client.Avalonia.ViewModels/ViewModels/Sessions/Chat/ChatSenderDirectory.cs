@@ -172,6 +172,8 @@ public sealed class ChatSenderDirectory : IDisposable
     /// The name as it is known, or null.
     /// </summary>
     public string? FindName(int userId) => _names.GetValueOrDefault(userId);
+    public string? FindAvatarUrl(int userId) => _avatars.GetValueOrDefault(userId);
+    public UserStatus? FindStatus(int userId) => _statuses.TryGetValue(userId, out var status) ? status : null;
 
     /// <summary>
     /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.

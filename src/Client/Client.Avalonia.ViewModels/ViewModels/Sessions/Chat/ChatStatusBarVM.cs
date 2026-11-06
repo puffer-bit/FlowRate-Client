@@ -12,7 +12,34 @@ namespace Client.ViewModels.Sessions.Chat;
 public class ChatStatusBarVM : ReactiveObject, IDisposable
 {
     public string Name => _session.Name;
-    public ChatViewersVM? Viewers { get; init; }
+    public ChatViewersVM? Viewers
+    {
+        get;
+        init
+        {
+            field = value;
+            if (field != null) field.PropertyChanged += OnViewersChanged;
+        }
+    }
+    public bool IsPinsOpen
+    {
+        get;
+        set
+        {
+            // Keep the shared panel open while switching its content.
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (value) Viewers?.Close();
+            this.RaisePropertyChanged(nameof(IsSidePanelOpen));
+        }
+    }
+    public bool IsSidePanelOpen => IsPinsOpen || Viewers?.IsOpen == true;
+
+    private void OnViewersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(ChatViewersVM.IsOpen)) return;
+        if (Viewers?.IsOpen == true) IsPinsOpen = false;
+        this.RaisePropertyChanged(nameof(IsSidePanelOpen));
+    }
     public Interaction<ChatInfoWindowVM, RxVoid> ShowInfo { get; } = new();
     public ReactiveCommand<RxVoid, RxVoid> OpenInfoCommand { get; }
 
@@ -102,6 +129,7 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     {
         OpenInfoCommand.Dispose();
         _openInfoCommand.Dispose();
+        if (Viewers != null) Viewers.PropertyChanged -= OnViewersChanged;
         Viewers?.Dispose();
     }
 }

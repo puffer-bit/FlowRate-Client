@@ -33,9 +33,8 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
         ("microphone", ["inputDevice", "inputVolume", "noiseSuppression",
             "echoCancellation", "autoGainControl"]),
-        ("voiceActivity", ["voiceGate", "voiceDetection", "adaptiveThreshold"]),
-        ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]),
-        ("microphoneTest", ["testMicrophone", "inputLevel", "hearMyself"]));
+        ("voiceActivity", ["voiceGate", "testMicrophone", "inputLevel", "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
+        ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]));
 
     public ObservableCollection<AudioInputDeviceItem> InputDevices { get; } = new();
 

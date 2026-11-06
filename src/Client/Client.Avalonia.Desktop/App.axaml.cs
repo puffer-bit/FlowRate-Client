@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Client.Api;
 using Client.Application;
 using Client.GStreamer.Loader;
@@ -41,7 +42,7 @@ public partial class App : global::Avalonia.Application
     
     public override void Initialize()
     {
-        // The saved language is in the database, which is read after the main window is shown
+        // The saved language is applied after the database is unlocked, before the window is shown.
         new LanguageService().Apply(null);
 
         AvaloniaXamlLoader.Load(this);
@@ -56,22 +57,20 @@ public partial class App : global::Avalonia.Application
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Before the main window: the features are applied while it is already shown
+            // Subscribe before startup applies the saved window chrome.
             ExperimentalFeatures.Changed += () => WindowChrome.Apply(ExperimentalFeatures.UseCustomTitleBar);
 
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = Services.GetRequiredService<MainWindowVM>(),
                 Sounds = Services.GetRequiredService<ISoundService>(),
             };
             PlayErrorNotifications(Services.GetRequiredService<INotificationService>(),
                 Services.GetRequiredService<ISoundService>());
-            _trayService = new TrayService(desktop, desktop.MainWindow, Services.GetRequiredService<IBehaviorService>(),
-                Services.GetRequiredService<ILogger<TrayService>>());
 
             // Before the settings are read: the keys follow them once they are
             var hotKeys = Services.GetRequiredService<IHotKeysService>();
-            WindowHotKeys.Attach(desktop.MainWindow, hotKeys);
+            WindowHotKeys.Attach(mainWindow, hotKeys);
             var globalHotKeys = new GlobalHotKeys(hotKeys, Services.GetRequiredService<ILogger<GlobalHotKeys>>());
             globalHotKeys.Start();
 
@@ -80,8 +79,31 @@ public partial class App : global::Avalonia.Application
                 globalHotKeys.Dispose();
                 Services.GetRequiredService<ChatAudioSession>().Dispose();
                 Services.GetRequiredService<ChatVideoSession>().Dispose();
-                _trayService.Dispose();
+                _trayService?.Dispose();
             };
+
+            // Leave MainWindow unset while the lifetime starts, otherwise Avalonia shows it before
+            // the database has supplied the theme, custom colors, scale and window decorations.
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    await mainWindow.InitializeBeforeShowAsync(() =>
+                    {
+                        desktop.MainWindow = mainWindow;
+                        if (!mainWindow.IsVisible)
+                            mainWindow.Show();
+                        _trayService ??= new TrayService(desktop, mainWindow,
+                            Services.GetRequiredService<IBehaviorService>(),
+                            Services.GetRequiredService<ILogger<TrayService>>());
+                    });
+                }
+                catch (Exception exception)
+                {
+                    Log.Fatal(exception, "Application initialization failed");
+                    desktop.Shutdown(-1);
+                }
+            });
         }
 
         base.OnFrameworkInitializationCompleted();

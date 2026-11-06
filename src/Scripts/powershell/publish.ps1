@@ -85,7 +85,7 @@ $libWebRTCDir = "src\Client\Client.LibWebRTC"
 $publishRoot = "src\Client\Client.Avalonia.Desktop\bin\publish"
 $androidProject = "src\Client\Client.Avalonia.Android\Client.Avalonia.Android.csproj"
 $androidPublishDir = "src\Client\Client.Avalonia.Android\bin\publish\android"
-$icon = "src\Client\Client.Avalonia.Desktop\Assets\avalonia-logo.ico"
+$icon = "src\Client\Client.Avalonia.Assets\AppIcons\Headphones\flowrate.ico"
 $feedDir = "dist\.feed"
 $repoUrl = "https://github.com/puffer-bit/FlowRate-Client"
 # The installed application goes to %LocalAppData%\FlowRateClient on Windows; the data of the user

@@ -12,11 +12,13 @@ public class ChatCacheRepositoryTests
     private static readonly DateTime SentTime = new(2026, 10, 13, 8, 0, 0, DateTimeKind.Utc);
 
     private static ChatMessageModel Message(int id, long revision, string text = "text", int? replyTo = null,
-        bool isDeleted = false) => new()
+        bool isDeleted = false, bool pinned = false) => new()
     {
         Id = id,
         ChatId = Chat.ChatId,
         Revision = revision,
+        PinnedAt = pinned ? SentTime : null,
+        PinnedByUserId = pinned ? 42 : null,
         SenderUserId = 3,
         SentTime = SentTime.AddMinutes(id),
         TextContent = isDeleted ? null : new ChatTextContent { Text = text },
@@ -49,6 +51,23 @@ public class ChatCacheRepositoryTests
 
         Assert.Null(await repository.GetNewestAsync(Chat, 10));
         Assert.Null(await repository.GetBeforeAsync(Chat, 5, 10));
+    }
+
+    [Fact]
+    public async Task PinMetadataSurvivesCacheReloadAndUnpinning()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        await repository.ReplaceAsync(Chat, [Message(1, 4, pinned: true)], 4, true);
+        var message = Assert.Single((await repository.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.True(message.IsPinned);
+        Assert.Equal(SentTime, message.PinnedAt);
+        Assert.Equal(42, message.PinnedByUserId);
+        await repository.ApplyAsync(Chat, [Message(1, 5)], [], 5);
+        message = Assert.Single((await repository.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.False(message.IsPinned);
+        Assert.Null(message.PinnedAt);
+        Assert.Null(message.PinnedByUserId);
     }
 
     [Fact]

@@ -11,7 +11,9 @@
              x:Class="Client.Views.Sessions.Chat.ChatStatusBarControl">
     <UserControl.Styles>
         <Style Selector="ToggleButton.viewersToggle">
+            <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ToggleButton.viewersToggle /template/ ContentPresenter,
                          ToggleButton.viewersToggle:checked /template/ ContentPresenter,
@@ -20,10 +22,18 @@
                          ToggleButton.viewersToggle:checked:pointerover /template/ ContentPresenter">
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <Style Selector="ToggleButton.viewersToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.viewersToggle:checked /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:checked:pointerover /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
     </UserControl.Styles>
     <!-- The background spans the whole width; only the content is inset -->
     <Border Background="{DynamicResource GeneralBrush}" Padding="12,0">
-        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="12">
 
             <Button Grid.Column="0" Classes="borderless" Padding="0"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
@@ -63,6 +73,11 @@
                 </Grid>
             </Button>
             <ToggleButton Classes="viewersToggle" Grid.Column="1" Width="36" Height="36" Padding="8"
+                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
+                          IsChecked="{Binding IsPinsOpen, Mode=TwoWay}">
+                <Image Source="{StaticResource PinIcon}"/>
+            </ToggleButton>
+            <ToggleButton Classes="viewersToggle" Grid.Column="2" Width="36" Height="36" Padding="8"
                           VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.viewers.title}"
                           IsChecked="{Binding Viewers.IsOpen, Mode=TwoWay}">
                 <Image Source="{StaticResource BaseUsersIcon}"/>
