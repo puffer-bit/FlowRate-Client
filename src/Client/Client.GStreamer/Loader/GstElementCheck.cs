@@ -19,7 +19,7 @@ internal static partial class GstElementCheck
         "opusenc", "opusdec", "rtpopuspay", "rtpopusdepay",
         "audioconvert", "audioresample", "audiomixer", "audiodynamic", "volume", "valve", "autoaudiosrc", "autoaudiosink",
         // Generic
-        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink",
+        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink", "clocksync",
         // Video
         "videoconvert", "videoscale", "videorate",
         "h264parse", "openh264enc", "openh264dec", "rtph264pay", "rtph264depay",
