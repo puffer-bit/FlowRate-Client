@@ -7,6 +7,80 @@
          and at most one filled accent in a color. Status badges are a filled colored shape with a white
          2 px glyph; colored marks (check, cross, plus, arrows) are 2 px as well -->
 
+    <!-- ===== Chat formatting ===== -->
+
+    <!-- Chat formatting. Source: Icons/FormatBoldIcon.svg -->
+    <DrawingImage x:Key="FormatBoldIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M7 4 V20 H13 A4 4 0 0 0 13 12 H7 M7 4 H12 A4 4 0 0 1 12 12">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatItalicIcon.svg -->
+    <DrawingImage x:Key="FormatItalicIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M10 4 H19 M5 20 H14 M15 4 L9 20">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatStrikeIcon.svg -->
+    <DrawingImage x:Key="FormatStrikeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M17 6 C15 3 7 3 7 8 C7 10 9 11 12 12 M7 18 C9 21 17 21 17 16 C17 14 15 13 12 12 M3 12 H21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatCodeIcon.svg -->
+    <DrawingImage x:Key="FormatCodeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8 7 L3 12 L8 17 M16 7 L21 12 L16 17 M14 4 L10 20">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatCodeBlockIcon.svg -->
+    <DrawingImage x:Key="FormatCodeBlockIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M4 3 H20 Q22 3 22 5 V19 Q22 21 20 21 H4 Q2 21 2 19 V5 Q2 3 4 3 Z M2 7 H22 M8 11 L5 14 L8 17 M16 11 L19 14 L16 17 M13 10 L11 18">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatLinkIcon.svg -->
+    <DrawingImage x:Key="FormatLinkIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M10 14 L14 10 M9 16 L7 18 A4 4 0 0 1 1 12 L6 7 A4 4 0 0 1 12 7 M15 8 L17 6 A4 4 0 0 1 23 12 L18 17 A4 4 0 0 1 12 17">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- ===== Common ===== -->
     <DrawingImage x:Key="PinIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

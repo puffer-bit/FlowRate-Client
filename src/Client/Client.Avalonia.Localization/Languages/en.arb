@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Bold",
+  "chat.format.italic": "Italic",
+  "chat.format.strike": "Strikethrough",
+  "chat.format.code": "Inline code",
+  "chat.format.codeBlock": "Code block",
+  "chat.format.link": "Link",
   "chat.pinned.count": "Pinned messages · {count}",
   "chat.pinned.loading": "Loading pinned messages…",
   "chat.pinned.error": "Could not load pinned messages.",

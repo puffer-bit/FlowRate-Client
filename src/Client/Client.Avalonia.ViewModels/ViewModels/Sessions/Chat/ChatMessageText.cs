@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Client.Avalonia.Icons;
 using Client.Core.Chat;
 
@@ -16,9 +17,9 @@ namespace Client.ViewModels.Sessions.Chat;
 /// Gives a <see cref="TextBlock"/> the text of a message with its web addresses shown as links:
 /// each one is a <see cref="Run"/> with the class "link" (and "hover" under the pointer), and a
 /// click or a tap opens it in the browser, after <see cref="LinkConfirmationProperty"/> agreed when
-/// one is set. Set it instead of <see cref="TextBlock.Text"/>, which stays empty while the text
-/// has links; the text as it was given is read back with <see cref="GetText"/>.
-/// <see cref="BodyProperty"/> sets the text together with its mentions, each a <see cref="Run"/>
+/// one is set. Set it instead of <see cref="TextBlock.Text"/>; the displayed text used by copying
+/// and selection is read back with <see cref="GetText"/>.
+/// <see cref="BodyProperty"/> renders chat Markdown together with mentions, each a <see cref="Run"/>
 /// with the class "mention", and "self" when it calls the current user.
 /// An emoji the text font would draw in black and white (❤️, ☀️) gets a run of its own in
 /// <see cref="EmojiFont"/>.
@@ -44,7 +45,8 @@ public static class ChatMessageText
         AvaloniaProperty.RegisterAttached<TextBlock, LinkState?>("State", typeof(ChatMessageText));
 
     public static string? GetText(TextBlock textBlock) =>
-        textBlock.GetValue(BodyProperty)?.Text ?? textBlock.GetValue(TextProperty);
+        textBlock.GetValue(StateProperty)?.Document.Text
+        ?? textBlock.GetValue(BodyProperty)?.Text ?? textBlock.GetValue(TextProperty);
 
     public static ChatMessageBody? GetBody(TextBlock textBlock) => textBlock.GetValue(BodyProperty);
     public static void SetBody(TextBlock textBlock, ChatMessageBody? value) => textBlock.SetValue(BodyProperty, value);
@@ -56,7 +58,7 @@ public static class ChatMessageText
         textBlock.SetValue(LinkConfirmationProperty, value);
 
     /// <summary>
-    /// The link at a point of the text block, as it is written in the message, or null when
+    /// The destination of the link at a point of the text block, or null when
     /// there is none there.
     /// </summary>
     public static string? GetLinkAt(TextBlock textBlock, Point position)
@@ -65,12 +67,12 @@ public static class ChatMessageText
             return null;
 
         int link = FindLink(textBlock, state, position);
-        return link >= 0 ? state.Runs[link].Text : null;
+        return link >= 0 ? state.Links[link].Uri.AbsoluteUri : null;
     }
 
     public static ChatMentionSpan? GetMentionAt(TextBlock textBlock, Point position)
     {
-        if (GetBody(textBlock) is not { } body || body.Mentions.Count == 0)
+        if (textBlock.GetValue(StateProperty)?.Document is not { } body || body.Mentions.Count == 0)
             return null;
 
         int character = FindCharacter(textBlock, position);
@@ -94,141 +96,85 @@ public static class ChatMessageText
 
     private static void Apply(TextBlock textBlock, string? text, IReadOnlyList<ChatMentionSpan> mentions)
     {
-        var links = WithoutMentions(ChatLinks.Find(text), mentions);
-        var emoji = ChatEmoji.FindPresentation(text);
+        var document = GetBody(textBlock) is { } body
+            ? ChatMarkdown.Render(body)
+            : new ChatMarkdownDocument(text ?? "", mentions, ChatLinks.Find(text), []);
         var state = textBlock.GetValue(StateProperty);
-
-        if (links.Count == 0 && mentions.Count == 0 && emoji.Count > 0)
-        {
-            // Emoji alone need no pointer handling
-            if (state != null)
-            {
-                state.Reset([], []);
-                textBlock.ClearValue(InputElement.CursorProperty);
-            }
-            textBlock.Inlines!.Clear();
-            textBlock.Inlines.AddRange(BuildInlines(text!, links, mentions, emoji, out _));
-            return;
-        }
-
-        if (links.Count == 0 && mentions.Count == 0)
-        {
-            // Setting the text also drops the runs of the message shown before
-            if (state != null)
-            {
-                state.Reset([], []);
-                textBlock.ClearValue(InputElement.CursorProperty);
-            }
-            textBlock.Text = text;
-            return;
-        }
-
         if (state == null)
         {
             state = new LinkState();
             textBlock.SetValue(StateProperty, state);
             Watch(textBlock);
         }
-
-        var inlines = BuildInlines(text!, links, mentions, emoji, out var runs);
-
-        state.Reset(links, runs);
+        var inlines = BuildInlines(document, out var runs);
+        state.Reset(document, runs);
         textBlock.ClearValue(InputElement.CursorProperty);
         textBlock.Inlines!.Clear();
         textBlock.Inlines.AddRange(inlines);
     }
 
-    // Links and mentions in the order of the text; the runs of the links are given out for the hover.
-    // A link stays one run for its hover, so an emoji inside it keeps the text font
-    private static List<Inline> BuildInlines(string text, IReadOnlyList<ChatLink> links,
-        IReadOnlyList<ChatMentionSpan> mentions, IReadOnlyList<ChatEmojiSpan> emoji, out Run[] linkRuns)
+    private static List<Inline> BuildInlines(ChatMarkdownDocument document, out List<Run>[] linkRuns)
     {
-        var inlines = new List<Inline>((links.Count + mentions.Count) * 2 + 1);
-        linkRuns = new Run[links.Count];
-        int position = 0, link = 0, mention = 0;
-
-        while (link < links.Count || mention < mentions.Count)
+        string text = document.Text;
+        var emoji = ChatEmoji.FindPresentation(text);
+        var boundaries = new SortedSet<int> { 0, text.Length };
+        foreach (var span in document.Styles)
         {
-            bool isLink = mention >= mentions.Count
-                          || (link < links.Count && links[link].Start < mentions[mention].Start);
-            int start = isLink ? links[link].Start : mentions[mention].Start;
-            int end = isLink ? links[link].End : mentions[mention].End;
-
-            // A mention past the text is of a body that does not match it; it is left out
-            if (start < position || end > text.Length)
-            {
-                if (isLink) link++; else mention++;
-                continue;
-            }
-
-            if (start > position)
-                AddRuns(inlines, text, position, start, emoji);
-
-            if (isLink)
-            {
-                var run = new Run(text[start..end]);
-                run.Classes.Add("link");
-                linkRuns[link++] = run;
-                inlines.Add(run);
-            }
-            else
-            {
-                AddRuns(inlines, text, start, end, emoji,
-                    mentions[mention].IsSelf ? ["mention", "self"] : ["mention"]);
-                mention++;
-            }
-
-            position = end;
+            boundaries.Add(span.Start);
+            boundaries.Add(span.End);
         }
-
-        if (position < text.Length)
-            AddRuns(inlines, text, position, text.Length, emoji);
-
-        return inlines;
-    }
-
-    // The text from start to end as runs with the given classes, each emoji in a run of its own
-    private static void AddRuns(List<Inline> inlines, string text, int start, int end,
-        IReadOnlyList<ChatEmojiSpan> emoji, params string[] classes)
-    {
+        foreach (var span in document.Links)
+        {
+            boundaries.Add(span.Start);
+            boundaries.Add(span.End);
+        }
+        foreach (var span in document.Mentions)
+        {
+            boundaries.Add(span.Start);
+            boundaries.Add(span.End);
+        }
         foreach (var span in emoji)
         {
-            if (span.End <= start)
-                continue;
-            if (span.Start >= end)
-                break;
-
-            int emojiStart = Math.Max(span.Start, start), emojiEnd = Math.Min(span.End, end);
-            if (emojiStart > start)
-                inlines.Add(NewRun(text[start..emojiStart], classes));
-
-            var run = NewRun(text[emojiStart..emojiEnd], classes);
-            run.FontFamily = EmojiFont.Family;
-            inlines.Add(run);
-            start = emojiEnd;
+            boundaries.Add(span.Start);
+            boundaries.Add(span.End);
         }
-
-        if (end > start)
-            inlines.Add(NewRun(text[start..end], classes));
-    }
-
-    private static Run NewRun(string text, string[] classes)
-    {
-        var run = new Run(text);
-        run.Classes.AddRange(classes);
-        return run;
-    }
-
-    // A name may look like an address; inside a mention it is the name
-    private static IReadOnlyList<ChatLink> WithoutMentions(IReadOnlyList<ChatLink> links,
-        IReadOnlyList<ChatMentionSpan> mentions)
-    {
-        if (links.Count == 0 || mentions.Count == 0)
-            return links;
-
-        return links
-            .Where(link => !mentions.Any(mention => link.Start < mention.End && mention.Start < link.End))
-            .ToList();
+        linkRuns = document.Links.Select(_ => new List<Run>()).ToArray();
+        var inlines = new List<Inline>();
+        int start = 0;
+        foreach (int end in boundaries)
+        {
+            if (end <= start)
+                continue;
+            var run = new Run(text[start..end]);
+            var style = document.Styles.FirstOrDefault(s => s.Start <= start && s.End > start).Style;
+            if (style.HasFlag(ChatTextStyle.Bold))
+                run.FontWeight = FontWeight.Bold;
+            if (style.HasFlag(ChatTextStyle.Italic))
+                run.FontStyle = FontStyle.Italic;
+            if (style.HasFlag(ChatTextStyle.Strike))
+                run.TextDecorations = TextDecorations.Strikethrough;
+            if (style.HasFlag(ChatTextStyle.Code))
+                run.Classes.Add("code");
+            if (emoji.Any(span => span.Start <= start && span.End > start))
+                run.FontFamily = EmojiFont.Family;
+            foreach (var mention in document.Mentions.Where(m => m.Start <= start && m.End > start))
+            {
+                run.Classes.Add("mention");
+                if (mention.IsSelf)
+                    run.Classes.Add("self");
+            }
+            for (int i = 0; i < document.Links.Count; i++)
+            {
+                if (document.Links[i].Start <= start && document.Links[i].End > start)
+                {
+                    run.Classes.Add("link");
+                    linkRuns[i].Add(run);
+                }
+            }
+            inlines.Add(run);
+            start = end;
+        }
+        return inlines;
     }
 
     // The selectable text of the desktop marks its pointer events handled, hence handledEventsToo
@@ -342,9 +288,9 @@ public static class ChatMessageText
             return;
 
         if (state.Hovered >= 0)
-            state.Runs[state.Hovered].Classes.Remove("hover");
+            foreach (var run in state.Runs[state.Hovered]) run.Classes.Remove("hover");
         if (link >= 0)
-            state.Runs[link].Classes.Add("hover");
+            foreach (var run in state.Runs[link]) run.Classes.Add("hover");
         state.Hovered = link;
 
         if (link >= 0)
@@ -387,15 +333,16 @@ public static class ChatMessageText
     // What the text block shows now. The views are recycled, so one state serves many messages
     private sealed class LinkState
     {
-        public IReadOnlyList<ChatLink> Links { get; private set; } = [];
-        public Run[] Runs { get; private set; } = [];
+        public ChatMarkdownDocument Document { get; private set; } = new("", [], [], []);
+        public IReadOnlyList<ChatLink> Links => Document.Links;
+        public List<Run>[] Runs { get; private set; } = [];
         public bool IsPressed { get; set; }
         public Point PressedAt { get; set; }
         public int Hovered { get; set; } = -1;
 
-        public void Reset(IReadOnlyList<ChatLink> links, Run[] runs)
+        public void Reset(ChatMarkdownDocument document, List<Run>[] runs)
         {
-            Links = links;
+            Document = document;
             Runs = runs;
             IsPressed = false;
             Hovered = -1;

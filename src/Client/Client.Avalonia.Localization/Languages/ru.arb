@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Жирный",
+  "chat.format.italic": "Курсив",
+  "chat.format.strike": "Зачёркнутый",
+  "chat.format.code": "Код в строке",
+  "chat.format.codeBlock": "Блок кода",
+  "chat.format.link": "Ссылка",
   "chat.pinned.count": "Закреплённые сообщения · {count}",
   "chat.pinned.loading": "Загрузка закреплённых сообщений…",
   "chat.pinned.error": "Не удалось загрузить закреплённые сообщения.",

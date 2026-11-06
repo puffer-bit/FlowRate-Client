@@ -11,4 +11,8 @@
       <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Markdig" Version="0.41.3" />
+    </ItemGroup>
+
 </Project>
