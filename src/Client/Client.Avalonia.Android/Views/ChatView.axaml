@@ -18,6 +18,38 @@
              anim:Presence.Duration="Medium">
 
     <UserControl.Styles>
+        <Style Selector="ToggleButton.pinsToggle">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pointerover /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle:checked /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+        <Style Selector="Border.pins-panel">
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.pins-panel.open">
+            <Setter Property="Width" Value="260"/>
+        </Style>
+
         <!-- Round buttons of the header and of the list, sized for a finger -->
         <Style Selector="Button.chat-round">
             <Setter Property="Width" Value="44"/>
@@ -203,7 +235,7 @@
     <Grid RowDefinitions="Auto, 1, *, Auto">
 
         <!-- Header: the menu with the sessions, then the chat with its status under the name -->
-        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="8">
             <Button Grid.Column="0" Classes="borderless chat-round" Click="OnMenuClick">
                 <Path Classes="burger"/>
             </Button>
@@ -236,6 +268,11 @@
                                MaxLines="1"/>
                 </Grid>
             </StackPanel>
+            <ToggleButton Classes="pinsToggle" Grid.Column="3" Width="44" Height="44" Padding="10"
+                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
+                          IsChecked="{Binding StatusBar.IsPinsOpen, Mode=TwoWay}">
+                <Image Source="{StaticResource PinIcon}"/>
+            </ToggleButton>
         </Grid>
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
@@ -533,6 +570,11 @@
 
         <!-- An image of a message opened over the whole chat; two fingers or a double tap zoom it, a
              finger moves the zoomed one, a tap beside it or back closes it -->
+        <Border Grid.Row="2" Grid.RowSpan="2" Classes="pins-panel" Classes.open="{Binding StatusBar.IsPinsOpen}"
+                HorizontalAlignment="Right" ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsPinsOpen}">
+            <views:ChatPinnedMessagesPanel Width="260" HorizontalAlignment="Left"/>
+        </Border>
+
         <ContentControl Grid.Row="0" Grid.RowSpan="4"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
@@ -620,6 +662,14 @@
                         </Flyout>
                     </menus:MenuItemButton.Flyout>
                 </menus:MenuItemButton>
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                      IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
+                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                              IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
+                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                              IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
                 <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
                                       Command="{Binding StartReply}"/>
                 <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"

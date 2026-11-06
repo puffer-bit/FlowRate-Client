@@ -26,6 +26,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string Username => _user.Username;
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
+    public int? RoleColor => _owner.GetRoleColor(_user);
     public ReactiveCommand<RxVoid, RxVoid> ViewProfile { get; }
 
     public bool CanMention => _owner.CanMention;
@@ -46,6 +47,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     {
         this.RaisePropertyChanged(nameof(CanMention));
         this.RaisePropertyChanged(nameof(CanBan));
+        this.RaisePropertyChanged(nameof(RoleColor));
     }
 
     public void Dispose()
@@ -103,6 +105,9 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     }
 
     internal bool CanMention => _composer is { CanWrite: true, IsConnected: true };
+
+    internal int? GetRoleColor(UserModel user) => _session.Permissions.Roles
+        .LastOrDefault(role => role.Color != null && user.RoleIds.Contains(role.Id))?.Color;
 
     internal bool CanBan(UserModel user) => _banUser != null && user.Id != _currentUserId
         && _session.ConnectionStatus == CoordinatorState.Connected

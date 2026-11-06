@@ -940,7 +940,7 @@ public partial class MainView : UserControl
 
         if (_viewModel?.CurrentContent != null && !Drawer.Classes.Contains("open"))
         {
-            if (!_chatView.TryCloseMenu())
+            if (!_chatView.TryCloseMenu() && !_chatView.TryClosePinnedMessages())
             {
                 // Back from a session leads to the menu with the sessions. The session stays shown
                 // under it, so closing the menu returns to it

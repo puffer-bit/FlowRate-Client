@@ -205,6 +205,11 @@ public interface ICoordinatorGateway : IDisposable
         NewChatMessage newMessage);
     Task DeleteChatMessage(int sessionId,
         int messageId);
+    Task<ChatHistoryPage> RequestChatPinnedMessages(int chatId);
+    Task<ChatHistoryWindow> RequestChatHistoryWindow(int chatId, int messageId,
+        Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection direction, int take);
+    Task SetMessagePinned(int chatId, int messageId, bool pinned);
+
     Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded);
     Task EditChatMessage(int sessionId,
         int messageId,
