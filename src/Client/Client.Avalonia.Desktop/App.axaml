@@ -5,6 +5,9 @@
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector=":is(Window)">
+            <Setter Property="Icon" Value="avares://Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico"/>
+        </Style>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Button.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/SecondaryButtonStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/BorderlessButtonStyle.axaml"/>

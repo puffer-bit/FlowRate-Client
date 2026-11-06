@@ -42,7 +42,7 @@ internal sealed partial class TrayService : IDisposable
 
     // Shown while we are in no hybrid session
     private readonly WindowIcon _appIcon =
-        new(AssetLoader.Open(new Uri("avares://Client.Avalonia.Desktop/Assets/avalonia-logo.ico")));
+        new(AssetLoader.Open(new Uri("avares://Client.Avalonia.Assets/AppIcons/Headphones/png/tray-purple-48.png")));
 
     // The session the icon follows, null outside of one
     private ActiveHybridSessionVM? _session;

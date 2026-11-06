@@ -18,7 +18,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <application android:label="FlowRate">
+    <application android:label="FlowRate"
+                 android:icon="@mipmap/ic_launcher"
+                 android:roundIcon="@mipmap/ic_launcher">
 
         <service
                 android:name="Client.Droid.Platform.Firebase.ApplicationFirebaseMessagingService"

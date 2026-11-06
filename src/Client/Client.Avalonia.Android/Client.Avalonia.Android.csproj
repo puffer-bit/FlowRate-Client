@@ -52,6 +52,12 @@
     <ItemGroup>
         <GoogleServicesJson Include="google-services.json" />
     </ItemGroup>
+
+    <ItemGroup>
+        <AndroidResource Include="..\Client.Avalonia.Assets\AppIcons\Headphones\Android\**\*">
+            <Link>Resources\%(RecursiveDir)%(Filename)%(Extension)</Link>
+        </AndroidResource>
+    </ItemGroup>
     
     <!-- The time and the commit of the build, shown after the version -->
     <Import Project="..\BuildNumber.targets" />
