@@ -82,6 +82,16 @@
     </DrawingImage>
 
     <!-- ===== Common ===== -->
+    <DrawingImage x:Key="PinIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8 3 H16 M9 3 V9 L6 13 V15 H18 V13 L15 9 V3 M12 15 V22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
 
     <!-- Add a reaction: a smile with a plus. Source: Icons/AddReactionIcon.svg -->
     <DrawingImage x:Key="AddReactionIcon">

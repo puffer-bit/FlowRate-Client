@@ -269,6 +269,23 @@ internal partial class CoordinatorGateway
             response.CurrentRevision);
     }
 
+    public async Task<ChatHistoryPage> RequestChatPinnedMessages(int chatId)
+    {
+        var response = await SendRequestAsync<ChatPinnedMessagesResponse>(new ChatPinnedMessagesRequest(chatId));
+        return new ChatHistoryPage(response.Messages.Select(message => message.ToModel()).ToList(), response.CurrentRevision);
+    }
+
+    public async Task<ChatHistoryWindow> RequestChatHistoryWindow(int chatId, int messageId,
+        ChatHistoryDirection direction, int take)
+    {
+        var response = await SendRequestAsync<ChatHistoryWindowResponse>(new ChatHistoryWindowRequest(chatId, messageId, direction, take));
+        return new ChatHistoryWindow(response.Messages.Select(message => message.ToModel()).ToList(),
+            response.CurrentRevision, response.HasOlder, response.HasNewer);
+    }
+
+    public Task SetMessagePinned(int chatId, int messageId, bool pinned) =>
+        SendRequestAsync<SetMessagePinnedResponse>(new SetMessagePinnedRequest(chatId, messageId, pinned));
+
     public async Task<ChatChanges> RequestChatChanges(int sessionId, long afterRevision, int take)
     {
         var request = new ChatSessionChangesRequest(sessionId, afterRevision, take);
