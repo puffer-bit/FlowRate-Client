@@ -23,10 +23,9 @@ public static class VoicePlaybackSink
 
     private const string ClientName = "FlowRate voices";
 
-    // The voice already past its volume still plays for this long, in microseconds: the default
-    // of 200 ms let a muted user be heard. Much less underruns on a busy machine and crackles
-    private const long BufferTime = 60_000;
-    private const long LatencyTime = 10_000;
+    // Four hardware periods leave room for scheduling jitter without the default 200 ms tail.
+    private const long BufferTime = AudioDeviceLatency.BufferTimeMicroseconds;
+    private const long LatencyTime = AudioDeviceLatency.PeriodTimeMicroseconds;
 
     private static readonly Lazy<string> SinkDescription = new(Choose);
 
@@ -48,6 +47,10 @@ public static class VoicePlaybackSink
     // A pulsesink only works with a sound server to talk to, which reaching READY proves
     private static string Choose()
     {
+        // autoaudiosink leaves WASAPI's low-latency mode off and its 200 ms ringbuffer intact.
+        if (OperatingSystem.IsWindows())
+            return $"wasapi2sink name={ElementName} low-latency=true buffer-time={BufferTime} latency-time={LatencyTime}";
+
         using var probe = ElementFactory.Make("pulsesink", null);
 
         if (probe == null)

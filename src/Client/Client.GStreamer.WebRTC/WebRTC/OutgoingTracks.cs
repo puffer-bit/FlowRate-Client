@@ -287,14 +287,16 @@ internal sealed partial class OutgoingTracks
         }
 
         if (branch.GetByName(MicrophoneChain.GateLevelName) is { } level &&
-            branch.GetByName(MicrophoneChain.GateValveName) is { } valve)
+            branch.GetByName(MicrophoneChain.GateValveName) is { } valve &&
+            branch.GetByName(MicrophoneChain.GateDelayName) is { } delay)
         {
             var detector = branch.GetByName(MicrophoneChain.VoiceLevelName) is { } voiceLevel &&
                            branch.GetByName(MicrophoneChain.VoiceValveName) is { } voiceValve
                 ? new VoiceGate.VoiceDetector(_heldWrappers.Hold(voiceLevel), _heldWrappers.Hold(voiceValve))
                 : null;
 
-            var gate = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve), detector,
+            var gate = new VoiceGate(outbound.Id, _heldWrappers.Hold(level), _heldWrappers.Hold(valve),
+                _heldWrappers.Hold(delay), detector,
                 voiceGate);
 
             WarnIfNoVoiceDetection(gate, voiceGate);

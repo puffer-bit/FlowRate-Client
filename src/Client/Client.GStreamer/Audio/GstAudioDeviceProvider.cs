@@ -137,7 +137,8 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
     public Element? CreateInputElement(string? deviceId)
     {
         if (deviceId == null)
-            return ElementFactory.Make("autoaudiosrc", null);
+            return AudioDeviceLatency.ConfigureCapture(ElementFactory.Make(
+                OperatingSystem.IsWindows() ? "wasapi2src" : "autoaudiosrc", null));
         
         EnsureStarted();
         
@@ -152,7 +153,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         using (var output = element?.GetStaticPad("src"))
         {
             if (output != null)
-                return element;
+                return AudioDeviceLatency.ConfigureCapture(element);
         }
 
         // The PipeWire provider creates a pipewiresink for virtual sources ("Audio/Source/Virtual",
@@ -170,7 +171,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         
         source?.SetProperty("target-object", nodeName);
         
-        return source;
+        return AudioDeviceLatency.ConfigureCapture(source);
     }
 
     private static bool IsInputDevice(Device device)
