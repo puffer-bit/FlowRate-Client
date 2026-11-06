@@ -1,4 +1,14 @@
 {
+  "chat.pinned.count": "Pinned messages · {count}",
+  "chat.pinned.loading": "Loading pinned messages…",
+  "chat.pinned.error": "Could not load pinned messages.",
+  "chat.pinned.empty": "No pinned messages yet.",
+
+  "chat.menu.pin": "Pin message",
+  "chat.menu.unpin": "Unpin message",
+  "chat.pinned.title": "Pinned messages",
+  "chat.pinned.attachment": "Attachment",
+  "chat.pinned.failed": "Could not change the pin. Check your connection, permissions, and the limit of 100 pins.",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "Release channel",
   "settings.about.releaseNotes.stable": "Releases",

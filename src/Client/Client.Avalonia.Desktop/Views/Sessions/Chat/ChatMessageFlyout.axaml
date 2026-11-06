@@ -35,6 +35,12 @@
             </menus:MenuItemButton.Flyout>
         </menus:MenuItemButton>
 
+        <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                              IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
+        <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                              IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
         <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
                               Command="{Binding StartReply}"/>
         <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"

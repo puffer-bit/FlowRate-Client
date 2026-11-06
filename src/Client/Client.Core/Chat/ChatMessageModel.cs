@@ -15,6 +15,9 @@ public class ChatMessageModel
     public DateTime? DelayedSentTime { get; init; }
     public DateTime? DisposeTime { get; init; }
     public DateTime? EditTime { get; init; }
+    public DateTime? PinnedAt { get; init; }
+    public int? PinnedByUserId { get; init; }
+    public bool IsPinned => PinnedAt.HasValue;
 
     public ChatTextContent? TextContent { get; init; }
     public ChatReplyContent? ReplyContent { get; init; }

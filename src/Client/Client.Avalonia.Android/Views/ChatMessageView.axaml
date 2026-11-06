@@ -153,6 +153,10 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <TextBlock Text="{Binding PinError}" IsVisible="{Binding HasPinError}"
+                           FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                <Image Source="{StaticResource PinIcon}" Width="14" Height="14"
+                       HorizontalAlignment="Left" IsVisible="{Binding IsPinned}" ToolTip.Tip="{l:Text chat.pinned.title}"/>
                 <TextBlock Text="{Binding ReactionError}" IsVisible="{Binding HasReactionError}"
                            Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
             </StackPanel>

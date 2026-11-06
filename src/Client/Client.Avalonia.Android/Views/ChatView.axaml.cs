@@ -211,9 +211,15 @@ public partial class ChatView : UserControl
         return subscriptions;
     }
 
-    /// <summary>
-    /// Closes the image opened over the chat, if one is.
-    /// </summary>
+    /// <summary>Closes the pinned messages panel before Back leaves the chat.</summary>
+    public bool TryClosePinnedMessages()
+    {
+        if (Chat?.StatusBar.IsPinsOpen != true) return false;
+        Chat.StatusBar.IsPinsOpen = false;
+        return true;
+    }
+
+    /// <summary>Closes the image opened over the chat, if one is.</summary>
     public bool TryCloseImageViewer()
     {
         if (Chat is not { IsImageViewerOpen: true } chat)
@@ -264,10 +270,13 @@ public partial class ChatView : UserControl
         if (Panel is not { } panel || Chat is not { } chat)
             return;
 
-        chat.IsScrolledUp = panel.DistanceToEnd > ScrolledUpThreshold;
+        chat.IsScrolledUp = chat.HasNewerMessages || panel.DistanceToEnd > ScrolledUpThreshold;
 
         if (panel.DistanceToStart < panel.ViewportHeight * PrefetchScreens)
             _ = LoadOlder(chat);
+
+        if (panel.DistanceToEnd < panel.ViewportHeight * PrefetchScreens)
+            _ = chat.LoadNewerMessagesAsync();
     }
 
     // One page per call: its rows change the extent of the list, which reports the scroll state again,
@@ -290,6 +299,9 @@ public partial class ChatView : UserControl
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (Chat is { IsLoadingNewer: true })
+            Panel?.HoldScrollPosition();
+
         // A message appended while the user reads the newest ones keeps the list at the bottom
         if (Chat is { IsScrolledUp: false } chat
             && e.Action == NotifyCollectionChangedAction.Add

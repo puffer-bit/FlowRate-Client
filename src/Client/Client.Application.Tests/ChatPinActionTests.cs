@@ -1,0 +1,78 @@
+using Client.Core.Chat;
+using Client.ViewModels.Sessions.Chat;
+using ReactiveUI;
+using Xunit;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
+
+namespace Client.Application.Tests;
+
+public class ChatPinActionTests
+{
+    private static ChatMessageModel Message(bool pinned = false) => new()
+    {
+        Id = 1, ChatId = 7, SenderUserId = 2, SentTime = DateTime.UtcNow,
+        PinnedAt = pinned ? DateTime.UtcNow : null,
+        Images = [], Video = [], Files = [], UsersIds = [], Reactions = []
+    };
+
+    [Fact]
+    public Task PinnedCardMenuNavigatesAndUnpinsWithoutATimelineFlyout() => TestUiThread.RunAsync(() =>
+    {
+        using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
+        using var users = ReactiveCommand.Create<int>(_ => { });
+        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+            _ => Task.CompletedTask) { IsConnected = true };
+        var requests = new List<bool>();
+        var content = new ChatMessageVM(Message(true), 1, messages, users, messages, messages, users,
+            _ => Task.FromResult(true), composer: composer)
+        {
+            IsPinAllowed = true, CanManageMessages = true,
+            SetPinned = pinned => { requests.Add(pinned); return Task.FromResult(true); }
+        };
+        var navigations = 0;
+        var row = new ChatPinnedMessageVM(content, () => { navigations++; return Task.CompletedTask; });
+        row.Open();
+        Assert.Equal(1, navigations);
+        row.Unpin();
+        Assert.Equal(new[] { false }, requests);
+        Assert.True(content.IsPinned);
+        content.CanManageMessages = false;
+        row.Unpin();
+        Assert.Single(requests);
+    });
+
+    [Fact]
+    public Task PinningRequiresModerationAndConnection_AndWaitsForServerState() => TestUiThread.RunAsync(() =>
+    {
+        using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
+        using var users = ReactiveCommand.Create<int>(_ => { });
+        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+            _ => Task.CompletedTask) { CanWrite = false, IsConnected = true };
+        var requested = new List<bool>();
+        var vm = new ChatMessageVM(Message(), 1, messages, users, messages, messages, users,
+            _ => Task.FromResult(true), composer: composer)
+        {
+            IsPinAllowed = true,
+            SetPinned = pinned => { requested.Add(pinned); return Task.FromResult(true); }
+        };
+        using var close = vm.CloseFlyoutInteraction.RegisterHandler(context => context.SetOutput(RxVoid.Default));
+        Assert.False(vm.CanPin);
+        vm.CanManageMessages = true;
+        Assert.True(vm.CanPin); // Moderators can manage pins in a read-only chat.
+        vm.TogglePinned();
+        Assert.Equal(new[] { true }, requested);
+        Assert.False(vm.IsPinned);
+        vm.Message = Message(true);
+        Assert.True(vm.IsPinned);
+        vm.TogglePinned();
+        Assert.Equal(new[] { true, false }, requested);
+        composer.IsConnected = false;
+        vm.TogglePinned();
+        Assert.Equal(2, requested.Count);
+        composer.IsConnected = true;
+        vm.IsPinAllowed = false;
+        Assert.False(vm.CanPin);
+        vm.TogglePinned();
+        Assert.Equal(2, requested.Count);
+    });
+}
