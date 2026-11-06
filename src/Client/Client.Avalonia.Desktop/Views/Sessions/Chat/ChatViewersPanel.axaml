@@ -39,10 +39,13 @@
                                             <menus:MenuItemButton Icon="{StaticResource MentionIcon}" Content="{l:Text chat.menu.mention}"
                                                                   menus:FlyoutMenu.CloseOnClick="True" IsEnabled="{Binding CanMention}"
                                                                   Command="{Binding Mention}"/>
-                                            <Separator IsVisible="{Binding CanBan}"/>
+                                            <Separator IsVisible="{Binding CanModerate}"/>
                                             <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}"
                                                                   Content="{l:Text peer.ban}" menus:FlyoutMenu.CloseOnClick="True"
                                                                   IsVisible="{Binding CanBan}" Command="{Binding Ban}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource HammerIcon}"
+                                                                  Content="{l:Text serverSettings.users.action.unban}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanUnban}" Command="{Binding Unban}"/>
                                         </StackPanel>
                                     </Flyout>
                                 </Button.ContextFlyout>
@@ -61,16 +64,24 @@
                                     </Grid.Styles>
                                     <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Username}"
                                                         AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"
-                                               Classes.role-colored="{Binding RoleColor, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                        <TextBlock.Styles>
-                                            <Style Selector="TextBlock.role-colored">
-                                                <Setter Property="Foreground"
-                                                        Value="{Binding RoleColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
-                                            </Style>
-                                        </TextBlock.Styles>
-                                    </TextBlock>
+                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Username}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Classes.role-colored="{Binding RoleColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock.Styles>
+                                                <Style Selector="TextBlock.role-colored">
+                                                    <Setter Property="Foreground"
+                                                            Value="{Binding RoleColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                                                </Style>
+                                            </TextBlock.Styles>
+                                        </TextBlock>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                                                   IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                                            <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                                                   IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </Grid>
                             </Button>
                         </DataTemplate>

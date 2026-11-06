@@ -6,6 +6,7 @@ using Client.Core.Users;
 using Client.ViewModels.Sessions.Hybrid;
 using ReactiveUI;
 using Shared.Enums;
+using Shared.Enums.User;
 using Shared.Validation;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -19,6 +20,9 @@ public class PeerVM : ReactiveObject
     public UserModel? UserData { get; private set; }
 
     public string DisplayedName => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
+
+    public bool IsBanned => UserData?.State == UserState.Banned;
+    public bool IsFrozen => UserData?.State == UserState.Suspended;
 
     public bool IsConnected => PeerData.State == HybridSessionPeerState.Connected;
 
@@ -366,6 +370,8 @@ public class PeerVM : ReactiveObject
     {
         UserData = userModel;
         this.RaisePropertyChanged(nameof(DisplayedName));
+        this.RaisePropertyChanged(nameof(IsBanned));
+        this.RaisePropertyChanged(nameof(IsFrozen));
         this.RaisePropertyChanged(nameof(PokeTitle));
         this.RaisePropertyChanged(nameof(UserData));
     }
