@@ -32,7 +32,8 @@ public partial class CoordinatorSession
         return !string.IsNullOrWhiteSpace(name)
                && name.Length <= Limits.SessionNameMaxLength
                && !name.Any(char.IsControl)
-               && newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax;
+               && (newSession.Options is NewChatSessionOptions
+                   || newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax);
     }
 
     public Task<RequestResult> DeleteSession(int sessionId) =>

@@ -4,6 +4,7 @@ using Client.Application.Ports.Repositories;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Push;
+using Client.Core.Sessions;
 using Client.Core.Users;
 using Shared.Enums;
 using Shared.Enums.Auth;
@@ -23,6 +24,7 @@ public class FakeGateway : DispatchProxy
     public int Disconnects { get; private set; }
     public List<(string Token, PushPlatform Platform, PushKey Key)> Registered { get; } = [];
     public List<string> Unregistered { get; } = [];
+    public List<NewSessionModel> CreatedSessions { get; } = [];
     /// <summary>What the server fails the push requests with; null accepts them.</summary>
     public ErrorCode? PushError { get; set; }
     public string ReplyToken { get; set; } = "reply-token";
@@ -229,6 +231,9 @@ public class FakeGateway : DispatchProxy
                 return null;
             case nameof(ICoordinatorGateway.GetRoles):
                 return Task.FromResult(Roles);
+            case nameof(ICoordinatorGateway.CreateSession):
+                CreatedSessions.Add((NewSessionModel)args![0]!);
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.ConnectWebSocketAsync):
                 return ConnectAsync();
             case nameof(ICoordinatorGateway.DisconnectWebSocketAsync):
