@@ -1,4 +1,14 @@
 {
+  "chat.pinned.count": "Закреплённые сообщения · {count}",
+  "chat.pinned.loading": "Загрузка закреплённых сообщений…",
+  "chat.pinned.error": "Не удалось загрузить закреплённые сообщения.",
+  "chat.pinned.empty": "Пока нет закреплённых сообщений.",
+
+  "chat.menu.pin": "Закрепить сообщение",
+  "chat.menu.unpin": "Открепить сообщение",
+  "chat.pinned.title": "Закреплённые сообщения",
+  "chat.pinned.attachment": "Вложение",
+  "chat.pinned.failed": "Не удалось изменить закрепление. Проверьте подключение, права и лимит в 100 закреплений.",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "Канал выпусков",
   "settings.about.releaseNotes.stable": "Релизы",

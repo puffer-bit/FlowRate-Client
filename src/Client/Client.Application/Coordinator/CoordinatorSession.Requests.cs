@@ -145,6 +145,24 @@ public partial class CoordinatorSession
         return result;
     }
 
+    public async Task<RequestResult<ChatHistoryPage>> RequestChatPinnedMessages(int chatId)
+    {
+        var result = await SendAsync(() => _gateway.RequestChatPinnedMessages(chatId));
+        MarkMine(result.Value?.Messages);
+        return result;
+    }
+
+    public async Task<RequestResult<ChatHistoryWindow>> RequestChatHistoryWindow(int chatId, int messageId,
+        Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection direction, int take)
+    {
+        var result = await SendAsync(() => _gateway.RequestChatHistoryWindow(chatId, messageId, direction, take));
+        MarkMine(result.Value?.Messages);
+        return result;
+    }
+
+    public Task<RequestResult> SetMessagePinned(int chatId, int messageId, bool pinned) =>
+        SendAsync(() => _gateway.SetMessagePinned(chatId, messageId, pinned));
+
     public async Task<RequestResult<ChatChanges>> RequestChatChanges(
         int sessionId, long afterRevision, int take)
     {

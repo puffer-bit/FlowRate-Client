@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Sessions.Chat.ChatViewersPanel"
@@ -49,7 +50,15 @@
                                     <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Username}"
                                                         AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
                                     <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"/>
+                                               TextTrimming="CharacterEllipsis"
+                                               Classes.role-colored="{Binding RoleColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <TextBlock.Styles>
+                                            <Style Selector="TextBlock.role-colored">
+                                                <Setter Property="Foreground"
+                                                        Value="{Binding RoleColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                                            </Style>
+                                        </TextBlock.Styles>
+                                    </TextBlock>
                                 </Grid>
                             </Button>
                         </DataTemplate>
