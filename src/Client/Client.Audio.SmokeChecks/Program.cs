@@ -21,6 +21,14 @@ using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevic
 string? audioError = null;
 audio.Failed += error => Interlocked.CompareExchange(ref audioError, error, null);
 
+if (args.Contains("--video-negotiation"))
+{
+    var negotiationRuntime = new LibWebRTCRuntime(audio, NullLogger<LibWebRTCRuntime>.Instance);
+    Require(negotiationRuntime.TryLoad(), negotiationRuntime.Load() ?? "Load native runtime");
+    await VideoNegotiationSmokeChecks.Run(negotiationRuntime);
+    return;
+}
+
 var pulls = 0;
 var stall = 0;
 Require(audio.StartPlayback(samples =>

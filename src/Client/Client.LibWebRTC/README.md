@@ -70,6 +70,21 @@ the one of the setting (144 goes through). The track is not marked as a screen: 
 repeat the last frame of a still screen, which an encoder that only passes pictures on cannot do. A
 picture it gives again is dropped.
 
+An emptied receive section is reused only for a track with the same codec and NACK setting.
+libwebrtc can keep the previous answer's feedback when generating the next one: reusing a section
+that negotiated NACK off for a track with NACK on leaves the receive stream's NACK history at zero,
+even though the new remote offer contains `a=rtcp-fb:102 nack`. A section with compatible feedback
+can be reused; incompatible historical sections remain inactive.
+The native negotiation regression check replaces disabled and enabled tracks on the production
+transport, verifies the actual answers, and verifies compatible sections do not grow indefinitely:
+
+```bash
+dotnet run --project src/Client/Client.Audio.SmokeChecks -- --video-negotiation
+```
+
+This section selection fix is managed code and applies on both desktop platforms without a native
+ABI change. The viewer needs the updated client to apply it.
+
 Lost packets are resent as RTX, on the payload type and SSRC the SFU gave the producer: the section
 offers the RTX codec, and the answer gets the SSRC of the SFU in its group FID next to the one of the
 stream. Where the SFU reads the transport-wide sequence number (it says so with each outbound track),
