@@ -190,12 +190,13 @@ public sealed class UserActions
     // The user leaves its sessions and the coordinator with the ban, as from the server settings
     private async Task BanUser((int UserId, string Name) target)
     {
+        var form = new BanFormVM();
         if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Format("serverSettings.users.ban.question", ("name", target.Name)),
-                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+                Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        var result = await Session.SetUserState(target.UserId, UserState.Banned);
+        var result = await Session.SetUserState(target.UserId, UserState.Banned, form.Kind, form.Reason, form.ExpiresAt, form.Address);
 
         // A rejection is reported on its own
         if (result.IsSuccess || result.IsRejected)

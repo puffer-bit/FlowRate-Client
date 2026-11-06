@@ -52,8 +52,15 @@ public partial class CoordinatorSession
         return (await SendAsync(() => _gateway.ChangeUsername(username.Trim(), userId))).Result;
     }
 
-    public async Task<RequestResult> SetUserState(int userId, UserState state) =>
-        (await SendAsync(() => _gateway.SetUserState(userId, state))).Result;
+    public string? BanReason { get; private set; }
+
+    public Task<RequestResult<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans(bool history = false) =>
+        SendAsync(() => _gateway.GetBans(history));
+
+    public Task<RequestResult> RevokeBan(Guid banId) => SendAsync(() => _gateway.RevokeBan(banId));
+
+    public async Task<RequestResult> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null) =>
+        (await SendAsync(() => _gateway.SetUserState(userId, state, kind, reason, expiresAt, address))).Result;
 
     public Task<RequestResult> DeleteUser(int userId) =>
         SendAsync(() => _gateway.DeleteUser(userId));

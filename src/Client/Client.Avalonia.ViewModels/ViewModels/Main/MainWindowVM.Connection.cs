@@ -521,7 +521,7 @@ public partial class MainWindowVM
                 return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:
-                PostDisconnect(Strings.Get("main.reconnect.banned"));
+                PostDisconnect(Strings.Get("main.reconnect.banned") + (string.IsNullOrWhiteSpace(_coordinatorSession?.BanReason) ? "" : "\n" + _coordinatorSession.BanReason));
                 return;
             // Only a reconnect reports it here: the server was updated or rolled back while the user was online
             case CoordinatorState.ClientOutdated:

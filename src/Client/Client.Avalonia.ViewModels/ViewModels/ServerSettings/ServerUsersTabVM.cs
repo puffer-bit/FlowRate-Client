@@ -28,6 +28,25 @@ namespace Client.ViewModels.ServerSettings;
 public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
 {
     public const int PageSize = 20;
+    public ObservableCollection<BanRowVM> Bans { get; } = new();
+    public ReactiveCommand<BanRowVM, RxVoid> RevokeBanCommand { get; }
+    public bool CanManageBans => _coordinatorSession.Permissions.Has(Permission.BanMembers);
+
+    private async Task LoadBansAsync()
+    {
+        if (!CanManageBans) return;
+        var response = await _coordinatorSession.GetBans(true);
+        if (!response.IsSuccess || response.Value == null) return;
+        Bans.Clear();
+        foreach (var ban in response.Value) Bans.Add(new BanRowVM(ban));
+    }
+
+    private async Task RevokeBanAsync(BanRowVM row)
+    {
+        await TellFailureAsync(await _coordinatorSession.RevokeBan(row.Ban.Id), "serverSettings.users.action.unban");
+        await LoadBansAsync();
+    }
+
 
     private int _currentPage = 1;
     private int _filteredCount;
@@ -110,6 +129,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     public ServerUsersTabVM(CoordinatorSettingsFormVM form, ICoordinatorSession coordinatorSession,
         Interaction<MessageBoxVM, Result> showMessageBox, ReactiveCommand<int, RxVoid> viewProfileCommand)
     {
+        RevokeBanCommand = ReactiveCommand.CreateFromTask<BanRowVM>(RevokeBanAsync);
         Form = form;
         _coordinatorSession = coordinatorSession;
         _showMessageBox = showMessageBox;
@@ -144,6 +164,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private async Task LoadAsync()
     {
         Error = null;
+        await LoadBansAsync();
 
         var (result, users) = await _coordinatorSession.GetAllUsers();
         if (users == null)
@@ -172,15 +193,19 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         if (row.IsBanned)
         {
             await SetStateAsync(row, UserState.Normal, "serverSettings.users.action.unban");
+            await LoadBansAsync();
             return;
         }
 
+        var form = new BanFormVM();
         if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Format("serverSettings.users.ban.question", ("name", row.Username)),
-                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+                Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        await SetStateAsync(row, UserState.Banned, "serverSettings.users.action.ban");
+        await TellFailureAsync(await _coordinatorSession.SetUserState(row.User.Id, UserState.Banned,
+            form.Kind, form.Reason, form.ExpiresAt, form.Address), "serverSettings.users.action.ban");
+        await LoadBansAsync();
     }
 
     // The new state comes back as an update of the user
@@ -235,6 +260,8 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private void OnPermissionsChanged(CoordinatorPermissions permissions) => Dispatcher.UIThread.Post(() =>
     {
         CanEditLimits = permissions.Has(Permission.ManageCoordinatorSettings);
+        this.RaisePropertyChanged(nameof(CanManageBans));
+        if (!CanManageBans) Bans.Clear();
         Rebuild();
     });
 
@@ -310,6 +337,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         _loadingChanged.Dispose();
         _isLoading.Dispose();
         _isBusy.Dispose();
+        RevokeBanCommand.Dispose();
         LoadCommand.Dispose();
         EditProfileCommand.Dispose();
         ToggleFreezeCommand.Dispose();

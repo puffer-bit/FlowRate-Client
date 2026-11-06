@@ -9,6 +9,10 @@ public partial class CoordinatorSession
     {
         switch (coordinatorEvent)
         {
+            case BannedEvent banned:
+                Post(new BanReceived(banned.Reason));
+                break;
+
             case ServerClosingEvent:
                 _ = Disconnect();
                 break;

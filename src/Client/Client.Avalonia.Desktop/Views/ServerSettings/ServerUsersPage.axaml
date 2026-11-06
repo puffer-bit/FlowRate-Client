@@ -218,5 +218,26 @@
                        VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
             <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding NextPageCommand}"/>
         </Grid>
+        <StackPanel IsVisible="{Binding CanManageBans}" Spacing="8">
+            <controls:SettingsHeader Text="{l:Text ban.list}" SectionKey="ban.list"/>
+            <ItemsControl ItemsSource="{Binding Bans}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="serverSettingsVm:BanRowVM">
+                        <ui:SettingsCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding Target}" FontWeight="SemiBold"/>
+                                    <SelectableTextBlock Text="{Binding Reason}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Details}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{l:Text serverSettings.users.action.unban}" IsVisible="{Binding IsActive}"
+                                        Command="{Binding $parent[UserControl].((serverSettingsVm:ServerUsersTabVM)DataContext).RevokeBanCommand}"
+                                        CommandParameter="{Binding}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </ui:SettingsPage>
 </UserControl>

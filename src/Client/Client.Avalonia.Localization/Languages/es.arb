@@ -69,7 +69,7 @@
   "roles.permission.kick": "Expulsar miembros",
   "roles.permission.kick.description": "De cualquier sesión. Los anfitriones pueden en la suya.",
   "roles.permission.ban": "Vetar miembros",
-  "roles.permission.ban.description": "En cualquier sesión. Los anfitriones pueden en la suya.",
+  "roles.permission.ban.description": "Bloqueos globales de cuentas e IP, motivos y revocación.",
   "roles.permission.approve": "Aprobar miembros",
   "roles.permission.approve.description": "Dejar entrar o rechazar a quien espera para entrar en una sesión.",
   "roles.permission.manageMessages": "Gestionar mensajes",

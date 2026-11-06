@@ -19,15 +19,49 @@ public class CoordinatorSessionModerationTests
         _session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
     }
 
-    [Fact]
-    public async Task BannedLogin_IsDenied_AndClosesTheSocket()
+    [Theory]
+    [InlineData("Abuse in chat")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task BannedLogin_IsDenied_AndClosesTheSocket(string? reason)
     {
         _gateway.LoginError = ErrorCode.Banned;
+        _gateway.LoginErrorDetails = reason;
 
         await _session.Connect("server", 1, null, null);
 
         Assert.Equal(CoordinatorState.Denied, _session.ConnectionStatus);
         Assert.False(_gateway.IsOpen);
+        Assert.Equal(reason, _session.BanReason);
+    }
+
+    [Theory]
+    [InlineData("Shared IP blocked")]
+    [InlineData("")]
+    public async Task IpBanBeforeHandshake_IsDeniedWithReason_AndDoesNotAttemptLogin(string reason)
+    {
+        _gateway.TransportBanReason = reason;
+        await _session.Connect("server", 1, null, null);
+        Assert.Equal(CoordinatorState.Denied, _session.ConnectionStatus);
+        Assert.Equal(reason, _session.BanReason);
+        Assert.Empty(_gateway.SentLogins);
+        Assert.False(_gateway.IsOpen);
+    }
+
+    [Fact]
+    public async Task BanWhileOnline_ShowsReason_ClosesTransport_AndDoesNotScheduleReconnect()
+    {
+        await _session.Connect("server", 1, null, null);
+        var retries = 0;
+        _session.ReconnectScheduled += (_, _) => retries++;
+        _gateway.Raise(new BannedEvent("Repeated spam"));
+        for (var i = 0; i < 200 && _session.ConnectionStatus != CoordinatorState.Denied; i++)
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        Assert.Equal(CoordinatorState.Denied, _session.ConnectionStatus);
+        Assert.Equal("Repeated spam", _session.BanReason);
+        Assert.False(_gateway.IsOpen);
+        Assert.Equal(0, retries);
+        Assert.Equal(1, _gateway.Connects);
     }
 
     [Fact]
