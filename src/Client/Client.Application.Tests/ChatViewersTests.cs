@@ -10,6 +10,7 @@ using ReactiveUI.Primitives.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Shared.Enums;
+using Shared.Enums.User;
 using Xunit;
 
 namespace Client.Application.Tests;
@@ -79,6 +80,45 @@ public sealed class ChatViewersTests
         fake.Raise(new(7, id, [User(4, "stale")], []));
         Dispatcher.UIThread.RunJobs();
         Assert.Empty(vm.Users);
+    });
+
+    [Fact]
+    public Task BanAndUnbanRefreshTheExistingRow() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        fake.Permissions = new CoordinatorPermissions([
+            new RoleModel(1, "everyone", null, 0, Permission.ViewSessions, true, 0),
+            new RoleModel(2, "moderator", null, 1, Permission.BanMembers, false, 0)
+        ], [2]);
+        fake.Initial = [new UserModel
+            { Id = 3, Username = "Alice", CoordinatorInstanceId = "coordinator", State = UserState.Banned }];
+        using var profile = ReactiveCommand.Create<int>(_ => { });
+        var banned = new List<int>();
+        using var ban = ReactiveCommand.Create<(int UserId, string Name)>(target => banned.Add(target.UserId));
+        using var vm = new ChatViewersVM(7, session, profile, banUser: ban, currentUserId: 1);
+        vm.Open();
+        var row = Assert.Single(vm.Users);
+        Assert.True(row.IsBanned);
+        Assert.False(row.CanBan);
+        row.Ban.Execute().Subscribe();
+        Assert.Empty(banned);
+        var changes = new List<bool>();
+        row.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatViewerVM.IsBanned)) changes.Add(row.IsBanned);
+        };
+        foreach (var state in new[] { UserState.Normal, UserState.Banned })
+        {
+            fake.Raise(new(7, fake.Requests.Single().Id, [new UserModel
+                { Id = 3, Username = "Alice", CoordinatorInstanceId = "coordinator", State = state }], []));
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(row, Assert.Single(vm.Users));
+            Assert.Equal(state == UserState.Banned, row.IsBanned);
+            Assert.Equal(state != UserState.Banned, row.CanBan);
+        }
+        Assert.Equal(new[] { false, true }, changes);
+        Assert.Single(fake.Requests);
     });
 
     [Fact]

@@ -81,6 +81,25 @@ public partial class MainWindowVM
         if (session.AccountPasswordToSave != user.AccountPassword)
             await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
 
+        try
+        {
+            var credentials = session.GetCurrentUserCredentials();
+            await _accounting.SaveCoordinatorInstanceAsync(coordinator, new SavedUserModel
+            {
+                CoordinatorId = coordinator.CoordinatorId,
+                Id = credentials.Id,
+                Username = credentials.Username,
+                UserIdentity = credentials.UserIdentity,
+                Password = user.Password,
+                AccountPassword = session.AccountPasswordToSave,
+                SessionToken = credentials.SessionToken
+            });
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinator.CoordinatorId);
+        }
+
         _coordinatorSession = session;
         await FinalizeCoordinatorConnection();
     }
