@@ -69,7 +69,7 @@ public static class MicrophoneChain
     // so a stall would stay in the voice as latency for good. Drop the oldest captured sound
     // rather than blocking the source and moving the backlog into its hardware ringbuffer.
     private const string CaptureDescription =
-        "queue leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=30000000 ! audioconvert ! audioresample ! capsfilter caps=\"{1}\" ! {0}";
+        "queue leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=100000000 ! audioconvert ! audioresample ! capsfilter caps=\"{1}\" ! {0}";
 
     // The sound of a screen is music and films as often as speech, so it keeps both channels
     private const string ScreenCaps = "audio/x-raw,rate=48000,channels=2";

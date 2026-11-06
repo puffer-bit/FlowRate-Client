@@ -100,8 +100,8 @@ internal sealed class GstProcessedMicrophone : IDisposable
         if (buffer == null)
             return;
 
-        // The native custom source does not carry PTS. Do not turn a stale captured buffer
-        // into a freshly timestamped RTP frame after the hardware or processing has stalled.
+        // Measure capture age without cutting holes into the PCM stream. Queue limits handle
+        // backlog; this boundary cannot communicate skipped time to the native custom source.
         var pts = GstVideoNative.GetPts(buffer.Handle);
         if (pts >= 0 && GstTimingNative.ToRunningTime(_pcmInput.Handle, pts) is { } captured &&
             GstTimingNative.GetCurrentRunningTime(_pipeline.Handle) is { } now)
@@ -113,14 +113,12 @@ internal sealed class GstProcessedMicrophone : IDisposable
                 _lateFrames++;
             if (now - _lastLatencyReport >= 5_000_000_000)
             {
-                _logger.LogDebug("Microphone PCM age: {AgeMs:F1} ms, maximum {MaxAgeMs:F1} ms; discarded {LateFrames} stale frames",
+                _logger.LogDebug("Microphone PCM age: {AgeMs:F1} ms, maximum {MaxAgeMs:F1} ms; {LateFrames} frames over 150 ms",
                     age / 1e6, _maxAge / 1e6, _lateFrames);
                 _lastLatencyReport = now;
                 _maxAge = 0;
                 _lateFrames = 0;
             }
-            if (late)
-                return;
         }
         using var map = buffer.Map(MapFlags.Read);
         var samples = MemoryMarshal.Cast<byte, short>(map.Span);

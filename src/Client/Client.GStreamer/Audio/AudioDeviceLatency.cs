@@ -5,7 +5,7 @@ namespace Client.GStreamer.Audio;
 /// <summary>Bounds hardware buffering without changing the device or its clock.</summary>
 internal static class AudioDeviceLatency
 {
-    public const long BufferTimeMicroseconds = 40_000;
+    public const long BufferTimeMicroseconds = 60_000;
     public const long PeriodTimeMicroseconds = 10_000;
 
     public static Element? ConfigureCapture(Element? source)
@@ -41,6 +41,8 @@ internal static class AudioDeviceLatency
         if (element.FindProperty("latency-time") != null)
             element.SetProperty("latency-time", PeriodTimeMicroseconds);
         if (element.FindProperty("low-latency") != null)
-            element.SetProperty("low-latency", true);
+            // WASAPI's low-latency mode selects the hardware minimum period instead of
+            // the requested 10 ms. Managed capture cannot reliably meet sub-10 ms deadlines.
+            element.SetProperty("low-latency", false);
     }
 }
