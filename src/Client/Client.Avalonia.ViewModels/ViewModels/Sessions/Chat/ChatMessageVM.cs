@@ -284,6 +284,16 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public ReactiveCommand<RxVoid, RxVoid> OpenReplyCommand { get; }
 
+    public bool IsPinnedListItem { get; internal set; }
+
+    public void GoToMessage() => _ = GoToMessageAsync();
+
+    private async Task GoToMessageAsync()
+    {
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        _jumpToMessageCommand.Execute(Message.Id).Subscribe();
+    }
+
     private readonly ReactiveCommand<int, RxVoid> _jumpToMessageCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _replyCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editCommand;

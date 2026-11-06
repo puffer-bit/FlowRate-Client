@@ -74,6 +74,8 @@ public class ChatPinnedNavigationTests
         Assert.DoesNotContain(chat.Messages.OfType<ChatMessageVM>(), x => x.Message.Id == 11);
         Assert.Equal(1, chat.UnreadBelowCount);
         var pin = Assert.Single(chat.PinnedMessages);
+        Assert.True(pin.Content.IsSequenceStart);
+        Assert.True(pin.Content.IsSequenceEnd);
         Assert.Equal(fullText, pin.Preview);
         Assert.Equal(40, Assert.Single(pin.Content.Images).Image.Id);
         Assert.Equal(41, Assert.Single(pin.Content.Files).File.Id);
