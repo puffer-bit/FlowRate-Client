@@ -18,6 +18,7 @@
 
     <ItemGroup>
       <InternalsVisibleTo Include="Client.Application.Tests" />
+      <InternalsVisibleTo Include="Client.Audio.SmokeChecks" />
     </ItemGroup>
 
 </Project>
