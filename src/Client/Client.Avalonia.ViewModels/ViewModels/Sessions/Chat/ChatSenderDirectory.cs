@@ -166,7 +166,7 @@ public sealed class ChatSenderDirectory : IDisposable
     public ChatMessageBody RenderBody(string text) =>
         ChatMessageBody.Create(text, GetMentionName, _currentUserId, UnknownName);
 
-    public string RenderText(string text) => RenderBody(text).Text;
+    public string RenderText(string text) => ChatMarkdown.Render(RenderBody(text)).Text;
 
     /// <summary>
     /// The name as it is known, or null.

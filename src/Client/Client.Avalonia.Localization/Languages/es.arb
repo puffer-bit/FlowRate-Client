@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Negrita",
+  "chat.format.italic": "Cursiva",
+  "chat.format.strike": "Tachado",
+  "chat.format.code": "Código en línea",
+  "chat.format.codeBlock": "Bloque de código",
+  "chat.format.link": "Enlace",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "Canal de lanzamientos",
   "settings.about.releaseNotes.stable": "Versiones",

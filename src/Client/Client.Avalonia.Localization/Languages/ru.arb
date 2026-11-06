@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Жирный",
+  "chat.format.italic": "Курсив",
+  "chat.format.strike": "Зачёркнутый",
+  "chat.format.code": "Код в строке",
+  "chat.format.codeBlock": "Блок кода",
+  "chat.format.link": "Ссылка",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "Канал выпусков",
   "settings.about.releaseNotes.stable": "Релизы",
