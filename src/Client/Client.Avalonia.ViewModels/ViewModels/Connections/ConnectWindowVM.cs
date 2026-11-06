@@ -223,23 +223,16 @@ public class ConnectWindowVM : ReactiveObject
         {
             var savedServers = await _accountingService.GetAllSavedCoordinatorsAsync();
 
+            var lastServer = savedServers.MaxBy(server => server.SaveOrder);
+
             Dispatcher.UIThread.Post(() =>
             {
                 foreach (var server in savedServers)
                     SavedServers.Add(new SavedServerItem(server.CoordinatorId, server.Name, UriParsing.FormatHost(server.Address), server.Port));
+
+                if (!_isAddressEdited && lastServer != null)
+                    SelectedSavedServer = SavedServers.FirstOrDefault(s => s.CoordinatorId == lastServer.CoordinatorId);
             });
-
-            var lastIdentity = await _behaviorService.GetAutoConnectInstance();
-
-            if (lastIdentity != null)
-            {
-                var coordinator = lastIdentity.Value.Coordinator;
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    SelectedSavedServer = SavedServers.FirstOrDefault(s => s.CoordinatorId == coordinator.CoordinatorId);
-                });
-            }
         });
 
     }

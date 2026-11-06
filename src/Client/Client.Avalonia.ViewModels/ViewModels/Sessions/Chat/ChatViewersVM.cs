@@ -26,6 +26,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string Username => _user.Username;
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
+    public bool IsBanned => _user.State == UserState.Banned;
     public int? RoleColor => _owner.GetRoleColor(_user);
     public ReactiveCommand<RxVoid, RxVoid> ViewProfile { get; }
 
@@ -63,6 +64,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(Username));
         this.RaisePropertyChanged(nameof(AvatarUrl));
         this.RaisePropertyChanged(nameof(Status));
+        this.RaisePropertyChanged(nameof(IsBanned));
         RefreshAccess();
     }
 }
@@ -109,7 +111,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     internal int? GetRoleColor(UserModel user) => _session.Permissions.Roles
         .LastOrDefault(role => role.Color != null && user.RoleIds.Contains(role.Id))?.Color;
 
-    internal bool CanBan(UserModel user) => _banUser != null && user.Id != _currentUserId
+    internal bool CanBan(UserModel user) => _banUser != null && user.State != UserState.Banned && user.Id != _currentUserId
         && _session.ConnectionStatus == CoordinatorState.Connected
         && _session.Permissions.Has(Permission.BanMembers) && _session.Permissions.Outranks(user.RoleIds);
 

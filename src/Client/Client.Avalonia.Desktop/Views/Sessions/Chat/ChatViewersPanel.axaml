@@ -46,7 +46,19 @@
                                         </StackPanel>
                                     </Flyout>
                                 </Button.ContextFlyout>
-                                <Grid ColumnDefinitions="28,*" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="28,*" ColumnSpacing="8" Classes.banned="{Binding IsBanned}">
+                                    <Grid.Styles>
+                                        <Style Selector="Grid">
+                                            <Setter Property="Transitions">
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                                                </Transitions>
+                                            </Setter>
+                                        </Style>
+                                        <Style Selector="Grid.banned">
+                                            <Setter Property="Opacity" Value="0.35"/>
+                                        </Style>
+                                    </Grid.Styles>
                                     <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Username}"
                                                         AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
                                     <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center"

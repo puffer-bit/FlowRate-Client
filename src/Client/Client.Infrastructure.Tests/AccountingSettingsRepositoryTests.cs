@@ -41,6 +41,25 @@ public class AccountingSettingsRepositoryTests
     }
 
     [Fact]
+    public async Task SavingASuccessfulConnectionMakesThatServerTheMostRecent()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator("first"));
+        await repository.SaveCoordinatorAsync(Coordinator("second"));
+        var servers = await repository.GetAllCoordinatorsAsync();
+        Assert.Equal("second", servers.MaxBy(server => server.SaveOrder)!.CoordinatorId);
+        var previousOrder = servers.Max(server => server.SaveOrder);
+
+        await repository.SaveCoordinatorAsync(Coordinator("first"));
+        servers = await repository.GetAllCoordinatorsAsync();
+        var latest = servers.MaxBy(server => server.SaveOrder)!;
+        Assert.Equal("first", latest.CoordinatorId);
+        Assert.True(latest.SaveOrder > previousOrder);
+        Assert.Equal(latest.SaveOrder, (await repository.GetCoordinatorAsync("first"))!.SaveOrder);
+    }
+
+    [Fact]
     public async Task CoordinatorsAtTheSameEndpointKeepSeparateIdentities()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
