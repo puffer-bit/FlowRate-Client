@@ -3,7 +3,8 @@
 The libwebrtc voice (see `../README.md`) needs one native library next to the executable:
 `libflowrate_webrtc.so` on Linux, `flowrate_webrtc.dll` on Windows. It is libwebrtc, the C++ wrapper of
 [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc) and the C interface of
-`Native/flowrate_webrtc.h`, built from source and linked into one file.
+`Native/flowrate_webrtc.h`, built from source and linked into one file. GStreamer owns desktop
+audio capture and playback; `Native/flowrate_audio.cc` supplies the clock-driven PCM boundary.
 
 The library is built by hand on a machine of its platform and **committed** into `prebuilt/<rid>/`.
 Neither CI nor the publish scripts build it, they only copy it. Each folder also holds `BUILD-INFO.txt`
@@ -19,7 +20,7 @@ What goes in, pinned by both scripts:
 | WebRTC, the fork of webrtc-sdk | `m150_release`, commit `a545de4` |
 | webrtc-sdk/libwebrtc, the C++ wrapper | tag `libwebrtc.m150.7871.06` |
 | patches of the wrapper to WebRTC | `custom_audio_source_m150`, `add_libwebrtc_build_target`, and `fix_desktop_capture_compile` (Linux) or `allow_176k4_192k_shared_mode_formats` (Windows) |
-| `patches/flowrate_target.patch` | names the library `flowrate_webrtc` and adds `Native/flowrate_webrtc.cc` to it |
+| `patches/flowrate_target.patch` | names the library `flowrate_webrtc`, adds the FlowRate native sources and replaces the platform ADM with the external PCM device |
 | `patches/flowrate_audio_processing.patch` | the processing of the microphone on the desktop: the adaptive digital gain instead of the analog one, which moves the volume of the microphone in the system, and the level of noise suppression the client sets instead of always the high one |
 | `patches/flowrate_keep_sps.patch` | leaves the SPS of an H.264 screen as the encoder wrote it, sent and received: the picture buffer of one frame WebRTC writes into it made the decoders of GStreamer hold every picture until the next one came, a frame of latency at either end that went through libwebrtc |
 | `patches/flowrate_wasapi_autoconvert.patch` (Windows) | opens a device whose mix format matches none of the formats WebRTC tries (more than two channels, as a virtual 7.1 device has, or another rate) with the conversion of Windows instead of not at all |
@@ -105,3 +106,13 @@ AOT build. `publish.sh` and `publish.ps1` only note a platform whose library is 
 
 The client cross-publishes from either system, and since the libraries of both platforms are in the
 repository, a Windows build made on Linux carries `flowrate_webrtc.dll` too.
+
+## External audio ABI
+
+After changing the PCM device boundary, rebuild both platform prebuilts before publishing. A matching
+library exports `fr_audio_bridge_version` (currently 1) and `fr_pull_playout` in addition to the peer
+interface. The managed loader rejects an older binary before it initializes any audio hardware.
+The desktop then falls back to the GStreamer transport. `windows/verify.ps1` deliberately rejects
+an older DLL, so a Windows publish cannot silently ship the fallback as the new native implementation.
+
+Run the headless `Client.Audio.SmokeChecks` executable after building; see `../README.md`.

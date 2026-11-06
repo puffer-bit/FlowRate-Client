@@ -35,5 +35,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Client.Avalonia.Video.Preview" />
+        <InternalsVisibleTo Include="Client.Audio.SmokeChecks" />
     </ItemGroup>
 </Project>

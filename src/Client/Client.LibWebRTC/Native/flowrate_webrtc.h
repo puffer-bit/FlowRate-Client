@@ -1,7 +1,7 @@
 /*
  * The voice of a session over libwebrtc (webrtc-sdk/libwebrtc), as a plain C interface for P/Invoke.
  * The counterpart of VoicePeer.java on Android: the description of the SFU is built on the .NET side,
- * this only answers it, captures the microphone and plays the voices.
+ * this answers it and exchanges processed PCM with the desktop media engine.
  *
  * Callbacks come on the threads of libwebrtc: the signaling thread for the peer, the audio thread
  * for the capture level. None of them may block for long.
@@ -88,6 +88,10 @@ FR_API int fr_default_device(int is_recording, char* guid, int guid_size);
  * gate, which asks on_level whether it is open while it is on. Shared by every peer, as the
  * microphone is.
  */
+/* External audio ABI. Pull exactly 480 stereo frames (960 samples) after NetEq. */
+FR_API int fr_audio_bridge_version(void);
+FR_API void fr_pull_playout(int16_t* samples);
+
 FR_API void fr_set_capture_volume(double volume);
 FR_API void fr_set_voice_gate(fr_level_callback on_level, void* context);
 

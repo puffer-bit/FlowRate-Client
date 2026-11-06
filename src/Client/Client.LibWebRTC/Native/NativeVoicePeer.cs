@@ -7,9 +7,8 @@ using Shared.Enums.WebRTC;
 namespace Client.LibWebRTC.Native;
 
 /// <summary>
-/// The peer of the desktop, over flowrate_webrtc. The microphone and the speakers are the devices of
-/// libwebrtc itself: PulseAudio on Linux, WASAPI on Windows. A tone or a file is played into a custom
-/// source instead of the microphone. Screens are sent from sources of encoded pictures.
+/// The desktop peer over flowrate_webrtc. GStreamer captures and processes its microphone; decoded
+/// playback is pulled through the runtime's external audio device. Screens use encoded sources.
 /// </summary>
 internal sealed unsafe class NativeVoicePeer : IVoicePeer
 {
@@ -25,11 +24,12 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     private int _calls;
     private volatile bool _isClosed;
 
-    // What the track we send was created with, so the same options do not replace it
-    private (bool IsCustom, bool EchoCancellation, int NoiseSuppression, bool AutoGainControl) _options =
-        (false, false, (int)NoiseSuppressionLevel.Moderate, true);
-    private CustomAudioFeeder? _feeder;
+    private readonly Lock _mediaLock = new();
+    private IProcessedMicrophone? _microphone;
+    private (AudioInput Input, NoiseSuppressionLevel Suppression, bool Echo, bool Gain)? _settings;
+    private VoiceGateOptions? _voiceGate;
     private double _volume = 1;
+    private long _gateSummaryTaken = Environment.TickCount64;
 
     public NativeVoicePeer(LibWebRTCRuntime runtime, IVoicePeerListener listener)
     {
@@ -46,13 +46,22 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         };
 
         // libwebrtc copies the callbacks, so they may live on the stack
-        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self), 0, _options.NoiseSuppression, 1);
+        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self), 0, 0, 0);
 
         if (_peer == 0)
         {
             _self.Free();
             throw new InvalidOperationException("libwebrtc did not create a peer connection");
         }
+        runtime.Audio.Failed += OnAudioFailed;
+    }
+
+    private void OnAudioFailed(string error)
+    {
+        if (_isClosed)
+            return;
+        _listener.OnFailed(error);
+        _listener.OnConnectionChanged(WebRTCConnectionState.Failed);
     }
 
     public void Negotiate(string offer, IReadOnlyList<SendSection> sends)
@@ -113,78 +122,85 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     public bool SetMicrophone(AudioInput input, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
         bool isAutoGainControlEnabled)
     {
-        var feeder = input is DeviceAudioInput ? null : CustomAudioFeeder.For(input, Capture);
-
-        // A device, a tone or a file: the sound of other applications is not captured here
-        if (input is not DeviceAudioInput && feeder == null)
-            return false;
-
-        if (input is DeviceAudioInput device)
-            _runtime.SelectRecordingDevice(device.DeviceId);
-
-        var options = (feeder != null, isEchoCancellationEnabled, (int)WebRtcNoiseSuppression(noiseSuppression),
-            isAutoGainControlEnabled);
-        CustomAudioFeeder? previous;
-        bool isChanged;
-
-        lock (_lock)
+        lock (_mediaLock)
         {
             if (_isClosed)
+                return false;
+            var settings = (input, noiseSuppression, isEchoCancellationEnabled, isAutoGainControlEnabled);
+            if (_settings == settings && _microphone != null)
+                return true;
+            var microphone = _runtime.Audio.CreateMicrophone(input, _volume, noiseSuppression, _voiceGate,
+                isEchoCancellationEnabled, isAutoGainControlEnabled);
+            if (microphone == null)
+                return false;
+            var previous = _microphone;
+            if (previous != null)
+                previous.SamplesReady -= Capture;
+            microphone.SamplesReady += Capture;
+            if (!microphone.Start())
             {
-                feeder?.Dispose();
+                microphone.SamplesReady -= Capture;
+                microphone.Dispose();
+                if (previous != null)
+                    previous.SamplesReady += Capture;
                 return false;
             }
-
-            previous = _feeder;
-            _feeder = feeder;
-            isChanged = options != _options;
-            _options = options;
-
-            if (feeder != null)
-                feeder.Volume = _volume;
+            Volatile.Write(ref _microphone, microphone);
+            _settings = settings;
+            previous?.Dispose();
+            return true;
         }
-
-        previous?.Dispose();
-
-        if (isChanged)
-            Run(peer => NativeMethods.PeerSetAudioOptions(peer, options.Item1 ? 1 : 0, options.isEchoCancellationEnabled ? 1 : 0,
-                options.Item3, options.isAutoGainControlEnabled ? 1 : 0));
-
-        // Only now: before the options the peer still records the microphone and drops what comes
-        feeder?.Start();
-
-        return true;
     }
-
-    /// <summary>
-    /// The level the noise suppression of libwebrtc runs at: the moderate one for every level but off,
-    /// as the settings of libwebrtc have it on or off only. The levels of GStreamer, the neural ones
-    /// among them, are kept for it.
-    /// </summary>
-    private static NoiseSuppressionLevel WebRtcNoiseSuppression(NoiseSuppressionLevel level) =>
-        level == NoiseSuppressionLevel.Off ? NoiseSuppressionLevel.Off : NoiseSuppressionLevel.Moderate;
 
     public void SetMicrophoneVolume(double volume)
     {
-        NativeMethods.SetCaptureVolume(volume);
-
-        // A custom source goes past the processing that applies it to the microphone
-        lock (_lock)
+        lock (_mediaLock)
         {
             _volume = volume;
-
-            if (_feeder != null)
-                _feeder.Volume = volume;
+            _microphone?.SetVolume(volume);
         }
     }
 
-    private void Capture(short[] frame) => Run(peer =>
+    public void StopMicrophone()
     {
-        fixed (short* samples = frame)
-            NativeMethods.PeerCapture(peer, samples, frame.Length, CustomAudioFeeder.SampleRate, 1);
-    });
+        SetMicrophoneEnabled(false);
+        lock (_mediaLock)
+        {
+            ReleaseMicrophone();
+            _settings = null;
+            _voiceGate = null;
+        }
+    }
 
-    public void SetVoiceGate(VoiceGateOptions? voiceGate) => NativeVoiceGate.Set(this, voiceGate);
+    // Under _mediaLock. The reader is stopped outside the native-call lock so its last frame
+    // can finish while capture ownership returns to another active peer.
+    private void ReleaseMicrophone()
+    {
+        var microphone = Interlocked.Exchange(ref _microphone, null);
+        if (microphone == null)
+            return;
+        microphone.SamplesReady -= Capture;
+        microphone.Dispose();
+    }
+
+    private void Capture(ReadOnlySpan<short> frame)
+    {
+        var length = frame.Length;
+        fixed (short* samples = frame)
+        {
+            var data = (nint)samples;
+            Run(peer => NativeMethods.PeerCapture(peer, (short*)data, length, 48000, 1));
+        }
+    }
+
+    public void SetVoiceGate(VoiceGateOptions? voiceGate)
+    {
+        lock (_mediaLock)
+        {
+            _voiceGate = voiceGate;
+            _microphone?.SetVoiceGate(voiceGate);
+        }
+    }
 
     public void SetVolume(string mid, double volume) => Run(peer => NativeMethods.PeerSetVolume(peer, mid, volume));
 
@@ -197,22 +213,15 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     /// </summary>
     public void Dispose()
     {
-        CustomAudioFeeder? feeder;
-
         lock (_lock)
         {
             if (_isClosed)
                 return;
-
             _isClosed = true;
-            feeder = _feeder;
-            _feeder = null;
         }
-
-        feeder?.Dispose();
-
-        // The gate goes back to another peer that still sends the microphone, if any
-        NativeVoiceGate.Set(this, null);
+        _runtime.Audio.Failed -= OnAudioFailed;
+        lock (_mediaLock)
+            ReleaseMicrophone();
 
         Task.Run(() =>
         {
@@ -269,8 +278,21 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         {
             var text = Marshal.PtrToStringUTF8((nint)json) ?? "[]";
 
-            if (ListenerOf(context) is { } listener)
-                listener.OnStats(StatsReader.Read(text));
+            if (GCHandle.FromIntPtr(context).Target is NativeVoicePeer { _isClosed: false } peer)
+            {
+                var microphone = Volatile.Read(ref peer._microphone);
+                var stats = StatsReader.Read(text);
+                var levels = stats.Levels.Where(level => level.Mid != null)
+                    .Append(new VoiceLevel(null, microphone?.TakeLevel() ?? 0)).ToArray();
+                Client.Core.Media.VoiceGateSummary? summary = null;
+                var now = Environment.TickCount64;
+                if (now - peer._gateSummaryTaken >= 60_000)
+                {
+                    peer._gateSummaryTaken = now;
+                    summary = microphone?.TakeGateSummary();
+                }
+                peer._listener.OnStats(stats with { Levels = levels, GateSummary = summary });
+            }
         }
         catch
         {
