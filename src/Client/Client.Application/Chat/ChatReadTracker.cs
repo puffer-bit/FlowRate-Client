@@ -127,6 +127,10 @@ public sealed class ChatReadTracker(IChatReadStateRepository? repository = null,
             if (messageId <= state.LastReadMessageId && state.UnreadCount == 0 && state.MentionCount == 0)
                 return;
             updated = Advance(state, Math.Max(messageId, state.LastReadMessageId));
+            // A cached page can end before unread messages already tracked from live delivery.
+            // Repeating its read position must not feed StateChanged back into the UI indefinitely.
+            if (updated == state)
+                return;
             _states[chatId] = updated;
             Save(updated);
         }
@@ -137,7 +141,13 @@ public sealed class ChatReadTracker(IChatReadStateRepository? repository = null,
     private void Save(ChatReadState state)
     {
         if (repository != null && _coordinatorId is { } coordinatorId)
-            _save = SaveAsync(_save, coordinatorId, _currentUserId, state);
+        {
+            // SQLite can perform disk I/O and wait for locks synchronously even through async APIs.
+            // Keep that work off the caller and outside the tracker lock, preserving write order.
+            var previous = _save;
+            var userId = _currentUserId;
+            _save = Task.Run(() => SaveAsync(previous, coordinatorId, userId, state));
+        }
     }
 
     private async Task SaveAsync(Task previous, string coordinatorId, int userId, ChatReadState state)
