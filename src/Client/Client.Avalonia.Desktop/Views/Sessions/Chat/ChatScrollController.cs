@@ -69,10 +69,13 @@ internal sealed class ChatScrollController
         if (Panel is not { } panel || _view.ViewModel is not { } chat)
             return;
 
-        chat.IsScrolledUp = panel.DistanceToEnd > ScrolledUpThreshold;
+        chat.IsScrolledUp = chat.HasNewerMessages || panel.DistanceToEnd > ScrolledUpThreshold;
 
         if (panel.DistanceToStart < panel.ViewportHeight * PrefetchScreens)
             _ = LoadOlder(chat);
+
+        if (panel.DistanceToEnd < panel.ViewportHeight * PrefetchScreens)
+            _ = chat.LoadNewerMessagesAsync();
     }
 
     // One page per call: its rows change the extent of the list, which reports the scroll state again,
@@ -95,6 +98,9 @@ internal sealed class ChatScrollController
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_view.ViewModel is { IsLoadingNewer: true })
+            Panel?.HoldScrollPosition();
+
         // A message appended while the user reads the newest ones keeps the list at the bottom
         if (_view.ViewModel is { IsScrolledUp: false } chat
             && e.Action == NotifyCollectionChangedAction.Add

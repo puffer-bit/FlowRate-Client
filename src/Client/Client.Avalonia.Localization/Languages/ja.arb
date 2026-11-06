@@ -1,4 +1,14 @@
 {
+  "chat.pinned.count": "固定されたメッセージ · {count}",
+  "chat.pinned.loading": "固定されたメッセージを読み込み中…",
+  "chat.pinned.error": "固定されたメッセージを読み込めませんでした。",
+  "chat.pinned.empty": "固定されたメッセージはありません。",
+
+  "chat.menu.pin": "メッセージを固定",
+  "chat.menu.unpin": "メッセージの固定を解除",
+  "chat.pinned.title": "固定されたメッセージ",
+  "chat.pinned.attachment": "添付ファイル",
+  "chat.pinned.failed": "固定を変更できませんでした。接続、権限、固定数の上限（100件）を確認してください。",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "リリースチャンネル",
   "settings.about.releaseNotes.stable": "正式版",

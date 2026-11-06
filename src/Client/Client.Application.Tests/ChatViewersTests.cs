@@ -20,6 +20,38 @@ public sealed class ChatViewersTests
         { Id = id, Username = name, CoordinatorInstanceId = "coordinator" };
 
     [Fact]
+    public Task PinnedMessagesAndViewersShareOneSidePanel() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        using var command = ReactiveCommand.Create<int>(_ => { });
+        using var bar = new ChatStatusBarVM(new Client.Core.Sessions.ChatSessionModel
+        {
+            Id = 7, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
+        }) { Viewers = new ChatViewersVM(7, session, command) };
+        Assert.False(bar.IsSidePanelOpen);
+        bar.IsPinsOpen = true;
+        Assert.True(bar.IsSidePanelOpen);
+        Assert.False(bar.Viewers.IsOpen);
+        var panelStates = new List<bool>();
+        bar.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatStatusBarVM.IsSidePanelOpen))
+                panelStates.Add(bar.IsSidePanelOpen);
+        };
+        bar.Viewers.IsOpen = true;
+        Assert.False(bar.IsPinsOpen);
+        Assert.True(bar.IsSidePanelOpen);
+        bar.IsPinsOpen = true;
+        Assert.False(bar.Viewers.IsOpen);
+        Assert.True(bar.IsPinsOpen);
+        Assert.NotEmpty(panelStates);
+        Assert.All(panelStates, open => Assert.True(open));
+        bar.IsPinsOpen = false;
+        Assert.False(panelStates[^1]);
+        Assert.False(bar.IsSidePanelOpen);
+    });
+
+    [Fact]
     public Task DeltasPreserveExistingRowsAndNeverRequestAnotherSnapshot() => TestUiThread.RunAsync(() =>
     {
         var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();

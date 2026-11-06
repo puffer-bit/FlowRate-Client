@@ -434,6 +434,11 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
 
     /// <summary>Sets the current user's reaction; updates arrive through TextMessageEdited.</summary>
+    Task<RequestResult<ChatHistoryPage>> RequestChatPinnedMessages(int chatId);
+    Task<RequestResult<ChatHistoryWindow>> RequestChatHistoryWindow(int chatId, int messageId,
+        Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection direction, int take);
+    Task<RequestResult> SetMessagePinned(int chatId, int messageId, bool pinned);
+
     Task<RequestResult> SetMessageReaction(int chatId, int messageId, string emoji, bool isAdded);
 
     /// <summary>
