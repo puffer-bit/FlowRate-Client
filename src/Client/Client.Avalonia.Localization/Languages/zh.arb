@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "粗体",
+  "chat.format.italic": "斜体",
+  "chat.format.strike": "删除线",
+  "chat.format.code": "行内代码",
+  "chat.format.codeBlock": "代码块",
+  "chat.format.link": "链接",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "发布通道",
   "settings.about.releaseNotes.stable": "正式版",

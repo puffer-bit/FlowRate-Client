@@ -10,11 +10,23 @@ The client needs a FlowRate server to connect to.
 
 - Voice sessions with noise gate, mute and deafen, per-user volume and global hotkeys
 - Screen sharing with system audio, watched on request
-- Chat with images, mentions and unread counters
+- Chat with Markdown formatting, images, mentions and unread counters
 - Roles and moderation
 - Encrypted local database, with the key kept in the system keyring or behind a password
 - Automatic updates from GitHub Releases (desktop)
 - Interface in English, Russian, Spanish, Japanese and Chinese
+
+## Chat formatting
+
+Messages support `**bold**`, `*italic*`, `~~strikethrough~~`, inline code, fenced code blocks
+and `[label](https://example.com)` links. Other block syntax stays as plain text.
+The input context menu includes formatting commands with icons, also available as shortcuts:
+Ctrl+B (bold), Ctrl+I (italic), Ctrl+Shift+X (strikethrough), Ctrl+E (inline code),
+Ctrl+Shift+E (code block), and Ctrl+K (link). With no selection, commands insert delimiters
+at the caret. The link command selects the URL for replacement.
+
+Messages keep their original Markdown for editing. Selection and copying use the displayed text.
+Code and icons follow the current light or dark theme, including changes while the chat is open.
 
 ## Download
 

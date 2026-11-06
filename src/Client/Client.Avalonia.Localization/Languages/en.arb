@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Bold",
+  "chat.format.italic": "Italic",
+  "chat.format.strike": "Strikethrough",
+  "chat.format.code": "Inline code",
+  "chat.format.codeBlock": "Code block",
+  "chat.format.link": "Link",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "Release channel",
   "settings.about.releaseNotes.stable": "Releases",

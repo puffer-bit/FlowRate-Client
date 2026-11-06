@@ -338,6 +338,7 @@
 
                         <TextBox Grid.Column="1"
                                  x:Name="MessageInput"
+                                 text:ChatInputFormatting.Enabled="True"
                                  Classes="composer-input"
                                  Watermark="{Binding InputWatermark}"
                                  Text="{Binding InputtedText}"
@@ -365,6 +366,7 @@
                                         <menus:MenuItemButton Icon="{StaticResource SelectAllIcon}" Content="{l:Text chat.input.selectAll}" Gesture="Ctrl+A"
                                                               Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
                                                               Command="{Binding $parent[TextBox].SelectAll}"/>
+                                        <text:ChatFormattingMenu Target="{Binding $parent[TextBox]}"/>
                                     </StackPanel>
                                 </Flyout>
                             </TextBox.ContextFlyout>

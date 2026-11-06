@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "太字",
+  "chat.format.italic": "斜体",
+  "chat.format.strike": "取り消し線",
+  "chat.format.code": "インラインコード",
+  "chat.format.codeBlock": "コードブロック",
+  "chat.format.link": "リンク",
   "settings.about.releaseNotes.dev": "Dev",
   "settings.about.releaseNotes.channel": "リリースチャンネル",
   "settings.about.releaseNotes.stable": "正式版",
