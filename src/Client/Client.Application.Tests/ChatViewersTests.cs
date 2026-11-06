@@ -96,11 +96,17 @@ public sealed class ChatViewersTests
         using var profile = ReactiveCommand.Create<int>(_ => { });
         var banned = new List<int>();
         using var ban = ReactiveCommand.Create<(int UserId, string Name)>(target => banned.Add(target.UserId));
-        using var vm = new ChatViewersVM(7, session, profile, banUser: ban, currentUserId: 1);
+        var unbanned = new List<int>();
+        using var unban = ReactiveCommand.Create<int>(unbanned.Add);
+        using var vm = new ChatViewersVM(7, session, profile, banUser: ban, currentUserId: 1, unbanUser: unban);
         vm.Open();
         var row = Assert.Single(vm.Users);
         Assert.True(row.IsBanned);
         Assert.False(row.CanBan);
+        Assert.True(row.CanUnban);
+        Assert.True(row.CanModerate);
+        row.Unban.Execute().Subscribe();
+        Assert.Equal(3, Assert.Single(unbanned));
         row.Ban.Execute().Subscribe();
         Assert.Empty(banned);
         var changes = new List<bool>();
@@ -116,9 +122,51 @@ public sealed class ChatViewersTests
             Assert.Same(row, Assert.Single(vm.Users));
             Assert.Equal(state == UserState.Banned, row.IsBanned);
             Assert.Equal(state != UserState.Banned, row.CanBan);
+            Assert.Equal(state == UserState.Banned, row.CanUnban);
+            if (state == UserState.Normal)
+            {
+                row.Unban.Execute().Subscribe();
+                Assert.Single(unbanned);
+            }
         }
         Assert.Equal(new[] { false, true }, changes);
         Assert.Single(fake.Requests);
+    });
+
+    [Fact]
+    public Task UnbanRespectsPermissionsAndRoleHierarchy() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        var roles = new[]
+        {
+            new RoleModel(1, "everyone", null, 0, Permission.ViewSessions, true, 0),
+            new RoleModel(2, "moderator", null, 1, Permission.BanMembers, false, 0)
+        };
+        fake.Permissions = new CoordinatorPermissions(roles, [2]);
+        fake.Initial = [
+            new UserModel { Id = 1, Username = "Self", CoordinatorInstanceId = "coordinator", State = UserState.Banned },
+            new UserModel { Id = 2, Username = "Alice", CoordinatorInstanceId = "coordinator", State = UserState.Banned },
+            new UserModel { Id = 3, Username = "Moderator", CoordinatorInstanceId = "coordinator",
+                State = UserState.Banned, RoleIds = [2] }
+        ];
+        using var profile = ReactiveCommand.Create<int>(_ => { });
+        var unbanned = new List<int>();
+        using var unban = ReactiveCommand.Create<int>(unbanned.Add);
+        using var vm = new ChatViewersVM(7, session, profile, currentUserId: 1, unbanUser: unban);
+        vm.Open();
+        Assert.False(vm.Users.Single(row => row.Id == 1).CanUnban);
+        Assert.False(vm.Users.Single(row => row.Id == 3).CanUnban);
+        var alice = vm.Users.Single(row => row.Id == 2);
+        Assert.True(alice.CanUnban);
+
+        fake.Permissions = new CoordinatorPermissions(roles, []);
+        fake.RaisePermissionsChanged();
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(alice.CanUnban);
+        Assert.False(alice.CanModerate);
+        foreach (var row in vm.Users) row.Unban.Execute().Subscribe();
+        Assert.Empty(unbanned);
     });
 
     [Fact]

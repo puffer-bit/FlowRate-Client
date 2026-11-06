@@ -27,13 +27,17 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
     public bool IsBanned => _user.State == UserState.Banned;
+    public bool IsFrozen => _user.State == UserState.Suspended;
     public int? RoleColor => _owner.GetRoleColor(_user);
     public ReactiveCommand<RxVoid, RxVoid> ViewProfile { get; }
 
     public bool CanMention => _owner.CanMention;
     public bool CanBan => _owner.CanBan(_user);
+    public bool CanUnban => _owner.CanUnban(_user);
+    public bool CanModerate => CanBan || CanUnban;
     public ReactiveCommand<RxVoid, RxVoid> Mention { get; }
     public ReactiveCommand<RxVoid, RxVoid> Ban { get; }
+    public ReactiveCommand<RxVoid, RxVoid> Unban { get; }
 
     public ChatViewerVM(UserModel user, ReactiveCommand<int, RxVoid> viewProfile, ChatViewersVM owner)
     {
@@ -42,12 +46,15 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         ViewProfile = ReactiveCommand.Create(() => { viewProfile.Execute(Id).Subscribe(); });
         Mention = ReactiveCommand.Create(() => { if (CanMention) _owner.MentionUser(_user); });
         Ban = ReactiveCommand.Create(() => { if (CanBan) _owner.BanUser(_user); });
+        Unban = ReactiveCommand.Create(() => { if (CanUnban) _owner.UnbanUser(_user); });
     }
 
     public void RefreshAccess()
     {
         this.RaisePropertyChanged(nameof(CanMention));
         this.RaisePropertyChanged(nameof(CanBan));
+        this.RaisePropertyChanged(nameof(CanUnban));
+        this.RaisePropertyChanged(nameof(CanModerate));
         this.RaisePropertyChanged(nameof(RoleColor));
     }
 
@@ -56,6 +63,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         ViewProfile.Dispose();
         Mention.Dispose();
         Ban.Dispose();
+        Unban.Dispose();
     }
 
     public void Update(UserModel user)
@@ -65,6 +73,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(AvatarUrl));
         this.RaisePropertyChanged(nameof(Status));
         this.RaisePropertyChanged(nameof(IsBanned));
+        this.RaisePropertyChanged(nameof(IsFrozen));
         RefreshAccess();
     }
 }
@@ -76,6 +85,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     private readonly int _chatId;
     private readonly ChatComposerVM? _composer;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUser;
+    private readonly ReactiveCommand<int, RxVoid>? _unbanUser;
     private readonly int _currentUserId;
     private readonly ReactiveCommand<int, RxVoid> _viewProfile;
     private readonly List<ChatViewersChangedEvent> _pending = [];
@@ -96,9 +106,10 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
 
     public ChatViewersVM(int chatId, ICoordinatorSession session, ReactiveCommand<int, RxVoid> viewProfile,
         ChatComposerVM? composer = null, ReactiveCommand<(int UserId, string Name), RxVoid>? banUser = null,
-        int currentUserId = 0)
+        int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null)
     {
         (_chatId, _session, _viewProfile) = (chatId, session, viewProfile);
+        _unbanUser = unbanUser;
         (_composer, _banUser, _currentUserId) = (composer, banUser, currentUserId);
         session.PermissionsChanged += OnPermissionsChanged;
         if (composer != null) composer.PropertyChanged += OnComposerChanged;
@@ -111,9 +122,15 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     internal int? GetRoleColor(UserModel user) => _session.Permissions.Roles
         .LastOrDefault(role => role.Color != null && user.RoleIds.Contains(role.Id))?.Color;
 
-    internal bool CanBan(UserModel user) => _banUser != null && user.State != UserState.Banned && user.Id != _currentUserId
+    internal bool CanBan(UserModel user) => _banUser != null && user.State != UserState.Banned && CanModerate(user);
+
+    internal bool CanUnban(UserModel user) => _unbanUser != null && user.State == UserState.Banned && CanModerate(user);
+
+    private bool CanModerate(UserModel user) => user.Id != _currentUserId
         && _session.ConnectionStatus == CoordinatorState.Connected
         && _session.Permissions.Has(Permission.BanMembers) && _session.Permissions.Outranks(user.RoleIds);
+
+    internal void UnbanUser(UserModel user) => _unbanUser?.Execute(user.Id).Subscribe();
 
     internal void MentionUser(UserModel user) => _composer?.MentionUser(user.Id, user.Username);
     internal void BanUser(UserModel user) => _banUser?.Execute((user.Id, user.Username)).Subscribe();
