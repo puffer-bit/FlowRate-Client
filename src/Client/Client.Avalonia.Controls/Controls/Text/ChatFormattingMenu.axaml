@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text"
+             x:Class="Client.Avalonia.Controls.Text.ChatFormattingMenu"
+             x:Name="Root" x:DataType="text:ChatFormattingMenu">
+    <StackPanel Spacing="2" IsEnabled="{Binding #Root.Target.IsReadOnly, Converter={x:Static BoolConverters.Not}}">
+        <Separator/>
+        <menus:MenuItemButton Icon="{StaticResource FormatBoldIcon}" Content="{l:Text chat.format.bold}"
+                              Tag="Bold" Gesture="Ctrl+B" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+        <menus:MenuItemButton Icon="{StaticResource FormatItalicIcon}" Content="{l:Text chat.format.italic}"
+                              Tag="Italic" Gesture="Ctrl+I" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+        <menus:MenuItemButton Icon="{StaticResource FormatStrikeIcon}" Content="{l:Text chat.format.strike}"
+                              Tag="Strike" Gesture="Ctrl+Shift+X" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+        <menus:MenuItemButton Icon="{StaticResource FormatCodeIcon}" Content="{l:Text chat.format.code}"
+                              Tag="Code" Gesture="Ctrl+E" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+        <menus:MenuItemButton Icon="{StaticResource FormatCodeBlockIcon}" Content="{l:Text chat.format.codeBlock}"
+                              Tag="CodeBlock" Gesture="Ctrl+Shift+E" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+        <menus:MenuItemButton Icon="{StaticResource FormatLinkIcon}" Content="{l:Text chat.format.link}"
+                              Tag="Link" Gesture="Ctrl+K" Click="OnFormat" Focusable="False" menus:FlyoutMenu.CloseOnClick="True"/>
+    </StackPanel>
+</UserControl>

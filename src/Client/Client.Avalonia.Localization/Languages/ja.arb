@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "太字",
+  "chat.format.italic": "斜体",
+  "chat.format.strike": "取り消し線",
+  "chat.format.code": "インラインコード",
+  "chat.format.codeBlock": "コードブロック",
+  "chat.format.link": "リンク",
   "chat.pinned.count": "固定されたメッセージ · {count}",
   "chat.pinned.loading": "固定されたメッセージを読み込み中…",
   "chat.pinned.error": "固定されたメッセージを読み込めませんでした。",

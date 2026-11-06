@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "Negrita",
+  "chat.format.italic": "Cursiva",
+  "chat.format.strike": "Tachado",
+  "chat.format.code": "Código en línea",
+  "chat.format.codeBlock": "Bloque de código",
+  "chat.format.link": "Enlace",
   "chat.pinned.count": "Mensajes fijados · {count}",
   "chat.pinned.loading": "Cargando mensajes fijados…",
   "chat.pinned.error": "No se pudieron cargar los mensajes fijados.",

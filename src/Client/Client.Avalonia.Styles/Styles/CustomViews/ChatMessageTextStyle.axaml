@@ -1,0 +1,29 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Code inherits live theme resources, including when existing messages change theme. -->
+    <Style Selector=":is(TextBlock).msg-body Run.code">
+        <Setter Property="FontFamily" Value="monospace"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+
+    <!-- A web address in the text; underlined while the pointer is over it -->
+    <Style Selector=":is(TextBlock).msg-body Run.link">
+        <Setter Property="Foreground" Value="{DynamicResource LinkTextBrush}"/>
+    </Style>
+    <Style Selector=":is(TextBlock).msg-body Run.link.hover">
+        <Setter Property="TextDecorations" Value="Underline"/>
+    </Style>
+    <!-- A mentioned name; the current user's own stands out more -->
+    <Style Selector=":is(TextBlock).msg-body Run.mention">
+        <Setter Property="Foreground" Value="{DynamicResource MentionTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource MentionBackgroundBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector=":is(TextBlock).msg-body Run.mention.self">
+        <Setter Property="Foreground" Value="{DynamicResource MentionSelfTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource MentionSelfBackgroundBrush}"/>
+    </Style>
+
+</Styles>

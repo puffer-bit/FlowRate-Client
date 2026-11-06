@@ -1,4 +1,10 @@
 {
+  "chat.format.bold": "粗体",
+  "chat.format.italic": "斜体",
+  "chat.format.strike": "删除线",
+  "chat.format.code": "行内代码",
+  "chat.format.codeBlock": "代码块",
+  "chat.format.link": "链接",
   "chat.pinned.count": "置顶消息 · {count}",
   "chat.pinned.loading": "正在加载置顶消息…",
   "chat.pinned.error": "无法加载置顶消息。",

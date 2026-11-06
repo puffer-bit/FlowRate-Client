@@ -122,7 +122,7 @@ internal sealed class ChatSelectionController
     {
         if (vm.IsSequenceStart && !string.IsNullOrEmpty(vm.SenderName))
             yield return (NamePart, vm.SenderName);
-        if (vm.HasText && vm.Body?.Text is { Length: > 0 } body)
+        if (vm.HasText && vm.Body is { } messageBody && Client.Core.Chat.ChatMarkdown.Render(messageBody).Text is { Length: > 0 } body)
             yield return (BodyPart, body);
     }
 

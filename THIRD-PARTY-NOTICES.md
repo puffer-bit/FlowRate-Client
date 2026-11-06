@@ -14,6 +14,7 @@ below, each under its own license.
 | DynamicData | MIT |
 | GstSharp.Net (.App, .Sdp, .WebRTC) | LGPL-2.1-or-later |
 | MessageFormat | MIT |
+| [Markdig](https://github.com/xoofx/markdig) | BSD-2-Clause |
 | Microsoft.Data.Sqlite.Core, Microsoft.Extensions.* | MIT |
 | ReactiveUI, ReactiveUI.Avalonia, System.Reactive | MIT |
 | Serilog, Serilog.Extensions.Logging, Serilog.Sinks.Console, Serilog.Sinks.File | Apache-2.0 |
