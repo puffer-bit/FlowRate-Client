@@ -9,6 +9,8 @@
 
     <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
     <StackPanel Spacing="2">
+        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                              IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
         <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
                               IsVisible="{Binding CanReact}">
             <menus:MenuItemButton.Flyout>
@@ -35,6 +37,12 @@
             </menus:MenuItemButton.Flyout>
         </menus:MenuItemButton>
 
+        <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                              IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
+        <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                              IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
         <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
                               Command="{Binding StartReply}"/>
         <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"

@@ -24,12 +24,14 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsPinned));
             this.RaisePropertyChanged(nameof(CanEdit));
             this.RaisePropertyChanged(nameof(CanReact));
             this.RaisePropertyChanged(nameof(Reactions));
             this.RaisePropertyChanged(nameof(ReactionChoices));
             this.RaisePropertyChanged(nameof(HasReactions));
             this.RaisePropertyChanged(nameof(CanDelete));
+            this.RaisePropertyChanged(nameof(CanPin));
             this.RaisePropertyChanged(nameof(HasText));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
         }
@@ -72,7 +74,46 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanDelete));
+            this.RaisePropertyChanged(nameof(CanPin));
         }
+    }
+
+    public bool IsPinned => Message.IsPinned;
+    public bool IsPinAllowed { get; set; }
+    public string? PinError
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasPinError));
+        }
+    }
+    public bool HasPinError => PinError != null;
+    private bool _settingPin;
+    public bool CanPin => SetPinned != null && CanManageMessages && IsPinAllowed && !Message.IsSystem && !Message.IsDeleted
+                          && _composer is { IsConnected: true };
+    public Func<bool, Task<bool>>? SetPinned { get; init; }
+    public void TogglePinned() => _ = TogglePinnedAsync();
+    private async Task TogglePinnedAsync()
+    {
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await SetPinStateAsync(!IsPinned);
+    }
+
+    public Task UnpinAsync() => SetPinStateAsync(false);
+
+    private async Task SetPinStateAsync(bool pinned)
+    {
+        if (!CanPin || SetPinned == null || _settingPin || IsPinned == pinned) return;
+        _settingPin = true;
+        PinError = null;
+        try
+        {
+            if (!await SetPinned(pinned)) PinError = Strings.Get("chat.pinned.failed");
+        }
+        catch { PinError = Strings.Get("chat.pinned.failed"); }
+        finally { _settingPin = false; }
     }
 
     /// <summary>The author deletes their messages; roles that manage messages delete any.</summary>
@@ -243,6 +284,16 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public ReactiveCommand<RxVoid, RxVoid> OpenReplyCommand { get; }
 
+    public bool IsPinnedListItem { get; internal set; }
+
+    public void GoToMessage() => _ = GoToMessageAsync();
+
+    private async Task GoToMessageAsync()
+    {
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        _jumpToMessageCommand.Execute(Message.Id).Subscribe();
+    }
+
     private readonly ReactiveCommand<int, RxVoid> _jumpToMessageCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _replyCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editCommand;
@@ -341,7 +392,11 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
                 : Reply.WatchProperty(nameof(ChatReplyPreviewVM.IsDeleted), reply => !reply.IsDeleted));
     }
 
-    public void RefreshReactionAccess() => this.RaisePropertyChanged(nameof(CanReact));
+    public void RefreshReactionAccess()
+    {
+        this.RaisePropertyChanged(nameof(CanReact));
+        this.RaisePropertyChanged(nameof(CanPin));
+    }
 
     public void SetCopyText(string? text, bool isTextSelected)
     {

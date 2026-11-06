@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Droid.Views.ChatPinnedMessagesPanel"
+             x:DataType="chatVm:ActiveChatSessionVM">
+    <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
+        <Grid RowDefinitions="Auto,*" RowSpacing="6">
+            <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="14,*" ColumnSpacing="6" Margin="6,0"
+                      ToolTip.Tip="{l:Text chat.pinned.title}">
+                    <Image Width="14" Height="14" Source="{StaticResource PinIcon}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding PinsCaption}" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+                </Grid>
+                <TextBlock Text="{l:Text chat.pinned.loading}" IsVisible="{Binding IsLoadingPinnedMessages}"
+                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <TextBlock Text="{l:Text chat.pinned.error}" IsVisible="{Binding HasPinnedMessagesError}"
+                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <TextBlock Text="{l:Text chat.pinned.empty}" IsVisible="{Binding IsPinnedListEmpty}"
+                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding VisiblePinnedMessages}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="chatVm:ChatPinnedMessageVM">
+                            <Border Background="Transparent">
+                                <Border.ContextFlyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Spacing="2">
+                                            <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                                                                  IsEnabled="{Binding Content.CanPin}" Command="{Binding Unpin}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True"/>
+                                            <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                                                  Command="{Binding Open}" menus:FlyoutMenu.CloseOnClick="True"/>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Border.ContextFlyout>
+                                <views:ChatMessageView DataContext="{Binding Content}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

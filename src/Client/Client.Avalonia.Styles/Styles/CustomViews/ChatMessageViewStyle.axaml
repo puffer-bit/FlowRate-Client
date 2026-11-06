@@ -210,7 +210,7 @@
     <!-- ====== Images of a message ====== -->
     <Style Selector="ItemsControl.msg-images">
         <Setter Property="Margin" Value="0,4,0,0"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
 
     <!-- A tile shows the reduced copy cut to its shape; until it is loaded the tile is a plain plate
@@ -247,10 +247,11 @@
     <!-- ====== Files of a message, saved rather than shown ====== -->
     <Style Selector="ItemsControl.msg-files">
         <Setter Property="Margin" Value="0,4,0,0"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="Button.msg-file">
         <Setter Property="Padding" Value="6"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Margin" Value="0,0,0,4"/>
         <Setter Property="Width" Value="260"/>
         <Setter Property="CornerRadius" Value="8"/>
