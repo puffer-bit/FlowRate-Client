@@ -114,12 +114,16 @@
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 
-        <!-- The audience takes its own column, keeping both the timeline and composer beside it. -->
+        <!-- Both lists use the same column beside the timeline and composer. -->
         <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="2"
-                Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.Viewers.IsOpen}"
-                ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.Viewers.IsOpen}">
-            <chatViews:ChatViewersPanel Width="260" HorizontalAlignment="Left"
-                                        DataContext="{Binding StatusBar.Viewers}"/>
+                Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.IsSidePanelOpen}"
+                ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsSidePanelOpen}">
+            <Grid Width="260" HorizontalAlignment="Left">
+                <Panel IsVisible="{Binding StatusBar.Viewers.IsOpen}">
+                    <chatViews:ChatViewersPanel DataContext="{Binding StatusBar.Viewers}"/>
+                </Panel>
+                <chatViews:ChatPinnedMessagesPanel IsVisible="{Binding StatusBar.IsPinsOpen}"/>
+            </Grid>
         </Border>
 
         <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag

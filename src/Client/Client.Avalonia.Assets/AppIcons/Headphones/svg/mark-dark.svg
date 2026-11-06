@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="FlowRate headphones mark"><title>FlowRate headphones mark</title><g color="#232323"><ns0:path xmlns:ns0="http://www.w3.org/2000/svg" d="M112 281V240C112 160 176 100 256 100S400 160 400 240V281" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round" />
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" fill="currentColor">
+    <ns0:rect x="88" y="249" width="58" height="137" rx="27" />
+    <ns0:rect x="366" y="249" width="58" height="137" rx="27" />
+  </ns0:g>
+  <ns0:g xmlns:ns0="http://www.w3.org/2000/svg" fill="currentColor" transform="translate(83.1 139.2) scale(.66)">
+    <ns0:path d="M127 369V143H239V183H171V235H227V275H171V369Z" />
+    <ns0:path fill-rule="evenodd" d="M260 369V143H313C364 143 391 167 391 208C391 238 377 258 353 269L397 369H347L310 281H304V369ZM304 183V242H313C336 242 347 231 347 212C347 193 336 183 313 183Z" />
+  </ns0:g>
+</g></svg>

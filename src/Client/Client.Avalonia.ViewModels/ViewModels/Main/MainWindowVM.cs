@@ -378,7 +378,7 @@ public partial class MainWindowVM : ReactiveObject
             command.Execute(null);
     }
 
-    public async Task Initialize()
+    public async Task Initialize(Action? onInitialized = null)
     {
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
@@ -424,6 +424,14 @@ public partial class MainWindowVM : ReactiveObject
         await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
+
+        // Desktop keeps the window hidden until its saved appearance and chrome are ready.
+        onInitialized?.Invoke();
+
+        // Showing the desktop window schedules Loaded; let it register the session dialogs before
+        // auto connection can ask for credentials or certificate trust.
+        if (onInitialized != null)
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
 
         // Not awaited: the startup screen fades out while the auto connection is already on its way
         _ = HideStartupScreenAsync();

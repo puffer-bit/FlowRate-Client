@@ -49,7 +49,7 @@ LIBWEBRTC_DIR=src/Client/Client.LibWebRTC
 PUBLISH_ROOT=src/Client/Client.Avalonia.Desktop/bin/publish
 ANDROID_PROJECT=src/Client/Client.Avalonia.Android/Client.Avalonia.Android.csproj
 ANDROID_PUBLISH_DIR=src/Client/Client.Avalonia.Android/bin/publish/android
-ICON=src/Client/Client.Avalonia.Desktop/Assets/avalonia-logo.ico
+ICON=src/Client/Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico
 FEED_DIR=dist/.feed
 REPO_URL=https://github.com/puffer-bit/FlowRate-Client
 # The installed application goes to %LocalAppData%\FlowRateClient on Windows; the data of the user

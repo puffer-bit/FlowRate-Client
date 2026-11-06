@@ -52,11 +52,13 @@ public partial class ActiveChatSessionVM
 
             if (page != null)
             {
-                AddMessages(page.Messages);
+                AddMessages(CurrentPage(page.Messages));
+                HistoryBoundsChanged();
                 _revision = page.Revision;
             }
 
             IsInitialLoading = false;
+            _ = LoadPinnedMessagesAsync();
 
             // The cache is as old as the last run. A page from the server may still be older than
             // a notification that came while it was on its way
@@ -75,6 +77,15 @@ public partial class ActiveChatSessionVM
             RemoveTyping(message.SenderUserId);
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
+            if (_deletedMessages.ContainsKey(message.Id)) return;
+            if (_messageChanges.TryGetValue(message.Id, out var previous) && message.Revision <= previous.Revision) return;
+            _messageChanges[message.Id] = message;
+            if (HasNewerMessages)
+            {
+                UnreadBelowCount++;
+                if (message.IsMine) _ = GoToLatestAsync();
+                return;
+            }
             if (AddMessages([message], isNew: true) == 0)
                 return;
 
@@ -109,6 +120,8 @@ public partial class ActiveChatSessionVM
         {
             TrackRevision(revision);
             _cache.Remove(messageId, _revision);
+            _deletedMessages[messageId] = revision;
+            RemovePinnedMessage(messageId);
             RemoveMessage(messageId);
         });
     }
@@ -131,6 +144,7 @@ public partial class ActiveChatSessionVM
 
             // Notifications sent while the connection was down are lost, so ask what they were about
             _wasDisconnected = false;
+            _ = LoadPinnedMessagesAsync();
             if (!IsInitialLoading)
                 RequestSync();
         });
@@ -211,17 +225,23 @@ public partial class ActiveChatSessionVM
     /// </summary>
     private async Task ReloadAsync()
     {
-        await UiThread.RunAsync(() =>
+        await _historyGate.WaitAsync();
+        try
         {
-            _messageVms.Clear();
-            _newestMessageId = 0;
-            _pager.Reset();
-            _seenRevision = 0;
-            _timeline.Clear();
-            this.RaisePropertyChanged(nameof(HasMessages));
-            IsInitialLoading = true;
-        });
+            if (_isDisposed) return;
+            await UiThread.RunAsync(() =>
+            {
+                _messageVms.Clear();
+                _newestMessageId = 0;
+                _pager.Reset();
+                _seenRevision = 0;
+                _timeline.Clear();
+                this.RaisePropertyChanged(nameof(HasMessages));
+                IsInitialLoading = true;
+            });
 
-        await LoadInitialPage(fromCache: false);
+            await LoadInitialPage(fromCache: false);
+        }
+        finally { _historyGate.Release(); }
     }
 }

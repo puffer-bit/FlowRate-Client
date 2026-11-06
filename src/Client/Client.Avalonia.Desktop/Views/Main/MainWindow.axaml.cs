@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Client.Services;
 using Avalonia;
 using Avalonia.Controls;
@@ -113,10 +114,28 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
                 viewModel.ChatMessageReceived += OnChatMessageReceived;
                 System.Reactive.Disposables.Disposable.Create(() => viewModel.ChatMessageReceived -= OnChatMessageReceived)
                     .DisposeWith(disposables);
-
-                ViewModel?.Initialize();
             });
         }
+    }
+
+    public async Task InitializeBeforeShowAsync(Action showWindow)
+    {
+        var viewModel = ViewModel!;
+
+        // Startup interactions must work before view activation. A password or recovery prompt
+        // needs a visible owner even though the saved appearance cannot yet be read.
+        using var messages = viewModel.ShowMessageBox.RegisterHandler(async context =>
+        {
+            showWindow();
+            context.SetOutput(await MessageBoxInteraction.ShowAsync(context.Input, this));
+        });
+        using var passwords = viewModel.AskDatabasePassword.RegisterHandler(async context =>
+        {
+            showWindow();
+            context.SetOutput(await DatabasePasswordInteraction.ShowAsync(context.Input, this));
+        });
+
+        await viewModel.Initialize(showWindow);
     }
 
     // The message is of somebody else and its chat is not muted. The sound is made also for the

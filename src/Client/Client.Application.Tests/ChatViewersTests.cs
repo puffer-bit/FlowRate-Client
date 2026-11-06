@@ -20,6 +20,38 @@ public sealed class ChatViewersTests
         { Id = id, Username = name, CoordinatorInstanceId = "coordinator" };
 
     [Fact]
+    public Task PinnedMessagesAndViewersShareOneSidePanel() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        using var command = ReactiveCommand.Create<int>(_ => { });
+        using var bar = new ChatStatusBarVM(new Client.Core.Sessions.ChatSessionModel
+        {
+            Id = 7, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
+        }) { Viewers = new ChatViewersVM(7, session, command) };
+        Assert.False(bar.IsSidePanelOpen);
+        bar.IsPinsOpen = true;
+        Assert.True(bar.IsSidePanelOpen);
+        Assert.False(bar.Viewers.IsOpen);
+        var panelStates = new List<bool>();
+        bar.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatStatusBarVM.IsSidePanelOpen))
+                panelStates.Add(bar.IsSidePanelOpen);
+        };
+        bar.Viewers.IsOpen = true;
+        Assert.False(bar.IsPinsOpen);
+        Assert.True(bar.IsSidePanelOpen);
+        bar.IsPinsOpen = true;
+        Assert.False(bar.Viewers.IsOpen);
+        Assert.True(bar.IsPinsOpen);
+        Assert.NotEmpty(panelStates);
+        Assert.All(panelStates, open => Assert.True(open));
+        bar.IsPinsOpen = false;
+        Assert.False(panelStates[^1]);
+        Assert.False(bar.IsSidePanelOpen);
+    });
+
+    [Fact]
     public Task DeltasPreserveExistingRowsAndNeverRequestAnotherSnapshot() => TestUiThread.RunAsync(() =>
     {
         var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
@@ -144,6 +176,51 @@ public sealed class ChatViewersTests
         Assert.Single(fake.Requests);
     });
 
+    [Fact]
+    public Task RoleColorsFollowHighestColoredRoleAndRefreshAfterChanges() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        fake.Permissions = new CoordinatorPermissions([
+            new RoleModel(1, "everyone", null, 0, Permission.ViewSessions, true, 0),
+            new RoleModel(2, "member", 0x112233, 1, Permission.None, false, 0),
+            new RoleModel(3, "moderator", 0x445566, 2, Permission.None, false, 0),
+            new RoleModel(4, "admin", null, 3, Permission.None, false, 0)
+        ], []);
+        fake.Initial = [new UserModel
+            { Id = 1, Username = "Alice", CoordinatorInstanceId = "coordinator", RoleIds = [2, 3, 4] },
+            User(2, "Bob")];
+        using var profile = ReactiveCommand.Create<int>(_ => { });
+        using var vm = new ChatViewersVM(7, session, profile);
+        vm.Open();
+        var alice = vm.Users.Single(row => row.Id == 1);
+        Assert.Equal(0x445566, alice.RoleColor);
+        Assert.Null(vm.Users.Single(row => row.Id == 2).RoleColor);
+        var changes = new List<int?>();
+        alice.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatViewerVM.RoleColor)) changes.Add(alice.RoleColor);
+        };
+
+        fake.Raise(new(7, fake.Requests.Single().Id, [new UserModel
+            { Id = 1, Username = "Alice", CoordinatorInstanceId = "coordinator", RoleIds = [2] }], []));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0x112233, changes[^1]);
+
+        fake.Permissions = new CoordinatorPermissions([
+            new RoleModel(2, "member", 0x778899, 1, Permission.None, false, 0)
+        ], []);
+        fake.RaisePermissionsChanged();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0x778899, changes[^1]);
+
+        fake.Permissions = CoordinatorPermissions.None;
+        fake.RaisePermissionsChanged();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Null(changes[^1]);
+        Assert.Same(alice, vm.Users.Single(row => row.Id == 1));
+    });
+
     public class AudienceSession : DispatchProxy
     {
         public CoordinatorPermissions Permissions { get; set; } = CoordinatorPermissions.None;
@@ -151,7 +228,9 @@ public sealed class ChatViewersTests
         public Task<RequestResult<IReadOnlyList<UserModel>>>? Pending { get; set; }
         public List<(Guid Id, bool Subscribe)> Requests { get; } = [];
         private Action<ChatViewersChangedEvent>? _changed;
+        private Action<CoordinatorPermissions>? _permissionsChanged;
         public void Raise(ChatViewersChangedEvent delta) => _changed?.Invoke(delta);
+        public void RaisePermissionsChanged() => _permissionsChanged?.Invoke(Permissions);
 
         protected override object? Invoke(MethodInfo? method, object?[]? args)
         {
@@ -159,6 +238,8 @@ public sealed class ChatViewersTests
             {
                 case "add_ChatViewersChanged": _changed += (Action<ChatViewersChangedEvent>)args![0]!; return null;
                 case "remove_ChatViewersChanged": _changed -= (Action<ChatViewersChangedEvent>)args![0]!; return null;
+                case "add_PermissionsChanged": _permissionsChanged += (Action<CoordinatorPermissions>)args![0]!; return null;
+                case "remove_PermissionsChanged": _permissionsChanged -= (Action<CoordinatorPermissions>)args![0]!; return null;
                 case "get_Permissions": return Permissions;
                 case "get_ConnectionStatus": return CoordinatorState.Connected;
                 case "SetChatViewersSubscription":

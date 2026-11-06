@@ -22,6 +22,8 @@ internal static class ChatMessageMapper
             DelayedSentTime = dto.DelayedSentTime,
             DisposeTime = dto.DisposeTime,
             EditTime = dto.EditTime,
+            PinnedAt = dto.PinnedAt,
+            PinnedByUserId = dto.PinnedByUserId,
 
             TextContent = MapTextContent(dto.TextContent),
             ReplyContent = MapReplyContent(dto.ReplyContent),
