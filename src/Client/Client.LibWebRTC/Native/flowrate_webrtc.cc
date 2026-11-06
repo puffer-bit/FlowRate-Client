@@ -662,7 +662,8 @@ fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context, int e
 
   peer->connection->RegisterRTCPeerConnectionObserver(peer);
 
-  CreateMicrophone(factory, peer, false, echo_cancellation, noise_suppression, auto_gain_control, false);
+  // Desktop capture is processed by GStreamer and injected into a custom source.
+  CreateMicrophone(factory, peer, true, 0, 0, 0, false);
 
   return peer;
 }

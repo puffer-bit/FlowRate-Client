@@ -1,8 +1,8 @@
 # Client.LibWebRTC
 
 The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
-buffer (NetEq), the processing of the microphone (APM) and the estimate of the network. On the desktop
-it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
+buffer (NetEq), codecs and the estimate of the network. GStreamer captures, processes and plays
+all desktop audio; Android keeps its platform audio processing. On the desktop it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
 has no other engine. On the desktop it also carries the screens, shown and watched, with their sound;
 Android watches them only, decoded by libwebrtc itself (see below).
 
@@ -104,9 +104,9 @@ the streams of an application on PipeWire), cut into 10 ms and pushed into an `f
 own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX,
 as the GStreamer transport does; nothing of the processing of the microphone touches it.
 Its source leaves audio processing options unset through `flowrate_screen_audio_options.patch`:
-libwebrtc applies sender options to the shared capture processor, so explicitly disabling AGC or
-echo cancellation for screen audio would also disable them for the microphone, even after the screen
-audio stops. Custom microphone sources continue to apply the user's processing settings.
+the legacy native capture processor is shared between senders. Desktop microphone processing now
+runs independently in GStreamer, so screen sender options cannot override the user's gain or echo
+cancellation settings.
 
 To check this regression on Windows, use two clients with libwebrtc and enable AGC and echo
 cancellation on the client sharing its screen. Compare its microphone volume before screen sharing,
@@ -123,20 +123,54 @@ as it has no `IVideoMedia`.
 The native library is built from source by hand and committed: `Build/prebuilt/<rid>/`. Neither CI nor
 the publish scripts build it. How to build it, on Linux and on Windows, is in `Build/README.md`.
 
-## What differs from the GStreamer voice
+## Desktop audio
 
-- The microphone and the speakers are the devices of libwebrtc (PulseAudio, WASAPI). The device of the
-  settings is found by its name, as PulseAudio gives libwebrtc no ids.
-- Noise suppression is the one of libwebrtc at the moderate level, on for every level but off; RNNoise
-  is not used. The audio settings show it as a single switch while libwebrtc is chosen, and hide the
-  voice detection; their microphone test, which runs on GStreamer, then uses the moderate WebRTC level
-  and no detection.
-- The automatic gain control is the adaptive digital one of libwebrtc, switched by the same setting as
-  the one of GStreamer. WebRTC itself takes the analog one on the desktop, which moves the volume of
-  the microphone in the system; `Build/patches/flowrate_audio_processing.patch` replaces it, and lets
-  the level of noise suppression be ours instead of always the high one.
-- The processing runs at 48 kHz, so the voice keeps its band above 16 kHz, as with GStreamer.
-- The voice gate is `VoiceGateDecision` on the peaks of the processed microphone, with the pre-roll and
-  the ramps of the GStreamer gate; it has no voice detection.
-- The levels of the voices we receive are taken before the playback volume, so a voice turned down or
-  muted still lights its speaking indicator.
+The desktop uses the existing GStreamer microphone processing and playback sink with libwebrtc's
+codecs and network handling. No second GStreamer RTP jitter buffer or decoder is involved.
+
+```text
+GStreamer microphone -> RNNoise / webrtcdsp -> input gain -> voice gate -> 48 kHz mono S16 PCM
+    -> custom libwebrtc source -> Opus -> network
+network -> libwebrtc / NetEq / PLC -> decode and mix, including track volumes -> 48 kHz stereo S16 PCM
+    -> GStreamer playback shaping -> webrtcechoprobe -> audio sink
+```
+
+- `IVoiceAudioDevice` is the media boundary. `GstVoiceAudioDevice` owns one playback pipeline and
+  one processed microphone for all native peers. It shares the microphone frames between callers;
+  the last caller to configure it controls its settings until released, then its predecessor resumes.
+- Capture reuses `MicrophoneChain`, `MicrophoneProcessing`, `VoiceGate` and the same settings as the
+  microphone test. The neural modes and speech detection use the bundled `audiornnoise` plugin.
+  An older GStreamer runtime without it keeps the existing Moderate fallback.
+- Playback and microphone DSP share a top-level GStreamer pipeline and clock. The existing echo
+  probe sees the actual mixed playback, after shaping and per-track volume. The microphone names
+  this probe only when echo cancellation is enabled. Native APM capture processing is bypassed.
+- `Native/flowrate_audio.cc` implements a device without platform hardware. GStreamer's clocked
+  sink requests each 10 ms block through `fr_pull_playout`; this calls `NeedMorePlayData`, retaining
+  NetEq, packet-loss concealment and native mixing. The source queue holds at most two blocks.
+  A playback stall rebases timestamps instead of replaying a burst of old PCM.
+- Capture ends in 10 ms frames and a two-buffer, dropping appsink. A slow transport cannot build
+  an unbounded capture backlog. Screen audio remains an independent custom source, without
+  microphone processing.
+- Speaking indicators use processed capture peaks and remote levels before playback volume.
+  Voice-gate summaries come from the shared GStreamer gate.
+- The native ABI is checked before initialization. An old DLL/SO without external audio support is
+  rejected, so the desktop factory falls back to GStreamer rather than opening a second audio device.
+  **Both platform prebuilts must be rebuilt before release.** The external audio bridge does not
+  change Android's Java peer.
+
+## Audio bridge checks
+
+With the bundled GStreamer runtime and a matching native prebuilt, run:
+
+```bash
+dotnet run --project src/Client/Client.Audio.SmokeChecks/Client.Audio.SmokeChecks.csproj
+```
+
+This uses synthetic capture and a clocked fakesink, without opening the microphone or speakers.
+It checks playout cadence and recovery after a 300 ms output stall, 10 ms capture, gain, gate,
+both neural modes with the echo probe, shared capture ownership and native peer restart. It does
+not measure acoustic echo reduction or replace an end-to-end network test.
+
+Before release, compare against native playback with packet loss, jitter and a short outage:
+check intelligibility, recovery without growing playout delay, per-user volume and muting,
+then test echo cancellation on speakers and device changes during a call.

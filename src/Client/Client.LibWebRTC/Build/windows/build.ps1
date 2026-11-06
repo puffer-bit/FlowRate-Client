@@ -313,6 +313,7 @@ flowrate_webrtc.dll, built by Build/windows/build.ps1
 Date:      $date
 WebRTC:    webrtc-sdk/webrtc $webrtcCommit
 Wrapper:   webrtc-sdk/libwebrtc $wrapperTag
+Audio:     GStreamer capture/playback, external PCM ABI 1
 Patches:   $($webrtcPatches -join ' ') $($flowratePatches -join ' ') flowrate_target
 FlowRate:  $flowrateCommit
 SHA-256:   $hash
