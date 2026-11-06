@@ -20,6 +20,11 @@ internal sealed class GstProcessedMicrophone : IDisposable
     private readonly nint _voiceHandle;
     private readonly Element? _volume;
     private readonly AppSinkReader _reader;
+    private readonly Pad _pcmInput;
+    private readonly ILogger _logger;
+    private long _lastLatencyReport;
+    private long _maxAge;
+    private int _lateFrames;
     private bool _disposed;
 
     public event AudioSamplesHandler? SamplesReady;
@@ -29,6 +34,7 @@ internal sealed class GstProcessedMicrophone : IDisposable
         ILogger logger)
     {
         _pipeline = pipeline;
+        _logger = logger;
         _branch = Bin.New("native_microphone");
         try
         {
@@ -50,18 +56,21 @@ internal sealed class GstProcessedMicrophone : IDisposable
             _volume = Track(monitor.GetByName(MicrophoneChain.InputVolumeName));
             var level = Track(monitor.GetByName(MicrophoneChain.GateLevelName));
             var valve = Track(monitor.GetByName(MicrophoneChain.GateValveName));
+            var delay = Track(monitor.GetByName(MicrophoneChain.GateDelayName));
             var voice = Track(monitor.GetByName(MicrophoneChain.VoiceLevelName));
             var voiceValve = Track(monitor.GetByName(MicrophoneChain.VoiceValveName));
-            if (level != null && valve != null)
+            if (level != null && valve != null && delay != null)
             {
                 var detector = voice != null && voiceValve != null ? new VoiceGate.VoiceDetector(voice, voiceValve) : null;
-                _gate = new VoiceGate("native_microphone", level, valve, detector, gate);
+                _gate = new VoiceGate("native_microphone", level, valve, delay, detector, gate);
                 _levelHandle = level.Handle;
                 _voiceHandle = voice?.Handle ?? 0;
             }
 
             pipeline.Add(_branch);
             var sink = output.GetByName("pcm") ?? throw new InvalidOperationException("Missing PCM sink");
+            _pcmInput = sink.GetStaticPad("sink") ?? throw new InvalidOperationException("Missing PCM input pad");
+            _wrappers.Add(_pcmInput);
             _reader = new AppSinkReader(sink, "native microphone", OnSample,
                 error => logger.LogWarning(error, "Failed to deliver processed microphone PCM"));
         }
@@ -90,6 +99,29 @@ internal sealed class GstProcessedMicrophone : IDisposable
         using var buffer = sample.GetBuffer();
         if (buffer == null)
             return;
+
+        // The native custom source does not carry PTS. Do not turn a stale captured buffer
+        // into a freshly timestamped RTP frame after the hardware or processing has stalled.
+        var pts = GstVideoNative.GetPts(buffer.Handle);
+        if (pts >= 0 && GstTimingNative.ToRunningTime(_pcmInput.Handle, pts) is { } captured &&
+            GstTimingNative.GetCurrentRunningTime(_pipeline.Handle) is { } now)
+        {
+            var age = Math.Max(0, now - captured);
+            _maxAge = Math.Max(_maxAge, age);
+            var late = age > 150_000_000;
+            if (late)
+                _lateFrames++;
+            if (now - _lastLatencyReport >= 5_000_000_000)
+            {
+                _logger.LogDebug("Microphone PCM age: {AgeMs:F1} ms, maximum {MaxAgeMs:F1} ms; discarded {LateFrames} stale frames",
+                    age / 1e6, _maxAge / 1e6, _lateFrames);
+                _lastLatencyReport = now;
+                _maxAge = 0;
+                _lateFrames = 0;
+            }
+            if (late)
+                return;
+        }
         using var map = buffer.Map(MapFlags.Read);
         var samples = MemoryMarshal.Cast<byte, short>(map.Span);
         SamplesReady?.Invoke(samples);
