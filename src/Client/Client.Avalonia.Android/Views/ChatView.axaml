@@ -662,6 +662,8 @@
                         </Flyout>
                     </menus:MenuItemButton.Flyout>
                 </menus:MenuItemButton>
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                      IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
                 <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
                               IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
                               Command="{Binding TogglePinned}"/>

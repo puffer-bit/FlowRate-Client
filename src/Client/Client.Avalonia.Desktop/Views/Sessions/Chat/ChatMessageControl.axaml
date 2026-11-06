@@ -101,17 +101,20 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatImageVM">
-                            <Button Classes="msg-image"
-                                    Width="{Binding TileWidth}" Height="{Binding TileHeight}"
-                                    chatVm:ChatImagePresence.Image="{Binding}"
-                                    Command="{Binding OpenCommand}"
-                                    ToolTip.Tip="{Binding Image.FileName}">
-                                <Panel>
-                                    <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
-                                    <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
-                                           IsVisible="{Binding IsFailed}"/>
-                                </Panel>
-                            </Button>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                     MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}">
+                                <Button Classes="msg-image"
+                                        Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                        chatVm:ChatImagePresence.Image="{Binding}"
+                                        Command="{Binding OpenCommand}"
+                                        ToolTip.Tip="{Binding Image.FileName}">
+                                    <Panel>
+                                        <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
+                                        <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
+                                               IsVisible="{Binding IsFailed}"/>
+                                    </Panel>
+                                </Button>
+                            </Viewbox>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -121,9 +124,16 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatFileVM">
                             <StackPanel>
-                                <chatViews:ChatAudioPlayer IsVisible="{Binding IsAudio}"/>
-                                <chatViews:ChatVideoPlayer IsVisible="{Binding IsVideo}"/>
+                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                         MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
+                                    <chatViews:ChatAudioPlayer/>
+                                </Viewbox>
+                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                         MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsVideo}">
+                                    <chatViews:ChatVideoPlayer/>
+                                </Viewbox>
                                 <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
+                                        MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
                                         Command="{Binding OpenCommand}"
                                         ToolTip.Tip="{Binding ActionToolTip}">
                                     <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">

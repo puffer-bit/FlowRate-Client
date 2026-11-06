@@ -9,6 +9,8 @@
 
     <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
     <StackPanel Spacing="2">
+        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                              IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
         <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
                               IsVisible="{Binding CanReact}">
             <menus:MenuItemButton.Flyout>

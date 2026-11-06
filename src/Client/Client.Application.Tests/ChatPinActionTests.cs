@@ -42,6 +42,29 @@ public class ChatPinActionTests
     });
 
     [Fact]
+    public Task PinnedMessageNavigationClosesMenuBeforeJumpingToTheOriginal() => TestUiThread.RunAsync(() =>
+    {
+        var actions = new List<string>();
+        using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
+        using var users = ReactiveCommand.Create<int>(_ => { });
+        using var jump = ReactiveCommand.Create<int>(id => { actions.Add($"jump:{id}"); });
+        var content = new ChatMessageVM(Message(true), 1, messages, jump, messages, messages, users,
+            _ => Task.FromResult(true));
+        Assert.False(content.IsPinnedListItem);
+        _ = new ChatPinnedMessageVM(content, () => Task.CompletedTask);
+        Assert.True(content.IsPinnedListItem);
+        using var close = content.CloseFlyoutInteraction.RegisterHandler(context =>
+        {
+            actions.Add("close");
+            context.SetOutput(RxVoid.Default);
+        });
+
+        content.GoToMessage();
+
+        Assert.Equal(new[] { "close", "jump:1" }, actions);
+    });
+
+    [Fact]
     public Task PinningRequiresModerationAndConnection_AndWaitsForServerState() => TestUiThread.RunAsync(() =>
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });

@@ -139,6 +139,9 @@ public sealed class ChatPinnedMessageVM
     public ChatPinnedMessageVM(ChatMessageVM content, Func<Task> open)
     {
         Content = content;
+        Content.IsPinnedListItem = true;
+        Content.IsSequenceStart = true;
+        Content.IsSequenceEnd = true;
         _open = open;
     }
 }
