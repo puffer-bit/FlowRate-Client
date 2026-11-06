@@ -4,8 +4,8 @@ using Avalonia.Input;
 namespace Client.Views.Main;
 
 /// <summary>
-/// What the main window shows over everything while the application starts: a ring and the stage the
-/// start is at. Fades out once the application is loaded.
+/// What the main window shows over everything while the application starts: the theme-aware logo,
+/// a ring and the current startup stage. Fades out once the application is loaded.
 /// </summary>
 internal partial class StartupScreen : UserControl
 {
