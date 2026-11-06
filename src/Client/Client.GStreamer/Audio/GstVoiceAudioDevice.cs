@@ -48,6 +48,10 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                     "max-time=20000000 leaky-type=downstream " +
                     "caps=\"audio/x-raw,format=S16LE,rate=48000,channels=2,layout=interleaved\" ! " +
                     "clocksync name=playout_clock sync=true sync-to-first=false ! " +
+                    // Buffer only after pacing. This supplies the output's processing deadline
+                    // and tolerates scheduler jitter without reading NetEq ahead of the clock.
+                    "queue name=playout_cushion max-size-buffers=0 max-size-bytes=0 " +
+                    "max-size-time=60000000 min-threshold-time=20000000 ! " +
                     "audioconvert ! " + VoicePlaybackSink.ShapingDescription + probe +
                     "audioconvert ! audioresample ! " + (PlaybackSink ?? VoicePlaybackSink.Description));
                 _playout = _pipeline.GetByName("playout") ?? throw new InvalidOperationException("Missing playout source");
@@ -69,12 +73,10 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                         var now = GstPcmNative.RunningTime(pipeline);
                         if (now > _nextTimestamp + 50_000_000)
                         {
-                            // Bound the work on the streaming thread after a long suspension.
-                            var skipped = (int)Math.Min((now - _nextTimestamp) / 10_000_000, 200UL);
-                            for (var frame = 0; frame < skipped; frame++)
-                                read(pcm);
-                            logger.LogWarning("Audio output resumed {DelayMs:F0} ms late; discarded {Frames} stale playout frames",
-                                (now - _nextTimestamp) / 1e6, skipped);
+                            // Keep one NetEq pull per output frame. Bulk pulls here turn
+                            // a scheduling stall into additional skips in every received voice.
+                            logger.LogWarning("Audio output resumed {DelayMs:F0} ms late; resynchronizing output timestamps",
+                                (now - _nextTimestamp) / 1e6);
                             _nextTimestamp = now;
                         }
                         read(pcm);

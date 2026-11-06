@@ -23,7 +23,7 @@ public static class VoicePlaybackSink
 
     private const string ClientName = "FlowRate voices";
 
-    // Four hardware periods leave room for scheduling jitter without the default 200 ms tail.
+    // Six requested hardware periods leave room for scheduling jitter.
     private const long BufferTime = AudioDeviceLatency.BufferTimeMicroseconds;
     private const long LatencyTime = AudioDeviceLatency.PeriodTimeMicroseconds;
 
@@ -47,9 +47,10 @@ public static class VoicePlaybackSink
     // A pulsesink only works with a sound server to talk to, which reaching READY proves
     private static string Choose()
     {
-        // autoaudiosink leaves WASAPI's low-latency mode off and its 200 ms ringbuffer intact.
+        // Request a 10 ms period instead of WASAPI's minimum hardware period. The explicit
+        // clock pacing in the native bridge bounds read-ahead independently of buffer capacity.
         if (OperatingSystem.IsWindows())
-            return $"wasapi2sink name={ElementName} low-latency=true buffer-time={BufferTime} latency-time={LatencyTime}";
+            return $"wasapi2sink name={ElementName} low-latency=false buffer-time={BufferTime} latency-time={LatencyTime}";
 
         using var probe = ElementFactory.Make("pulsesink", null);
 
