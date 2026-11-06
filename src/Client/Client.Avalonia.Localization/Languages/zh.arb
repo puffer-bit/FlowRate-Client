@@ -69,7 +69,7 @@
   "roles.permission.kick": "踢出成员",
   "roles.permission.kick.description": "可从任何会话中踢出。主持人可在自己的会话中操作。",
   "roles.permission.ban": "封禁成员",
-  "roles.permission.ban.description": "可在任何会话中封禁。主持人可在自己的会话中操作。",
+  "roles.permission.ban.description": "全局账号和 IP 封禁、原因记录与解封。",
   "roles.permission.approve": "批准成员",
   "roles.permission.approve.description": "允许或拒绝等待加入会话的用户。",
   "roles.permission.manageMessages": "管理消息",

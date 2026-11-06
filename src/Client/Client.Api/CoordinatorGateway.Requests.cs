@@ -177,9 +177,15 @@ internal partial class CoordinatorGateway
         return response.Users.Select(user => user.ToModel()).ToList();
     }
 
-    public async Task<UserModel> SetUserState(int userId, UserState state)
+    public async Task<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans(bool history = false) =>
+        (await SendRequestAsync<CoordinatorBansResponse>(new CoordinatorBansRequest(history))).Bans;
+
+    public async Task RevokeBan(Guid banId) =>
+        await SendRequestAsync<CoordinatorRevokeBanResponse>(new CoordinatorRevokeBanRequest(banId));
+
+    public async Task<UserModel> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null)
     {
-        var request = new CoordinatorSetUserStateRequest(userId, state);
+        var request = new CoordinatorSetUserStateRequest(userId, state, kind, reason, expiresAt, address);
 
         return (await SendRequestAsync<CoordinatorSetUserStateResponse>(request)).User.ToModel();
     }

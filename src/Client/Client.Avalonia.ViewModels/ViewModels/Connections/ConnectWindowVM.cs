@@ -274,7 +274,7 @@ public class ConnectWindowVM : ReactiveObject
 
             if (session.ConnectionStatus != CoordinatorState.Connected)
             {
-                var message = DescribeConnectionFailure(session.ConnectionStatus, rejection);
+                var message = DescribeConnectionFailure(session.ConnectionStatus, rejection, session.BanReason);
                 session.Dispose();
                 await HandleConnectionError(message);
                 return;
@@ -335,11 +335,11 @@ public class ConnectWindowVM : ReactiveObject
         return true;
     }
 
-    private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection) =>
+    private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection, string? banReason) =>
         state switch
         {
             CoordinatorState.AuthenticationFailed => Strings.Get("connect.failed.authFailed"),
-            CoordinatorState.Denied => Strings.Get("connect.failed.banned"),
+            CoordinatorState.Denied => Strings.Get("connect.failed.banned") + (string.IsNullOrWhiteSpace(banReason) ? "" : "\n" + banReason),
             CoordinatorState.PasskeyRequired => Strings.Get("connect.failed.passkeyRequired"),
             CoordinatorState.ClientOutdated => Strings.Get("connect.failed.clientOutdated"),
             CoordinatorState.ServerOutdated => Strings.Get("connect.failed.serverOutdated"),

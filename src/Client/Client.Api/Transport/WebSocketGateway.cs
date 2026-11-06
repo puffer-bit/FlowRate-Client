@@ -79,10 +79,20 @@ internal partial class WebSocketGateway : IWebSocketGateway
         catch (Exception ex)
         {
             var mismatch = GetProtocolMismatch(connection);
+            string? banReason = null;
+            if (connection.HandshakeStatusCode == HttpStatusCode.Forbidden)
+            {
+                banReason = "Access denied.";
+                if (connection.HandshakeResponseHeaders?.TryGetValue("FlowRate-Ban-Reason", out var values) == true)
+                {
+                    try { banReason = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(values.First())); }
+                    catch (FormatException) { }
+                }
+            }
             await connection.DisposeAsync();
             if (mismatch != null)
                 LogProtocolMismatch(ProtocolVersion.Current, mismatch.ServerMinVersion, mismatch.ServerVersion);
-            return new TransportConnectResult(false, ex.Message, rejectedCertificate, mismatch);
+            return new TransportConnectResult(false, ex.Message, rejectedCertificate, mismatch, BanReason: banReason);
         }
 
         // Subscribed only once connected, so a failed attempt is reported by its result, not as a lost connection

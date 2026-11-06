@@ -14,6 +14,8 @@ namespace Client.Core.Coordinator;
 /// </summary>
 public abstract record CoordinatorEvent;
 
+public sealed record BannedEvent(string? Reason) : CoordinatorEvent;
+
 public sealed record ChatViewersChangedEvent(int ChatId, Guid SubscriptionId,
     IReadOnlyList<UserModel> Upserted, IReadOnlyList<int> Removed) : CoordinatorEvent;
 
