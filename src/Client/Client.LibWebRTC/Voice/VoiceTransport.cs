@@ -13,7 +13,7 @@ namespace Client.LibWebRTC.Voice;
 /// <summary>
 /// Voice of a hybrid session over libwebrtc, through the <see cref="IVoicePeer"/> of the platform.
 /// The description of the SFU is built the way the GStreamer transport builds it for webrtcbin;
-/// libwebrtc answers it, captures the microphone and plays the voices. Screens are watched and shown
+/// libwebrtc answers it; the platform peer supplies capture and playback. Screens are watched and shown
 /// where the platform hands the video out (<see cref="IEncodedVideoReceiver"/>) and takes it in
 /// encoded (<see cref="IVoicePeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
 /// decodes them, libwebrtc only carries them. A peer that decodes the screens itself, as the one of
@@ -32,9 +32,6 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     // A reading comes a little before or after its time
     private const double IntervalSlack = 0.9;
-
-    // As often as the GStreamer transport tells what its gate did
-    private static readonly TimeSpan GateSummaryInterval = TimeSpan.FromMinutes(1);
 
     // The audio level, 0..1, above which a voice counts as speech, and how long it is held after it falls
     private const double SpeakingLevel = 0.02;
@@ -78,7 +75,6 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private IVoicePeer? _peer;
     private TransportParameters? _transportParameters;
     private Timer? _statsTimer;
-    private long _gateSummaryTaken = Environment.TickCount64;
     private bool _isVoiceMuted;
 
     // libwebrtc measures the microphone before the track that mutes it, so a muted one still reads loud
@@ -635,7 +631,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         sound?.Dispose();
 
         if (isMicrophone && isLastMicrophone)
-            peer?.SetVoiceGate(null);
+            peer?.StopMicrophone();
 
         Negotiate();
     }
@@ -1087,7 +1083,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             StatsSampled?.Invoke(reading);
         }
 
-        LogGateSummary();
+        LogGateSummary(stats.GateSummary);
     }
 
     /// <summary>
@@ -1127,17 +1123,9 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             PerfSampled?.Invoke(report);
     }
 
-    // The microphone of libwebrtc is one for the process, and so is its gate
-    private void LogGateSummary()
+    private void LogGateSummary(VoiceGateSummary? summary)
     {
-        var now = Environment.TickCount64;
-
-        if (now - _gateSummaryTaken < GateSummaryInterval.TotalMilliseconds)
-            return;
-
-        _gateSummaryTaken = now;
-
-        if (Native.NativeVoiceGate.TakeSummary() is { } summary)
+        if (summary != null)
             LogVoiceGateSummary(_sessionId, summary.ThresholdDb, summary.EffectiveThresholdDb, summary.NoiseFloorDb,
                 summary.OpenPercent, summary.Openings, summary.LoudestDb, summary.AverageOpenPeakDb);
     }

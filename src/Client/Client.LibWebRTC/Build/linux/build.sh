@@ -173,6 +173,7 @@ libflowrate_webrtc.so, built by Build/linux/build.sh
 Date:      $(date -u +%Y-%m-%dT%H:%M:%SZ)
 WebRTC:    webrtc-sdk/webrtc $WEBRTC_COMMIT
 Wrapper:   webrtc-sdk/libwebrtc $WRAPPER_TAG
+Audio:     GStreamer capture/playback, external PCM ABI 1
 Patches:   ${WEBRTC_PATCHES[*]} ${FLOWRATE_PATCHES[*]} flowrate_target
 FlowRate:  $flowrate_commit$dirty
 SHA-256:   $(sha256sum "$prebuilt/libflowrate_webrtc.so" | cut -d' ' -f1)
