@@ -40,7 +40,7 @@
                                                                   menus:FlyoutMenu.CloseOnClick="True" IsEnabled="{Binding CanMention}"
                                                                   Command="{Binding Mention}"/>
                                             <Separator IsVisible="{Binding CanBan}"/>
-                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}"
+                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}"
                                                                   Content="{l:Text peer.ban}" menus:FlyoutMenu.CloseOnClick="True"
                                                                   IsVisible="{Binding CanBan}" Command="{Binding Ban}"/>
                                         </StackPanel>

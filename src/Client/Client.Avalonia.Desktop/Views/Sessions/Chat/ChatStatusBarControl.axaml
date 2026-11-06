@@ -33,7 +33,7 @@
     </UserControl.Styles>
     <!-- The background spans the whole width; only the content is inset -->
     <Border Background="{DynamicResource GeneralBrush}" Padding="12,0">
-        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="12">
+        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
 
             <Button Grid.Column="0" Classes="borderless" Padding="0"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
@@ -72,16 +72,18 @@
                     </StackPanel>
                 </Grid>
             </Button>
-            <ToggleButton Classes="viewersToggle" Grid.Column="1" Width="36" Height="36" Padding="8"
-                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
-                          IsChecked="{Binding IsPinsOpen, Mode=TwoWay}">
-                <Image Source="{StaticResource PinIcon}"/>
-            </ToggleButton>
-            <ToggleButton Classes="viewersToggle" Grid.Column="2" Width="36" Height="36" Padding="8"
-                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.viewers.title}"
-                          IsChecked="{Binding Viewers.IsOpen, Mode=TwoWay}">
-                <Image Source="{StaticResource BaseUsersIcon}"/>
-            </ToggleButton>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
+                              VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
+                              IsChecked="{Binding IsPinsOpen, Mode=TwoWay}">
+                    <Image Source="{StaticResource PinIcon}"/>
+                </ToggleButton>
+                <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
+                              VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.viewers.title}"
+                              IsChecked="{Binding Viewers.IsOpen, Mode=TwoWay}">
+                    <Image Source="{StaticResource BaseUsersIcon}"/>
+                </ToggleButton>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>
