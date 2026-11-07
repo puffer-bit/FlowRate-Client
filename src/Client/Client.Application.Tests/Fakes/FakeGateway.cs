@@ -4,6 +4,7 @@ using Client.Application.Ports.Repositories;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Push;
+using Client.Core.Sessions;
 using Client.Core.Users;
 using Shared.Enums;
 using Shared.Enums.Auth;
@@ -23,6 +24,7 @@ public class FakeGateway : DispatchProxy
     public int Disconnects { get; private set; }
     public List<(string Token, PushPlatform Platform, PushKey Key)> Registered { get; } = [];
     public List<string> Unregistered { get; } = [];
+    public List<NewSessionModel> CreatedSessions { get; } = [];
     /// <summary>What the server fails the push requests with; null accepts them.</summary>
     public ErrorCode? PushError { get; set; }
     public string ReplyToken { get; set; } = "reply-token";
@@ -44,6 +46,8 @@ public class FakeGateway : DispatchProxy
 
     /// <summary>What the server fails the login with; null lets it go on.</summary>
     public ErrorCode? LoginError { get; set; }
+    public string? LoginErrorDetails { get; set; }
+    public string? TransportBanReason { get; set; }
 
     /// <summary>The users banned, frozen, reinstated or deleted, with the state asked; null for a deletion.</summary>
     public List<(int UserId, UserState? State)> ModerationRequests { get; } = [];
@@ -118,8 +122,8 @@ public class FakeGateway : DispatchProxy
         {
             await Task.Yield();
             Connects++;
-            IsOpen = IsReachable;
-            return new TransportConnectResult(IsReachable, IsReachable ? null : "unreachable");
+            IsOpen = IsReachable && TransportBanReason == null;
+            return new TransportConnectResult(IsOpen, IsOpen ? null : "unreachable", BanReason: TransportBanReason);
         }
         finally
         {
@@ -167,7 +171,7 @@ public class FakeGateway : DispatchProxy
         SentLogins.Add((userIdentity, sessionToken));
 
         if (LoginError is { } loginError)
-            throw new RequestFailedException(loginError, null);
+            throw new RequestFailedException(loginError, LoginErrorDetails);
         // The token of the session lets the device in without the second stage, and is not told the identity
         if (sessionToken != null && sessionToken == SessionToken)
             return new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken());
@@ -229,6 +233,9 @@ public class FakeGateway : DispatchProxy
                 return null;
             case nameof(ICoordinatorGateway.GetRoles):
                 return Task.FromResult(Roles);
+            case nameof(ICoordinatorGateway.CreateSession):
+                CreatedSessions.Add((NewSessionModel)args![0]!);
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.ConnectWebSocketAsync):
                 return ConnectAsync();
             case nameof(ICoordinatorGateway.DisconnectWebSocketAsync):

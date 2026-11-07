@@ -39,6 +39,7 @@ public partial class CoordinatorSession
     private sealed record AttemptCompleted(int AttemptId, CoordinatorState State, Exception? Exception) : ConnectionMessage;
 
     private sealed record ConnectionLost(string Reason, int Epoch) : ConnectionMessage;
+    private sealed record BanReceived(string? Reason) : ConnectionMessage;
 
     private sealed record NetworkChanged(bool IsAvailable) : ConnectionMessage;
 
@@ -175,6 +176,7 @@ public partial class CoordinatorSession
 
     private Task HandleAsync(ConnectionMessage message) => message switch
     {
+        BanReceived banned => HandleBanAsync(banned),
         ConnectRequested connect => HandleConnectAsync(connect),
         DisconnectRequested disconnect => HandleDisconnectAsync(disconnect),
         VisibilityChanged { IsInFront: false } left => HandleLeftFront(left),
@@ -188,11 +190,22 @@ public partial class CoordinatorSession
         _ => Task.CompletedTask
     };
 
+    private async Task HandleBanAsync(BanReceived banned)
+    {
+        BanReason = banned.Reason;
+        await CloseConnectionAsync();
+        _phase = ConnectionPhase.Idle;
+        ConnectionStatus = CoordinatorState.Denied;
+        CompletePendingConnect();
+        CompleteRestore();
+    }
+
     private async Task HandleConnectAsync(ConnectRequested connect)
     {
         await CloseConnectionAsync();
         CompletePendingConnect();
 
+        BanReason = null;
         _isInFront = true;
         _pendingConnect = connect;
 
@@ -648,6 +661,12 @@ public partial class CoordinatorSession
                 return CoordinatorState.CertificateNotTrusted;
             }
 
+            if (connectResult.BanReason is { } banReason)
+            {
+                BanReason = banReason;
+                return CoordinatorState.Denied;
+            }
+
             if (connectResult.ProtocolMismatch is { } mismatch)
                 return mismatch.IsClientOutdated ? CoordinatorState.ClientOutdated : CoordinatorState.ServerOutdated;
 
@@ -724,6 +743,7 @@ public partial class CoordinatorSession
         catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed or ErrorCode.Banned
                                                            or ErrorCode.OnlineLimitReached or ErrorCode.UserLimitReached)
         {
+            if (exception.Code == ErrorCode.Banned) BanReason = exception.Details;
             LogAuthFailed(LogName);
             // The server keeps an unauthenticated socket open until it is closed from here
             await _gateway.DisconnectWebSocketAsync();

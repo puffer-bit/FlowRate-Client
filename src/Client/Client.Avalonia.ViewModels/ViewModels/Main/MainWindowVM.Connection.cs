@@ -81,6 +81,25 @@ public partial class MainWindowVM
         if (session.AccountPasswordToSave != user.AccountPassword)
             await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
 
+        try
+        {
+            var credentials = session.GetCurrentUserCredentials();
+            await _accounting.SaveCoordinatorInstanceAsync(coordinator, new SavedUserModel
+            {
+                CoordinatorId = coordinator.CoordinatorId,
+                Id = credentials.Id,
+                Username = credentials.Username,
+                UserIdentity = credentials.UserIdentity,
+                Password = user.Password,
+                AccountPassword = session.AccountPasswordToSave,
+                SessionToken = credentials.SessionToken
+            });
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinator.CoordinatorId);
+        }
+
         _coordinatorSession = session;
         await FinalizeCoordinatorConnection();
     }
@@ -424,7 +443,7 @@ public partial class MainWindowVM
         if (OpenedSessions == null)
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
-                _users.ViewProfileCommand, _users.BanUserCommand);
+                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand);
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
             OpenedSessions = sessions;
@@ -502,7 +521,7 @@ public partial class MainWindowVM
                 return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:
-                PostDisconnect(Strings.Get("main.reconnect.banned"));
+                PostDisconnect(Strings.Get("main.reconnect.banned") + (string.IsNullOrWhiteSpace(_coordinatorSession?.BanReason) ? "" : "\n" + _coordinatorSession.BanReason));
                 return;
             // Only a reconnect reports it here: the server was updated or rolled back while the user was online
             case CoordinatorState.ClientOutdated:
