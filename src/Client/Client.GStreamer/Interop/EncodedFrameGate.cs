@@ -11,7 +11,7 @@ namespace Client.GStreamer.Interop;
 /// Here a full appsrc drops the frames up to the next keyframe instead, and the caller asks for it.
 /// </summary>
 /// <remarks>Not thread-safe: the frames of one appsrc come from one thread, or under a lock.</remarks>
-public sealed class EncodedFrameGate(Element appsrc, ulong maxFrames)
+public sealed class EncodedFrameGate(Element appsrc, ulong maxFrames, ulong maxBytes = 0, ulong maxTime = 0)
 {
     private const string LevelProperty = "current-level-buffers";
 
@@ -63,14 +63,24 @@ public sealed class EncodedFrameGate(Element appsrc, ulong maxFrames)
         Queued = (int)Math.Min(level, int.MaxValue);
         _maxQueued = Math.Max(_maxQueued, Queued);
 
-        if (level >= maxFrames)
+        // Check every enabled limit here, rather than letting appsrc silently discard a reference
+        // frame. Permit a single oversized keyframe when empty so recovery remains possible.
+        var bytesFull = maxBytes > 0 && level > 0 &&
+            GstNative.GetUInt64(appsrc.Handle, "current-level-bytes") + (ulong)frame.Length > maxBytes;
+        var timeFull = maxTime > 0 && level > 0 &&
+            GstNative.GetUInt64(appsrc.Handle, "current-level-time") >= maxTime;
+        if (level >= maxFrames || bytesFull || timeFull)
         {
             _isWaitingForKeyFrame = true;
             return Drop();
         }
 
         _isWaitingForKeyFrame = false;
-        GstEncodedNative.Push(appsrc, frame);
+        if (!GstEncodedNative.Push(appsrc, frame))
+        {
+            _isWaitingForKeyFrame = true;
+            return Drop();
+        }
         return false;
     }
 

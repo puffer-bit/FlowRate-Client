@@ -24,7 +24,7 @@ public sealed class ChatVideoPlayback : IDisposable
         using var output = Global.ParseBinFromDescription(
             (preview ? "videoconvert ! videoscale ! video/x-raw,format=BGRA,width=400,height=225,pixel-aspect-ratio=1/1 ! "
                 : "videoconvert ! video/x-raw,format=BGRA ! ") +
-            "appsink name=frames max-buffers=2 drop=true wait-on-eos=false sync=true", true);
+            "appsink name=frames max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=true", true);
         _pipeline.SetProperty("video-sink", output);
         if (preview)
         {
