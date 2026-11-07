@@ -12,19 +12,42 @@ public static class ProcessLoopbackSource
 {
     private const string ElementName = "wasapi2src";
 
-    // The engine offers the process loopback from Windows 10 2004 on
-    private const int MinimumBuild = 19041;
+    // Earlier builds only offer device loopback, which would also capture our own playback.
+    private const int MinimumBuild = 20348;
 
-    public static bool IsAvailable =>
-        OperatingSystem.IsWindowsVersionAtLeast(10, 0, MinimumBuild) && ElementFactory.Find(ElementName) != null;
+    public static bool IsAvailable
+    {
+        get
+        {
+            using var source = CreateSupportedSource();
+            return source != null;
+        }
+    }
+
+    private static Element? CreateSupportedSource()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, MinimumBuild))
+            return null;
+
+        var source = ElementFactory.Make(ElementName, null);
+
+        // Process loopback properties are conditional and may be absent in the loaded plugin.
+        // Never fall back to device loopback when process filtering is unavailable.
+        if (source == null ||
+            (source.FindProperty("loopback-target-pid") != null && source.FindProperty("loopback-mode") != null))
+            return source;
+
+        source.Dispose();
+        return null;
+    }
 
     /// <returns>Null where the process loopback is not available.</returns>
     public static Element? Create(ProcessLoopbackAudioInput input)
     {
-        if (!IsAvailable || input.ProcessId == 0)
+        if (input.ProcessId == 0)
             return null;
 
-        var source = ElementFactory.Make(ElementName, null);
+        var source = CreateSupportedSource();
 
         if (source == null)
             return null;
