@@ -1,4 +1,6 @@
 {
+  "main.startup.restartWithoutMedia": "Reiniciar sin multimedia",
+  "main.startup.restartFailed": "No se pudo reiniciar la aplicación. Iníciala manualmente con --no-media.",
   "main.startup.development.title": "Aplicación en desarrollo",
   "main.startup.development.message": "FlowRate está en desarrollo. Algunas funciones pueden estar incompletas o funcionar incorrectamente.",
   "main.startup.development.hide": "No volver a mostrar",

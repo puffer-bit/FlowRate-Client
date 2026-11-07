@@ -230,6 +230,7 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<ServerSettingsVM, RxVoid> ShowServerSettings { get; } = new();
     public Interaction<ConnectWindowVM, ICoordinatorSession?> ShowConnectWindow { get; } = new();
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
+    public Interaction<RxVoid, RxVoid> RestartWithoutMedia { get; } = new();
     public Interaction<DatabasePasswordVM, bool> AskDatabasePassword { get; } = new();
     public Interaction<CreateSessionWindowVM, RxVoid> ShowCreateSessionWindow { get; } = new();
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
@@ -459,9 +460,31 @@ public partial class MainWindowVM : ReactiveObject
 
         if (result != ApplicationLoadResult.NoError)
         {
-            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
-                GetInitializationErrorMessage(result), Strings.Get("main.startup.title")));
+            var error = new MessageBoxVM(Icon.Fatal, Buttons.Ok,
+                GetInitializationErrorMessage(result), Strings.Get("main.startup.title"));
+            if (Client.Core.Media.MediaRuntime.IsEnabled && result is
+                ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                error.ButtonsList.Insert(0, new ButtonVM(Strings.Get("main.startup.restartWithoutMedia"), error.NoCommand));
 
+            if (await ShowMessageBox.Handle(error) == Result.No)
+            {
+                try
+                {
+                    await RestartWithoutMedia.Handle(default);
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Could not restart without media");
+                    await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("main.startup.restartFailed"), Strings.Get("main.startup.title")));
+                }
+            }
+
+            if (result is ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                Client.Tools.AppInfo.AppRestart.ExitAfterNativeFailure();
             Environment.Exit(-1);
             return;
         }

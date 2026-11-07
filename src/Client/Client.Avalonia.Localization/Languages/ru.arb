@@ -1,4 +1,6 @@
 {
+  "main.startup.restartWithoutMedia": "Перезапустить без медиа",
+  "main.startup.restartFailed": "Не удалось перезапустить приложение. Запустите его вручную с --no-media.",
   "main.startup.development.title": "Приложение в разработке",
   "main.startup.development.message": "FlowRate находится в стадии разработки. Некоторые функции могут быть недоступны или работать некорректно.",
   "main.startup.development.hide": "Больше не показывать",

@@ -1,4 +1,6 @@
 {
+  "main.startup.restartWithoutMedia": "メディアなしで再起動",
+  "main.startup.restartFailed": "アプリを再起動できませんでした。--no-media を指定して手動で起動してください。",
   "main.startup.development.title": "開発中のアプリ",
   "main.startup.development.message": "FlowRate は開発中です。一部の機能は未完成、または正しく動作しない場合があります。",
   "main.startup.development.hide": "今後表示しない",
