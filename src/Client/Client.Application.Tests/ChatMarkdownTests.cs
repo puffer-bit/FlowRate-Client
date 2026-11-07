@@ -86,7 +86,7 @@ public class ChatMarkdownTests
         var result = Parse("before\n```cs\n**literal**\nhttps://example.com\n```\nafter");
         Assert.Equal("before\n**literal**\nhttps://example.com\nafter", result.Text);
         Assert.Empty(result.Links);
-        Assert.Contains(result.Styles, span => span.Style == ChatTextStyle.Code);
+        Assert.Contains(result.Styles, span => span.Style == (ChatTextStyle.Code | ChatTextStyle.CodeBlock));
     }
 
     [Fact]
@@ -98,6 +98,28 @@ public class ChatMarkdownTests
         Assert.Equal("hello " + name + " ❤️", result.Text);
         Assert.Equal(new ChatMentionSpan(6, name.Length, true, 42), Assert.Single(result.Mentions));
         Assert.Empty(result.Links);
+    }
+
+    [Theory]
+    [InlineData("```\nfirst\nsecond\n```", "first\nsecond")]
+    [InlineData("```cs\r\nfirst\r\nsecond\r\n```", "first\r\nsecond")]
+    [InlineData("\n```\nfirst\n```", "first")]
+    [InlineData("\r\n```cs\r\nfirst\r\n```", "first")]
+    [InlineData("```\n\nfirst\n```", "\nfirst")]
+    public void CodeStartsWithItsFirstContentLine(string source, string expected)
+    {
+        var document = Parse(source);
+        Assert.Equal(expected, document.Text);
+    }
+
+    [Fact]
+    public void SeparateCodeBlocksKeepTheirOwnCopyContent()
+    {
+        var document = Parse("before\n```cs\n  first();\nsecond();\n```\nbetween\n```\nhttps://example.com\n```\nafter");
+        var blocks = document.Styles.Where(span => span.Style.HasFlag(ChatTextStyle.CodeBlock))
+            .Select(span => document.Text.Substring(span.Start, span.Length));
+        Assert.Equal(["  first();\nsecond();", "https://example.com"], blocks);
+        Assert.Empty(document.Links);
     }
 
     [Fact]
@@ -134,12 +156,14 @@ public class ChatMarkdownTests
         var scope = new ThemeVariantScope { Child = block, RequestedThemeVariant = ThemeVariant.Light };
         scope.Resources.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
         {
-            ["SecondaryTextBrush"] = Brushes.DimGray, ["LinkTextBrush"] = Brushes.Blue,
+            ["PrimaryTextBrush"] = Brushes.DimGray, ["LinkTextBrush"] = Brushes.Blue,
+            ["ColorOverlay"] = Color.Parse("#15000000"),
             ["ColorOverlayMedium"] = Color.Parse("#15000000")
         };
         scope.Resources.ThemeDictionaries[ThemeVariant.Dark] = new ResourceDictionary
         {
-            ["SecondaryTextBrush"] = Brushes.LightGray, ["LinkTextBrush"] = Brushes.LightBlue,
+            ["PrimaryTextBrush"] = Brushes.LightGray, ["LinkTextBrush"] = Brushes.LightBlue,
+            ["ColorOverlay"] = Color.Parse("#15FFFFFF"),
             ["ColorOverlayMedium"] = Color.Parse("#15FFFFFF")
         };
         scope.Styles.Add(new StyleInclude(new Uri("avares://Client.Avalonia.Styles/"))
@@ -152,6 +176,7 @@ public class ChatMarkdownTests
         var link = block.Inlines!.OfType<Run>().Single(run => run.Classes.Contains("link"));
         code.ApplyStyling();
         link.ApplyStyling();
+        Assert.Equal(FontWeight.SemiBold, code.FontWeight);
         Assert.Equal(Brushes.DimGray, code.Foreground);
         Assert.Equal(Brushes.Blue, link.Foreground);
         Assert.Equal(Color.Parse("#15000000"), Assert.IsAssignableFrom<ISolidColorBrush>(code.Background).Color);
@@ -163,6 +188,20 @@ public class ChatMarkdownTests
         Assert.Equal(Brushes.DimGray, code.Foreground);
         Assert.Equal(Brushes.Blue, link.Foreground);
         Assert.Equal(Color.Parse("#15000000"), Assert.IsAssignableFrom<ISolidColorBrush>(code.Background).Color);
+
+        ChatMessageText.SetBody(block, new("before\n```cs\nfirst\nsecond\n```\nafter", []));
+        Assert.Contains("has-code-block", block.Classes);
+        Assert.Equal(new global::Avalonia.Thickness(10, 4, 42, 4), block.Padding);
+        var fenced = block.Inlines!.OfType<Run>().Single(run => run.Classes.Contains("code-block"));
+        fenced.ApplyStyling();
+        Assert.Equal(FontWeight.Normal, fenced.FontWeight);
+        Assert.Equal(Brushes.Transparent, fenced.Background);
+        scope.RequestedThemeVariant = ThemeVariant.Dark;
+        Assert.Equal(Color.Parse("#15FFFFFF"),
+            Assert.IsAssignableFrom<ISolidColorBrush>(ChatMessageText.GetCodeBlockBackground(block)).Color);
+        ChatMessageText.SetBody(block, new("plain", []));
+        Assert.DoesNotContain("has-code-block", block.Classes);
+        Assert.Equal(default, block.Padding);
     });
 
     [Fact]
