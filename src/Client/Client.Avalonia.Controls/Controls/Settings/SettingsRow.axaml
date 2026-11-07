@@ -59,6 +59,9 @@
                 </Panel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <Style Selector="settings|SettingsRow:transitions-ready">
         <Setter Property="Transitions">
             <Transitions>
                 <anim:SmoothBrushTransition Property="Foreground" Duration="{anim:Motion Medium}"/>
