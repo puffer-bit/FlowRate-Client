@@ -53,11 +53,10 @@ internal sealed class VideoFramePump : IDisposable
 
     /// <summary>
     /// A sink that never waits for the clock: frames are placed in time where they are shown.
-    /// GPU frames are held by the screen until the next one replaces them, so the sink keeps
-    /// one more than it hands out.
+    /// Keeps only the newest pending frame; the presenter retains the frame it currently displays.
     /// </summary>
     public static string SinkDescription(string name) =>
-        $"appsink name={name} max-buffers=2 drop=true wait-on-eos=false sync=false async=false";
+        $"appsink name={name} max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=false async=false";
 
     private void Deliver(Sample sample)
     {

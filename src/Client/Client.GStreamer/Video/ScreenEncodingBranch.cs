@@ -33,7 +33,7 @@ internal static class ScreenEncodingBranch
     // The encoded picture ends in {3}, see EncodedEnd.
     private const string Description =
         "queue max-size-buffers=2 leaky=downstream ! " +
-        "videoconvert ! videorate drop-only=true max-rate={0} ! tee name=split " +
+        "videorate drop-only=true max-rate={0} ! tee name=split " +
 
         "split. ! queue max-size-buffers=1 leaky=downstream ! {6}" +
         "{2} ! " +
@@ -86,7 +86,7 @@ internal static class ScreenEncodingBranch
     private const string Vp8End = "video/x-vp8 ! " + EncodedSink;
 
     private const string EncodedSink =
-        "appsink name=" + EncodedSinkName + " max-buffers=8 drop=false wait-on-eos=false sync=false async=false";
+        "appsink name=" + EncodedSinkName + " max-buffers=8 drop=false enable-last-sample=false wait-on-eos=false sync=false async=false";
 
     // Scales and converts for the encoder: on the GPU where the encoder is a VA-API one, whose
     // postprocessor does both, otherwise on the CPU

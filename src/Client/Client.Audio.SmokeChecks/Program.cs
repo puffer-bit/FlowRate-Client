@@ -12,6 +12,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 GstNativeLibraryResolver.Register();
 if (!GstLoader.LoadGstreamer(NullLogger.Instance))
     throw new InvalidOperationException("Cannot load the bundled GStreamer runtime");
+if (args.Contains("--video-buffers"))
+{
+    VideoBufferSmokeChecks.Run();
+    return;
+}
 using var devices = new GstAudioDeviceProvider(NullLogger<GstAudioDeviceProvider>.Instance);
 Require(MicrophoneProcessing.HasNeural, "Bundled RNNoise plugin is available");
 using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevice>.Instance)
@@ -20,6 +25,14 @@ using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevic
 };
 string? audioError = null;
 audio.Failed += error => Interlocked.CompareExchange(ref audioError, error, null);
+
+if (args.Contains("--video-negotiation"))
+{
+    var negotiationRuntime = new LibWebRTCRuntime(audio, NullLogger<LibWebRTCRuntime>.Instance);
+    Require(negotiationRuntime.TryLoad(), negotiationRuntime.Load() ?? "Load native runtime");
+    await VideoNegotiationSmokeChecks.Run(negotiationRuntime);
+    return;
+}
 
 var pulls = 0;
 var stall = 0;

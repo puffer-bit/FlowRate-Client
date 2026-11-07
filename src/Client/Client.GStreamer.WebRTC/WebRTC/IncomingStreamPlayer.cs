@@ -85,7 +85,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // Never drops: a lost frame would break every one up to the next keyframe; the queue in front
     // drops instead
     private const string EncodedSink =
-        "appsink name=" + VideoSinkName + " max-buffers=8 drop=false wait-on-eos=false sync=false async=false";
+        "appsink name=" + VideoSinkName + " max-buffers=8 drop=false enable-last-sample=false wait-on-eos=false sync=false async=false";
 
     private const string VolumeElementName = "volume";
 
