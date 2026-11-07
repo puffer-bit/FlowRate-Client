@@ -34,6 +34,9 @@ public sealed class ChatMediaPlayback : IDisposable
 
     public bool Begin(IChatMediaSession session, ChatFileVM file)
     {
+        if (!Client.Core.Media.MediaRuntime.IsEnabled)
+            return false;
+
         Stop();
         var generation = ++_generation;
         var coordinator = file.CoordinatorSession;

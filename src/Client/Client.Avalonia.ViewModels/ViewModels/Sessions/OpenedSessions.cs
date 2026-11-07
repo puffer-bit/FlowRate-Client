@@ -100,7 +100,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     public IMainWindowContentVM? Open(SessionModel sessionModel) => sessionModel switch
     {
         ChatSessionModel chatModel => OpenChat(chatModel),
-        HybridSessionModel hybridModel => OpenHybridSession(hybridModel),
+        HybridSessionModel hybridModel when Client.Core.Media.MediaRuntime.IsEnabled => OpenHybridSession(hybridModel),
         _ => null
     };
 

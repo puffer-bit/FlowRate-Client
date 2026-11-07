@@ -1,4 +1,8 @@
 {
+  "media.disabled.title": "媒体功能已禁用",
+  "media.disabled.startup": "应用已以无媒体模式启动。语音会话和内置音视频播放不可用，通知声音仍可使用。请不带 --no-media 重新启动以启用媒体功能。",
+  "media.disabled.settings": "--no-media 模式下麦克风和视频设置不可用，界面声音设置仍可使用。请不带此选项重新启动以启用媒体功能。",
+  "media.disabled.voiceSession": "无媒体模式 (--no-media) 下无法加入语音会话。",
   "chat.format.bold": "粗体",
   "chat.format.italic": "斜体",
   "chat.format.strike": "删除线",

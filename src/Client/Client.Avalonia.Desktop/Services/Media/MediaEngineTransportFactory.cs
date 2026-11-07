@@ -16,6 +16,9 @@ internal sealed partial class MediaEngineTransportFactory(
 {
     public IWebRTCTransport Create(int sessionId, bool isPlaybackEnabled = true)
     {
+        if (!Client.Core.Media.MediaRuntime.IsEnabled)
+            throw new System.InvalidOperationException("Voice sessions are unavailable in --no-media mode");
+
         if (ExperimentalFeatures.UseLibWebRTC)
         {
             if (libWebRTC.IsAvailable)

@@ -289,6 +289,9 @@ public partial class ChatVideoPlayer : UserControl
 
     private void EnsurePreview()
     {
+        if (!MediaRuntime.IsEnabled)
+            return;
+
         if (!_ready || !_attached || !IsEffectivelyVisible || DataContext is not ChatFileVM { IsVideo: true } file)
             return;
         _file = file;
