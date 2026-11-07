@@ -72,14 +72,6 @@
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
         </Style>
 
-        <!-- The card that cannot be picked yet keeps its real colors: a dimmed miniature would show a wrong theme -->
-        <Style Selector="ListBox.themeCards ListBoxItem:disabled /template/ ContentPresenter">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <!-- Only its label is dimmed -->
-        <Style Selector="ListBox.themeCards ListBoxItem:disabled TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-        </Style>
 
         <Style Selector="ListBox.themeCards Border.frame">
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -167,7 +159,7 @@
                 </StackPanel>
             </StackPanel>
         </ListBoxItem>
-        <ListBoxItem IsEnabled="False" Cursor="Arrow">
+        <ListBoxItem Tag="{x:Static themes:ThemeType.System}">
             <StackPanel Spacing="6">
                 <Border Classes="frame" BorderThickness="2" CornerRadius="11" Padding="3">
                     <!-- Dark on one side of the diagonal, light on the other -->
