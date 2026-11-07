@@ -255,7 +255,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 ReleaseLocked(stale.Id, retired);
 
             var slot = _slots.FirstOrDefault(item => !item.IsPlaceholder && !item.IsSend && item.InboundId == null &&
-                                                     item.Kind == kind && item.Carries(inbound.MimeType));
+                                                     item.Kind == kind && item.Carries(inbound.MimeType, inbound.IsNackEnabled));
 
             if (slot == null)
                 _slots.Add(slot = new Slot { Kind = kind });
@@ -1281,8 +1281,13 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         /// <summary>The SSRC of the RTX stream of <see cref="PausedSsrc"/>, 0 for none.</summary>
         public uint PausedRtxSsrc { get; set; }
 
-        public bool Carries(string mimeType) =>
-            LastCodec == null || string.IsNullOrEmpty(mimeType) ||
-            LastCodec.EncodingName.Equals(RtpCodec.EncodingNameOf(mimeType), StringComparison.OrdinalIgnoreCase);
+        // A native answer reuses its previously negotiated feedback for a codec. An offer can
+        // therefore enable NACK while the answer and receive stream keep it disabled. Reuse
+        // receive sections only with the same NACK setting; other sections stay inactive.
+        public bool Carries(string mimeType, bool? nackEnabled = null) =>
+            LastCodec == null ||
+            ((string.IsNullOrEmpty(mimeType) ||
+              LastCodec.EncodingName.Equals(RtpCodec.EncodingNameOf(mimeType), StringComparison.OrdinalIgnoreCase)) &&
+             (nackEnabled == null || LastCodec.IsNackEnabled == nackEnabled));
     }
 }

@@ -68,6 +68,7 @@ public sealed class VoiceGate
     private const string PeakField = "peak";
 
     private readonly Element _level;
+    private readonly Element _delay;
     private readonly VoiceDetector? _detector;
     private readonly VoiceGateFade _valve;
     private readonly Lock _lock = new();
@@ -77,13 +78,15 @@ public sealed class VoiceGate
 
     /// <param name="level">Posts the level messages; silenced while the gate is off.</param>
     /// <param name="valve">The gate valve, closed when the branch is built.</param>
+    /// <param name="delay">The pre-roll queue, delayed only while the gate needs it.</param>
     /// <param name="detector">The voice detection of the branch, null when the runtime has no RNNoise.</param>
     /// <param name="options">How the gate decides, null keeps it open.</param>
-    public VoiceGate(string outboundId, Element level, Element valve, VoiceDetector? detector,
+    public VoiceGate(string outboundId, Element level, Element valve, Element delay, VoiceDetector? detector,
         VoiceGateOptions? options)
     {
         OutboundId = outboundId;
         _level = level;
+        _delay = delay;
         _detector = detector;
         _valve = new VoiceGateFade(valve);
 
@@ -128,6 +131,10 @@ public sealed class VoiceGate
     private void Apply(VoiceGateOptions? options)
     {
         _options = options;
+
+        var delay = options == null ? TimeSpan.Zero : PreRoll +
+            (options.IsVoiceDetectionEnabled && _detector != null ? VoiceDetectionDelay : TimeSpan.Zero);
+        _delay.SetProperty("min-threshold-time", (ulong)delay.TotalNanoseconds);
 
         // Levels are measured only while they are needed. RNNoise runs whenever the gate is on, even
         // without voice detection: it takes well under one percent of a core, and it tells a voice

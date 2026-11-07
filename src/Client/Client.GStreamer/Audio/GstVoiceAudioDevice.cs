@@ -44,26 +44,55 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                     $"audioconvert ! {MicrophoneProcessing.EchoProbeCaps} ! " +
                     $"{MicrophoneProcessing.EchoProbeElementName} name={_echoProbe} ! ";
                 _pipeline = (Pipeline)Global.ParseLaunch(
-                    "appsrc name=playout is-live=true format=time block=false max-buffers=2 leaky-type=downstream " +
+                    "appsrc name=playout is-live=true format=time block=false max-buffers=2 max-bytes=0 " +
+                    "max-time=20000000 leaky-type=downstream " +
                     "caps=\"audio/x-raw,format=S16LE,rate=48000,channels=2,layout=interleaved\" ! " +
+                    "clocksync name=playout_clock sync=true sync-to-first=false ! " +
+                    // Buffer only after pacing. This supplies the output's processing deadline
+                    // and tolerates scheduler jitter without reading NetEq ahead of the clock.
+                    "queue name=playout_cushion max-size-buffers=0 max-size-bytes=0 " +
+                    "max-size-time=60000000 min-threshold-time=20000000 ! " +
                     "audioconvert ! " + VoicePlaybackSink.ShapingDescription + probe +
                     "audioconvert ! audioresample ! " + (PlaybackSink ?? VoicePlaybackSink.Description));
                 _playout = _pipeline.GetByName("playout") ?? throw new InvalidOperationException("Missing playout source");
                 var pipeline = _pipeline;
                 var playout = _playout;
                 var pcm = new short[960];
+                ulong? timingStarted = null;
+                long maximumLead = 0;
+                var framesPushed = 0;
                 _nextTimestamp = 0;
-                // The sink requests frames on its hardware clock. There is no second timer or
-                // jitter buffer here; a paused output cannot accumulate seconds of stale PCM.
+                // need-data means queue space, not a hardware tick. clocksync blocks this
+                // streaming thread until the buffer's PTS before allowing the next pull.
+                // No queue may be inserted between appsrc and clocksync: it would allow
+                // NetEq to be read ahead into that queue instead of pacing each 10 ms frame.
                 playout.ConnectSignal("need-data", (_, _) =>
                 {
                     try
                     {
-                        read(pcm);
                         var now = GstPcmNative.RunningTime(pipeline);
                         if (now > _nextTimestamp + 50_000_000)
+                        {
+                            // Keep one NetEq pull per output frame. Bulk pulls here turn
+                            // a scheduling stall into additional skips in every received voice.
+                            logger.LogWarning("Audio output resumed {DelayMs:F0} ms late; resynchronizing output timestamps",
+                                (now - _nextTimestamp) / 1e6);
                             _nextTimestamp = now;
+                        }
+                        read(pcm);
                         GstPcmNative.Push(playout, pcm, _nextTimestamp);
+                        var lead = (long)_nextTimestamp - (long)now;
+                        maximumLead = Math.Max(maximumLead, lead);
+                        framesPushed++;
+                        timingStarted ??= now;
+                        if (now - timingStarted.Value >= 5_000_000_000)
+                        {
+                            logger.LogDebug("Playout pacing: {FramesPerSecond:F1} frames/s, clock lead {LeadMs:F1} ms, maximum {MaxLeadMs:F1} ms",
+                                framesPushed * 1e9 / (now - timingStarted.Value), lead / 1e6, maximumLead / 1e6);
+                            timingStarted = now;
+                            framesPushed = 0;
+                            maximumLead = 0;
+                        }
                         _nextTimestamp += 10_000_000;
                     }
                     catch (Exception error)
@@ -76,7 +105,8 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                     return null;
                 });
                 VoicePlaybackSink.SetMuted(_pipeline, false);
-                _bus = new GstBusWatcher(_pipeline.GetBus(), MessageType.Element | MessageType.Error | MessageType.Warning,
+                _bus = new GstBusWatcher(_pipeline.GetBus(),
+                    MessageType.Element | MessageType.Error | MessageType.Warning | MessageType.Latency,
                     OnMessage, "native audio", logger);
                 if (_pipeline.SetState(State.Playing) == StateChangeReturn.Failure)
                     throw new InvalidOperationException("Cannot start native audio playback");
@@ -93,7 +123,21 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
 
     private void OnMessage(Message message)
     {
-        if (message.Type == MessageType.Element)
+        if (message.Type == MessageType.Latency)
+        {
+            // There is no GLib main loop to handle latency changes when a microphone is added
+            // or its gate changes. Keep the output and the echo probe on the same latency.
+            var pipeline = Volatile.Read(ref _pipeline);
+            if (pipeline != null)
+            {
+                pipeline.RecalculateLatency();
+                using var output = pipeline.GetByName(VoicePlaybackSink.ElementName);
+                using var factory = output?.GetFactory();
+                logger.LogDebug("Audio output latency {LatencyMs} ms (sink: {Sink})",
+                    pipeline.GetConfiguredLatency().TotalMilliseconds, factory?.GetName());
+            }
+        }
+        else if (message.Type == MessageType.Element)
             Volatile.Read(ref _capture)?.OnMessage(message);
         else
         {

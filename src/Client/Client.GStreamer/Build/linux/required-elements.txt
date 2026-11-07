@@ -40,6 +40,7 @@ capsfilter
 appsrc
 appsink
 fakesink
+clocksync
 
 # Video
 videoconvert
