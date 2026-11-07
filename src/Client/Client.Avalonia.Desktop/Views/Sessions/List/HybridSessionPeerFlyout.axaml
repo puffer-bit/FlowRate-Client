@@ -158,7 +158,7 @@
                                       menus:FlyoutMenu.CloseOnClick="True"
                                       IsVisible="{Binding CanKick}"
                                       Command="{Binding Kick}"/>
-                <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossInCircleIcon}" Content="{l:Text peer.ban}"
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}" Content="{l:Text peer.ban}"
                                       menus:FlyoutMenu.CloseOnClick="True"
                                       IsVisible="{Binding CanBan}"
                                       Command="{Binding Ban}"/>
