@@ -150,6 +150,14 @@ jobs:
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
 
+      - name: Upload GStreamer installer log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gstreamer-win-x64-installer-log
+          path: ${{ runner.temp }}/flowrate-gstreamer-*/install.log
+          if-no-files-found: warn
+
       # Only once the Windows library is committed: until then the client falls back to GStreamer
       - name: Check published libwebrtc runtime
         if: hashFiles('src/Client/Client.LibWebRTC/Build/prebuilt/win-x64/flowrate_webrtc.dll') != ''

@@ -35,6 +35,7 @@ public sealed class UserActions
 
     /// <summary>Bans a user from the coordinator, once the user agrees to it.</summary>
     public ReactiveCommand<(int UserId, string Name), RxVoid> BanUserCommand { get; }
+    public ReactiveCommand<int, RxVoid> UnbanUserCommand { get; }
 
     /// <summary>Lets a peer waiting for the host into a hybrid session, or turns it away, which takes it out.</summary>
     public ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> AdmitPeerCommand { get; }
@@ -85,6 +86,7 @@ public sealed class UserActions
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
         BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);
+        UnbanUserCommand = ReactiveCommand.CreateFromTask<int>(UnbanUser, isConnected);
         AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
             isConnected);
         PokePeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, string? Message)>(PokePeer,
@@ -188,12 +190,13 @@ public sealed class UserActions
     // The user leaves its sessions and the coordinator with the ban, as from the server settings
     private async Task BanUser((int UserId, string Name) target)
     {
+        var form = new BanFormVM();
         if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Format("serverSettings.users.ban.question", ("name", target.Name)),
-                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+                Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        var result = await Session.SetUserState(target.UserId, UserState.Banned);
+        var result = await Session.SetUserState(target.UserId, UserState.Banned, form.Kind, form.Reason, form.ExpiresAt, form.Address);
 
         // A rejection is reported on its own
         if (result.IsSuccess || result.IsRejected)
@@ -201,6 +204,16 @@ public sealed class UserActions
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.ban.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int?)result.Error)));
+    }
+
+    private async Task UnbanUser(int userId)
+    {
+        var result = await Session.SetUserState(userId, UserState.Normal);
+        if (result.IsSuccess || result.IsRejected)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("serverSettings.users.action.unban"),
+            Strings.Format("serverSettings.users.error.failed", ("reason", result)));
     }
 
     private async Task AdmitPeer((int SessionId, int UserId, bool IsApproved) target)

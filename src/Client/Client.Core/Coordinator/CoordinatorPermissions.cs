@@ -101,5 +101,5 @@ public sealed class CoordinatorPermissions
 
     /// <summary>What the host of a hybrid session may do in it, whatever its roles.</summary>
     public const Permission HostPermissions =
-        Permission.ManageSessions | Permission.KickMembers | Permission.BanMembers | Permission.ApproveMembers;
+        Permission.ManageSessions | Permission.KickMembers | Permission.ApproveMembers;
 }

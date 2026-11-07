@@ -39,12 +39,6 @@
                          PlaceholderText="{l:Text serverSettings.security.ips.placeholder}"
                          Text="{Binding Form.AllowedIps}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow Title="{l:Text serverSettings.security.bannedIps}"
-                            ContentPlacement="Below">
-                <TextBox Height="80" AcceptsReturn="True" VerticalContentAlignment="Top"
-                         PlaceholderText="{l:Text serverSettings.security.ips.placeholder}"
-                         Text="{Binding Form.BannedIps}"/>
-            </ui:SettingsRow>
         </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

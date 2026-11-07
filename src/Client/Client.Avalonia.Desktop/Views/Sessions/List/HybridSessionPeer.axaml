@@ -86,9 +86,17 @@
 
         <!-- The reason of an away user goes under the name, and stays readable while the rest fades -->
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <text:MarqueeTextBlock Classes="peerName afkDim"
-                                   Classes.connecting="{Binding !IsConnected}"
-                                   Text="{Binding DisplayedName}"/>
+            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                <text:MarqueeTextBlock Classes="peerName afkDim"
+                                       Classes.connecting="{Binding !IsConnected}"
+                                       Text="{Binding DisplayedName}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                           IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                    <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                           IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                </StackPanel>
+            </Grid>
             <text:MarqueeTextBlock Text="{Binding AfkReason}"
                                    IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
                                    FontSize="11"

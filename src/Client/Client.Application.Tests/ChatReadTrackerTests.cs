@@ -90,6 +90,37 @@ public class ChatReadTrackerTests
     }
 
     [Fact]
+    public void ReadingCachedTailWithNewerUnreadMessagesDoesNotKeepSchedulingReadUpdates()
+    {
+        _tracker.OnHistoryMessage(ChatId, Message(11, Other));
+        _tracker.OnMessageAdded(ChatId, Message(12, Other, mentionsMe: true));
+        var pending = new Queue<Action>();
+        var notifications = 0;
+        // Match the open chat: unread state changes schedule another update of the visible read position.
+        _tracker.StateChanged += state =>
+        {
+            notifications++;
+            if (state.UnreadCount + state.MentionCount > 0)
+                pending.Enqueue(() => _tracker.MarkRead(ChatId, 11));
+        };
+
+        _tracker.MarkRead(ChatId, 11);
+        Assert.Single(pending);
+        pending.Dequeue()();
+
+        Assert.Empty(pending);
+        Assert.Equal(1, notifications);
+        Assert.Equal(new ChatReadState(ChatId, 11, 1, 1), _tracker.Get(ChatId));
+
+        _tracker.MarkRead(ChatId, 10);
+        Assert.Equal(1, notifications);
+        _tracker.MarkRead(ChatId, 12);
+        Assert.Equal(2, notifications);
+        Assert.Equal(new ChatReadState(ChatId, 12, 0, 0), _tracker.Get(ChatId));
+        Assert.Empty(pending);
+    }
+
+    [Fact]
     public void HistoryAndLiveDelivery_CountEachMessageOnce()
     {
         _tracker.OnMessageAdded(ChatId, Message(13, Other, mentionsMe: true));
@@ -108,6 +139,8 @@ public class ChatReadTrackerTests
         await tracker.AttachAsync("server", Me);
         tracker.MarkRead(ChatId, 20);
         tracker.Detach();
+        // Attaching waits for the previous account's queued writes before reading persisted state.
+        await tracker.AttachAsync("server", Me);
         tracker = new ChatReadTracker(repository);
         await tracker.AttachAsync("server", Me);
         tracker.OnHistoryMessage(ChatId, Message(19, Other));
@@ -118,6 +151,63 @@ public class ChatReadTrackerTests
         Assert.Null(tracker.Get(ChatId));
         await tracker.AttachAsync("server", Other);
         Assert.Null(tracker.Get(ChatId));
+    }
+
+    [Fact]
+    public async Task BlockedPersistenceDoesNotBlockCallerOrTrackerAndPreservesQueuedAccountAndOrder()
+    {
+        using var release = new ManualResetEventSlim();
+        var repository = new BlockingReads(release);
+        var tracker = new ChatReadTracker(repository);
+        await tracker.AttachAsync("server", Me);
+        var returned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var caller = new Thread(() =>
+        {
+            tracker.MarkRead(ChatId, 20);
+            returned.SetResult();
+        }) { IsBackground = true };
+        caller.Start();
+        try
+        {
+            await repository.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            await returned.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            var state = await Task.Run(() => tracker.Get(ChatId))
+                .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            Assert.Equal(20, state!.LastReadMessageId);
+
+            tracker.MarkRead(ChatId, 21);
+            var attach = tracker.AttachAsync("other-server", Other);
+            Assert.False(attach.IsCompleted);
+            release.Set();
+            await attach.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+            Assert.Equal(new[] { ("server", Me, 20), ("server", Me, 21) }, repository.Writes.ToArray());
+            Assert.Null(tracker.Get(ChatId));
+        }
+        finally
+        {
+            release.Set();
+            caller.Join(TimeSpan.FromSeconds(10));
+            await tracker.AttachAsync("other-server", Other);
+        }
+    }
+
+    private sealed class BlockingReads(ManualResetEventSlim release)
+        : Client.Application.Ports.Repositories.IChatReadStateRepository
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public System.Collections.Concurrent.ConcurrentQueue<(string, int, int)> Writes { get; } = new();
+
+        public Task<IReadOnlyList<ChatReadState>> GetAsync(string coordinatorInstanceId, int userId) =>
+            Task.FromResult<IReadOnlyList<ChatReadState>>([]);
+
+        public Task SetAsync(string coordinatorInstanceId, int userId, ChatReadState state)
+        {
+            Entered.TrySetResult();
+            release.Wait();
+            Writes.Enqueue((coordinatorInstanceId, userId, state.LastReadMessageId));
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class MemoryReads : Client.Application.Ports.Repositories.IChatReadStateRepository

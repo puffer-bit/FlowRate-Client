@@ -69,7 +69,7 @@
   "roles.permission.kick": "メンバーのキック",
   "roles.permission.kick.description": "どのセッションからでも。ホストは自分のセッションで可能です。",
   "roles.permission.ban": "メンバーのBAN",
-  "roles.permission.ban.description": "どのセッションでも。ホストは自分のセッションで可能です。",
+  "roles.permission.ban.description": "アカウントとIPの全体的なアクセス禁止、理由の記録と解除。",
   "roles.permission.approve": "メンバーの承認",
   "roles.permission.approve.description": "セッションへの参加を待っているユーザーを許可または拒否できます。",
   "roles.permission.manageMessages": "メッセージの管理",

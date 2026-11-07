@@ -223,23 +223,16 @@ public class ConnectWindowVM : ReactiveObject
         {
             var savedServers = await _accountingService.GetAllSavedCoordinatorsAsync();
 
+            var lastServer = savedServers.MaxBy(server => server.SaveOrder);
+
             Dispatcher.UIThread.Post(() =>
             {
                 foreach (var server in savedServers)
                     SavedServers.Add(new SavedServerItem(server.CoordinatorId, server.Name, UriParsing.FormatHost(server.Address), server.Port));
+
+                if (!_isAddressEdited && lastServer != null)
+                    SelectedSavedServer = SavedServers.FirstOrDefault(s => s.CoordinatorId == lastServer.CoordinatorId);
             });
-
-            var lastIdentity = await _behaviorService.GetAutoConnectInstance();
-
-            if (lastIdentity != null)
-            {
-                var coordinator = lastIdentity.Value.Coordinator;
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    SelectedSavedServer = SavedServers.FirstOrDefault(s => s.CoordinatorId == coordinator.CoordinatorId);
-                });
-            }
         });
 
     }
@@ -281,7 +274,7 @@ public class ConnectWindowVM : ReactiveObject
 
             if (session.ConnectionStatus != CoordinatorState.Connected)
             {
-                var message = DescribeConnectionFailure(session.ConnectionStatus, rejection);
+                var message = DescribeConnectionFailure(session.ConnectionStatus, rejection, session.BanReason);
                 session.Dispose();
                 await HandleConnectionError(message);
                 return;
@@ -342,11 +335,11 @@ public class ConnectWindowVM : ReactiveObject
         return true;
     }
 
-    private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection) =>
+    private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection, string? banReason) =>
         state switch
         {
             CoordinatorState.AuthenticationFailed => Strings.Get("connect.failed.authFailed"),
-            CoordinatorState.Denied => Strings.Get("connect.failed.banned"),
+            CoordinatorState.Denied => Strings.Get("connect.failed.banned") + (string.IsNullOrWhiteSpace(banReason) ? "" : "\n" + banReason),
             CoordinatorState.PasskeyRequired => Strings.Get("connect.failed.passkeyRequired"),
             CoordinatorState.ClientOutdated => Strings.Get("connect.failed.clientOutdated"),
             CoordinatorState.ServerOutdated => Strings.Get("connect.failed.serverOutdated"),

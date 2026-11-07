@@ -200,7 +200,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     public ActiveChatSessionVM(ChatSessionModel sessionModel, ICoordinatorSession coordinatorSession,
         ChatSessionServices services, ChatReadTracker readTracker,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
-        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null)
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null)
     {
         _dismissedPrompts = services.DismissedPrompts;
         _readTracker = readTracker;
@@ -233,7 +234,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         StatusBar = new ChatStatusBarVM(sessionModel)
         {
-            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId)
+            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand)
         };
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)

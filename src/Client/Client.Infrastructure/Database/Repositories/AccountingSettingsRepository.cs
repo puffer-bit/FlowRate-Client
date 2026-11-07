@@ -7,7 +7,7 @@ namespace Client.Infrastructure.Database.Repositories;
 internal sealed class AccountingSettingsRepository : IAccountingSettingsRepository
 {
     private const string SelectCoordinators =
-        "SELECT CoordinatorId, Name, Address, Port FROM SavedCoordinators";
+        "SELECT CoordinatorId, Name, Address, Port, SaveOrder FROM SavedCoordinators";
 
     // The avatar is what the remembered users know about the same user
     private const string SelectIdentities = """
@@ -211,7 +211,7 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
     }
 }
 
-internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, string Address, int Port)
+internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, string Address, int Port, long SaveOrder)
 {
     public SavedCoordinatorModel ToModel(IEnumerable<SavedIdentityRow> identities) => new()
     {
@@ -219,6 +219,7 @@ internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, s
         Name = Name,
         Address = Address,
         Port = Port,
+        SaveOrder = SaveOrder,
         Users = identities.Select(identity => identity.ToModel()).ToList()
     };
 }
