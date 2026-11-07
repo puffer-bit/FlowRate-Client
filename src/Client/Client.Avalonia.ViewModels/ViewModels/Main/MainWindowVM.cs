@@ -445,7 +445,8 @@ public partial class MainWindowVM : ReactiveObject
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
 
-        if ((await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
+        if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
+            && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
             await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
     }

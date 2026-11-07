@@ -22,6 +22,12 @@
         </Style>
     </UserControl.Styles>
     <ui:SettingsPage>
+        <StackPanel Spacing="4" Margin="0,0,0,8" IsVisible="{x:Static services:LaunchSettings.HasOverrides}">
+            <TextBlock Text="{l:Text settings.launchOverrides}" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <TextBlock Text="{x:Static services:LaunchSettings.ActiveOptions}" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
         <banners:WarningBanner IsVisible="{Binding !IsMediaEnabled}" Margin="0,0,0,8"
                                Header="{l:Text media.disabled.title}"
                                Message="{l:Text media.disabled.settings}"/>

@@ -22,6 +22,7 @@ using Client.Services.Tray;
 using Client.Services.Updates;
 using Client.Application.Ports;
 using Client.Tools.Logging;
+using Client.Tools.AppInfo;
 using Client.Views.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Client.Application.Settings;
@@ -72,7 +73,8 @@ public partial class App : global::Avalonia.Application
             var hotKeys = Services.GetRequiredService<IHotKeysService>();
             WindowHotKeys.Attach(mainWindow, hotKeys);
             var globalHotKeys = new GlobalHotKeys(hotKeys, Services.GetRequiredService<ILogger<GlobalHotKeys>>());
-            globalHotKeys.Start();
+            if (!LaunchOptions.Current.SafeMode)
+                globalHotKeys.Start();
 
             desktop.Exit += (_, _) =>
             {
@@ -97,6 +99,9 @@ public partial class App : global::Avalonia.Application
                             Services.GetRequiredService<IBehaviorService>(),
                             Services.GetRequiredService<ILogger<TrayService>>());
                     });
+                    // Prompts during unlock must stay visible; minimize only once initialization completes.
+                    if (LaunchOptions.Current.Minimized)
+                        _trayService?.HideToTray();
                 }
                 catch (Exception exception)
                 {
@@ -140,7 +145,8 @@ public partial class App : global::Avalonia.Application
         services.AddSingleton<ChatVideoSession>();
 
         // Over the one of AddApplication, which does nothing
-        services.AddSingleton<IAppUpdater, VelopackUpdater>();
+        if (!LaunchOptions.Current.DisableUpdates)
+            services.AddSingleton<IAppUpdater, VelopackUpdater>();
 
         // Over the one of AddApplication, which has no keyring
         if (OperatingSystem.IsLinux())

@@ -237,6 +237,11 @@ public partial class MainWindowVM
     /// </summary>
     private async Task RestoreLastSessionAsync()
     {
+        if (Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect)
+        {
+            _lastSession.IsKept = false;
+            return;
+        }
         if (!_lastSession.IsKept)
             return;
 

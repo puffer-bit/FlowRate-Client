@@ -216,7 +216,7 @@ internal sealed partial class TrayService : IDisposable
         }
     }
 
-    private void HideToTray()
+    public void HideToTray()
     {
         if (OperatingSystem.IsWindows())
         {
