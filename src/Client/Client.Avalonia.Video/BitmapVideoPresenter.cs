@@ -113,9 +113,17 @@ public class BitmapVideoPresenter : Control, IVideoPresenter
         {
             fixed (byte* source = frame.Pixels)
             {
-                for (var row = 0; row < frame.Height; row++)
-                    Buffer.MemoryCopy(source + (long)row * frame.Stride, (byte*)buffer.Address + (long)row * buffer.RowBytes,
-                        buffer.RowBytes, Math.Min(frame.Stride, buffer.RowBytes));
+                if (frame.Stride == buffer.RowBytes)
+                {
+                    var bytes = (long)frame.Stride * frame.Height;
+                    Buffer.MemoryCopy(source, (void*)buffer.Address, bytes, bytes);
+                }
+                else
+                {
+                    for (var row = 0; row < frame.Height; row++)
+                        Buffer.MemoryCopy(source + (long)row * frame.Stride, (byte*)buffer.Address + (long)row * buffer.RowBytes,
+                            buffer.RowBytes, Math.Min(frame.Stride, buffer.RowBytes));
+                }
             }
         }
 
