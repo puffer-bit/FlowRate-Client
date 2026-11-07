@@ -24,6 +24,18 @@ sealed class Program
         // exits right after them. A downloaded update the user did not restart into is applied here too
         VelopackApp.Build().Run();
 
+        try
+        {
+            AppDirectories.ConfigureFromArguments(args);
+        }
+        catch (Exception e) when (e is ArgumentException or System.IO.IOException or UnauthorizedAccessException
+                                  or NotSupportedException or System.Security.SecurityException)
+        {
+            Console.Error.WriteLine($"Cannot initialize the application data directory: {e.Message}");
+            Environment.ExitCode = 1;
+            return;
+        }
+
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = true });
         ClientLogging.LogUnhandledExceptions();

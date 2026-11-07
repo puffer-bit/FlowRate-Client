@@ -36,6 +36,21 @@ two forms: an installed one that updates itself (`.AppImage` / `Setup.exe`) and 
 
 ## Building from source
 
+### Choosing the data directory (desktop)
+
+Pass `--data-dir "D:\FlowRateData"` (or `--data-dir="D:\FlowRateData"`) to select the
+directory for the database, logs, media cache, sound packs and other local data:
+
+```powershell
+dotnet run --project src/Client/Client.Avalonia.Desktop -- --data-dir "D:\FlowRateData"
+```
+
+Relative paths are resolved against the working directory. Missing directories are created.
+An invalid or unwritable path stops startup with an error and exit code 1.
+Without this option, the client uses `%LocalAppData%\FlowRate` on Windows or
+`~/.local/share/FlowRate` on Linux. Existing data is not moved automatically; the option
+must be supplied on each launch that should use the custom directory.
+
 ### Running without media (desktop)
 
 Pass `--no-media` to start without loading GStreamer or libwebrtc:
