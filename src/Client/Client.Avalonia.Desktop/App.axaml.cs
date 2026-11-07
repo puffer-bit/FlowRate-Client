@@ -43,6 +43,8 @@ public partial class App : global::Avalonia.Application
     
     public override void Initialize()
     {
+        global::Client.Avalonia.Styles.Animation.FlyoutMotion.Initialize();
+
         // The saved language is applied after the database is unlocked, before the window is shown.
         new LanguageService().Apply(null);
 
