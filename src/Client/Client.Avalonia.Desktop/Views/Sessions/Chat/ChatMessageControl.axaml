@@ -83,11 +83,15 @@
                 
                 <!-- An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <SelectableTextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
-                                         chatVm:ChatMessageText.Body="{Binding Body}"
-                                         chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
-                                         x:Name="MessageTextBlock"
-                                         ContextFlyout="{x:Null}"/>
+                    <Grid>
+                        <chatVm:ChatCodeBlockBackground Target="{Binding #MessageTextBlock}" IsHitTestVisible="False"/>
+                        <SelectableTextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                                             chatVm:ChatMessageText.Body="{Binding Body}"
+                                             chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
+                                             x:Name="MessageTextBlock"
+                                             ContextFlyout="{x:Null}"/>
+                        <chatVm:ChatCodeBlockCopyButtons Target="{Binding #MessageTextBlock}"/>
+                    </Grid>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"
                           ToolTip.Tip="{l:Text chat.edited}"/>
                 </text:TrailingMarkPanel>

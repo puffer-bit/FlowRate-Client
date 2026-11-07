@@ -1,11 +1,22 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <Style Selector=":is(TextBlock).msg-body.has-code-block">
+        <Setter Property="Padding" Value="10,4,42,4"/>
+    </Style>
+
     <!-- Code inherits live theme resources, including when existing messages change theme. -->
     <Style Selector=":is(TextBlock).msg-body Run.code">
         <Setter Property="FontFamily" Value="monospace"/>
-        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlay}"/>
+    </Style>
+
+    <Style Selector=":is(TextBlock).msg-body Run.code-block">
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
     </Style>
 
     <!-- A web address in the text; underlined while the pointer is over it -->

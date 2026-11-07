@@ -15,7 +15,8 @@ public enum ChatTextStyle
     Bold = 1,
     Italic = 2,
     Strike = 4,
-    Code = 8
+    Code = 8,
+    CodeBlock = 16
 }
 
 public readonly record struct ChatStyleSpan(int Start, int Length, ChatTextStyle Style)
@@ -106,7 +107,9 @@ public static class ChatMarkdown
             switch (node)
             {
                 case FencedCodeBlock fenced:
-                    Replace(node, RestoreMentions(fenced.Lines.ToString(), node.Span), ChatTextStyle.Code);
+                    if (string.IsNullOrWhiteSpace(_source[..node.Span.Start]))
+                        Hide(0, node.Span.Start - 1);
+                    Replace(node, RestoreMentions(fenced.Lines.ToString(), node.Span), ChatTextStyle.Code | ChatTextStyle.CodeBlock);
                     return;
                 case CodeInline code:
                     Replace(node, RestoreMentions(code.Content, node.Span), ChatTextStyle.Code);
