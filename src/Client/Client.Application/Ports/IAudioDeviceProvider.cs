@@ -12,4 +12,8 @@ public interface IAudioDeviceProvider
     event Action? InputDevicesChanged;
 
     IReadOnlyList<AudioDeviceInfo> GetInputDevices();
+    IReadOnlyList<AudioDeviceInfo> GetOutputDevices();
+    event Action? OutputDevicesChanged;
+    void SetOutputDevice(string? id, string? name);
+    void SetOutputVolume(double volume);
 }

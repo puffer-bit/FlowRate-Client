@@ -98,6 +98,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
     private readonly Lock _outputLock = new();
     private Bin? _output;
+    private IDisposable? _outputBinding;
     private Element? _mixer;
     private string? _echoProbe;
 
@@ -540,6 +541,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
             // The sound server may restore a mute an earlier version left for the client name
             VoicePlaybackSink.SetMuted(output, false);
 
+            _outputBinding = VoicePlaybackSink.BindDevice(output);
             _pipeline.Add(output);
             output.SyncStateWithParent();
 
@@ -706,6 +708,8 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         lock (_outputLock)
         {
             _mixer?.Dispose();
+            _outputBinding?.Dispose();
+            _outputBinding = null;
             _output?.Dispose();
             _mixer = null;
             _output = null;

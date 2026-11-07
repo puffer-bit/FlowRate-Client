@@ -1057,6 +1057,9 @@
 
   "settings.audio.name": "音声とオーディオ",
   "settings.audio.section.microphone": "マイク",
+  "settings.audio.section.output": "音声出力",
+  "settings.audio.outputVolume.title": "出力音量",
+  "settings.audio.outputDevice.title": "出力デバイス",
   "settings.audio.inputDevice.title": "入力デバイス",
   "settings.audio.inputVolume.title": "入力音量",
   "settings.audio.noiseSuppression.title": "ノイズ抑制",

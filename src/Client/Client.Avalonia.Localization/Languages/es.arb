@@ -1057,6 +1057,9 @@
 
   "settings.audio.name": "Voz y audio",
   "settings.audio.section.microphone": "Micrófono",
+  "settings.audio.section.output": "Salida de audio",
+  "settings.audio.outputVolume.title": "Volumen de salida",
+  "settings.audio.outputDevice.title": "Dispositivo de salida",
   "settings.audio.inputDevice.title": "Dispositivo de entrada",
   "settings.audio.inputVolume.title": "Volumen de entrada",
   "settings.audio.noiseSuppression.title": "Supresión de ruido",

@@ -72,6 +72,33 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
+        <controls:SettingsHeader services:SettingText.Section="audio.output"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ui:SettingsRow services:SettingText.Key="audio.outputDevice">
+                <ComboBox Width="300"
+                          ItemsSource="{Binding OutputDevices}"
+                          SelectedItem="{Binding SelectedOutputDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
+                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                       Classes.unavailable="{Binding !IsAvailable}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.outputVolume">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center"
+                            Minimum="{Binding MinOutputVolumePercent}"
+                            Maximum="{Binding MaxOutputVolumePercent}"
+                            Value="{Binding OutputVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding OutputVolumePercent, StringFormat={}{0:0}%}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
         <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.voiceGate">

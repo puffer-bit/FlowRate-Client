@@ -59,6 +59,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
     private readonly Lock _lock = new();
     
     private Pipeline? _pipeline;
+    private IDisposable? _outputBinding;
     private Element? _inputVolume;
     private Element? _loopbackVolume;
     private VoiceGate? _gate;
@@ -138,6 +139,7 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                     return MicrophoneTestError.Unexpected;
                 }
 
+                _outputBinding = VoicePlaybackSink.BindDevice(loopback);
                 pipeline.Add(loopback);
 
                 // The sound server may restore a mute an earlier version left for the client name
@@ -255,6 +257,8 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
 
     private void StopPipeline()
     {
+        _outputBinding?.Dispose();
+        _outputBinding = null;
         var pipeline = _pipeline;
         
         if (pipeline == null)

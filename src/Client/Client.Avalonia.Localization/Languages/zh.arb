@@ -1057,6 +1057,9 @@
 
   "settings.audio.name": "语音与音频",
   "settings.audio.section.microphone": "麦克风",
+  "settings.audio.section.output": "音频输出",
+  "settings.audio.outputVolume.title": "输出音量",
+  "settings.audio.outputDevice.title": "输出设备",
   "settings.audio.inputDevice.title": "输入设备",
   "settings.audio.inputVolume.title": "输入音量",
   "settings.audio.noiseSuppression.title": "噪声抑制",
