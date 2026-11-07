@@ -1,4 +1,9 @@
 {
+  "main.startup.development.title": "App in development",
+  "main.startup.development.message": "FlowRate is still in development. Some features may be incomplete or work incorrectly.",
+  "main.startup.development.hide": "Do not show again",
+  "main.startup.development.continue": "Continue",
+
   "settings.mode.safe.title": "Safe mode",
   "settings.mode.safe.description": "Safe mode is active (--safe-mode). Media, global hotkeys, automatic connections and session restoration are disabled for this launch. Saved settings are preserved.",
   "settings.mode.software.title": "Software rendering",

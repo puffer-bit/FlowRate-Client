@@ -1,4 +1,9 @@
 {
+  "main.startup.development.title": "開発中のアプリ",
+  "main.startup.development.message": "FlowRate は開発中です。一部の機能は未完成、または正しく動作しない場合があります。",
+  "main.startup.development.hide": "今後表示しない",
+  "main.startup.development.continue": "続行",
+
   "settings.mode.safe.title": "セーフモード",
   "settings.mode.safe.description": "セーフモードが有効です (--safe-mode)。今回の起動では、メディア、グローバルショートカット、自動接続、セッション復元が無効です。保存済みの設定は保持されます。",
   "settings.mode.software.title": "ソフトウェア描画",

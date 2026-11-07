@@ -1,4 +1,9 @@
 {
+  "main.startup.development.title": "应用仍在开发中",
+  "main.startup.development.message": "FlowRate 仍处于开发阶段。部分功能可能尚未完成或无法正常运行。",
+  "main.startup.development.hide": "不再显示",
+  "main.startup.development.continue": "继续",
+
   "settings.mode.safe.title": "安全模式",
   "settings.mode.safe.description": "安全模式已启用 (--safe-mode)。本次启动已禁用媒体、全局快捷键、自动连接和会话恢复。已保存的设置保持不变。",
   "settings.mode.software.title": "软件渲染",
