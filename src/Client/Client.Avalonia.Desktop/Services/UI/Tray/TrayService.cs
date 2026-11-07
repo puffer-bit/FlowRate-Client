@@ -39,6 +39,7 @@ internal sealed partial class TrayService : IDisposable
     private readonly NativeMenuItem _afkItem;
     private readonly NativeMenuItemSeparator _voiceSeparator;
     private readonly MainWindowVM? _mainVM;
+    private readonly IDisposable? _trayMenuSubscription;
 
     // Shown while we are in no hybrid session
     private readonly WindowIcon _appIcon =
@@ -97,6 +98,9 @@ internal sealed partial class TrayService : IDisposable
             },
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
+
+        if (OperatingSystem.IsWindows())
+            _trayMenuSubscription = Window.WindowOpenedEvent.AddClassHandler<Window>(OnTrayMenuOpened);
 
         UpdateMenuTexts();
         Strings.LanguageChanged += UpdateMenuTexts;
@@ -333,6 +337,7 @@ internal sealed partial class TrayService : IDisposable
 
     public void Dispose()
     {
+        _trayMenuSubscription?.Dispose();
         Strings.LanguageChanged -= UpdateMenuTexts;
         if (_mainVM != null)
             _mainVM.PropertyChanged -= OnMainPropertyChanged;
