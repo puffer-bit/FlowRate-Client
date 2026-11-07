@@ -986,7 +986,7 @@
 
             <controls:SettingsHeader services:SettingText.Section="about.releaseNotes"/>
             <StackPanel ui:SettingsPage.SearchKey="about.releaseNotes" Spacing="10"
-                        DataContext="{Binding ReleaseHistory}" x:DataType="pagesVm:ReleaseHistoryVM">
+                        DataContext="{Binding ReleaseHistory, DataType={x:Type pagesVm:AboutControlVM}}" x:DataType="pagesVm:ReleaseHistoryVM">
                 <TextBlock Text="{l:Text settings.about.releaseNotes.description}"
                            TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
                 <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
