@@ -12,6 +12,4 @@ public static class LaunchSettings
     public static bool CanWriteLogFiles => !LaunchOptions.Current.NoFileLogging;
     public static bool CanUseGlobalHotKeys => !LaunchOptions.Current.SafeMode;
     public static bool CanUseMedia => !LaunchOptions.Current.DisableMedia;
-    public static bool HasOverrides => LaunchOptions.Current.SettingsNotice.Length > 0;
-    public static string ActiveOptions => LaunchOptions.Current.SettingsNotice;
 }

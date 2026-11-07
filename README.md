@@ -39,7 +39,8 @@ two forms: an installed one that updates itself (`.AppImage` / `Setup.exe`) and 
 ### Desktop launch options
 
 Options apply only to the current launch and do not overwrite saved settings. Settings controlled
-by launch options are disabled in the interface, with an explanation and the active options shown.
+by launch options are disabled in the interface. The settings header shows safe mode or media-disabled
+mode, plus a separate indicator for software rendering. Hover an indicator for an explanation.
 
 | Option | Behavior |
 |---|---|

@@ -49,12 +49,6 @@
     </UserControl.Styles>
 
     <ui:SettingsPage>
-        <StackPanel Spacing="4" Margin="0,0,0,8" IsVisible="{x:Static services:LaunchSettings.HasOverrides}">
-            <TextBlock Text="{l:Text settings.launchOverrides}" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-            <TextBlock Text="{x:Static services:LaunchSettings.ActiveOptions}" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-        </StackPanel>
         <!-- On top, before the settings it limits; shown on Wayland whether the keys are heard or not -->
         <banners:WarningBanner IsVisible="{Binding IsWayland}" Margin="0,0,0,8"
                                Header="{l:Text settings.hotKeys.waylandTitle}"
