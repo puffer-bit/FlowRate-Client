@@ -14,6 +14,8 @@ namespace Client;
 
 sealed class Program
 {
+    internal static Client.Services.SingleInstance? Instance { get; private set; }
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -43,6 +45,25 @@ sealed class Program
             Environment.ExitCode = 1;
             return;
         }
+
+        using var instance = new Client.Services.SingleInstance(LaunchOptions.Current.AllowMultipleInstances);
+        if (!instance.IsPrimary)
+        {
+            try
+            {
+                if (!instance.RequestLaunchAsync().GetAwaiter().GetResult())
+                    return;
+            }
+            catch (Exception e) when (e is System.IO.IOException or OperationCanceledException
+                                      or UnauthorizedAccessException or TimeoutException)
+            {
+                Client.Services.LaunchConsole.Attach();
+                Console.Error.WriteLine($"Cannot activate FlowRate: {e.Message}");
+                Environment.ExitCode = 1;
+                return;
+            }
+        }
+        Instance = instance;
 
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions

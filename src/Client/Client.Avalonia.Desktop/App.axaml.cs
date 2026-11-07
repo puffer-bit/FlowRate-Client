@@ -102,6 +102,9 @@ public partial class App : global::Avalonia.Application
                     // Prompts during unlock must stay visible; minimize only once initialization completes.
                     if (LaunchOptions.Current.Minimized)
                         _trayService?.HideToTray();
+                    // Requests received during startup are replayed once initialization has finished.
+                    Program.Instance?.SetActivationHandler(() => Dispatcher.UIThread.Post(() =>
+                        _trayService?.ShowWindow()));
                 }
                 catch (Exception exception)
                 {

@@ -231,7 +231,7 @@ internal sealed partial class TrayService : IDisposable
         }
     }
 
-    private void ShowWindow()
+    public void ShowWindow()
     {
         if (OperatingSystem.IsWindows())
             _window.Show();
