@@ -26,6 +26,8 @@ namespace Client.ViewModels.Settings;
 
 public class SettingsWindowVM : ReactiveObject, IDisposable
 {
+    public bool IsMediaDisabled => !Client.Core.Media.MediaRuntime.IsEnabled;
+
     public bool IsLoaded
     {
         get;
