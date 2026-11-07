@@ -27,6 +27,7 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     public sealed record ClearMessage;
     public sealed record StartMessage;
     public sealed record StopMessage;
+    public sealed record FrameAvailableMessage;
 
     // Fourcc of the single-plane formats the planes of NV12 and P010 are imported as
     private const uint FourccR8 = 0x20203852;
@@ -46,6 +47,8 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
     private GlInterface? _glInterface;
     private bool _isBroken;
     private bool _isRunning;
+    private bool _isFrameRequested;
+    private int _wakeQueued;
     private StretchMode _stretch = StretchMode.Uniform;
 
     private uint _vertexArray;
@@ -105,7 +108,10 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
                 break;
             case StartMessage when !_isRunning:
                 _isRunning = true;
-                RegisterForNextAnimationFrameUpdate();
+                RequestFrame();
+                break;
+            case FrameAvailableMessage:
+                RequestFrame();
                 break;
             case StopMessage:
                 _isRunning = false;
@@ -115,16 +121,39 @@ internal sealed unsafe class GlVideoRenderer : CompositionCustomVisualHandler
         }
     }
 
-    // On every refresh: a frame that waits may be due now
+    // The producer wakes an idle renderer once; active playback stays on the render thread.
+    public bool TryQueueWake() => System.Threading.Interlocked.CompareExchange(ref _wakeQueued, 1, 0) == 0;
+
+    private void RequestFrame()
+    {
+        if (!_isRunning || _isBroken || _isFrameRequested)
+            return;
+
+        if (!_queue.HasPending)
+        {
+            System.Threading.Volatile.Write(ref _wakeQueued, 0);
+            // An arrival before the reset saw an outstanding wake; check its frame again.
+            if (!_queue.HasPending)
+                return;
+        }
+
+        _isFrameRequested = true;
+        System.Threading.Volatile.Write(ref _wakeQueued, 1);
+        RegisterForNextAnimationFrameUpdate();
+    }
+
+    // Keep checking timestamps only while frames are waiting.
     public override void OnAnimationFrameUpdate()
     {
-        if (!_isRunning)
+        _isFrameRequested = false;
+
+        if (!_isRunning || _isBroken)
             return;
 
         if (_queue.HasPending)
             Invalidate();
 
-        RegisterForNextAnimationFrameUpdate();
+        RequestFrame();
     }
 
     public override void OnRender(ImmediateDrawingContext context)
