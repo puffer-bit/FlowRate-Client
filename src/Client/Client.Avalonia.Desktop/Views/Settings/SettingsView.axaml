@@ -54,7 +54,7 @@
     <Grid ColumnDefinitions="220, *" RowDefinitions="56, 1, *, 1, 44">
         <!-- Title: the icon on a tile, the name of the dialog and under it the section that is open;
              the dialog can be closed from here as well as from the footer -->
-        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" Margin="16,0,10,0">
+        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="12" Margin="16,0,10,0">
             <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" VerticalAlignment="Center"
                     Background="{DynamicResource BackgroundGeneralBrush}">
                 <Image Width="22" Height="22" Source="{StaticResource GearIcon}"/>
@@ -82,7 +82,23 @@
                            Text="{l:Text settings.loading}"/>
             </StackPanel>
 
-            <Button Grid.Column="3" Classes="borderless" Width="32" Height="32" Padding="0"
+            <Border Grid.Column="3" Height="32" Padding="10,0" CornerRadius="6"
+                    VerticalAlignment="Center" IsVisible="{Binding IsMediaDisabled}"
+                    Background="{DynamicResource WarningBannerBackgroundBrush}"
+                    BorderBrush="{DynamicResource WarningBannerBorderBrush}" BorderThickness="1"
+                    AutomationProperties.Name="{l:Text media.disabled.title}">
+                <ToolTip.Tip>
+                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text media.disabled.startup}"/>
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock MaxWidth="180" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource WarningBrush}"
+                               Text="{l:Text media.disabled.title}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+
+            <Button Grid.Column="4" Classes="borderless" Width="32" Height="32" Padding="0"
                     CornerRadius="6" VerticalAlignment="Center"
                     HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                     Command="{Binding CloseCommand}"

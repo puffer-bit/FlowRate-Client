@@ -438,10 +438,6 @@ public partial class MainWindowVM : ReactiveObject
         // Not awaited: the startup screen fades out while the auto connection is already on its way
         _ = HideStartupScreenAsync();
 
-        if (!Client.Core.Media.MediaRuntime.IsEnabled)
-            _notifications.Show(NotificationType.Warning, Strings.Get("media.disabled.title"),
-                Strings.Get("media.disabled.startup"));
-
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
 
