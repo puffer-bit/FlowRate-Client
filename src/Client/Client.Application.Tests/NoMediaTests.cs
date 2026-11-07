@@ -73,6 +73,7 @@ public class NoMediaTests : IDisposable
         var recorder = (AudioSettingsOnly)(object)service;
         recorder.Settings.AreSoundsEnabled = false;
         recorder.Settings.SoundsVolume = 0.12;
+        recorder.Settings.OutputVolume = 0.42;
         using var audio = new AudioControlVM(
             service,
             DispatchProxy.Create<IMicrophoneTester, IdleMicrophone>(),
@@ -85,6 +86,7 @@ public class NoMediaTests : IDisposable
         Assert.False(audio.IsMediaEnabled);
         Assert.False(await audio.ToggleTestCommand.CanExecute.FirstAsync());
         Assert.Equal(37, audio.InputVolumePercent);
+        Assert.Equal(0.42, recorder.Settings.OutputVolume);
         Assert.Equal(0.37, recorder.Settings.InputVolume);
         Assert.Equal(1, recorder.Saves);
         Assert.True(recorder.Settings.AreSoundsEnabled);
@@ -148,7 +150,8 @@ public class NoMediaTests : IDisposable
         {
             "GetSettingsAsync" => Task.FromResult(Settings),
             "SaveSettingsAsync" => Save((AudioSettings)args![0]!),
-            "add_InputDevicesChanged" or "remove_InputDevicesChanged" => null,
+            "add_InputDevicesChanged" or "remove_InputDevicesChanged" or
+            "add_OutputDevicesChanged" or "remove_OutputDevicesChanged" => null,
             _ => throw new InvalidOperationException($"Unexpected audio access: {method.Name}")
         };
 

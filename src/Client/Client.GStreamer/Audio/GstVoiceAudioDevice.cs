@@ -16,6 +16,7 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
 {
     private readonly Lock _lock = new();
     private Pipeline? _pipeline;
+    private IDisposable? _outputBinding;
     private Element? _playout;
     private GstBusWatcher? _bus;
     private string? _echoProbe;
@@ -104,6 +105,7 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                     }
                     return null;
                 });
+                _outputBinding = VoicePlaybackSink.BindDevice(_pipeline);
                 VoicePlaybackSink.SetMuted(_pipeline, false);
                 _bus = new GstBusWatcher(_pipeline.GetBus(),
                     MessageType.Element | MessageType.Error | MessageType.Warning | MessageType.Latency,
@@ -241,6 +243,8 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
             // Bus handlers never take this lock, and stop before their element wrappers are freed.
             _bus?.Dispose();
             _bus = null;
+            _outputBinding?.Dispose();
+            _outputBinding = null;
             _pipeline?.SetState(State.Null);
             _playout?.Dispose();
             _playout = null;
