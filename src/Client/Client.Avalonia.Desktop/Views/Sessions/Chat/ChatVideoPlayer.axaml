@@ -8,7 +8,9 @@
     <Border x:Name="PlayerBorder" Width="400" Padding="6" Margin="0,0,0,4" CornerRadius="6"
             Background="{DynamicResource ColorOverlayMedium}">
         <Grid x:Name="PlayerLayout" RowDefinitions="225,Auto" RowSpacing="4">
-            <video:VideoView x:Name="VideoSurface"/>
+            <Border Background="Transparent" Tapped="OnVideoTapped">
+                <video:VideoView x:Name="VideoSurface" IsHitTestVisible="False"/>
+            </Border>
             <StackPanel Grid.Row="1" Spacing="2">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
