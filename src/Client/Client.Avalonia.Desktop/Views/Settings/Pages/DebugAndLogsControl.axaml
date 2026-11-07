@@ -11,12 +11,6 @@
              x:Class="Client.Views.Settings.Pages.DebugAndLogsControl"
              x:DataType="pagesVm:DebugAndLogsControlVM">
     <ui:SettingsPage>
-        <StackPanel Spacing="4" Margin="0,0,0,8" IsVisible="{x:Static services:LaunchSettings.HasOverrides}">
-            <TextBlock Text="{l:Text settings.launchOverrides}" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-            <TextBlock Text="{x:Static services:LaunchSettings.ActiveOptions}" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SecondaryTextBrush}"/>
-        </StackPanel>
         <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
         <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="debug.level" IsEnabled="{x:Static services:LaunchSettings.CanChangeLogLevel}">
