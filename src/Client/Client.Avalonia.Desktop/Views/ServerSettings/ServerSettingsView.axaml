@@ -6,8 +6,8 @@
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              x:Class="Client.Views.ServerSettings.ServerSettingsView"
              x:DataType="serverSettingsVm:ServerSettingsVM"
-             MaxWidth="900"
-             MaxHeight="640"
+             MaxWidth="1000"
+             MaxHeight="900"
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.DataTemplates>
