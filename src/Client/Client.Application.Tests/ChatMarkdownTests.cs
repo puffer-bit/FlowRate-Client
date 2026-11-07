@@ -146,7 +146,8 @@ public class ChatMarkdownTests
     [Fact]
     public Task ExistingCodeAndLinkRunsFollowThemeChanges() => TestUiThread.RunAsync(() =>
     {
-        global::Avalonia.AppBuilder.Configure<global::Avalonia.Application>()
+        if (global::Avalonia.Application.Current == null)
+            global::Avalonia.AppBuilder.Configure<global::Avalonia.Application>()
             .UseStandardRuntimePlatformSubsystem()
             .UseWindowingSubsystem(() => { }, "Tests")
             .UseRenderingSubsystem(global::Avalonia.Skia.SkiaPlatform.Initialize, "Skia")

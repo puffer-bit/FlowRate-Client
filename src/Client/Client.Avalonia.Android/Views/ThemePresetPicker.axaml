@@ -174,8 +174,7 @@
         </Style>
     </UserControl.Styles>
 
-    <!-- The items carry their preset in Tag. "System" is only drawn so far: following the theme
-         of the OS is not implemented, so the card cannot be picked -->
+    <!-- The items carry their preset in Tag. -->
     <ListBox Classes="themeCards"
              SelectedValueBinding="{Binding Tag, x:DataType=ListBoxItem}"
              SelectedValue="{Binding SelectedThemeType}"
@@ -221,7 +220,7 @@
             </StackPanel>
         </ListBoxItem>
 
-        <ListBoxItem IsEnabled="False">
+        <ListBoxItem Tag="{x:Static themes:ThemeType.System}">
             <StackPanel Spacing="6">
                 <Border Classes="frame">
                     <!-- Dark on one side of the diagonal, light on the other -->

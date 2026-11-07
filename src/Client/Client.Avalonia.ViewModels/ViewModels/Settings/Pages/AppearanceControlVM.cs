@@ -151,6 +151,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
         SelectedLanguage = Languages[0];
         ObserveThemeChanges();
+        ObserveSystemThemeChanges();
         ObserveColorChanges();
         ObserveInterfaceChanges();
     }
@@ -163,6 +164,28 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
             .Select(themeType => Observable.FromAsync(() => ChangeThemeAsync(themeType)))
             .Concat()
             .Subscribe();
+    }
+
+    private void ObserveSystemThemeChanges()
+    {
+        if (global::Avalonia.Application.Current is not { } app)
+            return;
+
+        // Closing settings must not leave the view model retained by the application.
+        var reference = new WeakReference<AppearanceControlVM>(this);
+        EventHandler? handler = null;
+        handler = (_, _) =>
+        {
+            if (!reference.TryGetTarget(out var viewModel))
+            {
+                app.ActualThemeVariantChanged -= handler;
+                return;
+            }
+
+            if (viewModel._isLoaded && viewModel.SelectedThemeType == ThemeType.System)
+                viewModel.ShowColors();
+        };
+        app.ActualThemeVariantChanged += handler;
     }
 
     private void ObserveColorChanges()

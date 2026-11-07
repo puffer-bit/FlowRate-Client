@@ -10,7 +10,7 @@ public interface IThemeService
     /// <summary>
     /// Apply built-in theme preset to the whole application
     /// </summary>
-    /// <param name="themeType">Dark or Light (Custom is not supported yet)</param>
+    /// <param name="themeType">Dark, Light or System (Custom is not supported yet)</param>
     void ApplyTheme(ThemeType themeType);
 
     /// <summary>
