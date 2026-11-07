@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Client.Avalonia.Icons;
 using Client.Core.Chat;
@@ -28,6 +29,37 @@ public static class ChatMessageText
 {
     // A press that travels further than this is a selection or a scroll, not a click
     private const double ClickTolerance = 4;
+
+    public static readonly AttachedProperty<IBrush?> CodeBlockBackgroundProperty =
+        AvaloniaProperty.RegisterAttached<TextBlock, IBrush?>("CodeBlockBackground", typeof(ChatMessageText));
+
+    public static IBrush? GetCodeBlockBackground(TextBlock textBlock) => textBlock.GetValue(CodeBlockBackgroundProperty);
+    public static void SetCodeBlockBackground(TextBlock textBlock, IBrush? value) => textBlock.SetValue(CodeBlockBackgroundProperty, value);
+
+    internal static void RenderCodeBlocks(TextBlock textBlock, DrawingContext context)
+    {
+        var brush = GetCodeBlockBackground(textBlock);
+        foreach (var (_, bounds) in GetCodeBlocks(textBlock))
+            context.DrawRectangle(brush, brush is null ? null : new Pen(brush), bounds, 5, 5);
+    }
+
+    internal static IEnumerable<(string Text, Rect Bounds)> GetCodeBlocks(TextBlock textBlock)
+    {
+        if (textBlock.GetValue(StateProperty) is not { } state)
+            yield break;
+
+        foreach (var span in state.Document.Styles.Where(span => span.Style.HasFlag(ChatTextStyle.CodeBlock)))
+        {
+            var rectangles = textBlock.TextLayout.HitTestTextRange(span.Start, span.Length).ToArray();
+            if (rectangles.Length == 0)
+                continue;
+
+            double top = rectangles.Min(rect => rect.Top) + textBlock.Padding.Top - 3;
+            double bottom = rectangles.Max(rect => rect.Bottom) + textBlock.Padding.Top + 3;
+            var bounds = new Rect(0, top, textBlock.Bounds.Width, bottom - top);
+            yield return (state.Document.Text.Substring(span.Start, span.Length), bounds);
+        }
+    }
 
     public static readonly AttachedProperty<string?> TextProperty =
         AvaloniaProperty.RegisterAttached<TextBlock, string?>("Text", typeof(ChatMessageText));
@@ -86,6 +118,7 @@ public static class ChatMessageText
 
     static ChatMessageText()
     {
+        CodeBlockBackgroundProperty.Changed.AddClassHandler<TextBlock>((block, _) => block.InvalidateVisual());
         TextProperty.Changed.AddClassHandler<TextBlock>((textBlock, e) => Apply(textBlock, e.GetNewValue<string?>(), []));
         BodyProperty.Changed.AddClassHandler<TextBlock>((textBlock, e) =>
         {
@@ -104,6 +137,7 @@ public static class ChatMessageText
         {
             state = new LinkState();
             textBlock.SetValue(StateProperty, state);
+            textBlock.Bind(CodeBlockBackgroundProperty, new DynamicResourceExtension("ColorOverlayMedium"));
             Watch(textBlock);
         }
         var inlines = BuildInlines(document, out var runs);
@@ -111,6 +145,8 @@ public static class ChatMessageText
         textBlock.ClearValue(InputElement.CursorProperty);
         textBlock.Inlines!.Clear();
         textBlock.Inlines.AddRange(inlines);
+        textBlock.Classes.Set("has-code-block", document.Styles.Any(span => span.Style.HasFlag(ChatTextStyle.CodeBlock)));
+        textBlock.InvalidateVisual();
     }
 
     private static List<Inline> BuildInlines(ChatMarkdownDocument document, out List<Run>[] linkRuns)
@@ -155,6 +191,8 @@ public static class ChatMessageText
                 run.TextDecorations = TextDecorations.Strikethrough;
             if (style.HasFlag(ChatTextStyle.Code))
                 run.Classes.Add("code");
+            if (style.HasFlag(ChatTextStyle.CodeBlock))
+                run.Classes.Add("code-block");
             if (emoji.Any(span => span.Start <= start && span.End > start))
                 run.FontFamily = EmojiFont.Family;
             foreach (var mention in document.Mentions.Where(m => m.Start <= start && m.End > start))

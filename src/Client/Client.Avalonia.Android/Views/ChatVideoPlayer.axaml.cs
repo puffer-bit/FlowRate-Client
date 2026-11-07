@@ -49,6 +49,12 @@ public partial class ChatVideoPlayer : UserControl
         Refresh();
     }
 
+    private void OnVideoTapped(object? sender, TappedEventArgs e)
+    {
+        e.Handled = true;
+        OnPlay(sender, e);
+    }
+
     private async void OnPlay(object? sender, RoutedEventArgs e)
     {
         if (_session != null && DataContext is ChatFileVM file)

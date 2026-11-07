@@ -18,13 +18,16 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<AudioSettingsRow>(
-            "SELECT InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled, VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled, NoiseSuppression, IsEchoCancellationEnabled, IsAutoGainControlEnabled, AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds FROM AudioSettings WHERE Id = 1");
+            "SELECT OutputVolume, OutputDeviceId, OutputDeviceName, InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled, VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled, NoiseSuppression, IsEchoCancellationEnabled, IsAutoGainControlEnabled, AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds FROM AudioSettings WHERE Id = 1");
 
         if (row == null)
             return new AudioSettings();
 
         return new AudioSettings
         {
+            OutputVolume = row.OutputVolume,
+            OutputDeviceId = row.OutputDeviceId,
+            OutputDeviceName = row.OutputDeviceName,
             InputDeviceId = row.InputDeviceId,
             InputDeviceName = row.InputDeviceName,
             InputVolume = row.InputVolume,
@@ -47,14 +50,17 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            INSERT INTO AudioSettings (Id, InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled,
+            INSERT INTO AudioSettings (Id, OutputVolume, OutputDeviceId, OutputDeviceName, InputDeviceId, InputDeviceName, InputVolume, IsVoiceGateEnabled,
                                        VoiceGateThresholdDb, IsVoiceDetectionEnabled, IsAdaptiveThresholdEnabled,
                                        NoiseSuppression, IsEchoCancellationEnabled, IsAutoGainControlEnabled,
                                        AreSoundsEnabled, SoundsVolume, SoundPack, DisabledSounds)
-            VALUES (1, @InputDeviceId, @InputDeviceName, @InputVolume, @IsVoiceGateEnabled, @VoiceGateThresholdDb,
+            VALUES (1, @OutputVolume, @OutputDeviceId, @OutputDeviceName, @InputDeviceId, @InputDeviceName, @InputVolume, @IsVoiceGateEnabled, @VoiceGateThresholdDb,
                     @IsVoiceDetectionEnabled, @IsAdaptiveThresholdEnabled, @NoiseSuppression, @IsEchoCancellationEnabled,
                     @IsAutoGainControlEnabled, @AreSoundsEnabled, @SoundsVolume, @SoundPack, @DisabledSounds)
             ON CONFLICT (Id) DO UPDATE SET
+                OutputVolume = excluded.OutputVolume,
+                OutputDeviceId = excluded.OutputDeviceId,
+                OutputDeviceName = excluded.OutputDeviceName,
                 InputDeviceId = excluded.InputDeviceId,
                 InputDeviceName = excluded.InputDeviceName,
                 InputVolume = excluded.InputVolume,
@@ -71,6 +77,9 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
                 DisabledSounds = excluded.DisabledSounds
             """, new
             {
+                settings.OutputVolume,
+                settings.OutputDeviceId,
+                OutputDeviceName = settings.OutputDeviceId == null ? null : settings.OutputDeviceName,
                 settings.InputDeviceId,
                 // The name only helps to find the chosen device again, the default one has none
                 InputDeviceName = settings.InputDeviceId == null ? null : settings.InputDeviceName,
@@ -142,6 +151,6 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
     }
 }
 
-internal sealed record AudioSettingsRow(string? InputDeviceId, string? InputDeviceName, double InputVolume,
+internal sealed record AudioSettingsRow(double OutputVolume, string? OutputDeviceId, string? OutputDeviceName, string? InputDeviceId, string? InputDeviceName, double InputVolume,
     bool IsVoiceGateEnabled, double VoiceGateThresholdDb, bool IsVoiceDetectionEnabled, bool IsAdaptiveThresholdEnabled,
     int NoiseSuppression, bool IsEchoCancellationEnabled, bool IsAutoGainControlEnabled, bool AreSoundsEnabled, double SoundsVolume, string? SoundPack, string DisabledSounds);

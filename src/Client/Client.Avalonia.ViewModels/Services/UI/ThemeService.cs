@@ -16,7 +16,12 @@ public class ThemeService : IThemeService
 {
     public void ApplyTheme(ThemeType themeType)
     {
-        SetThemeVariant(themeType == ThemeType.Light ? ThemeVariant.Light : ThemeVariant.Dark);
+        SetThemeVariant(themeType switch
+        {
+            ThemeType.System => ThemeVariant.Default,
+            ThemeType.Light => ThemeVariant.Light,
+            _ => ThemeVariant.Dark
+        });
     }
 
     private static void SetThemeVariant(ThemeVariant variant)
@@ -80,7 +85,12 @@ public class ThemeService : IThemeService
 
     public ThemeColors ResolveColors(CustomColors colors, ThemeType themeType)
     {
-        var variant = themeType == ThemeType.Light ? ThemeVariant.Light : ThemeVariant.Dark;
+        var variant = themeType switch
+        {
+            ThemeType.System => global::Avalonia.Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark,
+            ThemeType.Light => ThemeVariant.Light,
+            _ => ThemeVariant.Dark
+        };
 
         return new ThemeColors(
             ParseColor(colors.Primary) ?? FindThemeColor("ColorPrimary", variant),

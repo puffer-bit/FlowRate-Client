@@ -13,7 +13,7 @@
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
         <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="debug.level">
+            <ui:SettingsRow services:SettingText.Key="debug.level" IsEnabled="{x:Static services:LaunchSettings.CanChangeLogLevel}">
                 <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
                 <ComboBox MinWidth="160" SelectedIndex="{Binding JournalLevelIndex}">
                     <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
@@ -24,7 +24,7 @@
                     <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
                 </ComboBox>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsVisible="{Binding HasLogFiles}">
+            <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsEnabled="{x:Static services:LaunchSettings.CanWriteLogFiles}">
                 <CheckBox IsChecked="{Binding WriteToFiles}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="debug.files" IsVisible="{Binding HasLogFiles}">
@@ -50,7 +50,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="debug.native"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
             <!-- The order of NativeLogLevel -->
             <ui:SettingsRow services:SettingText.Key="debug.gstreamer" IsVisible="{Binding HasGStreamerLog}">
                 <ComboBox MinWidth="160" SelectedIndex="{Binding GStreamerLogLevelIndex}">
@@ -75,7 +75,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="debug.mediaOverlay"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
             <ui:SettingsRow services:SettingText.Key="debug.mediaPerfOverlay">
                 <!-- The order of MediaPerfOverlayMode -->
                 <ComboBox MinWidth="200" SelectedIndex="{Binding MediaPerfOverlayIndex}">
@@ -110,7 +110,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="debug.mediaJournal"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
             <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal">
                 <!-- The order of MediaPerfJournalMode -->
                 <ComboBox MinWidth="200" SelectedIndex="{Binding MediaPerfJournalIndex}">

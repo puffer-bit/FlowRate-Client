@@ -183,6 +183,23 @@ public partial class MainWindowVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool IsDevelopmentWarningShown
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool DoNotShowDevelopmentWarning { get; set; }
+
+    public bool IsDevelopmentWarningLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    private TaskCompletionSource<bool>? _developmentWarningAnswer;
+    public void ContinueStartup() => _developmentWarningAnswer?.TrySetResult(true);
+
     /// <summary>The version under the startup screen.</summary>
     public string Version { get; } = AppInformation.GetClientVersion();
 
@@ -213,6 +230,7 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<ServerSettingsVM, RxVoid> ShowServerSettings { get; } = new();
     public Interaction<ConnectWindowVM, ICoordinatorSession?> ShowConnectWindow { get; } = new();
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
+    public Interaction<RxVoid, RxVoid> RestartWithoutMedia { get; } = new();
     public Interaction<DatabasePasswordVM, bool> AskDatabasePassword { get; } = new();
     public Interaction<CreateSessionWindowVM, RxVoid> ShowCreateSessionWindow { get; } = new();
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
@@ -245,6 +263,7 @@ public partial class MainWindowVM : ReactiveObject
     // DI
     private readonly ICoordinatorFactory _coordinatorFactory;
     private readonly ApplicationLoader _applicationLoader;
+    private readonly INotificationService _notifications;
     private readonly IBehaviorService _behaviorService;
     private readonly IAccountingService _accounting;
     private readonly IAvatarService _avatars;
@@ -284,6 +303,7 @@ public partial class MainWindowVM : ReactiveObject
         _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
+        _notifications = notifications;
         _avatars = avatars;
         _pushRegistration = pushRegistration;
         _chatServices = chatServices;
@@ -323,7 +343,7 @@ public partial class MainWindowVM : ReactiveObject
         });
 
         SessionsList = new SessionsListVM(ConnectCommand,
-            ReactiveCommand.Create<SessionModel>(OpenSession),
+            ReactiveCommand.CreateFromTask<SessionModel>(OpenSession),
             ReactiveCommand.Create<int>(chatId =>
             {
                 if (CurrentContent is ActiveChatSessionVM chat && chat.Id == chatId)
@@ -380,6 +400,32 @@ public partial class MainWindowVM : ReactiveObject
 
     public async Task Initialize(Action? onInitialized = null)
     {
+        if (onInitialized != null && !System.IO.File.Exists(DevelopmentWarningPreferencePath))
+        {
+            onInitialized();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            _developmentWarningAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            IsDevelopmentWarningShown = true;
+            await _developmentWarningAnswer.Task;
+            IsDevelopmentWarningLeaving = true;
+            await Task.Delay(Motion.Get(MotionDuration.Medium));
+            if (DoNotShowDevelopmentWarning)
+            {
+                try
+                {
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DevelopmentWarningPreferencePath)!);
+                    await System.IO.File.WriteAllTextAsync(DevelopmentWarningPreferencePath, "dismissed");
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Could not save the development warning preference");
+                }
+            }
+            IsDevelopmentWarningShown = false;
+            IsDevelopmentWarningLeaving = false;
+            _developmentWarningAnswer = null;
+        }
+
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
         ApplicationLoadResult result;
@@ -414,9 +460,31 @@ public partial class MainWindowVM : ReactiveObject
 
         if (result != ApplicationLoadResult.NoError)
         {
-            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
-                GetInitializationErrorMessage(result), Strings.Get("main.startup.title")));
+            var error = new MessageBoxVM(Icon.Fatal, Buttons.Ok,
+                GetInitializationErrorMessage(result), Strings.Get("main.startup.title"));
+            if (Client.Core.Media.MediaRuntime.IsEnabled && result is
+                ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                error.ButtonsList.Insert(0, new ButtonVM(Strings.Get("main.startup.restartWithoutMedia"), error.NoCommand));
 
+            if (await ShowMessageBox.Handle(error) == Result.No)
+            {
+                try
+                {
+                    await RestartWithoutMedia.Handle(default);
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Could not restart without media");
+                    await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("main.startup.restartFailed"), Strings.Get("main.startup.title")));
+                }
+            }
+
+            if (result is ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                Client.Tools.AppInfo.AppRestart.ExitAfterNativeFailure();
             Environment.Exit(-1);
             return;
         }
@@ -439,13 +507,17 @@ public partial class MainWindowVM : ReactiveObject
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
 
-        if ((await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
+        if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
+            && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
             await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
     }
 
     // The content under the screen has been laid out all along, so the screen leaves at once; it is out
     // of the window after its fade, so its ring stops turning
+    private static string DevelopmentWarningPreferencePath => System.IO.Path.Combine(
+        AppDirectories.Data, "development-warning-dismissed");
+
     private async Task HideStartupScreenAsync()
     {
         IsStartupScreenLeaving = true;
@@ -537,8 +609,15 @@ public partial class MainWindowVM : ReactiveObject
         await ShowSessionPermissionsWindow.Handle(vm);
     }
 
-    private void OpenSession(SessionModel sessionModel)
+    private async Task OpenSession(SessionModel sessionModel)
     {
+        if (sessionModel is HybridSessionModel && !Client.Core.Media.MediaRuntime.IsEnabled)
+        {
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("media.disabled.voiceSession"), Strings.Get("media.disabled.title")));
+            return;
+        }
+
         var session = OpenedSessions?.Open(sessionModel);
         if (session != null)
             ChangeContent(session);
@@ -562,7 +641,7 @@ public partial class MainWindowVM : ReactiveObject
         if (chat == null)
             return false;
 
-        OpenSession(chat.Model);
+        _ = OpenSession(chat.Model);
         return true;
     }
 

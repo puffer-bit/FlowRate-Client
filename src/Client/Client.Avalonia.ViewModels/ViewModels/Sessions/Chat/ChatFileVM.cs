@@ -21,9 +21,9 @@ public class ChatFileVM : ReactiveObject
     public ChatFileContent File { get; }
     public string FileName => File.FileName;
     public string SizeText { get; }
-    public bool IsVideo => Path.GetExtension(FileName).ToLowerInvariant() is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
+    public bool IsVideo => Client.Core.Media.MediaRuntime.IsEnabled && Path.GetExtension(FileName).ToLowerInvariant() is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
     public bool IsMedia => IsAudio || IsVideo;
-    public bool IsAudio => Path.GetExtension(FileName).ToLowerInvariant() is ".mp3" or ".wav";
+    public bool IsAudio => Client.Core.Media.MediaRuntime.IsEnabled && Path.GetExtension(FileName).ToLowerInvariant() is ".mp3" or ".wav";
     public (string Coordinator, int FileId) PlaybackKey => (_coordinator, File.Id);
 
     public bool IsDownloading

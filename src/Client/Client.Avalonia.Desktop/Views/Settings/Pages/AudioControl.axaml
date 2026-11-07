@@ -7,6 +7,7 @@
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -28,7 +29,7 @@
 
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="audio.microphone"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.inputDevice">
                 <ComboBox Width="300"
                           ItemsSource="{Binding InputDevices}"
@@ -71,8 +72,35 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
+        <controls:SettingsHeader services:SettingText.Section="audio.output"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ui:SettingsRow services:SettingText.Key="audio.outputDevice">
+                <ComboBox Width="300"
+                          ItemsSource="{Binding OutputDevices}"
+                          SelectedItem="{Binding SelectedOutputDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
+                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                       Classes.unavailable="{Binding !IsAvailable}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.outputVolume">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center"
+                            Minimum="{Binding MinOutputVolumePercent}"
+                            Maximum="{Binding MaxOutputVolumePercent}"
+                            Value="{Binding OutputVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding OutputVolumePercent, StringFormat={}{0:0}%}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
         <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
                 <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"
                           AutomationProperties.Name="{l:Text settings.audio.voiceGate.title}"/>

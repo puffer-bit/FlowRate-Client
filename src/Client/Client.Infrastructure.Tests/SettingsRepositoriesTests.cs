@@ -520,6 +520,9 @@ public class SettingsRepositoriesTests
         await repository.UpdateCurrentThemeTypeAsync(ThemeType.Light);
 
         Assert.Equal(ThemeType.Light, await repository.GetCurrentThemeTypeAsync());
+
+        await repository.UpdateCurrentThemeTypeAsync(ThemeType.System);
+        Assert.Equal(ThemeType.System, await repository.GetCurrentThemeTypeAsync());
     }
 
     [Fact]

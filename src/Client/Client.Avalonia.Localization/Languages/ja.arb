@@ -1,4 +1,18 @@
 {
+  "main.startup.restartWithoutMedia": "メディアなしで再起動",
+  "main.startup.restartFailed": "アプリを再起動できませんでした。--no-media を指定して手動で起動してください。",
+  "main.startup.development.title": "開発中のアプリ",
+  "main.startup.development.message": "FlowRate は開発中です。一部の機能は未完成、または正しく動作しない場合があります。",
+  "main.startup.development.hide": "今後表示しない",
+  "main.startup.development.continue": "続行",
+
+  "settings.mode.safe.title": "セーフモード",
+  "settings.mode.safe.description": "セーフモードが有効です (--safe-mode)。今回の起動では、メディア、グローバルショートカット、自動接続、セッション復元が無効です。保存済みの設定は保持されます。",
+  "settings.mode.software.title": "ソフトウェア描画",
+  "settings.mode.software.description": "ソフトウェア描画が有効です (--software-rendering)。GPU の代わりに CPU が画面を描画するため、CPU 使用率が増える場合があります。動画のエンコードとデコードは別の設定です。",
+  "media.disabled.title": "メディアは無効です",
+  "media.disabled.startup": "メディア無効モードで起動しました。音声セッションとアプリ内の音声・動画再生は利用できません。通知音は利用できます。メディアを有効にするには --no-media なしで再起動してください。",
+  "media.disabled.voiceSession": "メディア無効モード (--no-media) では音声セッションに参加できません。",
   "chat.format.bold": "太字",
   "chat.format.italic": "斜体",
   "chat.format.strike": "取り消し線",
@@ -1050,6 +1064,9 @@
 
   "settings.audio.name": "音声とオーディオ",
   "settings.audio.section.microphone": "マイク",
+  "settings.audio.section.output": "音声出力",
+  "settings.audio.outputVolume.title": "出力音量",
+  "settings.audio.outputDevice.title": "出力デバイス",
   "settings.audio.inputDevice.title": "入力デバイス",
   "settings.audio.inputVolume.title": "入力音量",
   "settings.audio.noiseSuppression.title": "ノイズ抑制",

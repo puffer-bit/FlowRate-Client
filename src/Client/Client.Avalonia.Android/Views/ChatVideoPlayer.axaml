@@ -8,7 +8,9 @@
     <Border MaxWidth="320" HorizontalAlignment="Stretch" Padding="6" Margin="0,0,0,4" CornerRadius="6"
             Background="{DynamicResource ColorOverlayMedium}">
         <StackPanel Spacing="2">
-            <views:PictureView x:Name="VideoSurface" Height="180" ClipToBounds="True" Margin="0,0,0,2"/>
+            <Border Background="Transparent" Tapped="OnVideoTapped" Margin="0,0,0,2">
+                <views:PictureView x:Name="VideoSurface" Height="180" ClipToBounds="True" IsHitTestVisible="False"/>
+            </Border>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
                            ToolTip.Tip="{Binding FileName}" VerticalAlignment="Center"/>

@@ -7,13 +7,13 @@ namespace Client.GStreamer.Video;
 public class GstMediaCapabilities : IMediaCapabilities
 {
     // Screen sharing encodes H.264
-    public bool HasHardwareScreenShareEncoder => VideoEncoderSelector.HasHardwareEncoder(VideoCodec.H264);
+    public bool HasHardwareScreenShareEncoder => MediaRuntime.IsEnabled && VideoEncoderSelector.HasHardwareEncoder(VideoCodec.H264);
 
-    public IReadOnlyList<string> ScreenShareDecoders => VideoDecoderSelector.GetAvailableDecoders(VideoCodec.H264);
+    public IReadOnlyList<string> ScreenShareDecoders => MediaRuntime.IsEnabled ? VideoDecoderSelector.GetAvailableDecoders(VideoCodec.H264) : [];
 
-    public IReadOnlyList<string> ScreenShareEncoders => VideoEncoderSelector.GetAvailableEncoders(VideoCodec.H264);
+    public IReadOnlyList<string> ScreenShareEncoders => MediaRuntime.IsEnabled ? VideoEncoderSelector.GetAvailableEncoders(VideoCodec.H264) : [];
 
-    public bool CanCaptureScreenAudio => OperatingSystem.IsWindows()
+    public bool CanCaptureScreenAudio => MediaRuntime.IsEnabled && (OperatingSystem.IsWindows()
         ? ProcessLoopbackSource.IsAvailable
-        : PipeWireAppAudioSource.IsAvailable;
+        : PipeWireAppAudioSource.IsAvailable);
 }

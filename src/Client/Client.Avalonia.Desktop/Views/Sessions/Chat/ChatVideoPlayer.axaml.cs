@@ -96,6 +96,12 @@ public partial class ChatVideoPlayer : UserControl
         _session?.RedisplayFrame();
     }
 
+    private void OnVideoTapped(object? sender, TappedEventArgs e)
+    {
+        e.Handled = true;
+        OnPlay(sender, e);
+    }
+
     private async void OnPlay(object? sender, RoutedEventArgs e)
     {
         if (_session == null || DataContext is not ChatFileVM file)
@@ -289,6 +295,9 @@ public partial class ChatVideoPlayer : UserControl
 
     private void EnsurePreview()
     {
+        if (!MediaRuntime.IsEnabled)
+            return;
+
         if (!_ready || !_attached || !IsEffectivelyVisible || DataContext is not ChatFileVM { IsVideo: true } file)
             return;
         _file = file;

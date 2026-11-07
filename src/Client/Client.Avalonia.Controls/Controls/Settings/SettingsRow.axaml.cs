@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using Client.Avalonia.Styles.Animation;
@@ -65,6 +66,19 @@ public class SettingsRow : ContentControl
     // Long enough to be noticed after the scroll, short enough not to look like a state
     private static readonly TimeSpan HighlightTime = TimeSpan.FromSeconds(1.5);
     private IDisposable? _highlightTimer;
+
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        // The inherited disabled state and its foreground have settled before transitions start.
+        PseudoClasses.Set(":transitions-ready", true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        PseudoClasses.Set(":transitions-ready", false);
+        base.OnDetachedFromVisualTree(e);
+    }
 
     public IImage? Icon
     {
