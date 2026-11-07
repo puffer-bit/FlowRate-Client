@@ -14,6 +14,7 @@ public sealed class LaunchOptionsTests
         Assert.False(options.PreventAutoConnect);
         Assert.False(options.DisableUpdates);
         Assert.False(options.NoFileLogging);
+        Assert.False(options.AllowMultipleInstances);
         Assert.Null(options.Language);
         Assert.Null(options.LogLevel);
         Assert.Empty(options.SettingsNotice);
@@ -34,8 +35,9 @@ public sealed class LaunchOptionsTests
     {
         var options = LaunchOptions.Parse(["--minimized", "--no-media", "--no-auto-connect",
             "--disable-updates", "--no-file-logging", "--software-rendering", "--lang", "ru",
-            "--log-level=debug", "--data-dir", "custom data"]);
+            "--log-level=debug", "--data-dir", "custom data", "--allow-multiple-instances"]);
         Assert.True(options.Minimized);
+        Assert.True(options.AllowMultipleInstances);
         Assert.True(options.DisableMedia);
         Assert.True(options.PreventAutoConnect);
         Assert.True(options.DisableUpdates);
@@ -83,6 +85,8 @@ public sealed class LaunchOptionsTests
     [InlineData("--log-level=42")]
     [InlineData("--log-level=invalid")]
     [InlineData("--minimized=true")]
+    [InlineData("--allow-multiple-instances=true")]
+    [InlineData("--allow-multiple-instances", "--allow-multiple-instances")]
     [InlineData("--unknown")]
     [InlineData("--data-dir")]
     [InlineData("--data-dir=")]

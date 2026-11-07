@@ -7,6 +7,7 @@ public sealed record LaunchOptions
 {
     public static LaunchOptions Current { get; private set; } = new();
     public bool Minimized { get; init; }
+    public bool AllowMultipleInstances { get; init; }
     public bool NoMedia { get; init; }
     public bool SafeMode { get; init; }
     public bool NoAutoConnect { get; init; }
@@ -53,6 +54,7 @@ public sealed record LaunchOptions
             options = name switch
             {
                 "--minimized" => options with { Minimized = true },
+                "--allow-multiple-instances" => options with { AllowMultipleInstances = true },
                 "--no-media" => options with { NoMedia = true },
                 "--safe-mode" => options with { SafeMode = true },
                 "--no-auto-connect" => options with { NoAutoConnect = true },
@@ -84,6 +86,8 @@ public sealed record LaunchOptions
         Usage: FlowRate [options]
           --data-dir PATH       Use a custom data directory
           --minimized           Start in the tray (show startup prompts when needed)
+          --allow-multiple-instances
+                                Allow later launches to open separate instances (set on the first process)
           --no-media            Disable voice and video media
           --safe-mode           Disable media, global hotkeys and automatic connections
           --no-auto-connect     Disable automatic connections and session restoration
