@@ -5,7 +5,9 @@
              xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Settings.Pages.VideoControl"
              x:DataType="pagesVm:VideoControlVM">
@@ -20,8 +22,11 @@
         </Style>
     </UserControl.Styles>
     <ui:SettingsPage>
+        <banners:WarningBanner IsVisible="{Binding !IsMediaEnabled}" Margin="0,0,0,8"
+                               Header="{l:Text media.disabled.title}"
+                               Message="{l:Text media.disabled.settings}"/>
         <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="video.hardwareDecoding">
                 <CheckBox IsChecked="{Binding IsHardwareDecodingEnabled}"/>
             </ui:SettingsRow>
@@ -42,7 +47,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="video.presentation"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="video.timedPresentation">
                 <CheckBox IsChecked="{Binding IsTimedPresentationEnabled}"/>
             </ui:SettingsRow>
@@ -54,7 +59,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="video.encoding"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="video.encoder">
                 <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
                           SelectedIndex="{Binding EncoderIndex}"/>

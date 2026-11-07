@@ -19,6 +19,7 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     public string Name => Strings.Get("settings.experimental.name");
     public SettingTabType Type => SettingTabType.Experimental;
     public bool IsEnabled => true;
+    public bool IsMediaEnabled => Client.Core.Media.MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("experimental",
         ("general", ["enable"]),
@@ -117,7 +118,7 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     {
         // Loaded the moment it is chosen, not at the next session, so a missing or broken libwebrtc is
         // told here and not by a voice that quietly stays on GStreamer
-        if (!(isEnabled && useGStreamer) && !ExperimentalFeatures.UseLibWebRTC && ExperimentalFeatures.LibWebRTCError == null &&
+        if (IsMediaEnabled && !(isEnabled && useGStreamer) && !ExperimentalFeatures.UseLibWebRTC && ExperimentalFeatures.LibWebRTCError == null &&
             await Task.Run(_libWebRTCLoader.Load) is { } error)
             ExperimentalFeatures.ReportLibWebRTCFailed(error);
 

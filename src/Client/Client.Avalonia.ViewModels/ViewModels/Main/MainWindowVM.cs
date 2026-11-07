@@ -245,6 +245,7 @@ public partial class MainWindowVM : ReactiveObject
     // DI
     private readonly ICoordinatorFactory _coordinatorFactory;
     private readonly ApplicationLoader _applicationLoader;
+    private readonly INotificationService _notifications;
     private readonly IBehaviorService _behaviorService;
     private readonly IAccountingService _accounting;
     private readonly IAvatarService _avatars;
@@ -284,6 +285,7 @@ public partial class MainWindowVM : ReactiveObject
         _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
+        _notifications = notifications;
         _avatars = avatars;
         _pushRegistration = pushRegistration;
         _chatServices = chatServices;
@@ -323,7 +325,7 @@ public partial class MainWindowVM : ReactiveObject
         });
 
         SessionsList = new SessionsListVM(ConnectCommand,
-            ReactiveCommand.Create<SessionModel>(OpenSession),
+            ReactiveCommand.CreateFromTask<SessionModel>(OpenSession),
             ReactiveCommand.Create<int>(chatId =>
             {
                 if (CurrentContent is ActiveChatSessionVM chat && chat.Id == chatId)
@@ -436,6 +438,10 @@ public partial class MainWindowVM : ReactiveObject
         // Not awaited: the startup screen fades out while the auto connection is already on its way
         _ = HideStartupScreenAsync();
 
+        if (!Client.Core.Media.MediaRuntime.IsEnabled)
+            _notifications.Show(NotificationType.Warning, Strings.Get("media.disabled.title"),
+                Strings.Get("media.disabled.startup"));
+
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
 
@@ -537,8 +543,15 @@ public partial class MainWindowVM : ReactiveObject
         await ShowSessionPermissionsWindow.Handle(vm);
     }
 
-    private void OpenSession(SessionModel sessionModel)
+    private async Task OpenSession(SessionModel sessionModel)
     {
+        if (sessionModel is HybridSessionModel && !Client.Core.Media.MediaRuntime.IsEnabled)
+        {
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("media.disabled.voiceSession"), Strings.Get("media.disabled.title")));
+            return;
+        }
+
         var session = OpenedSessions?.Open(sessionModel);
         if (session != null)
             ChangeContent(session);
@@ -562,7 +575,7 @@ public partial class MainWindowVM : ReactiveObject
         if (chat == null)
             return false;
 
-        OpenSession(chat.Model);
+        _ = OpenSession(chat.Model);
         return true;
     }
 

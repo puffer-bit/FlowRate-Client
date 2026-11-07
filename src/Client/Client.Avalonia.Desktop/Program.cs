@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using System;
+using Client.Core.Media;
 using Client.Avalonia.Icons;
 using Client.GStreamer.Loader;
 using Client.Tools.AppInfo;
@@ -30,7 +31,13 @@ sealed class Program
 
         try
         {
-            GstNativeLibraryResolver.Register();
+            MediaRuntime.Configure(args);
+            if (!MediaRuntime.IsEnabled)
+            {
+                Log.Information("Media disabled by --no-media; OpenAL interface sounds remain available");
+            }
+            if (MediaRuntime.IsEnabled)
+                GstNativeLibraryResolver.Register();
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
         }

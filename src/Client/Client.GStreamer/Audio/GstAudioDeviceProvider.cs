@@ -49,6 +49,9 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
 
     public IReadOnlyList<AudioDeviceInfo> GetInputDevices()
     {
+        if (!MediaRuntime.IsEnabled)
+            return [];
+
         EnsureStarted();
         return _inputDevices;
     }

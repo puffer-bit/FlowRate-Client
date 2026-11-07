@@ -1,4 +1,8 @@
 {
+  "media.disabled.title": "メディアは無効です",
+  "media.disabled.startup": "メディア無効モードで起動しました。音声セッションとアプリ内の音声・動画再生は利用できません。通知音は利用できます。メディアを有効にするには --no-media なしで再起動してください。",
+  "media.disabled.settings": "--no-media モードではマイクと動画の設定は利用できません。インターフェースのサウンド設定は利用できます。メディアを有効にするには、このオプションなしで再起動してください。",
+  "media.disabled.voiceSession": "メディア無効モード (--no-media) では音声セッションに参加できません。",
   "chat.format.bold": "太字",
   "chat.format.italic": "斜体",
   "chat.format.strike": "取り消し線",

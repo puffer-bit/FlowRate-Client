@@ -161,7 +161,7 @@ public partial class ApplicationLoader
             LogThemeApplyFailed(exception);
         }
 
-        if (ExperimentalFeatures.UseLibWebRTC)
+        if (Client.Core.Media.MediaRuntime.IsEnabled && ExperimentalFeatures.UseLibWebRTC)
             _ = LoadLibWebRTCAsync();
 
         try
@@ -200,7 +200,7 @@ public partial class ApplicationLoader
         
         try
         {
-            bool gstResult = _mediaRuntimeLoader.Load();
+            bool gstResult = !Client.Core.Media.MediaRuntime.IsEnabled || _mediaRuntimeLoader.Load();
             bool openAlResult = LoadOpenAL();
 
             IsLoaded = true;

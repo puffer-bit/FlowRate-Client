@@ -245,7 +245,8 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
         X11FrameExtents.Set(this, WindowDecorationMargin);
 
         // Before a session is joined: how its screens are drawn
-        _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILoggerFactory>()?.CreateLogger(typeof(VideoSurfaceProbe)));
+        if (Client.Core.Media.MediaRuntime.IsEnabled)
+            _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILoggerFactory>()?.CreateLogger(typeof(VideoSurfaceProbe)));
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

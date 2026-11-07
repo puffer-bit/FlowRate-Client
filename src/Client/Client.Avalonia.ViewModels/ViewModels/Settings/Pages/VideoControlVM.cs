@@ -25,6 +25,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public string Name => SettingText.TabName("video");
     public SettingTabType Type => SettingTabType.Video;
     public bool IsEnabled => true;
+    public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
         ("decoding", ["hardwareDecoding", "decoder", "zeroCopy"]),
@@ -99,10 +100,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     {
         _videoService = videoService;
 
-        _decoders = [null, ..mediaCapabilities.ScreenShareDecoders];
-        _encoders = [null, ..mediaCapabilities.ScreenShareEncoders];
-        DecoderChoices = _decoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareDecoders)).ToList();
-        EncoderChoices = _encoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareEncoders)).ToList();
+        IReadOnlyList<string> decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareDecoders : [];
+        IReadOnlyList<string> encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareEncoders : [];
+        _decoders = [null, ..decoders];
+        _encoders = [null, ..encoders];
+        DecoderChoices = _decoders.Select(element => ChoiceText(element, decoders)).ToList();
+        EncoderChoices = _encoders.Select(element => ChoiceText(element, encoders)).ToList();
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
@@ -119,7 +122,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
                 nameof(IsZeroCopyEnabled),
                 nameof(IsTimedPresentationEnabled),
                 nameof(PresentationBufferIndex))
-            .Where(_ => !_isUpdating)
+            .Where(_ => !_isUpdating && IsMediaEnabled)
             .Select(_ => Observable.FromAsync(() => _videoService.SaveSettingsAsync(ToSettings())))
             .Concat()
             .Subscribe();
@@ -165,6 +168,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     public async Task ResetAllAsync()
     {
+        if (!IsMediaEnabled)
+            return;
+
         var defaults = new VideoSettings();
 
         _isUpdating = true;

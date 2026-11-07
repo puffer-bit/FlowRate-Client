@@ -36,6 +36,21 @@ two forms: an installed one that updates itself (`.AppImage` / `Setup.exe`) and 
 
 ## Building from source
 
+### Running without media (desktop)
+
+Pass `--no-media` to start without loading GStreamer or libwebrtc:
+
+```powershell
+dotnet run --project src/Client/Client.Avalonia.Desktop -- --no-media
+```
+
+OpenAL interface and notification sounds and their settings remain available. Microphone and video
+settings are disabled for this launch. Voice sessions cannot be joined or restored automatically. Chat audio
+and video attachments are shown as files that can be downloaded or opened externally. Restart
+without the option to restore media; saved settings are preserved.
+
+### Build requirements
+
 Requirements: the .NET 10 SDK and Git. The protocol types are in a submodule, so clone with it:
 
 ```bash

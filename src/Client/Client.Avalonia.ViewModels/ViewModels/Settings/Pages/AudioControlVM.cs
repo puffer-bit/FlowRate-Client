@@ -28,6 +28,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     public string Name => SettingText.TabName("audio");
     public SettingTabType Type => SettingTabType.Audio;
     public bool IsEnabled => true;
+    public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     // Only the rows the engine of the voice shows
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
@@ -215,10 +216,11 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester = microphoneTester;
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
-        ToggleTestCommand = ReactiveCommand.Create(ToggleTest);
+        ToggleTestCommand = ReactiveCommand.Create(ToggleTest, Observable.Return(IsMediaEnabled));
 
         ObserveSettingsChanges(soundToggles);
-        ObserveMicrophoneTest();
+        if (IsMediaEnabled)
+            ObserveMicrophoneTest();
 
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
@@ -333,7 +335,15 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     private async Task SaveAsync()
     {
-        await _audioService.SaveSettingsAsync(ToSettings());
+        var settings = ToSettings();
+        if (!IsMediaEnabled)
+        {
+            // Interface sounds remain editable without changing the unavailable microphone settings.
+            var saved = await _audioService.GetSettingsAsync();
+            CopySoundSettings(settings, saved);
+            settings = saved;
+        }
+        await _audioService.SaveSettingsAsync(settings);
 
         if (!_isSoundPackPreviewPending)
             return;
@@ -383,6 +393,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     private void StartTest()
     {
+        if (!IsMediaEnabled)
+            return;
+
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
             InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled,
             IsAutoGainControlEnabled));
@@ -453,7 +466,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         RefreshSoundPacks();
 
         // The first call starts the device monitor, which may take a while to reach the sound server
-        var devices = await Task.Run(_audioService.GetInputDevices);
+        var devices = IsMediaEnabled ? await Task.Run(_audioService.GetInputDevices) : [];
         RebuildInputDevices(devices);
 
         _isUpdating = false;
@@ -555,8 +568,23 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public async Task ResetAllAsync()
     {
-        await _audioService.SaveSettingsAsync(new AudioSettings());
+        var defaults = new AudioSettings();
+        if (!IsMediaEnabled)
+        {
+            var saved = await _audioService.GetSettingsAsync();
+            CopySoundSettings(defaults, saved);
+            defaults = saved;
+        }
+        await _audioService.SaveSettingsAsync(defaults);
         await LoadAsync();
+    }
+
+    private static void CopySoundSettings(AudioSettings source, AudioSettings target)
+    {
+        target.AreSoundsEnabled = source.AreSoundsEnabled;
+        target.SoundsVolume = source.SoundsVolume;
+        target.SoundPack = source.SoundPack;
+        target.DisabledSounds = source.DisabledSounds;
     }
 
     public void Dispose()

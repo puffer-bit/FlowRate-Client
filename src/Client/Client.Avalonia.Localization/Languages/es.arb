@@ -1,4 +1,8 @@
 {
+  "media.disabled.title": "Medios desactivados",
+  "media.disabled.startup": "La aplicación se ejecuta sin medios. Las sesiones de voz y la reproducción integrada de audio y vídeo no están disponibles. Los sonidos de notificación siguen funcionando. Reinicia sin --no-media para activar los medios.",
+  "media.disabled.settings": "Los ajustes de micrófono y vídeo no están disponibles en el modo --no-media. Los ajustes de sonidos de la interfaz siguen disponibles. Reinicia sin esta opción para activar los medios.",
+  "media.disabled.voiceSession": "Las sesiones de voz no están disponibles en el modo sin medios (--no-media).",
   "chat.format.bold": "Negrita",
   "chat.format.italic": "Cursiva",
   "chat.format.strike": "Tachado",

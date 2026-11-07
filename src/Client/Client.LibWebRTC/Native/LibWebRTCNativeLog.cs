@@ -29,6 +29,9 @@ public sealed unsafe partial class LibWebRTCNativeLog(ILoggerFactory loggerFacto
 
     public void SetLevel(NativeLogLevel level)
     {
+        if (!Client.Core.Media.MediaRuntime.IsEnabled)
+            return;
+
         lock (_lock)
         {
             // Off and never on: the library is not even loaded for it

@@ -17,6 +17,12 @@ public sealed partial class LibWebRTCRuntime(IVoiceAudioDevice audio, ILogger<Li
 
     public bool TryLoad()
     {
+        if (!Client.Core.Media.MediaRuntime.IsEnabled)
+        {
+            _loadError = "Media is disabled by --no-media";
+            return false;
+        }
+
         lock (_lock)
         {
             if (_isLoaded is { } loaded)
