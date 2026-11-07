@@ -36,6 +36,35 @@ two forms: an installed one that updates itself (`.AppImage` / `Setup.exe`) and 
 
 ## Building from source
 
+### Desktop launch options
+
+Options apply only to the current launch and do not overwrite saved settings. Settings controlled
+by launch options are disabled in the interface, with an explanation and the active options shown.
+
+| Option | Behavior |
+|---|---|
+| `--data-dir PATH` | Select the directory for local application data (details below). |
+| `--minimized` | Start in the tray after initialization; unlock and recovery prompts remain visible. |
+| `--no-media` | Disable voice and video media; notification sounds remain available. |
+| `--safe-mode` | Disable media, global hotkeys, automatic connections and session restoration. |
+| `--no-auto-connect` | Skip automatic connections and session restoration; manual connections remain available. |
+| `--disable-updates` | Disable update checks and update controls for this launch. |
+| `--no-file-logging` | Disable log files; the in-memory journal remains available. |
+| `--log-level LEVEL` | Override the journal level: `verbose`, `debug`, `information`, `warning`, `error`, `fatal` (`info` and `warn` also work). |
+| `--software-rendering` | Use software rendering for the application interface. |
+| `--lang CODE` | Override the interface language: `en`, `ru`, `es`, `ja`, `zh`. |
+| `--help`, `-h` | Print available options and exit before opening application data. |
+| `--version` | Print the application version and exit before opening application data. |
+
+Options taking a value also accept `--name=value`. Options can be combined:
+
+```powershell
+dotnet run --project src/Client/Client.Avalonia.Desktop -- --safe-mode --lang ru --log-level debug
+```
+
+Unknown options, repeated options and missing or invalid values stop startup with exit code 1.
+An application-triggered restart after an update keeps the launch options and the absolute data path.
+
 ### Choosing the data directory (desktop)
 
 Pass `--data-dir "D:\FlowRateData"` (or `--data-dir="D:\FlowRateData"`) to select the

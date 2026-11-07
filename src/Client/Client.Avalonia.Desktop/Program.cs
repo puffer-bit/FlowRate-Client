@@ -26,27 +26,39 @@ sealed class Program
 
         try
         {
+            LaunchOptions.Configure(args);
+            if (LaunchOptions.Current.Help || LaunchOptions.Current.Version)
+            {
+                Client.Services.LaunchConsole.Attach();
+                Console.WriteLine(LaunchOptions.Current.Help ? LaunchOptions.HelpText : AppInformation.GetClientBuildVersion());
+                return;
+            }
             AppDirectories.ConfigureFromArguments(args);
         }
         catch (Exception e) when (e is ArgumentException or System.IO.IOException or UnauthorizedAccessException
                                   or NotSupportedException or System.Security.SecurityException)
         {
-            Console.Error.WriteLine($"Cannot initialize the application data directory: {e.Message}");
+            Client.Services.LaunchConsole.Attach();
+            Console.Error.WriteLine($"Cannot start FlowRate: {e.Message}");
             Environment.ExitCode = 1;
             return;
         }
 
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
-        Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = true });
+        Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
+        {
+            WriteToFiles = !LaunchOptions.Current.NoFileLogging,
+            MinimumLevel = LaunchOptions.Current.LogLevel ?? new LoggingOptions().MinimumLevel
+        });
         ClientLogging.LogUnhandledExceptions();
         ClientLogging.LogStartup(AppInformation.GetClientBuildVersion());
 
         try
         {
-            MediaRuntime.Configure(args);
+            MediaRuntime.Configure(LaunchOptions.Current.DisableMedia ? ["--no-media"] : []);
             if (!MediaRuntime.IsEnabled)
             {
-                Log.Information("Media disabled by --no-media; OpenAL interface sounds remain available");
+                Log.Information("Media disabled by launch options; OpenAL interface sounds remain available");
             }
             if (MediaRuntime.IsEnabled)
                 GstNativeLibraryResolver.Register();
@@ -79,14 +91,16 @@ sealed class Program
                 EnableDrawnDecorations = true,
                 // EGL first: only an EGL context imports the DMA-BUF frames of hardware decoders, see
                 // VideoSurfaceProbe. GLX and the framebuffer remain where EGL does not start
-                RenderingMode = [X11RenderingMode.Egl, X11RenderingMode.Glx, X11RenderingMode.Software]
+                RenderingMode = LaunchOptions.Current.SoftwareRendering ? [X11RenderingMode.Software]
+                    : [X11RenderingMode.Egl, X11RenderingMode.Glx, X11RenderingMode.Software]
             })
 #pragma warning restore AVALONIA_X11_CSD
             // ANGLE on Direct3D 11 is the only Windows renderer that shares GL contexts and imports
             // D3D11 frames, see VideoSurfaceProbe
             .With(new Win32PlatformOptions
             {
-                RenderingMode = [Win32RenderingMode.AngleEgl, Win32RenderingMode.Software]
+                RenderingMode = LaunchOptions.Current.SoftwareRendering ? [Win32RenderingMode.Software]
+                    : [Win32RenderingMode.AngleEgl, Win32RenderingMode.Software]
             })
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256 * 1024 * 1024 })
             .UseSkia()

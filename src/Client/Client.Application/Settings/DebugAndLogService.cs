@@ -59,10 +59,10 @@ public class DebugAndLogService : IDebugAndLogService
     {
         settings = settings.Normalize();
 
-        ClientLogging.LevelSwitch.MinimumLevel = settings.JournalLevel is { } level
+        ClientLogging.LevelSwitch.MinimumLevel = Client.Tools.AppInfo.LaunchOptions.Current.LogLevel ?? (settings.JournalLevel is { } level
             ? ToSerilog(level)
-            : ClientLogging.DefaultLevel;
-        ClientLogging.IsWritingToFiles = settings.WriteToFiles;
+            : ClientLogging.DefaultLevel);
+        ClientLogging.IsWritingToFiles = !Client.Tools.AppInfo.LaunchOptions.Current.NoFileLogging && settings.WriteToFiles;
 
         foreach (var log in _nativeLogs)
             log.SetLevel(settings.LogLevelOf(log.Source));

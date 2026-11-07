@@ -1,8 +1,9 @@
 {
+  "settings.launchOverrides": "Some settings are unavailable for this launch because of command-line options. Saved values are preserved. Restart without these options to change them.",
   "media.disabled.title": "Media disabled",
-  "media.disabled.startup": "The app is running without media. Voice sessions and built-in audio and video playback are unavailable. Notification sounds remain enabled. Restart without --no-media to enable media.",
-  "media.disabled.settings": "Microphone and video settings are unavailable in --no-media mode. Interface sound settings remain available. Restart without this option to enable media.",
-  "media.disabled.voiceSession": "Voice sessions are unavailable in media-free mode (--no-media).",
+  "media.disabled.startup": "The app is running without media. Voice sessions and built-in audio and video playback are unavailable. Notification sounds remain enabled. Restart without --no-media / --safe-mode to enable media.",
+  "media.disabled.settings": "Microphone and video settings are unavailable in --no-media / --safe-mode mode. Interface sound settings remain available. Restart without this option to enable media.",
+  "media.disabled.voiceSession": "Voice sessions are unavailable in media-free mode (--no-media / --safe-mode).",
   "ban.kind": "Ban by",
   "ban.kind.account": "Account",
   "ban.kind.ip": "IP address",
