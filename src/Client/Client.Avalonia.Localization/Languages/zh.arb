@@ -1,4 +1,6 @@
 {
+  "main.startup.restartWithoutMedia": "禁用媒体并重启",
+  "main.startup.restartFailed": "无法重启应用。请使用 --no-media 参数手动启动。",
   "main.startup.development.title": "应用仍在开发中",
   "main.startup.development.message": "FlowRate 仍处于开发阶段。部分功能可能尚未完成或无法正常运行。",
   "main.startup.development.hide": "不再显示",

@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using System;
 using Client.Core.Media;
 using Client.Avalonia.Icons;
@@ -22,6 +22,8 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        AppRestart.WaitForPreviousProcess();
+
         // First of all: the installer and the updater start the application to run its hooks, and it
         // exits right after them. A downloaded update the user did not restart into is applied here too
         VelopackApp.Build().Run();
@@ -96,6 +98,8 @@ sealed class Program
             Log.CloseAndFlush();
         }
     }
+
+    internal static void RestartWithoutMedia() => AppRestart.WithoutMedia();
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
