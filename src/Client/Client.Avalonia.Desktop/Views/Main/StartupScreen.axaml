@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
@@ -32,6 +33,9 @@
         <Style Selector=".leaving StackPanel#Content">
             <Setter Property="RenderTransform" Value="scale(1.08)"/>
         </Style>
+        <Style Selector="StackPanel.warningLeaving">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -48,18 +52,34 @@
                    AutomationProperties.Name="FlowRate"/>
 
             <!-- Turned by the compositor: the end of the start holds the UI thread for a while -->
-            <loadingIndicators:SpinnerRing Width="32" Height="32"
+            <loadingIndicators:SpinnerRing IsVisible="{Binding !IsDevelopmentWarningShown}" Width="32" Height="32"
                                            HorizontalAlignment="Center"
                                            Thickness="3"
                                            TrackBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                            Foreground="{DynamicResource ProgressRingBrush}"/>
 
             <!-- The stage the start is at; a line of its own height even before the first one is told -->
-            <TextBlock Text="{Binding StartupStage}"
+            <TextBlock IsVisible="{Binding !IsDevelopmentWarningShown}" Text="{Binding StartupStage}"
                        MinHeight="18"
                        FontSize="13"
                        HorizontalAlignment="Center"
                        Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <StackPanel IsVisible="{Binding IsDevelopmentWarningShown}" MaxWidth="460" Margin="24,0" Spacing="16"
+                        Classes.warningLeaving="{Binding IsDevelopmentWarningLeaving}"
+                        IsHitTestVisible="{Binding !IsDevelopmentWarningLeaving}">
+                <StackPanel.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Exit}"/>
+                    </Transitions>
+                </StackPanel.Transitions>
+                <TextBlock Text="{l:Text main.startup.development.title}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="{l:Text main.startup.development.message}" TextWrapping="Wrap" TextAlignment="Center"/>
+                <CheckBox Content="{l:Text main.startup.development.hide}" IsChecked="{Binding DoNotShowDevelopmentWarning, Mode=TwoWay}" HorizontalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                    <Button Content="{l:Text tray.exit}" Click="OnExitClick" MinWidth="110"/>
+                    <Button Content="{l:Text main.startup.development.continue}" Classes="primary" Click="OnContinueClick" MinWidth="110"/>
+                </StackPanel>
+            </StackPanel>
         </StackPanel>
 
         <TextBlock Text="{Binding Version}"

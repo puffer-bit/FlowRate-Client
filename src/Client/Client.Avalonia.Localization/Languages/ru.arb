@@ -1,4 +1,9 @@
 {
+  "main.startup.development.title": "Приложение в разработке",
+  "main.startup.development.message": "FlowRate находится в стадии разработки. Некоторые функции могут быть недоступны или работать некорректно.",
+  "main.startup.development.hide": "Больше не показывать",
+  "main.startup.development.continue": "Продолжить",
+
   "settings.mode.safe.title": "Безопасный режим",
   "settings.mode.safe.description": "Включён безопасный режим (--safe-mode). Медиа, глобальные горячие клавиши, автоматическое подключение и восстановление сессий отключены на время этого запуска. Сохранённые настройки не изменены.",
   "settings.mode.software.title": "Программный рендеринг",

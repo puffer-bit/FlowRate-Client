@@ -183,6 +183,23 @@ public partial class MainWindowVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool IsDevelopmentWarningShown
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool DoNotShowDevelopmentWarning { get; set; }
+
+    public bool IsDevelopmentWarningLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    private TaskCompletionSource<bool>? _developmentWarningAnswer;
+    public void ContinueStartup() => _developmentWarningAnswer?.TrySetResult(true);
+
     /// <summary>The version under the startup screen.</summary>
     public string Version { get; } = AppInformation.GetClientVersion();
 
@@ -382,6 +399,32 @@ public partial class MainWindowVM : ReactiveObject
 
     public async Task Initialize(Action? onInitialized = null)
     {
+        if (onInitialized != null && !System.IO.File.Exists(DevelopmentWarningPreferencePath))
+        {
+            onInitialized();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            _developmentWarningAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            IsDevelopmentWarningShown = true;
+            await _developmentWarningAnswer.Task;
+            IsDevelopmentWarningLeaving = true;
+            await Task.Delay(Motion.Get(MotionDuration.Medium));
+            if (DoNotShowDevelopmentWarning)
+            {
+                try
+                {
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DevelopmentWarningPreferencePath)!);
+                    await System.IO.File.WriteAllTextAsync(DevelopmentWarningPreferencePath, "dismissed");
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Could not save the development warning preference");
+                }
+            }
+            IsDevelopmentWarningShown = false;
+            IsDevelopmentWarningLeaving = false;
+            _developmentWarningAnswer = null;
+        }
+
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
         ApplicationLoadResult result;
@@ -449,6 +492,9 @@ public partial class MainWindowVM : ReactiveObject
 
     // The content under the screen has been laid out all along, so the screen leaves at once; it is out
     // of the window after its fade, so its ring stops turning
+    private static string DevelopmentWarningPreferencePath => System.IO.Path.Combine(
+        AppDirectories.Data, "development-warning-dismissed");
+
     private async Task HideStartupScreenAsync()
     {
         IsStartupScreenLeaving = true;
