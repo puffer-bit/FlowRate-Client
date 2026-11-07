@@ -15,6 +15,9 @@ public static unsafe class GstEncodedNative
     private static extern IntPtr gst_buffer_new_memdup(IntPtr data, nuint size);
 
     [DllImport(NativeLibraries.GStreamer)]
+    private static extern IntPtr gst_buffer_copy(IntPtr buffer);
+
+    [DllImport(NativeLibraries.GStreamer)]
     private static extern int gst_buffer_map(IntPtr buffer, out MapInfo info, MapFlags flags);
 
     [DllImport(NativeLibraries.GStreamer)]
@@ -79,7 +82,10 @@ public static unsafe class GstEncodedNative
             var isKeyFrame = (Marshal.ReadInt32(handle, MiniObjectFlagsOffset) & DeltaUnitFlag) == 0;
 
             onFrame(new EncodedVideoFrame(map.DataPtr, (int)map.Size,
-                pts == ClockTimeNone || pts > long.MaxValue ? -1 : (long)pts, isKeyFrame));
+                pts == ClockTimeNone || pts > long.MaxValue ? -1 : (long)pts, isKeyFrame)
+            {
+                NativeBuffer = buffer
+            });
             return true;
         }
         finally
@@ -89,21 +95,29 @@ public static unsafe class GstEncodedNative
     }
 
     /// <summary>
-    /// Pushes a copy of a frame into an appsrc. The timestamp becomes the PTS of the buffer unless the
+    /// Shares a native frame's storage, or copies foreign bytes, into an appsrc. The timestamp becomes the PTS unless the
     /// appsrc stamps the buffers itself (do-timestamp) or the frame has none.
     /// </summary>
     /// <returns>False when the appsrc refused it, as it does while it is not running.</returns>
     public static bool Push(Element appsrc, EncodedVideoFrame frame)
     {
-        var buffer = gst_buffer_new_memdup(frame.Data, (nuint)frame.Length);
+        // Copy only the header of a borrowed GstBuffer. Its memory is referenced, while timestamps
+        // remain independent of the source pipeline. Non-shareable memory is copied by GStreamer.
+        var buffer = frame.NativeBuffer is Gst.Buffer native
+            ? gst_buffer_copy(native.Handle)
+            : gst_buffer_new_memdup(frame.Data, (nuint)frame.Length);
 
         if (buffer == IntPtr.Zero)
             return false;
 
         Marshal.WriteInt64(buffer, BufferPtsOffset, frame.Timestamp >= 0 ? frame.Timestamp : unchecked((long)ClockTimeNone));
+        // A different pipeline uses a different clock; do not carry a stale DTS across the bridge.
+        Marshal.WriteInt64(buffer, BufferPtsOffset + sizeof(long), unchecked((long)ClockTimeNone));
 
         if (!frame.IsKeyFrame)
             Marshal.WriteInt32(buffer, MiniObjectFlagsOffset, Marshal.ReadInt32(buffer, MiniObjectFlagsOffset) | DeltaUnitFlag);
+        else
+            Marshal.WriteInt32(buffer, MiniObjectFlagsOffset, Marshal.ReadInt32(buffer, MiniObjectFlagsOffset) & ~DeltaUnitFlag);
 
         // The appsrc takes the buffer over, whatever it answers
         return gst_app_src_push_buffer(appsrc.Handle, buffer) == (int)FlowReturn.Ok;

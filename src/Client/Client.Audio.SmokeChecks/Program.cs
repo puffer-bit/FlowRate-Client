@@ -12,6 +12,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 GstNativeLibraryResolver.Register();
 if (!GstLoader.LoadGstreamer(NullLogger.Instance))
     throw new InvalidOperationException("Cannot load the bundled GStreamer runtime");
+if (args.Contains("--video-buffers"))
+{
+    VideoBufferSmokeChecks.Run();
+    return;
+}
 using var devices = new GstAudioDeviceProvider(NullLogger<GstAudioDeviceProvider>.Instance);
 Require(MicrophoneProcessing.HasNeural, "Bundled RNNoise plugin is available");
 using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevice>.Instance)

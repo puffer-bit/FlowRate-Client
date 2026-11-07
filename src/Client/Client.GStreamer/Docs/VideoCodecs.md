@@ -7,6 +7,32 @@ Both transports use the same elements: the screen is captured and encoded by `Gs
 and decoded by `GstVideoDecoder` (`IVideoMedia`), whether the packets travel through webrtcbin or
 libwebrtc.
 
+## Buffer ownership and queue budgets
+
+`GstEncodedNative.Read` lends the source `Gst.Buffer` through `EncodedVideoFrame.NativeBuffer`
+for the duration of the synchronous callback. A GST destination copies the buffer header and
+references its payload memory, keeping timestamps independent and the payload alive after the
+callback. GStreamer copies non-shareable memory when necessary. Frames from other backends keep
+using the byte-copy path. Neither the frame nor its borrowed native wrapper may be kept after the
+callback without retaining ownership separately.
+
+The decoder accepts up to 60 queued encoded frames, with an 8 MiB payload budget and a 500 ms
+queued-time threshold. `EncodedFrameGate` checks all budgets before pushing; appsrc does not
+silently discard frames. An overflow drops dependent frames and requests a keyframe, with requests
+limited to once per second. A single oversized keyframe is allowed into an empty queue so that
+recovery cannot be blocked by the byte budget. Time is checked against the currently queued span,
+so one incoming frame can cross the threshold before the following push detects it.
+
+Raw frame sinks retain one pending frame and disable `last-sample`; encoded frame sinks also
+disable `last-sample` but keep their non-dropping queues. The CPU screen branch limits the frame
+rate before scaling and color conversion in the individual encoder and preview legs.
+
+Run the native ownership, queue overflow/recovery and software H.264 round-trip checks with:
+
+```powershell
+dotnet run --project src/Client/Client.Audio.SmokeChecks -- --video-buffers
+```
+
 ## Choosing by the registry
 
 No vendor is detected. The hardware plugins of GStreamer (nvcodec, va, qsv, amfcodec,
