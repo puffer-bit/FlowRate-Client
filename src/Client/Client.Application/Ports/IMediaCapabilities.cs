@@ -15,10 +15,16 @@ public interface IMediaCapabilities
     /// </summary>
     IReadOnlyList<string> ScreenShareDecoders { get; }
 
+    /// <summary>The available AV1 screen decoders, in order of preference.</summary>
+    IReadOnlyList<string> ScreenShareAv1Decoders { get; }
+
     /// <summary>
     /// The encoders of shared screens this system has, in the order they are preferred.
     /// </summary>
     IReadOnlyList<string> ScreenShareEncoders { get; }
+
+    /// <summary>The available AV1 screen encoders, in order of preference.</summary>
+    IReadOnlyList<string> ScreenShareAv1Encoders { get; }
 
     /// <summary>
     /// Whether the sound of a shared screen can be captured: of a single application, or of the

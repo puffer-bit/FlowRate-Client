@@ -16,8 +16,14 @@ public sealed record VideoSettings
     /// <summary>The decoder element the user picked, or null to choose it automatically.</summary>
     public string? Decoder { get; init; }
 
+    /// <summary>The AV1 decoder element, or null to choose it automatically.</summary>
+    public string? Av1Decoder { get; init; }
+
     /// <summary>The encoder element the user picked, or null to choose it automatically.</summary>
     public string? Encoder { get; init; }
+
+    /// <summary>The AV1 encoder element, or null to choose it automatically.</summary>
+    public string? Av1Encoder { get; init; }
 
     /// <summary>
     /// Decoded frames go to the screen as GPU textures without passing through memory, where the
@@ -43,7 +49,9 @@ public sealed record VideoSettings
             ? PresentationBufferFrames
             : new VideoSettings().PresentationBufferFrames,
         Decoder = string.IsNullOrWhiteSpace(Decoder) ? null : Decoder,
-        Encoder = string.IsNullOrWhiteSpace(Encoder) ? null : Encoder
+        Av1Decoder = string.IsNullOrWhiteSpace(Av1Decoder) ? null : Av1Decoder,
+        Encoder = string.IsNullOrWhiteSpace(Encoder) ? null : Encoder,
+        Av1Encoder = string.IsNullOrWhiteSpace(Av1Encoder) ? null : Av1Encoder
     };
 
     /// <summary>

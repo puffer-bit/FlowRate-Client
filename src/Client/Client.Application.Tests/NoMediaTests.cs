@@ -53,7 +53,9 @@ public class NoMediaTests : IDisposable
 
         Assert.False(video.IsMediaEnabled);
         Assert.Single(video.DecoderChoices);
+        Assert.Single(video.Av1DecoderChoices);
         Assert.Single(video.EncoderChoices);
+        Assert.Single(video.Av1EncoderChoices);
     }
 
     [Fact]

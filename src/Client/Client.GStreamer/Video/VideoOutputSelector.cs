@@ -58,12 +58,13 @@ internal static class VideoOutputSelector
         if (decoders.Count == 0)
             return null;
 
+        var preferred = codec == VideoCodec.AV1 ? settings.Av1Decoder : settings.Decoder;
         string decoder;
 
         if (!settings.IsHardwareDecodingEnabled)
             decoder = decoders.FirstOrDefault(IsSoftware) ?? decoders[0];
-        else if (settings.Decoder != null && decoders.Contains(settings.Decoder))
-            decoder = settings.Decoder;
+        else if (preferred != null && decoders.Contains(preferred))
+            decoder = preferred;
         else
             decoder = decoders[0];
 

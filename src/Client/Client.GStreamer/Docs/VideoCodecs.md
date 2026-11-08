@@ -89,10 +89,12 @@ AV1 decoders exposed by its libwebrtc runtime and device; desktop remains the so
 
 ### The settings
 
-- **Encoder** (Video tab): the element picked there is moved to the front of the list when this
-  system has it; otherwise the usual order applies. Used from the next share.
-- **Decoder** (Video tab): selects a software or hardware decoder directly, when this system has
-  it. Applies to screens opened after the change. The former hardware-decoding switch is no longer
+- **H.264 encoder** and **AV1 encoder** (Video tab): each codec has its own saved choice. The
+  selected element is moved to the front of that codec's list when this system has it; otherwise
+  the usual order applies. Used from the next share. AV1 choices include available hardware
+  encoders and SVT-AV1 on the CPU. The codec itself is selected in the session settings.
+- **H.264 decoder** and **AV1 decoder** (Video tab): each codec has its own saved software or
+  hardware decoder choice, used when this system has it. Applies to screens opened after the change. The former hardware-decoding switch is no longer
   shown; its disabled state is represented by the software decoder when loading settings.
 - The lists show the elements this system has, in the order above, as "NVIDIA NVENC, video card
   (nvd3d11h264enc)" (`VideoElementNames`). The automatic choice names the element it comes to: the
