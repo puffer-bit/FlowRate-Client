@@ -42,10 +42,10 @@ public class ChatTimeline
         while (start < added.Count)
         {
             var position = FindPosition(added[start]);
-            var date = added[start].Message.SentTime.Date;
+            var date = added[start].LocalSentTime.Date;
             var end = start + 1;
             // A run on one date before the next existing message is inserted in one notification.
-            while (end < added.Count && added[end].Message.SentTime.Date == date &&
+            while (end < added.Count && added[end].LocalSentTime.Date == date &&
                    (position == _messages.Count || MessageOrder.Compare(added[end], _messages[position]) < 0))
                 end++;
 
@@ -60,7 +60,7 @@ public class ChatTimeline
         if (position < 0)
             return;
 
-        var date = message.Message.SentTime.Date;
+        var date = message.LocalSentTime.Date;
         var day = FindDatePosition(date);
         var row = position + day + 1;
         _messages.RemoveAt(position);
@@ -68,8 +68,8 @@ public class ChatTimeline
         UpdateChain(position);
         Items.RemoveAt(row);
 
-        if ((position == 0 || _messages[position - 1].Message.SentTime.Date != date) &&
-            (position == _messages.Count || _messages[position].Message.SentTime.Date != date))
+        if ((position == 0 || _messages[position - 1].LocalSentTime.Date != date) &&
+            (position == _messages.Count || _messages[position].LocalSentTime.Date != date))
         {
             _separators.RemoveAt(day);
             Items.RemoveAt(row - 1);
@@ -111,7 +111,7 @@ public class ChatTimeline
 
     private void InsertRange(int position, IReadOnlyList<ChatMessageVM> messages)
     {
-        var date = messages[0].Message.SentTime.Date;
+        var date = messages[0].LocalSentTime.Date;
         var day = FindDatePosition(date);
         var row = position + day;
         var hasSeparator = day < _separators.Count && _separators.Keys[day] == date;
@@ -128,7 +128,7 @@ public class ChatTimeline
         }
         else
         {
-            var separator = new ChatDateSeparatorVM(messages[0].Message.SentTime);
+            var separator = new ChatDateSeparatorVM(date);
             _separators.Add(date, separator);
             var rows = new List<IMessageListItemVM>(messages.Count + 1) { separator };
             rows.AddRange(messages);

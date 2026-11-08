@@ -9,11 +9,35 @@ namespace Client.Application.Tests;
 
 public sealed class ChatTimelineTests : IDisposable
 {
-    private static readonly DateTime Start = new(2026, 11, 1, 12, 0, 0);
+    private static readonly DateTime Start = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Local);
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _messageCommand =
         ReactiveCommand.Create<ChatMessageModel>(_ => { });
     private readonly ReactiveCommand<int, RxVoid> _userCommand = ReactiveCommand.Create<int>(_ => { });
 
+    [Theory]
+    [InlineData(DateTimeKind.Utc)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void ServerMessagesUseLocalDatesAcrossMidnight(DateTimeKind kind)
+    {
+        var timeline = new ChatTimeline();
+        var midnight = new DateTime(2026, 11, 2, 0, 0, 0, DateTimeKind.Local);
+        var first = Message(1, DateTime.SpecifyKind(midnight.AddMinutes(-1).ToUniversalTime(), kind));
+        var second = Message(2, DateTime.SpecifyKind(midnight.AddMinutes(1).ToUniversalTime(), kind));
+
+        timeline.AddRange([second, first]);
+
+        Assert.Equal(first.Message.SentTime.ToLocalTime(), first.LocalSentTime);
+        Assert.Equal(second.Message.SentTime.ToLocalTime(), second.LocalSentTime);
+        Assert.Collection(timeline.Items,
+            item => Assert.IsType<ChatDateSeparatorVM>(item),
+            item => Assert.Same(first, item),
+            item => Assert.IsType<ChatDateSeparatorVM>(item),
+            item => Assert.Same(second, item));
+
+        timeline.Remove(first);
+        Assert.Equal(2, timeline.Items.Count);
+        Assert.Same(second, timeline.Items[1]);
+    }
     [Fact]
     public void AppendKeepsRowsAndUpdatesTheLastChain()
     {

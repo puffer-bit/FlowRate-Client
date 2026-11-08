@@ -16,6 +16,10 @@ namespace Client.ViewModels.Sessions.Chat;
 
 public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 {
+    public DateTime LocalSentTime => Message.SentTime.Kind != DateTimeKind.Local
+        ? Message.SentTime.ToLocalTime()
+        : Message.SentTime;
+
     private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(1.5);
 
     public ChatMessageModel Message
@@ -24,6 +28,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(LocalSentTime));
             this.RaisePropertyChanged(nameof(IsPinned));
             this.RaisePropertyChanged(nameof(CanEdit));
             this.RaisePropertyChanged(nameof(CanReact));
