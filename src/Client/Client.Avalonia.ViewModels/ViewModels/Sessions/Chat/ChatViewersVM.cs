@@ -26,6 +26,9 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string Username => _user.Username;
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
+    public bool IsOnline => Status is UserStatus.Online or UserStatus.Away or UserStatus.DoNotDisturb;
+    public bool ShowOnlineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
+    public bool ShowOfflineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool IsBanned => _user.State == UserState.Banned;
     public bool IsFrozen => _user.State == UserState.Suspended;
     public int? RoleColor => _owner.GetRoleColor(_user);
@@ -100,6 +103,17 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     }
 
     public ObservableCollection<ChatViewerVM> Users { get; } = [];
+    public bool GroupOnlineUsers
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            SortUsers();
+        }
+    }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleGroupOnlineUsers { get; }
     public bool IsLoading { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool HasError { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
     public string Caption => Strings.Format("chat.viewers.count", ("count", Users.Count.ToString()));
@@ -109,6 +123,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
         int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null)
     {
         (_chatId, _session, _viewProfile) = (chatId, session, viewProfile);
+        ToggleGroupOnlineUsers = ReactiveCommand.Create(() => { GroupOnlineUsers = !GroupOnlineUsers; });
         _unbanUser = unbanUser;
         (_composer, _banUser, _currentUserId) = (composer, banUser, currentUserId);
         session.PermissionsChanged += OnPermissionsChanged;
@@ -208,14 +223,23 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
             }
             else row.Update(user);
         }
-        var ordered = Users.OrderBy(row => row.Username, StringComparer.OrdinalIgnoreCase)
+        SortUsers();
+        UpdateTexts();
+    }
+
+    private void SortUsers()
+    {
+        var ordered = Users.OrderBy(row => GroupOnlineUsers && !row.IsOnline)
+            .ThenBy(row => row.Username, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Id).ToArray();
         for (int index = 0; index < ordered.Length; index++)
         {
             int oldIndex = Users.IndexOf(ordered[index]);
             if (oldIndex != index) Users.Move(oldIndex, index);
+            var startsGroup = index == 0 || ordered[index - 1].IsOnline != ordered[index].IsOnline;
+            ordered[index].ShowOnlineHeader = GroupOnlineUsers && startsGroup && ordered[index].IsOnline;
+            ordered[index].ShowOfflineHeader = GroupOnlineUsers && startsGroup && !ordered[index].IsOnline;
         }
-        UpdateTexts();
     }
 
     private void OnStateChanged(CoordinatorState state) => Dispatcher.UIThread.Post(() =>
@@ -253,6 +277,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     {
         Close();
         _disposed = true;
+        ToggleGroupOnlineUsers.Dispose();
         _session.PermissionsChanged -= OnPermissionsChanged;
         if (_composer != null) _composer.PropertyChanged -= OnComposerChanged;
         _session.ChatViewersChanged -= OnChanged;

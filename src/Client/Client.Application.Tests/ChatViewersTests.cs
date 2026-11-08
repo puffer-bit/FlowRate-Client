@@ -21,6 +21,36 @@ public sealed class ChatViewersTests
         { Id = id, Username = name, CoordinatorInstanceId = "coordinator" };
 
     [Fact]
+    public Task OnlineGroupingTracksStatusChangesAndCanBeDisabled() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        var online = new UserModel
+            { Id = 2, Username = "Zoe", CoordinatorInstanceId = "coordinator", Status = UserStatus.Away };
+        fake.Initial = [User(1, "Alice"), online];
+        using var command = ReactiveCommand.Create<int>(_ => { });
+        using var vm = new ChatViewersVM(7, session, command);
+        vm.Open();
+        vm.GroupOnlineUsers = true;
+        Assert.Equal(new[] { 2, 1 }, vm.Users.Select(u => u.Id));
+        Assert.True(vm.Users[0].ShowOnlineHeader);
+        Assert.True(vm.Users[1].ShowOfflineHeader);
+        var row = vm.Users[0];
+        fake.Raise(new(7, fake.Requests.Single().Id, [User(2, "Zoe")], []));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { 1, 2 }, vm.Users.Select(u => u.Id));
+        Assert.Same(row, vm.Users[1]);
+        Assert.True(vm.Users[0].ShowOfflineHeader);
+        Assert.False(vm.Users[1].ShowOfflineHeader);
+        vm.GroupOnlineUsers = false;
+        Assert.All(vm.Users, user =>
+        {
+            Assert.False(user.ShowOnlineHeader);
+            Assert.False(user.ShowOfflineHeader);
+        });
+    });
+
+    [Fact]
     public Task PinnedMessagesAndViewersShareOneSidePanel() => TestUiThread.RunAsync(() =>
     {
         var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();

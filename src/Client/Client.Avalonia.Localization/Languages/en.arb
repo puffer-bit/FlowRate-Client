@@ -58,6 +58,8 @@
   "chat.info.title": "Chat info",
   "chat.info.noDescription": "No description yet.",
   "chat.info.unlimitedParticipants": "No participant limit",
+  "chat.viewers.options": "User list options",
+  "chat.viewers.groupOnline": "Group online users separately",
   "chat.viewers.title": "Chat access",
   "chat.viewers.count": "{count} users",
   "@chat.viewers.count": {"placeholders": {"count": {}}},

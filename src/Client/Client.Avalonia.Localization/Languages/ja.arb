@@ -43,6 +43,8 @@
   "chat.info.title": "チャット情報",
   "chat.info.noDescription": "説明はまだありません。",
   "chat.info.unlimitedParticipants": "参加人数の制限なし",
+  "chat.viewers.options": "ユーザー一覧の設定",
+  "chat.viewers.groupOnline": "オンラインユーザーを別にまとめる",
   "chat.viewers.title": "チャットへのアクセス",
   "chat.viewers.count": "{count} 人のユーザー",
   "@chat.viewers.count": {"placeholders": {"count": {}}},
