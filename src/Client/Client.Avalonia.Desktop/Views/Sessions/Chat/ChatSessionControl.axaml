@@ -83,7 +83,7 @@
         
         <loadingIndicators:ChatSkeleton Grid.Row="1"
                                         Margin="6"
-                                        VerticalAlignment="Top"
+                                        VerticalAlignment="Stretch"
                                         IsVisible="{Binding IsInitialLoading}"/>
 
         <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
