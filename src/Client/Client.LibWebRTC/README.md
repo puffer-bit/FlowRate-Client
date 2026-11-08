@@ -70,7 +70,12 @@ the one of the setting (144 goes through). The track is not marked as a screen: 
 repeat the last frame of a still screen, which an encoder that only passes pictures on cannot do. A
 picture it gives again is dropped.
 
-An emptied receive section is reused only for a track with the same codec and NACK setting.
+Session media settings are applied by replacing tracks inside the existing transport. The server
+recreates paused screen producers and consumers when their settings changed, including buffering
+settings. Screen tiles retain their last frame and expanded state while replacement tracks start;
+switching codecs can briefly pause the picture until a new keyframe arrives.
+
+An emptied section is reused only for a track with the same codec and NACK setting.
 libwebrtc can keep the previous answer's feedback when generating the next one: reusing a section
 that negotiated NACK off for a track with NACK on leaves the receive stream's NACK history at zero,
 even though the new remote offer contains `a=rtcp-fb:102 nack`. A section with compatible feedback

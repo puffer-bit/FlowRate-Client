@@ -42,9 +42,10 @@ public partial class ActiveHybridSessionVM
     // Whose screens the user asked to watch, kept across a reconnect of the transport. UI thread only
     private readonly HashSet<int> _wantedScreens = [];
 
-    // Screens that were watched when the media settings changed. They stop and come back on new
-    // tracks, and are watched again then without a sound. UI thread only
+    // Keep the tiles and last frames while screens switch to tracks with new media settings.
     private readonly HashSet<int> _restartingScreens = [];
+    private readonly HashSet<int> _stoppedRestartingScreens = [];
+    private int _screenRestartVersion;
 
     // How long a screen may take to come back on its new track before it is no longer waited for
     private static readonly TimeSpan ScreenRestartTimeout = TimeSpan.FromSeconds(30);
@@ -203,6 +204,11 @@ public partial class ActiveHybridSessionVM
             return;
         }
 
+        StatusBar.IsScreenShareOn = false;
+        var userId = _coordinatorSession.GetCurrentUser().Id;
+        _restartingScreens.Remove(userId);
+        _stoppedRestartingScreens.Remove(userId);
+        OnScreenShareChanged(userId, false);
         ReleaseScreenInput();
 
         // A rejection is reported by the main window
@@ -212,6 +218,10 @@ public partial class ActiveHybridSessionVM
 
     private async Task StopScreenShareAsync()
     {
+        var userId = _coordinatorSession.GetCurrentUser().Id;
+        _restartingScreens.Remove(userId);
+        _stoppedRestartingScreens.Remove(userId);
+
         if (StatusBar.IsScreenShareOn)
             _sounds.Play(SoundEvent.ScreenShareStop);
 
@@ -263,9 +273,16 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        ParticipantsListVM.UpdateScreenShare(userId, isSharing);
-
         var isRestarting = _restartingScreens.Contains(userId);
+
+        if (isRestarting && !isSharing)
+        {
+            _stoppedRestartingScreens.Add(userId);
+            return;
+        }
+
+        ParticipantsListVM.UpdateScreenShare(userId, isSharing);
+        _stoppedRestartingScreens.Remove(userId);
 
         // Our own share sounds where it is started and stopped; a repeated report changes nothing
         if (!isRestarting && userId != _coordinatorSession.GetCurrentUser().Id
@@ -280,26 +297,37 @@ public partial class ActiveHybridSessionVM
 
         AddScreenStream(userId);
 
-        if (isRestarting && _restartingScreens.Remove(userId))
+        if (isRestarting && _restartingScreens.Remove(userId) && _wantedScreens.Contains(userId))
             _ = SetScreenWatchedAsync(userId, true);
     });
 
     /// <summary>
-    /// Remembers the screens watched now, ours among them, to watch them again once they are back
-    /// on the tracks that follow new media settings.
+    /// Retains the screens, including expanded views, until their replacement tracks arrive.
     /// </summary>
     private void RememberRestartingScreens()
     {
-        var watched = _screenStreamsByUser.Keys.Where(_hybridSession.IsWatchingScreen).ToArray();
+        var screens = _screenStreamsByUser.Keys.ToArray();
+        var version = ++_screenRestartVersion;
 
-        foreach (var userId in watched)
+        foreach (var userId in screens)
             _restartingScreens.Add(userId);
 
         // A sharer whose client does not restart its screen keeps it, and is not waited for
         DispatcherTimer.RunOnce(() =>
         {
-            foreach (var userId in watched)
+            if (IsClosed || version != _screenRestartVersion)
+                return;
+
+            foreach (var userId in _restartingScreens.ToArray())
+            {
                 _restartingScreens.Remove(userId);
+
+                if (_stoppedRestartingScreens.Remove(userId))
+                {
+                    ParticipantsListVM.UpdateScreenShare(userId, false);
+                    RemoveScreenStream(userId);
+                }
+            }
         }, ScreenRestartTimeout);
     }
 
@@ -410,6 +438,8 @@ public partial class ActiveHybridSessionVM
         if (isWatched)
             _wantedScreens.Remove(userId);
 
+        OnScreenWatchChanged(userId, false);
+
         // A rejection is reported by the main window
         if (isWatched && !result.IsRejected)
             NotifyScreenShareError(Strings.Format("hybrid.screen.watchFailed", ("reason", result)));
@@ -431,6 +461,10 @@ public partial class ActiveHybridSessionVM
     private void OnScreenWatchChanged(int userId, bool isWatched) => Dispatcher.UIThread.Post(() =>
     {
         if (IsClosed || !_screenStreamsByUser.TryGetValue(userId, out var stream))
+            return;
+
+        // A track replacement is a short pause, not an instruction to close the watched screen.
+        if (!isWatched && _restartingScreens.Contains(userId) && _wantedScreens.Contains(userId))
             return;
 
         stream.IsWatched = isWatched;

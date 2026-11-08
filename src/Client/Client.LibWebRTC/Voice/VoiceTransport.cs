@@ -570,7 +570,15 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private void ClaimSendingSlot(OutboundTrack outbound, string kind)
     {
         var slot = _slots.FirstOrDefault(item => item.IsSend && item.OutboundId == null && item.Kind == kind &&
-                                                 item.Carries(outbound.MimeType));
+                                                 item.Carries(outbound.MimeType, RtpCodec.FromOutbound(outbound).IsNackEnabled));
+
+        // A new producer replaces the paused screen rather than continuing its RTP sequence.
+        foreach (var previous in _slots.Where(item => item.IsSend && item.Kind == kind &&
+                                                     item.PausedSsrc != null && item.PausedSsrc != outbound.SSRC))
+        {
+            previous.PausedSsrc = null;
+            previous.PausedRtxSsrc = 0;
+        }
 
         if (slot == null)
             _slots.Add(slot = new Slot { IsSend = true, Kind = kind });
@@ -1282,7 +1290,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         // A native answer reuses its previously negotiated feedback for a codec. An offer can
         // therefore enable NACK while the answer and receive stream keep it disabled. Reuse
-        // receive sections only with the same NACK setting; other sections stay inactive.
+        // sections only with the same NACK setting; other sections stay inactive.
         public bool Carries(string mimeType, bool? nackEnabled = null) =>
             LastCodec == null ||
             ((string.IsNullOrEmpty(mimeType) ||

@@ -442,7 +442,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // The microphone comes back muted or not as the user left it
             await _hybridSession.StopVoiceShareAsync();
             ForgetMicrophoneInput();
-            StatusBar.IsMicrophoneOn = false;
 
             if (!IsClosed && CanSpeak)
                 await StartVoiceAsync();
@@ -456,7 +455,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
             await _hybridSession.StopScreenShareAsync();
 
-            if (!IsClosed)
+            if (!IsClosed && _screenInput == screenInput)
                 await StartScreenShareAsync(screenInput, screenSettings, audioInput, isSilent: true);
         }
     }
@@ -577,7 +576,13 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
         _sounds.Play(notification is PeerKickedEvent or PeerRejectedEvent ? SoundEvent.UserKicked : SoundEvent.Leave);
 
-        Dispatcher.UIThread.Post(() => ParticipantsListVM.RemovePeerFromSession(notification.UserId));
+        Dispatcher.UIThread.Post(() =>
+        {
+            _restartingScreens.Remove(notification.UserId);
+            _stoppedRestartingScreens.Remove(notification.UserId);
+            RemoveScreenStream(notification.UserId);
+            ParticipantsListVM.RemovePeerFromSession(notification.UserId);
+        });
     }
 
     // The server has already taken us out, so the session is closed without leaving it
