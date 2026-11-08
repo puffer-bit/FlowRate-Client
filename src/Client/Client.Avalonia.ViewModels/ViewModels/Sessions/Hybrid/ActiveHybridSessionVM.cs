@@ -234,7 +234,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     public async Task JoinSession()
     {
-        await Task.Delay(200);
         if (IsClosed)
             return;
 

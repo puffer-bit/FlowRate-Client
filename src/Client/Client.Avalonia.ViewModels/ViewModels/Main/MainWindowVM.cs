@@ -521,10 +521,6 @@ public partial class MainWindowVM : ReactiveObject
 
     private async Task HideStartupScreenAsync(Func<Task>? fadeOutStartupScreen)
     {
-#if DEBUG
-        // Keep the startup screen visible for manual transition checks in development builds.
-        await Task.Delay(TimeSpan.FromSeconds(3));
-#endif
         IsStartupScreenLeaving = true;
         if (fadeOutStartupScreen != null)
             await fadeOutStartupScreen();

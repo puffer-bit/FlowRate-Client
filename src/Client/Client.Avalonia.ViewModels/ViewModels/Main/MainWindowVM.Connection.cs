@@ -208,7 +208,6 @@ public partial class MainWindowVM
             return;
 
         SessionsList.ShowLoading();
-        await Task.Delay(700);
         if (IsRestoreCurrent(session, restoreId))
             await AttachSessionManager(session, restoreId);
     }
