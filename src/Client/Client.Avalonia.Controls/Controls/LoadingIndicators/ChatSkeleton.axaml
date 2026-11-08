@@ -10,8 +10,8 @@
     <UserControl.Styles>
         <Style Selector="Border.placeholder">
             <Setter Property="Background" Value="{DynamicResource SecondaryTextBrush}"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Height" Value="10"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Height" Value="18"/>
         </Style>
         <Style Selector="StackPanel.pulse.animated:shown">
             <Style.Animations>
@@ -30,6 +30,10 @@
         </Style>
     </UserControl.Styles>
 
+    <ScrollViewer x:Name="SkeletonScroll"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Hidden"
+                  ScrollChanged="OnScrollChanged">
     <StackPanel x:Name="Pulse" Classes="pulse"
                 Opacity="0.18" anim:ShownState.Track="True">
         <ItemsControl x:Name="Rows">
@@ -53,4 +57,5 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
     </StackPanel>
+    </ScrollViewer>
 </UserControl>

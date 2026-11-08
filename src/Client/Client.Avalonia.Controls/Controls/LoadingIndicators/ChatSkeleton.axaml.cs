@@ -56,6 +56,12 @@ public partial class ChatSkeleton : UserControl
 
     private void OnMotionChanged() => Dispatcher.UIThread.Post(UpdateMotion);
 
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (!IsCompact)
+            SkeletonScroll.ScrollToEnd();
+    }
+
     private void UpdateMotion() => Pulse.Classes.Set("animated", Motion.IsEnabled);
 }
 
