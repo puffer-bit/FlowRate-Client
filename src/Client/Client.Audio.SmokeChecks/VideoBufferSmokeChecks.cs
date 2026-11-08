@@ -6,6 +6,7 @@ using Client.GStreamer.Interop;
 using Client.GStreamer.Video;
 using Gst;
 using Microsoft.Extensions.Logging.Abstractions;
+using Client.WebRTC.Sdp;
 
 internal static class VideoBufferSmokeChecks
 {
@@ -18,31 +19,80 @@ internal static class VideoBufferSmokeChecks
         CheckGate(2, 0, 0, 2);
         CheckGate(60, 12, 0, 1);
         CheckGate(60, 0, 100_000_000, 2);
-        CheckEncodingAndDecoding();
+        CheckEncodingAndDecoding(VideoCodec.H264, "openh264enc");
+        CheckEncodingAndDecoding(VideoCodec.AV1, "svtav1enc");
+        CheckRtpRoundTrip(VideoCodec.H264, "openh264enc bitrate=1000000", "openh264dec");
+        CheckRtpRoundTrip(VideoCodec.AV1,
+            "svtav1enc target-bitrate=1000 preset=12 parameters-string=pred-struct=1:rc=2:lookahead=0", "dav1ddec");
         Console.WriteLine("Video buffer smoke checks passed.");
     }
 
-    private static void CheckEncodingAndDecoding()
+    private static void CheckRtpRoundTrip(VideoCodec codec, string encoder, string decoder)
+    {
+        var format = VideoCodecPipeline.For(codec);
+        using var pipeline = (Pipeline)Global.ParseLaunch(
+            "appsrc name=raw is-live=true format=time do-timestamp=true " +
+            "caps=\"video/x-raw,format=BGRx,width=320,height=240,framerate=30/1\" ! videoconvert ! " +
+            encoder + " ! " + format.Capture + " ! " + format.Payloader + " name=packetizer pt=104 ssrc=1234 " +
+            "seqnum-offset=42 timestamp-offset=1234 mtu=1200 " + format.PayloaderOptions + " ! " +
+            format.Depayloader + " request-keyframe=true wait-for-keyframe=true ! " + format.Parse +
+            format.Caps + " ! " + decoder + " ! appsink name=decoded sync=false");
+        using var sink = pipeline.GetByName("decoded")!;
+        using var source = pipeline.GetByName("raw")!;
+        if (codec == VideoCodec.AV1)
+        {
+            using var payloader = pipeline.GetByName("packetizer")!;
+            Require(GstPacketTransform.Attach(payloader, "src", new Av1RtpDependencyDescriptor().Rewrite),
+                "Attach AV1 dependency descriptors");
+        }
+        try
+        {
+            Require(pipeline.SetState(State.Playing) != StateChangeReturn.Failure, $"Start {codec} RTP pipeline");
+            for (var index = 0; index < 30; index++)
+            {
+                using var buffer = Gst.Buffer.NewMemdup(new byte[320 * 240 * 4]);
+                GstApp.PushBuffer(source, buffer);
+            }
+            using var sample = GstApp.TryPullSample(sink, 15_000_000_000);
+            Require(sample != null, $"Decode {codec} after RTP packetization and reassembly");
+        }
+        finally
+        {
+            pipeline.SetState(State.Null);
+        }
+    }
+
+    private static void CheckEncodingAndDecoding(VideoCodec codec, string encoder)
     {
         var previous = VideoSettings.Current;
         try
         {
-            VideoSettings.Apply(previous with { Encoder = "openh264enc", IsHardwareDecodingEnabled = false });
-            using var decoder = GstVideoDecoder.Create(VideoCodec.H264, "buffer_smoke", NullLogger.Instance)
+            VideoSettings.Apply(previous with { Encoder = encoder, IsHardwareDecodingEnabled = false });
+            using var decoder = GstVideoDecoder.Create(codec, "buffer_smoke", NullLogger.Instance)
                 ?? throw new InvalidOperationException("Cannot create software decoder");
             using var capture = GstScreenCapture.Create(new TestPatternVideoInput(),
-                new ScreenShareSettings { Framerate = 30, MaxHeight = 480 }, VideoCodec.H264,
+                new ScreenShareSettings { Framerate = 30, MaxHeight = 480 }, codec,
                 "buffer_smoke", NullLogger.Instance)
                 ?? throw new InvalidOperationException("Cannot create software encoder");
             using var decoded = new ManualResetEventSlim();
+            using var requestedKeyframe = new ManualResetEventSlim();
+            var waitingForKeyframe = 0;
             decoder.FrameReady += frame =>
             {
                 if (frame.Width > 0 && frame.Height > 0) decoded.Set();
             };
-            capture.EncodedFrameReady += decoder.Push;
+            capture.EncodedFrameReady += frame =>
+            {
+                decoder.Push(frame);
+                if (Volatile.Read(ref waitingForKeyframe) != 0 && frame.IsKeyFrame)
+                    requestedKeyframe.Set();
+            };
             decoder.KeyFrameNeeded += () => capture.RequestKeyFrame(isUrgent: true);
             Require(capture.Start(), "Start software capture");
-            Require(decoded.Wait(TimeSpan.FromSeconds(10)), "Encode and decode synthetic screen through native buffers");
+            Require(decoded.Wait(TimeSpan.FromSeconds(15)), $"Encode and decode {codec} screen through native buffers");
+            Volatile.Write(ref waitingForKeyframe, 1);
+            capture.RequestKeyFrame(isUrgent: true);
+            Require(requestedKeyframe.Wait(TimeSpan.FromSeconds(2)), $"{codec} responds to a viewer's keyframe request");
         }
         finally
         {

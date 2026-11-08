@@ -1,4 +1,5 @@
 using Shared.Models.Media;
+using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 
 namespace Client.WebRTC.Sdp;
@@ -109,6 +110,15 @@ public sealed record RtpCodec
         var slash = mimeType.IndexOf('/');
         return slash >= 0 ? mimeType[(slash + 1)..] : mimeType;
     }
+
+    /// <summary>The video codecs supported by the client transports; unknown formats stay unsupported.</summary>
+    public static VideoCodec? VideoCodecOf(string mimeType) => EncodingNameOf(mimeType).ToUpperInvariant() switch
+    {
+        "H264" => VideoCodec.H264,
+        "VP8" => VideoCodec.VP8,
+        "AV1" => VideoCodec.AV1,
+        _ => null
+    };
 
     /// <summary>Whether the codec has lost packets asked for again.</summary>
     public bool IsNackEnabled => RtcpFeedback.Contains(NackFeedback);

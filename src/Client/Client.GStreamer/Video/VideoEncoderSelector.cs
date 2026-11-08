@@ -120,25 +120,6 @@ public static class VideoEncoderSelector
     public static bool DependsOnBitrate(string name) =>
         name.Contains("bitrate", StringComparison.Ordinal) || LimitProperties.Contains(name);
 
-    /// <summary>
-    /// The parser that follows the encoder, or null when the codec needs none.
-    /// </summary>
-    public static string? GetParser(VideoCodec codec) => codec switch
-    {
-        VideoCodec.H264 => "h264parse",
-        VideoCodec.AV1 => "av1parse",
-        _ => null
-    };
-
-    public static string GetEncodedCaps(VideoCodec codec) => codec switch
-    {
-        VideoCodec.H264 => "video/x-h264,stream-format=byte-stream,alignment=au",
-        VideoCodec.AV1 => "video/x-av1,stream-format=obu-stream,alignment=tu",
-        VideoCodec.VP8 => "video/x-vp8",
-        VideoCodec.VP9 => "video/x-vp9",
-        _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, null)
-    };
-
     private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) => codec switch
     {
         VideoCodec.H264 => OperatingSystem.IsWindows()
@@ -206,7 +187,8 @@ public static class VideoEncoderSelector
 
     // Presets 10 and above are the real-time ones
     private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>
-        [("target-bitrate", Format(kbps)), ("preset", "12")]);
+        [("target-bitrate", Format(kbps)), ("preset", "12"),
+         ("parameters-string", "pred-struct=1:rc=2:lookahead=0")]);
 
     // libvpx takes bit/s; deadline=1 is its real-time mode
     private static Candidate Vpx(string factory) => new(factory, false, kbps =>

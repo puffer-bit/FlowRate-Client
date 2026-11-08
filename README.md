@@ -40,6 +40,12 @@ On desktop, libwebrtc normally provides the session transport; GStreamer provide
 
 Webcam calling is not currently implemented.
 
+Session settings can select AV1 for screen sharing when the server and all viewers support it;
+H.264 remains the default. AV1 requires an updated coordinator and SFU. Desktop builds using
+libwebrtc also need native libraries rebuilt from the updated sources on each platform; older
+bundled binaries support H.264 and VP8 only. See [video codecs](src/Client/Client.GStreamer/Docs/VideoCodecs.md)
+for runtime requirements and validation commands. Android viewing depends on the device's available decoders.
+
 ### Chat and community tools
 
 - Exchange messages with Markdown formatting, mentions, images, and file attachments.
