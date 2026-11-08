@@ -16,10 +16,9 @@
     
     <UserControl.ContextFlyout>
         <Flyout Placement="BottomEdgeAlignedRight" 
+                Opening="FlyoutBase_OnOpening"
                 Opened="FlyoutBase_OnOpened"
-                Closed="FlyoutBase_OnClosed">
-            <chatViews:ChatMessageFlyout/>
-        </Flyout>
+                Closed="FlyoutBase_OnClosed"/>
     </UserControl.ContextFlyout>
     
     <Border Classes="msg-root"
