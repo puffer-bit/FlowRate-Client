@@ -10,16 +10,14 @@ using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
 using Client.Core.Settings;
 using Client.Services;
-using Client.ViewModels.Dialogs;
 using ReactiveUI;
 
-using Result = Client.ViewModels.Dialogs.Result;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
 
 /// <summary>
-/// The journal of the application: how much it keeps, its files and an archive of them for a bug
+/// The journal of the application: its level and an archive of its files for a bug
 /// report, the logs of GStreamer and libwebrtc in it; and the statistics of the media: what is drawn
 /// over the screens and what of it goes into the journal.
 /// </summary>
@@ -36,16 +34,14 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("debug",
-        ("journal", ["level", "writeToFiles", "files", "archive"]),
-        ("native", NativeSearchKeys()),
-        ("mediaOverlay", ["mediaPerfOverlay", "mediaPerfExpanded", "mediaPerfSections", "mediaPerfInterval", "mediaPerfGraphs"]),
-        ("mediaJournal", ["mediaPerfJournal", "mediaPerfSummary", "mediaPerfAnomalies"]));
+        ("journal", ["level", ..NativeSearchKeys(), "mediaPerfJournal", "mediaPerfSummary",
+            "mediaPerfAnomalies", "writeToFiles", "archive"]),
+        ("mediaOverlay", ["mediaPerfOverlay", "mediaPerfExpanded", "mediaPerfSections", "mediaPerfInterval", "mediaPerfGraphs"]));
 
     // The statistics of the media begin with what is drawn over the screens
     public IReadOnlyList<SettingAnchor> Anchors =>
     [
         new("debug.journal", "settings.debug.section.journal"),
-        new("debug.native", "settings.debug.section.native"),
         new("debug.mediaOverlay", "settings.debug.anchors.media")
     ];
 
@@ -173,13 +169,6 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
 
     public string? LogDirectory => _service.LogDirectory;
 
-    /// <summary>What the files take.</summary>
-    public string? LogFilesText
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
     /// <summary>How the last archive went, or null before one.</summary>
     public string? ArchiveText
     {
@@ -187,12 +176,8 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ReactiveCommand<RxVoid, RxVoid> ClearLogFilesCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveArchiveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
-
-    /// <summary>Asks the user before the files are deleted.</summary>
-    public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
 
     /// <summary>Asks where the archive goes, by its suggested name; null when the user gave up.</summary>
     public Interaction<string, Stream?> PickArchiveTarget { get; } = new();
@@ -210,7 +195,6 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         HasLibWebRTCLog = service.NativeLogSources.Contains(NativeLogSource.LibWebRTC);
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
-        ClearLogFilesCommand = ReactiveCommand.CreateFromTask(ClearLogFilesAsync);
         SaveArchiveCommand = ReactiveCommand.CreateFromTask(SaveArchiveAsync);
 
         ObserveSettingsChanges();
@@ -253,29 +237,6 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
         _isUpdating = true;
         Apply(await _service.GetSettingsAsync());
         _isUpdating = false;
-
-        await RefreshFilesAsync();
-    }
-
-    private async Task RefreshFilesAsync()
-    {
-        if (!HasLogFiles)
-            return;
-
-        LogFilesText = Strings.Format("settings.debug.filesUsage",
-            ("size", SizeText.Format(await _service.GetLogFilesSizeAsync())));
-    }
-
-    private async Task ClearLogFilesAsync()
-    {
-        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
-            Strings.Get("settings.debug.files.question"), Strings.Get("settings.debug.files.title")));
-
-        if (answer != Result.Yes)
-            return;
-
-        await _service.ClearLogFilesAsync();
-        await RefreshFilesAsync();
     }
 
     private async Task SaveArchiveAsync()

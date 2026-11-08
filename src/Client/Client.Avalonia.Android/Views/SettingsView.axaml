@@ -310,15 +310,6 @@
                                 </Button>
                             </Grid>
                             <Grid ColumnDefinitions="Auto, *">
-                                <Path Grid.Column="0" Classes="sub-item-guide"/>
-                                <Button Grid.Column="1" Classes="borderless category sub" Tag="debug.native" Click="OnDebugAnchorClick">
-                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
-                                        <TextBlock Grid.Column="0" Text="{l:Text settings.debug.section.native}"/>
-                                        <Path Grid.Column="1" Classes="category-arrow"/>
-                                    </Grid>
-                                </Button>
-                            </Grid>
-                            <Grid ColumnDefinitions="Auto, *">
                                 <Path Grid.Column="0" Classes="sub-item-guide last"/>
                                 <Button Grid.Column="1" Classes="borderless category sub" Tag="debug.mediaOverlay" Click="OnDebugAnchorClick">
                                     <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
@@ -624,6 +615,19 @@
                     </StackPanel>
                 </ui:SettingsRow>
             </ui:SettingsCard>
+
+            <controls:SettingsHeader services:SettingText.Section="storage.logs" IsVisible="{Binding HasLogFiles}"/>
+            <ui:SettingsCard IsVisible="{Binding HasLogFiles}">
+                <ui:SettingsRow services:SettingText.Key="storage.files" IsVisible="{Binding HasLogFiles}">
+                    <StackPanel Spacing="4" HorizontalAlignment="Right">
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
+                        <TextBlock FontSize="12" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding LogFilesText}"/>
+                    </StackPanel>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
         </ui:SettingsPage>
 
         <!-- ====== Logging and debug: the journal and the log of libwebrtc, then the statistics of the
@@ -634,7 +638,7 @@
             <ui:SettingsCard>
                 <ui:SettingsRow services:SettingText.Key="debug.level">
                     <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
-                    <ComboBox MinWidth="110" SelectedIndex="{Binding JournalLevelIndex}">
+                    <ComboBox Width="160" SelectedIndex="{Binding JournalLevelIndex}">
                         <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
                         <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
                         <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
@@ -643,17 +647,39 @@
                         <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
                     </ComboBox>
                 </ui:SettingsRow>
+                <!-- The order of NativeLogLevel -->
+                <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsVisible="{Binding HasLibWebRTCLog}">
+                    <ComboBox Width="160" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal">
+                    <!-- The order of MediaPerfJournalMode -->
+                    <ComboBox Width="160" SelectedIndex="{Binding MediaPerfJournalIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.summary}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.detailed}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSummary" IsEnabled="{Binding IsMediaJournalOn}">
+                    <!-- DebugSettings.MediaPerfSummaryPeriods -->
+                    <ComboBox Width="160" SelectedIndex="{Binding MediaPerfSummaryIndex}">
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.five}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.ten}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.thirty}"/>
+                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.sixty}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfAnomalies">
+                    <ToggleSwitch IsChecked="{Binding LogMediaPerfAnomalies}"/>
+                </ui:SettingsRow>
                 <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsVisible="{Binding HasLogFiles}">
                     <ToggleSwitch IsChecked="{Binding WriteToFiles}"/>
-                </ui:SettingsRow>
-                <ui:SettingsRow services:SettingText.Key="debug.files" IsVisible="{Binding HasLogFiles}">
-                    <StackPanel Spacing="4" HorizontalAlignment="Right">
-                        <Button HorizontalAlignment="Right"
-                                Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
-                        <TextBlock FontSize="12" HorizontalAlignment="Right"
-                                   Foreground="{DynamicResource SecondaryTextBrush}"
-                                   Text="{Binding LogFilesText}"/>
-                    </StackPanel>
                 </ui:SettingsRow>
                 <ui:SettingsRow services:SettingText.Key="debug.archive">
                     <StackPanel Spacing="4" HorizontalAlignment="Right">
@@ -663,21 +689,6 @@
                                    Foreground="{DynamicResource SecondaryTextBrush}"
                                    Text="{Binding ArchiveText}"/>
                     </StackPanel>
-                </ui:SettingsRow>
-            </ui:SettingsCard>
-
-            <controls:SettingsHeader services:SettingText.Section="debug.native"/>
-            <ui:SettingsCard>
-                <!-- The order of NativeLogLevel -->
-                <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsVisible="{Binding HasLibWebRTCLog}">
-                    <ComboBox MinWidth="110" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
-                    </ComboBox>
                 </ui:SettingsRow>
             </ui:SettingsCard>
 
@@ -716,29 +727,6 @@
                 </ui:SettingsRow>
             </ui:SettingsCard>
 
-            <controls:SettingsHeader services:SettingText.Section="debug.mediaJournal"/>
-            <ui:SettingsCard>
-                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal">
-                    <!-- The order of MediaPerfJournalMode -->
-                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfJournalIndex}">
-                        <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.summary}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.detailed}"/>
-                    </ComboBox>
-                </ui:SettingsRow>
-                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSummary" IsEnabled="{Binding IsMediaJournalOn}">
-                    <!-- DebugSettings.MediaPerfSummaryPeriods -->
-                    <ComboBox MinWidth="110" SelectedIndex="{Binding MediaPerfSummaryIndex}">
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.five}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.ten}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.thirty}"/>
-                        <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.sixty}"/>
-                    </ComboBox>
-                </ui:SettingsRow>
-                <ui:SettingsRow services:SettingText.Key="debug.mediaPerfAnomalies">
-                    <ToggleSwitch IsChecked="{Binding LogMediaPerfAnomalies}"/>
-                </ui:SettingsRow>
-            </ui:SettingsCard>
         </ui:SettingsPage>
 
         <ui:SettingsPage Grid.Row="2" x:Name="AccountingPage" IsVisible="False"

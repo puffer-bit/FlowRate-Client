@@ -93,7 +93,8 @@ public partial class SettingsView : UserControl
             services.GetRequiredService<IMicrophoneTester>(),
             services.GetRequiredService<ISoundService>(),
             services.GetRequiredService<ISoundPackCatalog>());
-        _storage = new StorageControlVM(services.GetRequiredService<IStorageService>());
+        _storage = new StorageControlVM(services.GetRequiredService<IStorageService>(),
+            services.GetRequiredService<IDebugAndLogService>());
         _debug = new DebugAndLogsControlVM(services.GetRequiredService<IDebugAndLogService>());
         _accounting = new AccountingControlVM(services.GetRequiredService<IAccountingService>(),
             services.GetRequiredService<IDatabaseSecurityService>());
@@ -104,8 +105,6 @@ public partial class SettingsView : UserControl
         _accounting.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await showMessageBox(context.Input)));
         _storage.ShowMessageBox.RegisterHandler(async context =>
-            context.SetOutput(await showMessageBox(context.Input)));
-        _debug.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await showMessageBox(context.Input)));
         _debug.PickArchiveTarget.RegisterHandler(async context =>
             context.SetOutput(await PickArchiveTarget(context.Input)));

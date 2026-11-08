@@ -25,6 +25,21 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     private static readonly TimeSpan SettingsSaveDelay = TimeSpan.FromMilliseconds(300);
 
+    private static readonly SoundEvent[] SoundDisplayOrder =
+    [
+        // Connection and participants.
+        SoundEvent.Connected, SoundEvent.Disconnected,
+        SoundEvent.Join, SoundEvent.Leave, SoundEvent.UserKicked,
+        // Calls and chat notifications.
+        SoundEvent.CallIncoming, SoundEvent.Message, SoundEvent.MessageSent,
+        SoundEvent.Mention, SoundEvent.Poke,
+        // Microphone and playback controls.
+        SoundEvent.Unmute, SoundEvent.Mute, SoundEvent.Undeafen, SoundEvent.Deafen,
+        // Screen sharing and other status changes.
+        SoundEvent.ScreenShareStart, SoundEvent.ScreenShareStop,
+        SoundEvent.Afk, SoundEvent.Error
+    ];
+
     public string Name => SettingText.TabName("audio");
     public SettingTabType Type => SettingTabType.Audio;
     public bool IsEnabled => true;
@@ -33,9 +48,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
     // Only the rows the engine of the voice shows
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
         ("microphone", ["inputDevice", "inputVolume", "noiseSuppression",
-            "echoCancellation", "autoGainControl"]),
+            "echoCancellation", "autoGainControl", "voiceGate", "testMicrophone", "inputLevel",
+            "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
         ("output", ["outputDevice", "outputVolume"]),
-        ("voiceActivity", ["voiceGate", "testMicrophone", "inputLevel", "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]));
 
     public ObservableCollection<AudioInputDeviceItem> InputDevices { get; } = new();
@@ -225,7 +240,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
         // Not disposed with the rest: a late toggle of an item would throw on it
         var soundToggles = new Subject<RxVoid>();
-        Sounds = Enum.GetValues<SoundEvent>()
+        Sounds = SoundDisplayOrder
             .Select(soundEvent => new SoundItemVM(soundEvent,
                 Strings.Get($"settings.audio.sound.{SoundFiles.GetName(soundEvent)}"), soundService,
                 () => soundToggles.OnNext(RxVoid.Default)))
