@@ -96,7 +96,7 @@ public static class Motion
             MotionDuration.Medium => 200,
             MotionDuration.Long => 250,
             MotionDuration.ExtraLong => 400,
-            MotionDuration.Startup => 250 и удали артифакты ,
+            MotionDuration.Startup => 250,
             _ => 150
         };
 
