@@ -204,13 +204,13 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private Pipeline? Parse(VideoOutput output)
     {
         // The parser fills in the caps the decoders negotiate on, such as the profile
-        var parser = VideoEncoderSelector.GetParser(_codec) is { } factory ? $"{factory} ! " : "";
+        var codec = VideoCodecPipeline.For(_codec);
         // Named for the statistics, which measure it
         var chain = output.Chain.StartsWith(output.Decoder, StringComparison.Ordinal)
             ? $"{output.Decoder} name={DecoderName}{output.Chain[output.Decoder.Length..]}"
             : output.Chain;
         var description = string.Format(System.Globalization.CultureInfo.InvariantCulture, Description,
-            VideoEncoderSelector.GetEncodedCaps(_codec), parser, chain, VideoFramePump.SinkDescription(SinkName));
+            codec.Caps, codec.Parse, chain, VideoFramePump.SinkDescription(SinkName));
 
         try
         {

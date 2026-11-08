@@ -130,8 +130,12 @@ control. With speakers, check that the remote client's voice does not return thr
 client's microphone. Repeat with headphones to distinguish acoustic echo from duplicate delivery.
 Also repeat with AGC and echo cancellation disabled: sharing must preserve these settings too.
 
-H.264 and VP8 go both ways, which are what the clients send. Android neither shows nor watches screens,
-as it has no `IVideoMedia`.
+The native source advertises H.264, VP8 and AV1 in both directions. AV1 is single-layer passthrough:
+GStreamer provides the encoded OBU stream and libwebrtc packetizes it. Rebuild the Windows and Linux
+prebuilt libraries after this change; older binaries advertise only H.264 and VP8. Check AV1 receive
+negotiation with `Client.Audio.SmokeChecks --video-negotiation` and encoding, requested keyframes,
+decoding and GStreamer RTP round trips with `--video-buffers`. Android viewing uses the codecs its
+Java libwebrtc decoder factory and device expose; Android does not originate screen shares.
 
 ## Building
 

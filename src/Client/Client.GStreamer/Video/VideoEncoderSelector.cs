@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Gst;
 using Client.Core.Media;
+using Client.GStreamer.Interop;
 
 namespace Client.GStreamer.Video;
 
@@ -65,6 +66,7 @@ public static class VideoEncoderSelector
 
     // Whether the element of a factory takes a property with a value, once found out
     private static readonly ConcurrentDictionary<(string Factory, string Name, string Value), bool> Accepted = new();
+    private static readonly ConcurrentDictionary<string, bool> MesaAv1Encoders = new();
 
     /// <param name="preferred">The factory to use when this system has it, before the usual order.</param>
     public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null)
@@ -88,12 +90,27 @@ public static class VideoEncoderSelector
             // Tried with the value that leaves the encoder its default, which every bitrate gives the same answer for
             var limit = (candidate.Limit?.Invoke(bitrateKbps) ?? []).Where(property => Accepts(candidate.Factory, property.Name, "0"));
 
-            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning, ..limit],
+            // Mesa interprets quality levels as packed preset flags, not the usual VA speed scale.
+            // Its recommended value 1 enables the balanced preset and adaptive quantization.
+            // The default 4 selects a slower custom preset; 7 is not its fastest preset either.
+            (string, string)[] driverTuning = IsMesaAv1(candidate.Factory) && Accepts(candidate.Factory, "target-usage", "1")
+                ? [("target-usage", "1")]
+                : [];
+
+            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning, ..driverTuning, ..limit],
                 candidate.IsHardware);
         }
 
         return null;
     }
+
+    private static bool IsMesaAv1(string factory) => OperatingSystem.IsLinux() &&
+        factory.StartsWith("va", StringComparison.Ordinal) && factory.Contains("av1", StringComparison.Ordinal) &&
+        MesaAv1Encoders.GetOrAdd(factory, name =>
+        {
+            using var encoder = ElementFactory.Make(name, null);
+            return encoder != null && GstVaContext.UsesMesaGallium(encoder);
+        });
 
     /// <summary>
     /// The encoder elements of <paramref name="codec"/> this system can use, in order of preference.
@@ -119,25 +136,6 @@ public static class VideoEncoderSelector
     /// </summary>
     public static bool DependsOnBitrate(string name) =>
         name.Contains("bitrate", StringComparison.Ordinal) || LimitProperties.Contains(name);
-
-    /// <summary>
-    /// The parser that follows the encoder, or null when the codec needs none.
-    /// </summary>
-    public static string? GetParser(VideoCodec codec) => codec switch
-    {
-        VideoCodec.H264 => "h264parse",
-        VideoCodec.AV1 => "av1parse",
-        _ => null
-    };
-
-    public static string GetEncodedCaps(VideoCodec codec) => codec switch
-    {
-        VideoCodec.H264 => "video/x-h264,stream-format=byte-stream,alignment=au",
-        VideoCodec.AV1 => "video/x-av1,stream-format=obu-stream,alignment=tu",
-        VideoCodec.VP8 => "video/x-vp8",
-        VideoCodec.VP9 => "video/x-vp9",
-        _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, null)
-    };
 
     private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) => codec switch
     {
@@ -186,7 +184,9 @@ public static class VideoEncoderSelector
             factory.Contains("h264", StringComparison.Ordinal)
                 ? [("key-int-max", "1024"), ("target-usage", "7"), ("ref-frames", "1"),
                    ("num-slices", "4"), ("b-frames", "0")]
-                : [("key-int-max", "1024")],
+                : factory.Contains("av1", StringComparison.Ordinal)
+                    ? [("key-int-max", "1024"), ("hierarchical-level", "1"), ("gf-group-size", "1")]
+                    : [("key-int-max", "1024")],
             kbps => [("cpb-size", Format(WindowKbits(kbps)))]);
 
     // Quick Sync bounds a keyframe in kbytes
@@ -206,7 +206,8 @@ public static class VideoEncoderSelector
 
     // Presets 10 and above are the real-time ones
     private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>
-        [("target-bitrate", Format(kbps)), ("preset", "12")]);
+        [("target-bitrate", Format(kbps)), ("preset", "12"),
+         ("parameters-string", "pred-struct=1:rc=2:lookahead=0")]);
 
     // libvpx takes bit/s; deadline=1 is its real-time mode
     private static Candidate Vpx(string factory) => new(factory, false, kbps =>

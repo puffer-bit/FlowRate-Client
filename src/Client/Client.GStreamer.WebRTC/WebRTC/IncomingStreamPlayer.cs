@@ -5,12 +5,14 @@ using Gst;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Interop;
+using Client.GStreamer.Video;
+using Client.WebRTC.Sdp;
 
 namespace Client.GStreamer.WebRTC;
 
 /// <summary>
 /// Gives every src pad webrtcbin adds a branch of its own. Opus audio is decoded and played on the
-/// default output device, H.264 and VP8 video goes to a decoder of <see cref="IVideoMedia"/>, whose
+/// default output device, supported video goes to a decoder of <see cref="IVideoMedia"/>, whose
 /// frames the caller draws; any other
 /// stream is drained into a fakesink, because a pad left unlinked would stop the whole transport
 /// with not-linked.
@@ -72,16 +74,6 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     // half a second: with the default room a stalled reader would leave the picture late for good.
     // The gap that leaves is repaired like a loss. The frames go out as whole access units with the
     // parameter sets before every keyframe, so a decoder can start at any of them
-    private const string H264Description =
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
-        "rtph264depay request-keyframe=true wait-for-keyframe=true ! " +
-        "h264parse config-interval=-1 ! video/x-h264,stream-format=byte-stream,alignment=au ! " + EncodedSink;
-
-    // The same for VP8, whose depayloader drops what it has until the next keyframe
-    private const string Vp8Description =
-        "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
-        "rtpvp8depay request-keyframe=true wait-for-keyframe=true ! " + EncodedSink;
-
     // Never drops: a lost frame would break every one up to the next keyframe; the queue in front
     // drops instead
     private const string EncodedSink =
@@ -324,12 +316,16 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     }
 
     /// <summary>
-    /// A branch that depayloads H.264 or VP8 into a sink whose frames go to a decoder.
+    /// A branch that depayloads the negotiated codec into a sink whose frames go to a decoder.
     /// </summary>
     /// <returns>Null when an element is missing.</returns>
     private (Bin Bin, IncomingVideo Video)? BuildVideoBranch(string padName, uint mline, VideoCodec codec)
     {
-        var branch = Global.ParseBinFromDescription(codec == VideoCodec.VP8 ? Vp8Description : H264Description, true);
+        var format = VideoCodecPipeline.For(codec);
+        var branch = Global.ParseBinFromDescription(
+            "queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=downstream ! " +
+            format.Depayloader + " request-keyframe=true wait-for-keyframe=true ! " +
+            format.Parse + format.Caps + " ! " + EncodedSink, true);
 
         if (branch?.GetByName(VideoSinkName) is not { } sink)
         {
@@ -598,12 +594,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
         if (structure.GetString("media") != "video")
             return null;
 
-        return structure.GetString("encoding-name")?.ToUpperInvariant() switch
-        {
-            "H264" => VideoCodec.H264,
-            "VP8" => VideoCodec.VP8,
-            _ => null
-        };
+        return RtpCodec.VideoCodecOf(structure.GetString("encoding-name") ?? "");
     }
 
     /// <summary>

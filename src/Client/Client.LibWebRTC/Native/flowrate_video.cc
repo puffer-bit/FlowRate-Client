@@ -166,7 +166,7 @@ class PassthroughDecoder : public webrtc::VideoDecoder {
 };
 
 // What the clients encode: H.264 of any common profile (the decoders take them all, and the profile
-// the SFU describes a stream with is not the one it was encoded in) and VP8
+// the SFU describes a stream with is not the one it was encoded in), VP8 and single-layer AV1.
 std::vector<webrtc::SdpVideoFormat> SupportedFormats() {
   std::vector<webrtc::SdpVideoFormat> formats;
 
@@ -177,6 +177,7 @@ std::vector<webrtc::SdpVideoFormat> SupportedFormats() {
   }
 
   formats.emplace_back("VP8");
+  formats.emplace_back("AV1");
   return formats;
 }
 
@@ -363,6 +364,26 @@ class PassthroughEncoder : public webrtc::VideoEncoder {
       info.codecSpecific.VP8.temporalIdx = webrtc::kNoTemporalIdx;
       info.codecSpecific.VP8.layerSync = false;
       info.codecSpecific.VP8.keyIdx = webrtc::kNoKeyIdx;
+    } else if (codec_type_ == webrtc::kVideoCodecAV1) {
+      // Single-layer AV1 still needs the dependency descriptor: mediasoup uses it to
+      // recognize keyframes. Conservatively depend on every preceding delta frame.
+      auto& generic = info.generic_frame_info.emplace();
+      generic.encoder_buffers.emplace_back(0, !picture->is_keyframe(), true);
+      generic.decode_target_indications = {webrtc::DecodeTargetIndication::kSwitch};
+      generic.part_of_chain = {true};
+      if (picture->is_keyframe()) {
+        auto& structure = info.template_structure.emplace();
+        structure.num_decode_targets = 1;
+        structure.num_chains = 1;
+        structure.decode_target_protected_by_chain = {0};
+        webrtc::FrameDependencyTemplate key;
+        key.decode_target_indications = {webrtc::DecodeTargetIndication::kSwitch};
+        key.chain_diffs = {0};
+        auto delta = key;
+        delta.frame_diffs = {1};
+        delta.chain_diffs = {1};
+        structure.templates = {key, delta};
+      }
     }
 
     callback_->OnEncodedImage(image, &info);

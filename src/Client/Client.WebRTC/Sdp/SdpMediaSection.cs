@@ -68,4 +68,8 @@ public sealed record SdpHeaderExtension(int Id, string Uri)
 {
     /// <summary>The sequence numbers of every packet of the transport, which transport-cc feedback reports on.</summary>
     public const string TransportWideCcUri = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01";
+
+    // Fixed by the SFU for AV1 producers; existing codecs keep their extension mappings.
+    public const int Av1DependencyDescriptorId = 6;
+    public const string Av1DependencyDescriptorUri = "https://aomediacodec.github.io/av1-rtp-spec/#dependency-descriptor-rtp-header-extension";
 }

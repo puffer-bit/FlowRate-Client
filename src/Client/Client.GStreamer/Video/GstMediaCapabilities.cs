@@ -11,7 +11,11 @@ public class GstMediaCapabilities : IMediaCapabilities
 
     public IReadOnlyList<string> ScreenShareDecoders => MediaRuntime.IsEnabled ? VideoDecoderSelector.GetAvailableDecoders(VideoCodec.H264) : [];
 
+    public IReadOnlyList<string> ScreenShareAv1Decoders => MediaRuntime.IsEnabled ? VideoDecoderSelector.GetAvailableDecoders(VideoCodec.AV1) : [];
+
     public IReadOnlyList<string> ScreenShareEncoders => MediaRuntime.IsEnabled ? VideoEncoderSelector.GetAvailableEncoders(VideoCodec.H264) : [];
+
+    public IReadOnlyList<string> ScreenShareAv1Encoders => MediaRuntime.IsEnabled ? VideoEncoderSelector.GetAvailableEncoders(VideoCodec.AV1) : [];
 
     public bool CanCaptureScreenAudio => MediaRuntime.IsEnabled && (OperatingSystem.IsWindows()
         ? ProcessLoopbackSource.IsAvailable

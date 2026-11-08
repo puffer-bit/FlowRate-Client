@@ -28,9 +28,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
-        ("decoding", ["decoder", "zeroCopy"]),
+        ("decoding", ["decoder", "av1Decoder", "zeroCopy"]),
         ("presentation", ["timedPresentation", "presentationBuffer"]),
-        ("encoding", ["encoder"]));
+        ("encoding", ["encoder", "av1Encoder"]));
 
     // Index into DecoderChoices, the automatic choice first
     public int DecoderIndex
@@ -41,6 +41,18 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     // Index into EncoderChoices, the automatic choice first
     public int EncoderIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public int Av1DecoderIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public int Av1EncoderIndex
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -73,7 +85,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     } = "";
 
     public IReadOnlyList<string> DecoderChoices { get; }
+    public IReadOnlyList<string> Av1DecoderChoices { get; }
     public IReadOnlyList<string> EncoderChoices { get; }
+    public IReadOnlyList<string> Av1EncoderChoices { get; }
 
     public IReadOnlyList<string> PresentationBufferChoices { get; } = VideoSettings.PresentationBufferChoices
         .Select(frames => frames.ToString(CultureInfo.InvariantCulture))
@@ -85,7 +99,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     // Element names behind DecoderChoices and EncoderChoices; null stands for the automatic choice
     private readonly IReadOnlyList<string?> _decoders;
+    private readonly IReadOnlyList<string?> _av1Decoders;
     private readonly IReadOnlyList<string?> _encoders;
+    private readonly IReadOnlyList<string?> _av1Encoders;
 
     // Set while the view model fills its own properties, so that only user changes get saved
     private bool _isUpdating = true;
@@ -97,7 +113,13 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         IReadOnlyList<string> decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareDecoders : [];
         IReadOnlyList<string> encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareEncoders : [];
         _decoders = [null, ..decoders];
+        IReadOnlyList<string> av1Decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareAv1Decoders : [];
+        _av1Decoders = [null, ..av1Decoders];
+        Av1DecoderChoices = _av1Decoders.Select(element => ChoiceText(element, av1Decoders)).ToList();
         _encoders = [null, ..encoders];
+        IReadOnlyList<string> av1Encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareAv1Encoders : [];
+        _av1Encoders = [null, ..av1Encoders];
+        Av1EncoderChoices = _av1Encoders.Select(element => ChoiceText(element, av1Encoders)).ToList();
         DecoderChoices = _decoders.Select(element => ChoiceText(element, decoders)).ToList();
         EncoderChoices = _encoders.Select(element => ChoiceText(element, encoders)).ToList();
 
@@ -111,7 +133,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(DecoderIndex),
+                nameof(Av1DecoderIndex),
                 nameof(EncoderIndex),
+                nameof(Av1EncoderIndex),
                 nameof(IsZeroCopyEnabled),
                 nameof(IsTimedPresentationEnabled),
                 nameof(PresentationBufferIndex))
@@ -177,7 +201,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     {
         IsHardwareDecodingEnabled = true,
         Decoder = _decoders[Math.Clamp(DecoderIndex, 0, _decoders.Count - 1)],
+        Av1Decoder = _av1Decoders[Math.Clamp(Av1DecoderIndex, 0, _av1Decoders.Count - 1)],
         Encoder = _encoders[Math.Clamp(EncoderIndex, 0, _encoders.Count - 1)],
+        Av1Encoder = _av1Encoders[Math.Clamp(Av1EncoderIndex, 0, _av1Encoders.Count - 1)],
         IsZeroCopyEnabled = IsZeroCopyEnabled,
         IsTimedPresentationEnabled = IsTimedPresentationEnabled,
         PresentationBufferFrames = VideoSettings.PresentationBufferChoices[
@@ -192,7 +218,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
             ? settings.Decoder
             : _decoders.FirstOrDefault(element => element != null && VideoElementNames.IsSoftware(element));
         DecoderIndex = Math.Max(0, IndexOf(_decoders, decoder));
+        var av1Decoder = settings.IsHardwareDecodingEnabled
+            ? settings.Av1Decoder
+            : _av1Decoders.FirstOrDefault(element => element != null && VideoElementNames.IsSoftware(element));
+        Av1DecoderIndex = Math.Max(0, IndexOf(_av1Decoders, av1Decoder));
         EncoderIndex = Math.Max(0, IndexOf(_encoders, settings.Encoder));
+        Av1EncoderIndex = Math.Max(0, IndexOf(_av1Encoders, settings.Av1Encoder));
         IsZeroCopyEnabled = settings.IsZeroCopyEnabled;
         IsTimedPresentationEnabled = settings.IsTimedPresentationEnabled;
         PresentationBufferIndex = Math.Max(0,

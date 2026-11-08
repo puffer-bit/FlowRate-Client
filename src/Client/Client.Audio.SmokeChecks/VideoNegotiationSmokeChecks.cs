@@ -50,6 +50,16 @@ internal static class VideoNegotiationSmokeChecks
             "Feedback changes reuse compatible historical slots instead of growing sections indefinitely");
         Console.WriteLine("PASS: native video NACK negotiation across track replacements and compatible section reuse");
 
+        await AnswerAfter(() => transport.UnregisterInbound(2, MediaType.Video, MediaSourceType.Screen));
+        await AnswerAfter(() => transport.RegisterInbound(enabled with
+        {
+            Id = "av1", SSRC = 106, MimeType = "video/AV1", PayloadType = 104
+        }, 1));
+        Require(answers.Last().Split("m=").Any(section => section.StartsWith("video ") &&
+            section.Contains("a=recvonly\r\n") && section.Contains("a=rtpmap:104 AV1/90000\r\n")),
+            "Native answer accepts AV1 after replacing an H.264 track");
+        Console.WriteLine("PASS: native AV1 receive negotiation");
+
         async Task AnswerAfter(Action action, int? answerCount = null)
         {
             var expected = answerCount ?? answers.Count + 1;

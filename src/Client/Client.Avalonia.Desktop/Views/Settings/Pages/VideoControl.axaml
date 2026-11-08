@@ -28,6 +28,10 @@
                 <ComboBox MinWidth="160" ItemsSource="{Binding DecoderChoices}"
                           SelectedIndex="{Binding DecoderIndex}"/>
             </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.av1Decoder">
+                <ComboBox MinWidth="160" ItemsSource="{Binding Av1DecoderChoices}"
+                          SelectedIndex="{Binding Av1DecoderIndex}"/>
+            </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="video.zeroCopy">
                 <CheckBox IsChecked="{Binding IsZeroCopyEnabled}"/>
             </ui:SettingsRow>
@@ -54,6 +58,10 @@
             <ui:SettingsRow services:SettingText.Key="video.encoder">
                 <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
                           SelectedIndex="{Binding EncoderIndex}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.av1Encoder">
+                <ComboBox MinWidth="160" ItemsSource="{Binding Av1EncoderChoices}"
+                          SelectedIndex="{Binding Av1EncoderIndex}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
     </ui:SettingsPage>

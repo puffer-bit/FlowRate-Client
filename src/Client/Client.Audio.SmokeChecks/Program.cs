@@ -41,6 +41,11 @@ if (args.Contains("--video-buffers"))
     VideoBufferSmokeChecks.Run();
     return;
 }
+if (args.Contains("--video-av1"))
+{
+    VideoAv1SmokeChecks.Run();
+    return;
+}
 using var devices = new GstAudioDeviceProvider(NullLogger<GstAudioDeviceProvider>.Instance);
 Require(MicrophoneProcessing.HasNeural, "Bundled RNNoise plugin is available");
 using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevice>.Instance)

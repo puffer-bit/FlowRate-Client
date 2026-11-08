@@ -30,7 +30,7 @@ internal static class ScreenEncodingBranch
     // Each leg scales for itself, after the tee: a limit placed before it is negotiated against
     // both legs, and the smaller preview would then shrink what is sent as well.
     //
-    // The encoded picture ends in {3}, see EncodedEnd.
+    // The encoded picture ends in {3}, described by VideoCodecPipeline.
     private const string Description =
         "queue max-size-buffers=2 leaky=downstream ! " +
         "videorate drop-only=true max-rate={0} ! tee name=split " +
@@ -73,18 +73,11 @@ internal static class ScreenEncodingBranch
         "d3d11download ! " + VideoFramePump.FrameCaps + " ! {5}";
 
     // Hardware encoders of Windows that take Direct3D 11 textures as they are
-    private static readonly string[] D3D11Encoders = ["nvd3d11h264enc", "amfh264enc", "qsvh264enc", "mfh264enc"];
+    private static readonly string[] D3D11Encoders =
+        ["nvd3d11h264enc", "amfh264enc", "qsvh264enc", "mfh264enc", "nvd3d11av1enc", "amfav1enc", "qsvav1enc"];
 
-    // Constrained baseline is what the SFU router announces (profile-level-id 42e01f) and what the
-    // software decoder of the viewers can always decode. Every keyframe carries the parameter sets,
-    // so a receiver can start at any of them, whatever packetizes the stream. The sink never drops:
+    // The sink never drops:
     // a lost frame would break every one up to the next keyframe; it holds the encoder back instead
-    private const string H264End =
-        "video/x-h264,profile=constrained-baseline ! h264parse config-interval=-1 ! " +
-        "video/x-h264,stream-format=byte-stream,alignment=au ! " + EncodedSink;
-
-    private const string Vp8End = "video/x-vp8 ! " + EncodedSink;
-
     private const string EncodedSink =
         "appsink name=" + EncodedSinkName + " max-buffers=8 drop=false enable-last-sample=false wait-on-eos=false sync=false async=false";
 
@@ -103,7 +96,7 @@ internal static class ScreenEncodingBranch
     private static string Describe(VideoCodec codec, ScreenShareSettings settings, VideoEncoderChoice encoder,
         string scale, string description = Description) =>
         string.Format(CultureInfo.InvariantCulture, description, settings.Framerate, settings.MaxHeight,
-            encoder.ToLaunchString(EncoderName), codec == VideoCodec.VP8 ? Vp8End : H264End, PreviewMaxHeight,
+            encoder.ToLaunchString(EncoderName), VideoCodecPipeline.For(codec).Capture + " ! " + EncodedSink, PreviewMaxHeight,
             description == VaDmaBufDescription
                 ? $"appsink name={PreviewSinkName} max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=false async=false processing-deadline=0"
                 : VideoFramePump.SinkDescription(PreviewSinkName),
@@ -127,10 +120,12 @@ internal static class ScreenEncodingBranch
         }
     }
 
-    // The encoder chosen in the settings is one of H.264
+    // A preference only applies when it belongs to the negotiated codec's candidates.
     private static VideoEncoderChoice? SelectEncoder(VideoCodec codec, int bitrateKbps, string? preferred = null) =>
         VideoEncoderSelector.Select(codec, bitrateKbps,
-            preferred ?? (codec == VideoCodec.H264 ? Client.Core.Settings.VideoSettings.Current.Encoder : null));
+            preferred ?? (codec == VideoCodec.AV1
+                ? Client.Core.Settings.VideoSettings.Current.Av1Encoder
+                : Client.Core.Settings.VideoSettings.Current.Encoder));
 
     /// <summary>
     /// Whether the branch would take DMA-BUF frames: only the VA-API encoder with its postprocessor does.

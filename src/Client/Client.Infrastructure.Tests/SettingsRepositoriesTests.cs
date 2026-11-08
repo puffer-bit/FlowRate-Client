@@ -331,7 +331,9 @@ public class SettingsRepositoriesTests
         {
             IsHardwareDecodingEnabled = false,
             Decoder = "vah264dec",
+            Av1Decoder = "dav1ddec",
             Encoder = "openh264enc",
+            Av1Encoder = "svtav1enc",
             IsZeroCopyEnabled = false,
             IsTimedPresentationEnabled = false,
             PresentationBufferFrames = 4
@@ -341,11 +343,13 @@ public class SettingsRepositoriesTests
         Assert.Equal(changed, await repository.GetAsync());
 
         // A buffer that cannot be chosen any more reads as the default one
-        await repository.SaveAsync(changed with { PresentationBufferFrames = 9, Decoder = " " });
+        await repository.SaveAsync(changed with { PresentationBufferFrames = 9, Decoder = " ", Av1Encoder = " ", Av1Decoder = " " });
         var normalized = await repository.GetAsync();
 
         Assert.Equal(new VideoSettings().PresentationBufferFrames, normalized.PresentationBufferFrames);
         Assert.Null(normalized.Decoder);
+        Assert.Null(normalized.Av1Encoder);
+        Assert.Null(normalized.Av1Decoder);
     }
 
     [Fact]

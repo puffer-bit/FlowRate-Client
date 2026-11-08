@@ -13,7 +13,11 @@ internal sealed class AndroidMediaCapabilities : IMediaCapabilities
 
     public IReadOnlyList<string> ScreenShareDecoders => [];
 
+    public IReadOnlyList<string> ScreenShareAv1Decoders => [];
+
     public IReadOnlyList<string> ScreenShareEncoders => [];
+
+    public IReadOnlyList<string> ScreenShareAv1Encoders => [];
 
     public bool CanCaptureScreenAudio => false;
 }

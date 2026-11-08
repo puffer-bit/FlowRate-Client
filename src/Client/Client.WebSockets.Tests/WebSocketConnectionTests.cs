@@ -107,6 +107,62 @@ public class WebSocketConnectionTests
     }
 
     [Fact]
+    public async Task Utf8Text_RespectsByteBudget_AndKeepsTextFrameType()
+    {
+        await using var server = await TestWebSocketServer.StartAsync(async (socket, s) =>
+        {
+            var buffer = new byte[64];
+            var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+            await socket.SendAsync(buffer.AsMemory(0, result.Count), result.MessageType, true, CancellationToken.None);
+            await s.ReceiveUntilClosedAsync(socket);
+        });
+        await using var connection = new WebSocketConnection(new WebSocketConnectionOptions { MaxSendQueueBytes = 32 });
+        var received = new TaskCompletionSource<(WebSocketMessageType Type, string Text)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.MessageReceived += message => received.TrySetResult((message.Type, message.GetText()));
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
+
+        // These fit the character count but exceed the UTF-8 byte budget.
+        Assert.False(connection.SendText(new string('я', 17)));
+        Assert.False(connection.SendText(new byte[33]));
+        Assert.False(connection.SendBinary(new byte[33]));
+        const string text = "Привет 🌍";
+        Assert.True(connection.SendText(Encoding.UTF8.GetBytes(text)));
+        var result = await received.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
+        Assert.Equal(WebSocketMessageType.Text, result.Type);
+        Assert.Equal(text, result.Text);
+    }
+
+    [Fact]
+    public async Task FragmentedAndCompleteMessages_WithEmptyFragments_KeepTheirBoundaries()
+    {
+        await using var server = await TestWebSocketServer.StartAsync(async (socket, s) =>
+        {
+            await socket.SendAsync("first"u8.ToArray(), WebSocketMessageType.Text, true, CancellationToken.None);
+            await socket.SendAsync(Array.Empty<byte>(), WebSocketMessageType.Text, false, CancellationToken.None);
+            var text = Encoding.UTF8.GetBytes("Привет 🌍");
+            // Split inside a multibyte character, then end with an empty fragment.
+            await socket.SendAsync(text.AsMemory(0, 1), WebSocketMessageType.Text, false, CancellationToken.None);
+            await socket.SendAsync(text.AsMemory(1), WebSocketMessageType.Text, false, CancellationToken.None);
+            await socket.SendAsync(Array.Empty<byte>(), WebSocketMessageType.Text, true, CancellationToken.None);
+            await socket.SendAsync(Array.Empty<byte>(), WebSocketMessageType.Text, true, CancellationToken.None);
+            await socket.SendAsync("last"u8.ToArray(), WebSocketMessageType.Text, true, CancellationToken.None);
+            await s.ReceiveUntilClosedAsync(socket);
+        });
+        await using var connection = new WebSocketConnection();
+        var received = new List<string>();
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.MessageReceived += message =>
+        {
+            received.Add(message.GetText());
+            if (received.Count == 4)
+                completed.TrySetResult();
+        };
+        await connection.ConnectAsync(server.Uri, TestContext.Current.CancellationToken);
+        await completed.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
+        Assert.Equal(new[] { "first", "Привет 🌍", "", "last" }, received);
+    }
+
+    [Fact]
     public async Task InvalidUtf8_ClosesWithInvalidPayloadData()
     {
         await using var server = await TestWebSocketServer.StartAsync(async (socket, s) =>

@@ -226,7 +226,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         if (inbound.MediaType == MediaType.Video)
         {
             if ((!_isVideoDecodedByPeer && (_video == null || _videoReceiver == null)) ||
-                VideoCodecOf(inbound.MimeType) is not { } videoCodec)
+                RtpCodec.VideoCodecOf(inbound.MimeType) is not { } videoCodec)
                 return;
 
             codec = videoCodec;
@@ -294,15 +294,6 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             decoding => VideoDecodingChanged?.Invoke(inbound.UserId, inbound.SourceType, decoding),
             exception => LogVideoFrameFailed(exception, _sessionId, inbound.UserId));
     }
-
-    /// <summary>The codec of a screen we can decode, by the MIME type the SFU gives its track.</summary>
-    private static VideoCodec? VideoCodecOf(string mimeType) =>
-        RtpCodec.EncodingNameOf(mimeType).ToUpperInvariant() switch
-        {
-            "H264" => VideoCodec.H264,
-            "VP8" => VideoCodec.VP8,
-            _ => null
-        };
 
     public void UnregisterInbound(int userId, MediaType mediaType, MediaSourceType mediaSourceType) =>
         Release(inbound => inbound.UserId == userId && inbound.MediaType == mediaType &&
@@ -506,7 +497,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// </summary>
     public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings)
     {
-        if (outbound.MediaType != MediaType.Video || _video == null || VideoCodecOf(outbound.MimeType) is not { } codec)
+        if (outbound.MediaType != MediaType.Video || _video == null || RtpCodec.VideoCodecOf(outbound.MimeType) is not { } codec)
             return false;
 
         IVoicePeer? peer;
@@ -831,18 +822,26 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// reports. Where it does not, the section offers none: libwebrtc would take the missing feedback
     /// for a network that delivers nothing, and lower the bitrate of a screen to its least.
     /// </summary>
-    private SdpMediaSection SendingSection(string mid, string kind, RtpCodec codec) => _transportCcExtensionId <= 0
-        ? new SdpMediaSection { Mid = mid, Kind = kind, Direction = SdpDirection.RecvOnly, Codec = codec }
-        : new SdpMediaSection
-        {
-            Mid = mid,
-            Kind = kind,
-            Direction = SdpDirection.RecvOnly,
-            Codec = codec.RtcpFeedback.Contains(TransportCcFeedback)
-                ? codec
-                : codec with { RtcpFeedback = [..codec.RtcpFeedback, TransportCcFeedback] },
-            HeaderExtensions = [new SdpHeaderExtension(_transportCcExtensionId, SdpHeaderExtension.TransportWideCcUri)]
-        };
+    private SdpMediaSection SendingSection(string mid, string kind, RtpCodec codec)
+    {
+        var section = _transportCcExtensionId <= 0
+            ? new SdpMediaSection { Mid = mid, Kind = kind, Direction = SdpDirection.RecvOnly, Codec = codec }
+            : new SdpMediaSection
+            {
+                Mid = mid,
+                Kind = kind,
+                Direction = SdpDirection.RecvOnly,
+                Codec = codec.RtcpFeedback.Contains(TransportCcFeedback)
+                    ? codec
+                    : codec with { RtcpFeedback = [..codec.RtcpFeedback, TransportCcFeedback] },
+                HeaderExtensions = [new SdpHeaderExtension(_transportCcExtensionId, SdpHeaderExtension.TransportWideCcUri)]
+            };
+
+        return RtpCodec.VideoCodecOf(codec.EncodingName) == VideoCodec.AV1
+            ? section with { HeaderExtensions = [..section.HeaderExtensions,
+                new SdpHeaderExtension(SdpHeaderExtension.Av1DependencyDescriptorId, SdpHeaderExtension.Av1DependencyDescriptorUri)] }
+            : section;
+    }
 
     /// <summary>
     /// The codec of a section we send in. libwebrtc encodes by what the receiver asks for in its

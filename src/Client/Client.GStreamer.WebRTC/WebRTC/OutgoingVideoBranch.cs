@@ -3,6 +3,8 @@ using Gst;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.WebRTC.Sdp;
+using Client.GStreamer.Video;
+using Client.GStreamer.Interop;
 
 namespace Client.GStreamer.WebRTC;
 
@@ -35,26 +37,13 @@ internal static class OutgoingVideoBranch
     /// </summary>
     public static ulong MaxQueuedFrames(int framerate) => (ulong)Math.Max(8, framerate / 5);
 
-    // Constrained baseline is what the SFU router announces (profile-level-id 42e01f). The parameter
-    // sets come with every keyframe already, and are sent again before each one all the same.
-    private const string H264Caps = "video/x-h264,stream-format=byte-stream,alignment=au,profile=constrained-baseline";
-
-    private const string H264Packetizer =
-        "rtph264pay name=" + PipelineBranch.PayloaderName + " pt={0} ssrc={1} seqnum-offset={2} timestamp-offset={3} " +
-        "config-interval=-1 aggregate-mode=zero-latency mtu=1200 ! ";
-
-    // A picture id lets the receivers tell which frame a lost packet broke
-    private const string Vp8Packetizer =
-        "rtpvp8pay name=" + PipelineBranch.PayloaderName + " pt={0} ssrc={1} seqnum-offset={2} timestamp-offset={3} " +
-        "picture-id-mode=15-bit mtu=1200 ! ";
-
     /// <summary>
-    /// The codec the SFU created the producer with: VP8 when it says so, H.264 otherwise.
+    /// The codec the SFU created the producer with. Only legacy tracks without a MIME type default to H.264.
     /// </summary>
     public static VideoCodec CodecOf(OutboundTrack outbound) =>
-        RtpCodec.EncodingNameOf(outbound.MimeType).Equals("VP8", StringComparison.OrdinalIgnoreCase)
-            ? VideoCodec.VP8
-            : VideoCodec.H264;
+        string.IsNullOrWhiteSpace(outbound.MimeType) ? VideoCodec.H264 :
+            RtpCodec.VideoCodecOf(outbound.MimeType)
+                ?? throw new NotSupportedException($"Unsupported video codec: {outbound.MimeType}");
 
     /// <param name="sequenceNumber">
     /// The RTP sequence number the track continues from, as <see cref="PipelineBranch.ReadNextSequenceNumber"/>
@@ -63,12 +52,23 @@ internal static class OutgoingVideoBranch
     /// <returns>A bin with a single src pad carrying RTP, or null when an element is missing.</returns>
     public static Bin? Build(OutboundTrack outbound, VideoCodec codec, int framerate, int sequenceNumber = -1)
     {
-        var packetizer = string.Format(CultureInfo.InvariantCulture, codec == VideoCodec.VP8 ? Vp8Packetizer : H264Packetizer,
-            outbound.PayloadType, outbound.SSRC, sequenceNumber, outbound.SSRC);
+        var format = VideoCodecPipeline.For(codec);
+        var mtu = codec == VideoCodec.AV1 ? 1200 - Av1RtpDependencyDescriptor.MaxOverhead : 1200;
+        var packetizer = string.Create(CultureInfo.InvariantCulture,
+            $"{format.Payloader} name={PipelineBranch.PayloaderName} pt={outbound.PayloadType} ssrc={outbound.SSRC} seqnum-offset={sequenceNumber} timestamp-offset={outbound.SSRC} {format.PayloaderOptions} mtu={mtu} ! ");
 
         var branch = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture, Description,
-            codec == VideoCodec.VP8 ? "video/x-vp8" : H264Caps, packetizer, MaxQueuedFrames(framerate)), true);
+            format.Caps, packetizer, MaxQueuedFrames(framerate)), true);
 
+        if (branch != null && codec == VideoCodec.AV1)
+        {
+            using var payloader = branch.GetByName(PipelineBranch.PayloaderName);
+            if (payloader == null || !GstPacketTransform.Attach(payloader, "src", new Av1RtpDependencyDescriptor().Rewrite))
+            {
+                branch.Dispose();
+                return null;
+            }
+        }
         branch?.SetName(PipelineBranch.OutgoingName(outbound.Id));
         return branch;
     }
