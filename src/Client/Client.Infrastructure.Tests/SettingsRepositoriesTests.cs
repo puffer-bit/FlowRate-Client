@@ -33,11 +33,9 @@ public class SettingsRepositoriesTests
     [Fact]
     public async Task ExistingDatabaseGainsChatViewerGroupingWithoutChangingAppearance()
     {
-        await using var database = await TestDatabase.CreateMigratedAsync();
+        await using var database = await TestDatabase.CreateAtVersionAsync(29);
         await database.ExecuteAsync("""
-            ALTER TABLE AppearanceSettings DROP COLUMN GroupOnlineChatUsers;
             UPDATE AppearanceSettings SET LanguageCode = 'ru';
-            PRAGMA user_version = 29;
             """);
 
         var initializer = new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
