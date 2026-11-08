@@ -1,4 +1,7 @@
-﻿<p align="center">
+﻿> [!WARNING]
+> FlowRate Client is still under development. Bugs, incomplete features, and breaking changes may occur.
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="src/Client/Client.Avalonia.Assets/AppIcons/Headphones/svg/wordmark-on-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="src/Client/Client.Avalonia.Assets/AppIcons/Headphones/svg/wordmark-on-light.svg">
