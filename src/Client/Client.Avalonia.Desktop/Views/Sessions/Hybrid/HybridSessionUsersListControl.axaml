@@ -65,13 +65,17 @@
                                 </Transitions>
                             </Grid.Transitions>
 
-                            <Grid Grid.Column="0" ColumnDefinitions="24,*,Auto" VerticalAlignment="Center" HorizontalAlignment="Left" ColumnSpacing="10">
+                            <Grid Grid.Column="0" ColumnDefinitions="24,*,Auto,Auto" VerticalAlignment="Center" HorizontalAlignment="Left" ColumnSpacing="10">
 
                                 <Image Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center"
                                        Source="{StaticResource ScreenShareIcon}"
                                        ToolTip.Tip="{l:Text hybrid.screen.sharing}"
                                        IsVisible="{Binding IsSharingScreen}"/>
                                 
+                                <Image Grid.Column="3" Width="20" Height="20" VerticalAlignment="Center"
+                                       Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                                       IsVisible="{Binding ShowsMicrophoneOff}"/>
+
                                 <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
                                                     UserName="{Binding UserData.Username}"
                                                     AvatarUrl="{Binding UserData.AvatarUrl}"

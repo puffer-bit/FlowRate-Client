@@ -257,6 +257,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 var session = _coordinatorSession;
                 _subscriptions
                     .Add(() => session.HybridSessionPeerJoined += OnPeerJoined, () => session.HybridSessionPeerJoined -= OnPeerJoined)
+                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
+                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => session.HybridSessionPeerLeft += OnPeerLeft, () => session.HybridSessionPeerLeft -= OnPeerLeft)
                     .Add(() => session.HybridSessionPeerStateChanged += OnPeerStateChanged,
                         () => session.HybridSessionPeerStateChanged -= OnPeerStateChanged)
@@ -278,8 +280,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _subscriptions
                     .Add(() => hybridSession.StateChanged += OnSessionStateChanged,
                         () => hybridSession.StateChanged -= OnSessionStateChanged)
-                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
-                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => hybridSession.ErrorOccurred += OnSessionError, () => hybridSession.ErrorOccurred -= OnSessionError);
 
                 // Off the UI thread: the first transport of a run loads the WebRTC plugins while
@@ -547,8 +547,11 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         var granted = permissions.InSession(Model);
         CanSpeak = granted.HasFlag(Permission.Speak);
+        StatusBar.CanSpeak = CanSpeak;
+        if (!CanSpeak && _hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
+            _ = SetMicrophoneMutedAsync(true);
         CanShareVideo = granted.HasFlag(Permission.ShareVideo);
-        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id);
+        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id, Model);
     }
 
     private void OnUserUpdated(UserModel user)

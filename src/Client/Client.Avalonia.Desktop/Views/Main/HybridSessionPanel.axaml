@@ -123,12 +123,7 @@
                 <Button Classes="hybridAction"
                         Command="{Binding StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}"
                         ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
-                    <Panel>
-                        <Image Width="20" Height="20" Source="{StaticResource MicrophoneIcon}"
-                               IsVisible="{Binding StatusBar.IsMicrophoneOn, FallbackValue=False}"/>
-                        <Image Width="20" Height="20" Source="{StaticResource CrossedMicrophoneIcon}"
-                               IsVisible="{Binding !StatusBar.IsMicrophoneOn, FallbackValue=True}"/>
-                    </Panel>
+                    <Image Width="20" Height="20" Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
                 </Button>
 
                 <Button Classes="hybridAction"

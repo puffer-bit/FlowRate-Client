@@ -190,7 +190,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == peerModel.UserId);
         if (peer is { IsLeaving: false })
+        {
+            peer.UpdatePeerModel(peerModel);
+            ApplyAccess(peer);
             return;
+        }
 
         // Came back while the old row was still folding away; the new one replaces it at once
         if (peer != null)
@@ -268,6 +272,9 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
     private void ApplyAccess(PeerVM peer)
     {
+        peer.IsVoiceForbidden = (peer.IsCurrentUser || peer.UserData != null)
+            && !_permissions.InSession(Model, peer.IsCurrentUser ? _permissions.RoleIds : peer.UserData!.RoleIds)
+                .HasFlag(Permission.Speak);
         peer.CanKick = !peer.IsCurrentUser
                        && _permissions.CanInSessionOn(Permission.KickMembers, IsHost, peer.UserData?.RoleIds ?? []);
         peer.CanApprove = !peer.IsCurrentUser && peer.IsWaiting

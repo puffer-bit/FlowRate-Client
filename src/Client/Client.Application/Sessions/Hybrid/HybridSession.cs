@@ -346,7 +346,7 @@ public partial class HybridSession : IHybridSession
             return RequestResult.Success;
 
         _voiceOutbound = null;
-        IsMicrophoneMuted = false;
+        IsMicrophoneMuted = true;
         _webRTCService.StopOutbound(outbound.Id);
         LogVoiceStopped(Model.Id);
 
@@ -578,7 +578,7 @@ public partial class HybridSession : IHybridSession
             SetScreenWatched(userId, false);
     }
 
-    public bool IsMicrophoneMuted { get; private set; }
+    public bool IsMicrophoneMuted { get; private set; } = true;
 
     public async Task<RequestResult> SetMicrophoneMutedAsync(bool isMuted)
     {
@@ -933,7 +933,7 @@ public partial class HybridSession : IHybridSession
 
         // The producer belonged to the old transport, the owner starts the voice again once connected
         _voiceOutbound = null;
-        IsMicrophoneMuted = false;
+        IsMicrophoneMuted = true;
 
         // Same for the screen: the owner shows it again once connected
         _screenAudioOutbound = null;

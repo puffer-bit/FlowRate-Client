@@ -11,6 +11,98 @@ namespace Client.Application.Tests;
 
 public class PeerSelfMenuTests
 {
+    [Fact]
+    public void Joining_DoesNotFlashMuteWhileTransportConnects_ButConfirmedMuteIsVisible()
+    {
+        var peer = CreatePeer(false);
+        peer.UpdatePeerModel(new PeerModel
+        {
+            UserId = 1, State = Shared.Enums.HybridSessionPeerState.Connecting, IsMicrophoneMuted = true
+        });
+        Assert.False(peer.ShowsMicrophoneOff);
+
+        peer.UpdatePeerStatus(Shared.Enums.HybridSessionPeerState.Connected);
+        Assert.False(peer.ShowsMicrophoneOff);
+
+        peer.UpdateMicrophoneMuted(true);
+        Assert.True(peer.ShowsMicrophoneOff);
+        peer.UpdateMicrophoneMuted(false);
+        Assert.False(peer.ShowsMicrophoneOff);
+    }
+
+    [Fact]
+    public void RepeatedMediaNotifications_DoNotRedrawThePeer()
+    {
+        var peer = CreatePeer(false);
+        peer.UpdateMicrophoneMuted(true);
+        peer.UpdateSoundMuted(true);
+        peer.UpdateAfk(true, "away");
+        peer.UpdateScreenShare(true);
+        var notifications = 0;
+        peer.PropertyChanged += (_, _) => notifications++;
+
+        peer.UpdateMicrophoneMuted(true);
+        peer.UpdateSoundMuted(true);
+        peer.UpdateAfk(true, "away");
+        peer.UpdateScreenShare(true);
+
+        Assert.Equal(0, notifications);
+    }
+
+    [Fact]
+    public void LeavingRow_KeepsItsMediaAppearanceUntilRemoved()
+    {
+        var peer = CreatePeer(false);
+        peer.UpdateScreenShare(true);
+        peer.IsLeaving = true;
+
+        peer.UpdateMicrophoneMuted(true);
+        peer.UpdateSoundMuted(true);
+        peer.UpdateAfk(true, "late event");
+        peer.UpdateScreenShare(false);
+
+        Assert.False(peer.ShowsMicrophoneOff);
+        Assert.False(peer.ShowsSoundOff);
+        Assert.False(peer.IsAfk);
+        Assert.True(peer.IsSharingScreen);
+    }
+
+    [Fact]
+    public void RejoinSnapshot_ReplacesStaleMediaStateWithoutReplacingTheRow()
+    {
+        var peer = CreatePeer(false);
+        peer.UpdateAfk(true, "old state");
+        peer.UpdateScreenShare(true);
+
+        peer.UpdatePeerModel(new PeerModel
+        {
+            UserId = 1, State = Shared.Enums.HybridSessionPeerState.Connecting, IsMicrophoneMuted = true
+        });
+
+        Assert.True(peer.IsMicrophoneMuted);
+        Assert.False(peer.ShowsMicrophoneOff);
+        Assert.False(peer.IsAfk);
+        Assert.False(peer.IsSharingScreen);
+    }
+    [Fact]
+    public void ForbiddenMicrophone_IsVisibleToAnotherUser_EvenWhileThePeerIsAfk()
+    {
+        var peer = CreatePeer(false);
+        peer.UpdateAfk(true, null);
+        peer.UpdateMicrophoneMuted(false);
+        peer.IsVoiceForbidden = true;
+
+        Assert.True(peer.ShowsMicrophoneOff);
+        Assert.Equal("ForbiddenMicrophoneIcon", peer.MicrophoneIconKey);
+
+        peer.IsVoiceForbidden = false;
+        Assert.False(peer.ShowsMicrophoneOff);
+        peer.UpdateAfk(false, null);
+        peer.UpdateMicrophoneMuted(true);
+        Assert.True(peer.ShowsMicrophoneOff);
+        Assert.Equal("CrossedMicrophoneIcon", peer.MicrophoneIconKey);
+    }
+
     [Theory]
     [InlineData(true, true, true)]
     [InlineData(true, false, false)]

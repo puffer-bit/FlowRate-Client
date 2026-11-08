@@ -348,6 +348,38 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Voice is forbidden by the session permissions; the entire icon stays red. -->
+    <DrawingImage x:Key="ForbiddenMicrophoneIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M12,3 H12 A3,3 0 0 1 15,6 V11 A3,3 0 0 1 12,14 H12 A3,3 0 0 1 9,11 V6 A3,3 0 0 1 12,3 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M5 11 A7 7 0 0 0 19 11">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M12 18 V21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 21 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M3 3 L21 21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Red cross (no / cancel). Source: Icons/CrossIcon.svg -->
     <DrawingImage x:Key="CrossIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
