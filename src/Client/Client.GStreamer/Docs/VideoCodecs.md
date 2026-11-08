@@ -67,8 +67,9 @@ AV1, VP8 and VP9 have lists of their own (`GetCandidates`), but screens are sent
 
 - **Encoder** (Video tab): the element picked there is moved to the front of the list when this
   system has it; otherwise the usual order applies. Used from the next share.
-- **Decode on the video card** off: the software decoder is taken. **Decoder**: the element picked
-  there, when this system has it. Both apply to screens opened after the change.
+- **Decoder** (Video tab): selects a software or hardware decoder directly, when this system has
+  it. Applies to screens opened after the change. The former hardware-decoding switch is no longer
+  shown; its disabled state is represented by the software decoder when loading settings.
 - The lists show the elements this system has, in the order above, as "NVIDIA NVENC, video card
   (nvd3d11h264enc)" (`VideoElementNames`). The automatic choice names the element it comes to: the
   first of the list.

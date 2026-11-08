@@ -24,17 +24,11 @@
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
-            <ui:SettingsRow services:SettingText.Key="video.hardwareDecoding">
-                <CheckBox IsChecked="{Binding IsHardwareDecodingEnabled}"/>
-            </ui:SettingsRow>
-            <!-- Which decoder and how frames leave it only matter while the GPU decodes -->
-            <ui:SettingsRow services:SettingText.Key="video.decoder"
-                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
+            <ui:SettingsRow services:SettingText.Key="video.decoder">
                 <ComboBox MinWidth="160" ItemsSource="{Binding DecoderChoices}"
                           SelectedIndex="{Binding DecoderIndex}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="video.zeroCopy"
-                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
+            <ui:SettingsRow services:SettingText.Key="video.zeroCopy">
                 <CheckBox IsChecked="{Binding IsZeroCopyEnabled}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="video.zeroCopyStatus" IndentLevel="1"
