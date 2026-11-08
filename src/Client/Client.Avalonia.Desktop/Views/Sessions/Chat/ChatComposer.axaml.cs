@@ -29,6 +29,26 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
     private int _emojiSelectionEnd;
     private ChatComposerVM? _emojiComposer;
     private TopLevel? _emojiTopLevel;
+    private EmojiPickerView? _emojiPicker;
+
+    private EmojiPickerView EmojiPicker => _emojiPicker!;
+
+    private void EnsureEmojiPicker()
+    {
+        if (_emojiPicker != null) return;
+
+        // The picker is unused while reading or typing. Defer its control tree and
+        // bindings until the user opens it instead of building it during navigation.
+        _emojiPicker = new EmojiPickerView { Width = 360, Height = 380 };
+        _emojiPicker.CloseRequested += (_, _) =>
+        {
+            EmojiFlyout.Hide();
+            MessageInput.Focus();
+        };
+        _emojiPicker.EmojiPicked += OnEmojiPicked;
+        _emojiPicker.RecentChanged += (_, _) => SaveRecentEmoji();
+        EmojiFlyout.Content = _emojiPicker;
+    }
 
     public ChatComposer()
     {
@@ -36,6 +56,7 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
 
         // Capture before the button or search takes focus; SelectedText preserves normal TextBox editing/undo.
         EmojiButton.AddHandler(PointerPressedEvent, (_, _) => CaptureEmojiSelection(), RoutingStrategies.Tunnel);
+        EmojiFlyout.Opening += (_, _) => EnsureEmojiPicker();
         EmojiFlyout.Opened += (_, _) =>
         {
             _emojiTopLevel = TopLevel.GetTopLevel(this);
@@ -51,13 +72,6 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         SizeChanged += (_, _) => { if (EmojiFlyout.IsOpen) SizeEmojiPicker(); };
         DetachedFromVisualTree += (_, _) => EmojiFlyout.Hide();
         DataContextChanged += (_, _) => EmojiFlyout.Hide();
-        EmojiPicker.CloseRequested += (_, _) =>
-        {
-            EmojiFlyout.Hide();
-            MessageInput.Focus();
-        };
-        EmojiPicker.EmojiPicked += OnEmojiPicked;
-        EmojiPicker.RecentChanged += (_, _) => SaveRecentEmoji();
 
         // Tunnel: a TextBox that accepts returns inserts the line break itself before the event bubbles up
         MessageInput.AddHandler(KeyDownEvent, OnInputKeyDown, RoutingStrategies.Tunnel);
