@@ -905,6 +905,7 @@
     }
   },
   "hybrid.poked.noMessage": "No message",
+  "hybrid.screen.viewers": "Viewers",
   "hybrid.screen.startFailed": "Failed to share the screen: {reason}",
   "@hybrid.screen.startFailed": {
     "placeholders": {

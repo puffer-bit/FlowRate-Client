@@ -616,6 +616,7 @@
   "hybrid.afk.failed": "Не удалось переключить AFK: {reason}",
   "hybrid.poked.title": "{user} зовёт вас",
   "hybrid.poked.noMessage": "Без сообщения",
+  "hybrid.screen.viewers": "Зрители",
   "hybrid.screen.startFailed": "Не удалось показать экран: {reason}",
   "hybrid.screen.portalUnavailable": "Показ экрана недоступен: в системе нет портала захвата экрана.",
   "hybrid.screen.portalFailed": "Система отказала в показе экрана.",

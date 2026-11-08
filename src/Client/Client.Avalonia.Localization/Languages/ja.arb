@@ -671,6 +671,7 @@
   "hybrid.afk.failed": "離席を切り替えられませんでした: {reason}",
   "hybrid.poked.title": "{user} があなたをつつきました",
   "hybrid.poked.noMessage": "メッセージなし",
+  "hybrid.screen.viewers": "視聴者",
   "hybrid.screen.startFailed": "画面を共有できませんでした: {reason}",
   "hybrid.screen.portalUnavailable": "画面共有は利用できません: デスクトップに画面キャプチャ用のポータルがありません。",
   "hybrid.screen.portalFailed": "システムが画面の共有を拒否しました。",
