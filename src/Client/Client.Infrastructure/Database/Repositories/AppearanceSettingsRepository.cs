@@ -8,6 +8,22 @@ internal sealed class AppearanceSettingsRepository : IAppearanceSettingsReposito
 {
     private readonly SqliteDatabase _database;
 
+    public async Task<bool> GetGroupOnlineChatUsersAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+        return await connection.QueryFirstOrDefaultAsync<bool?>(
+            "SELECT GroupOnlineChatUsers FROM AppearanceSettings WHERE Id = 1") ?? false;
+    }
+
+    public async Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers)
+    {
+        await using var connection = await _database.OpenAsync();
+        await connection.ExecuteAsync("""
+            INSERT INTO AppearanceSettings (Id, GroupOnlineChatUsers) VALUES (1, @groupOnlineUsers)
+            ON CONFLICT (Id) DO UPDATE SET GroupOnlineChatUsers = excluded.GroupOnlineChatUsers
+            """, new { groupOnlineUsers });
+    }
+
     public AppearanceSettingsRepository(SqliteDatabase database)
     {
         _database = database;

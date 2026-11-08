@@ -24,8 +24,39 @@ public class DebugAndLogServiceTests : IDisposable
 
     public void Dispose()
     {
+        Client.Tools.AppInfo.LaunchOptions.Configure([]);
         ClientLogging.LevelSwitch.MinimumLevel = ClientLogging.DefaultLevel;
         ClientLogging.IsWritingToFiles = true;
+    }
+
+    [Fact]
+    public async Task LaunchOverrides_SurviveSettingsApplyWithoutChangingStoredValues()
+    {
+        await _settings.SaveAsync(new DebugSettings { JournalLevel = JournalLevel.Warning, WriteToFiles = true });
+        Client.Tools.AppInfo.LaunchOptions.Configure(["--log-level=debug", "--no-file-logging"]);
+
+        await _service.ApplyAsync();
+
+        Assert.Equal(LogEventLevel.Debug, ClientLogging.LevelSwitch.MinimumLevel);
+        Assert.False(ClientLogging.IsWritingToFiles);
+        Assert.Equal(JournalLevel.Warning, (await _settings.GetAsync()).JournalLevel);
+        Assert.True((await _settings.GetAsync()).WriteToFiles);
+        Assert.False(Client.Services.LaunchSettings.CanChangeLogLevel);
+        Assert.False(Client.Services.LaunchSettings.CanWriteLogFiles);
+    }
+
+    [Fact]
+    public void LaunchOverrides_LockOnlyRelatedSettings()
+    {
+        Client.Tools.AppInfo.LaunchOptions.Configure(["--safe-mode", "--disable-updates", "--lang=ru"]);
+
+        Assert.False(Client.Services.LaunchSettings.CanAutoConnect);
+        Assert.False(Client.Services.LaunchSettings.CanUpdate);
+        Assert.False(Client.Services.LaunchSettings.CanChangeLanguage);
+        Assert.False(Client.Services.LaunchSettings.CanUseGlobalHotKeys);
+        Assert.False(Client.Services.LaunchSettings.CanUseMedia);
+        Assert.True(Client.Services.LaunchSettings.CanChangeLogLevel);
+        Assert.True(Client.Services.LaunchSettings.CanWriteLogFiles);
     }
 
     [Fact]

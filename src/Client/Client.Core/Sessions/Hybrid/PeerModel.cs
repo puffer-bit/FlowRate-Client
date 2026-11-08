@@ -39,4 +39,7 @@ public class PeerModel
     /// Set while the shown screen carries sound as well.
     /// </summary>
     public bool IsScreenAudioActive { get; set; }
+
+    /// <summary>The users whose screen shares this peer watches.</summary>
+    public IReadOnlyList<int> WatchedScreenShares { get; init; } = [];
 }

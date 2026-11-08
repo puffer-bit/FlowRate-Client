@@ -148,6 +148,14 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
         }
     }
 
+    private void FlyoutBase_OnOpening(object? sender, EventArgs e)
+    {
+        // Most realized messages never open a menu. Build its controls and bindings only
+        // when requested, instead of doing this work for every row during chat layout.
+        if (sender is Flyout { Content: null } flyout)
+            flyout.Content = new ChatMessageFlyout();
+    }
+
     private void FlyoutBase_OnOpened(object? sender, EventArgs e)
     {
         if (DataContext is not ChatMessageVM vm)

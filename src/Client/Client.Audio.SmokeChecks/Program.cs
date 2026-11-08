@@ -12,6 +12,30 @@ using Microsoft.Extensions.Logging.Abstractions;
 GstNativeLibraryResolver.Register();
 if (!GstLoader.LoadGstreamer(NullLogger.Instance))
     throw new InvalidOperationException("Cannot load the bundled GStreamer runtime");
+if (args.Contains("--process-loopback"))
+{
+    using var plugin = Gst.ElementFactory.Make("wasapi2src", null);
+    var expected = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 20348) &&
+                   plugin?.FindProperty("loopback-target-pid") != null &&
+                   plugin.FindProperty("loopback-mode") != null;
+    Require(ProcessLoopbackSource.IsAvailable == expected, "Process loopback capability matches OS and plugin");
+    foreach (var excluded in new[] { false, true })
+    {
+        using var source = ProcessLoopbackSource.Create(
+            new ProcessLoopbackAudioInput((uint)Environment.ProcessId, excluded));
+        Require((source != null) == expected, "Unsupported process filtering cannot create device loopback");
+        if (source != null)
+        {
+            using var mode = source.GetProperty("loopback-mode");
+            Require(mode.GetEnum() == (excluded ? 2 : 1), "Process filtering mode is applied");
+            using var pid = source.GetProperty("loopback-target-pid");
+            Require(pid.GetUInt() == (uint)Environment.ProcessId, "Process filtering PID is applied");
+        }
+    }
+    Require(ProcessLoopbackSource.Create(new ProcessLoopbackAudioInput(0, true)) == null,
+        "Zero PID cannot create unfiltered loopback");
+    return;
+}
 if (args.Contains("--video-buffers"))
 {
     VideoBufferSmokeChecks.Run();

@@ -14,10 +14,20 @@
         x:Class="Client.Views.Settings.SettingsView"
         x:DataType="settingsVm:SettingsWindowVM"
         d:DataContext="{d:DesignInstance Type=settingsVm:SettingsWindowVM, IsDesignTimeCreatable=True}"
-        MaxWidth="900"
-        MaxHeight="640"
+        MaxWidth="1000"
+        MaxHeight="900"
         Background="{DynamicResource GeneralBrush}">
     
+    <UserControl.Styles>
+        <Style Selector="Border.launchMode">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBannerBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
     <UserControl.DataTemplates>
         <DataTemplate DataType="pagesVm:AccountingControlVM">
             <settingsPages:AccountingControl/>
@@ -54,7 +64,7 @@
     <Grid ColumnDefinitions="220, *" RowDefinitions="56, 1, *, 1, 44">
         <!-- Title: the icon on a tile, the name of the dialog and under it the section that is open;
              the dialog can be closed from here as well as from the footer -->
-        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" Margin="16,0,10,0">
+        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="12" Margin="16,0,10,0">
             <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" VerticalAlignment="Center"
                     Background="{DynamicResource BackgroundGeneralBrush}">
                 <Image Width="22" Height="22" Source="{StaticResource GearIcon}"/>
@@ -82,7 +92,46 @@
                            Text="{l:Text settings.loading}"/>
             </StackPanel>
 
-            <Button Grid.Column="3" Classes="borderless" Width="32" Height="32" Padding="0"
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Border Classes="launchMode" IsVisible="{Binding IsSafeMode}"
+                        AutomationProperties.Name="{l:Text settings.mode.safe.title}">
+                    <ToolTip.Tip>
+                        <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.safe.description}"/>
+                    </ToolTip.Tip>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.mode.safe.title}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+                <Border Classes="launchMode" IsVisible="{Binding IsMediaDisabled}"
+                        AutomationProperties.Name="{l:Text media.disabled.title}">
+                    <ToolTip.Tip>
+                        <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text media.disabled.startup}"/>
+                    </ToolTip.Tip>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text media.disabled.title}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+                <Border Classes="launchMode" IsVisible="{Binding IsSoftwareRendering}"
+                        AutomationProperties.Name="{l:Text settings.mode.software.title}">
+                    <ToolTip.Tip>
+                        <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.software.description}"/>
+                    </ToolTip.Tip>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.mode.software.title}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <Button Grid.Column="4" Classes="borderless" Width="32" Height="32" Padding="0"
                     CornerRadius="6" VerticalAlignment="Center"
                     HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                     Command="{Binding CloseCommand}"

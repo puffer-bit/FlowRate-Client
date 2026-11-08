@@ -395,9 +395,7 @@
                                   Data="M 10,1 A 9,9 0 1 1 10,19 A 9,9 0 1 1 10,1 M 6,11.5 Q 10,16 14,11.5 M 6.5,6.7 L 6.5,7.5 M 13.5,6.7 L 13.5,7.5"/>
                             <FlyoutBase.AttachedFlyout>
                                 <Flyout Placement="TopEdgeAlignedRight"
-                                        FlyoutPresenterClasses="emoji-popup">
-                                    <emoji:EmojiPickerView x:Name="EmojiPicker" Width="360" Height="380"/>
-                                </Flyout>
+                                        FlyoutPresenterClasses="emoji-popup"/>
                             </FlyoutBase.AttachedFlyout>
                         </Button>
 

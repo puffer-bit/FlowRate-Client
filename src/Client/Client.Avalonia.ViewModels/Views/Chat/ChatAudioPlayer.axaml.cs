@@ -6,23 +6,22 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Client.Avalonia.Localization;
-using Client.Services.Chat;
+using Client.Services;
 using Client.ViewModels.Sessions.Chat;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Client.Views.Sessions.Chat;
+namespace Client.Views.Shared.Chat;
 
 public partial class ChatAudioPlayer : UserControl
 {
-    private readonly ChatAudioSession? _session;
+    private readonly IChatAudioSession? _session;
     private bool _updating;
     private bool _seeking;
     private bool _changingVolume;
     private bool _ready;
 
-    public ChatAudioPlayer() : this(App.Services?.GetService<ChatAudioSession>()) { }
+    public ChatAudioPlayer() : this(null) { }
 
-    internal ChatAudioPlayer(ChatAudioSession? session)
+    public ChatAudioPlayer(IChatAudioSession? session)
     {
         _session = session;
         InitializeComponent();

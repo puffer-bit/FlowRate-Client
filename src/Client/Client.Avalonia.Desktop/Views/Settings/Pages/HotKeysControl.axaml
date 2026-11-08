@@ -59,7 +59,7 @@
             <ui:SettingsRow services:SettingText.Key="hotKeys.enabled">
                 <CheckBox IsChecked="{Binding AreHotKeysEnabled}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="hotKeys.global"
+            <ui:SettingsRow IsEnabled="{x:Static services:LaunchSettings.CanUseGlobalHotKeys}" services:SettingText.Key="hotKeys.global"
                             IsExpanded="{Binding AreHotKeysEnabled}">
                 <CheckBox IsChecked="{Binding IsGlobalEnabled}"/>
             </ui:SettingsRow>

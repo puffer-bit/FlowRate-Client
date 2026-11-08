@@ -325,6 +325,7 @@ public partial class ActiveHybridSessionVM
             stream.PushDecoding(decoding);
 
         ScreenStreams.Add(stream);
+        UpdateScreenViewers();
         UpdateCanExpand();
     }
 
@@ -369,6 +370,7 @@ public partial class ActiveHybridSessionVM
 
     private void UpdateScreenStreamName(int userId)
     {
+        UpdateScreenViewers();
         if (!_screenStreamsByUser.TryGetValue(userId, out var stream))
             return;
 

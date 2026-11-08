@@ -124,6 +124,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly ICoordinatorStateRepository _coordinatorStates;
     private IHybridSession _hybridSession;
+    private readonly ScreenShareAudience _screenAudience;
 
     // Set once the server has let us in, so disposing knows there is a session to leave
     private bool _isJoined;
@@ -157,12 +158,15 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _peerStats = services.PeerStats;
         _playbackService = services.Playback;
         Model = hybridSessionModel;
+        _screenAudience = new ScreenShareAudience(Model.Id);
         _screenCastClient = services.CreateScreenCastClient?.Invoke();
         _screenSourceProvider = services.ScreenSources;
         _audioApps = services.AudioApps;
 
         var hybridSession = _hybridSession = services.SessionFactory.CreateHybridSession(Model, _coordinatorSession);
         _subscriptions
+            .Add(() => coordinatorSession.HybridSessionUpdated += OnScreenViewerChanged,
+                () => coordinatorSession.HybridSessionUpdated -= OnScreenViewerChanged)
             .Add(() => _audioService.SettingsChanged += OnAudioSettingsChanged, () => _audioService.SettingsChanged -= OnAudioSettingsChanged)
             .Add(() => _voiceActivity.Changed += OnSpeakingChanged, () => _voiceActivity.Changed -= OnSpeakingChanged)
             .Add(() => hybridSession.ScreenShareChanged += OnScreenShareChanged,
@@ -230,7 +234,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     public async Task JoinSession()
     {
-        await Task.Delay(200);
         if (IsClosed)
             return;
 
@@ -326,6 +329,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             throw new Exception($"Failed to get Peers for HybridSession {Model.Name}");
 
         var peers = getAllPeerResult.Value!.Values;
+        _screenAudience.LoadSnapshot(peers);
 
         foreach (var peer in peers)
         {
@@ -345,6 +349,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             ParticipantsListVM.UpdateUserModel(userId, user);
             UpdateScreenStreamName(userId);
         }
+        UpdateScreenViewers();
     }
 
     public void CloseSession()

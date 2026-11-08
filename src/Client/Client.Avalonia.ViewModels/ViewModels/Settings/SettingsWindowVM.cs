@@ -26,6 +26,10 @@ namespace Client.ViewModels.Settings;
 
 public class SettingsWindowVM : ReactiveObject, IDisposable
 {
+    public bool IsSafeMode => LaunchOptions.Current.SafeMode;
+    public bool IsMediaDisabled => !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
+    public bool IsSoftwareRendering => LaunchOptions.Current.SoftwareRendering;
+
     public bool IsLoaded
     {
         get;
@@ -190,7 +194,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));
         SettingList.Add(new VideoControlVM(videoService, mediaCapabilities));
         SettingList.Add(new AppearanceControlVM(appearanceService, themeService, languageService));
-        SettingList.Add(new StorageControlVM(storageService));
+        SettingList.Add(new StorageControlVM(storageService, debugAndLogService));
         SettingList.Add(new HotKeysControlVM(hotKeysService));
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));

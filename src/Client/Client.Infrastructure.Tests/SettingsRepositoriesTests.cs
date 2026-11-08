@@ -11,6 +11,44 @@ namespace Client.Infrastructure.Tests;
 public class SettingsRepositoriesTests
 {
     [Fact]
+    public async Task ChatViewerGroupingPersistsWithoutOverwritingAppearance()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AppearanceSettingsRepository(database.Database);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+
+        await repository.UpdateCurrentThemeTypeAsync(ThemeType.Light);
+        await repository.UpdateLanguageAsync("ru");
+        await repository.UpdateGroupOnlineChatUsersAsync(true);
+
+        var reopened = new AppearanceSettingsRepository(database.Database);
+        Assert.True(await reopened.GetGroupOnlineChatUsersAsync());
+        Assert.Equal(ThemeType.Light, await reopened.GetCurrentThemeTypeAsync());
+        Assert.Equal("ru", await reopened.GetLanguageAsync());
+
+        await reopened.UpdateGroupOnlineChatUsersAsync(false);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+    }
+
+    [Fact]
+    public async Task ExistingDatabaseGainsChatViewerGroupingWithoutChangingAppearance()
+    {
+        await using var database = await TestDatabase.CreateAtVersionAsync(29);
+        await database.ExecuteAsync("""
+            UPDATE AppearanceSettings SET LanguageCode = 'ru';
+            """);
+
+        var initializer = new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Infrastructure.Database.DatabaseInitializer>.Instance);
+        Assert.Equal(Client.Application.Ports.DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        var repository = new AppearanceSettingsRepository(database.Database);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+        Assert.Equal("ru", await repository.GetLanguageAsync());
+        await repository.UpdateGroupOnlineChatUsersAsync(true);
+        Assert.True(await repository.GetGroupOnlineChatUsersAsync());
+    }
+
+    [Fact]
     public async Task ChatAudioVolumePersistsWithoutOverwritingOtherAudioSettings()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
@@ -520,6 +558,9 @@ public class SettingsRepositoriesTests
         await repository.UpdateCurrentThemeTypeAsync(ThemeType.Light);
 
         Assert.Equal(ThemeType.Light, await repository.GetCurrentThemeTypeAsync());
+
+        await repository.UpdateCurrentThemeTypeAsync(ThemeType.System);
+        Assert.Equal(ThemeType.System, await repository.GetCurrentThemeTypeAsync());
     }
 
     [Fact]

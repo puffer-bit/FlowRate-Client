@@ -208,7 +208,6 @@ public partial class MainWindowVM
             return;
 
         SessionsList.ShowLoading();
-        await Task.Delay(700);
         if (IsRestoreCurrent(session, restoreId))
             await AttachSessionManager(session, restoreId);
     }
@@ -237,6 +236,11 @@ public partial class MainWindowVM
     /// </summary>
     private async Task RestoreLastSessionAsync()
     {
+        if (Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect)
+        {
+            _lastSession.IsKept = false;
+            return;
+        }
         if (!_lastSession.IsKept)
             return;
 

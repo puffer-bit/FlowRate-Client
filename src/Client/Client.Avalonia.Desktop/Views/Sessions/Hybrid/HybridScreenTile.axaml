@@ -15,18 +15,6 @@
              Padding="4">
 
     <UserControl.Styles>
-        <!-- The controls of a screen stay out of its tile until the pointer is over it -->
-        <Style Selector="Border.streamBar">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border.streamTile:pointerover Border.streamBar">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
         <Style Selector="Button.streamBarAction">
             <Setter Property="Width" Value="28"/>
             <Setter Property="Height" Value="28"/>
@@ -125,18 +113,26 @@
                     VerticalAlignment="Top"
                     Padding="8,4"
                     Background="{DynamicResource GeneralBrush}">
-                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="4">
+                <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto" ColumnSpacing="4">
                     <TextBlock Grid.Column="0"
                                Text="{Binding DisplayedName}"
+                               MaxWidth="160"
+                               HorizontalAlignment="Left"
                                IsVisible="{Binding !IsSelf}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="0"
                                Text="{l:Text hybrid.screen.own}"
+                               HorizontalAlignment="Left"
                                IsVisible="{Binding IsSelf}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <Panel Grid.Column="1">
+                    <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="1" Viewers="{Binding Viewers}"
+                                               HorizontalAlignment="Right"/>
+                    <Border Grid.Column="2" Width="1" Height="18" Margin="4,0" VerticalAlignment="Center"
+                            Background="{DynamicResource SettingsCardBorderBrush}"
+                            IsVisible="{Binding #ViewersButton.HasViewers}"/>
+                    <Panel Grid.Column="3">
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsExpanded}"
                                 Command="{Binding ToggleExpandCommand}"
@@ -150,7 +146,7 @@
                             <Image Width="20" Height="20" Source="{StaticResource CollapseIcon}"/>
                         </Button>
                     </Panel>
-                    <Panel Grid.Column="2">
+                    <Panel Grid.Column="4">
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsWatched}"
                                 Command="{Binding WatchCommand}"

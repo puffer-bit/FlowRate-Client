@@ -25,15 +25,32 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     private static readonly TimeSpan SettingsSaveDelay = TimeSpan.FromMilliseconds(300);
 
+    private static readonly SoundEvent[] SoundDisplayOrder =
+    [
+        // Connection and participants.
+        SoundEvent.Connected, SoundEvent.Disconnected,
+        SoundEvent.Join, SoundEvent.Leave, SoundEvent.UserKicked,
+        // Calls and chat notifications.
+        SoundEvent.CallIncoming, SoundEvent.Message, SoundEvent.MessageSent,
+        SoundEvent.Mention, SoundEvent.Poke,
+        // Microphone and playback controls.
+        SoundEvent.Unmute, SoundEvent.Mute, SoundEvent.Undeafen, SoundEvent.Deafen,
+        // Screen sharing and other status changes.
+        SoundEvent.ScreenShareStart, SoundEvent.ScreenShareStop,
+        SoundEvent.Afk, SoundEvent.Error
+    ];
+
     public string Name => SettingText.TabName("audio");
     public SettingTabType Type => SettingTabType.Audio;
     public bool IsEnabled => true;
+    public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     // Only the rows the engine of the voice shows
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("audio",
         ("microphone", ["inputDevice", "inputVolume", "noiseSuppression",
-            "echoCancellation", "autoGainControl"]),
-        ("voiceActivity", ["voiceGate", "testMicrophone", "inputLevel", "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
+            "echoCancellation", "autoGainControl", "voiceGate", "testMicrophone", "inputLevel",
+            "voiceThreshold", "hearMyself", "voiceDetection", "adaptiveThreshold"]),
+        ("output", ["outputDevice", "outputVolume"]),
         ("sounds", ["soundsEnabled", "soundsVolume", "soundPack", "soundEvents"]));
 
     public ObservableCollection<AudioInputDeviceItem> InputDevices { get; } = new();
@@ -43,6 +60,24 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    public ObservableCollection<AudioInputDeviceItem> OutputDevices { get; } = new();
+
+    public AudioInputDeviceItem? SelectedOutputDevice
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    private (string Id, string Name)? _savedOutputDevice;
+    public double MinOutputVolumePercent => AudioSettings.MinOutputVolume * 100;
+    public double MaxOutputVolumePercent => AudioSettings.MaxOutputVolume * 100;
+
+    public double OutputVolumePercent
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = 100;
 
     public double MinInputVolumePercent => AudioSettings.MinInputVolume * 100;
     public double MaxInputVolumePercent => AudioSettings.MaxInputVolume * 100;
@@ -205,7 +240,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
         // Not disposed with the rest: a late toggle of an item would throw on it
         var soundToggles = new Subject<RxVoid>();
-        Sounds = Enum.GetValues<SoundEvent>()
+        Sounds = SoundDisplayOrder
             .Select(soundEvent => new SoundItemVM(soundEvent,
                 Strings.Get($"settings.audio.sound.{SoundFiles.GetName(soundEvent)}"), soundService,
                 () => soundToggles.OnNext(RxVoid.Default)))
@@ -215,12 +250,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester = microphoneTester;
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
-        ToggleTestCommand = ReactiveCommand.Create(ToggleTest);
+        ToggleTestCommand = ReactiveCommand.Create(ToggleTest, Observable.Return(IsMediaEnabled));
 
         ObserveSettingsChanges(soundToggles);
-        ObserveMicrophoneTest();
+        if (IsMediaEnabled)
+            ObserveMicrophoneTest();
 
         _audioService.InputDevicesChanged += OnInputDevicesChanged;
+        _audioService.OutputDevicesChanged += OnOutputDevicesChanged;
         _microphoneTester.LevelChanged += OnInputLevelChanged;
         _microphoneTester.GateChanged += OnTestGateChanged;
         _microphoneTester.Failed += OnTestFailed;
@@ -237,6 +274,14 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Where(item => item != null && !_isUpdating)
             .Do(item => _savedInputDevice = item!.Device == null ? null : (item.Device.Id, item.Device.Name))
             .Select(_ => RxVoid.Default);
+
+        var outputChanges = this.WatchProperty(nameof(SelectedOutputDevice), x => x.SelectedOutputDevice)
+            .Where(item => item != null && !_isUpdating)
+            .Do(item => _savedOutputDevice = item!.Device == null ? null : (item.Device.Id, item.Device.Name))
+            .Select(_ => RxVoid.Default);
+
+        var outputVolumeChanges = WatchUserChanges(nameof(OutputVolumePercent), x => x.OutputVolumePercent)
+            .Throttle(SettingsSaveDelay);
 
         var volumeChanges = WatchUserChanges(nameof(InputVolumePercent), x => x.InputVolumePercent)
             .Throttle(SettingsSaveDelay);
@@ -271,7 +316,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
             .Select(_ => RxVoid.Default);
 
         // Each save writes the whole tab, one save at a time
-        _disposables.Add(Observable.Merge(deviceChanges, volumeChanges, noiseSuppressionChanges,
+        _disposables.Add(Observable.Merge(deviceChanges, outputChanges, outputVolumeChanges, volumeChanges, noiseSuppressionChanges,
                 echoCancellationChanges, autoGainControlChanges, gateChanges, voiceDetectionChanges,
                 adaptiveThresholdChanges, thresholdChanges, soundsEnabledChanges, soundsVolumeChanges,
                 soundPackChanges, soundToggles.Where(_ => !_isUpdating))
@@ -333,7 +378,15 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     private async Task SaveAsync()
     {
-        await _audioService.SaveSettingsAsync(ToSettings());
+        var settings = ToSettings();
+        if (!IsMediaEnabled)
+        {
+            // Interface sounds remain editable without changing the unavailable microphone settings.
+            var saved = await _audioService.GetSettingsAsync();
+            CopySoundSettings(settings, saved);
+            settings = saved;
+        }
+        await _audioService.SaveSettingsAsync(settings);
 
         if (!_isSoundPackPreviewPending)
             return;
@@ -383,6 +436,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     private void StartTest()
     {
+        if (!IsMediaEnabled)
+            return;
+
         TestError = DescribeTestError(_microphoneTester.Start(SelectedInputDevice?.Device?.Id,
             InputVolumePercent / 100, IsLoopbackEnabled, NoiseSuppression, TestVoiceGate, IsEchoCancellationEnabled,
             IsAutoGainControlEnabled));
@@ -453,8 +509,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         RefreshSoundPacks();
 
         // The first call starts the device monitor, which may take a while to reach the sound server
-        var devices = await Task.Run(_audioService.GetInputDevices);
+        var devices = IsMediaEnabled ? await Task.Run(_audioService.GetInputDevices) : [];
         RebuildInputDevices(devices);
+        RebuildOutputDevices(IsMediaEnabled ? await Task.Run(_audioService.GetOutputDevices) : []);
 
         _isUpdating = false;
     }
@@ -464,6 +521,9 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _savedInputDevice = settings.InputDeviceId == null
             ? null
             : (settings.InputDeviceId, settings.InputDeviceName ?? settings.InputDeviceId);
+        _savedOutputDevice = settings.OutputDeviceId == null ? null
+            : (settings.OutputDeviceId, settings.OutputDeviceName ?? settings.OutputDeviceId);
+        OutputVolumePercent = settings.OutputVolume * 100;
         InputVolumePercent = settings.InputVolume * 100;
         IsVoiceGateEnabled = settings.IsVoiceGateEnabled;
         VoiceGateThresholdDb = settings.VoiceGateThresholdDb;
@@ -533,10 +593,67 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         SelectedInputDevice = selected;
     }
 
+    private void OnOutputDevicesChanged()
+    {
+        var devices = _audioService.GetOutputDevices();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var wasUpdating = _isUpdating;
+            _isUpdating = true;
+
+            RebuildOutputDevices(devices);
+
+            _isUpdating = wasUpdating;
+        });
+    }
+
+    private void RebuildOutputDevices(IReadOnlyList<AudioDeviceInfo> devices)
+    {
+        var defaultDevice = devices.FirstOrDefault(d => d.IsDefault);
+
+        OutputDevices.Clear();
+
+        var systemDefault = new AudioInputDeviceItem(null,
+            defaultDevice == null
+                ? Strings.Get("settings.audio.device.systemDefault")
+                : Strings.Format("settings.audio.device.systemDefaultNamed", ("device", defaultDevice.Name)), true);
+        OutputDevices.Add(systemDefault);
+
+        foreach (var device in devices)
+        {
+            OutputDevices.Add(new AudioInputDeviceItem(device, device.Name, true));
+        }
+
+        if (_savedOutputDevice == null)
+        {
+            SelectedOutputDevice = systemDefault;
+            return;
+        }
+
+        var (savedId, savedName) = _savedOutputDevice.Value;
+        var selected = OutputDevices.FirstOrDefault(i => i.Device?.Id == savedId)
+                       ?? OutputDevices.FirstOrDefault(i => i.Device?.Name == savedName);
+
+        if (selected == null)
+        {
+            // Keep the choice visible while the device is unplugged instead of silently switching
+            // to another one
+            selected = new AudioInputDeviceItem(new AudioDeviceInfo(savedId, savedName, false),
+                Strings.Format("settings.audio.device.disconnected", ("device", savedName)), false);
+            OutputDevices.Add(selected);
+        }
+
+        SelectedOutputDevice = selected;
+    }
+
     private NoiseSuppressionLevel NoiseSuppression => (NoiseSuppressionLevel)NoiseSuppressionIndex;
 
     private AudioSettings ToSettings() => new()
     {
+        OutputVolume = OutputVolumePercent / 100,
+        OutputDeviceId = _savedOutputDevice?.Id,
+        OutputDeviceName = _savedOutputDevice?.Name,
         InputDeviceId = _savedInputDevice?.Id,
         InputDeviceName = _savedInputDevice?.Name,
         InputVolume = InputVolumePercent / 100,
@@ -555,8 +672,23 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public async Task ResetAllAsync()
     {
-        await _audioService.SaveSettingsAsync(new AudioSettings());
+        var defaults = new AudioSettings();
+        if (!IsMediaEnabled)
+        {
+            var saved = await _audioService.GetSettingsAsync();
+            CopySoundSettings(defaults, saved);
+            defaults = saved;
+        }
+        await _audioService.SaveSettingsAsync(defaults);
         await LoadAsync();
+    }
+
+    private static void CopySoundSettings(AudioSettings source, AudioSettings target)
+    {
+        target.AreSoundsEnabled = source.AreSoundsEnabled;
+        target.SoundsVolume = source.SoundsVolume;
+        target.SoundPack = source.SoundPack;
+        target.DisabledSounds = source.DisabledSounds;
     }
 
     public void Dispose()
@@ -567,6 +699,7 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
         _microphoneTester.Stop();
 
         _audioService.InputDevicesChanged -= OnInputDevicesChanged;
+        _audioService.OutputDevicesChanged -= OnOutputDevicesChanged;
         _disposables.Dispose();
     }
 }

@@ -154,8 +154,6 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
     private async Task CreateAsync()
     {
-        await Task.Delay(1500);
-
         NameError = SessionRules.ValidateName(Name);
         GeneralError = null;
 

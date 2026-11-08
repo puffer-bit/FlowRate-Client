@@ -42,6 +42,40 @@ internal sealed class TestDatabase : IAsyncDisposable
         return database;
     }
 
+    /// <summary>
+    /// A historical schema built from the original migrations, without columns from later versions.
+    /// </summary>
+    public static async Task<TestDatabase> CreateAtVersionAsync(int version)
+    {
+        var database = CreateEmpty();
+        try
+        {
+            var assembly = typeof(DatabaseInitializer).Assembly;
+            const string prefix = "Client.Infrastructure.Database.Migrations.";
+            var resources = assembly.GetManifestResourceNames()
+                .Where(name => name.StartsWith(prefix, StringComparison.Ordinal) && name.EndsWith(".sql", StringComparison.Ordinal))
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            if (version < 1 || version > resources.Length)
+                throw new ArgumentOutOfRangeException(nameof(version));
+
+            foreach (var resource in resources.Take(version))
+            {
+                await using var stream = assembly.GetManifestResourceStream(resource)!;
+                using var reader = new StreamReader(stream);
+                await database.ExecuteAsync(await reader.ReadToEndAsync());
+            }
+
+            await database.ExecuteAsync($"PRAGMA user_version = {version.ToString(System.Globalization.CultureInfo.InvariantCulture)};");
+            return database;
+        }
+        catch
+        {
+            await database.DisposeAsync();
+            throw;
+        }
+    }
+
     public async Task ExecuteAsync(string sql)
     {
         await using var connection = await Database.OpenAsync();

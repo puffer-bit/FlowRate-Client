@@ -129,13 +129,18 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
             showWindow();
             context.SetOutput(await MessageBoxInteraction.ShowAsync(context.Input, this));
         });
+        using var restart = viewModel.RestartWithoutMedia.RegisterHandler(context =>
+        {
+            Program.RestartWithoutMedia();
+            context.SetOutput(default(RxVoid));
+        });
         using var passwords = viewModel.AskDatabasePassword.RegisterHandler(async context =>
         {
             showWindow();
             context.SetOutput(await DatabasePasswordInteraction.ShowAsync(context.Input, this));
         });
 
-        await viewModel.Initialize(showWindow);
+        await viewModel.Initialize(showWindow, () => StartupOverlay.FadeOutAsync(MainInterface));
     }
 
     // The message is of somebody else and its chat is not muted. The sound is made also for the
@@ -245,7 +250,8 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
         X11FrameExtents.Set(this, WindowDecorationMargin);
 
         // Before a session is joined: how its screens are drawn
-        _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILoggerFactory>()?.CreateLogger(typeof(VideoSurfaceProbe)));
+        if (Client.Core.Media.MediaRuntime.IsEnabled)
+            _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILoggerFactory>()?.CreateLogger(typeof(VideoSurfaceProbe)));
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

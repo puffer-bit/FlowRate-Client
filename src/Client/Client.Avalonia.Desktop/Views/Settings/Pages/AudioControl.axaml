@@ -7,6 +7,7 @@
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -28,7 +29,7 @@
 
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="audio.microphone"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.inputDevice">
                 <ComboBox Width="300"
                           ItemsSource="{Binding InputDevices}"
@@ -69,10 +70,6 @@
             <ui:SettingsRow services:SettingText.Key="audio.autoGainControl">
                 <CheckBox IsChecked="{Binding IsAutoGainControlEnabled}"/>
             </ui:SettingsRow>
-        </ui:SettingsCard>
-
-        <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
-        <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
                 <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"
                           AutomationProperties.Name="{l:Text settings.audio.voiceGate.title}"/>
@@ -103,6 +100,19 @@
                                 <TextBlock IsVisible="{Binding !IsVoiceGateEnabled}" FontWeight="Medium" TextWrapping="Wrap"
                                            Text="{l:Text settings.audio.gatePreview.disabled}"/>
                             </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16"
+                                  ui:SettingsPage.SearchKey="audio.hearMyself">
+                                <StackPanel Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="Medium" TextWrapping="Wrap"
+                                               Text="{l:Text settings.audio.hearMyself.title}"/>
+                                    <TextBlock FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{l:Text settings.audio.hearMyself.description}"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding IsLoopbackEnabled}"
+                                          AutomationProperties.Name="{l:Text settings.audio.hearMyself.title}"/>
+                            </Grid>
                             <indicators:VoiceGateMeter Height="32" Level="{Binding InputLevel}"
                                                       ThresholdDb="{Binding VoiceGateThresholdDb}"
                                                       ShowThreshold="{Binding IsVoiceGateEnabled}"
@@ -156,15 +166,39 @@
                                IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.hearMyself">
-                <CheckBox IsChecked="{Binding IsLoopbackEnabled}"/>
-            </ui:SettingsRow>
             <!-- These options refine the gate and apply while it is enabled. -->
             <ui:SettingsRow services:SettingText.Key="audio.voiceDetection" IsEnabled="{Binding IsVoiceGateEnabled}">
                 <CheckBox IsChecked="{Binding IsVoiceDetectionEnabled}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.adaptiveThreshold" IsEnabled="{Binding IsVoiceGateEnabled}">
                 <CheckBox IsChecked="{Binding IsAdaptiveThresholdEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="audio.output"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ui:SettingsRow services:SettingText.Key="audio.outputDevice">
+                <ComboBox Width="300"
+                          ItemsSource="{Binding OutputDevices}"
+                          SelectedItem="{Binding SelectedOutputDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
+                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                       Classes.unavailable="{Binding !IsAvailable}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.outputVolume">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center"
+                            Minimum="{Binding MinOutputVolumePercent}"
+                            Maximum="{Binding MaxOutputVolumePercent}"
+                            Value="{Binding OutputVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding OutputVolumePercent, StringFormat={}{0:0}%}"/>
+                </StackPanel>
             </ui:SettingsRow>
         </ui:SettingsCard>
 

@@ -16,10 +16,9 @@
     
     <UserControl.ContextFlyout>
         <Flyout Placement="BottomEdgeAlignedRight" 
+                Opening="FlyoutBase_OnOpening"
                 Opened="FlyoutBase_OnOpened"
-                Closed="FlyoutBase_OnClosed">
-            <chatViews:ChatMessageFlyout/>
-        </Flyout>
+                Closed="FlyoutBase_OnClosed"/>
     </UserControl.ContextFlyout>
     
     <Border Classes="msg-root"
@@ -55,7 +54,7 @@
                         </SelectableTextBlock.Styles>
                     </SelectableTextBlock>
                     <TextBlock Classes="msg-time"
-                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                               Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
                 
                 <Button Classes="msg-reply"
@@ -83,11 +82,15 @@
                 
                 <!-- An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <SelectableTextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
-                                         chatVm:ChatMessageText.Body="{Binding Body}"
-                                         chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
-                                         x:Name="MessageTextBlock"
-                                         ContextFlyout="{x:Null}"/>
+                    <Grid>
+                        <chatVm:ChatCodeBlockBackground Target="{Binding #MessageTextBlock}" IsHitTestVisible="False"/>
+                        <SelectableTextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                                             chatVm:ChatMessageText.Body="{Binding Body}"
+                                             chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"
+                                             x:Name="MessageTextBlock"
+                                             ContextFlyout="{x:Null}"/>
+                        <chatVm:ChatCodeBlockCopyButtons Target="{Binding #MessageTextBlock}"/>
+                    </Grid>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"
                           ToolTip.Tip="{l:Text chat.edited}"/>
                 </text:TrailingMarkPanel>
@@ -193,7 +196,7 @@
                    Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
                 <TextBlock Classes="msg-time continuation" VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                           Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
             </Panel>
         </Grid>
     </Border>

@@ -9,6 +9,7 @@
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views"
+             xmlns:media="clr-namespace:Client.Avalonia.Controls.Media;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.HybridSessionView"
              x:DataType="hybridVm:ActiveHybridSessionVM"
              Background="{DynamicResource GeneralBrush}"
@@ -99,7 +100,7 @@
                                     anim:Presence.Leave="Fade"
                                     anim:Presence.IsLeaving="{Binding IsLeaving}">
                                 <StackPanel>
-                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10" Margin="12,8">
+                                    <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="6" Margin="12,8">
                                         <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
                                                             UserName="{Binding DisplayedName}"
                                                             AvatarUrl="{Binding AvatarUrl}"/>
@@ -110,7 +111,12 @@
                                                        Text="{l:Text hybrid.screen.sharing}"/>
                                         </StackPanel>
 
-                                        <Panel Grid.Column="2">
+                                        <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="2"
+                                                                   Viewers="{Binding Viewers}" HorizontalAlignment="Right"/>
+                                        <Border Grid.Column="3" Width="1" Height="18" VerticalAlignment="Center"
+                                                Background="{DynamicResource SettingsCardBorderBrush}"
+                                                IsVisible="{Binding #ViewersButton.HasViewers}"/>
+                                        <Panel Grid.Column="4">
                                             <Button Classes="screen-action" Command="{Binding WatchCommand}"
                                                     IsVisible="{Binding !IsWatched}"
                                                     ToolTip.Tip="{l:Text hybrid.screen.watch}">

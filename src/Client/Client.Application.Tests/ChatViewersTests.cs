@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Windows.Input;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
+using Client.Application.Settings;
 using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Sessions.Chat;
@@ -17,8 +18,88 @@ namespace Client.Application.Tests;
 
 public sealed class ChatViewersTests
 {
+    [Fact]
+    public Task GroupingPreferenceIsRestoredAndSavedAcrossChatPanels() => TestUiThread.RunAsync(() =>
+    {
+        var appearance = DispatchProxy.Create<IAppearanceService, GroupingSettings>();
+        var settings = (GroupingSettings)appearance;
+        settings.Enabled = true;
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        using var profile = ReactiveCommand.Create<int>(_ => { });
+        using (var first = new ChatViewersVM(7, session, profile, appearance: appearance))
+        {
+            first.Open();
+            Assert.True(first.GroupOnlineUsers);
+            first.ToggleGroupOnlineUsers.Execute().Subscribe();
+            Assert.False(first.GroupOnlineUsers);
+            Assert.False(settings.Enabled);
+            Assert.Equal(1, settings.Writes);
+        }
+
+        using var second = new ChatViewersVM(8, session, profile, appearance: appearance);
+        second.Open();
+        Assert.False(second.GroupOnlineUsers);
+        second.ToggleGroupOnlineUsers.Execute().Subscribe();
+        Assert.True(settings.Enabled);
+        second.Close();
+        second.GroupOnlineUsers = false;
+        second.Open();
+        Assert.True(second.GroupOnlineUsers);
+        Assert.Equal(2, settings.Writes);
+    });
+
+    public class GroupingSettings : DispatchProxy
+    {
+        public bool Enabled { get; set; }
+        public int Writes { get; private set; }
+
+        protected override object? Invoke(MethodInfo? method, object?[]? args)
+        {
+            switch (method!.Name)
+            {
+                case nameof(IAppearanceService.GetGroupOnlineChatUsersAsync):
+                    return Task.FromResult(Enabled);
+                case nameof(IAppearanceService.UpdateGroupOnlineChatUsersAsync):
+                    Enabled = (bool)args![0]!;
+                    Writes++;
+                    return Task.CompletedTask;
+                default: throw new InvalidOperationException(method.Name);
+            }
+        }
+    }
+
     private static UserModel User(int id, string name) => new()
         { Id = id, Username = name, CoordinatorInstanceId = "coordinator" };
+
+    [Fact]
+    public Task OnlineGroupingTracksStatusChangesAndCanBeDisabled() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        var online = new UserModel
+            { Id = 2, Username = "Zoe", CoordinatorInstanceId = "coordinator", Status = UserStatus.Away };
+        fake.Initial = [User(1, "Alice"), online];
+        using var command = ReactiveCommand.Create<int>(_ => { });
+        using var vm = new ChatViewersVM(7, session, command);
+        vm.Open();
+        vm.GroupOnlineUsers = true;
+        Assert.Equal(new[] { 2, 1 }, vm.Users.Select(u => u.Id));
+        Assert.True(vm.Users[0].ShowOnlineHeader);
+        Assert.True(vm.Users[1].ShowOfflineHeader);
+        var row = vm.Users[0];
+        fake.Raise(new(7, fake.Requests.Single().Id, [User(2, "Zoe")], []));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { 1, 2 }, vm.Users.Select(u => u.Id));
+        Assert.Same(row, vm.Users[1]);
+        Assert.True(vm.Users[0].ShowOfflineHeader);
+        Assert.False(vm.Users[1].ShowOfflineHeader);
+        vm.GroupOnlineUsers = false;
+        Assert.All(vm.Users, user =>
+        {
+            Assert.False(user.ShowOnlineHeader);
+            Assert.False(user.ShowOfflineHeader);
+        });
+    });
 
     [Fact]
     public Task PinnedMessagesAndViewersShareOneSidePanel() => TestUiThread.RunAsync(() =>

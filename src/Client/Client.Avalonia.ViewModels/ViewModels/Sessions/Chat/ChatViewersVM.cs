@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
+using Client.Application.Settings;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
@@ -26,6 +27,9 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string Username => _user.Username;
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
+    public bool IsOnline => Status is UserStatus.Online or UserStatus.Away or UserStatus.DoNotDisturb;
+    public bool ShowOnlineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
+    public bool ShowOfflineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool IsBanned => _user.State == UserState.Banned;
     public bool IsFrozen => _user.State == UserState.Suspended;
     public int? RoleColor => _owner.GetRoleColor(_user);
@@ -82,6 +86,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
 public sealed class ChatViewersVM : ReactiveObject, IDisposable
 {
     private readonly ICoordinatorSession _session;
+    private readonly IAppearanceService? _appearance;
     private readonly int _chatId;
     private readonly ChatComposerVM? _composer;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUser;
@@ -100,15 +105,35 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     }
 
     public ObservableCollection<ChatViewerVM> Users { get; } = [];
+    public bool GroupOnlineUsers
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            SortUsers();
+        }
+    }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleGroupOnlineUsers { get; }
     public bool IsLoading { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool HasError { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
     public string Caption => Strings.Format("chat.viewers.count", ("count", Users.Count.ToString()));
 
     public ChatViewersVM(int chatId, ICoordinatorSession session, ReactiveCommand<int, RxVoid> viewProfile,
         ChatComposerVM? composer = null, ReactiveCommand<(int UserId, string Name), RxVoid>? banUser = null,
-        int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null)
+        int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null,
+        IAppearanceService? appearance = null)
     {
         (_chatId, _session, _viewProfile) = (chatId, session, viewProfile);
+        _appearance = appearance;
+        ToggleGroupOnlineUsers = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var enabled = !GroupOnlineUsers;
+            if (_appearance != null)
+                await _appearance.UpdateGroupOnlineChatUsersAsync(enabled);
+            if (!_disposed) GroupOnlineUsers = enabled;
+        }, this.WatchProperty(nameof(IsLoading), vm => !vm.IsLoading));
         _unbanUser = unbanUser;
         (_composer, _banUser, _currentUserId) = (composer, banUser, currentUserId);
         session.PermissionsChanged += OnPermissionsChanged;
@@ -169,6 +194,16 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
         IsLoading = true;
         HasError = false;
         UpdateTexts();
+        if (_appearance != null)
+        {
+            var groupOnlineUsers = await _appearance.GetGroupOnlineChatUsersAsync();
+            await UiThread.RunAsync(() =>
+            {
+                if (_open && !_disposed && _subscriptionId == subscriptionId)
+                    GroupOnlineUsers = groupOnlineUsers;
+            });
+            if (!_open || _disposed || _subscriptionId != subscriptionId) return;
+        }
         var result = await _session.SetChatViewersSubscription(_chatId, subscriptionId, true);
         await UiThread.RunAsync(() =>
         {
@@ -208,14 +243,23 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
             }
             else row.Update(user);
         }
-        var ordered = Users.OrderBy(row => row.Username, StringComparer.OrdinalIgnoreCase)
+        SortUsers();
+        UpdateTexts();
+    }
+
+    private void SortUsers()
+    {
+        var ordered = Users.OrderBy(row => GroupOnlineUsers && !row.IsOnline)
+            .ThenBy(row => row.Username, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Id).ToArray();
         for (int index = 0; index < ordered.Length; index++)
         {
             int oldIndex = Users.IndexOf(ordered[index]);
             if (oldIndex != index) Users.Move(oldIndex, index);
+            var startsGroup = index == 0 || ordered[index - 1].IsOnline != ordered[index].IsOnline;
+            ordered[index].ShowOnlineHeader = GroupOnlineUsers && startsGroup && ordered[index].IsOnline;
+            ordered[index].ShowOfflineHeader = GroupOnlineUsers && startsGroup && !ordered[index].IsOnline;
         }
-        UpdateTexts();
     }
 
     private void OnStateChanged(CoordinatorState state) => Dispatcher.UIThread.Post(() =>
@@ -253,6 +297,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     {
         Close();
         _disposed = true;
+        ToggleGroupOnlineUsers.Dispose();
         _session.PermissionsChanged -= OnPermissionsChanged;
         if (_composer != null) _composer.PropertyChanged -= OnComposerChanged;
         _session.ChatViewersChanged -= OnChanged;

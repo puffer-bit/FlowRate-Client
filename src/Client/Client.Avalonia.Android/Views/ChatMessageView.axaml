@@ -43,7 +43,7 @@
                         </TextBlock.Styles>
                     </TextBlock>
                     <TextBlock Classes="msg-time"
-                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                               Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
 
                 <!-- A tap on the quote goes to the message it quotes -->
@@ -72,10 +72,14 @@
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
                 <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
-                               x:Name="MessageTextBlock"
-                               chatVm:ChatMessageText.Body="{Binding Body}"
-                               chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
+                    <Grid>
+                        <chatVm:ChatCodeBlockBackground Target="{Binding #MessageTextBlock}" IsHitTestVisible="False"/>
+                        <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                                   x:Name="MessageTextBlock"
+                                   chatVm:ChatMessageText.Body="{Binding Body}"
+                                   chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
+                        <chatVm:ChatCodeBlockCopyButtons Target="{Binding #MessageTextBlock}"/>
+                    </Grid>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
 

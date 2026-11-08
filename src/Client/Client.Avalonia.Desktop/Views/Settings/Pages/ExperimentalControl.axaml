@@ -23,7 +23,7 @@
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="experimental.voice"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="experimental.gstreamer"
                             IsEnabled="{Binding IsExperimentalEnabled}">
                 <CheckBox IsChecked="{Binding UseGStreamer}"/>

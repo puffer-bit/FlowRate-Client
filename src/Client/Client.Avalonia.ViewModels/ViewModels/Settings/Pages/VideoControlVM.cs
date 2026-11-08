@@ -25,17 +25,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public string Name => SettingText.TabName("video");
     public SettingTabType Type => SettingTabType.Video;
     public bool IsEnabled => true;
+    public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
-        ("decoding", ["hardwareDecoding", "decoder", "zeroCopy"]),
+        ("decoding", ["decoder", "zeroCopy"]),
         ("presentation", ["timedPresentation", "presentationBuffer"]),
         ("encoding", ["encoder"]));
-
-    public bool IsHardwareDecodingEnabled
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
 
     // Index into DecoderChoices, the automatic choice first
     public int DecoderIndex
@@ -99,10 +94,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     {
         _videoService = videoService;
 
-        _decoders = [null, ..mediaCapabilities.ScreenShareDecoders];
-        _encoders = [null, ..mediaCapabilities.ScreenShareEncoders];
-        DecoderChoices = _decoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareDecoders)).ToList();
-        EncoderChoices = _encoders.Select(element => ChoiceText(element, mediaCapabilities.ScreenShareEncoders)).ToList();
+        IReadOnlyList<string> decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareDecoders : [];
+        IReadOnlyList<string> encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareEncoders : [];
+        _decoders = [null, ..decoders];
+        _encoders = [null, ..encoders];
+        DecoderChoices = _decoders.Select(element => ChoiceText(element, decoders)).ToList();
+        EncoderChoices = _encoders.Select(element => ChoiceText(element, encoders)).ToList();
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
@@ -113,13 +110,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
-                nameof(IsHardwareDecodingEnabled),
                 nameof(DecoderIndex),
                 nameof(EncoderIndex),
                 nameof(IsZeroCopyEnabled),
                 nameof(IsTimedPresentationEnabled),
                 nameof(PresentationBufferIndex))
-            .Where(_ => !_isUpdating)
+            .Where(_ => !_isUpdating && IsMediaEnabled)
             .Select(_ => Observable.FromAsync(() => _videoService.SaveSettingsAsync(ToSettings())))
             .Concat()
             .Subscribe();
@@ -165,6 +161,9 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     public async Task ResetAllAsync()
     {
+        if (!IsMediaEnabled)
+            return;
+
         var defaults = new VideoSettings();
 
         _isUpdating = true;
@@ -176,7 +175,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     private VideoSettings ToSettings() => new()
     {
-        IsHardwareDecodingEnabled = IsHardwareDecodingEnabled,
+        IsHardwareDecodingEnabled = true,
         Decoder = _decoders[Math.Clamp(DecoderIndex, 0, _decoders.Count - 1)],
         Encoder = _encoders[Math.Clamp(EncoderIndex, 0, _encoders.Count - 1)],
         IsZeroCopyEnabled = IsZeroCopyEnabled,
@@ -187,9 +186,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     private void Apply(VideoSettings settings)
     {
-        IsHardwareDecodingEnabled = settings.IsHardwareDecodingEnabled;
         // An element that is not on this system anymore reads as the automatic choice
-        DecoderIndex = Math.Max(0, IndexOf(_decoders, settings.Decoder));
+        // Preserve the legacy software-only preference through the decoder choice.
+        var decoder = settings.IsHardwareDecodingEnabled
+            ? settings.Decoder
+            : _decoders.FirstOrDefault(element => element != null && VideoElementNames.IsSoftware(element));
+        DecoderIndex = Math.Max(0, IndexOf(_decoders, decoder));
         EncoderIndex = Math.Max(0, IndexOf(_encoders, settings.Encoder));
         IsZeroCopyEnabled = settings.IsZeroCopyEnabled;
         IsTimedPresentationEnabled = settings.IsTimedPresentationEnabled;

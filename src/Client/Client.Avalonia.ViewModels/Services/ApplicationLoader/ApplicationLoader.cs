@@ -27,6 +27,7 @@ public partial class ApplicationLoader
     private readonly IDebugAndLogService _debugAndLogService;
     private readonly IHotKeysService _hotKeysService;
     private readonly IAudioSettingsRepository _audioSettings;
+    private readonly IAudioDeviceProvider _audioDevices;
     private readonly ISoundService _soundService;
     private readonly IThemeService _themeService;
     private readonly ILanguageService _languageService;
@@ -44,6 +45,7 @@ public partial class ApplicationLoader
         IDebugAndLogService debugAndLogService,
         IHotKeysService hotKeysService,
         IAudioSettingsRepository audioSettings,
+        IAudioDeviceProvider audioDevices,
         ISoundService soundService,
         IThemeService themeService,
         ILanguageService languageService,
@@ -60,6 +62,7 @@ public partial class ApplicationLoader
         _debugAndLogService = debugAndLogService;
         _hotKeysService = hotKeysService;
         _audioSettings = audioSettings;
+        _audioDevices = audioDevices;
         _soundService = soundService;
         _themeService = themeService;
         _languageService = languageService;
@@ -161,12 +164,15 @@ public partial class ApplicationLoader
             LogThemeApplyFailed(exception);
         }
 
-        if (ExperimentalFeatures.UseLibWebRTC)
+        if (Client.Core.Media.MediaRuntime.IsEnabled && ExperimentalFeatures.UseLibWebRTC)
             _ = LoadLibWebRTCAsync();
 
         try
         {
-            _soundService.Apply(await _audioSettings.GetAsync());
+            var audioSettings = await _audioSettings.GetAsync();
+            await Task.Run(() => _audioDevices.SetOutputDevice(audioSettings.OutputDeviceId, audioSettings.OutputDeviceName));
+            _audioDevices.SetOutputVolume(audioSettings.OutputVolume);
+            _soundService.Apply(audioSettings);
             await LetFrameThroughAsync();
         }
         catch (Exception exception)
@@ -200,7 +206,7 @@ public partial class ApplicationLoader
         
         try
         {
-            bool gstResult = _mediaRuntimeLoader.Load();
+            bool gstResult = !Client.Core.Media.MediaRuntime.IsEnabled || _mediaRuntimeLoader.Load();
             bool openAlResult = LoadOpenAL();
 
             IsLoaded = true;
