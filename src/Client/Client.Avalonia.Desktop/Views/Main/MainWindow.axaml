@@ -56,7 +56,8 @@
         <converters:BoolToGridLengthConverter x:Key="SidePanelWidthConverter" TrueLength="0" FalseLength="260"/>
     </Window.Resources>
     
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid>
+    <Grid x:Name="MainInterface" RowDefinitions="Auto,*,Auto" Background="{DynamicResource SystemRegionBrush}">
 
         <!-- Top bar: the same items the menu had, drawn as the rest of the application is -->
         <mainViews:MainTopBar Grid.Row="0"/>
@@ -162,9 +163,10 @@
              Left: what the application is doing, behind a ring while it is busy and a dot that is
              green once connected. Right: the ping -->
         <mainViews:MainStatusBar Grid.Row="2"/>
+    </Grid>
 
         <!-- Over everything of the window while the application starts; dialogs are in the overlay layer
              above it -->
-        <mainViews:StartupScreen Grid.Row="0" Grid.RowSpan="3"/>
+        <mainViews:StartupScreen x:Name="StartupOverlay"/>
     </Grid>
 </Window>

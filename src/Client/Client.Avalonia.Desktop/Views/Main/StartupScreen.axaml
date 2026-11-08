@@ -8,31 +8,9 @@
              x:Class="Client.Views.Main.StartupScreen"
              Background="{DynamicResource GeneralBrush}"
              IsVisible="{Binding IsStartupScreenShown}"
-             IsHitTestVisible="{Binding !IsStartupScreenLeaving}"
-             Classes.leaving="{Binding IsStartupScreenLeaving}">
-
-    <!-- Leaving, the screen fades out over the content while what it shows grows towards the viewer -->
-    <UserControl.Transitions>
-        <Transitions>
-            <DoubleTransition Property="Opacity" Duration="{anim:Motion ExtraLong}" Easing="{anim:Ease Exit}"/>
-        </Transitions>
-    </UserControl.Transitions>
+             IsHitTestVisible="{Binding !IsStartupScreenLeaving}">
 
     <UserControl.Styles>
-        <Style Selector="StackPanel#Content">
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion ExtraLong}" Easing="{anim:Ease Exit}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="UserControl.leaving">
-            <Setter Property="Opacity" Value="0"/>
-        </Style>
-        <Style Selector=".leaving StackPanel#Content">
-            <Setter Property="RenderTransform" Value="scale(1.08)"/>
-        </Style>
         <Style Selector="StackPanel.warningLeaving">
             <Setter Property="Opacity" Value="0"/>
         </Style>
@@ -40,7 +18,7 @@
 
     <Grid>
         <!-- Rises into its place when the window opens -->
-        <StackPanel x:Name="Content"
+        <StackPanel x:Name="StartupContent"
                     HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20"
                     anim:Presence.Appear="Rise"
                     anim:Presence.Duration="ExtraLong">

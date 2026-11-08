@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Windows.Input;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
+using Client.Application.Settings;
 using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Sessions.Chat;
@@ -17,6 +18,56 @@ namespace Client.Application.Tests;
 
 public sealed class ChatViewersTests
 {
+    [Fact]
+    public Task GroupingPreferenceIsRestoredAndSavedAcrossChatPanels() => TestUiThread.RunAsync(() =>
+    {
+        var appearance = DispatchProxy.Create<IAppearanceService, GroupingSettings>();
+        var settings = (GroupingSettings)appearance;
+        settings.Enabled = true;
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        using var profile = ReactiveCommand.Create<int>(_ => { });
+        using (var first = new ChatViewersVM(7, session, profile, appearance: appearance))
+        {
+            first.Open();
+            Assert.True(first.GroupOnlineUsers);
+            first.ToggleGroupOnlineUsers.Execute().Subscribe();
+            Assert.False(first.GroupOnlineUsers);
+            Assert.False(settings.Enabled);
+            Assert.Equal(1, settings.Writes);
+        }
+
+        using var second = new ChatViewersVM(8, session, profile, appearance: appearance);
+        second.Open();
+        Assert.False(second.GroupOnlineUsers);
+        second.ToggleGroupOnlineUsers.Execute().Subscribe();
+        Assert.True(settings.Enabled);
+        second.Close();
+        second.GroupOnlineUsers = false;
+        second.Open();
+        Assert.True(second.GroupOnlineUsers);
+        Assert.Equal(2, settings.Writes);
+    });
+
+    public class GroupingSettings : DispatchProxy
+    {
+        public bool Enabled { get; set; }
+        public int Writes { get; private set; }
+
+        protected override object? Invoke(MethodInfo? method, object?[]? args)
+        {
+            switch (method!.Name)
+            {
+                case nameof(IAppearanceService.GetGroupOnlineChatUsersAsync):
+                    return Task.FromResult(Enabled);
+                case nameof(IAppearanceService.UpdateGroupOnlineChatUsersAsync):
+                    Enabled = (bool)args![0]!;
+                    Writes++;
+                    return Task.CompletedTask;
+                default: throw new InvalidOperationException(method.Name);
+            }
+        }
+    }
+
     private static UserModel User(int id, string name) => new()
         { Id = id, Username = name, CoordinatorInstanceId = "coordinator" };
 

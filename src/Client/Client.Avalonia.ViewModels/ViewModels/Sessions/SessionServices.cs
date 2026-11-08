@@ -19,7 +19,8 @@ public sealed record ChatSessionServices(
     IChatMediaUploader MediaUploader,
     IChatImageService Images,
     IDismissedPromptsRepository DismissedPrompts,
-    IMediaCache MediaCache);
+    IMediaCache MediaCache,
+    IAppearanceService? Appearance = null);
 
 /// <summary>
 /// The services the hybrid session we are in uses. Resolved only when a session is entered: a

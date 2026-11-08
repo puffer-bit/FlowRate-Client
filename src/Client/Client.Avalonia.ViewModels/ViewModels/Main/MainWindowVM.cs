@@ -398,7 +398,7 @@ public partial class MainWindowVM : ReactiveObject
             command.Execute(null);
     }
 
-    public async Task Initialize(Action? onInitialized = null)
+    public async Task Initialize(Action? onInitialized = null, Func<Task>? fadeOutStartupScreen = null)
     {
         if (onInitialized != null && !System.IO.File.Exists(DevelopmentWarningPreferencePath))
         {
@@ -501,8 +501,9 @@ public partial class MainWindowVM : ReactiveObject
         if (onInitialized != null)
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
 
-        // Not awaited: the startup screen fades out while the auto connection is already on its way
-        _ = HideStartupScreenAsync();
+        // The desktop transition holds a snapshot of the main interface. Start connection-driven
+        // content changes after it completes so revealing the live interface cannot jump.
+        await HideStartupScreenAsync(fadeOutStartupScreen);
 
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
@@ -518,10 +519,17 @@ public partial class MainWindowVM : ReactiveObject
     private static string DevelopmentWarningPreferencePath => System.IO.Path.Combine(
         AppDirectories.Data, "development-warning-dismissed");
 
-    private async Task HideStartupScreenAsync()
+    private async Task HideStartupScreenAsync(Func<Task>? fadeOutStartupScreen)
     {
+#if DEBUG
+        // Keep the startup screen visible for manual transition checks in development builds.
+        await Task.Delay(TimeSpan.FromSeconds(3));
+#endif
         IsStartupScreenLeaving = true;
-        await Task.Delay(Motion.Get(MotionDuration.ExtraLong));
+        if (fadeOutStartupScreen != null)
+            await fadeOutStartupScreen();
+        else
+            await Task.Delay(Motion.Get(MotionDuration.Startup));
         IsStartupScreenShown = false;
     }
 

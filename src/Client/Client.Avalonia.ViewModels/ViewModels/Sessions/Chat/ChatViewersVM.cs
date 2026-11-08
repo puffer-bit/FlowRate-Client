@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
+using Client.Application.Settings;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
@@ -85,6 +86,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
 public sealed class ChatViewersVM : ReactiveObject, IDisposable
 {
     private readonly ICoordinatorSession _session;
+    private readonly IAppearanceService? _appearance;
     private readonly int _chatId;
     private readonly ChatComposerVM? _composer;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUser;
@@ -120,10 +122,18 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
 
     public ChatViewersVM(int chatId, ICoordinatorSession session, ReactiveCommand<int, RxVoid> viewProfile,
         ChatComposerVM? composer = null, ReactiveCommand<(int UserId, string Name), RxVoid>? banUser = null,
-        int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null)
+        int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null,
+        IAppearanceService? appearance = null)
     {
         (_chatId, _session, _viewProfile) = (chatId, session, viewProfile);
-        ToggleGroupOnlineUsers = ReactiveCommand.Create(() => { GroupOnlineUsers = !GroupOnlineUsers; });
+        _appearance = appearance;
+        ToggleGroupOnlineUsers = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var enabled = !GroupOnlineUsers;
+            if (_appearance != null)
+                await _appearance.UpdateGroupOnlineChatUsersAsync(enabled);
+            if (!_disposed) GroupOnlineUsers = enabled;
+        }, this.WatchProperty(nameof(IsLoading), vm => !vm.IsLoading));
         _unbanUser = unbanUser;
         (_composer, _banUser, _currentUserId) = (composer, banUser, currentUserId);
         session.PermissionsChanged += OnPermissionsChanged;
@@ -184,6 +194,16 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
         IsLoading = true;
         HasError = false;
         UpdateTexts();
+        if (_appearance != null)
+        {
+            var groupOnlineUsers = await _appearance.GetGroupOnlineChatUsersAsync();
+            await UiThread.RunAsync(() =>
+            {
+                if (_open && !_disposed && _subscriptionId == subscriptionId)
+                    GroupOnlineUsers = groupOnlineUsers;
+            });
+            if (!_open || _disposed || _subscriptionId != subscriptionId) return;
+        }
         var result = await _session.SetChatViewersSubscription(_chatId, subscriptionId, true);
         await UiThread.RunAsync(() =>
         {
