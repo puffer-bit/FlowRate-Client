@@ -36,7 +36,7 @@ dotnet run --project src/Client/Client.Audio.SmokeChecks -- --video-buffers
 
 ## Choosing by the registry
 
-No vendor is detected. The hardware plugins of GStreamer (nvcodec, va, qsv, amfcodec,
+Devices are selected through the registry. The hardware plugins of GStreamer (nvcodec, va, qsv, amfcodec,
 mediafoundation, d3d11) register their elements only when the device and its driver can run
 them, so an element that `ElementFactory.Find` finds is one this system can use.
 `VideoEncoderSelector` and `VideoDecoderSelector` walk a fixed list in order of preference and
@@ -64,6 +64,20 @@ OBU streams aligned to temporal units; `av1parse` assembles the depayloader's OB
 decoding. The AV1 encoder candidates are NVIDIA, Intel and AMD hardware, then SVT-AV1; the
 decoder candidates are platform hardware, NVIDIA and finally dav1d. SVT-AV1 uses low-delay CBR
 without lookahead, so it does not retain a random-access group before sending frames.
+
+VA-API AV1 also disables future references and uses a one-frame golden group, so drivers that
+support bidirectional references cannot retain a group before sending it. On Mesa Gallium only,
+the encoder uses `target-usage=1`: Mesa treats quality values as packed preset flags, and 1 is
+its recommended balanced preset with adaptive quantization. The GStreamer default 4 selects a
+custom quality preset without adaptive quantization; increasing it to 7 does not mean faster
+encoding on Mesa. The temporary encoder's own VA context identifies its driver; device selection
+and Intel VA quality defaults are unchanged. See the
+[Mesa quality handler](https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/gallium/frontends/va/encode.c).
+
+Run the Linux VA-API AV1 check with `dotnet run --project src/Client/Client.Audio.SmokeChecks -- --video-av1`.
+It verifies that individual keyframes and delta frames decode without future input, then reports
+encoder/decoder throughput and queue depth for paced 1080p/144 input using DMA-BUF output.
+The measured rate depends on the device, driver and concurrent GPU load; it is not a 144 fps guarantee.
 
 Both senders attach a single-layer dependency descriptor, which mediasoup needs to recognize AV1
 keyframes. The SFU and the senders reserve extension id 6 for it. libwebrtc generates it from the
