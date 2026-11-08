@@ -234,7 +234,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         StatusBar = new ChatStatusBarVM(sessionModel)
         {
-            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand)
+            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
+                services.Appearance)
         };
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)

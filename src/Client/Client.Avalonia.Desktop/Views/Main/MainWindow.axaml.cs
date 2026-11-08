@@ -140,7 +140,7 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
             context.SetOutput(await DatabasePasswordInteraction.ShowAsync(context.Input, this));
         });
 
-        await viewModel.Initialize(showWindow);
+        await viewModel.Initialize(showWindow, () => StartupOverlay.FadeOutAsync(MainInterface));
     }
 
     // The message is of somebody else and its chat is not muted. The sound is made also for the
