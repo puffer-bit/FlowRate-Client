@@ -11,17 +11,14 @@ public class ChatReadStateRepositoryTests
     [Fact]
     public async Task UpgradeAddsLocalReadsWithoutChangingExistingData()
     {
-        await using var database = await TestDatabase.CreateMigratedAsync();
+        await using var database = await TestDatabase.CreateAtVersionAsync(26);
         await database.ExecuteAsync("""
-            DROP TABLE LocalChatReads;
-            DROP TABLE PushReadAccounts;
             UPDATE AudioSettings SET InputVolume = 1.5;
-            PRAGMA user_version = 26;
             """);
         var result = await new DatabaseInitializer(database.Database,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
         Assert.Equal(Client.Application.Ports.DatabaseState.NoError, result);
-        Assert.Equal(27L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(30L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         var repository = new ChatReadStateRepository(database.Database);
         await repository.SetAsync("server", 1, new ChatReadState(7, 20, 0, 0));

@@ -48,14 +48,14 @@ public class UserNotesRepositoryTests
     [Fact]
     public async Task UpgradingAnExistingDatabaseAddsNotesWithoutChangingExistingSettings()
     {
-        await using var database = await TestDatabase.CreateMigratedAsync();
-        await database.ExecuteAsync("DROP TABLE UserNotes; UPDATE AudioSettings SET InputVolume = 1.5; PRAGMA user_version = 25;");
+        await using var database = await TestDatabase.CreateAtVersionAsync(25);
+        await database.ExecuteAsync("UPDATE AudioSettings SET InputVolume = 1.5;");
         var state = await new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Infrastructure.Database.DatabaseInitializer>.Instance)
             .VerifyDatabaseAsync();
 
         Assert.Equal(Client.Application.Ports.DatabaseState.NoError, state);
-        Assert.Equal(27L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(30L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         var repository = new UserNotesRepository(database.Database);
         await repository.SetAsync("server", 7, "New note");
