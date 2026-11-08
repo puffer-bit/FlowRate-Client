@@ -53,12 +53,16 @@ public sealed class WebSocketConnection : IAsyncDisposable
     private Task? _sendLoop;
     private int _connectStarted;
     private int _finished;
+    private long _queuedBytes;
 
     public WebSocketConnection(WebSocketConnectionOptions? options = null)
     {
         _options = options ?? new WebSocketConnectionOptions();
         if (_options.MaxReceiveMessageSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(options), "MaxReceiveMessageSize must be positive.");
+
+        if (_options.MaxSendQueueBytes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "MaxSendQueueBytes must be positive.");
 
         _sendQueue = Channel.CreateBounded<OutgoingMessage>(new BoundedChannelOptions(_options.MaxSendQueueLength)
         {
@@ -102,30 +106,49 @@ public sealed class WebSocketConnection : IAsyncDisposable
         if (!IsOpen)
             return false;
 
-        var buffer = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(text.Length));
+        var byteCount = Encoding.UTF8.GetByteCount(text);
+        if (byteCount > _options.MaxSendQueueBytes)
+            return false;
+
+        var buffer = ArrayPool<byte>.Shared.Rent(Math.Max(byteCount, 1));
         var length = Encoding.UTF8.GetBytes(text, buffer);
         return Enqueue(new OutgoingMessage(WebSocketMessageType.Text, buffer, length));
     }
 
+    /// <summary>
+    /// Queues UTF-8 text without converting it to a string. The payload is copied; the caller
+    /// must supply valid UTF-8. The wire message type remains Text.
+    /// </summary>
+    public bool SendText(ReadOnlySpan<byte> utf8Text) => SendPayload(WebSocketMessageType.Text, utf8Text);
+
     /// <summary>Queues a binary message; the payload is copied, so the caller may reuse its buffer.</summary>
     /// <returns>False when the connection is not open or the send queue is full.</returns>
-    public bool SendBinary(ReadOnlySpan<byte> payload)
+    public bool SendBinary(ReadOnlySpan<byte> payload) => SendPayload(WebSocketMessageType.Binary, payload);
+
+    private bool SendPayload(WebSocketMessageType type, ReadOnlySpan<byte> payload)
     {
-        if (!IsOpen)
+        if (!IsOpen || payload.Length > _options.MaxSendQueueBytes)
             return false;
 
         var buffer = ArrayPool<byte>.Shared.Rent(Math.Max(payload.Length, 1));
         payload.CopyTo(buffer);
-        return Enqueue(new OutgoingMessage(WebSocketMessageType.Binary, buffer, payload.Length));
+        return Enqueue(new OutgoingMessage(type, buffer, payload.Length));
     }
 
     private bool Enqueue(OutgoingMessage message)
     {
-        if (_sendQueue.Writer.TryWrite(message))
+        if (Interlocked.Add(ref _queuedBytes, message.Buffer.Length) <= _options.MaxSendQueueBytes
+            && _sendQueue.Writer.TryWrite(message))
             return true;
 
-        ArrayPool<byte>.Shared.Return(message.Buffer);
+        Release(message);
         return false;
+    }
+
+    private void Release(OutgoingMessage message)
+    {
+        Interlocked.Add(ref _queuedBytes, -message.Buffer.Length);
+        ArrayPool<byte>.Shared.Return(message.Buffer);
     }
 
     /// <summary>
@@ -170,7 +193,7 @@ public sealed class WebSocketConnection : IAsyncDisposable
     {
         var token = _lifetime.Token;
         var chunk = ArrayPool<byte>.Shared.Rent(ReceiveChunkSize);
-        var message = new ArrayBufferWriter<byte>(ReceiveChunkSize);
+        ArrayBufferWriter<byte>? message = null;
 
         try
         {
@@ -185,22 +208,32 @@ public sealed class WebSocketConnection : IAsyncDisposable
                 }
 
                 // Checked before copying, so an oversized message never grows the buffer past the limit
-                if (message.WrittenCount + result.Count > _options.MaxReceiveMessageSize)
+                if (result.Count > _options.MaxReceiveMessageSize - (message?.WrittenCount ?? 0))
                 {
                     await FailWithCloseAsync(WebSocketCloseStatus.MessageTooBig,
                         $"Incoming message exceeds {_options.MaxReceiveMessageSize} bytes").ConfigureAwait(false);
                     return;
                 }
 
-                message.Write(chunk.AsSpan(0, result.Count));
-                if (!result.EndOfMessage)
-                    continue;
+                ReadOnlyMemory<byte> payload;
+                if ((message?.WrittenCount ?? 0) == 0 && result.EndOfMessage)
+                {
+                    payload = chunk.AsMemory(0, result.Count);
+                }
+                else
+                {
+                    message ??= new ArrayBufferWriter<byte>(ReceiveChunkSize);
+                    message.Write(chunk.AsSpan(0, result.Count));
+                    if (!result.EndOfMessage)
+                        continue;
+                    payload = message.WrittenMemory;
+                }
 
                 // ClientWebSocket validates UTF-8 in text messages itself: malformed text never gets
                 // here, the socket closes with InvalidPayloadData and the receive above throws
                 try
                 {
-                    MessageReceived?.Invoke(new WebSocketMessage(result.MessageType, message.WrittenMemory));
+                    MessageReceived?.Invoke(new WebSocketMessage(result.MessageType, payload));
                 }
                 catch (Exception ex)
                 {
@@ -209,10 +242,10 @@ public sealed class WebSocketConnection : IAsyncDisposable
                     return;
                 }
 
-                if (message.Capacity > RetainedBufferLimit)
-                    message = new ArrayBufferWriter<byte>(ReceiveChunkSize);
+                if (message?.Capacity > RetainedBufferLimit)
+                    message = null;
                 else
-                    message.ResetWrittenCount();
+                    message?.ResetWrittenCount();
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -251,7 +284,7 @@ public sealed class WebSocketConnection : IAsyncDisposable
                 }
                 finally
                 {
-                    ArrayPool<byte>.Shared.Return(outgoing.Buffer);
+                    Release(outgoing);
                 }
             }
         }
@@ -261,6 +294,11 @@ public sealed class WebSocketConnection : IAsyncDisposable
         catch (Exception ex)
         {
             Fail(new WebSocketDisconnectInfo($"Send failed: {ex.Message}", null, ex));
+        }
+        finally
+        {
+            while (_sendQueue.Reader.TryRead(out var pending))
+                Release(pending);
         }
     }
 
@@ -349,6 +387,6 @@ public sealed class WebSocketConnection : IAsyncDisposable
         return description[..length];
     }
 
-    // Buffer is rented from ArrayPool and returned once sent; messages dropped at close are left to the GC
+    // Every pooled buffer is returned after sending, rejection, or queue shutdown
     private readonly record struct OutgoingMessage(WebSocketMessageType Type, byte[] Buffer, int Length);
 }

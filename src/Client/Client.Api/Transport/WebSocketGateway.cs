@@ -172,7 +172,7 @@ internal partial class WebSocketGateway : IWebSocketGateway
         BaseMessage message;
         try
         {
-            message = _messageParser.DecodeBaseMessage(received.GetText());
+            message = _messageParser.DecodeBaseMessage(received.Payload.Span);
         }
         catch
         {
