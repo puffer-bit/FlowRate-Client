@@ -671,6 +671,7 @@
   "hybrid.afk.failed": "No se pudo cambiar el estado ausente: {reason}",
   "hybrid.poked.title": "{user} te ha dado un toque",
   "hybrid.poked.noMessage": "Sin mensaje",
+  "hybrid.screen.viewers": "Espectadores",
   "hybrid.screen.startFailed": "No se pudo compartir la pantalla: {reason}",
   "hybrid.screen.portalUnavailable": "No se puede compartir la pantalla: el escritorio no tiene portal de captura de pantalla.",
   "hybrid.screen.portalFailed": "El sistema rechazó compartir la pantalla.",

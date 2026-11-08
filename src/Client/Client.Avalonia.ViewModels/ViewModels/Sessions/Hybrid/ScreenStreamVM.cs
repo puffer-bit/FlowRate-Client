@@ -5,6 +5,7 @@ using Client.Application.Coordinator.Users;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using Client.Avalonia.Controls.Media;
 using Client.Services;
 using ReactiveUI;
 using Shared.Models.Media;
@@ -24,6 +25,20 @@ public sealed class ScreenStreamVM : ReactiveObject
     /// Our own screen, watched as a local preview.
     /// </summary>
     public bool IsSelf { get; }
+
+    /// <summary>Remote viewers, shared by the avatar group and the complete audience list.</summary>
+    public IReadOnlyList<ScreenViewerItem> Viewers
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
+    public void SetViewers(IEnumerable<ScreenViewerItem> viewers)
+    {
+        var updated = viewers.ToArray();
+        if (!Viewers.SequenceEqual(updated))
+            Viewers = updated;
+    }
 
     public string DisplayedName
     {

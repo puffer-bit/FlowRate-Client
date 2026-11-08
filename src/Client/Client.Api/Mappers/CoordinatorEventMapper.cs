@@ -84,6 +84,9 @@ internal static class CoordinatorEventMapper
             new PeerScreenShareStartedEvent(started.SessionId, started.UserId, started.HasAudio),
         HybridSessionPeerStartedScreenShareNotification started =>
             new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
+        HybridSessionPeerScreenShareWatchChangedNotification changed =>
+            new PeerScreenShareWatchChangedEvent(changed.SessionId, changed.UserId, changed.SharerUserId,
+                changed.IsWatching),
 
         HybridSessionPeerStoppedVoiceShareNotification stopped =>
             new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId, MediaType.Audio, MediaSourceType.Microphone),

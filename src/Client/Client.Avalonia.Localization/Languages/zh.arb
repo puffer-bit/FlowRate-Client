@@ -671,6 +671,7 @@
   "hybrid.afk.failed": "无法切换暂离状态：{reason}",
   "hybrid.poked.title": "{user} 戳了你",
   "hybrid.poked.noMessage": "没有消息",
+  "hybrid.screen.viewers": "观众",
   "hybrid.screen.startFailed": "无法共享屏幕：{reason}",
   "hybrid.screen.portalUnavailable": "无法共享屏幕：桌面没有屏幕捕获门户。",
   "hybrid.screen.portalFailed": "系统拒绝共享屏幕。",

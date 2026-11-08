@@ -145,6 +145,10 @@ public sealed record PeerPokedEvent(int SessionId, int UserId, int InitiatorUser
 public sealed record PeerScreenShareStartedEvent(int SessionId, int UserId, bool HasAudio = false)
     : HybridSessionPeerEvent(SessionId, UserId);
 
+/// <summary>The peer started or stopped watching another peer's screen share.</summary>
+public sealed record PeerScreenShareWatchChangedEvent(int SessionId, int UserId, int SharerUserId, bool IsWatching)
+    : HybridSessionPeerEvent(SessionId, UserId);
+
 /// <summary>
 /// The peer started sending a track: a microphone, a camera or a screen.
 /// </summary>
