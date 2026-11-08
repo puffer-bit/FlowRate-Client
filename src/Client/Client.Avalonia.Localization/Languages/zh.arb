@@ -43,6 +43,8 @@
   "chat.info.title": "聊天信息",
   "chat.info.noDescription": "暂无描述。",
   "chat.info.unlimitedParticipants": "参与人数不限",
+  "chat.viewers.options": "用户列表设置",
+  "chat.viewers.groupOnline": "单独分组在线用户",
   "chat.viewers.title": "聊天访问权限",
   "chat.viewers.count": "{count} 位用户",
   "@chat.viewers.count": {"placeholders": {"count": {}}},

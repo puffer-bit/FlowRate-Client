@@ -10,11 +10,35 @@
     <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
         <Grid RowDefinitions="Auto,*" RowSpacing="6">
             <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="14,*" ColumnSpacing="6" Margin="6,0"
+                <Grid ColumnDefinitions="14,*,Auto" ColumnSpacing="6" Margin="6,0"
                       ToolTip.Tip="{l:Text chat.viewers.title}">
                     <Image Width="14" Height="14" Source="{StaticResource BaseUsersIcon}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="1" Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="2" Classes="borderless" Padding="4" Width="24" Height="24"
+                            ToolTip.Tip="{l:Text chat.viewers.options}"
+                            AutomationProperties.Name="{l:Text chat.viewers.options}">
+                        <Image Width="16" Height="16" Source="{StaticResource MoreIcon}"/>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Spacing="2">
+                                    <menus:MenuItemButton Command="{Binding ToggleGroupOnlineUsers}">
+                                        <TextBlock Text="{l:Text chat.viewers.groupOnline}" Margin="-6,0,0,0"/>
+                                        <menus:MenuItemButton.IconContent>
+                                            <Viewbox Width="16" Height="16" RenderTransformOrigin="50%,50%">
+                                                <Viewbox.RenderTransform>
+                                                    <ScaleTransform ScaleX="1.5" ScaleY="1.5"/>
+                                                </Viewbox.RenderTransform>
+                                                <CheckBox IsChecked="{Binding GroupOnlineUsers, Mode=OneWay}" IsHitTestVisible="False"
+                                                          Focusable="False" MinWidth="0" MinHeight="0"
+                                                          AutomationProperties.Name="{l:Text chat.viewers.groupOnline}"/>
+                                            </Viewbox>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
                 </Grid>
                 <TextBlock Text="{l:Text chat.viewers.loading}" IsVisible="{Binding IsLoading}"
                            Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -28,6 +52,11 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="chatVm:ChatViewerVM">
+                            <StackPanel>
+                                <TextBlock Text="{l:Text profile.status.online}" IsVisible="{Binding ShowOnlineHeader}"
+                                           Margin="6,8,6,4" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <TextBlock Text="{l:Text profile.status.offline}" IsVisible="{Binding ShowOfflineHeader}"
+                                           Margin="6,8,6,4" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
                             <Button Classes="borderless" Command="{Binding ViewProfile}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="6,4">
                                 <Button.ContextFlyout>
@@ -84,6 +113,7 @@
                                     </Grid>
                                 </Grid>
                             </Button>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
