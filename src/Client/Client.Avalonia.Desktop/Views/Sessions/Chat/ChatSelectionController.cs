@@ -112,7 +112,7 @@ internal sealed class ChatSelectionController
                     text.Append('\n');
                 text.Append(partText, from, to - from);
                 if (part == NamePart && from == 0 && to == partText.Length)
-                    text.Append(" — ").Append(vm.Message.SentTime.ToString("HH:mm"));
+                    text.Append(" — ").Append(vm.LocalSentTime.ToString("HH:mm"));
             }
         }
         return text.ToString();

@@ -55,7 +55,7 @@
                         </SelectableTextBlock.Styles>
                     </SelectableTextBlock>
                     <TextBlock Classes="msg-time"
-                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                               Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
                 
                 <Button Classes="msg-reply"
@@ -197,7 +197,7 @@
                    Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
                 <TextBlock Classes="msg-time continuation" VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                           Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
             </Panel>
         </Grid>
     </Border>
