@@ -146,13 +146,6 @@ public class ChatMarkdownTests
     [Fact]
     public Task ExistingCodeAndLinkRunsFollowThemeChanges() => TestUiThread.RunAsync(() =>
     {
-        if (global::Avalonia.Application.Current == null)
-            global::Avalonia.AppBuilder.Configure<global::Avalonia.Application>()
-            .UseStandardRuntimePlatformSubsystem()
-            .UseWindowingSubsystem(() => { }, "Tests")
-            .UseRenderingSubsystem(global::Avalonia.Skia.SkiaPlatform.Initialize, "Skia")
-            .UseTextShapingSubsystem(() => { }, "Tests")
-            .SetupWithoutStarting();
         var block = new TextBlock { Classes = { "msg-body" } };
         var scope = new ThemeVariantScope { Child = block, RequestedThemeVariant = ThemeVariant.Light };
         scope.Resources.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary

@@ -36,25 +36,34 @@ internal sealed class PendingFrame
         if (frame.Gpu != null)
             return frame.Gpu.Retain() is { } gpu ? new PendingFrame(frame.Width, frame.Height) { Gpu = gpu } : null;
 
-        if (frame.DataPtr == IntPtr.Zero || frame.Stride < frame.Width * 4)
+        var rowByteCount = (long)frame.Width * 4;
+        if (rowByteCount > Array.MaxLength)
+            return null;
+        var byteCount = rowByteCount * frame.Height;
+        if (frame.DataPtr == IntPtr.Zero || frame.Stride < rowByteCount || byteCount > Array.MaxLength)
             return null;
 
         var pending = new PendingFrame(frame.Width, frame.Height);
-        var rowBytes = frame.Width * 4;
-        var pixels = ArrayPool<byte>.Shared.Rent(rowBytes * frame.Height);
+        var rowBytes = (int)rowByteCount;
+        var pixels = ArrayPool<byte>.Shared.Rent((int)byteCount);
 
-        fixed (byte* destination = pixels)
+        try
         {
             if (frame.Stride == rowBytes)
             {
-                Buffer.MemoryCopy((void*)frame.DataPtr, destination, pixels.Length, (long)rowBytes * frame.Height);
+                new ReadOnlySpan<byte>((void*)frame.DataPtr, (int)byteCount).CopyTo(pixels);
             }
             else
             {
                 for (var row = 0; row < frame.Height; row++)
-                    Buffer.MemoryCopy((byte*)frame.DataPtr + (long)row * frame.Stride, destination + (long)row * rowBytes,
-                        rowBytes, rowBytes);
+                    new ReadOnlySpan<byte>((byte*)frame.DataPtr + (long)row * frame.Stride, rowBytes)
+                        .CopyTo(pixels.AsSpan(row * rowBytes, rowBytes));
             }
+        }
+        catch
+        {
+            ArrayPool<byte>.Shared.Return(pixels);
+            throw;
         }
 
         pending.Pixels = pixels;

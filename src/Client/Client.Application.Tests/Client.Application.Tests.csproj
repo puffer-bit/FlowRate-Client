@@ -7,6 +7,7 @@
         <OutputType>Exe</OutputType>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -26,6 +27,7 @@
     <!-- Exercise Android route selection without requiring an Android runtime on the test host. -->
     <ItemGroup>
         <Compile Include="../Client.Avalonia.Android/Platform/Media/CallAudioRoutePolicy.cs" Link="Android/CallAudioRoutePolicy.cs" />
+        <Compile Include="../Client.Avalonia.Video/VideoFrameQueue.cs" Link="VideoFrameQueue.cs" />
     </ItemGroup>
 
 </Project>

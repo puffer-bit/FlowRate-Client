@@ -13,16 +13,6 @@ public class ThemeServiceTests
     [Fact]
     public Task SystemColorsFollowActualThemeAndPreserveOverrides() => TestUiThread.RunAsync(() =>
     {
-        if (global::Avalonia.Application.Current == null)
-        {
-            global::Avalonia.AppBuilder.Configure<global::Avalonia.Application>()
-                .UseStandardRuntimePlatformSubsystem()
-                .UseWindowingSubsystem(() => { }, "Tests")
-                .UseRenderingSubsystem(global::Avalonia.Skia.SkiaPlatform.Initialize, "Skia")
-                .UseTextShapingSubsystem(() => { }, "Tests")
-                .SetupWithoutStarting();
-        }
-
         var app = global::Avalonia.Application.Current!;
         var previous = app.RequestedThemeVariant;
         var resources = new ResourceDictionary();
