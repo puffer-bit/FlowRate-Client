@@ -1,4 +1,8 @@
 {
+  "sessions.full": "Сессия заполнена",
+  "connect.failed.onlineLimitReached": "Достигнут лимит пользователей онлайн на сервере. Попробуйте позже.",
+  "connect.failed.userLimitReached": "Достигнут лимит созданных пользователей на сервере. Обратитесь к администратору сервера.",
+  "hybrid.join.sessionFull": "Сессия заполнена. Попробуйте войти, когда освободится место.",
   "settings.video.vp8Encoder.title": "Кодировщик VP8",
   "settings.video.vp8Encoder.description": "Используется для трансляции экрана с VP8; действует со следующей трансляции.",
   "settings.video.vp8Decoder.title": "Декодировщик VP8",

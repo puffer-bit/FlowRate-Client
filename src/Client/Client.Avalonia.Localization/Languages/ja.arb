@@ -1,4 +1,8 @@
 {
+  "sessions.full": "セッションは満員です",
+  "connect.failed.onlineLimitReached": "サーバーのオンラインユーザー数が上限に達しました。しばらくしてからもう一度お試しください。",
+  "connect.failed.userLimitReached": "サーバーの登録ユーザー数が上限に達しました。サーバー管理者にお問い合わせください。",
+  "hybrid.join.sessionFull": "セッションは満員です。空きができてからもう一度お試しください。",
   "settings.video.vp8Encoder.title": "VP8 エンコーダー",
   "settings.video.vp8Encoder.description": "VP8 での画面共有に使われます。次回の共有から適用されます。",
   "settings.video.vp8Decoder.title": "VP8 デコーダー",

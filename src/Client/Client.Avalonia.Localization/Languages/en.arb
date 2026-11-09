@@ -1,4 +1,8 @@
 {
+  "sessions.full": "Session full",
+  "connect.failed.onlineLimitReached": "The server has reached its limit of online users. Try again later.",
+  "connect.failed.userLimitReached": "The server has reached its limit of registered users. Contact the server administrator.",
+  "hybrid.join.sessionFull": "The session is full. Try again when a place becomes available.",
   "settings.video.vp8Encoder.title": "VP8 encoder",
   "settings.video.vp8Encoder.description": "Used when sharing your screen with VP8; applies to the next share.",
   "settings.video.vp8Decoder.title": "VP8 decoder",

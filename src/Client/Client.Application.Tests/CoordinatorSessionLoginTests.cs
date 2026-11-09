@@ -44,6 +44,37 @@ public class CoordinatorSessionLoginTests
         return (session, fake);
     }
 
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_ReportsItsReasonAndClosesSocket(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            gateway.LoginError = error;
+            await session.Connect("server", 1, null, null);
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_OnResume_StopsAndReportsItsReason(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, null);
+            gateway.LoginError = error;
+            await ReconnectAsync(session);
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
     // Suspended and back at once: the reconnect logs in again, the way a lost connection does
     private static async Task ReconnectAsync(CoordinatorSession session)
     {

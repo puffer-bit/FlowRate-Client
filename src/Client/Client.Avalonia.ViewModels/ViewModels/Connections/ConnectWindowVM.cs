@@ -338,6 +338,8 @@ public class ConnectWindowVM : ReactiveObject
     private static string DescribeConnectionFailure(CoordinatorState state, RequestFailedException? rejection, string? banReason) =>
         state switch
         {
+            CoordinatorState.OnlineLimitReached => Strings.Get("connect.failed.onlineLimitReached"),
+            CoordinatorState.UserLimitReached => Strings.Get("connect.failed.userLimitReached"),
             CoordinatorState.AuthenticationFailed => Strings.Get("connect.failed.authFailed"),
             CoordinatorState.Denied => Strings.Get("connect.failed.banned") + (string.IsNullOrWhiteSpace(banReason) ? "" : "\n" + banReason),
             CoordinatorState.PasskeyRequired => Strings.Get("connect.failed.passkeyRequired"),

@@ -513,6 +513,12 @@ public partial class MainWindowVM
                 PostDisconnect(Strings.Get("main.reconnect.failed"));
                 return;
             // Only a reconnect reports it here, after the server rejected the credentials
+            case CoordinatorState.OnlineLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.onlineLimitReached"));
+                return;
+            case CoordinatorState.UserLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.userLimitReached"));
+                return;
             case CoordinatorState.AuthenticationFailed:
                 PostDisconnect(Strings.Get("main.reconnect.loginRejected"));
                 return;

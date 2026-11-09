@@ -26,7 +26,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     public SessionModel Model
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            UpdateCapacityStatus();
+        }
     }
 
     // UI
@@ -104,9 +108,26 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     public bool IsCorrupted
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasStatusWarning));
+            this.RaisePropertyChanged(nameof(ShowsFullWarning));
+        }
     }
-    public ObservableCollection<PeerVM> Peers { get; set; } = new();
+
+    public bool IsFull => Model.Capacity is > 0 && Peers.Count(peer => !peer.IsLeaving) >= Model.Capacity;
+    public bool HasStatusWarning => IsCorrupted || IsFull;
+    public bool ShowsFullWarning => IsFull && !IsCorrupted;
+
+    public ObservableCollection<PeerVM> Peers { get; } = new();
+
+    private void UpdateCapacityStatus()
+    {
+        this.RaisePropertyChanged(nameof(IsFull));
+        this.RaisePropertyChanged(nameof(HasStatusWarning));
+        this.RaisePropertyChanged(nameof(ShowsFullWarning));
+    }
 
     public PeerVM? SelectedPeer
     {
@@ -151,6 +172,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand)
     {
         Model = model;
+        Peers.CollectionChanged += (_, _) => UpdateCapacityStatus();
 
         _currentUserId = currentUserId;
         _playbackService = playbackService;
@@ -334,6 +356,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
         // The row folds away first, so the rows below slide up instead of jumping
         peer.IsLeaving = true;
+        UpdateCapacityStatus();
         await Task.Delay(Presence.LeaveTime);
 
         Peers.Remove(peer);

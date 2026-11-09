@@ -299,9 +299,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 // A rejection is reported by the main window
                 if (!IsClosed && !result.Result.IsRejected)
                 {
-                    var message = result.Result.Error == ErrorCode.SFUUnavailable
-                        ? Strings.Get("hybrid.join.noVoiceServer")
-                        : Strings.Format("hybrid.join.failed", ("code", result.Result));
+                    var message = result.Result.Error switch
+                    {
+                        ErrorCode.SFUUnavailable => Strings.Get("hybrid.join.noVoiceServer"),
+                        ErrorCode.SessionFull => Strings.Get("hybrid.join.sessionFull"),
+                        _ => Strings.Format("hybrid.join.failed", ("code", result.Result))
+                    };
 
                     await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok, message,
                         Strings.Get("common.error")));

@@ -100,11 +100,16 @@
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                     <Image Source="{StaticResource HybridSessionIcon}"
-                           Opacity="{Binding IsCorrupted, Converter={StaticResource BoolToOpacityConverter}}"/>
+                           Opacity="{Binding HasStatusWarning, Converter={StaticResource BoolToOpacityConverter}}"/>
                     <Image Width="10" Height="10" Margin="0,0,-3,-3"
                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                            IsVisible="{Binding IsCorrupted}"
                            ToolTip.Tip="{l:Text sessions.loadFailed}"
+                           Source="{StaticResource CrossIcon}"/>
+                    <Image Width="10" Height="10" Margin="0,0,-3,-3"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           IsVisible="{Binding ShowsFullWarning}"
+                           ToolTip.Tip="{l:Text sessions.full}"
                            Source="{StaticResource CrossIcon}"/>
                 </Panel>
 

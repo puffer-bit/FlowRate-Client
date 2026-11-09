@@ -475,6 +475,7 @@ public partial class CoordinatorSession
         // or a protocol only an update of one side can match
         if (state is CoordinatorState.AuthenticationFailed or CoordinatorState.AuthenticationNeeded
             or CoordinatorState.PasskeyRequired or CoordinatorState.Denied
+            or CoordinatorState.OnlineLimitReached or CoordinatorState.UserLimitReached
             or CoordinatorState.CertificateNotTrusted or CoordinatorState.CoordinatorMismatch
             or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated)
         {
@@ -747,7 +748,13 @@ public partial class CoordinatorSession
             LogAuthFailed(LogName);
             // The server keeps an unauthenticated socket open until it is closed from here
             await _gateway.DisconnectWebSocketAsync();
-            return exception.Code == ErrorCode.Banned ? CoordinatorState.Denied : CoordinatorState.AuthenticationFailed;
+            return exception.Code switch
+            {
+                ErrorCode.Banned => CoordinatorState.Denied,
+                ErrorCode.OnlineLimitReached => CoordinatorState.OnlineLimitReached,
+                ErrorCode.UserLimitReached => CoordinatorState.UserLimitReached,
+                _ => CoordinatorState.AuthenticationFailed
+            };
         }
         catch (RequestFailedException exception)
         {

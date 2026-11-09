@@ -1,4 +1,8 @@
 {
+  "sessions.full": "会话已满",
+  "connect.failed.onlineLimitReached": "服务器在线用户数已达上限。请稍后再试。",
+  "connect.failed.userLimitReached": "服务器注册用户数已达上限。请联系服务器管理员。",
+  "hybrid.join.sessionFull": "会话已满。请在有空位时重试。",
   "settings.video.vp8Encoder.title": "VP8 编码器",
   "settings.video.vp8Encoder.description": "用于 VP8 屏幕共享；从下一次共享开始生效。",
   "settings.video.vp8Decoder.title": "VP8 解码器",

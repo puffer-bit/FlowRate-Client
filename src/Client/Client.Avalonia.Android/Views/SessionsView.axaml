@@ -203,8 +203,14 @@
                             <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}"
                                     Tapped="OnHybridSessionTapped">
                                 <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
-                                    <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
-                                           Source="{StaticResource HybridSessionIcon}"/>
+                                    <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                                        <Image Source="{StaticResource HybridSessionIcon}"/>
+                                        <Image Width="10" Height="10" Margin="0,0,-3,-3"
+                                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                               IsVisible="{Binding ShowsFullWarning}"
+                                               ToolTip.Tip="{l:Text sessions.full}"
+                                               Source="{StaticResource CrossIcon}"/>
+                                    </Panel>
 
                                     <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
                                                Text="{Binding Model.Name}"/>
