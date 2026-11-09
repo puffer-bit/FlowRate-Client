@@ -293,7 +293,7 @@
 
                                                     <!-- The user turned their own microphone off -->
                                                     <Image Width="20" Height="20"
-                                                           Source="{StaticResource CrossedMicrophoneIcon}"
+                                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
                                                            IsVisible="{Binding ShowsMicrophoneOff}"/>
 
                                                     <!-- The user turned the sound of the session off -->
@@ -458,12 +458,7 @@
                 <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
                     <Button Classes="hybridAction"
                             Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}">
-                        <Panel>
-                            <Image Width="22" Height="22" Source="{StaticResource MicrophoneIcon}"
-                                   IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsMicrophoneOn, FallbackValue=False}"/>
-                            <Image Width="22" Height="22" Source="{StaticResource CrossedMicrophoneIcon}"
-                                   IsVisible="{Binding !OpenedSessions?.HybridPanelSession?.StatusBar.IsMicrophoneOn, FallbackValue=True}"/>
-                        </Panel>
+                        <Image Width="22" Height="22" Source="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
                     </Button>
 
                     <Button Classes="hybridAction"

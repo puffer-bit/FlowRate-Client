@@ -79,8 +79,30 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public bool IsMicrophoneOn
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+        }
     }
+
+    public bool CanSpeak
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+        }
+    }
+
+    public string MicrophoneIconKey => !CanSpeak
+        ? "ForbiddenMicrophoneIcon"
+        : IsMicrophoneOn ? "MicrophoneIcon" : "CrossedMicrophoneIcon";
     
     /// <summary>
     /// Our own voice is heard by the session right now.

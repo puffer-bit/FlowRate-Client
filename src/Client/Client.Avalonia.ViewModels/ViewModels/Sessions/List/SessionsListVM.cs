@@ -749,9 +749,9 @@ public partial class SessionsListVM : ReactiveObject
     {
         switch (notification)
         {
-            // The server unmutes a peer that stops its voice without saying so
+            // Stopping the voice leaves no microphone producer.
             case PeerTrackStoppedEvent { SourceType: MediaSourceType.Microphone } stopped:
-                UpdatePeerMicrophone(new PeerMicrophoneMuteChangedEvent(stopped.SessionId, stopped.UserId, false));
+                UpdatePeerMicrophone(new PeerMicrophoneMuteChangedEvent(stopped.SessionId, stopped.UserId, true));
                 break;
 
             case PeerScreenShareStartedEvent started:

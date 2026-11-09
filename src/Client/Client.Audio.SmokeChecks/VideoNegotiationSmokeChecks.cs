@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Client.Application.Ports;
 using Client.Core.Sessions.Hybrid;
+using Client.Core.Media;
 using Client.LibWebRTC.Native;
 using Client.LibWebRTC.Voice;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,7 +18,8 @@ internal static class VideoNegotiationSmokeChecks
         var errors = new ConcurrentQueue<string>();
         using var transport = new VoiceTransport(1,
             listener => new NativeVoicePeer(runtime, new Listener(listener, answers, errors)),
-            NullLogger<VoiceTransport>.Instance, isPlaybackEnabled: false, isVideoDecodedByPeer: true);
+            NullLogger<VoiceTransport>.Instance, isPlaybackEnabled: false, video: new SilentVideoMedia(),
+            isVideoDecodedByPeer: true);
         var parameters = new TransportParameters("127.0.0.1", 9,
             new DtlsParameters("auto", [new DtlsFingerprint("sha-256", string.Join(':', Enumerable.Repeat("00", 32)))]),
             new IceParameters("smoke", "smoke-test-password-1234567890", []));
@@ -60,6 +62,28 @@ internal static class VideoNegotiationSmokeChecks
             "Native answer accepts AV1 after replacing an H.264 track");
         Console.WriteLine("PASS: native AV1 receive negotiation");
 
+        // No capture device or SFU is needed to verify the send transceivers and paused SSRCs.
+        var outgoing = new OutboundTrack
+        {
+            Id = "send-without-nack", UserId = 1, SSRC = 201, SourceType = MediaSourceType.Screen,
+            MediaType = MediaType.Video, MimeType = "video/H264", PayloadType = 102, ClockRate = 90000
+        };
+        await AnswerAfter(() => Require(transport.StartOutbound(outgoing, new TestPatternVideoInput(),
+            new ScreenShareSettings()), "Start silent screen source"));
+        Require(!HasSendNack(answers.Last()), "First send section has NACK disabled");
+        await AnswerAfter(() => transport.StopOutbound(outgoing.Id));
+        var withRtx = outgoing with { Id = "send-with-nack", SSRC = 202, RtxSSRC = 302, RtxPayloadType = 103 };
+        await AnswerAfter(() => Require(transport.StartOutbound(withRtx, new TestPatternVideoInput(),
+            new ScreenShareSettings()), "Replace screen producer inside the same transport"));
+        Require(HasSendNack(answers.Last()), "Send answer enables NACK after replacing a disabled producer");
+        Require(!answers.Last().Split("m=").Any(section => section.Contains("a=sendonly\r\n") &&
+            section.Contains("a=ssrc:201 ")), "Replaced producer no longer sends its paused SSRC");
+        await AnswerAfter(() => transport.StopOutbound(withRtx.Id));
+        await AnswerAfter(() => Require(transport.StartOutbound(outgoing with { Id = "send-disabled-again", SSRC = 203 },
+            new TestPatternVideoInput(), new ScreenShareSettings()), "Replace enabled producer"));
+        Require(!HasSendNack(answers.Last()), "Send answer disables NACK without reconnecting");
+        Console.WriteLine("PASS: native send NACK changes and paused producer replacement without reconnecting");
+
         async Task AnswerAfter(Action action, int? answerCount = null)
         {
             var expected = answerCount ?? answers.Count + 1;
@@ -81,6 +105,29 @@ internal static class VideoNegotiationSmokeChecks
     private static bool HasVideoNack(string answer) => answer.Split("m=")
         .Where(section => section.StartsWith("video ") && section.Contains("a=recvonly\r\n"))
         .Any(section => section.Contains("a=rtcp-fb:102 nack\r\n"));
+
+    private static bool HasSendNack(string answer) => answer.Split("m=")
+        .Where(section => section.StartsWith("video ") && section.Contains("a=sendonly\r\n"))
+        .Any(section => section.Contains("a=rtcp-fb:102 nack\r\n"));
+
+    private sealed class SilentVideoMedia : IVideoMedia
+    {
+        public IScreenCapture CreateCapture(VideoInput input, ScreenShareSettings settings, VideoCodec codec, string name)
+            => new SilentCapture();
+        public IVideoDecoder? CreateDecoder(VideoCodec codec, string name) => null;
+    }
+
+    private sealed class SilentCapture : IScreenCapture
+    {
+        public string Description => "Negotiation check without captured frames";
+        public event Action<RawVideoFrame>? PreviewFrameReady { add { } remove { } }
+        public event Action<EncodedVideoFrame>? EncodedFrameReady { add { } remove { } }
+        public bool Start() => true;
+        public void RequestKeyFrame(bool isUrgent = false) { }
+        public void SetBitrate(int kbps) { }
+        public void SetPreviewShown(bool isShown) { }
+        public void Dispose() { }
+    }
 
     private static void Require(bool condition, string message)
     {

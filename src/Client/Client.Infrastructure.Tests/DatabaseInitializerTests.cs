@@ -10,6 +10,23 @@ namespace Client.Infrastructure.Tests;
 public class DatabaseInitializerTests
 {
     [Fact]
+    public async Task ExistingEncoderOverridesMigrateToCodecSettings()
+    {
+        await using var database = await TestDatabase.CreateAtVersionAsync(32);
+        await database.ExecuteAsync("INSERT INTO EncoderParameters (Encoder, Name, Value) VALUES ('vaav1enc', 'qp', '120')");
+        await database.ExecuteAsync("UPDATE VideoSettings SET Av1Encoder = 'vaav1enc'");
+        var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
+        Assert.Equal(DatabaseState.NoError, state);
+        var repository = new Client.Infrastructure.Database.Repositories.VideoSettingsRepository(database.Database);
+        var settings = await repository.GetAsync();
+        Assert.Equal("vaav1enc", settings.Av1Encoder);
+        Assert.Equal(new Client.Core.Settings.CodecPropertyOverride("vaav1enc", "qp", "120"), Assert.Single(settings.CodecOverrides));
+        Assert.Null(settings.Vp8Encoder);
+        Assert.Null(settings.Vp9Decoder);
+        Assert.False(settings.IsCodecSettingsWarningAcknowledged);
+    }
+
+    [Fact]
     public async Task ExistingVideoSettingsGainAutomaticAv1CodecsWithoutChangingH264()
     {
         await using var database = await TestDatabase.CreateAtVersionAsync(30);
@@ -34,7 +51,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal("wal", await database.ScalarAsync("PRAGMA journal_mode"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
     }
@@ -50,7 +67,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.0, await database.ScalarAsync("SELECT ChatAudioVolume FROM AudioSettings"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         Assert.Equal(0.4, await database.ScalarAsync("SELECT SoundsVolume FROM AudioSettings"));
@@ -67,7 +84,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.0, await database.ScalarAsync("SELECT ChatVideoVolume FROM AudioSettings"));
         Assert.Equal(0.25, await database.ScalarAsync("SELECT ChatAudioVolume FROM AudioSettings"));
     }
@@ -96,7 +113,7 @@ public class DatabaseInitializerTests
         Assert.Equal(DatabaseState.NoError, state);
         Assert.True(File.Exists(database.FilePath + ".ef-backup"));
         Assert.Null(await database.ScalarAsync("SELECT name FROM sqlite_master WHERE name = '__EFMigrationsHistory'"));
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
     }
 
     [Fact]
@@ -109,7 +126,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT MediaPerfOverlay FROM DebugSettings"));
         Assert.Equal(31L, await database.ScalarAsync("SELECT MediaPerfSections FROM DebugSettings"));
         Assert.Equal(3L, await database.ScalarAsync("SELECT LibWebRTCLogLevel FROM DebugSettings"));
@@ -132,7 +149,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(31L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         var repository = new Client.Infrastructure.Database.Repositories.AccountingSettingsRepository(database.Database);
         var coordinator = await repository.GetCoordinatorAsync("replacement");
         Assert.Equal("replacement", coordinator!.CoordinatorId);

@@ -61,6 +61,10 @@ public partial class ActiveHybridSessionVM
 
         if (result.IsSuccess)
         {
+            // Access may have changed while the microphone was starting.
+            if (!CanSpeak)
+                await SetMicrophoneMutedAsync(true);
+
             lock (_microphoneInputLock)
                 _microphoneInput = (device?.Id, settings.NoiseSuppression, settings.IsEchoCancellationEnabled,
                     settings.IsAutoGainControlEnabled);
@@ -83,10 +87,15 @@ public partial class ActiveHybridSessionVM
 
     private void HandleMicroState(PeerMicrophoneMuteChangedEvent notification)
     {
-        if (notification.UserId == _coordinatorSession.GetCurrentUser().Id)
+        if (notification.SessionId != Model.Id)
+            return;
+
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            StatusBar.IsMicrophoneOn = !notification.IsMuted;
-        }
+            ParticipantsListVM.UpdateMicrophoneMuted(notification.UserId, notification.IsMuted);
+            if (notification.UserId == _coordinatorSession.GetCurrentUser().Id)
+                StatusBar.IsMicrophoneOn = !notification.IsMuted;
+        });
     }
 
     /// <summary>
@@ -96,6 +105,13 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task ToggleMicrophone()
     {
+        if (!CanSpeak)
+        {
+            if (_hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
+                await SetMicrophoneMutedAsync(true);
+            return;
+        }
+
         // A microphone that failed to start is tried again, otherwise it would stay off for the rest
         // of the session. It comes back muted or not as the user left it, like after a reconnect
         if (!_hybridSession.IsVoiceStarted)
@@ -204,7 +220,7 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private async Task RestoreMicrophoneAsync()
     {
-        if (_hybridSession.IsMicrophoneMuted
+        if (CanSpeak && _hybridSession.IsMicrophoneMuted
             && !await _coordinatorStates.IsMicrophoneMutedAsync(CoordinatorInstanceId))
             await SetMicrophoneMutedAsync(false);
     }

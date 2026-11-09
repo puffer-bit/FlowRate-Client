@@ -3,6 +3,7 @@
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
         xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -133,7 +134,7 @@
 
             <!-- The user turned their own microphone off; everyone sees it -->
             <Image Width="20" Height="20"
-                   Source="{StaticResource CrossedMicrophoneIcon}"
+                   Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
                    IsVisible="{Binding ShowsMicrophoneOff}"
                    ToolTip.Tip="{l:Text peer.microphoneOff}"/>
 

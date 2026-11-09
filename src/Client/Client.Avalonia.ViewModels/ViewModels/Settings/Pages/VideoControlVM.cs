@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
@@ -11,6 +12,7 @@ using Client.Avalonia.Localization;
 using Client.Core.Media;
 using Client.Core.Settings;
 using Client.Services;
+using Client.ViewModels.Dialogs;
 using ReactiveUI;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -28,34 +30,68 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
-        ("decoding", ["decoder", "av1Decoder", "zeroCopy"]),
+        ("decoding", ["decoder", "av1Decoder", "vp8Decoder", "vp9Decoder", "zeroCopy"]),
         ("presentation", ["timedPresentation", "presentationBuffer"]),
-        ("encoding", ["encoder", "av1Encoder"]));
+        ("encoding", ["encoder", "av1Encoder", "vp8Encoder", "vp9Encoder"]));
 
-    // Index into DecoderChoices, the automatic choice first
-    public int DecoderIndex
+    public IReadOnlyList<CodecSelectionVM> Encoders { get; }
+    public IReadOnlyList<CodecSelectionVM> Decoders { get; }
+
+    public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
+    private bool _isCodecSettingsWarningAcknowledged;
+
+    public async Task<CodecSettingsVM?> OpenCodecSettingsAsync(CodecSelectionVM selection)
     {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        if (!selection.CanConfigure)
+            return null;
+        if (!_isCodecSettingsWarningAcknowledged)
+        {
+            var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.OkCancel,
+                Strings.Get("settings.video.codecSettings.warning"),
+                Strings.Get("settings.video.codecSettings.title")));
+            if (answer != Result.Ok)
+                return null;
+            try
+            {
+                await SaveSettingsAsync(() => ToSettings() with { IsCodecSettingsWarningAcknowledged = true });
+                _isCodecSettingsWarningAcknowledged = true;
+            }
+            catch (Exception)
+            {
+                await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                    Strings.Get("settings.video.codecSettings.saveFailed"),
+                    Strings.Get("settings.video.codecSettings.title")));
+                return null;
+            }
+        }
+        return CreateCodecSettings(selection);
     }
 
-    // Index into EncoderChoices, the automatic choice first
-    public int EncoderIndex
+    private void UpdateOverrideIndicators()
     {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        foreach (var selection in Encoders.Concat(Decoders))
+            selection.UpdateOverrides(_codecOverrides);
     }
 
-    public int Av1DecoderIndex
+    public CodecSettingsVM? CreateCodecSettings(CodecSelectionVM selection)
     {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        if (!selection.CanConfigure || selection.EffectiveFactory is not { } factory)
+            return null;
+        return new CodecSettingsVM(factory, _mediaCapabilities.GetCodecParameters(factory), _codecOverrides,
+            values => SaveOverridesAsync(factory, values));
     }
 
-    public int Av1EncoderIndex
+    private async Task SaveOverridesAsync(string factory, IReadOnlyList<CodecPropertyOverride> values)
     {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        await _saveLock.WaitAsync();
+        try
+        {
+            var combined = _codecOverrides.Where(p => p.Factory != factory).Concat(values).ToArray();
+            await _videoService.SaveSettingsAsync(ToSettings() with { CodecOverrides = combined });
+            _codecOverrides = combined;
+            UpdateOverrideIndicators();
+        }
+        finally { _saveLock.Release(); }
     }
 
     public bool IsZeroCopyEnabled
@@ -84,11 +120,6 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
 
-    public IReadOnlyList<string> DecoderChoices { get; }
-    public IReadOnlyList<string> Av1DecoderChoices { get; }
-    public IReadOnlyList<string> EncoderChoices { get; }
-    public IReadOnlyList<string> Av1EncoderChoices { get; }
-
     public IReadOnlyList<string> PresentationBufferChoices { get; } = VideoSettings.PresentationBufferChoices
         .Select(frames => frames.ToString(CultureInfo.InvariantCulture))
         .ToList();
@@ -96,12 +127,16 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IVideoService _videoService;
+    private readonly IMediaCapabilities _mediaCapabilities;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private IReadOnlyList<CodecPropertyOverride> _codecOverrides = [];
 
-    // Element names behind DecoderChoices and EncoderChoices; null stands for the automatic choice
-    private readonly IReadOnlyList<string?> _decoders;
-    private readonly IReadOnlyList<string?> _av1Decoders;
-    private readonly IReadOnlyList<string?> _encoders;
-    private readonly IReadOnlyList<string?> _av1Encoders;
+    private async Task SaveSettingsAsync(Func<VideoSettings> settings)
+    {
+        await _saveLock.WaitAsync();
+        try { await _videoService.SaveSettingsAsync(settings()); }
+        finally { _saveLock.Release(); }
+    }
 
     // Set while the view model fills its own properties, so that only user changes get saved
     private bool _isUpdating = true;
@@ -109,44 +144,40 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public VideoControlVM(IVideoService videoService, IMediaCapabilities mediaCapabilities)
     {
         _videoService = videoService;
+        _mediaCapabilities = mediaCapabilities;
 
-        IReadOnlyList<string> decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareDecoders : [];
-        IReadOnlyList<string> encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareEncoders : [];
-        _decoders = [null, ..decoders];
-        IReadOnlyList<string> av1Decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareAv1Decoders : [];
-        _av1Decoders = [null, ..av1Decoders];
-        Av1DecoderChoices = _av1Decoders.Select(element => ChoiceText(element, av1Decoders)).ToList();
-        _encoders = [null, ..encoders];
-        IReadOnlyList<string> av1Encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareAv1Encoders : [];
-        _av1Encoders = [null, ..av1Encoders];
-        Av1EncoderChoices = _av1Encoders.Select(element => ChoiceText(element, av1Encoders)).ToList();
-        DecoderChoices = _decoders.Select(element => ChoiceText(element, decoders)).ToList();
-        EncoderChoices = _encoders.Select(element => ChoiceText(element, encoders)).ToList();
+        var codecs = new[] { VideoCodec.H264, VideoCodec.AV1, VideoCodec.VP8, VideoCodec.VP9 };
+        Encoders = codecs.Select(codec => CreateSelection(codec, true)).ToArray();
+        Decoders = codecs.Select(codec => CreateSelection(codec, false)).ToArray();
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         ObserveSettingsChanges();
     }
 
+    private CodecSelectionVM CreateSelection(VideoCodec codec, bool isEncoder)
+    {
+        var available = !IsMediaEnabled ? Array.Empty<string>() : isEncoder
+            ? _mediaCapabilities.GetScreenShareEncoders(codec)
+            : _mediaCapabilities.GetScreenShareDecoders(codec);
+        return new CodecSelectionVM(codec, isEncoder, available, _mediaCapabilities.GetCodecParameters);
+    }
+
     private void ObserveSettingsChanges()
     {
-        // Every change saves the whole tab, one save at a time
-        this.WatchProperties(
-                nameof(DecoderIndex),
-                nameof(Av1DecoderIndex),
-                nameof(EncoderIndex),
-                nameof(Av1EncoderIndex),
-                nameof(IsZeroCopyEnabled),
-                nameof(IsTimedPresentationEnabled),
-                nameof(PresentationBufferIndex))
+        var selections = Encoders.Concat(Decoders)
+            .Select(selection => selection.WatchProperties(nameof(CodecSelectionVM.SelectedIndex)).Select(_ => 0));
+        var presentation = this.WatchProperties(nameof(IsZeroCopyEnabled), nameof(IsTimedPresentationEnabled),
+            nameof(PresentationBufferIndex)).Select(_ => 0);
+        selections.Append(presentation).Merge()
             .Where(_ => !_isUpdating && IsMediaEnabled)
-            .Select(_ => Observable.FromAsync(() => _videoService.SaveSettingsAsync(ToSettings())))
+            .Select(_ => Observable.FromAsync(() => SaveSettingsAsync(ToSettings)))
             .Concat()
             .Subscribe();
     }
 
     // The automatic choice names the element it comes to: the first of the list, in order of preference
-    private static string ChoiceText(string? element, IReadOnlyList<string> available) => element == null
+    internal static string ChoiceText(string? element, IReadOnlyList<string> available) => element == null
         ? available.Count == 0
             ? Strings.Get("settings.video.automatic")
             : Strings.Format("settings.video.automaticChoice", ("choice", ChoiceText(available[0], available)))
@@ -188,22 +219,28 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         if (!IsMediaEnabled)
             return;
 
-        var defaults = new VideoSettings();
+        var defaults = new VideoSettings { IsCodecSettingsWarningAcknowledged = _isCodecSettingsWarningAcknowledged };
 
         _isUpdating = true;
         Apply(defaults);
         _isUpdating = false;
 
-        await _videoService.SaveSettingsAsync(defaults);
+        await SaveSettingsAsync(() => defaults);
     }
 
     private VideoSettings ToSettings() => new()
     {
         IsHardwareDecodingEnabled = true,
-        Decoder = _decoders[Math.Clamp(DecoderIndex, 0, _decoders.Count - 1)],
-        Av1Decoder = _av1Decoders[Math.Clamp(Av1DecoderIndex, 0, _av1Decoders.Count - 1)],
-        Encoder = _encoders[Math.Clamp(EncoderIndex, 0, _encoders.Count - 1)],
-        Av1Encoder = _av1Encoders[Math.Clamp(Av1EncoderIndex, 0, _av1Encoders.Count - 1)],
+        CodecOverrides = _codecOverrides,
+        IsCodecSettingsWarningAcknowledged = _isCodecSettingsWarningAcknowledged,
+        Decoder = Decoder(VideoCodec.H264),
+        Av1Decoder = Decoder(VideoCodec.AV1),
+        Vp8Decoder = Decoder(VideoCodec.VP8),
+        Vp9Decoder = Decoder(VideoCodec.VP9),
+        Encoder = Encoder(VideoCodec.H264),
+        Av1Encoder = Encoder(VideoCodec.AV1),
+        Vp8Encoder = Encoder(VideoCodec.VP8),
+        Vp9Encoder = Encoder(VideoCodec.VP9),
         IsZeroCopyEnabled = IsZeroCopyEnabled,
         IsTimedPresentationEnabled = IsTimedPresentationEnabled,
         PresentationBufferFrames = VideoSettings.PresentationBufferChoices[
@@ -212,32 +249,19 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     private void Apply(VideoSettings settings)
     {
-        // An element that is not on this system anymore reads as the automatic choice
-        // Preserve the legacy software-only preference through the decoder choice.
-        var decoder = settings.IsHardwareDecodingEnabled
-            ? settings.Decoder
-            : _decoders.FirstOrDefault(element => element != null && VideoElementNames.IsSoftware(element));
-        DecoderIndex = Math.Max(0, IndexOf(_decoders, decoder));
-        var av1Decoder = settings.IsHardwareDecodingEnabled
-            ? settings.Av1Decoder
-            : _av1Decoders.FirstOrDefault(element => element != null && VideoElementNames.IsSoftware(element));
-        Av1DecoderIndex = Math.Max(0, IndexOf(_av1Decoders, av1Decoder));
-        EncoderIndex = Math.Max(0, IndexOf(_encoders, settings.Encoder));
-        Av1EncoderIndex = Math.Max(0, IndexOf(_av1Encoders, settings.Av1Encoder));
+        _codecOverrides = settings.CodecOverrides;
+        _isCodecSettingsWarningAcknowledged = settings.IsCodecSettingsWarningAcknowledged;
+        UpdateOverrideIndicators();
+        foreach (var encoder in Encoders)
+            encoder.Load(settings.GetEncoder(encoder.Codec));
+        foreach (var decoder in Decoders)
+            decoder.Load(settings.GetDecoder(decoder.Codec), !settings.IsHardwareDecodingEnabled);
         IsZeroCopyEnabled = settings.IsZeroCopyEnabled;
         IsTimedPresentationEnabled = settings.IsTimedPresentationEnabled;
         PresentationBufferIndex = Math.Max(0,
             VideoSettings.PresentationBufferChoices.ToList().IndexOf(settings.PresentationBufferFrames));
     }
 
-    private static int IndexOf(IReadOnlyList<string?> choices, string? value)
-    {
-        for (var i = 0; i < choices.Count; i++)
-        {
-            if (choices[i] == value)
-                return i;
-        }
-
-        return -1;
-    }
+    private string? Encoder(VideoCodec codec) => Encoders.Single(selection => selection.Codec == codec).PreferredFactory;
+    private string? Decoder(VideoCodec codec) => Decoders.Single(selection => selection.Codec == codec).PreferredFactory;
 }

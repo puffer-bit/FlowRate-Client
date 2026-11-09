@@ -1,5 +1,6 @@
 using Client.Application.Ports;
 using Client.Core.Media;
+using Client.Core.Settings;
 using Client.GStreamer.Interop;
 using Gst;
 using Microsoft.Extensions.Logging;
@@ -39,6 +40,11 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private readonly VideoCodec _codec;
     private readonly string _name;
     private readonly ILogger _logger;
+    // Keep codec preferences stable when rebuilding after a surface failure.
+    private readonly VideoSettings _settings = VideoSettings.Current with
+    {
+        CodecOverrides = VideoSettings.Current.CodecOverrides.ToArray()
+    };
     private readonly Lock _lock = new();
 
     private Running? _running;
@@ -136,7 +142,7 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private Running? Build(bool allowGpuSurfaces, VideoSurfaceKinds failedSurface = VideoSurfaceKinds.None,
         string? failureReason = null)
     {
-        var output = VideoOutputSelector.Select(_codec, allowGpuSurfaces);
+        var output = VideoOutputSelector.Select(_codec, allowGpuSurfaces, _settings);
 
         if (output == null)
         {
@@ -214,7 +220,11 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
 
         try
         {
-            return Global.ParseLaunch(description) as Pipeline;
+            var pipeline = Global.ParseLaunch(description) as Pipeline;
+            using var decoder = pipeline?.GetByName(DecoderName);
+            if (decoder != null)
+                CodecParameters.Apply(decoder, output.Decoder, _settings.CodecOverrides);
+            return pipeline;
         }
         catch (Exception)
         {

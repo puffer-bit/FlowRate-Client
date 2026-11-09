@@ -1,3 +1,6 @@
+using Client.Core.Media;
+using Client.Core.Settings;
+
 namespace Client.Application.Ports;
 
 /// <summary>
@@ -31,4 +34,38 @@ public interface IMediaCapabilities
     /// whole system without our own sound.
     /// </summary>
     bool CanCaptureScreenAudio { get; }
+
+    /// <summary>The available screen encoders for a codec, in order of preference.</summary>
+    IReadOnlyList<string> GetScreenShareEncoders(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => ScreenShareEncoders,
+        VideoCodec.AV1 => ScreenShareAv1Encoders,
+        _ => []
+    };
+
+    /// <summary>The available screen decoders for a codec, in order of preference.</summary>
+    IReadOnlyList<string> GetScreenShareDecoders(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => ScreenShareDecoders,
+        VideoCodec.AV1 => ScreenShareAv1Decoders,
+        _ => []
+    };
+
+    /// <summary>Writable parameters of an available screen encoder or decoder.</summary>
+    IReadOnlyList<CodecParameter> GetCodecParameters(string factory) => [];
+
+    /// <summary>The valid bitrate override of the encoder that will be used for this share.</summary>
+    CodecPropertyOverride? GetScreenShareBitrateOverride(VideoCodec codec, VideoSettings settings)
+    {
+        if (!MediaRuntime.IsEnabled)
+            return null;
+        var available = GetScreenShareEncoders(codec);
+        var encoder = settings.GetEncoder(codec) is { } preferred && available.Contains(preferred)
+            ? preferred : available.FirstOrDefault();
+        if (encoder == null)
+            return null;
+        var parameters = GetCodecParameters(encoder);
+        return CodecParameter.ValidateOverrides(encoder, parameters, settings.CodecOverrides)
+            .LastOrDefault(value => value.Name is "bitrate" or "target-bitrate");
+    }
 }

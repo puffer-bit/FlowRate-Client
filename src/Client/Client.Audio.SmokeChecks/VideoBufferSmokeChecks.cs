@@ -15,11 +15,14 @@ internal static class VideoBufferSmokeChecks
 
     public static void Run()
     {
+        CodecSettingsSmokeChecks.Run();
         CheckSharedStorage();
         CheckGate(2, 0, 0, 2);
         CheckGate(60, 12, 0, 1);
         CheckGate(60, 0, 100_000_000, 2);
         CheckEncodingAndDecoding(VideoCodec.H264, "openh264enc");
+        CheckEncodingAndDecoding(VideoCodec.VP8, "vp8enc");
+        CheckEncodingAndDecoding(VideoCodec.VP9, "vp9enc");
         CheckEncodingAndDecoding(VideoCodec.AV1, "svtav1enc");
         CheckRtpRoundTrip(VideoCodec.H264, "openh264enc bitrate=1000000", "openh264dec");
         CheckRtpRoundTrip(VideoCodec.AV1,
@@ -29,6 +32,7 @@ internal static class VideoBufferSmokeChecks
 
     private static void CheckRtpRoundTrip(VideoCodec codec, string encoder, string decoder)
     {
+        Console.WriteLine($"Checking {codec} RTP round trip...");
         var format = VideoCodecPipeline.For(codec);
         using var pipeline = (Pipeline)Global.ParseLaunch(
             "appsrc name=raw is-live=true format=time do-timestamp=true " +
@@ -64,10 +68,24 @@ internal static class VideoBufferSmokeChecks
 
     private static void CheckEncodingAndDecoding(VideoCodec codec, string encoder)
     {
+        Console.WriteLine($"Checking {codec} encoding and decoding with {encoder}...");
         var previous = VideoSettings.Current;
         try
         {
-            VideoSettings.Apply(previous with { Encoder = encoder, IsHardwareDecodingEnabled = false });
+            var softwareDecoder = codec switch
+            {
+                VideoCodec.H264 => "openh264dec",
+                VideoCodec.AV1 => "dav1ddec",
+                VideoCodec.VP8 => "vp8dec",
+                VideoCodec.VP9 => "vp9dec",
+                _ => throw new ArgumentOutOfRangeException(nameof(codec))
+            };
+            VideoSettings.Apply(new VideoSettings
+            {
+                Encoder = encoder, Av1Encoder = encoder, Vp8Encoder = encoder, Vp9Encoder = encoder,
+                IsHardwareDecodingEnabled = false,
+                CodecOverrides = [new(softwareDecoder, "max-errors", "7")]
+            });
             using var decoder = GstVideoDecoder.Create(codec, "buffer_smoke", NullLogger.Instance)
                 ?? throw new InvalidOperationException("Cannot create software decoder");
             using var capture = GstScreenCapture.Create(new TestPatternVideoInput(),

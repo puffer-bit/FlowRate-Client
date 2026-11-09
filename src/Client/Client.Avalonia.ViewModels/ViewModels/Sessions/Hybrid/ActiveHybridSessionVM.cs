@@ -257,6 +257,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 var session = _coordinatorSession;
                 _subscriptions
                     .Add(() => session.HybridSessionPeerJoined += OnPeerJoined, () => session.HybridSessionPeerJoined -= OnPeerJoined)
+                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
+                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => session.HybridSessionPeerLeft += OnPeerLeft, () => session.HybridSessionPeerLeft -= OnPeerLeft)
                     .Add(() => session.HybridSessionPeerStateChanged += OnPeerStateChanged,
                         () => session.HybridSessionPeerStateChanged -= OnPeerStateChanged)
@@ -278,8 +280,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _subscriptions
                     .Add(() => hybridSession.StateChanged += OnSessionStateChanged,
                         () => hybridSession.StateChanged -= OnSessionStateChanged)
-                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
-                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => hybridSession.ErrorOccurred += OnSessionError, () => hybridSession.ErrorOccurred -= OnSessionError);
 
                 // Off the UI thread: the first transport of a run loads the WebRTC plugins while
@@ -442,7 +442,6 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // The microphone comes back muted or not as the user left it
             await _hybridSession.StopVoiceShareAsync();
             ForgetMicrophoneInput();
-            StatusBar.IsMicrophoneOn = false;
 
             if (!IsClosed && CanSpeak)
                 await StartVoiceAsync();
@@ -456,7 +455,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
             await _hybridSession.StopScreenShareAsync();
 
-            if (!IsClosed)
+            if (!IsClosed && _screenInput == screenInput)
                 await StartScreenShareAsync(screenInput, screenSettings, audioInput, isSilent: true);
         }
     }
@@ -548,8 +547,11 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         var granted = permissions.InSession(Model);
         CanSpeak = granted.HasFlag(Permission.Speak);
+        StatusBar.CanSpeak = CanSpeak;
+        if (!CanSpeak && _hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
+            _ = SetMicrophoneMutedAsync(true);
         CanShareVideo = granted.HasFlag(Permission.ShareVideo);
-        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id);
+        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id, Model);
     }
 
     private void OnUserUpdated(UserModel user)
@@ -577,7 +579,13 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
         _sounds.Play(notification is PeerKickedEvent or PeerRejectedEvent ? SoundEvent.UserKicked : SoundEvent.Leave);
 
-        Dispatcher.UIThread.Post(() => ParticipantsListVM.RemovePeerFromSession(notification.UserId));
+        Dispatcher.UIThread.Post(() =>
+        {
+            _restartingScreens.Remove(notification.UserId);
+            _stoppedRestartingScreens.Remove(notification.UserId);
+            RemoveScreenStream(notification.UserId);
+            ParticipantsListVM.RemovePeerFromSession(notification.UserId);
+        });
     }
 
     // The server has already taken us out, so the session is closed without leaving it

@@ -54,8 +54,8 @@ public partial class CoordinatorSession
 
     public string? BanReason { get; private set; }
 
-    public Task<RequestResult<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans(bool history = false) =>
-        SendAsync(() => _gateway.GetBans(history));
+    public Task<RequestResult<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans() =>
+        SendAsync(() => _gateway.GetBans());
 
     public Task<RequestResult> RevokeBan(Guid banId) => SendAsync(() => _gateway.RevokeBan(banId));
 

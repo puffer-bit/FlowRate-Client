@@ -223,7 +223,7 @@
                                            Source="{StaticResource AfkIcon}"
                                            IsVisible="{Binding IsAfk}"/>
                                     <Image Width="20" Height="20"
-                                           Source="{StaticResource CrossedMicrophoneIcon}"
+                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
                                            IsVisible="{Binding ShowsMicrophoneOff}"/>
                                     <Image Width="20" Height="20"
                                            Source="{StaticResource CrossedHeadphonesIcon}"
@@ -239,12 +239,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12,0,20">
             <Button Classes="voice-action" Command="{Binding StatusBar.ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
-                <Panel>
-                    <Image Width="24" Height="24" Source="{StaticResource MicrophoneIcon}"
-                           IsVisible="{Binding StatusBar.IsMicrophoneOn}"/>
-                    <Image Width="24" Height="24" Source="{StaticResource CrossedMicrophoneIcon}"
-                           IsVisible="{Binding !StatusBar.IsMicrophoneOn}"/>
-                </Panel>
+                <Image Width="24" Height="24" Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
             </Button>
 
             <Button Classes="voice-action" Command="{Binding StatusBar.ToggleSoundCommand}"

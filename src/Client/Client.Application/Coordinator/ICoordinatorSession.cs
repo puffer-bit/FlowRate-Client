@@ -384,7 +384,7 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null);
 
     /// <summary>Deletes another user. On success <see cref="UserDeleted"/> is raised.</summary>
-    Task<RequestResult<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans(bool history = false);
+    Task<RequestResult<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans();
     Task<RequestResult> RevokeBan(Guid banId);
     string? BanReason => null;
     Task<RequestResult> DeleteUser(int userId);

@@ -98,10 +98,7 @@
             <Button Classes="barAction"
                     Command="{Binding ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
-                <Panel>
-                    <Image Source="{StaticResource MicrophoneIcon}" IsVisible="{Binding IsMicrophoneOn}"/>
-                    <Image Source="{StaticResource CrossedMicrophoneIcon}" IsVisible="{Binding !IsMicrophoneOn}"/>
-                </Panel>
+                <Image Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
             </Button>
 
             <!-- What we hear -->

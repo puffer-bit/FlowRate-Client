@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Gst;
 using Client.Core.Media;
+using Client.Core.Settings;
 using Client.GStreamer.Interop;
 
 namespace Client.GStreamer.Video;
@@ -9,7 +10,8 @@ namespace Client.GStreamer.Video;
 /// <summary>
 /// An encoder element and the properties that tune it for low-latency screen sharing.
 /// </summary>
-public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Name, string Value)> Properties, bool IsHardware)
+public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Name, string Value)> Properties, bool IsHardware,
+    IReadOnlyList<CodecPropertyOverride>? Overrides = null)
 {
     /// <summary>
     /// The element as a gst-launch fragment, e.g. "openh264enc bitrate=4000000 usage-type=screen".
@@ -69,7 +71,8 @@ public static class VideoEncoderSelector
     private static readonly ConcurrentDictionary<string, bool> MesaAv1Encoders = new();
 
     /// <param name="preferred">The factory to use when this system has it, before the usual order.</param>
-    public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null)
+    public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null,
+        IReadOnlyList<CodecPropertyOverride>? encoderOverrides = null)
     {
         var candidates = GetCandidates(codec).ToList();
         var first = candidates.FindIndex(candidate => candidate.Factory == preferred);
@@ -97,8 +100,15 @@ public static class VideoEncoderSelector
                 ? [("target-usage", "1")]
                 : [];
 
-            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning, ..driverTuning, ..limit],
-                candidate.IsHardware);
+            List<(string Name, string Value)> properties = [..candidate.Properties(bitrateKbps), ..tuning, ..driverTuning, ..limit];
+            var saved = encoderOverrides ?? VideoSettings.Current.CodecOverrides;
+            var overrides = CodecParameters.GetOverrides(candidate.Factory, saved);
+            foreach (var item in overrides)
+            {
+                properties.RemoveAll(p => p.Name == item.Name);
+                properties.Add((item.Name, item.Value));
+            }
+            return new VideoEncoderChoice(candidate.Factory, properties, candidate.IsHardware, overrides);
         }
 
         return null;
@@ -130,6 +140,9 @@ public static class VideoEncoderSelector
     /// </summary>
     public static IReadOnlyList<string> GetKnownEncoders(VideoCodec codec, bool hardware) =>
         GetCandidates(codec).Where(c => c.IsHardware == hardware).Select(c => c.Factory).ToList();
+
+    internal static bool IsKnownEncoder(string factory) =>
+        Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Any(candidate => candidate.Factory == factory);
 
     /// <summary>
     /// Whether the value of the property follows the bitrate the encoder was made for.

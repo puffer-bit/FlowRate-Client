@@ -39,9 +39,13 @@ public sealed class CoordinatorPermissions
 
     /// <summary>What the current user may do in the session, after its overrides.</summary>
     public Permission InSession(SessionModel session) =>
+        InSession(session, RoleIds);
+
+    /// <summary>What a user with the given roles may do in this session.</summary>
+    public Permission InSession(SessionModel session, IReadOnlyCollection<int> roleIds) =>
         Everyone is { } everyone
-            ? SessionPermissions.Resolve(Granted, session.PermissionOverrides, everyone.Id, RoleIds)
-            : Granted;
+            ? SessionPermissions.Resolve(PermissionsOf(roleIds), session.PermissionOverrides, everyone.Id, roleIds)
+            : PermissionsOf(roleIds);
 
     public bool HasIn(SessionModel session, Permission permission) =>
         (InSession(session) & permission) == permission;

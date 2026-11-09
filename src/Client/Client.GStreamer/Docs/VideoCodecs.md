@@ -103,16 +103,48 @@ AV1 decoders exposed by its libwebrtc runtime and device; desktop remains the so
 
 ### The settings
 
-- **H.264 encoder** and **AV1 encoder** (Video tab): each codec has its own saved choice. The
-  selected element is moved to the front of that codec's list when this system has it; otherwise
-  the usual order applies. Used from the next share. AV1 choices include available hardware
-  encoders and SVT-AV1 on the CPU. The codec itself is selected in the session settings.
-- **H.264 decoder** and **AV1 decoder** (Video tab): each codec has its own saved software or
-  hardware decoder choice, used when this system has it. Applies to screens opened after the change. The former hardware-decoding switch is no longer
-  shown; its disabled state is represented by the software decoder when loading settings.
-- The lists show the elements this system has, in the order above, as "NVIDIA NVENC, video card
-  (nvd3d11h264enc)" (`VideoElementNames`). The automatic choice names the element it comes to: the
-  first of the list.
+- Each of H.264, AV1, VP8 and VP9 has independent saved encoder and decoder choices in the
+  Video tab. A choice is used when the element is available; otherwise the normal preference order
+  applies. Encoder changes apply to the next share, decoder changes to newly opened screens.
+  VP9 candidates remain available for negotiation support; VP9 is not offered in session settings.
+- The former hardware-decoding switch is represented by software decoder choices when loading
+  settings that had hardware decoding disabled.
+- The lists show the elements available on this system, with their CPU/GPU type and factory name
+  (`VideoElementNames`). Automatic names the first available element in preference order.
+
+## Codec parameter dialog
+
+The gear beside each encoder and decoder opens the same modal parameter editor for the selected
+element, including the effective automatic choice. Hardware and software elements are supported.
+The gear is disabled when no editable parameters are available or media is disabled.
+Before the first editor opens, a warning explains that these parameters require specialized codec
+knowledge. Cancel leaves the editor closed; acknowledgment is saved in SQLite and survives video
+settings resets. A gear has a yellow background and border while its effective factory has saved
+parameter overrides. Saving a reset removes the highlight.
+The installed element reports writable numeric, boolean and enum properties, descriptions, ranges
+and choices; generic object names and parent references are excluded. Driver-dependent enum choices
+therefore follow the local runtime rather than a fixed list.
+
+Each checked parameter overrides the app tuning. Unchecked parameters retain the app settings;
+the dialog also shows the element's own defaults for reference. Save persists overrides separately
+for each factory in SQLite. Cancel discards the draft, and Reset clears only that factory's overrides
+when saved. Existing AV1 encoder overrides are migrated without changing their values.
+Changes apply to the next share or newly opened watched screen. Existing shares retain their
+original tuning through bitrate updates; decoder rebuilds retain their original parameter snapshot.
+Overrides are validated against the installed element before use; unsupported properties from a
+different runtime version are ignored.
+
+When the effective encoder for the session codec has a valid `bitrate` or `target-bitrate`
+override, the source selection dialog disables its automatic/custom bitrate controls and shows the
+shared warning banner directing the user to Settings → Video. Overrides for a different encoder,
+decoder or codec and unavailable properties do not disable these controls. The stream's bitrate
+preference is preserved, so it remains available after removing the override.
+
+Run parameter discovery, software encoder override application and decoder property checks with:
+
+```bash
+dotnet run --project src/Client/Client.Audio.SmokeChecks -- --video-codec-settings
+```
 
 ## Tuning
 
