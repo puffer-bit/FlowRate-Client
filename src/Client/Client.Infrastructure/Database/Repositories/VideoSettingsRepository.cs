@@ -18,25 +18,30 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<VideoSettingsRow>("""
-            SELECT IsHardwareDecodingEnabled, Decoder, Av1Decoder, Encoder, Av1Encoder, IsZeroCopyEnabled,
-                   IsTimedPresentationEnabled, PresentationBufferFrames
+            SELECT IsHardwareDecodingEnabled, Decoder, Av1Decoder, Vp8Decoder, Vp9Decoder, Encoder, Av1Encoder, Vp8Encoder, Vp9Encoder,
+                   IsZeroCopyEnabled, IsTimedPresentationEnabled, PresentationBufferFrames, IsCodecSettingsWarningAcknowledged
             FROM VideoSettings WHERE Id = 1
             """);
 
         if (row == null)
             return new VideoSettings();
 
-        var parameters = (await connection.QueryAsync<EncoderPropertyOverride>(
-            "SELECT Encoder, Name, Value FROM EncoderParameters ORDER BY Encoder, Name")).ToArray();
+        var parameters = (await connection.QueryAsync<CodecPropertyOverride>(
+            "SELECT Factory, Name, Value FROM CodecParameters ORDER BY Factory, Name")).ToArray();
 
         return new VideoSettings
         {
             IsHardwareDecodingEnabled = row.IsHardwareDecodingEnabled,
             Decoder = row.Decoder,
             Av1Decoder = row.Av1Decoder,
+            Vp8Decoder = row.Vp8Decoder,
+            Vp9Decoder = row.Vp9Decoder,
             Encoder = row.Encoder,
             Av1Encoder = row.Av1Encoder,
-            EncoderOverrides = parameters,
+            Vp8Encoder = row.Vp8Encoder,
+            Vp9Encoder = row.Vp9Encoder,
+            CodecOverrides = parameters,
+            IsCodecSettingsWarningAcknowledged = row.IsCodecSettingsWarningAcknowledged,
             IsZeroCopyEnabled = row.IsZeroCopyEnabled,
             IsTimedPresentationEnabled = row.IsTimedPresentationEnabled,
             PresentationBufferFrames = row.PresentationBufferFrames
@@ -49,38 +54,52 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
         using var transaction = connection.BeginTransaction();
 
         await connection.ExecuteAsync("""
-            INSERT INTO VideoSettings (Id, IsHardwareDecodingEnabled, Decoder, Av1Decoder, Encoder, Av1Encoder, IsZeroCopyEnabled,
-                                       IsTimedPresentationEnabled, PresentationBufferFrames)
-            VALUES (1, @IsHardwareDecodingEnabled, @Decoder, @Av1Decoder, @Encoder, @Av1Encoder, @IsZeroCopyEnabled,
-                    @IsTimedPresentationEnabled, @PresentationBufferFrames)
+            INSERT INTO VideoSettings (Id, IsHardwareDecodingEnabled, Decoder, Av1Decoder, Vp8Decoder, Vp9Decoder,
+                                       Encoder, Av1Encoder, Vp8Encoder, Vp9Encoder, IsZeroCopyEnabled,
+                                       IsTimedPresentationEnabled, PresentationBufferFrames, IsCodecSettingsWarningAcknowledged)
+            VALUES (1, @IsHardwareDecodingEnabled, @Decoder, @Av1Decoder, @Vp8Decoder, @Vp9Decoder,
+                    @Encoder, @Av1Encoder, @Vp8Encoder, @Vp9Encoder, @IsZeroCopyEnabled,
+                    @IsTimedPresentationEnabled, @PresentationBufferFrames, @IsCodecSettingsWarningAcknowledged)
             ON CONFLICT (Id) DO UPDATE SET
                 IsHardwareDecodingEnabled = excluded.IsHardwareDecodingEnabled,
                 Decoder = excluded.Decoder,
                 Av1Decoder = excluded.Av1Decoder,
+                Vp8Decoder = excluded.Vp8Decoder,
+                Vp9Decoder = excluded.Vp9Decoder,
                 Encoder = excluded.Encoder,
                 Av1Encoder = excluded.Av1Encoder,
+                Vp8Encoder = excluded.Vp8Encoder,
+                Vp9Encoder = excluded.Vp9Encoder,
                 IsZeroCopyEnabled = excluded.IsZeroCopyEnabled,
                 IsTimedPresentationEnabled = excluded.IsTimedPresentationEnabled,
-                PresentationBufferFrames = excluded.PresentationBufferFrames
+                PresentationBufferFrames = excluded.PresentationBufferFrames,
+                IsCodecSettingsWarningAcknowledged = excluded.IsCodecSettingsWarningAcknowledged
             """, new
             {
                 settings.IsHardwareDecodingEnabled,
                 settings.Decoder,
                 settings.Av1Decoder,
+                settings.Vp8Decoder,
+                settings.Vp9Decoder,
                 settings.Encoder,
                 settings.Av1Encoder,
+                settings.Vp8Encoder,
+                settings.Vp9Encoder,
                 settings.IsZeroCopyEnabled,
                 settings.IsTimedPresentationEnabled,
+                settings.IsCodecSettingsWarningAcknowledged,
                 settings.PresentationBufferFrames
             }, transaction);
 
-        await connection.ExecuteAsync("DELETE FROM EncoderParameters", transaction: transaction);
-        foreach (var parameter in settings.EncoderOverrides)
-            await connection.ExecuteAsync("INSERT INTO EncoderParameters (Encoder, Name, Value) VALUES (@Encoder, @Name, @Value)",
-                new { parameter.Encoder, parameter.Name, parameter.Value }, transaction);
+        await connection.ExecuteAsync("DELETE FROM CodecParameters", transaction: transaction);
+        foreach (var parameter in settings.CodecOverrides)
+            await connection.ExecuteAsync("INSERT INTO CodecParameters (Factory, Name, Value) VALUES (@Factory, @Name, @Value)",
+                new { parameter.Factory, parameter.Name, parameter.Value }, transaction);
         transaction.Commit();
     }
 }
 
-internal sealed record VideoSettingsRow(bool IsHardwareDecodingEnabled, string? Decoder, string? Av1Decoder, string? Encoder, string? Av1Encoder,
-    bool IsZeroCopyEnabled, bool IsTimedPresentationEnabled, int PresentationBufferFrames);
+internal sealed record VideoSettingsRow(bool IsHardwareDecodingEnabled,
+    string? Decoder, string? Av1Decoder, string? Vp8Decoder, string? Vp9Decoder,
+    string? Encoder, string? Av1Encoder, string? Vp8Encoder, string? Vp9Encoder,
+    bool IsZeroCopyEnabled, bool IsTimedPresentationEnabled, int PresentationBufferFrames, bool IsCodecSettingsWarningAcknowledged);

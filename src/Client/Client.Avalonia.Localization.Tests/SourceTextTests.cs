@@ -159,7 +159,8 @@ public partial class SourceTextTests
     [GeneratedRegex(@"\{l:Text\s+(?:Key=)?([A-Za-z0-9_.]+)\}")]
     private static partial Regex MarkupKeyPattern();
 
-    [GeneratedRegex(@"SettingText\.Key=""([^""]+)""")]
+    // Only literal keys are checked here; bindings supply their keys at run time.
+    [GeneratedRegex(@"SettingText\.Key=""([A-Za-z0-9_.]+)""")]
     private static partial Regex SettingKeyPattern();
 
     // A key put together at run time has no closing quote right after it and is skipped

@@ -19,6 +19,9 @@ public static class VideoDecoderSelector
     public static IReadOnlyList<string> GetAvailableDecoders(VideoCodec codec) =>
         GetCandidates(codec).Where(factory => ElementFactory.Find(factory) != null).ToList();
 
+    internal static bool IsKnownDecoder(string factory) =>
+        Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Contains(factory);
+
     private static string[] GetCandidates(VideoCodec codec) => codec switch
     {
         VideoCodec.H264 => OperatingSystem.IsWindows()

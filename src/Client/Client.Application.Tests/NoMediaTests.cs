@@ -52,10 +52,12 @@ public class NoMediaTests : IDisposable
         var video = new VideoControlVM(null!, capabilities);
 
         Assert.False(video.IsMediaEnabled);
-        Assert.Single(video.DecoderChoices);
-        Assert.Single(video.Av1DecoderChoices);
-        Assert.Single(video.EncoderChoices);
-        Assert.Single(video.Av1EncoderChoices);
+        foreach (var selection in video.Encoders.Concat(video.Decoders))
+        {
+            Assert.Single(selection.Choices);
+            Assert.False(selection.CanConfigure);
+            Assert.Null(video.CreateCodecSettings(selection));
+        }
     }
 
     [Fact]

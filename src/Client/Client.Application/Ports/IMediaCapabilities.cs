@@ -35,23 +35,37 @@ public interface IMediaCapabilities
     /// </summary>
     bool CanCaptureScreenAudio { get; }
 
-    /// <summary>Writable parameters of an available hardware AV1 encoder.</summary>
-    IReadOnlyList<EncoderParameter> GetEncoderParameters(string encoder) => [];
+    /// <summary>The available screen encoders for a codec, in order of preference.</summary>
+    IReadOnlyList<string> GetScreenShareEncoders(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => ScreenShareEncoders,
+        VideoCodec.AV1 => ScreenShareAv1Encoders,
+        _ => []
+    };
+
+    /// <summary>The available screen decoders for a codec, in order of preference.</summary>
+    IReadOnlyList<string> GetScreenShareDecoders(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => ScreenShareDecoders,
+        VideoCodec.AV1 => ScreenShareAv1Decoders,
+        _ => []
+    };
+
+    /// <summary>Writable parameters of an available screen encoder or decoder.</summary>
+    IReadOnlyList<CodecParameter> GetCodecParameters(string factory) => [];
 
     /// <summary>The valid bitrate override of the encoder that will be used for this share.</summary>
-    EncoderPropertyOverride? GetScreenShareBitrateOverride(VideoCodec codec, VideoSettings settings)
+    CodecPropertyOverride? GetScreenShareBitrateOverride(VideoCodec codec, VideoSettings settings)
     {
-        // Custom parameters currently apply only to hardware AV1 encoders.
-        if (codec != VideoCodec.AV1)
+        if (!MediaRuntime.IsEnabled)
             return null;
-        var available = ScreenShareAv1Encoders;
-        var encoder = settings.Av1Encoder is { } preferred && available.Contains(preferred)
+        var available = GetScreenShareEncoders(codec);
+        var encoder = settings.GetEncoder(codec) is { } preferred && available.Contains(preferred)
             ? preferred : available.FirstOrDefault();
         if (encoder == null)
             return null;
-        var parameters = GetEncoderParameters(encoder);
-        return settings.EncoderOverrides.LastOrDefault(value => value.Encoder == encoder
-            && value.Name is "bitrate" or "target-bitrate"
-            && parameters.Any(parameter => parameter.Name == value.Name && parameter.IsValid(value.Value)));
+        var parameters = GetCodecParameters(encoder);
+        return CodecParameter.ValidateOverrides(encoder, parameters, settings.CodecOverrides)
+            .LastOrDefault(value => value.Name is "bitrate" or "target-bitrate");
     }
 }

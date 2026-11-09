@@ -18,7 +18,7 @@ public class ChatReadStateRepositoryTests
         var result = await new DatabaseInitializer(database.Database,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
         Assert.Equal(Client.Application.Ports.DatabaseState.NoError, result);
-        Assert.Equal(32L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(34L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         var repository = new ChatReadStateRepository(database.Database);
         await repository.SetAsync("server", 1, new ChatReadState(7, 20, 0, 0));

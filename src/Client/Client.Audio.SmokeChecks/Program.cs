@@ -36,6 +36,12 @@ if (args.Contains("--process-loopback"))
         "Zero PID cannot create unfiltered loopback");
     return;
 }
+if (args.Contains("--video-codec-settings"))
+{
+    CodecSettingsSmokeChecks.Run();
+    Console.WriteLine("Codec settings smoke checks passed.");
+    return;
+}
 if (args.Contains("--video-buffers"))
 {
     VideoBufferSmokeChecks.Run();

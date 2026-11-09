@@ -2,12 +2,21 @@ using System.Globalization;
 
 namespace Client.Core.Settings;
 
-public sealed record EncoderPropertyOverride(string Encoder, string Name, string Value);
+public sealed record CodecPropertyOverride(string Factory, string Name, string Value);
 
-/// <summary>A writable encoder property reported by the installed media runtime.</summary>
-public sealed record EncoderParameter(string Name, string Description, string DefaultValue,
+/// <summary>A writable encoder or decoder property reported by the installed media runtime.</summary>
+public sealed record CodecParameter(string Name, string Description, string DefaultValue,
     string Kind, string? Minimum = null, string? Maximum = null, IReadOnlyList<string>? Choices = null)
 {
+    /// <summary>Valid overrides for one factory; the last saved value wins for duplicate names.</summary>
+    public static IReadOnlyList<CodecPropertyOverride> ValidateOverrides(string factory,
+        IReadOnlyList<CodecParameter> parameters, IReadOnlyList<CodecPropertyOverride> saved) =>
+        saved.Where(value => value.Factory == factory)
+            .GroupBy(value => value.Name, StringComparer.Ordinal)
+            .Select(group => group.Last())
+            .Where(value => parameters.Any(parameter => parameter.Name == value.Name && parameter.IsValid(value.Value)))
+            .ToArray();
+
     public bool IsValid(string value)
     {
         if (Choices is { Count: > 0 })

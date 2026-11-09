@@ -334,6 +334,9 @@ public class SettingsRepositoriesTests
             Av1Decoder = "dav1ddec",
             Encoder = "openh264enc",
             Av1Encoder = "svtav1enc",
+            IsCodecSettingsWarningAcknowledged = true,
+            Vp8Encoder = "vp8enc", Vp9Encoder = "vp9enc",
+            Vp8Decoder = "vp8dec", Vp9Decoder = "vp9dec",
             IsZeroCopyEnabled = false,
             IsTimedPresentationEnabled = false,
             PresentationBufferFrames = 4
@@ -353,20 +356,24 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
-    public async Task EncoderParametersRoundTripAndReset()
+    public async Task CodecParametersRoundTripAndReset()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new VideoSettingsRepository(database.Database);
-        var parameters = new EncoderPropertyOverride[]
+        var parameters = new CodecPropertyOverride[]
         {
             new("vaav1enc", "qp", "120"),
-            new("qsvav1enc", "target-usage", "3")
+            new("qsvav1enc", "target-usage", "3"),
+            new("openh264enc", "bitrate", "4000000"),
+            new("vp8enc", "cpu-used", "8"),
+            new("vp9dec", "threads", "4"),
+            new("dav1ddec", "n-threads", "2")
         };
-        await repository.SaveAsync(new VideoSettings { EncoderOverrides = parameters });
-        Assert.Equal(parameters.OrderBy(p => p.Encoder), (await repository.GetAsync()).EncoderOverrides);
+        await repository.SaveAsync(new VideoSettings { CodecOverrides = parameters });
+        Assert.Equal(parameters.OrderBy(p => p.Factory), (await repository.GetAsync()).CodecOverrides);
 
         await repository.SaveAsync(new VideoSettings());
-        Assert.Empty((await repository.GetAsync()).EncoderOverrides);
+        Assert.Empty((await repository.GetAsync()).CodecOverrides);
     }
 
     [Fact]

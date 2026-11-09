@@ -1,23 +1,40 @@
 using System.Globalization;
-using Client.Core.Media;
+using System.Collections.Concurrent;
 using Client.Core.Settings;
+using Client.Core.Media;
 using Gst;
 using Gst.GObject;
 
 namespace Client.GStreamer.Video;
 
-internal static class EncoderParameters
+internal static class CodecParameters
 {
-    public static IReadOnlyList<EncoderParameter> Get(string factory)
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<CodecParameter>> Cache = new();
+
+    public static IReadOnlyList<CodecParameter> Get(string factory) =>
+        !MediaRuntime.IsEnabled ? [] : Cache.GetOrAdd(factory, ReadParameters);
+
+    public static IReadOnlyList<CodecPropertyOverride> GetOverrides(string factory,
+        IReadOnlyList<CodecPropertyOverride> saved) => saved.Any(value => value.Factory == factory)
+            ? CodecParameter.ValidateOverrides(factory, Get(factory), saved)
+            : [];
+
+    public static void Apply(Element element, string factory, IReadOnlyList<CodecPropertyOverride> saved)
     {
-        if (!MediaRuntime.IsEnabled || !VideoEncoderSelector.GetKnownEncoders(VideoCodec.AV1, true).Contains(factory)
+        foreach (var property in GetOverrides(factory, saved))
+            Global.UtilSetObjectArg(element, property.Name, property.Value);
+    }
+
+    private static IReadOnlyList<CodecParameter> ReadParameters(string factory)
+    {
+        if ((!VideoEncoderSelector.IsKnownEncoder(factory) && !VideoDecoderSelector.IsKnownDecoder(factory))
             || ElementFactory.Find(factory) == null)
             return [];
-        using var encoder = ElementFactory.Make(factory, null);
-        if (encoder == null)
+        using var element = ElementFactory.Make(factory, null);
+        if (element == null)
             return [];
-        var result = new List<EncoderParameter>();
-        foreach (var property in encoder.ListProperties())
+        var result = new List<CodecParameter>();
+        foreach (var property in element.ListProperties())
         {
             using (property)
             {
@@ -32,7 +49,7 @@ internal static class EncoderParameters
                 switch (property)
                 {
                     case ParamSpecBoolean: kind = "boolean"; choices = ["false", "true"]; break;
-                    case ParamSpecEnum p: kind = "enum"; choices = p.Values.Select(v => v.Nick).ToArray(); break;
+                    case ParamSpecEnum p: kind = "enum"; choices = p.Values.Select(v => v.Nick).OfType<string>().ToArray(); break;
                     case ParamSpecInt p: kind = "integer"; min = F(p.Minimum); max = F(p.Maximum); break;
                     case ParamSpecUInt p: kind = "integer"; min = F(p.Minimum); max = F(p.Maximum); break;
                     case ParamSpecInt64 p: kind = "integer"; min = F(p.Minimum); max = F(p.Maximum); break;
@@ -43,7 +60,7 @@ internal static class EncoderParameters
                     case ParamSpecDouble p: kind = "number"; min = F(p.Minimum); max = F(p.Maximum); break;
                     default: continue;
                 }
-                result.Add(new EncoderParameter(property.Name, property.Blurb ?? property.Nick, defaults, kind, min, max, choices));
+                result.Add(new CodecParameter(property.Name, property.Blurb ?? property.Nick, defaults, kind, min, max, choices));
             }
         }
         return result.OrderBy(p => p.Name, StringComparer.Ordinal).ToArray();

@@ -1,3 +1,5 @@
+using Client.Core.Media;
+
 namespace Client.Core.Settings;
 
 /// <summary>
@@ -25,7 +27,39 @@ public sealed record VideoSettings
     /// <summary>The AV1 encoder element, or null to choose it automatically.</summary>
     public string? Av1Encoder { get; init; }
 
-    public IReadOnlyList<EncoderPropertyOverride> EncoderOverrides { get; init; } = [];
+    /// <summary>The VP8 encoder element, or null to choose it automatically.</summary>
+    public string? Vp8Encoder { get; init; }
+
+    /// <summary>The VP9 encoder element, or null to choose it automatically.</summary>
+    public string? Vp9Encoder { get; init; }
+
+    /// <summary>The VP8 decoder element, or null to choose it automatically.</summary>
+    public string? Vp8Decoder { get; init; }
+
+    /// <summary>The VP9 decoder element, or null to choose it automatically.</summary>
+    public string? Vp9Decoder { get; init; }
+
+    public string? GetDecoder(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => Decoder,
+        VideoCodec.AV1 => Av1Decoder,
+        VideoCodec.VP8 => Vp8Decoder,
+        VideoCodec.VP9 => Vp9Decoder,
+        _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, null)
+    };
+
+    public string? GetEncoder(VideoCodec codec) => codec switch
+    {
+        VideoCodec.H264 => Encoder,
+        VideoCodec.AV1 => Av1Encoder,
+        VideoCodec.VP8 => Vp8Encoder,
+        VideoCodec.VP9 => Vp9Encoder,
+        _ => throw new ArgumentOutOfRangeException(nameof(codec), codec, null)
+    };
+
+    public bool IsCodecSettingsWarningAcknowledged { get; init; }
+
+    public IReadOnlyList<CodecPropertyOverride> CodecOverrides { get; init; } = [];
 
     /// <summary>
     /// Decoded frames go to the screen as GPU textures without passing through memory, where the
@@ -53,7 +87,11 @@ public sealed record VideoSettings
         Decoder = string.IsNullOrWhiteSpace(Decoder) ? null : Decoder,
         Av1Decoder = string.IsNullOrWhiteSpace(Av1Decoder) ? null : Av1Decoder,
         Encoder = string.IsNullOrWhiteSpace(Encoder) ? null : Encoder,
-        Av1Encoder = string.IsNullOrWhiteSpace(Av1Encoder) ? null : Av1Encoder
+        Av1Encoder = string.IsNullOrWhiteSpace(Av1Encoder) ? null : Av1Encoder,
+        Vp8Encoder = string.IsNullOrWhiteSpace(Vp8Encoder) ? null : Vp8Encoder,
+        Vp9Encoder = string.IsNullOrWhiteSpace(Vp9Encoder) ? null : Vp9Encoder,
+        Vp8Decoder = string.IsNullOrWhiteSpace(Vp8Decoder) ? null : Vp8Decoder,
+        Vp9Decoder = string.IsNullOrWhiteSpace(Vp9Decoder) ? null : Vp9Decoder
     };
 
     /// <summary>

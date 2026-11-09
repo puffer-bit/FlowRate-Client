@@ -50,15 +50,15 @@ internal static class VideoOutputSelector
 
     /// <param name="allowGpuSurfaces">False to deliver frames in memory whatever is supported.</param>
     /// <returns>Null when the system has no decoder for the codec.</returns>
-    public static VideoOutput? Select(VideoCodec codec, bool allowGpuSurfaces = true)
+    public static VideoOutput? Select(VideoCodec codec, bool allowGpuSurfaces = true, VideoSettings? settings = null)
     {
-        var settings = VideoSettings.Current;
+        settings ??= VideoSettings.Current;
         var decoders = VideoDecoderSelector.GetAvailableDecoders(codec);
 
         if (decoders.Count == 0)
             return null;
 
-        var preferred = codec == VideoCodec.AV1 ? settings.Av1Decoder : settings.Decoder;
+        var preferred = settings.GetDecoder(codec);
         string decoder;
 
         if (!settings.IsHardwareDecodingEnabled)

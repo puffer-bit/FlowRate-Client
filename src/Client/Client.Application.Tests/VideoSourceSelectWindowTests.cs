@@ -53,7 +53,7 @@ public class VideoSourceSelectWindowTests
     [InlineData("vaav1enc", "vaav1enc", "0", true)]
     [InlineData("missing", "vaav1enc", "25000", true)]
     [InlineData("qsvav1enc", "vaav1enc", "25000", false)]
-    [InlineData("svtav1enc", "svtav1enc", "25000", false)]
+    [InlineData("svtav1enc", "svtav1enc", "25000", true)]
     [InlineData("vaav1enc", "vaav1enc", "invalid", false)]
     [InlineData("vaav1enc", "vaav1enc", "999999999", false)]
     public void BitrateOverrideFollowsTheEffectiveEncoderAndRuntimeValidation(
@@ -62,13 +62,29 @@ public class VideoSourceSelectWindowTests
         IMediaCapabilities capabilities = new Capabilities();
         var settings = new VideoSettings
         {
-            Av1Encoder = preferred, EncoderOverrides = [new(configured, "bitrate", value)]
+            Av1Encoder = preferred, CodecOverrides = [new(configured, "bitrate", value)]
         };
         Assert.Equal(expected, capabilities.GetScreenShareBitrateOverride(VideoCodec.AV1, settings) != null);
         Assert.Null(capabilities.GetScreenShareBitrateOverride(VideoCodec.H264, settings));
         Assert.Null(capabilities.GetScreenShareBitrateOverride(VideoCodec.VP8, settings));
         Assert.Null(capabilities.GetScreenShareBitrateOverride(VideoCodec.AV1,
-            settings with { EncoderOverrides = [new(configured, "max-bitrate", "25000")] }));
+            settings with { CodecOverrides = [new(configured, "max-bitrate", "25000")] }));
+    }
+
+    [Theory]
+    [InlineData(VideoCodec.H264, "openh264enc", "bitrate")]
+    [InlineData(VideoCodec.AV1, "svtav1enc", "target-bitrate")]
+    [InlineData(VideoCodec.VP8, "vp8enc", "target-bitrate")]
+    [InlineData(VideoCodec.VP9, "vp9enc", "target-bitrate")]
+    public void BitrateOverrideAppliesToEveryCodecIncludingSoftware(VideoCodec codec, string factory, string property)
+    {
+        IMediaCapabilities capabilities = new Capabilities();
+        var settings = new VideoSettings { Encoder = factory, Av1Encoder = factory, Vp8Encoder = factory,
+            Vp9Encoder = factory, CodecOverrides = [new(factory, property, "25000")] };
+        Assert.Equal(new CodecPropertyOverride(factory, property, "25000"),
+            capabilities.GetScreenShareBitrateOverride(codec, settings));
+        Assert.Null(capabilities.GetScreenShareBitrateOverride(codec,
+            settings with { CodecOverrides = [new(factory, property, "invalid")] }));
     }
 
     [Fact]
@@ -79,7 +95,7 @@ public class VideoSourceSelectWindowTests
         {
             VideoSettings.Apply(new VideoSettings
             {
-                Av1Encoder = "vaav1enc", EncoderOverrides = [new("vaav1enc", "bitrate", "25000")]
+                Av1Encoder = "vaav1enc", CodecOverrides = [new("vaav1enc", "bitrate", "25000")]
             });
             var settings = new ScreenShareSettings { BitrateKbps = 1000 };
             var vm = new VideoSourceSelectWindowVM(null, null, null, false, settings,
@@ -109,11 +125,20 @@ public class VideoSourceSelectWindowTests
         public bool HasHardwareScreenShareEncoder => true;
         public IReadOnlyList<string> ScreenShareDecoders => [];
         public IReadOnlyList<string> ScreenShareAv1Decoders => [];
-        public IReadOnlyList<string> ScreenShareEncoders => [];
+        public IReadOnlyList<string> ScreenShareEncoders => ["openh264enc"];
         public IReadOnlyList<string> ScreenShareAv1Encoders => ["vaav1enc", "qsvav1enc", "svtav1enc"];
+        public IReadOnlyList<string> GetScreenShareEncoders(VideoCodec codec) => codec switch
+        {
+            VideoCodec.H264 => ScreenShareEncoders,
+            VideoCodec.AV1 => ScreenShareAv1Encoders,
+            VideoCodec.VP8 => ["vp8enc"],
+            VideoCodec.VP9 => ["vp9enc"],
+            _ => []
+        };
         public bool CanCaptureScreenAudio => false;
-        public IReadOnlyList<EncoderParameter> GetEncoderParameters(string encoder) => encoder == "svtav1enc"
-            ? [] : [new("bitrate", "Bitrate", "0", "integer", "0", "2048000")];
+        public IReadOnlyList<CodecParameter> GetCodecParameters(string factory) =>
+            [new("bitrate", "Bitrate", "0", "integer", "0", "2048000"),
+                new("target-bitrate", "Target bitrate", "0", "integer", "0", "2048000")];
     }
 
     private static VideoSourceSelectWindowVM Create(ScreenShareSettings settings) =>

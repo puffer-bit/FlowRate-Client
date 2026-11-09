@@ -303,7 +303,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         var bitrateOverride = mediaCapabilities?.GetScreenShareBitrateOverride(codec, VideoSettings.Current);
         IsBitrateOverridden = bitrateOverride != null;
         EncoderBitrateWarning = bitrateOverride == null ? null : Strings.Format("source.bitrate.encoderOverride.message",
-            ("encoder", bitrateOverride.Encoder));
+            ("encoder", bitrateOverride.Factory));
 
         HasAudioToggle = canShareAudio && screenSourceProvider != null && screenCastClient == null;
         HasAudioApps = canShareAudio && audioApps != null && screenCastClient != null;

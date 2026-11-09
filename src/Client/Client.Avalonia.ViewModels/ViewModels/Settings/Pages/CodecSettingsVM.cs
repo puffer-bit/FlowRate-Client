@@ -8,12 +8,12 @@ using ReactiveUI;
 
 namespace Client.ViewModels.Settings.Pages;
 
-public sealed class EncoderParameterVM : ReactiveObject
+public sealed class CodecParameterVM : ReactiveObject
 {
-    public EncoderParameter Parameter { get; }
+    public CodecParameter Parameter { get; }
     public string Name => Parameter.Name;
     public string Description => Parameter.Description;
-    public string DefaultText => Strings.Format("settings.video.encoderSettings.default", ("value", Parameter.DefaultValue));
+    public string DefaultText => Strings.Format("settings.video.codecSettings.default", ("value", Parameter.DefaultValue));
     public string RangeText => Parameter.Minimum == null ? "" : $"{Parameter.Minimum} … {Parameter.Maximum}";
     public IReadOnlyList<string> Choices => Parameter.Choices ?? [];
     public bool HasChoices => Choices.Count > 0;
@@ -37,7 +37,7 @@ public sealed class EncoderParameterVM : ReactiveObject
     }
     public bool HasError => IsOverridden && !Parameter.IsValid(Value);
 
-    public EncoderParameterVM(EncoderParameter parameter, string? value)
+    public CodecParameterVM(CodecParameter parameter, string? value)
     {
         Parameter = parameter;
         Value = value ?? parameter.DefaultValue;
@@ -45,20 +45,20 @@ public sealed class EncoderParameterVM : ReactiveObject
     }
 }
 
-public sealed class EncoderSettingsVM : ReactiveObject
+public sealed class CodecSettingsVM : ReactiveObject
 {
-    public string Encoder { get; }
-    public IReadOnlyList<EncoderParameterVM> Parameters { get; }
+    public string Factory { get; }
+    public IReadOnlyList<CodecParameterVM> Parameters { get; }
     public bool IsBusy { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
     public string? Error { get; private set => this.RaiseAndSetIfChanged(ref field, value); }
-    private readonly Func<IReadOnlyList<EncoderPropertyOverride>, Task> _save;
+    private readonly Func<IReadOnlyList<CodecPropertyOverride>, Task> _save;
 
-    public EncoderSettingsVM(string encoder, IReadOnlyList<EncoderParameter> parameters,
-        IReadOnlyList<EncoderPropertyOverride> saved, Func<IReadOnlyList<EncoderPropertyOverride>, Task> save)
+    public CodecSettingsVM(string factory, IReadOnlyList<CodecParameter> parameters,
+        IReadOnlyList<CodecPropertyOverride> saved, Func<IReadOnlyList<CodecPropertyOverride>, Task> save)
     {
-        Encoder = encoder;
-        Parameters = parameters.Select(p => new EncoderParameterVM(p,
-            saved.FirstOrDefault(v => v.Encoder == encoder && v.Name == p.Name)?.Value)).ToArray();
+        Factory = factory;
+        Parameters = parameters.Select(p => new CodecParameterVM(p,
+            saved.LastOrDefault(v => v.Factory == factory && v.Name == p.Name)?.Value)).ToArray();
         _save = save;
     }
 
@@ -78,7 +78,7 @@ public sealed class EncoderSettingsVM : ReactiveObject
             return false;
         if (Parameters.Any(p => p.HasError))
         {
-            Error = Strings.Get("settings.video.encoderSettings.invalid");
+            Error = Strings.Get("settings.video.codecSettings.invalid");
             return false;
         }
         IsBusy = true;
@@ -86,12 +86,12 @@ public sealed class EncoderSettingsVM : ReactiveObject
         try
         {
             await _save(Parameters.Where(p => p.IsOverridden)
-                .Select(p => new EncoderPropertyOverride(Encoder, p.Name, p.Value)).ToArray());
+                .Select(p => new CodecPropertyOverride(Factory, p.Name, p.Value)).ToArray());
             return true;
         }
         catch (Exception)
         {
-            Error = Strings.Get("settings.video.encoderSettings.saveFailed");
+            Error = Strings.Get("settings.video.codecSettings.saveFailed");
             return false;
         }
         finally { IsBusy = false; }
