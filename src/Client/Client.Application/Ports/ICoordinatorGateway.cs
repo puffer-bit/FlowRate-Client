@@ -145,7 +145,7 @@ public interface ICoordinatorGateway : IDisposable
     /// <summary>Bans, freezes or reinstates another user.</summary>
     /// <returns>The user as the server has them now, when the state was set.</returns>
     Task<UserModel> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null);
-    Task<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans(bool history = false);
+    Task<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans();
     Task RevokeBan(Guid banId);
     Task DeleteUser(int userId);
     Task<string?> RegisterPushToken(string token, PushPlatform platform, PushKey key);

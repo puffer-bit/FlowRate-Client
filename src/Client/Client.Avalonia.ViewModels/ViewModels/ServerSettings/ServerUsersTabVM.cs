@@ -35,7 +35,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private async Task LoadBansAsync()
     {
         if (!CanManageBans) return;
-        var response = await _coordinatorSession.GetBans(true);
+        var response = await _coordinatorSession.GetBans();
         if (!response.IsSuccess || response.Value == null) return;
         Bans.Clear();
         foreach (var ban in response.Value) Bans.Add(new BanRowVM(ban));
