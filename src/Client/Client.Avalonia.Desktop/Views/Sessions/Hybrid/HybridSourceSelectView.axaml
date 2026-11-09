@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+        xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
         xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
         mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="520"
         x:Class="Client.Views.Sessions.Hybrid.HybridSourceSelectView"
@@ -211,8 +212,9 @@
                     </ComboBox>
 
                     <TextBlock Grid.Row="2" Classes="fieldLabel" VerticalAlignment="Center"
-                               Text="{l:Text source.field.bitrate}"/>
-                    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*, Auto" ColumnSpacing="6">
+                               IsEnabled="{Binding !IsBitrateOverridden}" Text="{l:Text source.field.bitrate}"/>
+                    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*, Auto" ColumnSpacing="6"
+                          IsEnabled="{Binding !IsBitrateOverridden}">
                         <Button Classes="choiceCard kind" Classes.selected="{Binding IsAutoBitrate}"
                                 Command="{Binding SelectAutoBitrateCommand}">
                             <TextBlock Text="{Binding AutoBitrateLabel}" TextTrimming="CharacterEllipsis"
@@ -224,12 +226,16 @@
                         </Button>
                     </Grid>
                     <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*, Auto" ColumnSpacing="8"
-                          IsVisible="{Binding IsCustomBitrate}">
+                          IsVisible="{Binding IsCustomBitrate}" IsEnabled="{Binding !IsBitrateOverridden}">
                         <TextBox Text="{Binding CustomBitrate}" MaxLength="6"/>
                         <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
                                    Text="{l:Text source.bitrate.unit}"/>
                     </Grid>
                 </Grid>
+
+                <banners:WarningBanner IsVisible="{Binding IsBitrateOverridden}"
+                                       Header="{l:Text source.bitrate.encoderOverride.title}"
+                                       Message="{Binding EncoderBitrateWarning}"/>
 
                 <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
                         BorderBrush="{DynamicResource ErrorBrush}"

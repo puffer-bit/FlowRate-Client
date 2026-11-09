@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
@@ -55,7 +56,30 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public int Av1EncoderIndex
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanConfigureAv1Encoder));
+        }
+    }
+
+    private string? SelectedAv1Encoder => _av1Encoders[Math.Clamp(Av1EncoderIndex, 0, _av1Encoders.Count - 1)]
+        ?? _av1Encoders.Skip(1).FirstOrDefault();
+
+    public bool CanConfigureAv1Encoder => IsMediaEnabled && SelectedAv1Encoder is { } encoder
+        && !VideoElementNames.IsSoftware(encoder);
+
+    public EncoderSettingsVM? CreateEncoderSettings()
+    {
+        if (!CanConfigureAv1Encoder || SelectedAv1Encoder is not { } encoder)
+            return null;
+        return new EncoderSettingsVM(encoder, _mediaCapabilities.GetEncoderParameters(encoder), _encoderOverrides,
+            async values =>
+            {
+                var combined = _encoderOverrides.Where(p => p.Encoder != encoder).Concat(values).ToArray();
+                await SaveSettingsAsync(ToSettings() with { EncoderOverrides = combined });
+                _encoderOverrides = combined;
+            });
     }
 
     public bool IsZeroCopyEnabled
@@ -96,6 +120,16 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IVideoService _videoService;
+    private readonly IMediaCapabilities _mediaCapabilities;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private IReadOnlyList<EncoderPropertyOverride> _encoderOverrides = [];
+
+    private async Task SaveSettingsAsync(VideoSettings settings)
+    {
+        await _saveLock.WaitAsync();
+        try { await _videoService.SaveSettingsAsync(settings); }
+        finally { _saveLock.Release(); }
+    }
 
     // Element names behind DecoderChoices and EncoderChoices; null stands for the automatic choice
     private readonly IReadOnlyList<string?> _decoders;
@@ -109,6 +143,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public VideoControlVM(IVideoService videoService, IMediaCapabilities mediaCapabilities)
     {
         _videoService = videoService;
+        _mediaCapabilities = mediaCapabilities;
 
         IReadOnlyList<string> decoders = IsMediaEnabled ? mediaCapabilities.ScreenShareDecoders : [];
         IReadOnlyList<string> encoders = IsMediaEnabled ? mediaCapabilities.ScreenShareEncoders : [];
@@ -140,7 +175,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
                 nameof(IsTimedPresentationEnabled),
                 nameof(PresentationBufferIndex))
             .Where(_ => !_isUpdating && IsMediaEnabled)
-            .Select(_ => Observable.FromAsync(() => _videoService.SaveSettingsAsync(ToSettings())))
+            .Select(_ => Observable.FromAsync(() => SaveSettingsAsync(ToSettings())))
             .Concat()
             .Subscribe();
     }
@@ -194,12 +229,13 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         Apply(defaults);
         _isUpdating = false;
 
-        await _videoService.SaveSettingsAsync(defaults);
+        await SaveSettingsAsync(defaults);
     }
 
     private VideoSettings ToSettings() => new()
     {
         IsHardwareDecodingEnabled = true,
+        EncoderOverrides = _encoderOverrides,
         Decoder = _decoders[Math.Clamp(DecoderIndex, 0, _decoders.Count - 1)],
         Av1Decoder = _av1Decoders[Math.Clamp(Av1DecoderIndex, 0, _av1Decoders.Count - 1)],
         Encoder = _encoders[Math.Clamp(EncoderIndex, 0, _encoders.Count - 1)],
@@ -212,6 +248,7 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     private void Apply(VideoSettings settings)
     {
+        _encoderOverrides = settings.EncoderOverrides;
         // An element that is not on this system anymore reads as the automatic choice
         // Preserve the legacy software-only preference through the decoder choice.
         var decoder = settings.IsHardwareDecodingEnabled

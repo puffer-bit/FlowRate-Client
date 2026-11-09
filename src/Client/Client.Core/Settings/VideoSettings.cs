@@ -25,6 +25,8 @@ public sealed record VideoSettings
     /// <summary>The AV1 encoder element, or null to choose it automatically.</summary>
     public string? Av1Encoder { get; init; }
 
+    public IReadOnlyList<EncoderPropertyOverride> EncoderOverrides { get; init; } = [];
+
     /// <summary>
     /// Decoded frames go to the screen as GPU textures without passing through memory, where the
     /// system allows it.

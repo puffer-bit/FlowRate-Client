@@ -114,6 +114,27 @@ AV1 decoders exposed by its libwebrtc runtime and device; desktop remains the so
   (nvd3d11h264enc)" (`VideoElementNames`). The automatic choice names the element it comes to: the
   first of the list.
 
+## Encoder parameter dialog
+
+The gear beside the AV1 encoder opens a modal parameter editor for the selected hardware
+encoder (including the effective automatic choice). H.264 and software encoder gears are disabled.
+The installed element reports writable numeric, boolean and enum properties, descriptions, ranges
+and choices; generic object names and parent references are excluded. Driver-dependent enum choices
+therefore follow the local runtime rather than a fixed list.
+
+Each checked parameter overrides the app tuning. Unchecked parameters retain the app settings;
+the dialog also shows the encoder's own defaults for reference. Save persists overrides separately
+for each factory in SQLite. Cancel discards the draft, and Reset clears that factory's overrides
+when saved. Changes apply to the next share, with existing shares retaining their original tuning
+through bitrate updates. Overrides are validated against the installed element before use;
+unsupported properties from a different runtime version are ignored.
+
+When the effective AV1 encoder has a valid `bitrate` or `target-bitrate` override, the source
+selection dialog disables its automatic/custom bitrate controls and shows the shared warning
+banner directing the user to Settings → Video. Overrides for another encoder, unavailable
+properties and other session codecs do not disable these controls. The stream's bitrate preference
+is preserved, so it remains available after removing the encoder override.
+
 ## Tuning
 
 `VideoEncoderSelector` gives every encoder the bitrate and the properties of low latency. A

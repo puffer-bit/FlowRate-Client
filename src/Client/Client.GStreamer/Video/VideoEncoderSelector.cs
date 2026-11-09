@@ -9,7 +9,8 @@ namespace Client.GStreamer.Video;
 /// <summary>
 /// An encoder element and the properties that tune it for low-latency screen sharing.
 /// </summary>
-public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Name, string Value)> Properties, bool IsHardware)
+public sealed record VideoEncoderChoice(string Factory, IReadOnlyList<(string Name, string Value)> Properties, bool IsHardware,
+    IReadOnlyList<Client.Core.Settings.EncoderPropertyOverride>? Overrides = null)
 {
     /// <summary>
     /// The element as a gst-launch fragment, e.g. "openh264enc bitrate=4000000 usage-type=screen".
@@ -69,7 +70,8 @@ public static class VideoEncoderSelector
     private static readonly ConcurrentDictionary<string, bool> MesaAv1Encoders = new();
 
     /// <param name="preferred">The factory to use when this system has it, before the usual order.</param>
-    public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null)
+    public static VideoEncoderChoice? Select(VideoCodec codec, int bitrateKbps, string? preferred = null,
+        IReadOnlyList<Client.Core.Settings.EncoderPropertyOverride>? encoderOverrides = null)
     {
         var candidates = GetCandidates(codec).ToList();
         var first = candidates.FindIndex(candidate => candidate.Factory == preferred);
@@ -97,8 +99,21 @@ public static class VideoEncoderSelector
                 ? [("target-usage", "1")]
                 : [];
 
-            return new VideoEncoderChoice(candidate.Factory, [..candidate.Properties(bitrateKbps), ..tuning, ..driverTuning, ..limit],
-                candidate.IsHardware);
+            List<(string Name, string Value)> properties = [..candidate.Properties(bitrateKbps), ..tuning, ..driverTuning, ..limit];
+            var overrides = (encoderOverrides ?? Client.Core.Settings.VideoSettings.Current.EncoderOverrides)
+                .Where(p => p.Encoder == candidate.Factory).ToArray();
+            if (codec == VideoCodec.AV1 && candidate.IsHardware && overrides.Length > 0)
+            {
+                var supported = EncoderParameters.Get(candidate.Factory);
+                foreach (var item in overrides)
+                {
+                    if (!supported.Any(p => p.Name == item.Name && p.IsValid(item.Value)))
+                        continue;
+                    properties.RemoveAll(p => p.Name == item.Name);
+                    properties.Add((item.Name, item.Value));
+                }
+            }
+            return new VideoEncoderChoice(candidate.Factory, properties, candidate.IsHardware, overrides);
         }
 
         return null;

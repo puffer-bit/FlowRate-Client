@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:vm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Views.Dialogs.EncoderSettingsDialog"
+             x:DataType="vm:EncoderSettingsVM"
+             Width="640" MaxWidth="760" MaxHeight="680">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20,16" IsEnabled="{Binding !IsBusy}">
+        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
+            <TextBlock Text="{l:Text settings.video.encoderSettings.title}" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding Encoder}"/>
+            <TextBlock Text="{l:Text settings.video.encoderSettings.hint}" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Parameters}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:EncoderParameterVM">
+                        <Border BorderBrush="{DynamicResource DialogBorderBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                            <Grid ColumnDefinitions="*,200" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+                                <CheckBox Grid.Row="0" Grid.Column="0" Content="{Binding Name}"
+                                          IsChecked="{Binding IsOverridden}"/>
+                                <Panel Grid.Row="0" Grid.Column="1" IsEnabled="{Binding IsOverridden}">
+                                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Choices}"
+                                              SelectedItem="{Binding Value}" IsVisible="{Binding HasChoices}"/>
+                                    <TextBox Text="{Binding Value}" IsVisible="{Binding !HasChoices}"
+                                             Classes.invalid="{Binding HasError}"/>
+                                </Panel>
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Description}"
+                                           TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
+                                    <TextBlock Text="{Binding DefaultText}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <TextBlock Text="{Binding RangeText}" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <TextBlock Text="{l:Text settings.video.encoderSettings.invalidValue}" Classes="fieldError"
+                                               IsVisible="{Binding HasError}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        <StackPanel Grid.Row="2" Spacing="10" Margin="0,16,0,0">
+            <TextBlock Text="{Binding Error}" Classes="fieldError" TextWrapping="Wrap"/>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Button Grid.Column="0" HorizontalAlignment="Left" Classes="danger" Click="Reset">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text settings.video.encoderSettings.reset}"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Content="{l:Text settings.video.encoderSettings.cancel}" Click="Cancel" IsCancel="True"/>
+                <Button Grid.Column="2" Content="{l:Text settings.video.encoderSettings.save}" Click="Save" Classes="primary" IsDefault="True"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</UserControl>

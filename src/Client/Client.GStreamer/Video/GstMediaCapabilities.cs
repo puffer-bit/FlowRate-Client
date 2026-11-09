@@ -6,6 +6,8 @@ namespace Client.GStreamer.Video;
 
 public class GstMediaCapabilities : IMediaCapabilities
 {
+    public IReadOnlyList<Client.Core.Settings.EncoderParameter> GetEncoderParameters(string encoder) => EncoderParameters.Get(encoder);
+
     // Screen sharing encodes H.264
     public bool HasHardwareScreenShareEncoder => MediaRuntime.IsEnabled && VideoEncoderSelector.HasHardwareEncoder(VideoCodec.H264);
 

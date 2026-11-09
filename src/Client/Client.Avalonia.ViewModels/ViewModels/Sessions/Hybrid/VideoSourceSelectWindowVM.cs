@@ -10,6 +10,7 @@ using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
 using Client.Core.Media;
+using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
@@ -199,6 +200,10 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
     public bool IsAutoBitrate => !IsCustomBitrate;
 
+    public bool IsBitrateOverridden { get; }
+    public string? EncoderBitrateWarning { get; }
+
+
     /// <summary>
     /// The bitrate as the user typed it, in kbit/s.
     /// </summary>
@@ -283,7 +288,8 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     /// <param name="sharedInput">What the running share shows, when the dialog changes it, offered again.</param>
     public VideoSourceSelectWindowVM(IScreenSourceProvider? screenSourceProvider, IScreenCastClient? screenCastClient,
         IAudioAppProvider? audioApps, bool canShareAudio, ScreenShareSettings settings,
-        IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null)
+        IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null,
+        IMediaCapabilities? mediaCapabilities = null, VideoCodec codec = VideoCodec.H264)
     {
         _dismissedPrompts = dismissedPrompts;
         _screenSourceProvider = screenSourceProvider;
@@ -294,6 +300,10 @@ public class VideoSourceSelectWindowVM : ReactiveObject
             SystemInput = sharedInput;
 
         settings = settings.Normalize();
+        var bitrateOverride = mediaCapabilities?.GetScreenShareBitrateOverride(codec, VideoSettings.Current);
+        IsBitrateOverridden = bitrateOverride != null;
+        EncoderBitrateWarning = bitrateOverride == null ? null : Strings.Format("source.bitrate.encoderOverride.message",
+            ("encoder", bitrateOverride.Encoder));
 
         HasAudioToggle = canShareAudio && screenSourceProvider != null && screenCastClient == null;
         HasAudioApps = canShareAudio && audioApps != null && screenCastClient != null;
@@ -325,8 +335,8 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
         EnableAudioCommand = ReactiveCommand.Create(() => { IsAudioEnabled = true; });
         DisableAudioCommand = ReactiveCommand.Create(() => { IsAudioEnabled = false; });
-        SelectAutoBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = false; });
-        SelectCustomBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = true; });
+        SelectAutoBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = false; }, Observable.Return(!IsBitrateOverridden));
+        SelectCustomBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = true; }, Observable.Return(!IsBitrateOverridden));
         SelectWindowsCommand = ReactiveCommand.Create(() => { IsMonitorsMode = false; });
         SelectMonitorsCommand = ReactiveCommand.Create(() => { IsMonitorsMode = true; });
         PickSystemSourceCommand = ReactiveCommand.CreateFromTask(PickSystemSourceAsync);

@@ -353,6 +353,23 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task EncoderParametersRoundTripAndReset()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new VideoSettingsRepository(database.Database);
+        var parameters = new EncoderPropertyOverride[]
+        {
+            new("vaav1enc", "qp", "120"),
+            new("qsvav1enc", "target-usage", "3")
+        };
+        await repository.SaveAsync(new VideoSettings { EncoderOverrides = parameters });
+        Assert.Equal(parameters.OrderBy(p => p.Encoder), (await repository.GetAsync()).EncoderOverrides);
+
+        await repository.SaveAsync(new VideoSettings());
+        Assert.Empty((await repository.GetAsync()).EncoderOverrides);
+    }
+
+    [Fact]
     public async Task DebugSettingsRoundTrip()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();

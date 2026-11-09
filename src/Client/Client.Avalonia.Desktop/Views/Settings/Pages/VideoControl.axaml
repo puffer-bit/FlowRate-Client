@@ -56,12 +56,27 @@
         <controls:SettingsHeader services:SettingText.Section="video.encoding"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="video.encoder">
-                <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
-                          SelectedIndex="{Binding EncoderIndex}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
+                              SelectedIndex="{Binding EncoderIndex}"/>
+                    <Button Classes="ghost" Width="32" Height="32" IsEnabled="False"
+                            ToolTip.Tip="{l:Text settings.video.encoderSettings.title}"
+                            AutomationProperties.Name="{l:Text settings.video.encoderSettings.title}">
+                        <Image Width="18" Height="18" Source="{StaticResource GearIcon}"/>
+                    </Button>
+                </StackPanel>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="video.av1Encoder">
-                <ComboBox MinWidth="160" ItemsSource="{Binding Av1EncoderChoices}"
-                          SelectedIndex="{Binding Av1EncoderIndex}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="160" ItemsSource="{Binding Av1EncoderChoices}"
+                              SelectedIndex="{Binding Av1EncoderIndex}"/>
+                    <Button Classes="ghost" Width="32" Height="32" IsEnabled="{Binding CanConfigureAv1Encoder}"
+                            Click="ConfigureEncoder"
+                            ToolTip.Tip="{l:Text settings.video.encoderSettings.title}"
+                            AutomationProperties.Name="{l:Text settings.video.encoderSettings.title}">
+                        <Image Width="18" Height="18" Source="{StaticResource GearIcon}"/>
+                    </Button>
+                </StackPanel>
             </ui:SettingsRow>
         </ui:SettingsCard>
     </ui:SettingsPage>

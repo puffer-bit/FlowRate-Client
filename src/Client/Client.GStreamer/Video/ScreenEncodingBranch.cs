@@ -121,11 +121,12 @@ internal static class ScreenEncodingBranch
     }
 
     // A preference only applies when it belongs to the negotiated codec's candidates.
-    private static VideoEncoderChoice? SelectEncoder(VideoCodec codec, int bitrateKbps, string? preferred = null) =>
+    private static VideoEncoderChoice? SelectEncoder(VideoCodec codec, int bitrateKbps, string? preferred = null,
+        IReadOnlyList<Client.Core.Settings.EncoderPropertyOverride>? encoderOverrides = null) =>
         VideoEncoderSelector.Select(codec, bitrateKbps,
             preferred ?? (codec == VideoCodec.AV1
                 ? Client.Core.Settings.VideoSettings.Current.Av1Encoder
-                : Client.Core.Settings.VideoSettings.Current.Encoder));
+                : Client.Core.Settings.VideoSettings.Current.Encoder), encoderOverrides);
 
     /// <summary>
     /// Whether the branch would take DMA-BUF frames: only the VA-API encoder with its postprocessor does.
@@ -143,7 +144,7 @@ internal static class ScreenEncodingBranch
     {
         using var element = branch.GetByName(EncoderName);
 
-        if (element == null || SelectEncoder(codec, kbps, encoder.Factory) is not { } choice || choice.Factory != encoder.Factory)
+        if (element == null || SelectEncoder(codec, kbps, encoder.Factory, encoder.Overrides ?? []) is not { } choice || choice.Factory != encoder.Factory)
             return;
 
         foreach (var (name, value) in choice.Properties.Where(property => VideoEncoderSelector.DependsOnBitrate(property.Name)))

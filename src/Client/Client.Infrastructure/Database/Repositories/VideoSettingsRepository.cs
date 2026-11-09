@@ -26,6 +26,9 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
         if (row == null)
             return new VideoSettings();
 
+        var parameters = (await connection.QueryAsync<EncoderPropertyOverride>(
+            "SELECT Encoder, Name, Value FROM EncoderParameters ORDER BY Encoder, Name")).ToArray();
+
         return new VideoSettings
         {
             IsHardwareDecodingEnabled = row.IsHardwareDecodingEnabled,
@@ -33,6 +36,7 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
             Av1Decoder = row.Av1Decoder,
             Encoder = row.Encoder,
             Av1Encoder = row.Av1Encoder,
+            EncoderOverrides = parameters,
             IsZeroCopyEnabled = row.IsZeroCopyEnabled,
             IsTimedPresentationEnabled = row.IsTimedPresentationEnabled,
             PresentationBufferFrames = row.PresentationBufferFrames
@@ -42,6 +46,7 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
     public async Task SaveAsync(VideoSettings settings)
     {
         await using var connection = await _database.OpenAsync();
+        using var transaction = connection.BeginTransaction();
 
         await connection.ExecuteAsync("""
             INSERT INTO VideoSettings (Id, IsHardwareDecodingEnabled, Decoder, Av1Decoder, Encoder, Av1Encoder, IsZeroCopyEnabled,
@@ -67,7 +72,13 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
                 settings.IsZeroCopyEnabled,
                 settings.IsTimedPresentationEnabled,
                 settings.PresentationBufferFrames
-            });
+            }, transaction);
+
+        await connection.ExecuteAsync("DELETE FROM EncoderParameters", transaction: transaction);
+        foreach (var parameter in settings.EncoderOverrides)
+            await connection.ExecuteAsync("INSERT INTO EncoderParameters (Encoder, Name, Value) VALUES (@Encoder, @Name, @Value)",
+                new { parameter.Encoder, parameter.Name, parameter.Value }, transaction);
+        transaction.Commit();
     }
 }
 

@@ -161,7 +161,8 @@ public partial class ActiveHybridSessionVM
 
         var dialog = new VideoSourceSelectWindowVM(_screenSourceProvider, _screenCastClient,
             _mediaCapabilities.CanCaptureScreenAudio ? _audioApps : null, _mediaCapabilities.CanCaptureScreenAudio,
-            settings, _dismissedPrompts, sharedInput);
+            settings, _dismissedPrompts, sharedInput, _mediaCapabilities,
+            Model.Media.ScreenCodec == Shared.Enums.WebRTC.WebRTCVideoCodecs.AV1 ? VideoCodec.AV1 : VideoCodec.H264);
         ScreenShareRequest? request = null;
 
         _sourceSelect = dialog;
