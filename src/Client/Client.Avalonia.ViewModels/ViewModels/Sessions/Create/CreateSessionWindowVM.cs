@@ -40,6 +40,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     public ObservableCollection<ChatMemberChoiceVM> SelectedMembers { get; } = new();
     public ReactiveCommand<ChatMemberChoiceVM, RxVoid> ToggleMemberCommand { get; }
     public ChatMemberChoiceVM? SelectedOwner { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public ReactiveCommand<RxVoid, RxVoid> SelectDirectCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> SelectGroupCommand { get; }
     public bool IsGroup
     {
         get;
@@ -68,7 +70,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     private async Task SearchMembersAsync(string query)
     {
         var version = ++_searchVersion;
-        var users = await _coordinatorSession.SearchUsers(query, 30);
+        var users = await _coordinatorSession.SearchUsers(query, 20);
         if (_disposed || version != _searchVersion) return;
         SearchResults.Clear();
         foreach (var user in users.Where(user => IsEditingGroup || user.Id != _coordinatorSession.GetCurrentUser().Id))
@@ -187,6 +189,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         _editingGroup = editingGroup;
         IsGroup = editingGroup != null;
         if (editingGroup != null) Name = editingGroup.Name;
+        SelectDirectCommand = ReactiveCommand.Create(() => { IsGroup = false; });
+        SelectGroupCommand = ReactiveCommand.Create(() => { IsGroup = true; });
         ToggleMemberCommand = ReactiveCommand.Create<ChatMemberChoiceVM>(ToggleMember);
 
         SelectedType = initialType == SessionType.Chat ? ChatOption : HybridOption;
@@ -206,6 +210,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(RxVoid.Default); },
             CreateCommand.IsExecuting.Select(busy => !busy));
 
+        _disposables.Add(SelectDirectCommand);
+        _disposables.Add(SelectGroupCommand);
         _isBusy = CreateCommand.IsExecuting.ToProperty(this, nameof(IsBusy));
 
         // The name has no error until it is first edited, an empty untouched form is not a mistake

@@ -447,7 +447,7 @@ public partial class MainWindowVM
         if (OpenedSessions == null)
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
-                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand);
+                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
             OpenedSessions = sessions;

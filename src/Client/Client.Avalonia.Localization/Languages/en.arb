@@ -2001,6 +2001,9 @@
     }
   },
   "privateChats.write": "Message",
-  "privateChats.createHint": "Choose one person for a direct chat, or enable Group and select participants.",
-  "privateChats.audio": "Audio"
+  "privateChats.createHint": "Choose a direct chat or a group, then select participants.",
+  "privateChats.audio": "Audio",
+  "privateChats.direct": "Direct chat",
+  "privateChats.directDescription": "A conversation with one person.",
+  "privateChats.groupDescription": "A conversation with several people."
 }

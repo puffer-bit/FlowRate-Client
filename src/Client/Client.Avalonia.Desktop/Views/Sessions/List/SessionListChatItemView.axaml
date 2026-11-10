@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
@@ -108,7 +109,7 @@
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                     <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
-                    <Image Source="{StaticResource BaseUserIcon}" IsVisible="{Binding IsDirect}"/>
+                    <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsDirect}"/>
                     <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
                 </Panel>
 
@@ -116,14 +117,14 @@
                     <text:MarqueeTextBlock Classes="sessionName" Text="{Binding DisplayName}"
                                           Classes.unread="{Binding HasUnread}" ToolTip.Tip="{Binding DisplayName}"/>
                     <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}"
-                               Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                               Classes="sessionPreview" FontSize="12" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 
 
                 <!-- Mentions take the place of the plain counter. A muted chat shows its crossed bell in
                      the same place: it has no plain counter, and a mention outranks the bell -->
                 <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding LastMessageTime}" IsVisible="{Binding IsPrivate}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    <TextBlock Text="{Binding LastMessageTime}" IsVisible="{Binding IsPrivate}" FontSize="10" Classes="sessionPreview"/>
                     <Panel>
                     <Image Width="18" Height="18"
                            IsVisible="{Binding ShowsMutedMark}"

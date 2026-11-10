@@ -75,15 +75,32 @@
 
                 <!-- Private audience -->
                 <StackPanel Spacing="8" IsVisible="{Binding IsPrivateMode}">
-                    <CheckBox Content="{l:Text privateChats.group}" IsChecked="{Binding IsGroup}"
-                              IsEnabled="{Binding !IsEditingGroup}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.type}"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10" IsEnabled="{Binding !IsEditingGroup}">
+                        <Button Grid.Column="0" Classes="choiceCard typeCard" Classes.selected="{Binding !IsGroup}"
+                                Command="{Binding SelectDirectCommand}">
+                            <StackPanel Spacing="6">
+                                <Image Width="24" Height="24" HorizontalAlignment="Left" Source="{StaticResource BaseUserIcon}"/>
+                                <TextBlock Classes="cardTitle" Text="{l:Text privateChats.direct}"/>
+                                <TextBlock Classes="hint" Text="{l:Text privateChats.directDescription}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1" Classes="choiceCard typeCard" Classes.selected="{Binding IsGroup}"
+                                Command="{Binding SelectGroupCommand}">
+                            <StackPanel Spacing="6">
+                                <Image Width="24" Height="24" HorizontalAlignment="Left" Source="{StaticResource BaseUsersIcon}"/>
+                                <TextBlock Classes="cardTitle" Text="{l:Text privateChats.group}"/>
+                                <TextBlock Classes="hint" Text="{l:Text privateChats.groupDescription}"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                     <TextBlock Classes="fieldLabel" Text="{l:Text privateChats.members}"/>
                     <TextBox x:Name="MemberSearchInput" PlaceholderText="{l:Text privateChats.search}" Text="{Binding SearchQuery}"/>
                     <TextBlock Classes="hint" Text="{Binding SelectedCountText}"/>
                     <ItemsControl ItemsSource="{Binding SelectedMembers}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="createVm:ChatMemberChoiceVM">
-                                <Button Content="{Binding Name}" Margin="0,2"
+                                <Button Classes="choiceCard" Content="{Binding Name}" Margin="0,2"
                                         Command="{Binding $parent[UserControl].((createVm:CreateSessionWindowVM)DataContext).ToggleMemberCommand}"
                                         CommandParameter="{Binding}"/>
                             </DataTemplate>
@@ -93,7 +110,7 @@
                         <ItemsControl ItemsSource="{Binding SearchResults}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="createVm:ChatMemberChoiceVM">
-                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    <Button Classes="choiceCard" Margin="0,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                             Classes.selected="{Binding IsSelected}"
                                             Command="{Binding $parent[UserControl].((createVm:CreateSessionWindowVM)DataContext).ToggleMemberCommand}"
                                             CommandParameter="{Binding}">

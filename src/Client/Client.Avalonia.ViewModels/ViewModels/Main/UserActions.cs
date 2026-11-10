@@ -31,6 +31,7 @@ public sealed class UserActions
     /// <summary>Opens what the current user logs in with: the password, one-time codes and passkeys.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ManageSecurityCommand { get; }
     public ReactiveCommand<int, RxVoid> ViewProfileCommand { get; }
+    public ReactiveCommand<int, RxVoid> OpenDirectChatCommand { get; }
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
 
@@ -84,6 +85,11 @@ public sealed class UserActions
 
         EditProfileCommand = ReactiveCommand.CreateFromTask(EditProfile, isConnected);
         ViewProfileCommand = ReactiveCommand.CreateFromTask<int>(ViewProfile, isConnected);
+        OpenDirectChatCommand = ReactiveCommand.CreateFromTask<int>(async userId =>
+        {
+            if (userId != _currentUser()?.Id && OpenDirectChat != null && await Session.GetUser(userId) is { } user)
+                await OpenDirectChat(user);
+        }, isConnected);
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
         BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);

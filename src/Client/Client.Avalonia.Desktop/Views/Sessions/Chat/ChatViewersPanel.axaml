@@ -65,6 +65,9 @@
                                             <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
                                                                   menus:FlyoutMenu.CloseOnClick="True"
                                                                   Command="{Binding ViewProfile}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True" IsVisible="{Binding CanOpenDirectChat}"
+                                                                  Command="{Binding OpenDirectChat}"/>
                                             <menus:MenuItemButton Icon="{StaticResource MentionIcon}" Content="{l:Text chat.menu.mention}"
                                                                   menus:FlyoutMenu.CloseOnClick="True" IsEnabled="{Binding CanMention}"
                                                                   Command="{Binding Mention}"/>

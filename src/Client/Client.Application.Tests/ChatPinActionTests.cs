@@ -65,6 +65,29 @@ public class ChatPinActionTests
     });
 
     [Fact]
+    public Task DirectChatMemberCanPinWithoutDeletingPeerMessages() => TestUiThread.RunAsync(() =>
+    {
+        using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
+        using var users = ReactiveCommand.Create<int>(_ => { });
+        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+            _ => Task.CompletedTask) { IsConnected = true };
+        var requested = new List<bool>();
+        var vm = new ChatMessageVM(Message(), 1, messages, users, messages, messages, users,
+            _ => Task.FromResult(true), composer: composer)
+        {
+            IsPinAllowed = true, CanPinInDirectChat = true,
+            SetPinned = pinned => { requested.Add(pinned); return Task.FromResult(true); }
+        };
+        using var close = vm.CloseFlyoutInteraction.RegisterHandler(context => context.SetOutput(RxVoid.Default));
+        Assert.True(vm.CanPin);
+        Assert.False(vm.CanDelete);
+        vm.TogglePinned();
+        Assert.Equal(new[] { true }, requested);
+        composer.IsConnected = false;
+        Assert.False(vm.CanPin);
+    });
+
+    [Fact]
     public Task PinningRequiresModerationAndConnection_AndWaitsForServerState() => TestUiThread.RunAsync(() =>
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });

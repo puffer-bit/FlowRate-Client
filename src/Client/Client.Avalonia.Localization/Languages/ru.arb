@@ -1438,6 +1438,9 @@
     }
   },
   "privateChats.write": "Написать",
-  "privateChats.createHint": "Выберите собеседника для личного чата или включите «Группа» и выберите участников.",
-  "privateChats.audio": "Аудио"
+  "privateChats.createHint": "Выберите личный чат или группу, затем добавьте участников.",
+  "privateChats.audio": "Аудио",
+  "privateChats.direct": "Личный чат",
+  "privateChats.directDescription": "Переписка с одним человеком.",
+  "privateChats.groupDescription": "Переписка с несколькими людьми."
 }

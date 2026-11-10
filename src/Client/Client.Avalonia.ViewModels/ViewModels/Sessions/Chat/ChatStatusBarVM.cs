@@ -5,13 +5,29 @@ using System.Threading.Tasks;
 using Client.Avalonia.Localization;
 using ReactiveUI;
 using Client.Core.Sessions;
+using Client.Core.Users;
+using Shared.Enums;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
 
 public class ChatStatusBarVM : ReactiveObject, IDisposable
 {
-    public string Name => _session.Name;
+    private UserModel? _peer;
+    private readonly ReactiveCommand<int, RxVoid>? _viewProfile;
+    public bool IsDirect => _session.Kind == ChatKind.Direct;
+    public bool HasViewers => Viewers != null;
+    public string Name => IsDirect ? _peer?.DisplayName ?? _peer?.Username ?? string.Empty : _session.Name;
+    public string? AvatarUrl => _peer?.AvatarUrl;
+    public Shared.Enums.User.UserStatus? PeerStatus => _peer?.Status;
+
+    public void ApplyPeer(UserModel peer)
+    {
+        _peer = peer;
+        this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(AvatarUrl));
+        this.RaisePropertyChanged(nameof(PeerStatus));
+    }
     public ChatViewersVM? Viewers
     {
         get;
@@ -80,9 +96,10 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     private readonly ReactiveCommand<RxVoid, RxVoid> _openInfoCommand;
     private bool _isInfoOpen;
 
-    public ChatStatusBarVM(ChatSessionModel sessionModel)
+    public ChatStatusBarVM(ChatSessionModel sessionModel, ReactiveCommand<int, RxVoid>? viewProfile = null)
     {
         _session = sessionModel;
+        _viewProfile = viewProfile;
         _openInfoCommand = ReactiveCommand.CreateFromTask(OpenInfoAsync);
         // Opening a dialog must not disable or dim the header for the dialog's lifetime.
         OpenInfoCommand = ReactiveCommand.Create(() =>
@@ -101,6 +118,11 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
 
     private async Task OpenInfoAsync()
     {
+        if (IsDirect)
+        {
+            if (_peer != null) _viewProfile?.Execute(_peer.Id).Subscribe();
+            return;
+        }
         if (_isInfoOpen)
             return;
 

@@ -168,6 +168,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editMessageCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _deleteMessageCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
 
     private readonly System.Threading.SemaphoreSlim _historyGate = new(1, 1);
     private readonly Dictionary<int, ChatMessageModel> _messageChanges = new();
@@ -201,7 +202,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         ChatSessionServices services, ChatReadTracker readTracker,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
-        ReactiveCommand<int, RxVoid>? unbanUserCommand = null)
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         _dismissedPrompts = services.DismissedPrompts;
         _readTracker = readTracker;
@@ -209,10 +211,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _images = services.Images;
         _mediaCache = services.MediaCache;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
         _model = sessionModel;
         Id = sessionModel.Id;
         Name = sessionModel.Name;
-        _ = UpdateChatNameAsync(sessionModel);
         var currentUser = coordinatorSession.GetCurrentUser();
         _currentUserId = currentUser.Id;
         _senders = new ChatSenderDirectory(coordinatorSession, currentUser.Id);
@@ -233,10 +235,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             message => _coordinatorSession.DeleteChatMessage(message.ChatId, message.Id));
         ScrollToEndCommand = ReactiveCommand.CreateFromTask(GoToLatestAsync);
 
-        StatusBar = new ChatStatusBarVM(sessionModel)
+        StatusBar = new ChatStatusBarVM(sessionModel, viewProfileCommand)
         {
-            Viewers = new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
-                services.Appearance)
+            Viewers = sessionModel.Kind == ChatKind.Direct ? null : new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
+                services.Appearance, openDirectChatCommand)
         };
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)
@@ -260,10 +262,13 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 () => coordinatorSession.StateChanged -= OnCoordinatorStateChanged)
             .Add(() => coordinatorSession.PermissionsChanged += OnPermissionsChanged,
                 () => coordinatorSession.PermissionsChanged -= OnPermissionsChanged)
+            .Add(() => coordinatorSession.UserUpdated += OnUserUpdated,
+                () => coordinatorSession.UserUpdated -= OnUserUpdated)
             .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
 
+        _ = UpdateChatNameAsync(sessionModel);
         RestoreTyping();
 
     }
@@ -422,10 +427,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private ChatMessageVM CreateMessageView(ChatMessageModel model, bool isNew = false) =>
         new(model, _currentUserId, _setReplyMessageCommand,
             _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
-            ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer)
+            ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer, _openDirectChatCommand)
         {
             IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
             IsPinAllowed = !_model.IsArchived,
+            CanPinInDirectChat = _model.Kind == ChatKind.Direct,
             SetPinned = async pinned =>
                 (await _coordinatorSession.SetMessagePinned(model.ChatId, model.Id, pinned)).IsSuccess,
             SetReaction = async (emoji, added) =>
@@ -627,6 +633,15 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => ApplyAccess(permissions));
 
+    private void OnUserUpdated(Client.Core.Users.UserModel user) => Dispatcher.UIThread.Post(() =>
+    {
+        if (!_isDisposed && _model.Kind == ChatKind.Direct && user.Id != _currentUserId && _model.MemberIds.Contains(user.Id))
+        {
+            Name = user.DisplayName ?? user.Username;
+            StatusBar.ApplyPeer(user);
+        }
+    });
+
     private async Task UpdateChatNameAsync(ChatSessionModel model)
     {
         if (model.Kind == ChatKind.Direct)
@@ -635,7 +650,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             if (await _coordinatorSession.GetUser(otherId) is { } other)
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (!_isDisposed && ReferenceEquals(_model, model)) Name = other.DisplayName ?? other.Username;
+                    if (!_isDisposed && ReferenceEquals(_model, model))
+                    {
+                        Name = other.DisplayName ?? other.Username;
+                        StatusBar.ApplyPeer(other);
+                    }
                 });
         }
         else Name = model.Name;

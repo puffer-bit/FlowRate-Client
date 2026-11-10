@@ -1367,6 +1367,9 @@
     }
   },
   "privateChats.write": "发消息",
-  "privateChats.createHint": "选择一位私聊对象，或启用群组并选择成员。",
-  "privateChats.audio": "音频"
+  "privateChats.createHint": "选择私聊或群组，然后添加参与者。",
+  "privateChats.audio": "音频",
+  "privateChats.direct": "私聊",
+  "privateChats.directDescription": "与一个人交谈。",
+  "privateChats.groupDescription": "与多个人交谈。"
 }

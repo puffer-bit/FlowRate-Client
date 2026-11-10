@@ -1367,6 +1367,9 @@
     }
   },
   "privateChats.write": "メッセージを送る",
-  "privateChats.createHint": "個人チャットの相手を選ぶか、グループを有効にして参加者を選んでください。",
-  "privateChats.audio": "音声"
+  "privateChats.createHint": "個人チャットかグループを選び、参加者を追加してください。",
+  "privateChats.audio": "音声",
+  "privateChats.direct": "個人チャット",
+  "privateChats.directDescription": "1人との会話。",
+  "privateChats.groupDescription": "複数人との会話。"
 }

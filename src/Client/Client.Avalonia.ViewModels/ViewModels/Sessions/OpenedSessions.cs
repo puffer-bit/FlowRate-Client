@@ -68,6 +68,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     private readonly ChatReadTracker _readTracker;
     private readonly Func<HybridSessionModel, ActiveHybridSessionVM> _createHybridSession;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUserCommand;
     private readonly ReactiveCommand<int, RxVoid>? _unbanUserCommand;
 
@@ -80,13 +81,15 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
         Func<HybridSessionModel, ActiveHybridSessionVM> createHybridSession,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
-        ReactiveCommand<int, RxVoid>? unbanUserCommand = null)
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         _coordinatorSession = coordinatorSession;
         _chatServices = chatServices;
         _readTracker = readTracker;
         _createHybridSession = createHybridSession;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
         _banUserCommand = banUserCommand;
         _unbanUserCommand = unbanUserCommand;
 
@@ -148,7 +151,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
             _chats.Remove(chat);
         else
             chat = new ActiveChatSessionVM(chatModel, _coordinatorSession, _chatServices, _readTracker,
-                _viewProfileCommand, _banUserCommand, _unbanUserCommand);
+                _viewProfileCommand, _banUserCommand, _unbanUserCommand, _openDirectChatCommand);
 
         _chats.Add(chat);
 

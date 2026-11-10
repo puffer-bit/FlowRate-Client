@@ -553,7 +553,11 @@ public partial class SessionsListVM : ReactiveObject
         if (other != null)
             Dispatcher.UIThread.Post(() =>
             {
-                if (ReferenceEquals(chat.Model, model)) chat.DisplayName = other.DisplayName ?? other.Username;
+                if (ReferenceEquals(chat.Model, model))
+                {
+                    chat.DisplayName = other.DisplayName ?? other.Username;
+                    chat.AvatarUrl = other.AvatarUrl;
+                }
             });
     }
 
@@ -767,7 +771,10 @@ public partial class SessionsListVM : ReactiveObject
         foreach (var chat in Sessions.OfType<ChatSessionVM>())
             if (chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(user.Id)
                 && user.Id != _coordinatorSession?.GetCurrentUser().Id)
+            {
                 chat.DisplayName = user.DisplayName ?? user.Username;
+                chat.AvatarUrl = user.AvatarUrl;
+            }
     });
 
     private void RemovePeerFromSession(PeerLeftEvent notification) =>
