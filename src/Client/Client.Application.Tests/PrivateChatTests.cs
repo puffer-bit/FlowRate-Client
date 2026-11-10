@@ -107,6 +107,21 @@ public sealed class PrivateChatTests
         Assert.Equal(new[] { 2 }, profiles);
     });
 
+    [Fact]
+    public Task FailedGroupCreationPreservesFormAndShowsTheActualError() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, Session>();
+        var proxy = (Session)(object)session;
+        proxy.CreateError = ErrorCode.Internal;
+        using var form = new CreateSessionWindowVM(session, privateMode: true) { IsGroup = true, Name = "Friends" };
+        form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(2, "Peer")).Wait();
+        form.CreateCommand.Execute().Wait();
+        Assert.Contains(nameof(ErrorCode.Internal), form.GeneralError);
+        Assert.Null(form.CreatedSession);
+        Assert.Equal("Friends", form.Name);
+        Assert.Equal(2, Assert.Single(form.SelectedMembers).Id);
+    });
+
     private static ChatSessionModel Model(ChatKind kind, params int[] members) => new()
     {
         Id = 7, Name = "Chat", Capacity = -1, SessionType = SessionType.Chat,
@@ -115,6 +130,7 @@ public sealed class PrivateChatTests
 
     public class Session : DispatchProxy
     {
+        public ErrorCode? CreateError { get; set; }
         public int SearchLimit { get; private set; }
         public NewSessionModel? Created { get; private set; }
         protected override object? Invoke(MethodInfo? method, object?[]? args) => method!.Name switch
@@ -132,6 +148,7 @@ public sealed class PrivateChatTests
         private Task<RequestResult<SessionModel>> Create(NewSessionModel session)
         {
             Created = session;
+            if (CreateError is { } error) return Task.FromResult(new RequestResult<SessionModel>(error));
             return Task.FromResult(new RequestResult<SessionModel>(Model(((NewChatSessionOptions)session.Options).Kind, 1, 2)));
         }
     }

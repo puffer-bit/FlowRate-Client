@@ -260,7 +260,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
                 ? await _coordinatorSession.ChangeGroup(_editingGroup!.Id, name, members, SelectedOwner!.Id)
                 : await CreatePrivateAsync(name, members);
             if (privateResult.IsSuccess) await CloseWindow.Handle(RxVoid.Default);
-            else GeneralError = Strings.Get("createSession.notAccepted");
+            else GeneralError = Strings.Format("createSession.notCreated", ("reason", privateResult));
             return;
         }
         NameError = SessionRules.ValidateName(Name);
