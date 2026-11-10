@@ -44,11 +44,19 @@ public class ChatMentionPickerVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool IsSearching
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public int SelectedIndex
     {
         get;
         private set
         {
+            if (field == value)
+                return;
             if (field >= 0 && field < Suggestions.Count)
                 Suggestions[field].IsSelected = false;
             this.RaiseAndSetIfChanged(ref field, value);
@@ -80,12 +88,14 @@ public class ChatMentionPickerVM : ReactiveObject
 
         _queryStart = start;
         _query = query;
+        // Keep the popup in place while refreshing, but prevent picking an outdated result.
+        IsSearching = true;
         _ = SearchAsync(query);
     }
 
     public void MoveSelection(int step)
     {
-        if (Suggestions.Count == 0)
+        if (IsSearching || Suggestions.Count == 0)
             return;
 
         SelectedIndex = ((SelectedIndex + step) % Suggestions.Count + Suggestions.Count) % Suggestions.Count;
@@ -98,7 +108,9 @@ public class ChatMentionPickerVM : ReactiveObject
     public (string Text, int CaretIndex)? Complete(string? text, int caretIndex, ChatMentionSuggestionVM? suggestion = null)
     {
         suggestion ??= SelectedIndex >= 0 && SelectedIndex < Suggestions.Count ? Suggestions[SelectedIndex] : null;
-        if (suggestion == null || text == null || _queryStart < 0 || _queryStart >= text.Length)
+        var (start, query) = FindQuery(text, caretIndex);
+        if (suggestion == null || text == null || !IsOpen || IsSearching || !Suggestions.Contains(suggestion)
+            || start < 0 || start != _queryStart || query != _query)
             return null;
 
         int end = Math.Clamp(caretIndex, _queryStart, text.Length);
@@ -122,6 +134,7 @@ public class ChatMentionPickerVM : ReactiveObject
         _search = null;
         _queryStart = -1;
         _query = null;
+        IsSearching = false;
         SelectedIndex = -1;
         Suggestions.Clear();
         IsOpen = false;
@@ -230,7 +243,8 @@ public class ChatMentionPickerVM : ReactiveObject
 
         try
         {
-            await Task.Delay(SearchDelay, search.Token);
+            var cancellationToken = search.Token;
+            await Task.Delay(SearchDelay, cancellationToken);
             var users = await _session.SearchUsers(query, SuggestionsCount + 1);
             if (search.IsCancellationRequested)
                 return;
@@ -262,16 +276,71 @@ public class ChatMentionPickerVM : ReactiveObject
                 if (search != _search)
                     return;
 
-                SelectedIndex = -1;
-                Suggestions.Clear();
-                Suggestions.AddRange(suggestions);
+                _search = null;
+                ApplySuggestions(suggestions);
+                IsSearching = false;
                 IsOpen = suggestions.Count > 0;
-                SelectedIndex = suggestions.Count > 0 ? 0 : -1;
             });
         }
         catch (OperationCanceledException)
         {
         }
+        finally
+        {
+            // Close cancels a search, but the asynchronous operation owns its lifetime.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (search == _search)
+                {
+                    _search = null;
+                    IsSearching = false;
+                }
+            });
+            search.Dispose();
+        }
+    }
+
+    private void ApplySuggestions(IReadOnlyList<ChatMentionSuggestionVM> results)
+    {
+        var selected = SelectedIndex >= 0 && SelectedIndex < Suggestions.Count ? Suggestions[SelectedIndex] : null;
+        var updated = new List<ChatMentionSuggestionVM>(results.Count);
+        foreach (var result in results)
+        {
+            var existing = Suggestions.FirstOrDefault(item => item.UserId == result.UserId
+                && (item.UserId != null || item.Name == result.Name));
+            if (existing == null)
+            {
+                updated.Add(result);
+                continue;
+            }
+
+            existing.Name = result.Name;
+            existing.AvatarUrl = result.AvatarUrl;
+            existing.Status = result.Status;
+            existing.Hint = result.Hint;
+            updated.Add(existing);
+        }
+
+        // Preserve controls, avatar loads and hover state for users still in the results.
+        for (int i = Suggestions.Count - 1; i >= 0; i--)
+            if (!updated.Contains(Suggestions[i]))
+                Suggestions.RemoveAt(i);
+        for (int i = 0; i < updated.Count; i++)
+        {
+            int previous = Suggestions.IndexOf(updated[i]);
+            if (previous < 0)
+                Suggestions.Insert(i, updated[i]);
+            else if (previous != i)
+                Suggestions.Move(previous, i);
+        }
+
+        int selectedIndex = selected == null ? -1 : Suggestions.IndexOf(selected);
+        // An index may now refer to a different row after a removal or move.
+        if (selected != null && selectedIndex < 0)
+            selected.IsSelected = false;
+        SelectedIndex = selectedIndex >= 0 ? selectedIndex : Suggestions.Count > 0 ? 0 : -1;
+        if (SelectedIndex >= 0)
+            Suggestions[SelectedIndex].IsSelected = true;
     }
 
     // The "@" before the caret that starts the word being typed, and what follows it

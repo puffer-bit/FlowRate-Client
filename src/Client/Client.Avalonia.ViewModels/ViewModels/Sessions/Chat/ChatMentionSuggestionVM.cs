@@ -9,11 +9,32 @@ namespace Client.ViewModels.Sessions.Chat;
 public class ChatMentionSuggestionVM : ReactiveObject
 {
     /// <summary>The name written after "@".</summary>
-    public required string Name { get; init; }
+    public required string Name
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
     public int? UserId { get; init; }
-    public string? AvatarUrl { get; init; }
-    public UserStatus? Status { get; init; }
-    public string? Hint { get; init; }
+    public string? AvatarUrl
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+    public UserStatus? Status
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+    public string? Hint
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasHint));
+        }
+    }
     public bool HasHint => Hint != null;
     public bool IsGroup => UserId == null;
 

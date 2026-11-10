@@ -30,6 +30,8 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
     private ChatComposerVM? _emojiComposer;
     private TopLevel? _emojiTopLevel;
     private EmojiPickerView? _emojiPicker;
+    private ChatMentionPickerVM? _mentionPicker;
+    private Window? _mentionWindow;
 
     private EmojiPickerView EmojiPicker => _emojiPicker!;
 
@@ -81,8 +83,36 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         MessageInput.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty || e.Property == TextBox.CaretIndexProperty)
-                ViewModel?.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+                UpdateMentionPicker();
         };
+        MessageInput.GotFocus += (_, _) => UpdateMentionPicker();
+        MessageInput.LostFocus += (_, _) => ViewModel?.MentionPicker.Close();
+        AttachedToVisualTree += (_, _) =>
+        {
+            _mentionWindow = TopLevel.GetTopLevel(this) as Window;
+            if (_mentionWindow != null) _mentionWindow.Deactivated += OnMentionWindowDeactivated;
+        };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            ViewModel?.MentionPicker.Close();
+            if (_mentionWindow != null) _mentionWindow.Deactivated -= OnMentionWindowDeactivated;
+            _mentionWindow = null;
+        };
+        DataContextChanged += (_, _) =>
+        {
+            _mentionPicker?.Close();
+            _mentionPicker = ViewModel?.MentionPicker;
+        };
+    }
+
+    private void OnMentionWindowDeactivated(object? sender, EventArgs e) => ViewModel?.MentionPicker.Close();
+
+    private void UpdateMentionPicker()
+    {
+        if (MessageInput.IsFocused && _mentionWindow is not { IsActive: false })
+            ViewModel?.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+        else
+            ViewModel?.MentionPicker.Close();
     }
 
     private void CaptureEmojiSelection()
@@ -214,7 +244,8 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
 
     private void OnInputKeyDown(object? sender, KeyEventArgs e)
     {
-        if (ViewModel?.MentionPicker is { IsOpen: true } picker && HandleMentionKey(picker, e.Key))
+        if (e.KeyModifiers == KeyModifiers.None
+            && ViewModel?.MentionPicker is { IsOpen: true } picker && HandleMentionKey(picker, e.Key))
         {
             e.Handled = true;
             return;
@@ -241,9 +272,11 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         {
             case Key.Up:
                 picker.MoveSelection(-1);
+                MentionItems.ContainerFromIndex(picker.SelectedIndex)?.BringIntoView();
                 return true;
             case Key.Down:
                 picker.MoveSelection(1);
+                MentionItems.ContainerFromIndex(picker.SelectedIndex)?.BringIntoView();
                 return true;
             case Key.Enter or Key.Tab:
                 CompleteMention(picker, null);
@@ -267,7 +300,8 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         if (picker.Complete(MessageInput.Text, MessageInput.CaretIndex, suggestion) is not { } completed)
             return;
 
-        MessageInput.Text = completed.Text;
+        MessageInput.SelectAll();
+        MessageInput.SelectedText = completed.Text;
         MessageInput.CaretIndex = completed.CaretIndex;
         MessageInput.Focus();
     }

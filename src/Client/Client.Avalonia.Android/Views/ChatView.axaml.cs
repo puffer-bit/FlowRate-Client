@@ -44,6 +44,7 @@ public partial class ChatView : UserControl
     private readonly SerialDisposable _menuSubscriptions = new();
 
     private bool _isLoadingOlder;
+    private ChatMentionPickerVM? _mentionPicker;
 
     public ChatView()
     {
@@ -55,7 +56,15 @@ public partial class ChatView : UserControl
         MessageInput.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty || e.Property == TextBox.CaretIndexProperty)
-                (DataContext as ActiveChatSessionVM)?.Composer.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+                UpdateMentionPicker();
+        };
+        MessageInput.GotFocus += (_, _) => UpdateMentionPicker();
+        MessageInput.LostFocus += (_, _) => Chat?.Composer.MentionPicker.Close();
+        DetachedFromVisualTree += (_, _) => Chat?.Composer.MentionPicker.Close();
+        DataContextChanged += (_, _) =>
+        {
+            _mentionPicker?.Close();
+            _mentionPicker = Chat?.Composer.MentionPicker;
         };
 
         // A long press asks for the context menu, as the right button does with a mouse
@@ -81,6 +90,14 @@ public partial class ChatView : UserControl
     }
 
     private ActiveChatSessionVM? Chat => DataContext as ActiveChatSessionVM;
+
+    private void UpdateMentionPicker()
+    {
+        if (MessageInput.IsFocused)
+            Chat?.Composer.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+        else
+            Chat?.Composer.MentionPicker.Close();
+    }
 
     private MessageListPanel? Panel => MessagesList.ItemsPanelRoot as MessageListPanel;
 
@@ -320,7 +337,8 @@ public partial class ChatView : UserControl
             || picker.Complete(MessageInput.Text, MessageInput.CaretIndex, suggestion) is not { } completed)
             return;
 
-        MessageInput.Text = completed.Text;
+        MessageInput.SelectAll();
+        MessageInput.SelectedText = completed.Text;
         MessageInput.CaretIndex = completed.CaretIndex;
     }
 }

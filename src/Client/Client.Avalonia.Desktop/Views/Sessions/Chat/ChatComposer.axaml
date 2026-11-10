@@ -189,26 +189,28 @@
                    IsLightDismissEnabled="False"
                    Width="{Binding #ComposerBox.Bounds.Width}">
                 <Border Classes="mention-list">
-                    <ItemsControl ItemsSource="{Binding MentionPicker.Suggestions}" MaxHeight="320">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
-                                <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
-                                        Click="OnMentionClick">
-                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
-                                        <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
-                                                            IsVisible="{Binding !IsGroup}"
-                                                            UserName="{Binding Name}"
-                                                            AvatarUrl="{Binding AvatarUrl}"
-                                                            Status="{Binding Status}"/>
-                                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                                   Text="{Binding Name, StringFormat=@\{0\}}"/>
-                                        <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
-                                                   IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="MentionItems" ItemsSource="{Binding MentionPicker.Suggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                                    <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                            Click="OnMentionClick">
+                                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                            <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
+                                                                IsVisible="{Binding !IsGroup}"
+                                                                UserName="{Binding Name}"
+                                                                AvatarUrl="{Binding AvatarUrl}"
+                                                                Status="{Binding Status}"/>
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                                       Text="{Binding Name, StringFormat=@\{0\}}"/>
+                                            <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                                       IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Border>
             </Popup>
 
