@@ -243,9 +243,9 @@
             </Button>
 
             <Button Grid.Column="1" Classes="borderless chat-round" Click="OnChatTitleClick">
-                <Panel Width="32" Height="32">
+                <Panel Width="40" Height="40">
                     <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !StatusBar.IsDirect}"/>
-                    <avatars:UserAvatar UserName="{Binding StatusBar.Name}" AvatarUrl="{Binding StatusBar.AvatarUrl}"
+                    <avatars:UserAvatar Width="40" Height="40" UserName="{Binding StatusBar.Name}" AvatarUrl="{Binding StatusBar.AvatarUrl}"
                                         Status="{Binding StatusBar.PeerStatus}" IsVisible="{Binding StatusBar.IsDirect}"/>
                 </Panel>
             </Button>

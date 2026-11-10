@@ -557,6 +557,7 @@ public partial class SessionsListVM : ReactiveObject
                 {
                     chat.DisplayName = other.DisplayName ?? other.Username;
                     chat.AvatarUrl = other.AvatarUrl;
+                    chat.PeerStatus = other.Status;
                 }
             });
     }
@@ -774,6 +775,7 @@ public partial class SessionsListVM : ReactiveObject
             {
                 chat.DisplayName = user.DisplayName ?? user.Username;
                 chat.AvatarUrl = user.AvatarUrl;
+                chat.PeerStatus = user.Status;
             }
     });
 

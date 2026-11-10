@@ -33,6 +33,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     }
 
     public string? AvatarUrl { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public Shared.Enums.User.UserStatus? PeerStatus { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
     public string DisplayName { get; set { this.RaiseAndSetIfChanged(ref field, value); } } = string.Empty;
     public ReactiveCommand<RxVoid, RxVoid>? EditGroupCommand { get; set; }
     public ReactiveCommand<RxVoid, RxVoid>? LeaveGroupCommand { get; set; }

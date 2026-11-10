@@ -40,9 +40,9 @@
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                     Command="{Binding OpenInfoCommand}">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <Panel Grid.Column="0" Width="36" Height="36">
+                    <Panel Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center">
                         <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsDirect}"/>
-                        <avatars:UserAvatar UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}"
+                        <avatars:UserAvatar Width="40" Height="40" UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}"
                                             Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
                     </Panel>
 

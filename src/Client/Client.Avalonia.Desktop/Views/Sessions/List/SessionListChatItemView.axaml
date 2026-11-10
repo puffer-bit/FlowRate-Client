@@ -109,7 +109,8 @@
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                     <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
-                    <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsDirect}"/>
+                    <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
+                                        Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
                     <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
                 </Panel>
 
