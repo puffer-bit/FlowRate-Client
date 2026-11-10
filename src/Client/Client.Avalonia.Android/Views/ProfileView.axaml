@@ -153,6 +153,12 @@
 
                 <!-- Viewing -->
                 <StackPanel Classes="actions" Margin="0,4,0,0" IsVisible="{Binding !IsEditing}">
+                    <Button Command="{Binding WriteMessageCommand}" IsVisible="{Binding CanWriteMessage}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="16" Height="16" Source="{StaticResource SendIcon}"/>
+                            <TextBlock Text="{l:Text privateChats.write}"/>
+                        </StackPanel>
+                    </Button>
                     <Button Classes="primary" Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Image Width="16" Height="16" Source="{StaticResource PencilIcon}" VerticalAlignment="Center"/>

@@ -48,11 +48,17 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            if (!value && !IsEditingGroup)
+                while (SelectedMembers.Count > 1) SelectedMembers.RemoveAt(SelectedMembers.Count - 1);
+            RefreshMemberSelection();
             this.RaisePropertyChanged(nameof(ShowName));
         }
     }
     public string SearchQuery { get; set { this.RaiseAndSetIfChanged(ref field, value); } } = "";
     public string SelectedCountText => Strings.Format("privateChats.selectedCount", ("count", SelectedMembers.Count));
+    public bool HasSelectedMembers => SelectedMembers.Count > 0;
+    public bool IsSearching { get; private set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public bool ShowNoSearchResults => !IsSearching && SearchResults.Count == 0;
 
     private bool ValidPrivateMembers => IsEditingGroup
         ? SelectedMembers.Count is >= 1 and <= 100 && SelectedOwner != null && SelectedMembers.Contains(SelectedOwner)
@@ -61,21 +67,45 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     private void ToggleMember(ChatMemberChoiceVM choice)
     {
         var existing = SelectedMembers.FirstOrDefault(member => member.Id == choice.Id);
-        if (existing != null) SelectedMembers.Remove(existing);
-        else SelectedMembers.Add(choice);
-        foreach (var row in SearchResults) row.IsSelected = SelectedMembers.Any(member => member.Id == row.Id);
+        if (existing != null)
+        {
+            SelectedMembers.Remove(existing);
+            if (SelectedOwner == existing) SelectedOwner = null;
+        }
+        else
+        {
+            if (!IsGroup && !IsEditingGroup) SelectedMembers.Clear();
+            if (SelectedMembers.Count >= (IsEditingGroup ? 100 : 99)) return;
+            SelectedMembers.Add(choice);
+        }
+        RefreshMemberSelection();
+    }
+
+    private void RefreshMemberSelection()
+    {
+        foreach (var row in SearchResults)
+        {
+            row.IsSelected = SelectedMembers.Any(member => member.Id == row.Id);
+            row.CanToggle = row.IsSelected || !IsGroup || SelectedMembers.Count < (IsEditingGroup ? 100 : 99);
+        }
         this.RaisePropertyChanged(nameof(SelectedCountText));
+        this.RaisePropertyChanged(nameof(HasSelectedMembers));
     }
 
     private async Task SearchMembersAsync(string query)
     {
         var version = ++_searchVersion;
+        IsSearching = true;
+        this.RaisePropertyChanged(nameof(ShowNoSearchResults));
         var users = await _coordinatorSession.SearchUsers(query, 20);
         if (_disposed || version != _searchVersion) return;
         SearchResults.Clear();
         foreach (var user in users.Where(user => IsEditingGroup || user.Id != _coordinatorSession.GetCurrentUser().Id))
             SearchResults.Add(new ChatMemberChoiceVM(user.Id, user.DisplayName ?? user.Username)
-                { IsSelected = SelectedMembers.Any(member => member.Id == user.Id) });
+                { Username = user.Username, AvatarUrl = user.AvatarUrl });
+        RefreshMemberSelection();
+        IsSearching = false;
+        this.RaisePropertyChanged(nameof(ShowNoSearchResults));
     }
 
     public async Task InitializeMembersAsync()
@@ -87,7 +117,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
             foreach (var id in _editingGroup.MemberIds)
                 SelectedMembers.Add(new ChatMemberChoiceVM(id, users.TryGetValue(id, out var user) ? user.DisplayName ?? user.Username : id.ToString()));
             SelectedOwner = SelectedMembers.FirstOrDefault(member => member.Id == _editingGroup.AdminUserId);
-            this.RaisePropertyChanged(nameof(SelectedCountText));
+            RefreshMemberSelection();
         }
         await SearchMembersAsync("");
     }

@@ -1371,5 +1371,6 @@
   "privateChats.audio": "音声",
   "privateChats.direct": "個人チャット",
   "privateChats.directDescription": "1人との会話。",
-  "privateChats.groupDescription": "複数人との会話。"
+  "privateChats.groupDescription": "複数人との会話。",
+  "privateChats.noUsersFound": "ユーザーが見つかりません"
 }

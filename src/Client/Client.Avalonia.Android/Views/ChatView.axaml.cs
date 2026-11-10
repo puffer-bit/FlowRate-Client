@@ -89,6 +89,16 @@ public partial class ChatView : UserControl
         return MessageMenu;
     }
 
+    private void OpenDirectChatProfile()
+    {
+        if (Chat?.StatusBar is { IsDirect: true } statusBar)
+            statusBar.OpenInfoCommand.Execute().Subscribe();
+    }
+
+    private void OnChatTitleClick(object? sender, RoutedEventArgs e) => OpenDirectChatProfile();
+
+    private void OnChatTitleTapped(object? sender, TappedEventArgs e) => OpenDirectChatProfile();
+
     private ActiveChatSessionVM? Chat => DataContext as ActiveChatSessionVM;
 
     private void UpdateMentionPicker()

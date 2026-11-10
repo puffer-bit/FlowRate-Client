@@ -370,6 +370,10 @@ public partial class MainView : UserControl
 
     private void OnDrawerBackdropTapped(object? sender, TappedEventArgs e) => CloseDrawer();
 
+    private void OnListModeClick(object? sender, RoutedEventArgs e) => TryCloseServerMenu();
+
+    private void OnChatActionClick(object? sender, RoutedEventArgs e) => TryCloseChatMenu();
+
     private void OpenServerMenu() => ServerMenu.IsOpen = true;
 
     /// <returns>False when there was no menu to close.</returns>

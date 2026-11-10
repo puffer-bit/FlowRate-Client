@@ -16,6 +16,58 @@ namespace Client.Application.Tests;
 
 public sealed class PrivateChatTests
 {
+    [Fact]
+    public Task DirectSelectionReplacesThePreviousParticipant() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, Session>();
+        using var form = new CreateSessionWindowVM(session, privateMode: true);
+        form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(2, "First")).Wait();
+        form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(3, "Second")).Wait();
+        Assert.Equal(3, Assert.Single(form.SelectedMembers).Id);
+        Assert.True(form.HasSelectedMembers);
+        form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(3, "Second")).Wait();
+        Assert.Empty(form.SelectedMembers);
+        Assert.False(form.HasSelectedMembers);
+    });
+
+    [Fact]
+    public Task GroupSelectionStopsAtTheMemberLimitAndAllowsRemoval() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, Session>();
+        using var form = new CreateSessionWindowVM(session, privateMode: true) { IsGroup = true };
+        form.InitializeMembersAsync().GetAwaiter().GetResult();
+        for (var id = 3; id < 102; id++)
+            form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(id, $"Peer {id}")).Wait();
+        var row = Assert.Single(form.SearchResults);
+        Assert.Equal(99, form.SelectedMembers.Count);
+        Assert.False(row.CanToggle);
+        form.ToggleMemberCommand.Execute(row).Wait();
+        Assert.Equal(99, form.SelectedMembers.Count);
+        form.ToggleMemberCommand.Execute(form.SelectedMembers[0]).Wait();
+        Assert.True(row.CanToggle);
+        form.ToggleMemberCommand.Execute(row).Wait();
+        Assert.True(row.IsSelected);
+        Assert.True(row.CanToggle);
+    });
+
+    [Fact]
+    public Task SwitchingToDirectKeepsOneParticipantAndRefreshesSearchChecks() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, Session>();
+        using var form = new CreateSessionWindowVM(session, privateMode: true) { IsGroup = true };
+        form.InitializeMembersAsync().GetAwaiter().GetResult();
+        var row = Assert.Single(form.SearchResults);
+        form.ToggleMemberCommand.Execute(row).Wait();
+        form.ToggleMemberCommand.Execute(new ChatMemberChoiceVM(3, "Other")).Wait();
+        form.SelectDirectCommand.Execute().Wait();
+        Assert.Equal(2, Assert.Single(form.SelectedMembers).Id);
+        Assert.True(row.IsSelected);
+        form.ToggleMemberCommand.Execute(form.SelectedMembers[0]).Wait();
+        Assert.False(row.IsSelected);
+        Assert.False(form.ShowNoSearchResults);
+        Assert.False(form.IsSearching);
+    });
+
     [Theory]
     [InlineData(ChatKind.Direct)]
     [InlineData(ChatKind.Group)]

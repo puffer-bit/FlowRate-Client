@@ -1371,5 +1371,6 @@
   "privateChats.audio": "音频",
   "privateChats.direct": "私聊",
   "privateChats.directDescription": "与一个人交谈。",
-  "privateChats.groupDescription": "与多个人交谈。"
+  "privateChats.groupDescription": "与多个人交谈。",
+  "privateChats.noUsersFound": "未找到用户"
 }

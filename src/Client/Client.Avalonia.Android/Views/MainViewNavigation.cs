@@ -325,6 +325,8 @@ internal sealed class MainViewNavigation
 
         try
         {
+            if (createSession.IsPrivateMode)
+                await createSession.InitializeMembersAsync();
             await closed.Task;
         }
         finally

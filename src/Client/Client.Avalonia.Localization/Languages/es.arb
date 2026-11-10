@@ -1371,5 +1371,6 @@
   "privateChats.audio": "Audio",
   "privateChats.direct": "Chat privado",
   "privateChats.directDescription": "Una conversación con una persona.",
-  "privateChats.groupDescription": "Una conversación con varias personas."
+  "privateChats.groupDescription": "Una conversación con varias personas.",
+  "privateChats.noUsersFound": "No se encontraron usuarios"
 }

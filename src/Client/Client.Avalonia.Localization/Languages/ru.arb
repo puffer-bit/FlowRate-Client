@@ -1442,5 +1442,6 @@
   "privateChats.audio": "Аудио",
   "privateChats.direct": "Личный чат",
   "privateChats.directDescription": "Переписка с одним человеком.",
-  "privateChats.groupDescription": "Переписка с несколькими людьми."
+  "privateChats.groupDescription": "Переписка с несколькими людьми.",
+  "privateChats.noUsersFound": "Никого не найдено"
 }
