@@ -25,6 +25,7 @@ namespace Client.ViewModels.Main;
 /// </summary>
 public sealed class UserActions
 {
+    public Func<UserModel, Task>? OpenDirectChat { get; set; }
     public ReactiveCommand<RxVoid, RxVoid> EditProfileCommand { get; }
 
     /// <summary>Opens what the current user logs in with: the password, one-time codes and passkeys.</summary>
@@ -140,6 +141,7 @@ public sealed class UserActions
             _userNotes, coordinatorInstanceId);
         await vm.Note.LoadCommand.Execute();
         await _showUserProfile.Handle(vm);
+        if (vm.WantsDirectChat && OpenDirectChat != null) await OpenDirectChat(user);
     }
 
     // What the user logs in with; loaded as the dialog opens

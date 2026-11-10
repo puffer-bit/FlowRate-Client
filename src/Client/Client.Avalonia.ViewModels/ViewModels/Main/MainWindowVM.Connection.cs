@@ -459,7 +459,7 @@ public partial class MainWindowVM
 
     private void RestoreOpenedChats(OpenedSessions sessions)
     {
-        if (!SessionsList.IsEmpty && !SessionsList.HasSessions)
+        if (SessionsList.State != Client.ViewModels.Sessions.List.SessionsListState.Loaded)
             return;
 
         sessions.CloseChatsExcept(SessionsList.Sessions

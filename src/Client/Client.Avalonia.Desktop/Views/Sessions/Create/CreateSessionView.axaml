@@ -32,9 +32,10 @@
         <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Image Width="20" Height="20" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text createSession.title}"/>
+                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding DialogTitle}"/>
             </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text createSession.hint}"/>
+            <TextBlock Classes="hint" Text="{l:Text createSession.hint}" IsVisible="{Binding ShowServerOptions}"/>
+            <TextBlock Classes="hint" Text="{l:Text privateChats.createHint}" IsVisible="{Binding IsPrivateMode}"/>
         </StackPanel>
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
@@ -44,7 +45,7 @@
             <StackPanel Margin="20,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
 
                 <!-- Type -->
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="8" IsVisible="{Binding ShowServerOptions}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.type}"/>
                     <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
                         <Button Grid.Column="0" Classes="choiceCard typeCard"
@@ -72,8 +73,51 @@
                     </Grid>
                 </StackPanel>
 
+                <!-- Private audience -->
+                <StackPanel Spacing="8" IsVisible="{Binding IsPrivateMode}">
+                    <CheckBox Content="{l:Text privateChats.group}" IsChecked="{Binding IsGroup}"
+                              IsEnabled="{Binding !IsEditingGroup}"/>
+                    <TextBlock Classes="fieldLabel" Text="{l:Text privateChats.members}"/>
+                    <TextBox x:Name="MemberSearchInput" PlaceholderText="{l:Text privateChats.search}" Text="{Binding SearchQuery}"/>
+                    <TextBlock Classes="hint" Text="{Binding SelectedCountText}"/>
+                    <ItemsControl ItemsSource="{Binding SelectedMembers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="createVm:ChatMemberChoiceVM">
+                                <Button Content="{Binding Name}" Margin="0,2"
+                                        Command="{Binding $parent[UserControl].((createVm:CreateSessionWindowVM)DataContext).ToggleMemberCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ScrollViewer MaxHeight="180">
+                        <ItemsControl ItemsSource="{Binding SearchResults}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="createVm:ChatMemberChoiceVM">
+                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                            Classes.selected="{Binding IsSelected}"
+                                            Command="{Binding $parent[UserControl].((createVm:CreateSessionWindowVM)DataContext).ToggleMemberCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="✓" IsVisible="{Binding IsSelected}"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <StackPanel IsVisible="{Binding ShowOwner}" Spacing="6">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text privateChats.owner}"/>
+                        <ComboBox ItemsSource="{Binding SelectedMembers}" SelectedItem="{Binding SelectedOwner}" HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="createVm:ChatMemberChoiceVM"><TextBlock Text="{Binding Name}"/></DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+
                 <!-- Name -->
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="6" IsVisible="{Binding ShowName}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
                     <TextBox x:Name="NameInput"
                              Watermark="{l:Text createSession.name.watermark}"
@@ -84,7 +128,7 @@
                 </StackPanel>
 
                 <!-- Capacity -->
-                <StackPanel Spacing="6" IsVisible="{Binding !IsChatSelected}">
+                <StackPanel Spacing="6" IsVisible="{Binding ShowCapacity}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <NumericUpDown Width="140"
@@ -102,7 +146,7 @@
                 </StackPanel>
 
                 <!-- Chat only -->
-                <StackPanel Spacing="6" IsVisible="{Binding IsChatSelected}">
+                <StackPanel Spacing="6" IsVisible="{Binding ShowDescription}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.description}"/>
                     <TextBox Height="80"
                              Watermark="{l:Text createSession.description.watermark}"
@@ -144,14 +188,14 @@
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
                                 IsVisible="{Binding !IsBusy}">
                         <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text createSession.create}"/>
+                        <TextBlock Text="{Binding SubmitText}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                 IsVisible="{Binding IsBusy}">
                         <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
                                                         IsIndeterminate="True" BorderThickness="2"
                                                         Foreground="{DynamicResource OnAccentTextBrush}"/>
-                        <TextBlock Text="{l:Text createSession.creating}"/>
+                        <TextBlock Text="{Binding BusyText}"/>
                     </StackPanel>
                 </Grid>
             </Button>

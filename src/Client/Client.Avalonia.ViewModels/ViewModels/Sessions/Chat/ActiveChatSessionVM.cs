@@ -30,7 +30,7 @@ namespace Client.ViewModels.Sessions.Chat;
 public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 {
     public int Id { get; }
-    public string Name { get; }
+    public string Name { get; private set { this.RaiseAndSetIfChanged(ref field, value); } }
 
     public ChatComposerVM Composer { get; }
 
@@ -212,6 +212,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _model = sessionModel;
         Id = sessionModel.Id;
         Name = sessionModel.Name;
+        _ = UpdateChatNameAsync(sessionModel);
         var currentUser = coordinatorSession.GetCurrentUser();
         _currentUserId = currentUser.Id;
         _senders = new ChatSenderDirectory(coordinatorSession, currentUser.Id);
@@ -626,6 +627,20 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => ApplyAccess(permissions));
 
+    private async Task UpdateChatNameAsync(ChatSessionModel model)
+    {
+        if (model.Kind == ChatKind.Direct)
+        {
+            var otherId = model.MemberIds.FirstOrDefault(id => id != _coordinatorSession.GetCurrentUser().Id);
+            if (await _coordinatorSession.GetUser(otherId) is { } other)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!_isDisposed && ReferenceEquals(_model, model)) Name = other.DisplayName ?? other.Username;
+                });
+        }
+        else Name = model.Name;
+    }
+
     // Raised on the transport thread
     private void OnChatSessionReconfigured(ChatSessionModel session)
     {
@@ -635,6 +650,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Dispatcher.UIThread.Post(() =>
         {
             _model = session;
+            _ = UpdateChatNameAsync(session);
             StatusBar.ApplySession(session);
             ApplyAccess(_coordinatorSession.Permissions);
         });

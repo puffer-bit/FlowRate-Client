@@ -1414,5 +1414,30 @@
   "chat.media.close": "Завершить воспроизведение",
   "chat.media.failed": "Не удалось воспроизвести файл.",
   "settings.accounting.forgetIdentity.title": "Забыть личность",
-  "settings.accounting.forgetIdentity.question": "Забыть сохранённую личность «{user}» на этом устройстве? Её сохранённые пароли и токен сессии будут удалены. Учётная запись на сервере останется."
+  "settings.accounting.forgetIdentity.question": "Забыть сохранённую личность «{user}» на этом устройстве? Её сохранённые пароли и токен сессии будут удалены. Учётная запись на сервере останется.",
+  "privateChats.showPrivate": "Личные чаты и группы",
+  "privateChats.showChannels": "Каналы сервера",
+  "privateChats.group": "Группа",
+  "privateChats.members": "Участники",
+  "privateChats.search": "Поиск пользователей",
+  "privateChats.selectedCount": "Выбрано: {count}",
+  "privateChats.owner": "Владелец",
+  "privateChats.editGroup": "Настройки группы",
+  "privateChats.leaveGroup": "Выйти из группы",
+  "privateChats.leaveFailed": "Перед выходом передайте владение или удалите группу.",
+  "privateChats.empty": "Пока нет сообщений",
+  "privateChats.photo": "Фото",
+  "privateChats.video": "Видео",
+  "privateChats.file": "Файл",
+  "privateChats.message": "Сообщение",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "Написать",
+  "privateChats.createHint": "Выберите собеседника для личного чата или включите «Группа» и выберите участников.",
+  "privateChats.audio": "Аудио"
 }

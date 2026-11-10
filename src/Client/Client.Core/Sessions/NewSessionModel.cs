@@ -31,7 +31,9 @@ public sealed record NewChatSessionOptions(
     bool IsAttachmentsAllowed = true,
     bool IsVoiceMessageAllowed = true,
     bool IsVideoMessagesAllowed = true,
-    bool IsDelayedMessagesAllowed = true
+    bool IsDelayedMessagesAllowed = true,
+    ChatKind Kind = ChatKind.ServerChannel,
+    int[]? MemberIds = null
 ) : NewSessionOptions
 {
     public override SessionType SessionType => SessionType.Chat;

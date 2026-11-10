@@ -1343,5 +1343,30 @@
   "chat.emoji.category.8": "旗",
   "chat.emoji.limit": "この絵文字を追加するとメッセージの文字数制限を超えます。",
   "settings.accounting.forgetIdentity.title": "保存したアカウントを削除",
-  "settings.accounting.forgetIdentity.question": "この端末に保存した「{user}」のログイン情報を削除しますか？保存済みのパスワードとセッショントークンが削除されます。サーバー上のアカウントは残ります。"
+  "settings.accounting.forgetIdentity.question": "この端末に保存した「{user}」のログイン情報を削除しますか？保存済みのパスワードとセッショントークンが削除されます。サーバー上のアカウントは残ります。",
+  "privateChats.showPrivate": "個人チャットとグループ",
+  "privateChats.showChannels": "サーバーチャンネル",
+  "privateChats.group": "グループ",
+  "privateChats.members": "参加者",
+  "privateChats.search": "ユーザーを検索",
+  "privateChats.selectedCount": "選択済み: {count}",
+  "privateChats.owner": "所有者",
+  "privateChats.editGroup": "グループ設定",
+  "privateChats.leaveGroup": "グループを退出",
+  "privateChats.leaveFailed": "退出前に所有権を譲渡するか、グループを削除してください。",
+  "privateChats.empty": "メッセージはまだありません",
+  "privateChats.photo": "写真",
+  "privateChats.video": "動画",
+  "privateChats.file": "ファイル",
+  "privateChats.message": "メッセージ",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "メッセージを送る",
+  "privateChats.createHint": "個人チャットの相手を選ぶか、グループを有効にして参加者を選んでください。",
+  "privateChats.audio": "音声"
 }

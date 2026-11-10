@@ -69,6 +69,43 @@ public partial class SessionsListVM : ReactiveObject
     /// Sessions and categories can be created from the list: it is loaded and connected.
     /// </summary>
     public bool CanCreate => State == SessionsListState.Loaded;
+    public bool CanCreateSession => IsPrivateMode || Access.CanCreateSessions;
+    public bool CanCreateCategory => !IsPrivateMode && Access.CanManageSessions;
+    public bool IsPrivateMode
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanCreateSession));
+            this.RaisePropertyChanged(nameof(CanCreateCategory));
+            RebuildRows();
+            RaiseStateProperties();
+            if (CoordinatorInstanceId is { } id) _ = _preferences.SavePrivateModeAsync(id, value);
+        }
+    }
+    public Interaction<Client.ViewModels.Sessions.Create.CreateSessionWindowVM, RxVoid>? ShowGroupEditor { get; set; }
+
+    private async Task EditGroup(ChatSessionVM chat)
+    {
+        if (_coordinatorSession == null || ShowGroupEditor == null || chat.Model is not ChatSessionModel model) return;
+        using var editor = new Client.ViewModels.Sessions.Create.CreateSessionWindowVM(_coordinatorSession,
+            privateMode: true, editingGroup: model);
+        await ShowGroupEditor.Handle(editor);
+    }
+
+    private async Task LeaveGroup(ChatSessionVM chat)
+    {
+        if (_coordinatorSession == null || chat.Model is not ChatSessionModel model) return;
+        var result = await _coordinatorSession.ChangeGroup(model.Id, model.Name, model.MemberIds,
+            model.AdminUserId ?? model.CreatorUserId, leave: true);
+        if (!result.IsSuccess && !result.IsRejected)
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("privateChats.leaveFailed"), Strings.Get("common.error")));
+    }
+
+    public void ToggleListMode() => IsPrivateMode = !IsPrivateMode;
 
     /// <summary>What the current user may do; the list offers only that.</summary>
     public AccessVM Access { get; }
@@ -346,8 +383,9 @@ public partial class SessionsListVM : ReactiveObject
                 var coordinatorInstanceId = coordinatorSession.GetCurrentUser().CoordinatorInstanceId;
                 var mutedChatIds = await _preferences.LoadMutedChatsAsync(coordinatorInstanceId);
                 var collapsedCategoryIds = await _preferences.LoadCollapsedCategoriesAsync(coordinatorInstanceId);
-                if (attachId != _attachId)
-                    return;
+                var privateMode = await _preferences.LoadPrivateModeAsync(coordinatorInstanceId);
+                if (attachId != _attachId) return;
+                IsPrivateMode = privateMode;
 
                 ClearList();
                 SetLayout(result.Value.Layout, collapsedCategoryIds);
@@ -476,7 +514,10 @@ public partial class SessionsListVM : ReactiveObject
     }
 
     // A chat created just now is not muted
-    private void AddNewChatSession(ChatSessionModel chatSessionModel) => AddChatSession(chatSessionModel, false);
+    private void AddNewChatSession(ChatSessionModel chatSessionModel) => Dispatcher.UIThread.Post(() =>
+    {
+        if (FindSession<ChatSessionVM>(chatSessionModel.Id) == null) AddChatSession(chatSessionModel, false);
+    });
 
     private void AddChatSession(ChatSessionModel chatSessionModel, bool isMuted)
     {
@@ -493,11 +534,27 @@ public partial class SessionsListVM : ReactiveObject
         if (_readTracker.Get(chatSessionModel.Id) is { } readState)
             model.ApplyReadState(readState);
         model.ApplyAccess(Access.Permissions);
+        model.EditGroupCommand = ReactiveCommand.CreateFromTask(() => EditGroup(model));
+        model.LeaveGroupCommand = ReactiveCommand.CreateFromTask(() => LeaveGroup(model));
 
         MarkShown(model);
         model.MoveTargets = MoveTargets;
         Sessions.Add(model);
+        _ = UpdatePrivateTitleAsync(model);
         RebuildRows();
+        RaiseStateProperties();
+    }
+
+    private async Task UpdatePrivateTitleAsync(ChatSessionVM chat)
+    {
+        if (chat.Model is not ChatSessionModel { Kind: ChatKind.Direct } model || _coordinatorSession is not { } coordinator) return;
+        var otherId = model.MemberIds.FirstOrDefault(id => id != coordinator.GetCurrentUser().Id);
+        var other = await coordinator.GetUser(otherId);
+        if (other != null)
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (ReferenceEquals(chat.Model, model)) chat.DisplayName = other.DisplayName ?? other.Username;
+            });
     }
 
     private async Task ToggleChatMute(int chatId)
@@ -609,6 +666,9 @@ public partial class SessionsListVM : ReactiveObject
                 return;
 
             session.Model = model;
+            _ = UpdatePrivateTitleAsync(session);
+            RebuildRows();
+            RaiseStateProperties();
             // Its overrides may have changed
             session.ApplyAccess(Access.Permissions);
         });
@@ -637,6 +697,7 @@ public partial class SessionsListVM : ReactiveObject
             await Task.Delay(Presence.LeaveTime);
 
             Sessions.Remove(session);
+            if (session is ChatSessionVM chat) chat.Dispose();
             RebuildRows();
         });
     }
@@ -677,6 +738,8 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>Shows again what the current user may do, after their roles changed.</summary>
     private void ApplyAccess()
     {
+        this.RaisePropertyChanged(nameof(CanCreateSession));
+        this.RaisePropertyChanged(nameof(CanCreateCategory));
         foreach (var session in Sessions)
         {
             switch (session)
@@ -701,6 +764,10 @@ public partial class SessionsListVM : ReactiveObject
     {
         foreach (var session in Sessions.OfType<HybridSessionVM>())
             session.UpdateUserModel(user.Id, user);
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+            if (chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(user.Id)
+                && user.Id != _coordinatorSession?.GetCurrentUser().Id)
+                chat.DisplayName = user.DisplayName ?? user.Username;
     });
 
     private void RemovePeerFromSession(PeerLeftEvent notification) =>

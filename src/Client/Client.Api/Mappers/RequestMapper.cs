@@ -26,7 +26,7 @@ internal static class RequestMapper
             chat.IsAttachmentsAllowed,
             chat.IsVoiceMessageAllowed,
             chat.IsVideoMessagesAllowed,
-            chat.IsDelayedMessagesAllowed),
+            chat.IsDelayedMessagesAllowed, chat.Kind, chat.MemberIds),
 
         _ => throw new ArgumentOutOfRangeException(nameof(options), options.GetType().Name, "Unknown session type")
     };

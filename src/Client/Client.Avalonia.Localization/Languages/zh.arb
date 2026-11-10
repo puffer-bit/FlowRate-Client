@@ -1343,5 +1343,30 @@
   "chat.emoji.category.8": "旗帜",
   "chat.emoji.limit": "添加此表情将超出消息长度限制。",
   "settings.accounting.forgetIdentity.title": "忘记身份",
-  "settings.accounting.forgetIdentity.question": "要忘记此设备上保存的身份“{user}”吗？其保存的密码和会话令牌将被删除。服务器上的账户将保留。"
+  "settings.accounting.forgetIdentity.question": "要忘记此设备上保存的身份“{user}”吗？其保存的密码和会话令牌将被删除。服务器上的账户将保留。",
+  "privateChats.showPrivate": "私聊和群组",
+  "privateChats.showChannels": "服务器频道",
+  "privateChats.group": "群组",
+  "privateChats.members": "成员",
+  "privateChats.search": "搜索用户",
+  "privateChats.selectedCount": "已选择：{count}",
+  "privateChats.owner": "群主",
+  "privateChats.editGroup": "群组设置",
+  "privateChats.leaveGroup": "退出群组",
+  "privateChats.leaveFailed": "退出前请转让群主或删除群组。",
+  "privateChats.empty": "暂无消息",
+  "privateChats.photo": "照片",
+  "privateChats.video": "视频",
+  "privateChats.file": "文件",
+  "privateChats.message": "消息",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "发消息",
+  "privateChats.createHint": "选择一位私聊对象，或启用群组并选择成员。",
+  "privateChats.audio": "音频"
 }

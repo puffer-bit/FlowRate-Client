@@ -58,7 +58,7 @@ public partial class CoordinatorSession
     /// <summary>Follows the roles and the roles of the current user; raised only when something changed.</summary>
     private void UpdatePermissions()
     {
-        var permissions = new CoordinatorPermissions(_roles, _currentUser?.RoleIds ?? []);
+        var permissions = new CoordinatorPermissions(_roles, _currentUser?.RoleIds ?? [], _currentUser?.Id ?? 0);
         var previous = Permissions;
         Permissions = permissions;
 

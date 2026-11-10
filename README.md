@@ -56,6 +56,8 @@ for runtime requirements and validation commands. Android viewing depends on the
 - Play supported audio and video attachments inside the client when media is enabled.
 - Edit messages while preserving their original Markdown.
 - Track unread messages and mute individual chats.
+- Create personal conversations and groups within a server. Switch between server channels and personal chats from the server name menu; the existing create-session action follows the selected list.
+- See the latest message in the personal chat list. Group owners can rename groups, manage participants, and transfer ownership; other participants can leave.
 - Manage sessions, roles, and moderation actions according to the permissions granted by the server.
 - Keep saved server identities and local user notes.
 

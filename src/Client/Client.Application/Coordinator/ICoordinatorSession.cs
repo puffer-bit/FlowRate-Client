@@ -265,7 +265,12 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult<(IDictionary<int, SessionModel> Sessions, SessionLayout Layout)>> GetAllSessions();
     Task<RequestResult<SessionModel>> GetSessionInfo(int sessionId);
     
+    Task<RequestResult<SessionModel>> CreateConversation(NewSessionModel session) => throw new NotSupportedException();
+
     Task<RequestResult> CreateSession(NewSessionModel newSession);
+    Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+        => throw new NotSupportedException();
+
     Task<RequestResult> DeleteSession(int sessionId);
 
     /// <summary>

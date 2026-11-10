@@ -241,8 +241,17 @@ internal partial class CoordinatorGateway
             response.Layout?.ToModel() ?? throw new UnexpectedResponseException("The session list carries no layout"));
     }
 
+    public async Task<SessionModel> CreateConversation(NewSessionModel session)
+    {
+        var response = await SendRequestAsync<CreateSessionResponse>(new CreateSessionRequest(session.ToDto()));
+        return response.Session.ToModel();
+    }
+
     public Task CreateSession(NewSessionModel newSession) =>
         SendRequestAsync<CreateSessionResponse>(new CreateSessionRequest(newSession.ToDto()));
+
+    public Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false) =>
+        SendRequestAsync<ChangeGroupResponse>(new ChangeGroupRequest(sessionId, name, memberIds, ownerId, leave));
 
     public Task DeleteSession(int sessionId) =>
         SendRequestAsync<DeleteSessionResponse>(new DeleteSessionRequest(sessionId));
