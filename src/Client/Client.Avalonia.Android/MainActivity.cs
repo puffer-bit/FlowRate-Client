@@ -102,6 +102,8 @@ public class MainActivity : AvaloniaMainActivity
     /// </summary>
     public static event Action? ChatRequested;
 
+    public static (string CoordinatorId, int ChatId, Guid CallId, int UserId, string Action)? RequestedCall { get; set; }
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Current = this;
@@ -160,6 +162,10 @@ public class MainActivity : AvaloniaMainActivity
         if (ChatNotifications.ReadTarget(intent) is not { } chat)
             return;
 
+        if (IncomingCallNotifications.ReadAction(global::Android.App.Application.Context, intent) is { } call)
+            RequestedCall = (chat.CoordinatorInstanceId, chat.ChatId, call.CallId, call.UserId, call.Action);
+        if (Guid.TryParse(intent?.GetStringExtra(IncomingCallNotifications.CallExtra), out _))
+            IncomingCallNotifications.Clear(global::Android.App.Application.Context, chat.CoordinatorInstanceId);
         RequestedChat = chat;
         ChatRequested?.Invoke();
     }

@@ -276,11 +276,17 @@
                                MaxLines="1"/>
                 </Grid>
             </StackPanel>
+            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <Button Classes="borderless chat-round" IsVisible="{Binding StatusBar.IsDirect}"
+                        Command="{Binding StatusBar.CallCommand}" ToolTip.Tip="{l:Text calls.start}">
+                    <Image Width="24" Height="24" Source="{StaticResource ChatCallStartedIcon}"/>
+                </Button>
             <ToggleButton Classes="pinsToggle" Grid.Column="3" Width="44" Height="44" Padding="10"
                           VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
                           IsChecked="{Binding StatusBar.IsPinsOpen, Mode=TwoWay}">
                 <Image Source="{StaticResource PinIcon}"/>
             </ToggleButton>
+            </StackPanel>
         </Grid>
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>

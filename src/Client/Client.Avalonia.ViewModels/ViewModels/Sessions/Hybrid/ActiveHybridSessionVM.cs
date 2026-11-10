@@ -44,6 +44,16 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     }
 
     private bool IsClosed { get; set; }
+    private DispatcherTimer? _callDurationTimer;
+    private void UpdateCallDuration()
+    {
+        if (IsTransportConnected && Model.DirectCallStartedAt is { } started)
+        {
+            var elapsed = DateTimeOffset.UtcNow - started;
+            if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+            StatusBar.ShortStatusText = elapsed.ToString(elapsed.TotalHours >= 1 ? @"h\:mm\:ss" : @"mm\:ss");
+        }
+    }
 
     /// <summary>
     /// The WebRTC transport is up, so tracks can be sent.
@@ -229,6 +239,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _disposables.Add(BitmapFlyoutVM.WatchProperty(nameof(HybridSessionBitmapFlyoutVM.Volume), vm => vm.Volume)
             .Subscribe(_audioPlayerService.ChangeVolume));
 
+        if (Model.DirectCallStartedAt.HasValue)
+        {
+            _callDurationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _callDurationTimer.Tick += (_, _) => UpdateCallDuration();
+            _callDurationTimer.Start();
+        }
         _ = JoinSession();
     }
 
@@ -244,7 +260,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // Left before the server answered: nothing is set up yet, only the join itself is undone
             if (IsClosed)
             {
-                if (result.Result.IsSuccess)
+                if (result.Result.IsSuccess && Model.DirectCallId == null)
                     _ = _coordinatorSession.LeaveSession(Model.Id);
                 return;
             }
@@ -548,7 +564,9 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     private void ApplyAccess(CoordinatorPermissions permissions)
     {
-        var granted = permissions.InSession(Model);
+        var granted = Model.DirectCallId.HasValue
+            ? Permission.ViewSessions | Permission.JoinSessions | Permission.Speak
+            : permissions.InSession(Model);
         CanSpeak = granted.HasFlag(Permission.Speak);
         StatusBar.CanSpeak = CanSpeak;
         if (!CanSpeak && _hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
@@ -679,14 +697,19 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             return;
         IsClosed = true;
 
+        _callDurationTimer?.Stop();
         _subscriptions.Dispose();
         _peerStats.Clear(Model.Id);
 
-        if (_isJoined)
+        if (Model.DirectCallId is { } callId)
+            _ = _coordinatorSession.ChangeDirectCall(Model.Id, callId,
+                Shared.Models.DataTransferObjects.DirectCallAction.End);
+        if (_isJoined && Model.DirectCallId == null)
         {
             _ = _coordinatorSession.LeaveSession(Model.Id);
-            _sounds.Play(SoundEvent.Leave);
         }
+        if (_isJoined)
+            _sounds.Play(SoundEvent.Leave);
 
         _hybridSession?.Dispose();
         _disposables.Dispose();

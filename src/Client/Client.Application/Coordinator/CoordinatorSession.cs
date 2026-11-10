@@ -23,7 +23,10 @@ public partial class CoordinatorSession : ICoordinatorSession
 
             field = value;
             if (value != CoordinatorState.Connected)
+            {
                 _chatTyping.Clear();
+                lock (_callLock) DirectCall = null;
+            }
             StateChanged?.Invoke(value);
 
             // A measurement taken on a connection that is gone says nothing about the next one

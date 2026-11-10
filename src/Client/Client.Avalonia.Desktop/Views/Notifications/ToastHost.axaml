@@ -67,12 +67,17 @@
                                        MaxLines="4"
                                        TextTrimming="CharacterEllipsis"
                                        Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
+                                        IsVisible="{Binding HasActions}" IsEnabled="{Binding AreActionsEnabled}">
+                                <Button Content="{Binding PrimaryLabel}" Command="{Binding PrimaryCommand}"/>
+                                <Button Content="{Binding SecondaryLabel}" Command="{Binding SecondaryCommand}"/>
+                            </StackPanel>
                         </StackPanel>
 
                         <Button Grid.Column="3" Classes="borderless close"
                                 Width="16" Height="16" Margin="8,12,10,0"
                                 VerticalAlignment="Top"
-                                Command="{Binding CloseCommand}">
+                                Command="{Binding CloseCommand}" IsVisible="{Binding !HasActions}">
                             <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
                         </Button>
                     </Grid>

@@ -1,4 +1,6 @@
 using System;
+using Client.Services;
+using Avalonia.Threading;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -15,6 +17,35 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
 {
     private UserModel? _peer;
     private readonly ReactiveCommand<int, RxVoid>? _viewProfile;
+    private Client.Application.Coordinator.ICoordinatorSession? _callCoordinator;
+    public ReactiveCommand<RxVoid, RxVoid>? CallCommand { get; private set; }
+    public bool CanCall
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public void AttachCalling(Client.Application.Coordinator.ICoordinatorSession coordinator)
+    {
+        _callCoordinator = coordinator;
+        UpdateCallAccess();
+        CallCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await coordinator.ChangeDirectCall(_session.Id, Guid.NewGuid(),
+                Shared.Models.DataTransferObjects.DirectCallAction.Start);
+        }, this.WatchProperty(nameof(CanCall), vm => vm.CanCall));
+        coordinator.DirectCallChanged += OnDirectCallChanged;
+        coordinator.StateChanged += OnCallConnectionChanged;
+    }
+
+    private void OnDirectCallChanged(Shared.Models.DataTransferObjects.DirectCallDTO call) =>
+        Dispatcher.UIThread.Post(UpdateCallAccess);
+    private void OnCallConnectionChanged(Client.Core.Coordinator.CoordinatorState state) =>
+        Dispatcher.UIThread.Post(UpdateCallAccess);
+    private void UpdateCallAccess() => CanCall = IsDirect && Client.Core.Media.MediaRuntime.IsEnabled
+        && _callCoordinator?.ConnectionStatus == Client.Core.Coordinator.CoordinatorState.Connected
+        && (_callCoordinator.DirectCall == null || _callCoordinator.DirectCall.State == Shared.Models.DataTransferObjects.DirectCallState.Ended);
+
     public bool IsDirect => _session.Kind == ChatKind.Direct;
     public bool HasViewers => Viewers != null;
     public string Name => IsDirect ? _peer?.DisplayName ?? _peer?.Username ?? string.Empty : _session.Name;
@@ -149,6 +180,12 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
 
     public void Dispose()
     {
+        if (_callCoordinator != null)
+        {
+            _callCoordinator.DirectCallChanged -= OnDirectCallChanged;
+            _callCoordinator.StateChanged -= OnCallConnectionChanged;
+        }
+        CallCommand?.Dispose();
         OpenInfoCommand.Dispose();
         _openInfoCommand.Dispose();
         if (Viewers != null) Viewers.PropertyChanged -= OnViewersChanged;

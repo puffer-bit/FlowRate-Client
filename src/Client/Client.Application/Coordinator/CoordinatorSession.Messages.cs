@@ -9,6 +9,9 @@ public partial class CoordinatorSession
     {
         switch (coordinatorEvent)
         {
+            case DirectCallChangedEvent call:
+                ApplyDirectCall(call.Call);
+                break;
             case BannedEvent banned:
                 Post(new BanReceived(banned.Reason));
                 break;

@@ -36,6 +36,7 @@ You need a running FlowRate server to connect. Ask your community administrator 
 ### Voice and screen sharing
 
 - Join voice sessions, mute your microphone, deafen playback, and adjust individual participants' volume.
+- Make one-to-one audio calls from personal chats. Incoming calls appear in FlowRate notifications with Accept and Decline buttons. Offline Android recipients receive an encrypted push call notification when FCM or the push relay is configured and their device is registered. Only the recipient hears the repeating ringing signal, until the call is answered, declined, cancelled or times out. Calls use the existing microphone and playback controls, and store their outcome and duration in chat history. Client and coordinator must both support protocol 6.
 - Configure microphone and output devices, voice gating, noise suppression, echo cancellation, and automatic gain control.
 - Use desktop global hotkeys for common voice actions.
 - Share a screen or window from desktop, with audio where supported by the capture backend.

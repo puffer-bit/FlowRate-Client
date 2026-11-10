@@ -71,6 +71,27 @@ public class ChatCacheRepositoryTests
     }
 
     [Fact]
+    public async Task CallOutcomeAndDurationSurviveCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var content = new ChatSystemContent { Kind = ChatSystemEventKind.CallEnded,
+            CallId = Guid.NewGuid(), CallEndReason = Shared.Models.DataTransferObjects.DirectCallEndReason.Completed,
+            CallDurationSeconds = 75 };
+        var message = new ChatMessageModel
+        {
+            Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
+            IsSystem = true, IsReadOnly = true, SystemContent = content,
+            TextContent = new ChatTextContent { Text = content.ToFallbackText() },
+            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        };
+        await repository.ReplaceAsync(Chat, [message], 1, false);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var stored = Assert.Single((await reloaded.GetNewestAsync(Chat, 20))!.Messages);
+        Assert.Equal(content, stored.SystemContent);
+    }
+
+    [Fact]
     public async Task CommandOutcomeSurvivesCacheReload()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();

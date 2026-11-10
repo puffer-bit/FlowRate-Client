@@ -47,6 +47,8 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         get
         {
             if ((Model as ChatSessionModel)?.LastMessage is not { } message) return Strings.Get("privateChats.empty");
+            if (message.IsSystem && message.SystemContent?.Kind == Shared.Models.DataTransferObjects.ChatSession.Messages.ChatSystemEventKind.CallEnded)
+                return Client.ViewModels.Sessions.Chat.ChatSystemMessageText.Format(message, _ => null);
             if (!string.IsNullOrWhiteSpace(message.TextContent?.Text))
                 return message.TextContent.Text.Replace('\n', ' ').Replace('\r', ' ');
             if (message.Images.Count > 0) return Strings.Get("privateChats.photo");

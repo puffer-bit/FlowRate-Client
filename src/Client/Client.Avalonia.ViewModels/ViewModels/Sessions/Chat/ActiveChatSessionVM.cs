@@ -240,6 +240,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             Viewers = sessionModel.Kind == ChatKind.Direct ? null : new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
                 services.Appearance, openDirectChatCommand)
         };
+        StatusBar.AttachCalling(coordinatorSession);
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)
             .Subscribe(loading => StatusBar.IsLoading = loading);

@@ -67,6 +67,20 @@ public sealed unsafe class OpenALSoundPlayer : ISoundPlayer, IDisposable
         }
     }
 
+    public void Stop(SoundClip clip)
+    {
+        if (_device.Api is not { } al) return;
+        lock (_lock)
+        {
+            if (!_buffers.TryGetValue(clip, out var buffer)) return;
+            foreach (var source in _sources)
+            {
+                al.GetSourceProperty(source, GetSourceInteger.Buffer, out int attached);
+                if (attached == (int)buffer) al.SourceStop(source);
+            }
+        }
+    }
+
     public void Release(SoundClip clip)
     {
         if (_device.Api is not { } al)

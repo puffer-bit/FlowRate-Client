@@ -29,6 +29,20 @@ public static class ChatSystemMessageText
             ChatSystemEventKind.CallEnded => "chat.system.callEnded",
             _ => "chat.system.event"
         };
+        if (content.Kind == ChatSystemEventKind.CallEnded && content.CallEndReason is { } reason)
+        {
+            var outcome = Strings.Get(reason switch
+            {
+                Shared.Models.DataTransferObjects.DirectCallEndReason.Declined => "calls.declined",
+                Shared.Models.DataTransferObjects.DirectCallEndReason.Cancelled => "calls.cancelled",
+                Shared.Models.DataTransferObjects.DirectCallEndReason.Missed => "calls.missed",
+                Shared.Models.DataTransferObjects.DirectCallEndReason.Disconnected => "calls.disconnected",
+                _ => "calls.ended"
+            });
+            if (content.CallDurationSeconds is { } seconds)
+                outcome += " · " + TimeSpan.FromSeconds(seconds).ToString(seconds >= 3600 ? @"h\:mm\:ss" : @"mm\:ss");
+            return [new(outcome)];
+        }
         // Resolve names after formatting, so names can contain placeholders or punctuation verbatim.
         const string actor = "\uFFF0actor\uFFF1", subject = "\uFFF0subject\uFFF1";
         var text = Strings.Format(key, ("actor", actor), ("subject", subject));

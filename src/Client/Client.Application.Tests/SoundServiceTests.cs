@@ -12,6 +12,8 @@ public class SoundServiceTests
     {
         public List<SoundClip> Played { get; } = [];
         public List<SoundClip> Released { get; } = [];
+        public List<SoundClip> Stopped { get; } = [];
+        public void Stop(SoundClip clip) => Stopped.Add(clip);
 
         public void Play(SoundClip clip, float volume) => Played.Add(clip);
 
@@ -71,6 +73,35 @@ public class SoundServiceTests
         var builtIn = new Pack(1, AllEvents);
 
         return (new SoundService(player, builtIn, new Catalog(), NullLogger<SoundService>.Instance), player, builtIn);
+    }
+
+    [Fact]
+    public async Task CallSignal_RepeatsAndStopsImmediatelyWhenDisposed()
+    {
+        var (service, player, _) = Create();
+        var loop = service.PlayLoop(SoundEvent.CallIncoming);
+        try
+        {
+            Assert.Single(player.Played);
+            await Task.Delay(1200, TestContext.Current.CancellationToken);
+            Assert.True(player.Played.Count >= 2);
+        }
+        finally { loop.Dispose(); }
+        var count = player.Played.Count;
+        Assert.Single(player.Stopped);
+        await Task.Delay(1200, TestContext.Current.CancellationToken);
+        Assert.Equal(count, player.Played.Count);
+        loop.Dispose();
+        Assert.Single(player.Stopped);
+    }
+
+    [Fact]
+    public void MutedCallSignal_DoesNotPlay()
+    {
+        var (service, player, _) = Create();
+        service.IsEnabled = false;
+        using var loop = service.PlayLoop(SoundEvent.CallIncoming);
+        Assert.Empty(player.Played);
     }
 
     [Fact]

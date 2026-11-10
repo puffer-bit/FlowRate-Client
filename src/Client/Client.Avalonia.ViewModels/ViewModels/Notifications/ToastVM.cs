@@ -70,6 +70,32 @@ public class ToastVM : ReactiveObject
     }
 
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+    public string? PrimaryLabel { get; private set; }
+    public string? SecondaryLabel { get; private set; }
+    public ReactiveCommand<RxVoid, RxVoid>? PrimaryCommand { get; private set; }
+    public ReactiveCommand<RxVoid, RxVoid>? SecondaryCommand { get; private set; }
+    public bool HasActions => PrimaryCommand != null;
+    public bool AreActionsEnabled
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    public void SetActions(string primaryLabel, Func<Task> primary, string secondaryLabel, Func<Task> secondary)
+    {
+        PrimaryLabel = primaryLabel;
+        SecondaryLabel = secondaryLabel;
+        PrimaryCommand = ReactiveCommand.CreateFromTask(() => RunActionAsync(primary));
+        SecondaryCommand = ReactiveCommand.CreateFromTask(() => RunActionAsync(secondary));
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        if (!AreActionsEnabled || IsLeaving) return;
+        AreActionsEnabled = false;
+        try { await action(); }
+        finally { if (!IsLeaving) AreActionsEnabled = true; }
+    }
 
     public ToastVM(NotificationType type, string title, string? message, Action<ToastVM> remove)
     {
@@ -102,6 +128,7 @@ public class ToastVM : ReactiveObject
             return;
 
         IsLeaving = true;
+        AreActionsEnabled = false;
         _lifetimeTimer?.Stop();
         await Task.Delay(Presence.LeaveTime);
         _remove(this);

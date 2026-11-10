@@ -296,7 +296,8 @@ public partial class MainWindowVM : ReactiveObject
         UpdaterVM updater,
         ILoggerFactory loggerFactory,
         Func<ConnectWindowVM> createConnectWindow,
-        Func<SettingsWindowVM> createSettings)
+        Func<SettingsWindowVM> createSettings,
+        Client.Application.Sounds.ISoundService? callSounds = null)
     {
         ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
@@ -304,6 +305,7 @@ public partial class MainWindowVM : ReactiveObject
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
         _notifications = notifications;
+        _callSounds = callSounds;
         _avatars = avatars;
         _pushRegistration = pushRegistration;
         _chatServices = chatServices;

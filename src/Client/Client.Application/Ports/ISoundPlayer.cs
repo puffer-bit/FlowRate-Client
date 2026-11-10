@@ -18,4 +18,7 @@ public interface ISoundPlayer
     /// Frees what was prepared for a clip that will not be played again.
     /// </summary>
     void Release(SoundClip clip);
+
+    /// <summary>Stops current playback of a clip while retaining its prepared resources.</summary>
+    void Stop(SoundClip clip);
 }

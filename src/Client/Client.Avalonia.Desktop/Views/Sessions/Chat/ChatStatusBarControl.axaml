@@ -78,6 +78,10 @@
                 </Grid>
             </Button>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="borderless" Width="36" Height="36" Padding="8"
+                        IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}">
+                    <Image Source="{StaticResource ChatCallStartedIcon}"/>
+                </Button>
                 <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
                               VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
                               IsChecked="{Binding IsPinsOpen, Mode=TwoWay}">
