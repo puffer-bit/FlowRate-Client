@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
@@ -15,9 +16,13 @@
     <Border Classes="msg-root"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
+            Classes.system="{Binding IsSystem}"
             Classes.mentioned="{Binding IsMentioningMe}">
         <!-- The avatar column stays in continuations, so their text lines up with the first message -->
-        <Grid ColumnDefinitions="46, *">
+        <Panel>
+            <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
+                                          Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
+        <Grid ColumnDefinitions="46, *" IsVisible="{Binding !IsSystem}">
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped"
@@ -197,5 +202,6 @@
                            Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
             </StackPanel>
         </Grid>
+        </Panel>
     </Border>
 </UserControl>

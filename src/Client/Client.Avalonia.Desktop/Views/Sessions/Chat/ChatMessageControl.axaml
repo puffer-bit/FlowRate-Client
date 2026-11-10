@@ -4,6 +4,7 @@
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -24,9 +25,13 @@
     <Border Classes="msg-root"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
+            Classes.system="{Binding IsSystem}"
             Classes.mentioned="{Binding IsMentioningMe}">
         <!-- The avatar column also holds the time of continuations, so their text lines up with the first message -->
-        <Grid ColumnDefinitions="46, *"> 
+        <Panel>
+            <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
+                                          Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
+        <Grid ColumnDefinitions="46, *" IsVisible="{Binding !IsSystem}">
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped" Cursor="Hand"
@@ -221,5 +226,6 @@
                            Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
             </Panel>
         </Grid>
+        </Panel>
     </Border>
 </UserControl>

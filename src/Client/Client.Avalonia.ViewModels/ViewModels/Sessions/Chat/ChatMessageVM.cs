@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
                 this.RaisePropertyChanged(nameof(HasPlainText));
             }
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsSystem));
+            this.RaisePropertyChanged(nameof(SystemEventKind));
+            SystemParts = ChatSystemMessageText.Parts(value, _ => null);
             this.RaisePropertyChanged(nameof(LocalSentTime));
             this.RaisePropertyChanged(nameof(IsPinned));
             this.RaisePropertyChanged(nameof(CanEdit));
@@ -51,6 +55,21 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(IsMentioningMe));
         }
     }
+
+    public bool IsSystem => Message.IsSystem;
+    public ChatSystemEventKind SystemEventKind => Message.IsSystem && Message.SystemContent?.IsValid() == true
+        ? Message.SystemContent.Kind : 0;
+    public IReadOnlyList<ChatSystemMessagePart> SystemParts
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(SystemText));
+        }
+    } = [];
+    public string SystemText => string.Concat(SystemParts.Select(part => part.Text));
+    public ReactiveCommand<int, RxVoid> OpenSystemUserCommand => _viewProfileCommand;
 
     /// <summary>
     /// The text as it is shown, with its mentions written as names. Null until the chat renders it,

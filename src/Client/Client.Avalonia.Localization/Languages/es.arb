@@ -1372,5 +1372,11 @@
   "privateChats.direct": "Chat privado",
   "privateChats.directDescription": "Una conversación con una persona.",
   "privateChats.groupDescription": "Una conversación con varias personas.",
-  "privateChats.noUsersFound": "No se encontraron usuarios"
+  "privateChats.noUsersFound": "No se encontraron usuarios",
+  "chat.system.memberAdded": "{actor} añadió a {subject}",
+  "chat.system.memberRemoved": "{actor} eliminó a {subject}",
+  "chat.system.memberLeft": "{subject} salió del grupo",
+  "chat.system.callStarted": "{actor} inició una llamada",
+  "chat.system.callEnded": "Llamada finalizada",
+  "chat.system.event": "Evento del chat"
 }

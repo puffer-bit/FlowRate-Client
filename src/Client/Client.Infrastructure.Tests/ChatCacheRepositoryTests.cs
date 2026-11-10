@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
 using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using Xunit;
 using Client.Application.Ports.Repositories;
@@ -43,6 +44,31 @@ public class ChatCacheRepositoryTests
         Enumerable.Range(fromId, toId - fromId + 1).Select(id => Message(id, id)).ToList();
 
     private static int[] Ids(CachedChatPage? page) => page!.Messages.Select(message => message.Id).ToArray();
+
+    [Fact]
+    public async Task SystemEventSurvivesCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var content = new ChatSystemContent
+        {
+            Kind = ChatSystemEventKind.MemberAdded, ActorUserId = 3, SubjectUserId = 5
+        };
+        var message = new ChatMessageModel
+        {
+            Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
+            IsSystem = true, IsReadOnly = true, SystemContent = content,
+            TextContent = new ChatTextContent { Text = content.ToFallbackText() },
+            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        };
+        await repository.ReplaceAsync(Chat, [message], 1, true);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var stored = Assert.Single((await reloaded.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.True(stored.IsSystem);
+        Assert.True(stored.IsReadOnly);
+        Assert.Equal(content, stored.SystemContent);
+        Assert.Equal(message.SentTime, stored.SentTime);
+    }
 
     [Fact]
     public async Task CommandOutcomeSurvivesCacheReload()

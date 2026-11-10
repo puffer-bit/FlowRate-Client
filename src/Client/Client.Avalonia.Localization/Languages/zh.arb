@@ -1372,5 +1372,11 @@
   "privateChats.direct": "私聊",
   "privateChats.directDescription": "与一个人交谈。",
   "privateChats.groupDescription": "与多个人交谈。",
-  "privateChats.noUsersFound": "未找到用户"
+  "privateChats.noUsersFound": "未找到用户",
+  "chat.system.memberAdded": "{actor}添加了{subject}",
+  "chat.system.memberRemoved": "{actor}移除了{subject}",
+  "chat.system.memberLeft": "{subject}退出了群组",
+  "chat.system.callStarted": "{actor}发起了通话",
+  "chat.system.callEnded": "通话已结束",
+  "chat.system.event": "聊天事件"
 }

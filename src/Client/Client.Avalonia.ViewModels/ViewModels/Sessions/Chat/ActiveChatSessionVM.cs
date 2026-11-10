@@ -248,7 +248,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _subscriptions
             .Add(() => StatusBar.PropertyChanged += OnPinsPanelChanged,
                 () => StatusBar.PropertyChanged -= OnPinsPanelChanged)
-            .Add(() => Strings.LanguageChanged += PublishPins, () => Strings.LanguageChanged -= PublishPins)
+            .Add(() => Strings.LanguageChanged += ApplySenders, () => Strings.LanguageChanged -= ApplySenders)
             .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
             .Add(() => coordinatorSession.ChatUserTyping += OnChatUserTyping,
                 () => coordinatorSession.ChatUserTyping -= OnChatUserTyping)

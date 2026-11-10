@@ -1372,5 +1372,11 @@
   "privateChats.direct": "個人チャット",
   "privateChats.directDescription": "1人との会話。",
   "privateChats.groupDescription": "複数人との会話。",
-  "privateChats.noUsersFound": "ユーザーが見つかりません"
+  "privateChats.noUsersFound": "ユーザーが見つかりません",
+  "chat.system.memberAdded": "{actor}が{subject}を追加しました",
+  "chat.system.memberRemoved": "{actor}が{subject}を削除しました",
+  "chat.system.memberLeft": "{subject}がグループを退出しました",
+  "chat.system.callStarted": "{actor}が通話を開始しました",
+  "chat.system.callEnded": "通話が終了しました",
+  "chat.system.event": "チャットのイベント"
 }

@@ -121,6 +121,7 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
     {
         if (DataContext is ChatMessageVM vm)
         {
+            if (vm.IsSystem) { e.Handled = true; return; }
             if (ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e))
                 return;
 

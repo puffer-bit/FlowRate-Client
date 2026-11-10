@@ -142,6 +142,7 @@ public partial class ChatView : UserControl
             .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
         if (message == null)
             return;
+        if (message.IsSystem) { e.Handled = true; return; }
 
         message.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
             .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();

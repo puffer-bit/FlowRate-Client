@@ -2006,5 +2006,11 @@
   "privateChats.direct": "Direct chat",
   "privateChats.directDescription": "A conversation with one person.",
   "privateChats.groupDescription": "A conversation with several people.",
-  "privateChats.noUsersFound": "No users found"
+  "privateChats.noUsersFound": "No users found",
+  "chat.system.memberAdded": "{actor} added {subject}",
+  "chat.system.memberRemoved": "{actor} removed {subject}",
+  "chat.system.memberLeft": "{subject} left the group",
+  "chat.system.callStarted": "{actor} started a call",
+  "chat.system.callEnded": "Call ended",
+  "chat.system.event": "Chat event"
 }

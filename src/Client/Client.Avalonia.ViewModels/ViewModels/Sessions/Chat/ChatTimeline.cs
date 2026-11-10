@@ -149,6 +149,7 @@ public class ChatTimeline
     }
 
     private static bool IsChained(ChatMessageVM earlier, ChatMessageVM later) =>
+        !earlier.Message.IsSystem && !later.Message.IsSystem &&
         earlier.Message.SenderUserId == later.Message.SenderUserId &&
         later.Message.SentTime - earlier.Message.SentTime <= ChainGap;
 }

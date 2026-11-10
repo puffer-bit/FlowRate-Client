@@ -1443,5 +1443,11 @@
   "privateChats.direct": "Личный чат",
   "privateChats.directDescription": "Переписка с одним человеком.",
   "privateChats.groupDescription": "Переписка с несколькими людьми.",
-  "privateChats.noUsersFound": "Никого не найдено"
+  "privateChats.noUsersFound": "Никого не найдено",
+  "chat.system.memberAdded": "{actor} добавил(а) {subject}",
+  "chat.system.memberRemoved": "{actor} удалил(а) {subject}",
+  "chat.system.memberLeft": "{subject} покинул(а) группу",
+  "chat.system.callStarted": "{actor} начал(а) звонок",
+  "chat.system.callEnded": "Звонок завершён",
+  "chat.system.event": "Событие чата"
 }
