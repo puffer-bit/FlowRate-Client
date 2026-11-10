@@ -663,6 +663,12 @@
   "chat.input.watermark": "Escribir en {chat}",
   "chat.send": "Enviar (Intro)",
   "chat.replyTo": "Respuesta a {name}",
+  "chat.command.roll.invalid": "Usa /roll mínimo-máximo con enteros de 1 a 1000; el mínimo no puede superar al máximo.",
+  "chat.command.flip.invalid": "/flip no acepta parámetros.",
+  "chat.command.flip.heads": "Cara",
+  "chat.command.flip.tails": "Cruz",
+  "chat.command.flip.hint": "/flip — lanzar una moneda: cara o cruz. No necesita parámetros.",
+  "chat.command.roll.hint": "/roll 1-100 — elegir un número aleatorio en un intervalo. Introduce mínimo-máximo, de 1 a 1000.",
   "chat.mention.here": "Todos los conectados",
   "chat.mention.everyone": "Todos en el chat",
 

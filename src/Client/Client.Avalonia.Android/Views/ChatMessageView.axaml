@@ -71,7 +71,29 @@
 
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
-                <text:TrailingMarkPanel IsVisible="{Binding HasText}">
+                <Border IsVisible="{Binding HasCommandResult}" Background="{DynamicResource MsgReplyBrush}"
+                        Padding="6,3" CornerRadius="5" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Panel Width="18" Height="18" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                            <Panel.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="{Binding CommandResult.TokenScaleX}"/>
+                                    <RotateTransform Angle="{Binding CommandResult.TokenAngle}"/>
+                                </TransformGroup>
+                            </Panel.RenderTransform>
+                            <Image Source="{StaticResource CoinIcon}" IsVisible="{Binding CommandResult.IsFlip}"/>
+                            <Image Source="{StaticResource DiceIcon}" IsVisible="{Binding CommandResult.IsRoll}"/>
+                        </Panel>
+                        <TextBlock Text="{Binding CommandResult.Caption}" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <TextBlock Text="→" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <TextBlock Text="{Binding CommandResult.DisplayValue}" FontSize="14" MinWidth="32"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <text:TrailingMarkPanel IsVisible="{Binding HasPlainText}">
                     <Grid>
                         <chatVm:ChatCodeBlockBackground Target="{Binding #MessageTextBlock}" IsHitTestVisible="False"/>
                         <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"

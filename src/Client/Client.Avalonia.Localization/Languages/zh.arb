@@ -663,6 +663,12 @@
   "chat.input.watermark": "在 {chat} 中发消息",
   "chat.send": "发送 (Enter)",
   "chat.replyTo": "回复 {name}",
+  "chat.command.roll.invalid": "请输入 /roll 最小值-最大值，使用 1 至 1000 的整数，最小值不能大于最大值。",
+  "chat.command.flip.invalid": "/flip 不接受参数。",
+  "chat.command.flip.heads": "正面",
+  "chat.command.flip.tails": "反面",
+  "chat.command.flip.hint": "/flip — 抛硬币：正面或反面。无需参数。",
+  "chat.command.roll.hint": "/roll 1-100 — 在范围内随机选择一个数字。输入最小值-最大值，数值为 1 至 1000。",
   "chat.mention.here": "所有在线的人",
   "chat.mention.everyone": "聊天中的所有人",
 

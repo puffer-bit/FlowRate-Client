@@ -268,6 +268,9 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
 
     private bool HandleMentionKey(ChatMentionPickerVM picker, Key key)
     {
+        if (picker.Suggestions.Count == 0 && key != Key.Escape)
+            return false;
+
         switch (key)
         {
             case Key.Up:
@@ -287,6 +290,12 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
             default:
                 return false;
         }
+    }
+
+    private void OnMentionPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (ViewModel?.MentionPicker is { } picker && sender is Button { DataContext: ChatMentionSuggestionVM suggestion })
+            picker.SelectSuggestion(suggestion);
     }
 
     private void OnMentionClick(object? sender, RoutedEventArgs e)

@@ -330,6 +330,12 @@ public partial class ChatView : UserControl
 
     private void OnMenuClick(object? sender, RoutedEventArgs e) => MenuRequested?.Invoke();
 
+    private void OnMentionPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (Chat?.Composer.MentionPicker is { } picker && sender is Button { DataContext: ChatMentionSuggestionVM suggestion })
+            picker.SelectSuggestion(suggestion);
+    }
+
     private void OnMentionClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not ActiveChatSessionVM { Composer.MentionPicker: var picker }

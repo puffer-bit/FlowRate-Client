@@ -27,6 +27,15 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         get;
         set
         {
+            var result = value.TextContent?.CommandResult;
+            if (result != CommandResult?.Result)
+            {
+                CommandResult?.Finish();
+                CommandResult = result != null && result.IsValid() ? new ChatCommandResultVM(result) : null;
+                this.RaisePropertyChanged(nameof(CommandResult));
+                this.RaisePropertyChanged(nameof(HasCommandResult));
+                this.RaisePropertyChanged(nameof(HasPlainText));
+            }
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(LocalSentTime));
             this.RaisePropertyChanged(nameof(IsPinned));
@@ -38,6 +47,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(CanDelete));
             this.RaisePropertyChanged(nameof(CanPin));
             this.RaisePropertyChanged(nameof(HasText));
+            this.RaisePropertyChanged(nameof(HasPlainText));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
         }
     }
@@ -69,7 +79,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     /// <summary>
     /// Only the author may change a message, and only its text.
     /// </summary>
-    public bool CanEdit => Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
+    public bool CanEdit => Message.TextContent?.CommandResult == null && Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
 
     /// <summary>The roles of the current user let it delete messages of others.</summary>
     public bool CanManageMessages
@@ -182,6 +192,17 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public IReadOnlyList<ChatFileVM> Files { get; }
     public bool HasFiles => Files.Count > 0;
     public bool HasText => Message.TextContent != null;
+    public ChatCommandResultVM? CommandResult { get; private set; }
+    public bool HasCommandResult => CommandResult != null;
+    public bool HasPlainText => HasText && !HasCommandResult;
+
+    public bool TakeLiveArrival()
+    {
+        if (!IsNew) return false;
+        IsNew = false;
+        CommandResult?.Play();
+        return true;
+    }
 
     public bool IsSequenceStart
     {

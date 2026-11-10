@@ -1690,6 +1690,12 @@
   "settings.appearance.preview.hint": "Styles in preview updates in real time",
   "settings.accounting.unnamedServer": "Unnamed server",
   "chat.replyTo": "Reply to {name}",
+  "chat.command.roll.invalid": "Use /roll minimum-maximum with whole numbers from 1 to 1000; minimum must not exceed maximum.",
+  "chat.command.flip.invalid": "/flip does not take arguments.",
+  "chat.command.flip.heads": "Heads",
+  "chat.command.flip.tails": "Tails",
+  "chat.command.flip.hint": "/flip — flip a coin: heads or tails. No arguments needed.",
+  "chat.command.roll.hint": "/roll 1-100 — choose a random number in a range. Enter minimum-maximum, from 1 to 1000.",
   "chat.mention.here": "Everyone online",
   "chat.mention.everyone": "Everyone in the chat",
   "@chat.replyTo": {

@@ -3,6 +3,7 @@
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -182,7 +183,7 @@
     <Border Background="Transparent"
             Padding="9,7,9,8">
         <StackPanel>
-            <!-- Users to mention, over the input while a name after "@" is typed; the input keeps the focus -->
+            <!-- Mention and command suggestions; the input keeps the focus -->
             <Popup IsOpen="{Binding MentionPicker.IsOpen}"
                    PlacementTarget="{Binding #ComposerBox}"
                    Placement="TopEdgeAlignedLeft"
@@ -190,26 +191,32 @@
                    Width="{Binding #ComposerBox.Bounds.Width}">
                 <Border Classes="mention-list">
                     <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="MentionItems" ItemsSource="{Binding MentionPicker.Suggestions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
-                                    <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
-                                            Click="OnMentionClick">
-                                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
-                                            <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
-                                                                IsVisible="{Binding !IsGroup}"
-                                                                UserName="{Binding Name}"
-                                                                AvatarUrl="{Binding AvatarUrl}"
-                                                                Status="{Binding Status}"/>
-                                            <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                                       Text="{Binding Name, StringFormat=@\{0\}}"/>
-                                            <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
-                                                       IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <StackPanel>
+                            <ItemsControl x:Name="MentionItems" ItemsSource="{Binding MentionPicker.Suggestions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                                        <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                                Click="OnMentionClick" PointerEntered="OnMentionPointerEntered">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                                <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
+                                                                    IsVisible="{Binding !IsGroup}"
+                                                                    UserName="{Binding Name}"
+                                                                    AvatarUrl="{Binding AvatarUrl}"
+                                                                    Status="{Binding Status}"/>
+                                                <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                                           Text="{Binding DisplayName}"/>
+                                                <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                                           IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <hints:HintBlock IsVisible="{Binding MentionPicker.ShowRollHint}"
+                                             Text="{l:Text chat.command.roll.hint}" Margin="10,6"/>
+                            <hints:HintBlock IsVisible="{Binding MentionPicker.ShowFlipHint}"
+                                             Text="{l:Text chat.command.flip.hint}" Margin="10,6"/>
+                        </StackPanel>
                     </ScrollViewer>
                 </Border>
             </Popup>

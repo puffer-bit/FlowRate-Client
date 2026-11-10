@@ -17,6 +17,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBlocks/TextBlockStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageViewStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Hints/HintBlock.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/EmptyStates/EmptyState.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Avatars/UserAvatar.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Menus/MenuItemButton.axaml"/>

@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -463,7 +464,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     private async Task SendMessage()
     {
         // Enter in the input calls the command directly, so the checks are repeated here
-        if (IsMessageSending || !IsConnected)
+        if (IsMessageSending || !IsConnected || !CanWrite)
             return;
 
         var textContent = ChatTextContent.FromUserInput(
@@ -485,6 +486,13 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         if (EditMessage is { } edited)
         {
             await SendEdit(edited, textContent!);
+            return;
+        }
+
+        if (ChatCommandRequest.Parse(textContent?.Text) is { IsValid: false } command)
+        {
+            SendError = Strings.Get(command.Kind == ChatCommandKind.Roll
+                ? "chat.command.roll.invalid" : "chat.command.flip.invalid");
             return;
         }
 

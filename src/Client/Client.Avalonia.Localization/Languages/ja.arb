@@ -663,6 +663,12 @@
   "chat.input.watermark": "{chat} にメッセージを送信",
   "chat.send": "送信 (Enter)",
   "chat.replyTo": "{name} への返信",
+  "chat.command.roll.invalid": "/roll 最小値-最大値：1〜1000の整数で、最小値は最大値以下にしてください。",
+  "chat.command.flip.invalid": "/flip に引数は指定できません。",
+  "chat.command.flip.heads": "表",
+  "chat.command.flip.tails": "裏",
+  "chat.command.flip.hint": "/flip — コインを投げて表か裏を選びます。引数は不要です。",
+  "chat.command.roll.hint": "/roll 1-100 — 範囲内の乱数を選びます。最小値-最大値を1〜1000で入力してください。",
   "chat.mention.here": "オンラインの全員",
   "chat.mention.everyone": "チャットの全員",
 

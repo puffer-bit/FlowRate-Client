@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using Xunit;
 using Client.Application.Ports.Repositories;
 using Client.Core.Chat;
@@ -12,7 +13,7 @@ public class ChatCacheRepositoryTests
     private static readonly DateTime SentTime = new(2026, 10, 13, 8, 0, 0, DateTimeKind.Utc);
 
     private static ChatMessageModel Message(int id, long revision, string text = "text", int? replyTo = null,
-        bool isDeleted = false, bool pinned = false) => new()
+        bool isDeleted = false, bool pinned = false, ChatCommandResult? outcome = null) => new()
     {
         Id = id,
         ChatId = Chat.ChatId,
@@ -21,7 +22,7 @@ public class ChatCacheRepositoryTests
         PinnedByUserId = pinned ? 42 : null,
         SenderUserId = 3,
         SentTime = SentTime.AddMinutes(id),
-        TextContent = isDeleted ? null : new ChatTextContent { Text = text },
+        TextContent = isDeleted ? null : new ChatTextContent { Text = text, CommandResult = outcome },
         ReplyContent = replyTo is { } targetId
             ? new ChatReplyContent
             {
@@ -42,6 +43,19 @@ public class ChatCacheRepositoryTests
         Enumerable.Range(fromId, toId - fromId + 1).Select(id => Message(id, id)).ToList();
 
     private static int[] Ids(CachedChatPage? page) => page!.Messages.Select(message => message.Id).ToArray();
+
+    [Fact]
+    public async Task CommandOutcomeSurvivesCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var outcome = new ChatCommandResult { Kind = ChatCommandKind.Flip, Minimum = 0, Maximum = 1, Value = 1 };
+        await repository.ReplaceAsync(Chat, [Message(1, 1, outcome.ToFallbackText(), outcome: outcome)], 1, true);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var message = Assert.Single((await reloaded.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.Equal(outcome, message.TextContent!.CommandResult);
+        Assert.Equal(outcome.ToFallbackText(), message.TextContent.Text);
+    }
 
     [Fact]
     public async Task ChatWithoutATailHasNoPages()

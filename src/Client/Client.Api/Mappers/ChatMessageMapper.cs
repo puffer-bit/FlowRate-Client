@@ -50,7 +50,7 @@ internal static class ChatMessageMapper
     }
 
     private static ChatTextContent? MapTextContent(ChatTextContentDTO? dto)
-        => dto == null ? null : new ChatTextContent { Text = dto.Text };
+        => dto == null ? null : new ChatTextContent { Text = dto.Text, CommandResult = dto.CommandResult };
     
     private static ChatReplyContent? MapReplyContent(ChatReplyContentDTO? dto)
     {

@@ -101,9 +101,8 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
     {
         base.OnDataContextChanged(e);
 
-        if (DataContext is ChatMessageVM { IsNew: true } vm)
+        if (DataContext is ChatMessageVM vm && vm.TakeLiveArrival())
         {
-            vm.IsNew = false;
             // A new message fades in while rising into its place from slightly below
             Presence.Play(this, AppearEffect.Rise);
         }

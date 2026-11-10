@@ -4,15 +4,25 @@ using Shared.Enums.User;
 namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
-/// One line of the mention list: a user, or everyone / those online.
+/// One line of the input suggestions: a mention or a slash command.
 /// </summary>
 public class ChatMentionSuggestionVM : ReactiveObject
 {
-    /// <summary>The name written after "@".</summary>
+    public bool IsCommand { get; init; }
+    public string? CommandArguments { get; init; }
+    public string DisplayName => IsCommand
+        ? "/" + Name + (CommandArguments == null ? "" : " " + CommandArguments)
+        : "@" + Name;
+
+    /// <summary>The name written after "@" or "/".</summary>
     public required string Name
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(DisplayName));
+        }
     }
     public int? UserId { get; init; }
     public string? AvatarUrl

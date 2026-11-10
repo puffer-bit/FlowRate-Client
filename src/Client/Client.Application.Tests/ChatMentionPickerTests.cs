@@ -135,6 +135,110 @@ public class ChatMentionPickerTests
         Assert.False(picker.IsOpen);
     });
 
+    [Fact]
+    public Task SlashOffersCommandsAndCompletesRollWithDefaultRangeWithoutSearchingUsers() => TestUiThread.RunAsync(() =>
+    {
+        var (picker, search) = CreatePicker();
+        picker.Update("/", 1);
+        Assert.True(picker.IsOpen);
+        Assert.True(picker.ShowRollHint);
+        Assert.Collection(picker.Suggestions,
+            roll => Assert.Equal("/roll 1-100", roll.DisplayName),
+            flip => Assert.Equal("/flip", flip.DisplayName));
+        Assert.All(picker.Suggestions, suggestion => Assert.True(suggestion.IsCommand));
+        Assert.False(picker.ShowFlipHint);
+        Assert.Equal(("/roll 1-100", 11), picker.Complete("/", 1)!.Value);
+        Assert.Equal("/roll 1-100", picker.Encode("/roll 1-100"));
+        Assert.Empty(search.Requests);
+    });
+
+    [Fact]
+    public Task CommandHelpFollowsKeyboardAndPointerSelection() => TestUiThread.RunAsync(() =>
+    {
+        var (picker, _) = CreatePicker();
+        picker.Update("/", 1);
+        Assert.True(picker.ShowRollHint);
+        Assert.False(picker.ShowFlipHint);
+        picker.MoveSelection(1);
+        Assert.False(picker.ShowRollHint);
+        Assert.True(picker.ShowFlipHint);
+        picker.SelectSuggestion(picker.Suggestions[0]);
+        Assert.True(picker.ShowRollHint);
+        Assert.False(picker.ShowFlipHint);
+        picker.Close();
+    });
+
+    [Theory]
+    [InlineData("/f")]
+    [InlineData("/flip")]
+    [InlineData("/FLI")]
+    public Task FlipCompletesWithoutRollArguments(string text) => TestUiThread.RunAsync(() =>
+    {
+        var (picker, search) = CreatePicker();
+        picker.Update(text, text.Length);
+        Assert.Equal("/flip", Assert.Single(picker.Suggestions).DisplayName);
+        Assert.True(picker.ShowFlipHint);
+        Assert.False(picker.ShowRollHint);
+        var completed = picker.Complete(text, text.Length)!.Value;
+        Assert.Equal(("/flip ", 6), completed);
+        Assert.Equal("/flip ", picker.Encode(completed.Text));
+        picker.Update(completed.Text, completed.CaretIndex);
+        Assert.True(picker.ShowFlipHint);
+        Assert.Empty(picker.Suggestions);
+        Assert.Null(picker.Complete(completed.Text, completed.CaretIndex));
+        picker.Close();
+        Assert.False(picker.ShowFlipHint);
+        Assert.Empty(search.Requests);
+    });
+
+    [Theory]
+    [InlineData("/roll ")]
+    [InlineData("/roll 1-")]
+    [InlineData("/roll 1-1000")]
+    [InlineData("/ROLL 10-20")]
+    public Task RollArgumentsKeepHelpWithoutOfferingCompletion(string text) => TestUiThread.RunAsync(() =>
+    {
+        var (picker, search) = CreatePicker();
+        picker.Update(text, text.Length);
+        Assert.True(picker.IsOpen);
+        Assert.True(picker.ShowRollHint);
+        Assert.Empty(picker.Suggestions);
+        Assert.Null(picker.Complete(text, text.Length));
+        Assert.Empty(search.Requests);
+        picker.Close();
+        Assert.False(picker.ShowRollHint);
+    });
+
+    [Theory]
+    [InlineData("/unknown")]
+    [InlineData("Hi /roll")]
+    [InlineData("https://roll")]
+    [InlineData("/roll\ntext")]
+    public Task OtherTextDoesNotOfferCommands(string text) => TestUiThread.RunAsync(() =>
+    {
+        var (picker, _) = CreatePicker();
+        picker.Update(text, text.Length);
+        Assert.False(picker.IsOpen);
+        Assert.False(picker.ShowRollHint);
+        Assert.Empty(picker.Suggestions);
+    });
+
+    [Fact]
+    public Task SwitchingToCommandsCancelsMentionSearch() => TestUiThread.RunAsync(() =>
+    {
+        var (picker, search) = CreatePicker();
+        picker.Update("@r", 2);
+        WaitUntil(() => search.Requests.Count == 1);
+        picker.Update("/r", 2);
+        Assert.True(Assert.Single(picker.Suggestions).IsCommand);
+        search.Requests[0].Result.SetResult([User(2, "Robin")]);
+        PumpFor(TimeSpan.FromMilliseconds(100));
+        Assert.True(Assert.Single(picker.Suggestions).IsCommand);
+        Assert.False(picker.IsSearching);
+        Assert.Null(picker.Complete("@r", 2));
+        Assert.Equal(("/roll 5-10", 6), picker.Complete("/r 5-10", 2)!.Value);
+    });
+
     private static (ChatMentionPickerVM Picker, SearchSession Search) CreatePicker()
     {
         var session = DispatchProxy.Create<ICoordinatorSession, SearchSession>();
