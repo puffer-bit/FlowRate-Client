@@ -27,6 +27,23 @@ public partial class HybridScreenTile : UserControl
         Attach(DataContext as ScreenStreamVM);
     }
 
+    protected override void OnGotFocus(FocusChangedEventArgs e)
+    {
+        base.OnGotFocus(e);
+
+        // Pointer focus must not pin the bar open after clicking a control.
+        Classes.Set("keyboardControls",
+            e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional);
+    }
+
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+
+        if (!IsKeyboardFocusWithin)
+            Classes.Set("keyboardControls", false);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
