@@ -54,7 +54,7 @@
             Background="{DynamicResource SettingsCardBackgroundBrush}"
             BorderBrush="{DynamicResource SettingsCardBorderBrush}"
             BorderThickness="1"
-            CornerRadius="8"
+            CornerRadius="{StaticResource SurfaceCornerRadius}"
             ClipToBounds="True">
         <Panel>
 
@@ -143,13 +143,15 @@
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsExpanded}"
                                 Command="{Binding ToggleExpandCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.expand}">
+                                ToolTip.Tip="{l:Text hybrid.screen.expand}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.expand}">
                             <Image Width="20" Height="20" Source="{StaticResource ExpandIcon}"/>
                         </Button>
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding IsExpanded}"
                                 Command="{Binding ToggleExpandCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.collapse}">
+                                ToolTip.Tip="{l:Text hybrid.screen.collapse}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.collapse}">
                             <Image Width="20" Height="20" Source="{StaticResource CollapseIcon}"/>
                         </Button>
                     </Panel>
@@ -157,13 +159,15 @@
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsWatched}"
                                 Command="{Binding WatchCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.watch}">
+                                ToolTip.Tip="{l:Text hybrid.screen.watch}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.watch}">
                             <Image Width="20" Height="20" Source="{StaticResource EyeIcon}"/>
                         </Button>
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding IsWatched}"
                                 Command="{Binding StopWatchingCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.stopWatching}">
+                                ToolTip.Tip="{l:Text hybrid.screen.stopWatching}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.stopWatching}">
                             <Image Width="20" Height="20" Source="{StaticResource CrossedEyeIcon}"/>
                         </Button>
                     </Panel>

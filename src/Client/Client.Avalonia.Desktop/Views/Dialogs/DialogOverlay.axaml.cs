@@ -42,12 +42,20 @@ internal partial class DialogOverlay : UserControl
     {
         DialogContent.Content = content;
 
-        if (!fillWindow)
-            return;
-
         // A stretched element limited by its maximum size is centered, which keeps the dialog in
         // the middle of large windows
         var border = Outline.BorderThickness;
+        if (!fillWindow)
+        {
+            // Forms declare a preferred maximum width, but can shrink with the host window.
+            if (double.IsNaN(content.Width) && double.IsFinite(content.MaxWidth))
+            {
+                Card.HorizontalAlignment = HorizontalAlignment.Stretch;
+                Card.MaxWidth = content.MaxWidth + border.Left + border.Right;
+            }
+            return;
+        }
+
         Card.HorizontalAlignment = HorizontalAlignment.Stretch;
         Card.VerticalAlignment = VerticalAlignment.Stretch;
         Card.MaxWidth = content.MaxWidth + border.Left + border.Right;

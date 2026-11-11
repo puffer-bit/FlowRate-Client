@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:DataType="chatVm:ChatComposerVM"
+             x:Class="Client.Views.Sessions.Chat.ChatReplyBar">
+    <Grid Classes="reply-bar"
+          anim:Presence.Appear="Unfold"
+          anim:Presence.Leave="Fold"
+          anim:Presence.IsLeaving="{Binding IsReplyBarLeaving}"
+          IsVisible="{Binding ReplyBarPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+          ColumnDefinitions="Auto, *, Auto"
+          Margin="10,8,6,0">
+        <Grid.Styles>
+            <!-- A style and not a value of the element: the end of a fold clears
+                 the value the element has -->
+            <Style Selector="Grid.reply-bar">
+                <Setter Property="ClipToBounds" Value="True"/>
+            </Style>
+        </Grid.Styles>
+        <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+               VerticalAlignment="Center" Opacity="0.8"
+               IsVisible="{Binding !ReplyBarPreview.IsEdit, FallbackValue=False}"
+               Source="{StaticResource ReplyIcon}"/>
+        <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+               VerticalAlignment="Center" Opacity="0.8"
+               IsVisible="{Binding ReplyBarPreview.IsEdit, FallbackValue=False}"
+               Source="{StaticResource PencilIcon}"/>
+
+        <Button Grid.Column="1"
+                Classes="msg-reply"
+                Margin="0"
+                MaxWidth="Infinity"
+                HorizontalAlignment="Stretch"
+                Command="{Binding JumpToReplyTargetCommand}"
+                ToolTip.Tip="{l:Text chat.goToMessage}">
+            <Border Classes="msg-reply-body">
+                <StackPanel>
+                    <TextBlock Classes="msg-reply-username"
+                               Text="{Binding ReplyBarPreview.ReplyTitle}"/>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image Width="14" Height="14" Margin="0,0,5,0"
+                               Source="{StaticResource ClipIcon}"
+                               IsVisible="{Binding ReplyBarPreview.HasAttachments, FallbackValue=False}"/>
+                        <text:MarqueeTextBlock Grid.Column="1" FontSize="13"
+                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                           Text="{Binding ReplyBarPreview.Text}"
+                                           MaxLines="1"
+                                           TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Button>
+
+        <Button Grid.Column="2"
+                Classes="borderless composer-icon"
+                Width="28" Height="28"
+                Margin="6,0,0,0"
+                VerticalAlignment="Center"
+                ToolTip.Tip="{Binding CancelBarToolTip}"
+                Command="{Binding ResetReplyMessageCommand}"
+                AutomationProperties.Name="{Binding CancelBarToolTip}">
+            <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+        </Button>
+    </Grid>
+</UserControl>

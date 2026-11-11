@@ -2,7 +2,7 @@
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -80,7 +80,8 @@
             </Button>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                 <Button Classes="ghost" Width="36" Height="36" Padding="8" CornerRadius="6"
-                        IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}">
+                        IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}"
+                        AutomationProperties.Name="{l:Text calls.start}">
                     <Image Source="{StaticResource ChatCallStartedIcon}"/>
                 </Button>
                 <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"

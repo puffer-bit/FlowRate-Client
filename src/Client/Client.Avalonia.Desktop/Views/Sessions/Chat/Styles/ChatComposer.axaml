@@ -1,0 +1,177 @@
+    <Styles xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+        xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+        xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji;assembly=Client.Avalonia.Controls">
+        <Style Selector="FlyoutPresenter.emoji-popup">
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
+        <!-- ====== Composer ====== -->
+        <Style Selector="Border.composer-box">
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.composer-box:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        </Style>
+        <!-- A notice colors the frame, focused or not -->
+        <Style Selector="Border.composer-box.warning, Border.composer-box.warning:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.composer-box.error, Border.composer-box.error:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <Style Selector="Grid.composer-notice TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.warning TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Grid.composer-notice.error TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+
+        <!-- The box draws the frame, so the input itself has none in any state -->
+        <!-- Centered in the row rather than stretched to the 32 px of the buttons: a single line then sits
+             in the middle whatever its height, and a taller input sets the row height itself -->
+        <Style Selector="TextBox.composer-input">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MaxHeight" Value="160"/>
+            <Setter Property="Padding" Value="6,6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+        <Style Selector="TextBox.composer-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.composer-input:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Icon buttons inside the box: dim at rest, full on hover, faint when unavailable -->
+        <Style Selector="Button.composer-icon">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.composer-icon Image">
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+        <Style Selector="Button.composer-icon:pointerover Image">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.composer-icon:disabled Image">
+            <Setter Property="Opacity" Value="0.3"/>
+        </Style>
+
+        <!-- Send: an accent circle while there is something to send, a faint plane otherwise -->
+        <Style Selector="Button.composer-send">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.composer-send /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Short}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.composer-send:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.composer-send:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <!-- The circle stays while the message is on its way -->
+        <Style Selector="Button.composer-send.sending:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled">
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <Style Selector="Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.75"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+            <Setter Property="Stretch" Value="None"/>
+        </Style>
+        <Style Selector="Button.composer-send:disabled Path.composer-send-plane">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- ====== Mention list ====== -->
+        <Style Selector="Border.mention-list">
+            <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ColorOverlayMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource DialogShadow}"/>
+        </Style>
+        <Style Selector="Button.mention-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style Selector="Button.mention-item.selected, Button.mention-item:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        </Style>
+        <Style Selector="Button.mention-item TextBlock.mention-hint">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </Styles>

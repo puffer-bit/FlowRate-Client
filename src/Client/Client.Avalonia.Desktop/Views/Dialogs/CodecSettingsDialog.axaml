@@ -1,11 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:vm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Dialogs.CodecSettingsDialog"
              x:DataType="vm:CodecSettingsVM"
              Width="640" MaxWidth="760" MaxHeight="680">
-    <Grid RowDefinitions="Auto,*,Auto" Margin="20,16" IsEnabled="{Binding !IsBusy}">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="{StaticResource DialogBodyMargin}" IsEnabled="{Binding !IsBusy}">
         <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
             <TextBlock Text="{l:Text settings.video.codecSettings.title}" FontSize="16" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding Factory}"/>
@@ -43,11 +44,8 @@
         <StackPanel Grid.Row="2" Spacing="10" Margin="0,16,0,0">
             <TextBlock Text="{Binding Error}" Classes="fieldError" TextWrapping="Wrap"/>
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                <Button Grid.Column="0" HorizontalAlignment="Left" Classes="danger" Click="Reset">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text settings.video.codecSettings.reset}"/>
-                    </StackPanel>
+                <Button Grid.Column="0" HorizontalAlignment="Left" Classes="danger" Click="Reset" AutomationProperties.Name="{l:Text settings.video.codecSettings.reset}">
+                    <common:ActionLabel Icon="{StaticResource ResetIcon}" Text="{l:Text settings.video.codecSettings.reset}"/>
                 </Button>
                 <Button Grid.Column="1" Content="{l:Text settings.video.codecSettings.cancel}" Click="Cancel" IsCancel="True"/>
                 <Button Grid.Column="2" Content="{l:Text settings.video.codecSettings.save}" Click="Save" Classes="primary" IsDefault="True"/>

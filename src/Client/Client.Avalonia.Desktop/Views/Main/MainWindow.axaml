@@ -122,7 +122,8 @@
                 <Button Grid.Column="1" Classes="ghost sidePanelIcon" Margin="0,0,8,0"
                         VerticalAlignment="Center"
                         Command="{Binding OpenSettingsCommand}"
-                        ToolTip.Tip="{l:Text settings.title}">
+                        ToolTip.Tip="{l:Text settings.title}"
+                        AutomationProperties.Name="{l:Text settings.title}">
                     <Image Width="20" Height="20" Source="{StaticResource GearIcon}"/>
                 </Button>
             </Grid>

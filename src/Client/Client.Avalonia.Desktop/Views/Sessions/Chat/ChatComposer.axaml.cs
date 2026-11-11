@@ -275,11 +275,11 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         {
             case Key.Up:
                 picker.MoveSelection(-1);
-                MentionItems.ContainerFromIndex(picker.SelectedIndex)?.BringIntoView();
+                MentionSuggestions.ScrollSelectionIntoView(picker.SelectedIndex);
                 return true;
             case Key.Down:
                 picker.MoveSelection(1);
-                MentionItems.ContainerFromIndex(picker.SelectedIndex)?.BringIntoView();
+                MentionSuggestions.ScrollSelectionIntoView(picker.SelectedIndex);
                 return true;
             case Key.Enter or Key.Tab:
                 CompleteMention(picker, null);
@@ -292,15 +292,9 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
         }
     }
 
-    private void OnMentionPointerEntered(object? sender, PointerEventArgs e)
+    private void OnMentionPicked(object? sender, ChatMentionSuggestionVM suggestion)
     {
-        if (ViewModel?.MentionPicker is { } picker && sender is Button { DataContext: ChatMentionSuggestionVM suggestion })
-            picker.SelectSuggestion(suggestion);
-    }
-
-    private void OnMentionClick(object? sender, RoutedEventArgs e)
-    {
-        if (ViewModel?.MentionPicker is { } picker && sender is Button { DataContext: ChatMentionSuggestionVM suggestion })
+        if (ViewModel?.MentionPicker is { } picker)
             CompleteMention(picker, suggestion);
     }
 

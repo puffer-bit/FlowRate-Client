@@ -32,7 +32,7 @@
             <DataTemplate DataType="notificationVm:ToastVM">
                 <Border Classes="toast"
                         Width="320"
-                        CornerRadius="8"
+                        CornerRadius="{StaticResource SurfaceCornerRadius}"
                         ClipToBounds="True"
                         BorderThickness="1"
                         BorderBrush="{DynamicResource FlyoutBorderBrush}"

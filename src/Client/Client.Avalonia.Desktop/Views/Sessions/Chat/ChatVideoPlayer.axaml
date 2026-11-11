@@ -20,7 +20,8 @@
             </Grid>
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="4">
                 <Button x:Name="PlayButton" Classes="ghost" Click="OnPlay" Width="24" Height="24" Padding="0"
-                        ToolTip.Tip="{l:Text chat.video.play}">
+                        ToolTip.Tip="{l:Text chat.video.play}"
+                        AutomationProperties.Name="{l:Text chat.video.play}">
                     <Panel>
                         <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="14" Height="14" IsVisible="False"/>
                         <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="14" Height="14"/>
@@ -51,7 +52,8 @@
                     </Button.Flyout>
                 </Button>
                 <Button Grid.Column="4" Classes="ghost" Width="24" Height="24" Padding="0" Click="OnFullscreen"
-                        ToolTip.Tip="{l:Text hybrid.fullscreen}">
+                        ToolTip.Tip="{l:Text hybrid.fullscreen}"
+                        AutomationProperties.Name="{l:Text hybrid.fullscreen}">
                     <Image Source="{StaticResource FullscreenIcon}" Width="14" Height="14"/>
                 </Button>
             </Grid>

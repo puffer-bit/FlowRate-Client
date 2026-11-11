@@ -31,7 +31,7 @@
         <controls:SettingsHeader services:SettingText.Section="audio.microphone"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.inputDevice">
-                <ComboBox Width="300"
+                <ComboBox Classes="settingsDevice"
                           ItemsSource="{Binding InputDevices}"
                           SelectedItem="{Binding SelectedInputDevice}">
                     <ComboBox.ItemTemplate>
@@ -43,15 +43,15 @@
                 </ComboBox>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.inputVolume">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Slider Width="240" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
                             Minimum="{Binding MinInputVolumePercent}"
                             Maximum="{Binding MaxInputVolumePercent}"
                             Value="{Binding InputVolumePercent}"
                             TickFrequency="5" IsSnapToTickEnabled="True"/>
-                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
                                Text="{Binding InputVolumePercent, StringFormat={}{0:0}%}"/>
-                </StackPanel>
+                </Grid>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.noiseSuppression">
                 <ComboBox MinWidth="180" SelectedIndex="{Binding NoiseSuppressionIndex}">
@@ -81,7 +81,7 @@
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
                 <StackPanel Spacing="10">
-                    <Border Background="{DynamicResource BackgroundGeneralBrush}" CornerRadius="8" Padding="14">
+                    <Border Background="{DynamicResource BackgroundGeneralBrush}" CornerRadius="{StaticResource SurfaceCornerRadius}" Padding="14">
                         <StackPanel Spacing="12">
                             <StackPanel IsVisible="{Binding !IsTestRunning}" Spacing="4">
                                 <TextBlock FontWeight="Medium" TextWrapping="Wrap"
@@ -178,7 +178,7 @@
         <controls:SettingsHeader services:SettingText.Section="audio.output"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.outputDevice">
-                <ComboBox Width="300"
+                <ComboBox Classes="settingsDevice"
                           ItemsSource="{Binding OutputDevices}"
                           SelectedItem="{Binding SelectedOutputDevice}">
                     <ComboBox.ItemTemplate>
@@ -190,15 +190,15 @@
                 </ComboBox>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.outputVolume">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Slider Width="240" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
                             Minimum="{Binding MinOutputVolumePercent}"
                             Maximum="{Binding MaxOutputVolumePercent}"
                             Value="{Binding OutputVolumePercent}"
                             TickFrequency="5" IsSnapToTickEnabled="True"/>
-                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
                                Text="{Binding OutputVolumePercent, StringFormat={}{0:0}%}"/>
-                </StackPanel>
+                </Grid>
             </ui:SettingsRow>
         </ui:SettingsCard>
 
@@ -208,15 +208,15 @@
                 <CheckBox IsChecked="{Binding AreSoundsEnabled}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.soundsVolume" IsExpanded="{Binding AreSoundsEnabled}">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Slider Width="240" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
                             Minimum="{Binding MinSoundsVolumePercent}"
                             Maximum="{Binding MaxSoundsVolumePercent}"
                             Value="{Binding SoundsVolumePercent}"
                             TickFrequency="5" IsSnapToTickEnabled="True"/>
-                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
                                Text="{Binding SoundsVolumePercent, StringFormat={}{0:0}%}"/>
-                </StackPanel>
+                </Grid>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.soundPack" IsExpanded="{Binding AreSoundsEnabled}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -249,7 +249,7 @@
                                            TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
                                 <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Center"
                                         Command="{Binding PlayCommand}"
-                                        ToolTip.Tip="{l:Text settings.audio.soundEvents.listen}">
+                                        ToolTip.Tip="{l:Text settings.audio.soundEvents.listen}" AutomationProperties.Name="{l:Text settings.audio.soundEvents.listen}">
                                     <Image Width="16" Height="16" Source="{StaticResource PlayIcon}"/>
                                 </Button>
                                 <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"/>

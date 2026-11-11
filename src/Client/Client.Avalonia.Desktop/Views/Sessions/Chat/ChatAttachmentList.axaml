@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:DataType="chatVm:ChatComposerVM"
+             x:Class="Client.Views.Sessions.Chat.ChatAttachmentList">
+    <StackPanel IsVisible="{Binding HasAttachments}" Margin="10,8,10,0">
+        <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,0,0,-6">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="chatVm:ChatAttachmentVM">
+                    <!-- The card shows how far the file got, and why it did not go -->
+                    <Border Classes="chat-attachment" Classes.error="{Binding HasError}"
+                            ToolTip.Tip="{Binding Key}">
+                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                            <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
+                                <Panel>
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                           IsVisible="{Binding IsImage}"/>
+                                    <Image Classes="chat-attachment-file" Source="{StaticResource ClipIcon}"
+                                           IsVisible="{Binding IsFile}"/>
+                                </Panel>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
+                                <TextBlock Classes="chat-attachment-size" Text="{Binding SizeText}"
+                                           IsVisible="{Binding !HasError}"/>
+                                <TextBlock Classes="chat-attachment-error" Text="{Binding Error}"
+                                           ToolTip.Tip="{Binding Error}"
+                                           IsVisible="{Binding HasError}"/>
+                                <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsUploading}"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Classes="borderless composer-icon"
+                                    Width="20" Height="20"
+                                    VerticalAlignment="Top"
+                                    ToolTip.Tip="{l:Text common.remove}"
+                                    Command="{Binding $parent[ItemsControl].((chatVm:ChatComposerVM)DataContext).RemoveAttachmentCommand}"
+                                    CommandParameter="{Binding}"
+                                    AutomationProperties.Name="{l:Text common.remove}">
+                                <Image Width="12" Height="12" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
