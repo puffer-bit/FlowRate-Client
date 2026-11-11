@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls">
+    <Style Selector="ui|SettingsRow">
+        <Setter Property="common:SettingsRowLayout.IsAdaptive" Value="True"/>
+    </Style>
+    <Style Selector="ui|SettingsRow.stackedEditor /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Row" Value="1"/>
+        <Setter Property="Grid.Column" Value="0"/>
+        <Setter Property="Grid.ColumnSpan" Value="2"/>
+        <Setter Property="Margin" Value="0,10,0,2"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="ComboBox.settingsDevice">
+        <Setter Property="Width" Value="300"/>
+        <Setter Property="MaxWidth" Value="300"/>
+    </Style>
+    <Style Selector="ui|SettingsRow.stackedEditor ComboBox.settingsDevice">
+        <Setter Property="Width" Value="NaN"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Slider.settingsVolume">
+        <Setter Property="Width" Value="240"/>
+    </Style>
+    <Style Selector="ui|SettingsRow.stackedEditor Slider.settingsVolume">
+        <Setter Property="Width" Value="NaN"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+</Styles>

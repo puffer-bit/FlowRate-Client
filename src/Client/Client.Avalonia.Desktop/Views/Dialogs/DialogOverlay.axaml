@@ -33,7 +33,7 @@
            anim:Presence.Duration="Short">
 
         <Border Background="{DynamicResource GeneralBrush}"
-                CornerRadius="8"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
                 Padding="1"
                 BoxShadow="{DynamicResource DialogShadow}"
                 ClipToBounds="True">
@@ -44,7 +44,7 @@
         <Border x:Name="Outline"
                 BorderBrush="{DynamicResource DialogBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="8"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
                 IsHitTestVisible="False"/>
     </Panel>
 

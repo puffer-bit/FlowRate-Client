@@ -75,7 +75,8 @@
         <Border CornerRadius="21" BoxShadow="{DynamicResource FloatingButtonShadow}">
             <Button Classes="chat-scroll-down-button"
                     Command="{Binding ScrollToEndCommand}"
-                    ToolTip.Tip="{l:Text chat.scrollToLatest}">
+                    ToolTip.Tip="{l:Text chat.scrollToLatest}"
+                    AutomationProperties.Name="{l:Text chat.scrollToLatest}">
                 <Image Width="20" Height="20" Source="{StaticResource DownArrowIcon}"/>
             </Button>
         </Border>

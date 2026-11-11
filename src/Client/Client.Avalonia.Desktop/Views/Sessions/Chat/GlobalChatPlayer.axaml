@@ -15,11 +15,13 @@
             <TextBlock x:Name="TimeText" Grid.Column="3" Text="0:00 / 0:00" FontSize="10"
                        VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
             <Button x:Name="CloseButton" Grid.Column="6" Classes="ghost" Click="OnClose" Width="24" Height="24" Padding="0"
-                    ToolTip.Tip="{l:Text chat.media.close}">
+                    ToolTip.Tip="{l:Text chat.media.close}"
+                    AutomationProperties.Name="{l:Text chat.media.close}">
                 <Image Source="{StaticResource CloseIcon}" Width="14" Height="14"/>
             </Button>
             <Button x:Name="PlayButton" Classes="ghost" Click="OnPlay" Width="24" Height="24" Padding="0"
-                    ToolTip.Tip="{l:Text chat.audio.play}">
+                    ToolTip.Tip="{l:Text chat.audio.play}"
+                    AutomationProperties.Name="{l:Text chat.audio.play}">
                 <Panel>
                     <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="14" Height="14" IsVisible="False"/>
                     <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="14" Height="14"/>
@@ -48,7 +50,8 @@
                 </Button.Flyout>
             </Button>
             <Button x:Name="StopButton" Grid.Column="5" Classes="ghost" Click="OnStop" Width="24" Height="24" Padding="0"
-                    ToolTip.Tip="{l:Text chat.media.stop}">
+                    ToolTip.Tip="{l:Text chat.media.stop}"
+                    AutomationProperties.Name="{l:Text chat.media.stop}">
                 <Image Source="{StaticResource MediaStopIcon}" Width="14" Height="14"/>
             </Button>
         </Grid>

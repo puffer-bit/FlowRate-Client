@@ -30,7 +30,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="serverSettingsVm:SfuNodeOptionVM">
-                    <Border Padding="14,10" CornerRadius="8" BorderThickness="1"
+                    <Border Padding="14,10" CornerRadius="{StaticResource SurfaceCornerRadius}" BorderThickness="1"
                             Background="{DynamicResource SettingsCardBackgroundBrush}"
                             BorderBrush="{DynamicResource SettingsCardBorderBrush}">
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">

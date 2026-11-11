@@ -1,19 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Sessions.Chat.ChatInfoView"
              x:DataType="chatVm:ChatInfoWindowVM"
              Background="{DynamicResource GeneralBrush}"
-             Width="440" MaxHeight="560">
-    <Grid RowDefinitions="Auto,1,*,1,Auto">
-        <StackPanel Margin="20,16,20,14" Spacing="4">
-            <TextBlock FontSize="18" FontWeight="Bold" Text="{l:Text chat.info.title}"/>
-            <TextBlock Classes="hint" Text="{l:Text session.type.chat}"/>
-        </StackPanel>
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+             MaxWidth="440" HorizontalAlignment="Stretch" MaxHeight="560">
+    <common:DialogLayout>
+        <common:DialogHeader Title="{l:Text chat.info.title}" Subtitle="{l:Text session.type.chat}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20,16" Spacing="18">
+            <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="18">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                     <Image Width="36" Height="36" Source="{StaticResource HashIcon}"/>
                     <SelectableTextBlock Grid.Column="1" FontSize="18" FontWeight="SemiBold"
@@ -29,13 +27,10 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
-        <Button Grid.Row="4" Margin="20,12" HorizontalAlignment="Right" IsCancel="True"
-                Command="{Binding CloseCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <Image Width="16" Height="16" Source="{StaticResource CrossIcon}"/>
-                <TextBlock Text="{l:Text common.close}"/>
-            </StackPanel>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
+        <Button Grid.Row="4" Margin="{StaticResource DialogFooterMargin}" HorizontalAlignment="Right" IsCancel="True"
+                Command="{Binding CloseCommand}" AutomationProperties.Name="{l:Text common.close}">
+            <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.close}"/>
         </Button>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -11,23 +12,19 @@
              x:Class="Client.Views.Profile.EditProfileView"
              x:DataType="profileVm:EditProfileWindowVM"
              Background="{DynamicResource GeneralBrush}"
-             Width="460">
+             MaxWidth="460"
+             HorizontalAlignment="Stretch">
 
-    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+    <common:DialogLayout>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource BaseUserIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
-            </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text profile.edit.hint}"/>
-        </StackPanel>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource BaseUserIcon}"
+                             Title="{l:Text main.profile.title}" Subtitle="{l:Text profile.edit.hint}"/>
 
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <ScrollViewer Grid.Row="2" MaxHeight="480" HorizontalScrollBarVisibility="Disabled">
-            <Border Margin="20,16" Padding="12" CornerRadius="8"
+            <Border Margin="{StaticResource DialogBodyMargin}" Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}"
                     Background="{DynamicResource SettingsCardBackgroundBrush}">
                 <StackPanel Spacing="12" IsEnabled="{Binding !IsBusy}">
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
@@ -68,25 +65,18 @@
             </Border>
         </ScrollViewer>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto">
+        <Grid Grid.Row="4" Classes="dialogFooter" ColumnDefinitions="*, Auto">
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text common.cancel}"/>
-                    </StackPanel>
+                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                    <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
                 </Button>
 
-                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.save}">
                     <Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
-                                    IsVisible="{Binding !IsBusy}">
-                            <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource DisketteIcon}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{l:Text common.save}"/>
-                        </StackPanel>
+                        <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DisketteIcon}" Text="{l:Text common.save}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                     IsVisible="{Binding IsBusy}">
                             <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
@@ -98,5 +88,5 @@
                 </Button>
             </StackPanel>
         </Grid>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>

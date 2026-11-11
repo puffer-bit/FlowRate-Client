@@ -3,7 +3,7 @@
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -137,7 +137,8 @@
                                         Width="{Binding TileWidth}" Height="{Binding TileHeight}"
                                         chatVm:ChatImagePresence.Image="{Binding}"
                                         Command="{Binding OpenCommand}"
-                                        ToolTip.Tip="{Binding Image.FileName}">
+                                        ToolTip.Tip="{Binding Image.FileName}"
+                                        AutomationProperties.Name="{Binding Image.FileName}">
                                     <Panel>
                                         <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
                                         <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
