@@ -114,9 +114,9 @@ internal sealed class SessionListDrag
     {
         Cancel();
 
-        // Arranging the list is for those whose roles allow it
+        // Private chats follow recent activity; only the server channel list can be arranged.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
-            || _viewModel() is not { IsStale: false, Access.CanManageSessions: true })
+            || _viewModel() is not { IsStale: false, IsPrivateMode: false, Access.CanManageSessions: true })
             return;
 
         // Only the header of a row is a handle: the peers below a session and the controls in a
@@ -126,6 +126,7 @@ internal sealed class SessionListDrag
             || source.FindAncestorOfType<Button>(true) != null
             || FindHeader(source) is not { } header
             || RowOf(source) is not { } row
+            || row is ChatSessionVM { IsPrivate: true }
             || row is SessionCategoryVM { IsEditing: true })
             return;
 

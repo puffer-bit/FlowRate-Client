@@ -365,7 +365,8 @@ public partial class SessionsListVM
 
     private async Task MoveSession(ISessionVM session, int? categoryId, int index)
     {
-        if (_coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
+        if (IsPrivateMode || session is ChatSessionVM { IsPrivate: true }
+            || _coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
             return;
 
         index = Math.Min(index, Limits.SessionLayoutIndexMax);
