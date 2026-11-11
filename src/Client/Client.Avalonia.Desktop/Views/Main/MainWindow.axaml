@@ -139,17 +139,11 @@
                                     Title="{l:Text main.noSession.title}"
                                     Text="{l:Text main.noSession.text}"/>
 
-            <!-- The old content fades out before the new one fades in, including to and from nothing.
-                 A cross-fade would draw two chat histories over each other -->
-            <TransitioningContentControl x:Name="MainContentControl"
-                                         Grid.Column="2"
-                                         HorizontalAlignment="Stretch"
-                                         VerticalAlignment="Stretch"
-                                         Content="{Binding CurrentContent}">
-                <TransitioningContentControl.PageTransition>
-                    <anim:MotionFadeThrough Duration="Medium"/>
-                </TransitioningContentControl.PageTransition>
-            </TransitioningContentControl>
+            <ContentControl x:Name="MainContentControl"
+                            Grid.Column="2"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Content="{Binding CurrentContent}"/>
         </Grid>
         
         <!-- Notifications of the whole application, over whatever the window shows -->

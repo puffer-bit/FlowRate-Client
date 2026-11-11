@@ -595,6 +595,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 Dispatcher.UIThread.Post(() => _ = OnKicked(kicked));
             else if (notification is PeerRejectedEvent rejected)
                 Dispatcher.UIThread.Post(() => _ = OnRejected(rejected));
+            else
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _isJoined = false;
+                    CloseSession();
+                });
             return;
         }
 

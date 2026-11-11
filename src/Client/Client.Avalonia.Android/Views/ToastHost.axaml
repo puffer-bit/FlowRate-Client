@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
@@ -69,8 +70,22 @@
                                        Foreground="{DynamicResource SecondaryTextBrush}"/>
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
                                         IsVisible="{Binding HasActions}" IsEnabled="{Binding AreActionsEnabled}">
-                                <Button Content="{Binding PrimaryLabel}" Command="{Binding PrimaryCommand}"/>
-                                <Button Content="{Binding SecondaryLabel}" Command="{Binding SecondaryCommand}"/>
+                                <Button Command="{Binding PrimaryCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Image Width="16" Height="16" VerticalAlignment="Center"
+                                               IsVisible="{Binding PrimaryIconKey, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Source="{Binding PrimaryIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                                        <TextBlock Text="{Binding PrimaryLabel}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SecondaryCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Image Width="16" Height="16" VerticalAlignment="Center"
+                                               IsVisible="{Binding SecondaryIconKey, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Source="{Binding SecondaryIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                                        <TextBlock Text="{Binding SecondaryLabel}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
 

@@ -62,5 +62,5 @@ public interface INotificationService : INotifyPropertyChanged
     void Show(NotificationType type, string title, string? message = null, TimeSpan? lifetime = null);
 
     ToastVM ShowActions(string title, string? message, string primaryLabel, Func<System.Threading.Tasks.Task> primary,
-        string secondaryLabel, Func<System.Threading.Tasks.Task> secondary);
+        string secondaryLabel, Func<System.Threading.Tasks.Task> secondary, string? primaryIconKey = null, string? secondaryIconKey = null);
 }

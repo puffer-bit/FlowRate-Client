@@ -87,7 +87,9 @@ public partial class MainWindowVM
                     () => ChangeCallAsync(call, incoming ? DirectCallAction.Accept : DirectCallAction.End),
                     Strings.Get(incoming ? "calls.decline" : "calls.openChat"),
                     incoming ? () => ChangeCallAsync(call, DirectCallAction.Decline)
-                        : () => { TryShowChat(ConnectedCoordinatorId!, call.ChatId); return Task.CompletedTask; });
+                        : () => { TryShowChat(ConnectedCoordinatorId!, call.ChatId); return Task.CompletedTask; },
+                    primaryIconKey: incoming ? "ChatCallStartedIcon" : "ChatCallEndedIcon",
+                    secondaryIconKey: incoming ? "ChatCallEndedIcon" : "EmptyChat");
                 return;
             }
             ReportCallNotification(call, "");

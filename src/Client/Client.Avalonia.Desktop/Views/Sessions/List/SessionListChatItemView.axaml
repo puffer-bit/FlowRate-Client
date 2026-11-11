@@ -107,12 +107,14 @@
                 </Flyout>
             </Border.ContextFlyout>
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
-                <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+                <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
+                       IsVisible="{Binding !IsDirect}">
                     <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
-                    <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
-                                        Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
                     <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
                 </Panel>
+                <avatars:UserAvatar Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center"
+                                    UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
+                                    Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                     <text:MarqueeTextBlock Classes="sessionName" Text="{Binding DisplayName}"
