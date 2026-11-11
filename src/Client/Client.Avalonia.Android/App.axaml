@@ -10,6 +10,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Button.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/SecondaryButtonStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/BorderlessButtonStyle.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/GhostButtonStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/PrimaryButtonStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/ChoiceCardStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/ListBox/ListBoxItemStyles.axaml"/>

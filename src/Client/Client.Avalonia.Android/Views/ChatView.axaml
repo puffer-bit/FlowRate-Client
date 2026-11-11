@@ -277,7 +277,7 @@
                 </Grid>
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <Button Classes="borderless chat-round" IsVisible="{Binding StatusBar.IsDirect}"
+                <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.IsDirect}"
                         Command="{Binding StatusBar.CallCommand}" ToolTip.Tip="{l:Text calls.start}">
                     <Image Width="24" Height="24" Source="{StaticResource ChatCallStartedIcon}"/>
                 </Button>

@@ -52,6 +52,21 @@ if (args.Contains("--video-av1"))
     VideoAv1SmokeChecks.Run();
     return;
 }
+using (var capture = new GstAudioMedia(NullLoggerFactory.Instance)
+           .CreateCapture(new ToneAudioInput(440), "screen audio smoke check"))
+{
+    Require(capture != null, "Create screen audio PCM capture");
+    var capturedSamples = 0;
+    capture!.SamplesReady += samples =>
+    {
+        Require(samples.Length > 0 && samples.Length % IAudioCapture.Channels == 0,
+            "Screen audio contains complete interleaved samples");
+        Interlocked.Add(ref capturedSamples, samples.Length);
+    };
+    Require(capture.Start(), "Start screen audio PCM capture");
+    await Until(() => Volatile.Read(ref capturedSamples) >= IAudioCapture.SampleRate / 10 * IAudioCapture.Channels,
+        "Screen audio PCM reaches the transport");
+}
 using var devices = new GstAudioDeviceProvider(NullLogger<GstAudioDeviceProvider>.Instance);
 Require(MicrophoneProcessing.HasNeural, "Bundled RNNoise plugin is available");
 using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevice>.Instance)

@@ -243,8 +243,16 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
 
     private void ForwardSamples(ReadOnlySpan<short> samples)
     {
-        foreach (var owner in Volatile.Read(ref _owners))
-            owner.Deliver(samples);
+        var owners = Volatile.Read(ref _owners);
+        if (owners.Length == 0)
+            return;
+
+        // All owners receive the same processed PCM. Scan it once, regardless of peer count.
+        var peak = 0;
+        foreach (var sample in samples)
+            peak = Math.Max(peak, Math.Abs((int)sample));
+        foreach (var owner in owners)
+            owner.Deliver(samples, peak);
     }
 
     private void Release(Microphone owner)
@@ -293,13 +301,10 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
         private volatile bool _disposed;
         public event AudioSamplesHandler? SamplesReady;
         public bool Start() => !_disposed && device.Activate(this);
-        public void Deliver(ReadOnlySpan<short> samples)
+        public void Deliver(ReadOnlySpan<short> samples, int peak)
         {
             if (_disposed)
                 return;
-            var peak = 0;
-            foreach (var sample in samples)
-                peak = Math.Max(peak, Math.Abs((int)sample));
             int previous;
             do { previous = Volatile.Read(ref _peak); }
             while (peak > previous && Interlocked.CompareExchange(ref _peak, peak, previous) != previous);
