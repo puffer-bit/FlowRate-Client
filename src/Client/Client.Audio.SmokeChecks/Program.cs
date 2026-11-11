@@ -116,6 +116,27 @@ using (var first = audio.CreateMicrophone(new ToneAudioInput(440), 1, NoiseSuppr
     await Task.Delay(200);
     Require(first.TakeLevel() > 0.1, "Disabling the gate restores PCM");
 
+    var generation = audio.CaptureGeneration;
+    using (var muted = audio.CreateMicrophone(new ToneAudioInput(440), 0, NoiseSuppressionLevel.Off, null, false, false)!)
+    {
+        Require(muted.Start(), "Transfer capture to an owner with different volume");
+        Require(audio.CaptureGeneration == generation, "Volume-only handoff preserves capture");
+        await Task.Delay(200);
+        first.TakeLevel();
+        await Task.Delay(150);
+        Require(first.TakeLevel() == 0, "New owner's volume applies to shared capture");
+        // An inactive owner may update its preferences without changing the active capture.
+        first.SetVoiceGate(new VoiceGateOptions(0));
+    }
+    Require(audio.CaptureGeneration == generation, "Restoring volume and gate preserves capture");
+    await Task.Delay(600);
+    first.TakeLevel();
+    await Task.Delay(150);
+    Require(first.TakeLevel() == 0, "Predecessor's updated gate is restored");
+    first.SetVoiceGate(null);
+    await Task.Delay(200);
+    Require(first.TakeLevel() > 0.1, "Predecessor's volume is restored");
+
     foreach (var suppression in new[] { NoiseSuppressionLevel.Neural, NoiseSuppressionLevel.NeuralAndWebRtc })
     {
         using var second = audio.CreateMicrophone(new ToneAudioInput(440), 1, suppression,
@@ -127,9 +148,41 @@ using (var first = audio.CreateMicrophone(new ToneAudioInput(440), 1, NoiseSuppr
         var oldFrames = Volatile.Read(ref frames);
         await Task.Delay(150);
         Require(Volatile.Read(ref frames) > oldFrames, "Shared microphone still feeds the first peer");
+        var neuralGeneration = audio.CaptureGeneration;
+        Require(neuralGeneration > generation, "Changing suppression rebuilds capture");
+        using (var third = audio.CreateMicrophone(new ToneAudioInput(440), 0, suppression, null, true, true)!)
+        {
+            Require(third.Start(), "Transfer neural capture with different volume and gate");
+            Require(audio.CaptureGeneration == neuralGeneration, "Neural owner handoff preserves both RNNoise instances");
+            await Task.Delay(200);
+            third.TakeLevel();
+            await Task.Delay(150);
+            Require(third.TakeLevel() == 0, "Neural handoff applies zero volume");
+            Require(third.TakeGateSummary() == null, "Neural handoff disables the gate");
+        }
+        Require(audio.CaptureGeneration == neuralGeneration, "Restoring neural owner preserves learned state");
+        await Task.Delay(200);
+        Require(second.TakeGateSummary() is { ThresholdDb: -50, VoicePercent: not null },
+            "Restoring neural owner restores voice detection");
     }
     var restored = Volatile.Read(ref frames);
     await Until(() => Volatile.Read(ref frames) > restored + 10, "Closing the current owner restores its predecessor");
+
+    foreach (var (input, echo, gain) in new[]
+             {
+                 (new ToneAudioInput(880), false, false),
+                 (new ToneAudioInput(440), true, false),
+                 (new ToneAudioInput(440), false, true)
+             })
+    {
+        generation = audio.CaptureGeneration;
+        using (var changed = audio.CreateMicrophone(input, 1, NoiseSuppressionLevel.Off, null, echo, gain)!)
+        {
+            Require(changed.Start(), "Change capture processing");
+            Require(audio.CaptureGeneration == generation + 1, "Input, echo or gain change rebuilds capture");
+        }
+        Require(audio.CaptureGeneration == generation + 2, "Restore predecessor's capture processing");
+    }
 }
 audio.StopPlayback();
 
@@ -150,9 +203,11 @@ for (var round = 0; round < 3; round++)
         using (var second = new NativeVoicePeer(runtime, new Listener()))
         {
             Require(second.SetMicrophone(new ToneAudioInput(440), NoiseSuppressionLevel.Off, false, false), "Share native capture");
+            var generation = audio.CaptureGeneration;
             second.SetVoiceGate(new VoiceGateOptions(0));
             await Task.Delay(300);
             second.StopMicrophone();
+            Require(audio.CaptureGeneration == generation, "Native peer handoff restores gate without rebuilding capture");
             await Task.Delay(200);
             listener.Stats = null;
             peer.RequestStats(false);
