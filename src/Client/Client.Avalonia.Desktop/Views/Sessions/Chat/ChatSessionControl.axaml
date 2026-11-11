@@ -31,7 +31,7 @@
             </Setter>
         </Style>
         <Style Selector="Border.chat-viewers-panel.open">
-            <Setter Property="Width" Value="260"/>
+            <Setter Property="Width" Value="{StaticResource ChatSidePanelWidth}"/>
         </Style>
     </UserControl.Styles>
 
@@ -39,7 +39,7 @@
         <ContentControl
             Grid.Row="0" Grid.ColumnSpan="2"
             Content="{Binding StatusBar}"
-            Height="56"/>
+            Height="{StaticResource SessionHeaderHeight}"/>
         
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
              only the text inside a message can be selected for copying -->
@@ -118,7 +118,7 @@
         <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="2"
                 Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.IsSidePanelOpen}"
                 ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsSidePanelOpen}">
-            <Grid Width="260" HorizontalAlignment="Left">
+            <Grid Width="{StaticResource ChatSidePanelWidth}" HorizontalAlignment="Left">
                 <Panel IsVisible="{Binding StatusBar.Viewers.IsOpen}">
                     <chatViews:ChatViewersPanel DataContext="{Binding StatusBar.Viewers}"/>
                 </Panel>
@@ -131,58 +131,12 @@
         <ContentControl Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="2"
                         x:Name="ImageViewerHost"
                         Focusable="True"
+                        KeyboardNavigation.IsTabStop="False"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="chatVm:ChatImageViewerVM">
-                    <Grid Classes="image-viewer" RowDefinitions="Auto, *" anim:Presence.Appear="Fade">
-                        <Button Grid.Row="0" Grid.RowSpan="2" Classes="image-viewer-backdrop"
-                                Command="{Binding CloseCommand}"/>
-
-                        <images:ZoomableImage Grid.Row="1" Padding="24"
-                                              Source="{Binding Picture}">
-                            <images:ZoomableImage.ContextFlyout>
-                                <Flyout>
-                                    <StackPanel Spacing="2">
-                                        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}"
-                                                              menus:FlyoutMenu.CloseOnClick="True"
-                                                              Content="{l:Text chat.menu.saveFileAs}"
-                                                              Command="{Binding SaveCommand}"/>
-                                        <menus:MenuItemButton Icon="{StaticResource CopyImageIcon}"
-                                                              menus:FlyoutMenu.CloseOnClick="True"
-                                                              Content="{l:Text chat.menu.copyImage}"
-                                                              Command="{Binding CopyCommand}"/>
-                                    </StackPanel>
-                                </Flyout>
-                            </images:ZoomableImage.ContextFlyout>
-                        </images:ZoomableImage>
-
-                        <Border Grid.Row="0" Classes="image-viewer-bar">
-                            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Classes="image-viewer-error" Text="{Binding Error}"
-                                               IsVisible="{Binding HasError}"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Classes="borderless"
-                                        Width="32" Height="32" Padding="0"
-                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                        Command="{Binding SaveCommand}"
-                                        ToolTip.Tip="{l:Text common.save}">
-                                    <Image Width="18" Height="18" Source="{StaticResource DownloadIcon}"/>
-                                </Button>
-                                <Button Grid.Column="2" Classes="borderless"
-                                        Width="32" Height="32" Padding="0"
-                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                        Command="{Binding CloseCommand}"
-                                        ToolTip.Tip="{l:Text common.close}">
-                                    <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
-                                </Button>
-                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,6,6,0"
-                                             Value="{Binding Progress}" IsVisible="{Binding IsLoading}"/>
-                            </Grid>
-                        </Border>
-                    </Grid>
+                    <chatViews:ChatImageViewer/>
                 </DataTemplate>
             </ContentControl.ContentTemplate>
         </ContentControl>

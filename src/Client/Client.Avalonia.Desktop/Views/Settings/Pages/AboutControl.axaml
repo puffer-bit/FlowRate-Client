@@ -135,11 +135,11 @@
                 <TextBlock Text="{l:Text settings.about.releaseNotes.loading}"
                            Foreground="{DynamicResource SecondaryTextBrush}"/>
             </StackPanel>
-            <Border IsVisible="{Binding HasError}" Padding="18" CornerRadius="8"
+            <Border IsVisible="{Binding HasError}" Padding="18" CornerRadius="{StaticResource SurfaceCornerRadius}"
                     Background="{DynamicResource SettingsCardBackgroundBrush}">
                 <TextBlock Text="{l:Text settings.about.releaseNotes.error}" TextWrapping="Wrap"/>
             </Border>
-            <Border IsVisible="{Binding IsEmpty}" Padding="18" CornerRadius="8"
+            <Border IsVisible="{Binding IsEmpty}" Padding="18" CornerRadius="{StaticResource SurfaceCornerRadius}"
                     Background="{DynamicResource SettingsCardBackgroundBrush}">
                 <TextBlock Text="{l:Text settings.about.releaseNotes.empty}" TextWrapping="Wrap"
                            Foreground="{DynamicResource SecondaryTextBrush}"/>

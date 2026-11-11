@@ -31,7 +31,8 @@
             IsEnabled="{Binding IsReady}"
             Command="{Binding ViewProfileCommand}"
             CommandParameter="{Binding UserId}"
-            ToolTip.Tip="{Binding UserId, StringFormat='ID: {0}'}">
+            ToolTip.Tip="{Binding UserId, StringFormat='ID: {0}'}"
+            AutomationProperties.Name="{Binding UserId, StringFormat='ID: {0}'}">
 
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">

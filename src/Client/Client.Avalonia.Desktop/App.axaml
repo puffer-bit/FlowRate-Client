@@ -3,6 +3,25 @@
              x:Class="Client.App">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <Application.Resources>
+        <ResourceDictionary>
+             <ResourceDictionary.MergedDictionaries>
+                 <ResourceInclude Source="/Views/Common/Styles/UiResources.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollBarTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollViewerTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Sliders/SliderTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ToggleSwitches/ToggleSwitchTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/NumericUpDown/NumericUpDownTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ComboBoxes/ComboBoxTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/WindowTheme.axaml"/>
+             </ResourceDictionary.MergedDictionaries>
+         </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
         <Style Selector=":is(Window)">
@@ -41,25 +60,11 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Pickers/ColorPicker.axaml"/>
+        <StyleInclude Source="/Views/Common/Styles/UiControls.axaml"/>
+        <StyleInclude Source="/Views/Common/Styles/ResponsiveSettings.axaml"/>
     </Application.Styles>
              
-    <Application.Resources>
-        <ResourceDictionary>
-             <ResourceDictionary.MergedDictionaries>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollBarTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollViewerTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Sliders/SliderTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ToggleSwitches/ToggleSwitchTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/NumericUpDown/NumericUpDownTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ComboBoxes/ComboBoxTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/WindowTheme.axaml"/>
-             </ResourceDictionary.MergedDictionaries>
-         </ResourceDictionary>
-    </Application.Resources>
+
              
     <!-- The tray icon is created in code: Services/UI/Tray/TrayService.cs -->
 </Application>

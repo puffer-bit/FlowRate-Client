@@ -15,7 +15,7 @@
             <ui:SettingsRow services:SettingText.Key="{Binding SettingKey}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <ComboBox MinWidth="160" ItemsSource="{Binding Choices}" SelectedIndex="{Binding SelectedIndex}"/>
-                    <Button Classes="ghost codecSettings" Classes.modified="{Binding HasOverrides}" Width="32" Height="32" IsEnabled="{Binding CanConfigure}"
+                    <Button Classes="ghost codecSettings iconButton" Classes.modified="{Binding HasOverrides}" IsEnabled="{Binding CanConfigure}"
                             Click="ConfigureCodec"
                             ToolTip.Tip="{l:Text settings.video.codecSettings.title}"
                             AutomationProperties.Name="{l:Text settings.video.codecSettings.title}">

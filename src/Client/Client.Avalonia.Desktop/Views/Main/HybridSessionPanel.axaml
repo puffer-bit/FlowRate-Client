@@ -67,7 +67,8 @@
             <!-- Connection statistics, the session name and status, and the way out of the session. -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
             <Button Grid.Column="0" Classes="ghost" Padding="6"
-                    ToolTip.Tip="{l:Text hybrid.stats.open}">
+                    ToolTip.Tip="{l:Text hybrid.stats.open}"
+                    AutomationProperties.Name="{l:Text hybrid.stats.open}">
                 <Button.Flyout>
                     <Flyout Placement="TopEdgeAlignedLeft">
                         <hybrid:HybridSessionStatsFlyout DataContext="{Binding StatusBar, FallbackValue={x:Null}}"
@@ -99,7 +100,8 @@
             <Button Grid.Column="1" Classes="ghost" Padding="8,6,6,6"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                     Command="{Binding $parent[UserControl].((mainVm:MainWindowVM)DataContext).ShowHybridSessionCommand}"
-                    ToolTip.Tip="{l:Text sessions.return}">
+                    ToolTip.Tip="{l:Text sessions.return}"
+                    AutomationProperties.Name="{l:Text sessions.return}">
                 <StackPanel Spacing="2" VerticalAlignment="Center">
                     <text:MarqueeTextBlock Text="{Binding StatusBar.SessionName, FallbackValue={x:Null}}"
                                            FontWeight="SemiBold"
@@ -114,7 +116,8 @@
             <Button Grid.Column="2" Classes="hybridAction leave"
                     Width="32" Margin="6,0,0,0" VerticalAlignment="Center"
                     Command="{Binding StatusBar.CloseCommand, FallbackValue={x:Null}}"
-                    ToolTip.Tip="{l:Text main.voice.leave}">
+                    ToolTip.Tip="{l:Text main.voice.leave}"
+                    AutomationProperties.Name="{l:Text main.voice.leave}">
                 <Image Width="20" Height="20" Source="{StaticResource DoorWithRedArrowIcon}"/>
             </Button>
             </Grid>
@@ -122,13 +125,15 @@
             <UniformGrid Grid.Row="1" Rows="1" Columns="4" ColumnSpacing="6">
                 <Button Classes="hybridAction"
                         Command="{Binding StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}"
-                        ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
+                        ToolTip.Tip="{l:Text main.voice.toggleMicrophone}"
+                        AutomationProperties.Name="{l:Text main.voice.toggleMicrophone}">
                     <Image Width="20" Height="20" Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
                 </Button>
 
                 <Button Classes="hybridAction"
                         Command="{Binding StatusBar.ToggleSoundCommand, FallbackValue={x:Null}}"
-                        ToolTip.Tip="{l:Text main.voice.toggleSound}">
+                        ToolTip.Tip="{l:Text main.voice.toggleSound}"
+                        AutomationProperties.Name="{l:Text main.voice.toggleSound}">
                     <Panel>
                         <Image Width="20" Height="20" Source="{StaticResource HeadphonesIcon}"
                                IsVisible="{Binding StatusBar.IsSoundOn, FallbackValue=True}"/>
@@ -141,7 +146,8 @@
                 <Panel>
                     <Button Classes="hybridAction"
                             IsVisible="{Binding !StatusBar.IsAfk, FallbackValue=True}"
-                            ToolTip.Tip="{l:Text hybrid.afk.go}">
+                            ToolTip.Tip="{l:Text hybrid.afk.go}"
+                            AutomationProperties.Name="{l:Text hybrid.afk.go}">
                         <Button.Flyout>
                             <Flyout Placement="TopEdgeAlignedRight">
                                 <hybrid:AfkReasonCard DataContext="{Binding StatusBar, FallbackValue={x:Null}}"/>
@@ -152,7 +158,8 @@
                     <Button Classes="hybridAction afk"
                             IsVisible="{Binding StatusBar.IsAfk, FallbackValue=False}"
                             Command="{Binding StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"
-                            ToolTip.Tip="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}">
+                            ToolTip.Tip="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}"
+                            AutomationProperties.Name="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}">
                         <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
                     </Button>
                 </Panel>
@@ -161,14 +168,16 @@
                     <Button Classes="hybridAction"
                             IsVisible="{Binding !StatusBar.IsScreenShareOn, FallbackValue=True}"
                             Command="{Binding StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
-                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
+                            AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
                         <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
                     </Button>
 
                     <!-- A running share is changed or stopped from a menu -->
                     <Button Classes="hybridAction sharing"
                             IsVisible="{Binding StatusBar.IsScreenShareOn, FallbackValue=False}"
-                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
+                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
+                            AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
                         <Button.Flyout>
                             <Flyout Placement="TopEdgeAlignedRight">
                                 <StackPanel Spacing="2">

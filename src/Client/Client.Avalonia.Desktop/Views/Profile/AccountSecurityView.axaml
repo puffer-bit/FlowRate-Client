@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,20 +11,16 @@
              x:Class="Client.Views.Profile.AccountSecurityView"
              x:DataType="profileVm:AccountSecurityVM"
              Background="{DynamicResource GeneralBrush}"
-             Width="480">
+             MaxWidth="480"
+             HorizontalAlignment="Stretch">
 
-    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+    <common:DialogLayout>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource KeyIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text accountSecurity.title}"/>
-            </StackPanel>
-            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.hint}"/>
-        </StackPanel>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource KeyIcon}"
+                             Title="{l:Text accountSecurity.title}" Subtitle="{l:Text accountSecurity.hint}"/>
 
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <Panel Grid.Row="2" Margin="20,18" MinHeight="120">
 
@@ -205,16 +202,13 @@
             </StackPanel>
         </Panel>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
-        <Panel Grid.Row="4" Margin="20,12">
+        <Panel Grid.Row="4" Margin="{StaticResource DialogFooterMargin}">
             <Button HorizontalAlignment="Right" Command="{Binding CloseCommand}" IsCancel="{Binding IsOverview}"
-                    IsVisible="{Binding IsOverview}">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{l:Text common.close}"/>
-                </StackPanel>
+                    IsVisible="{Binding IsOverview}" AutomationProperties.Name="{l:Text common.close}">
+                <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.close}"/>
             </Button>
 
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsChanging}">
@@ -230,5 +224,5 @@
                 </Button>
             </StackPanel>
         </Panel>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>
