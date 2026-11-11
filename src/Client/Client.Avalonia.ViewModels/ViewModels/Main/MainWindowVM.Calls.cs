@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Sessions.Hybrid;
+using Client.ViewModels.Sessions.Chat;
 using Client.Services;
 using Client.ViewModels.Notifications;
 using Shared.Enums;
@@ -41,7 +42,7 @@ public partial class MainWindowVM
         if (_coordinatorSession.GetCurrentUser().Id != call.CalleeId) return;
         if (UsesSystemIncomingCallSound && !IsWindowActive)
         {
-            ReportCallNotification(call, CallName(call));
+            _ = ReportIncomingCallNotificationAsync(_coordinatorSession, call);
             return;
         }
         _callRinging = _callSounds?.PlayLoop(Client.Application.Sounds.SoundEvent.CallIncoming);
@@ -75,11 +76,9 @@ public partial class MainWindowVM
                 if (_shownCall == call.CallId) return;
                 DismissCallToast();
                 _shownCall = call.CallId;
-                var peerId = incoming ? call.CallerId : call.CalleeId;
-                var peer = await coordinator.GetUser(peerId);
+                var name = await DirectCallPresentation.GetPeerNameAsync(coordinator, call);
                 if (coordinator != _coordinatorSession || coordinator.DirectCall?.CallId != call.CallId
                     || coordinator.DirectCall.State != DirectCallState.Ringing) return;
-                var name = peer?.DisplayName ?? peer?.Username ?? Strings.Get("calls.peer");
                 ReportCallNotification(call, name);
                 RefreshCallRinging();
                 _callToast = _notifications.ShowActions(Strings.Get(incoming ? "calls.incoming" : "calls.outgoing"), name,
@@ -101,9 +100,12 @@ public partial class MainWindowVM
                     _ = ChangeCallAsync(call, DirectCallAction.End);
                     return;
                 }
+                var name = await DirectCallPresentation.GetPeerNameAsync(coordinator, call);
+                if (coordinator != _coordinatorSession || coordinator.DirectCall?.CallId != call.CallId
+                    || coordinator.DirectCall.State != DirectCallState.Active) return;
                 OpenedSessions?.Open(new HybridSessionModel
                 {
-                    Id = session.Id, Name = CallName(call), Capacity = 2, SessionType = SessionType.Hybrid,
+                    Id = session.Id, Name = name, Capacity = 2, SessionType = SessionType.Hybrid,
                     EngineType = session.EngineType, HostId = session.HostId,
                     IsAudioRequested = true, IsApprovalRequested = false, DirectCallId = call.CallId,
                     DirectCallStartedAt = call.StartedAt
@@ -154,11 +156,13 @@ public partial class MainWindowVM
         await session.ChangeDirectCall(chatId, callId, accept ? DirectCallAction.Accept : DirectCallAction.Decline);
     }
 
-    private string CallName(DirectCallDTO call)
+    private async Task ReportIncomingCallNotificationAsync(Client.Application.Coordinator.ICoordinatorSession coordinator,
+        DirectCallDTO call)
     {
-        var peer = SessionsList.Sessions.OfType<Client.ViewModels.Sessions.List.ChatSessionVM>()
-            .FirstOrDefault(chat => chat.Model.Id == call.ChatId);
-        return peer?.DisplayName ?? Strings.Get("calls.peer");
+        var name = await DirectCallPresentation.GetPeerNameAsync(coordinator, call);
+        if (coordinator != _coordinatorSession || coordinator.DirectCall?.CallId != call.CallId
+            || coordinator.DirectCall.State != DirectCallState.Ringing || _shownCall != call.CallId) return;
+        ReportCallNotification(call, name);
     }
 
     private void OnDirectCallFailed(ErrorCode error) => Dispatcher.UIThread.Post(() =>
