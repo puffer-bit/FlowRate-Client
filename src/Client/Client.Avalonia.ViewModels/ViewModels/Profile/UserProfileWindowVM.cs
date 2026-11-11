@@ -146,6 +146,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> CancelEditCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> WriteMessageCommand { get; }
+    public bool WantsDirectChat { get; private set; }
+    public bool CanWriteMessage => !IsCurrentUser;
 
     public UserProfileWindowVM(UserModel user, bool isCurrentUser, IAvatarService avatars,
         ReactiveCommand<(int UserId, string Username), RequestResult> changeUsernameCommand,
@@ -155,6 +158,11 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
             setUserRoleCommand, IUserNotesRepository userNotes, string coordinatorInstanceId)
     {
+        WriteMessageCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            WantsDirectChat = true;
+            await CloseWindow.Handle(RxVoid.Default);
+        });
         Note = new UserNoteVM(userNotes, coordinatorInstanceId, user.Id);
         _changeUsernameCommand = changeUsernameCommand;
         _setUserRoleCommand = setUserRoleCommand;
@@ -327,6 +335,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
     public void Dispose()
     {
+        WriteMessageCommand.Dispose();
         _disposables.Dispose();
         _isBusy.Dispose();
         _isChangingRole.Dispose();

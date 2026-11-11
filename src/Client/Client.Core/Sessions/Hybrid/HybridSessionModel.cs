@@ -5,6 +5,8 @@ namespace Client.Core.Sessions.Hybrid;
 
 public class HybridSessionModel : SessionModel
 {
+    public Guid? DirectCallId { get; init; }
+    public DateTimeOffset? DirectCallStartedAt { get; init; }
     public required WebRTCEngine EngineType { get; init; }
     
     public bool IsAudioRequested { get; init; }

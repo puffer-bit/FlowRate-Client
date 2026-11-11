@@ -15,6 +15,9 @@ namespace Client.Application.Ports;
 /// </summary>
 public interface ICoordinatorGateway : IDisposable
 {
+    Task<Shared.Models.DataTransferObjects.DirectCallDTO> ChangeDirectCall(int chatId, Guid callId,
+        Shared.Models.DataTransferObjects.DirectCallAction action);
+
     /// <summary>
     /// Raised for everything the coordinator reports on its own. Raised on the transport thread.
     /// </summary>
@@ -152,6 +155,8 @@ public interface ICoordinatorGateway : IDisposable
     Task UnregisterPushToken(string token);
     Task<SessionModel> GetSessionInfo(int sessionId);
     Task<(IDictionary<int, SessionModel> Sessions, SessionLayout Layout)> GetAllSessions();
+    Task<SessionModel> CreateConversation(NewSessionModel session) => throw new NotSupportedException();
+
     Task CreateSession(NewSessionModel newSession);
 
     /// <summary>
@@ -186,6 +191,9 @@ public interface ICoordinatorGateway : IDisposable
     Task SetSoundMuteInHybridSession(int sessionId, bool isMuted);
     Task SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
     Task PokeInHybridSession(int sessionId, int userId, string? message);
+    Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+        => throw new NotSupportedException();
+
     Task DeleteSession(int sessionId);
 
     /// <summary>

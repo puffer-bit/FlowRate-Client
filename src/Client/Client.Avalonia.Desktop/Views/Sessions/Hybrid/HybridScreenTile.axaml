@@ -15,6 +15,12 @@
              Padding="4">
 
     <UserControl.Styles>
+        <Style Selector="Border.streamBar">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Border.streamBar:pointerover, hybridViews|HybridScreenTile.keyboardControls Border.streamBar">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
         <Style Selector="Button.streamBarAction">
             <Setter Property="Width" Value="28"/>
             <Setter Property="Height" Value="28"/>
@@ -106,7 +112,8 @@
                                            Margin="8"/>
             </Panel>
 
-            <!-- The controls over the top edge, the same on the card and on the picture; only the eye
+            <!-- Keep the transparent bar hit-testable so hovering the top edge reveals its controls.
+                 The controls are the same on the card and on the picture; only the eye
                  changes with what it does. The bar is opaque: its icons and the name are in the
                  text color of the theme, which the picture can match -->
             <Border Classes="streamBar"

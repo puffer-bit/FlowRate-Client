@@ -54,6 +54,9 @@
     <Style Selector="Border.msg-root.has-opened-flyout">
         <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/> 
     </Style>
+    <Style Selector="Border.msg-root.system, Border.msg-root.system:pointerover, Border.msg-root.system:pressed">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
     <!-- A message calling the current user stays yellow under the pointer and the menu -->
     <Style Selector="Border.msg-root.mentioned:pointerover, Border.msg-root.mentioned:pressed, Border.msg-root.mentioned.has-opened-flyout">
         <Setter Property="Background" Value="{DynamicResource MessageMentionedHoverBrush}"/>

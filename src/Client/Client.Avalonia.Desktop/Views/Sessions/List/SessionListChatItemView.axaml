@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
@@ -38,6 +39,14 @@
                                               IsVisible="{Binding DataContext.IsShown, ElementName=Root}"
                                               Command="{Binding DataContext.LeaveChatCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditGroup, ElementName=Root}"
+                                              Command="{Binding DataContext.EditGroupCommand, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text privateChats.leaveGroup}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanLeaveGroup, ElementName=Root}"
+                                              Command="{Binding DataContext.LeaveGroupCommand, ElementName=Root}"/>
                         <Separator/>
                         <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionPermissions.title}"
                                               menus:FlyoutMenu.CloseOnClick="True"
@@ -98,17 +107,28 @@
                 </Flyout>
             </Border.ContextFlyout>
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
-                <Image Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
-                       Source="{StaticResource HashIcon}"/>
+                <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
+                       IsVisible="{Binding !IsDirect}">
+                    <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
+                    <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                </Panel>
+                <avatars:UserAvatar Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center"
+                                    UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
+                                    Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
 
-                <text:MarqueeTextBlock Grid.Column="1" Classes="sessionName" Text="{Binding Model.Name}"
-                           Classes.unread="{Binding HasUnread}"
-                           ToolTip.Tip="{Binding Model.Name}"/>
+                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <text:MarqueeTextBlock Classes="sessionName" Text="{Binding DisplayName}"
+                                          Classes.unread="{Binding HasUnread}" ToolTip.Tip="{Binding DisplayName}"/>
+                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}"
+                               Classes="sessionPreview" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
                 
 
                 <!-- Mentions take the place of the plain counter. A muted chat shows its crossed bell in
                      the same place: it has no plain counter, and a mention outranks the bell -->
-                <Panel Grid.Column="2" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding LastMessageTime}" IsVisible="{Binding IsPrivate}" FontSize="10" Classes="sessionPreview"/>
+                    <Panel>
                     <Image Width="18" Height="18"
                            IsVisible="{Binding ShowsMutedMark}"
                            ToolTip.Tip="{l:Text sessions.notificationsMuted}"
@@ -120,6 +140,7 @@
                         <TextBlock Text="{Binding MentionCountText}"/>
                     </Border>
                 </Panel>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

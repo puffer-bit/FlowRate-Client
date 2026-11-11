@@ -1,4 +1,21 @@
 {
+  "calls.start": "拨打电话",
+  "calls.incoming": "来电",
+  "calls.outgoing": "正在呼叫…",
+  "calls.accept": "接听",
+  "calls.decline": "拒绝",
+  "calls.cancel": "取消",
+  "calls.openChat": "打开聊天",
+  "calls.peer": "联系人",
+  "calls.declined": "通话被拒绝",
+  "calls.missed": "未接来电",
+  "calls.cancelled": "通话已取消",
+  "calls.disconnected": "通话已断开",
+  "calls.ended": "通话已结束",
+  "calls.busy": "用户正忙",
+  "calls.offline": "用户离线",
+  "calls.failed": "无法完成通话操作，请重试。",
+  "calls.mediaDisabled": "请启用音频以接听来电。",
   "sessions.full": "会话已满",
   "connect.failed.onlineLimitReached": "服务器在线用户数已达上限。请稍后再试。",
   "connect.failed.userLimitReached": "服务器注册用户数已达上限。请联系服务器管理员。",
@@ -1343,5 +1360,40 @@
   "chat.emoji.category.8": "旗帜",
   "chat.emoji.limit": "添加此表情将超出消息长度限制。",
   "settings.accounting.forgetIdentity.title": "忘记身份",
-  "settings.accounting.forgetIdentity.question": "要忘记此设备上保存的身份“{user}”吗？其保存的密码和会话令牌将被删除。服务器上的账户将保留。"
+  "settings.accounting.forgetIdentity.question": "要忘记此设备上保存的身份“{user}”吗？其保存的密码和会话令牌将被删除。服务器上的账户将保留。",
+  "privateChats.showPrivate": "私聊和群组",
+  "privateChats.showChannels": "服务器频道",
+  "privateChats.group": "群组",
+  "privateChats.members": "成员",
+  "privateChats.search": "搜索用户",
+  "privateChats.selectedCount": "已选择：{count}",
+  "privateChats.owner": "群主",
+  "privateChats.editGroup": "群组设置",
+  "privateChats.leaveGroup": "退出群组",
+  "privateChats.leaveFailed": "退出前请转让群主或删除群组。",
+  "privateChats.empty": "暂无消息",
+  "privateChats.photo": "照片",
+  "privateChats.video": "视频",
+  "privateChats.file": "文件",
+  "privateChats.message": "消息",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "发消息",
+  "privateChats.createHint": "选择私聊或群组，然后添加参与者。",
+  "privateChats.audio": "音频",
+  "privateChats.direct": "私聊",
+  "privateChats.directDescription": "与一个人交谈。",
+  "privateChats.groupDescription": "与多个人交谈。",
+  "privateChats.noUsersFound": "未找到用户",
+  "chat.system.memberAdded": "{actor}添加了{subject}",
+  "chat.system.memberRemoved": "{actor}移除了{subject}",
+  "chat.system.memberLeft": "{subject}退出了群组",
+  "chat.system.callStarted": "{actor}发起了通话",
+  "chat.system.callEnded": "通话已结束",
+  "chat.system.event": "聊天事件"
 }

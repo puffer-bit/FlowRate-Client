@@ -37,6 +37,13 @@ internal sealed class AndroidSoundPlayer : ISoundPlayer
         }
     }
 
+    public void Stop(SoundClip clip)
+    {
+        lock (_lock)
+            foreach (var pair in _tracks)
+                if (ReferenceEquals(pair.Key.Clip, clip)) pair.Value.Stop();
+    }
+
     public void Release(SoundClip clip)
     {
         lock (_lock)

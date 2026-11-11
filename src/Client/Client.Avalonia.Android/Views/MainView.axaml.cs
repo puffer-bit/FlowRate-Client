@@ -53,6 +53,8 @@ public partial class MainView : UserControl
     // Where the open keyboard starts, in the coordinates of the top level; null while it is closed
     private double? _keyboardTop;
     private bool _isInitialized;
+    private bool _readyForCallActions;
+    private bool _handlingCallAction;
 
     // Set while the menu is open because back led to it from a session: back pressed again then
     // goes on to leaving the application instead of returning to the session
@@ -152,9 +154,18 @@ public partial class MainView : UserControl
         // The chat of a tapped notification can be shown once the list of the server has it
         viewModel.SessionsList.WatchProperty(nameof(SessionsListVM.State), list => list.State)
             .Subscribe(_ => Dispatcher.UIThread.Post(() => ShowRequestedChat(isListFresh: true)));
-        MainActivity.ChatRequested += () => ShowRequestedChat(isListFresh: false);
+        MainActivity.ChatRequested += () =>
+        {
+            ShowRequestedChat(isListFresh: false);
+            _ = HandleRequestedCallAsync();
+        };
         MainActivity.IsInFrontChanged += OnIsInFrontChanged;
         viewModel.ChatMessageReceived += OnChatMessageReceived;
+        // During the background grace period a live socket can deliver the invitation before FCM.
+        viewModel.CallNotificationReceived += payload =>
+            IncomingCallNotifications.Handle(global::Android.App.Application.Context, payload);
+        viewModel.UsesSystemIncomingCallSound = true;
+        PushMessageHandler.IsCallAccountOnScreen = viewModel.IsCallAccountOnScreen;
         viewModel.IsWindowActive = MainActivity.IsInFront;
         viewModel.ChatReads.StateChanged += OnChatReadStateChanged;
         PushMessageHandler.ChatMarkedRead = (coordinatorId, chatId, messageId) => Dispatcher.UIThread.Post(() =>
@@ -197,6 +208,9 @@ public partial class MainView : UserControl
 
         _ = isInFront ? _viewModel.ResumeConnection() : _viewModel.SuspendConnection();
         _viewModel.IsWindowActive = isInFront;
+        _viewModel.RefreshCallRinging();
+        if (isInFront && _viewModel.ConnectedCoordinatorId is { } coordinatorId)
+            IncomingCallNotifications.Clear(global::Android.App.Application.Context, coordinatorId);
         UpdateChatOnScreen();
     }
 
@@ -215,6 +229,26 @@ public partial class MainView : UserControl
         // Another server, or the chat was deleted: the request must not fire on some later connect
         if (isListFresh && _viewModel.SessionsList is { HasSessions: true, IsStale: false })
             MainActivity.RequestedChat = null;
+    }
+
+    private async Task HandleRequestedCallAsync()
+    {
+        if (!_readyForCallActions || _handlingCallAction || _viewModel == null) return;
+        _handlingCallAction = true;
+        try
+        {
+            while (MainActivity.RequestedCall is { } call)
+            {
+                MainActivity.RequestedCall = null;
+                await _viewModel.HandlePushCallAsync(call.CoordinatorId, call.UserId, call.ChatId, call.CallId,
+                    call.Action == "accept");
+            }
+        }
+        catch (Exception exception)
+        {
+            Serilog.Log.Warning(exception, "Handling an incoming call notification failed");
+        }
+        finally { _handlingCallAction = false; }
     }
 
     // What the user is looking at needs no notification, and the one it already has goes away
@@ -300,6 +334,8 @@ public partial class MainView : UserControl
     private async Task InitializeAsync(MainWindowVM viewModel)
     {
         await viewModel.Initialize();
+        _readyForCallActions = true;
+        await HandleRequestedCallAsync();
 
         // There is nothing to see before connecting, so the menu opens on its offer to connect
         if (!viewModel.IsConnected)
@@ -369,6 +405,10 @@ public partial class MainView : UserControl
     private void OnMenuClick(object? sender, RoutedEventArgs e) => OpenDrawer();
 
     private void OnDrawerBackdropTapped(object? sender, TappedEventArgs e) => CloseDrawer();
+
+    private void OnListModeClick(object? sender, RoutedEventArgs e) => TryCloseServerMenu();
+
+    private void OnChatActionClick(object? sender, RoutedEventArgs e) => TryCloseChatMenu();
 
     private void OpenServerMenu() => ServerMenu.IsOpen = true;
 

@@ -61,16 +61,21 @@
             <StackPanel Spacing="2" x:DataType="listVm:SessionsListVM">
                 <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                                       menus:FlyoutMenu.CloseOnClick="True"
-                                      IsVisible="{Binding Access.CanCreateSessions}"
+                                      IsVisible="{Binding CanCreateSession}"
                                       Command="{Binding CreateSessionCommand}"/>
                 <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
                                       menus:FlyoutMenu.CloseOnClick="True"
-                                      IsVisible="{Binding Access.CanManageSessions}"
+                                      IsVisible="{Binding CanCreateCategory}"
                                       Command="{Binding CreateCategoryCommand}"/>
             </StackPanel>
         </Flyout>
     </UserControl.Resources>
 
+    <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Margin="12,8" IsVisible="{Binding CanCreate}">
+            <TextBlock Text="{l:Text privateChats.showPrivate}" IsVisible="{Binding IsPrivateMode}" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock Text="{l:Text privateChats.showChannels}" IsVisible="{Binding !IsPrivateMode}" FontWeight="SemiBold" FontSize="12"/>
+        </StackPanel>
     <Grid x:Name="ListArea" Background="{DynamicResource GeneralBrush}">
         <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
             <Image Source="{StaticResource PlugIcon}"/>
@@ -140,4 +145,5 @@
         <Canvas x:Name="DragLayer" IsHitTestVisible="False" ClipToBounds="False"/>
 
     </Grid>
+    </DockPanel>
 </UserControl>

@@ -45,6 +45,7 @@ internal static class ChatMessageMapper
             IsDeleted = dto.IsDeleted,
             IsReadOnly = dto.IsReadOnly,
             IsSystem = dto.IsSystem,
+            SystemContent = dto.SystemContent,
             IsDisposable = dto.IsDisposable,
         };
     }

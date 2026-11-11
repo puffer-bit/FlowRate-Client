@@ -18,6 +18,12 @@ public static class ChatUserMenu
             Gesture = new KeyGesture(Key.P),
             IsEnabled = !isDeleted
         };
+        var direct = new MenuItemButton
+        {
+            Content = Strings.Get("privateChats.write"),
+            Icon = (IImage?)target.FindResource("SendIcon"),
+            IsVisible = !isDeleted && message.CanOpenDirectChat(userId)
+        };
         var mention = new MenuItemButton
         {
             Content = Strings.Get("chat.menu.mention"),
@@ -27,12 +33,17 @@ public static class ChatUserMenu
 
         var menu = new Flyout
         {
-            Content = new StackPanel { Spacing = 2, Children = { profile, mention } }
+            Content = new StackPanel { Spacing = 2, Children = { profile, direct, mention } }
         };
         profile.Click += (_, _) =>
         {
             menu.Hide();
             message.OpenUserProfile(userId);
+        };
+        direct.Click += (_, _) =>
+        {
+            menu.Hide();
+            message.OpenDirectChat(userId);
         };
         mention.Click += (_, _) =>
         {

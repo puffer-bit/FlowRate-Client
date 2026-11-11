@@ -1,4 +1,21 @@
 {
+  "calls.start": "Call",
+  "calls.incoming": "Incoming call",
+  "calls.outgoing": "Calling…",
+  "calls.accept": "Accept",
+  "calls.decline": "Decline",
+  "calls.cancel": "Cancel",
+  "calls.openChat": "Open chat",
+  "calls.peer": "Contact",
+  "calls.declined": "Call declined",
+  "calls.missed": "Missed call",
+  "calls.cancelled": "Call cancelled",
+  "calls.disconnected": "Call disconnected",
+  "calls.ended": "Call ended",
+  "calls.busy": "User is busy",
+  "calls.offline": "User is offline",
+  "calls.failed": "Could not complete the call action. Try again.",
+  "calls.mediaDisabled": "Enable audio to accept calls.",
   "sessions.full": "Session full",
   "connect.failed.onlineLimitReached": "The server has reached its limit of online users. Try again later.",
   "connect.failed.userLimitReached": "The server has reached its limit of registered users. Contact the server administrator.",
@@ -1977,5 +1994,40 @@
   "chat.media.close": "End playback",
   "chat.media.failed": "Media playback failed.",
   "settings.accounting.forgetIdentity.title": "Forget identity",
-  "settings.accounting.forgetIdentity.question": "Forget the saved identity “{user}” on this device? Its saved passwords and session token will be removed. The account on the server will remain."
+  "settings.accounting.forgetIdentity.question": "Forget the saved identity “{user}” on this device? Its saved passwords and session token will be removed. The account on the server will remain.",
+  "privateChats.showPrivate": "Personal chats and groups",
+  "privateChats.showChannels": "Server channels",
+  "privateChats.group": "Group",
+  "privateChats.members": "Participants",
+  "privateChats.search": "Search users",
+  "privateChats.selectedCount": "Selected: {count}",
+  "privateChats.owner": "Owner",
+  "privateChats.editGroup": "Group settings",
+  "privateChats.leaveGroup": "Leave group",
+  "privateChats.leaveFailed": "Transfer ownership before leaving, or delete the group.",
+  "privateChats.empty": "No messages yet",
+  "privateChats.photo": "Photo",
+  "privateChats.video": "Video",
+  "privateChats.file": "File",
+  "privateChats.message": "Message",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "Message",
+  "privateChats.createHint": "Choose a direct chat or a group, then select participants.",
+  "privateChats.audio": "Audio",
+  "privateChats.direct": "Direct chat",
+  "privateChats.directDescription": "A conversation with one person.",
+  "privateChats.groupDescription": "A conversation with several people.",
+  "privateChats.noUsersFound": "No users found",
+  "chat.system.memberAdded": "{actor} added {subject}",
+  "chat.system.memberRemoved": "{actor} removed {subject}",
+  "chat.system.memberLeft": "{subject} left the group",
+  "chat.system.callStarted": "{actor} started a call",
+  "chat.system.callEnded": "Call ended",
+  "chat.system.event": "Chat event"
 }

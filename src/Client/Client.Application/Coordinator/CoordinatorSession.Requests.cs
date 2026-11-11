@@ -20,6 +20,11 @@ public partial class CoordinatorSession
     public Task<RequestResult<SessionModel>> GetSessionInfo(int sessionId) =>
         SendAsync(() => _gateway.GetSessionInfo(sessionId));
 
+    public Task<RequestResult<SessionModel>> CreateConversation(NewSessionModel session) =>
+        ValidateSession(session) && session.Options is NewChatSessionOptions { Kind: not ChatKind.ServerChannel }
+            ? SendAsync(() => _gateway.CreateConversation(session))
+            : Task.FromResult<RequestResult<SessionModel>>(ErrorCode.InvalidValue);
+
     public Task<RequestResult> CreateSession(NewSessionModel session) =>
         ValidateSession(session)
             ? SendAsync(() => _gateway.CreateSession(session))
@@ -35,6 +40,9 @@ public partial class CoordinatorSession
                && (newSession.Options is NewChatSessionOptions
                    || newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax);
     }
+
+    public Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false) =>
+        SendAsync(() => _gateway.ChangeGroup(sessionId, name, memberIds, ownerId, leave));
 
     public Task<RequestResult> DeleteSession(int sessionId) =>
         SendAsync(() => _gateway.DeleteSession(sessionId));

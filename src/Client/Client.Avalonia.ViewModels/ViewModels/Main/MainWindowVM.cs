@@ -296,7 +296,8 @@ public partial class MainWindowVM : ReactiveObject
         UpdaterVM updater,
         ILoggerFactory loggerFactory,
         Func<ConnectWindowVM> createConnectWindow,
-        Func<SettingsWindowVM> createSettings)
+        Func<SettingsWindowVM> createSettings,
+        Client.Application.Sounds.ISoundService? callSounds = null)
     {
         ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
@@ -304,6 +305,7 @@ public partial class MainWindowVM : ReactiveObject
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
         _notifications = notifications;
+        _callSounds = callSounds;
         _avatars = avatars;
         _pushRegistration = pushRegistration;
         _chatServices = chatServices;
@@ -360,7 +362,21 @@ public partial class MainWindowVM : ReactiveObject
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
-            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access);
+            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access)
+        { SessionList = SessionsList };
+        SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
+        _users.OpenDirectChat = async user =>
+        {
+            if (_coordinatorSession is not { } coordinator) return;
+            var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
+                coordinator.GetCurrentUser().Id, Shared.Validation.Limits.SessionCapacityUnlimited,
+                new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
+            if (result.IsSuccess)
+            {
+                SessionsList.IsPrivateMode = true;
+                await OpenSession(result.Value);
+            }
+        };
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(
@@ -581,8 +597,10 @@ public partial class MainWindowVM : ReactiveObject
     /// <param name="categoryId">The category the new session goes into, or null for none.</param>
     private async Task CreateNewSession(int? categoryId)
     {
-        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId);
+        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId, privateMode: SessionsList.IsPrivateMode);
         await ShowCreateSessionWindow.Handle(vm);
+        if (vm.CreatedSession is { } created)
+            await OpenSession(created);
     }
 
     private async Task OpenServerSettings()

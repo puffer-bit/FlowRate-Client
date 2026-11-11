@@ -145,6 +145,9 @@ public partial class MainWindowVM
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
+            .Add(() => session.DirectCallFailed += OnDirectCallFailed, () => session.DirectCallFailed -= OnDirectCallFailed)
+            .Add(() => session.DirectCallChanged += OnDirectCallChanged,
+                () => { session.DirectCallChanged -= OnDirectCallChanged; DismissCallToast(); })
             .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
                 () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
@@ -411,7 +414,12 @@ public partial class MainWindowVM
 
             await ServerTitle.AttachCoordinator(session);
             AttachOpenedSessions(session);
-            await RestoreLastSessionAsync();
+            if (session.DirectCall is not { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended })
+                await RestoreLastSessionAsync();
+            // A push action may complete while the initial session list is still loading.
+            if (session.DirectCall is { State: Shared.Models.DataTransferObjects.DirectCallState.Active,
+                    IsSelectedDevice: true } call && OpenedSessions?.HybridSession?.Model.DirectCallId != call.CallId)
+                OnDirectCallChanged(call);
             if (IsRestoreCurrent(session, restoreId))
                 await SetStatus("main.status.connected", false);
         }
@@ -447,7 +455,7 @@ public partial class MainWindowVM
         if (OpenedSessions == null)
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
-                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand);
+                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
             OpenedSessions = sessions;
@@ -459,7 +467,7 @@ public partial class MainWindowVM
 
     private void RestoreOpenedChats(OpenedSessions sessions)
     {
-        if (!SessionsList.IsEmpty && !SessionsList.HasSessions)
+        if (SessionsList.State != Client.ViewModels.Sessions.List.SessionsListState.Loaded)
             return;
 
         sessions.CloseChatsExcept(SessionsList.Sessions
@@ -492,6 +500,7 @@ public partial class MainWindowVM
     /// </summary>
     public Task SuspendConnection() =>
         _coordinatorSession == null || OpenedSessions?.IsInHybridSession == true
+            || _coordinatorSession.DirectCall is { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended }
             ? Task.CompletedTask
             : _coordinatorSession.Suspend();
 
@@ -503,6 +512,7 @@ public partial class MainWindowVM
     // Raised on socket and thread pool threads
     private void OnConnectionStateChanged(CoordinatorState status)
     {
+        if (status != CoordinatorState.Connected) Dispatcher.UIThread.Post(DismissCallToast);
         switch (status)
         {
             case CoordinatorState.Connecting:

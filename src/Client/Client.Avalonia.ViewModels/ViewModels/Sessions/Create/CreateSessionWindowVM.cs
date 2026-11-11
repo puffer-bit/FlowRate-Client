@@ -1,4 +1,6 @@
 using System;
+using System.Collections.ObjectModel;
+using Client.Core.Users;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -20,6 +22,106 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 {
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly int? _categoryId;
+    private readonly ChatSessionModel? _editingGroup;
+    private int _searchVersion;
+    private bool _disposed;
+    public SessionModel? CreatedSession { get; private set; }
+    public bool IsPrivateMode { get; }
+    public bool IsEditingGroup => _editingGroup != null;
+    public bool ShowServerOptions => !IsPrivateMode;
+    public bool ShowName => !IsPrivateMode || IsGroup;
+    public bool ShowCapacity => !IsPrivateMode && !IsChatSelected;
+    public bool ShowDescription => !IsPrivateMode && IsChatSelected;
+    public bool ShowOwner => IsEditingGroup;
+    public string BusyText => Strings.Get(IsEditingGroup ? "common.saving" : "createSession.creating");
+    public string SubmitText => Strings.Get(IsEditingGroup ? "common.save" : "createSession.create");
+    public string DialogTitle => Strings.Get(IsEditingGroup ? "privateChats.editGroup" : "createSession.title");
+    public ObservableCollection<ChatMemberChoiceVM> SearchResults { get; } = new();
+    public ObservableCollection<ChatMemberChoiceVM> SelectedMembers { get; } = new();
+    public ReactiveCommand<ChatMemberChoiceVM, RxVoid> ToggleMemberCommand { get; }
+    public ChatMemberChoiceVM? SelectedOwner { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public ReactiveCommand<RxVoid, RxVoid> SelectDirectCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> SelectGroupCommand { get; }
+    public bool IsGroup
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (!value && !IsEditingGroup)
+                while (SelectedMembers.Count > 1) SelectedMembers.RemoveAt(SelectedMembers.Count - 1);
+            RefreshMemberSelection();
+            this.RaisePropertyChanged(nameof(ShowName));
+        }
+    }
+    public string SearchQuery { get; set { this.RaiseAndSetIfChanged(ref field, value); } } = "";
+    public string SelectedCountText => Strings.Format("privateChats.selectedCount", ("count", SelectedMembers.Count));
+    public bool HasSelectedMembers => SelectedMembers.Count > 0;
+    public bool IsSearching { get; private set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public bool ShowNoSearchResults => !IsSearching && SearchResults.Count == 0;
+
+    private bool ValidPrivateMembers => IsEditingGroup
+        ? SelectedMembers.Count is >= 1 and <= 100 && SelectedOwner != null && SelectedMembers.Contains(SelectedOwner)
+        : IsGroup ? SelectedMembers.Count is >= 1 and < 100 : SelectedMembers.Count == 1;
+
+    private void ToggleMember(ChatMemberChoiceVM choice)
+    {
+        var existing = SelectedMembers.FirstOrDefault(member => member.Id == choice.Id);
+        if (existing != null)
+        {
+            SelectedMembers.Remove(existing);
+            if (SelectedOwner == existing) SelectedOwner = null;
+        }
+        else
+        {
+            if (!IsGroup && !IsEditingGroup) SelectedMembers.Clear();
+            if (SelectedMembers.Count >= (IsEditingGroup ? 100 : 99)) return;
+            SelectedMembers.Add(choice);
+        }
+        RefreshMemberSelection();
+    }
+
+    private void RefreshMemberSelection()
+    {
+        foreach (var row in SearchResults)
+        {
+            row.IsSelected = SelectedMembers.Any(member => member.Id == row.Id);
+            row.CanToggle = row.IsSelected || !IsGroup || SelectedMembers.Count < (IsEditingGroup ? 100 : 99);
+        }
+        this.RaisePropertyChanged(nameof(SelectedCountText));
+        this.RaisePropertyChanged(nameof(HasSelectedMembers));
+    }
+
+    private async Task SearchMembersAsync(string query)
+    {
+        var version = ++_searchVersion;
+        IsSearching = true;
+        this.RaisePropertyChanged(nameof(ShowNoSearchResults));
+        var users = await _coordinatorSession.SearchUsers(query, 20);
+        if (_disposed || version != _searchVersion) return;
+        SearchResults.Clear();
+        foreach (var user in users.Where(user => IsEditingGroup || user.Id != _coordinatorSession.GetCurrentUser().Id))
+            SearchResults.Add(new ChatMemberChoiceVM(user.Id, user.DisplayName ?? user.Username)
+                { Username = user.Username, AvatarUrl = user.AvatarUrl });
+        RefreshMemberSelection();
+        IsSearching = false;
+        this.RaisePropertyChanged(nameof(ShowNoSearchResults));
+    }
+
+    public async Task InitializeMembersAsync()
+    {
+        if (_editingGroup != null)
+        {
+            var users = await _coordinatorSession.GetUsers(_editingGroup.MemberIds);
+            if (_disposed) return;
+            foreach (var id in _editingGroup.MemberIds)
+                SelectedMembers.Add(new ChatMemberChoiceVM(id, users.TryGetValue(id, out var user) ? user.DisplayName ?? user.Username : id.ToString()));
+            SelectedOwner = SelectedMembers.FirstOrDefault(member => member.Id == _editingGroup.AdminUserId);
+            RefreshMemberSelection();
+        }
+        await SearchMembersAsync("");
+    }
+
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
@@ -37,6 +139,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(IsChatSelected));
+            this.RaisePropertyChanged(nameof(ShowCapacity));
+            this.RaisePropertyChanged(nameof(ShowDescription));
             CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(Capacity);
         }
     }
@@ -106,38 +210,61 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
     /// <param name="categoryId">The category the session is created in, or null for none.</param>
     public CreateSessionWindowVM(ICoordinatorSession coordinatorSession, SessionType initialType = SessionType.Hybrid,
-        int? categoryId = null)
+        int? categoryId = null, bool privateMode = false, ChatSessionModel? editingGroup = null)
     {
         _coordinatorSession = coordinatorSession;
+        Strings.LanguageChanged += OnLanguageChanged;
         _categoryId = categoryId;
+        IsPrivateMode = privateMode;
+        _editingGroup = editingGroup;
+        IsGroup = editingGroup != null;
+        if (editingGroup != null) Name = editingGroup.Name;
+        SelectDirectCommand = ReactiveCommand.Create(() => { IsGroup = false; });
+        SelectGroupCommand = ReactiveCommand.Create(() => { IsGroup = true; });
+        ToggleMemberCommand = ReactiveCommand.Create<ChatMemberChoiceVM>(ToggleMember);
 
         SelectedType = initialType == SessionType.Chat ? ChatOption : HybridOption;
         SelectedType.IsSelected = true;
         Capacity = HybridOption.DefaultCapacity;
 
-        var isValid = this.WatchProperties(nameof(Name), nameof(Capacity), nameof(Description), nameof(SelectedType))
-            .Select(vm =>
-                SessionRules.ValidateName(vm.Name) == null
-                && (vm.IsChatSelected || SessionRules.ValidateCapacity(vm.Capacity) == null)
-                && (vm.SelectedType.Type != SessionType.Chat || ValidateDescription(vm.Description) == null));
+        var isValid = this.WatchProperties(nameof(Name), nameof(Capacity), nameof(Description), nameof(SelectedType),
+                nameof(IsGroup), nameof(SelectedCountText), nameof(SelectedOwner))
+            .Select(vm => vm.IsPrivateMode
+                ? vm.ValidPrivateMembers && (!vm.IsGroup || SessionRules.ValidateName(vm.Name) == null)
+                : SessionRules.ValidateName(vm.Name) == null
+                    && (vm.IsChatSelected || SessionRules.ValidateCapacity(vm.Capacity) == null)
+                    && (vm.SelectedType.Type != SessionType.Chat || ValidateDescription(vm.Description) == null));
 
         CreateCommand = ReactiveCommand.CreateFromTask(CreateAsync, isValid);
         SelectTypeCommand = ReactiveCommand.Create<SessionTypeOptionVM>(SelectType, CreateCommand.IsExecuting.Select(busy => !busy));
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(RxVoid.Default); },
             CreateCommand.IsExecuting.Select(busy => !busy));
 
+        _disposables.Add(SelectDirectCommand);
+        _disposables.Add(SelectGroupCommand);
         _isBusy = CreateCommand.IsExecuting.ToProperty(this, nameof(IsBusy));
 
         // The name has no error until it is first edited, an empty untouched form is not a mistake
+        _disposables.Add(this.WatchProperty(nameof(SearchQuery), vm => vm.SearchQuery)
+            .Skip(1).Throttle(TimeSpan.FromMilliseconds(250))
+            .Subscribe(query => global::Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = SearchMembersAsync(query))));
         _disposables.Add(this.WatchProperty(nameof(Name), vm => vm.Name).Skip(1).Subscribe(name =>
         {
-            NameError = SessionRules.ValidateName(name);
+            NameError = IsPrivateMode && !IsGroup ? null : SessionRules.ValidateName(name);
             GeneralError = null;
         }));
         _disposables.Add(this.WatchProperty(nameof(Capacity), vm => vm.Capacity)
             .Subscribe(capacity => CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(capacity)));
         _disposables.Add(this.WatchProperty(nameof(Description), vm => vm.Description)
             .Subscribe(description => DescriptionError = ValidateDescription(description)));
+    }
+
+    private void OnLanguageChanged()
+    {
+        this.RaisePropertyChanged(nameof(DialogTitle));
+        this.RaisePropertyChanged(nameof(SubmitText));
+        this.RaisePropertyChanged(nameof(BusyText));
+        this.RaisePropertyChanged(nameof(SelectedCountText));
     }
 
     private void SelectType(SessionTypeOptionVM option)
@@ -154,6 +281,18 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
     private async Task CreateAsync()
     {
+        if (IsPrivateMode)
+        {
+            if (!ValidPrivateMembers) return;
+            var name = IsGroup ? Name.Trim() : "Direct";
+            var members = SelectedMembers.Select(member => member.Id).ToArray();
+            var privateResult = IsEditingGroup
+                ? await _coordinatorSession.ChangeGroup(_editingGroup!.Id, name, members, SelectedOwner!.Id)
+                : await CreatePrivateAsync(name, members);
+            if (privateResult.IsSuccess) await CloseWindow.Handle(RxVoid.Default);
+            else GeneralError = Strings.Format("createSession.notCreated", ("reason", privateResult));
+            return;
+        }
         NameError = SessionRules.ValidateName(Name);
         GeneralError = null;
 
@@ -197,6 +336,15 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         }
     }
 
+    private async Task<Client.Core.Coordinator.RequestResult> CreatePrivateAsync(string name, int[] members)
+    {
+        var result = await _coordinatorSession.CreateConversation(new NewSessionModel(name,
+            _coordinatorSession.GetCurrentUser().Id, Limits.SessionCapacityUnlimited,
+            new NewChatSessionOptions(Kind: IsGroup ? ChatKind.Group : ChatKind.Direct, MemberIds: members)));
+        if (result.IsSuccess) CreatedSession = result.Value;
+        return result.Result;
+    }
+
     private static string? ValidateDescription(string? description)
     {
         if (string.IsNullOrEmpty(description))
@@ -212,6 +360,10 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
+        Strings.LanguageChanged -= OnLanguageChanged;
+        _searchVersion++;
+        ToggleMemberCommand.Dispose();
         _disposables.Dispose();
         _isBusy.Dispose();
         SelectTypeCommand.Dispose();

@@ -1,3 +1,5 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
+
 namespace Client.Core.Chat;
 
 public class ChatMessageModel
@@ -43,6 +45,7 @@ public class ChatMessageModel
     public bool IsDeleted { get; init; }
     public bool IsReadOnly { get; init; }
     public bool IsSystem { get; init; }
+    public ChatSystemContent? SystemContent { get; init; }
     public bool IsDisposable { get; init; }
     public bool IsMine { get; set; }
 

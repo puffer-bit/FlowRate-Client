@@ -139,7 +139,7 @@
             <Button.IsVisible>
                 <MultiBinding Converter="{x:Static BoolConverters.And}">
                     <Binding Path="ServerTitle.IsReady"/>
-                    <Binding Path="Access.CanCreateSessions"/>
+                    <Binding Path="SessionsList.CanCreateSession"/>
                 </MultiBinding>
             </Button.IsVisible>
             <Image Width="22" Height="22" Source="{StaticResource PlusIcon}"/>
@@ -148,7 +148,12 @@
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-        <Grid Grid.Row="3" DataContext="{Binding SessionsList}">
+        <DockPanel Grid.Row="3" DataContext="{Binding SessionsList}">
+            <StackPanel DockPanel.Dock="Top" Margin="16,8" IsVisible="{Binding CanCreate}">
+                <TextBlock Text="{l:Text privateChats.showPrivate}" IsVisible="{Binding IsPrivateMode}" FontWeight="SemiBold"/>
+                <TextBlock Text="{l:Text privateChats.showChannels}" IsVisible="{Binding !IsPrivateMode}" FontWeight="SemiBold"/>
+            </StackPanel>
+            <Grid>
             <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
                 <Image Source="{StaticResource PlugIcon}"/>
                 <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
@@ -181,9 +186,7 @@
                 <TextBlock Text="{l:Text sessions.empty.plain}"/>
             </StackPanel>
 
-            <!-- A tap opens a chat, and the session that is on screen stays filled. Voice sessions are
-                 listed with who is in them, as on the desktop, but only listed: joining one needs
-                 the media components, which are not on Android yet -->
+            <!-- A tap opens a chat or joins a voice session; the visible session stays selected. -->
             <ListBox Classes="sessionsList byContent"
                      x:Name="SessionsListBox"
                      Margin="8,8"
@@ -355,33 +358,44 @@
                               anim:Presence.IsLeaving="{Binding IsLeaving}">
                             <Border Classes="sessionHeader" Classes.shown="{Binding IsShown}">
                                 <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
-                                    <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
-                                           Source="{StaticResource HashIcon}"/>
+                                    <Panel Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center">
+                                        <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
+                                        <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
+                                                            Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
+                                        <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                                    </Panel>
 
-                                    <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
-                                               Classes.unread="{Binding HasUnread}"
-                                               Text="{Binding Model.Name}"/>
+                                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Classes="sessionName" FontSize="16" Classes.unread="{Binding HasUnread}" Text="{Binding DisplayName}"/>
+                                        <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}" FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
 
 
                                     <!-- Mentions take the place of the plain counter; a muted chat shows its bell there -->
-                                    <Panel Grid.Column="2" VerticalAlignment="Center">
-                                        <Image Width="20" Height="20"
-                                               IsVisible="{Binding ShowsMutedMark}"
-                                               Source="{StaticResource CrossedBellIcon}"/>
-                                        <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
-                                            <TextBlock Text="{Binding UnreadCountText}"/>
-                                        </Border>
-                                        <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
-                                            <TextBlock Text="{Binding MentionCountText}"/>
-                                        </Border>
-                                    </Panel>
+                                    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding LastMessageTime}" IsVisible="{Binding IsPrivate}" FontSize="11"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        <Panel>
+                                            <Image Width="20" Height="20"
+                                                   IsVisible="{Binding ShowsMutedMark}"
+                                                   Source="{StaticResource CrossedBellIcon}"/>
+                                            <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
+                                                <TextBlock Text="{Binding UnreadCountText}"/>
+                                            </Border>
+                                            <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
+                                                <TextBlock Text="{Binding MentionCountText}"/>
+                                            </Border>
+                                        </Panel>
+                                    </StackPanel>
                                 </Grid>
                             </Border>
                         </Grid>
                     </DataTemplate>
                 </ListBox.DataTemplates>
             </ListBox>
-        </Grid>
+            </Grid>
+        </DockPanel>
 
         <!-- The voice session we are in, as under the list of the desktop: its state, a way back to it
              and out of it, and the microphone, the sound and AFK. It unfolds when we join and folds

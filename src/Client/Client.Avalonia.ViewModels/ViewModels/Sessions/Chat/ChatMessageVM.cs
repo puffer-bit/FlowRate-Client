@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
                 this.RaisePropertyChanged(nameof(HasPlainText));
             }
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsSystem));
+            this.RaisePropertyChanged(nameof(SystemEventKind));
+            SystemParts = ChatSystemMessageText.Parts(value, _ => null);
             this.RaisePropertyChanged(nameof(LocalSentTime));
             this.RaisePropertyChanged(nameof(IsPinned));
             this.RaisePropertyChanged(nameof(CanEdit));
@@ -51,6 +55,21 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(IsMentioningMe));
         }
     }
+
+    public bool IsSystem => Message.IsSystem;
+    public ChatSystemEventKind SystemEventKind => Message.IsSystem && Message.SystemContent?.IsValid() == true
+        ? Message.SystemContent.Kind : 0;
+    public IReadOnlyList<ChatSystemMessagePart> SystemParts
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(SystemText));
+        }
+    } = [];
+    public string SystemText => string.Concat(SystemParts.Select(part => part.Text));
+    public ReactiveCommand<int, RxVoid> OpenSystemUserCommand => _viewProfileCommand;
 
     /// <summary>
     /// The text as it is shown, with its mentions written as names. Null until the chat renders it,
@@ -106,7 +125,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     }
     public bool HasPinError => PinError != null;
     private bool _settingPin;
-    public bool CanPin => SetPinned != null && CanManageMessages && IsPinAllowed && !Message.IsSystem && !Message.IsDeleted
+    public bool CanPinInDirectChat { get; init; }
+    public bool CanPin => SetPinned != null && (CanManageMessages || CanPinInDirectChat) && IsPinAllowed && !Message.IsSystem && !Message.IsDeleted
                           && _composer is { IsConnected: true };
     public Func<bool, Task<bool>>? SetPinned { get; init; }
     public void TogglePinned() => _ = TogglePinnedAsync();
@@ -325,6 +345,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _deleteCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
     private readonly ChatComposerVM? _composer;
 
     public Func<string, bool, Task<bool>>? SetReaction { get; init; }
@@ -382,6 +403,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public void MentionUser(int userId, string name) => _composer?.MentionUser(userId, name);
 
+    public bool CanOpenDirectChat(int userId) => userId != _currentUserId && _openDirectChatCommand != null;
+    public void OpenDirectChat(int userId) => _openDirectChatCommand?.Execute(userId).Subscribe();
     public void OpenUserProfile(int userId) => _viewProfileCommand.Execute(userId).Subscribe();
 
     private readonly int _currentUserId;
@@ -396,7 +419,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         Func<Uri, Task<bool>> confirmOpenLink,
         IReadOnlyList<ChatImageVM>? images = null,
         IReadOnlyList<ChatFileVM>? files = null,
-        ChatComposerVM? composer = null)
+        ChatComposerVM? composer = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         ConfirmOpenLink = confirmOpenLink;
         _currentUserId = currentUserId;
@@ -409,6 +433,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         _deleteCommand = deleteCommand;
         _jumpToMessageCommand = jumpToMessageCommand;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
         _composer = composer;
 
         // A deleted original has nowhere to jump to

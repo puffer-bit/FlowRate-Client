@@ -82,6 +82,9 @@ internal static class SessionMapper
             SessionType = sessionDTO.SessionType,   
             PermissionOverrides = sessionDTO.PermissionOverrides.ToModel(),
 
+            Kind = sessionDTO.Kind,
+            MemberIds = sessionDTO.MemberIds,
+            LastMessage = sessionDTO.LastMessage?.ToModel(),
             CreatorUserId = sessionDTO.CreatorUserId,
             AdminUserId = sessionDTO.AdminUserId,
             Description = sessionDTO.Description,

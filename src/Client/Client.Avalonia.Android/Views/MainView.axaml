@@ -191,10 +191,17 @@
                         </Grid>
                     </Border>
 
+                    <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text privateChats.showChannels}"
+                                          IsVisible="{Binding SessionsList.IsPrivateMode}"
+                                          Command="{Binding ServerTitle.ToggleListModeCommand}" Click="OnListModeClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.showPrivate}"
+                                          IsVisible="{Binding !SessionsList.IsPrivateMode}"
+                                          Command="{Binding ServerTitle.ToggleListModeCommand}" Click="OnListModeClick"/>
+                    <Separator/>
                     <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
-                                          Click="OnCreateSessionClick"/>
+                                          IsVisible="{Binding SessionsList.CanCreateSession}" Click="OnCreateSessionClick"/>
                     <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
-                                          Click="OnCreateCategoryClick"/>
+                                          IsVisible="{Binding SessionsList.CanCreateCategory}" Click="OnCreateCategoryClick"/>
 
                     <Separator/>
 
@@ -247,13 +254,20 @@
                 <StackPanel Spacing="2">
                     <!-- The chat the menu is about -->
                     <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,8,12,10">
-                        <Image Grid.Column="0" Width="22" Height="22" VerticalAlignment="Center"
-                               Source="{StaticResource HashIcon}"/>
+                        <Panel Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center">
+                            <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
+                            <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsDirect}"/>
+                            <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                        </Panel>
                         <TextBlock Grid.Column="1" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                   Text="{Binding Model.Name}"/>
+                                   Text="{Binding DisplayName}"/>
                     </Grid>
 
+                    <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                                          IsVisible="{Binding CanEditGroup}" Command="{Binding EditGroupCommand}" Click="OnChatActionClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text privateChats.leaveGroup}"
+                                          IsVisible="{Binding CanLeaveGroup}" Command="{Binding LeaveGroupCommand}" Click="OnChatActionClick"/>
                     <!-- One item, shown by the state it would change -->
                     <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
                                           IsVisible="{Binding !IsMuted}"
@@ -407,6 +421,9 @@
                 </StackPanel>
             </views:BottomSheet>
         </Panel>
+
+        <views:ToastHost Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding Notifications}"
+                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,56,12,12"/>
 
         <!-- Message boxes lie over whatever screen is shown -->
         <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="DialogLayer"/>

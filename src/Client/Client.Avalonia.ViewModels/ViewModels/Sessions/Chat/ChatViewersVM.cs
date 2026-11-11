@@ -35,6 +35,8 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public int? RoleColor => _owner.GetRoleColor(_user);
     public ReactiveCommand<RxVoid, RxVoid> ViewProfile { get; }
 
+    public bool CanOpenDirectChat => _owner.CanOpenDirectChat(Id);
+    public ReactiveCommand<RxVoid, RxVoid> OpenDirectChat { get; }
     public bool CanMention => _owner.CanMention;
     public bool CanBan => _owner.CanBan(_user);
     public bool CanUnban => _owner.CanUnban(_user);
@@ -48,6 +50,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         (_user, _owner) = (user, owner);
         // Launch the shared profile action without binding the whole list to its dialog lifetime.
         ViewProfile = ReactiveCommand.Create(() => { viewProfile.Execute(Id).Subscribe(); });
+        OpenDirectChat = ReactiveCommand.Create(() => { if (CanOpenDirectChat) _owner.OpenDirectChat(Id); });
         Mention = ReactiveCommand.Create(() => { if (CanMention) _owner.MentionUser(_user); });
         Ban = ReactiveCommand.Create(() => { if (CanBan) _owner.BanUser(_user); });
         Unban = ReactiveCommand.Create(() => { if (CanUnban) _owner.UnbanUser(_user); });
@@ -65,6 +68,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public void Dispose()
     {
         ViewProfile.Dispose();
+        OpenDirectChat.Dispose();
         Mention.Dispose();
         Ban.Dispose();
         Unban.Dispose();
@@ -93,6 +97,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     private readonly ReactiveCommand<int, RxVoid>? _unbanUser;
     private readonly int _currentUserId;
     private readonly ReactiveCommand<int, RxVoid> _viewProfile;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChat;
     private readonly List<ChatViewersChangedEvent> _pending = [];
     private Guid _subscriptionId;
     private bool _open;
@@ -123,10 +128,11 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     public ChatViewersVM(int chatId, ICoordinatorSession session, ReactiveCommand<int, RxVoid> viewProfile,
         ChatComposerVM? composer = null, ReactiveCommand<(int UserId, string Name), RxVoid>? banUser = null,
         int currentUserId = 0, ReactiveCommand<int, RxVoid>? unbanUser = null,
-        IAppearanceService? appearance = null)
+        IAppearanceService? appearance = null, ReactiveCommand<int, RxVoid>? openDirectChat = null)
     {
         (_chatId, _session, _viewProfile) = (chatId, session, viewProfile);
         _appearance = appearance;
+        _openDirectChat = openDirectChat;
         ToggleGroupOnlineUsers = ReactiveCommand.CreateFromTask(async () =>
         {
             var enabled = !GroupOnlineUsers;
@@ -142,6 +148,8 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
         session.StateChanged += OnStateChanged;
     }
 
+    internal bool CanOpenDirectChat(int userId) => userId != _currentUserId && _openDirectChat != null;
+    internal void OpenDirectChat(int userId) => _openDirectChat?.Execute(userId).Subscribe();
     internal bool CanMention => _composer is { CanWrite: true, IsConnected: true };
 
     internal int? GetRoleColor(UserModel user) => _session.Permissions.Roles

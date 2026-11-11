@@ -1,4 +1,21 @@
 {
+  "calls.start": "Llamar",
+  "calls.incoming": "Llamada entrante",
+  "calls.outgoing": "Llamando…",
+  "calls.accept": "Aceptar",
+  "calls.decline": "Rechazar",
+  "calls.cancel": "Cancelar",
+  "calls.openChat": "Abrir chat",
+  "calls.peer": "Contacto",
+  "calls.declined": "Llamada rechazada",
+  "calls.missed": "Llamada perdida",
+  "calls.cancelled": "Llamada cancelada",
+  "calls.disconnected": "Llamada desconectada",
+  "calls.ended": "Llamada finalizada",
+  "calls.busy": "El usuario está ocupado",
+  "calls.offline": "El usuario no está conectado",
+  "calls.failed": "No se pudo completar la acción. Inténtalo de nuevo.",
+  "calls.mediaDisabled": "Activa el audio para aceptar llamadas.",
   "sessions.full": "Sesión llena",
   "connect.failed.onlineLimitReached": "El servidor ha alcanzado el límite de usuarios conectados. Inténtalo más tarde.",
   "connect.failed.userLimitReached": "El servidor ha alcanzado el límite de usuarios registrados. Contacta con el administrador del servidor.",
@@ -1343,5 +1360,40 @@
   "chat.emoji.category.8": "Banderas",
   "chat.emoji.limit": "Este emoji superaría el límite de longitud del mensaje.",
   "settings.accounting.forgetIdentity.title": "Olvidar identidad",
-  "settings.accounting.forgetIdentity.question": "¿Olvidar la identidad guardada «{user}» en este dispositivo? Se eliminarán sus contraseñas guardadas y el token de sesión. La cuenta del servidor se conservará."
+  "settings.accounting.forgetIdentity.question": "¿Olvidar la identidad guardada «{user}» en este dispositivo? Se eliminarán sus contraseñas guardadas y el token de sesión. La cuenta del servidor se conservará.",
+  "privateChats.showPrivate": "Chats personales y grupos",
+  "privateChats.showChannels": "Canales del servidor",
+  "privateChats.group": "Grupo",
+  "privateChats.members": "Participantes",
+  "privateChats.search": "Buscar usuarios",
+  "privateChats.selectedCount": "Seleccionados: {count}",
+  "privateChats.owner": "Propietario",
+  "privateChats.editGroup": "Ajustes del grupo",
+  "privateChats.leaveGroup": "Salir del grupo",
+  "privateChats.leaveFailed": "Transfiere la propiedad antes de salir o elimina el grupo.",
+  "privateChats.empty": "Aún no hay mensajes",
+  "privateChats.photo": "Foto",
+  "privateChats.video": "Vídeo",
+  "privateChats.file": "Archivo",
+  "privateChats.message": "Mensaje",
+  "@privateChats.selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "privateChats.write": "Escribir",
+  "privateChats.createHint": "Elige un chat privado o un grupo y selecciona participantes.",
+  "privateChats.audio": "Audio",
+  "privateChats.direct": "Chat privado",
+  "privateChats.directDescription": "Una conversación con una persona.",
+  "privateChats.groupDescription": "Una conversación con varias personas.",
+  "privateChats.noUsersFound": "No se encontraron usuarios",
+  "chat.system.memberAdded": "{actor} añadió a {subject}",
+  "chat.system.memberRemoved": "{actor} eliminó a {subject}",
+  "chat.system.memberLeft": "{subject} salió del grupo",
+  "chat.system.callStarted": "{actor} inició una llamada",
+  "chat.system.callEnded": "Llamada finalizada",
+  "chat.system.event": "Evento del chat"
 }

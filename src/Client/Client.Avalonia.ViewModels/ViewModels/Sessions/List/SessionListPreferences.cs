@@ -72,6 +72,18 @@ public sealed partial class SessionListPreferences(IMutedChatsRepository mutedCh
         }
     }
 
+    public async Task<bool> LoadPrivateModeAsync(string coordinatorInstanceId)
+    {
+        try { return (await collapsedSections.GetAsync()).Contains($"privateChats:{coordinatorInstanceId}"); }
+        catch (Exception exception) { LogCollapsedCategoriesLoadFailed(exception); return false; }
+    }
+
+    public async Task SavePrivateModeAsync(string coordinatorInstanceId, bool enabled)
+    {
+        try { await collapsedSections.SetAsync($"privateChats:{coordinatorInstanceId}", enabled); }
+        catch (Exception exception) { LogCategoryCollapseSaveFailed(exception, 0); }
+    }
+
     private static string CollapsedCategoryKey(string coordinatorInstanceId, int categoryId) =>
         $"{CollapsedCategoryKeyPrefix}{coordinatorInstanceId}:{categoryId}";
 

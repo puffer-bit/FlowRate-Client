@@ -89,6 +89,16 @@ public partial class ChatView : UserControl
         return MessageMenu;
     }
 
+    private void OpenDirectChatProfile()
+    {
+        if (Chat?.StatusBar is { IsDirect: true } statusBar)
+            statusBar.OpenInfoCommand.Execute().Subscribe();
+    }
+
+    private void OnChatTitleClick(object? sender, RoutedEventArgs e) => OpenDirectChatProfile();
+
+    private void OnChatTitleTapped(object? sender, TappedEventArgs e) => OpenDirectChatProfile();
+
     private ActiveChatSessionVM? Chat => DataContext as ActiveChatSessionVM;
 
     private void UpdateMentionPicker()
@@ -132,6 +142,7 @@ public partial class ChatView : UserControl
             .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
         if (message == null)
             return;
+        if (message.IsSystem) { e.Handled = true; return; }
 
         message.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
             .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();

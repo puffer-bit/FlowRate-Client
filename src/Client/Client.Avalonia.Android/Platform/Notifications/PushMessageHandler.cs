@@ -42,6 +42,8 @@ internal static class PushMessageHandler
 
     public static Action<string, int, int>? ChatMarkedRead { get; set; }
 
+    public static Func<string, int, bool>? IsCallAccountOnScreen { get; set; }
+
     public static async Task HandleAsync(Context context, IDictionary<string, string> data)
     {
         if (!data.TryGetValue("v", out var version) || version != SupportedVersion
@@ -58,6 +60,14 @@ internal static class PushMessageHandler
         // A push opened by the key of one coordinator must not speak for another
         if (payload == null || payload.CoordinatorId != key.CoordinatorInstanceId)
             return;
+
+        if (payload.CallId != null)
+        {
+            if (key.UserId != payload.RecipientId) return;
+            Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
+            IncomingCallNotifications.Handle(context, payload);
+            return;
+        }
 
         if (ChatOnScreen == (payload.CoordinatorId, payload.ChatId))
             return;

@@ -14,6 +14,12 @@ namespace Client.Application.Coordinator;
 
 public interface ICoordinatorSession : IDisposable
 {
+    event Action<Shared.Models.DataTransferObjects.DirectCallDTO>? DirectCallChanged;
+    event Action<ErrorCode>? DirectCallFailed;
+    Shared.Models.DataTransferObjects.DirectCallDTO? DirectCall { get; }
+    Task<RequestResult<Shared.Models.DataTransferObjects.DirectCallDTO>> ChangeDirectCall(int chatId, Guid callId,
+        Shared.Models.DataTransferObjects.DirectCallAction action);
+
     CoordinatorState ConnectionStatus { get; }
 
     /// <summary>
@@ -265,7 +271,12 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult<(IDictionary<int, SessionModel> Sessions, SessionLayout Layout)>> GetAllSessions();
     Task<RequestResult<SessionModel>> GetSessionInfo(int sessionId);
     
+    Task<RequestResult<SessionModel>> CreateConversation(NewSessionModel session) => throw new NotSupportedException();
+
     Task<RequestResult> CreateSession(NewSessionModel newSession);
+    Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+        => throw new NotSupportedException();
+
     Task<RequestResult> DeleteSession(int sessionId);
 
     /// <summary>

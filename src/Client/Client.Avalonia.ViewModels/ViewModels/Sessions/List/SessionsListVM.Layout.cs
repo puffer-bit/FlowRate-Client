@@ -52,6 +52,7 @@ public partial class SessionsListVM
 
     private void ClearList()
     {
+        foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.Dispose();
         Sessions.Clear();
         Rows.Clear();
         _categories.Clear();
@@ -92,8 +93,18 @@ public partial class SessionsListVM
     {
         SyncCategories();
 
+        if (IsPrivateMode)
+        {
+            ApplyRows(Sessions.OfType<ChatSessionVM>().Where(chat => chat.IsPrivate)
+                .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTime.MinValue)
+                .ThenByDescending(chat => chat.Model.Id).Cast<ISessionListRow>().ToList());
+            RestoreSelection();
+            RaiseStateProperties();
+            return;
+        }
+        var serverSessions = Sessions.Where(session => session is not ChatSessionVM { IsPrivate: true }).ToList();
         var sessionsById = new Dictionary<int, ISessionVM>();
-        foreach (var session in Sessions)
+        foreach (var session in serverSessions)
             sessionsById.TryAdd(session.Model.Id, session);
 
         var desired = new List<ISessionListRow>(Sessions.Count + _categories.Count);
@@ -119,7 +130,7 @@ public partial class SessionsListVM
         // A session the layout does not know: one just created, whose place comes with the next
         // layout, or one folding away after it was deleted. It stays behind the row it follows now,
         // so nothing jumps; a new one goes to the end of the sessions outside any category.
-        foreach (var session in Sessions)
+        foreach (var session in serverSessions)
         {
             if (placed.Contains(session))
                 continue;
@@ -146,6 +157,7 @@ public partial class SessionsListVM
         }
 
         ApplyRows(desired);
+        RaiseStateProperties();
 
         UpdateFolding();
         RefreshCategoryCounts();
@@ -353,7 +365,8 @@ public partial class SessionsListVM
 
     private async Task MoveSession(ISessionVM session, int? categoryId, int index)
     {
-        if (_coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
+        if (IsPrivateMode || session is ChatSessionVM { IsPrivate: true }
+            || _coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
             return;
 
         index = Math.Min(index, Limits.SessionLayoutIndexMax);
