@@ -21,6 +21,8 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
     private GstBusWatcher? _bus;
     private string? _echoProbe;
     private GstProcessedMicrophone? _capture;
+    private Options? _captureSettings;
+    private int _captureGeneration;
     private Microphone[] _owners = [];
     private ulong _nextTimestamp;
     private static int _probeCount;
@@ -28,6 +30,7 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
     // Integration checks use a clocked fakesink without opening the user's speakers.
     internal string? PlaybackSink { get; init; }
     internal bool IsRunning { get { lock (_lock) return _pipeline != null; } }
+    internal int CaptureGeneration { get { lock (_lock) return _captureGeneration; } }
 
     public event Action<string>? Failed;
 
@@ -178,18 +181,37 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                 return false;
             var previous = _owners;
             _owners = [.. previous.Where(item => item != owner), owner];
-            if ((_capture != null && previous.LastOrDefault()?.Settings == owner.Settings) || Rebuild(owner.Settings))
+            if (ConfigureCapture(owner.Settings))
                 return true;
             _owners = previous;
             if (previous.Length > 0)
-                Rebuild(previous[^1].Settings);
+                ConfigureCapture(previous[^1].Settings);
             return false;
         }
+    }
+
+    private bool ConfigureCapture(Options options)
+    {
+        // Volume and gate options belong to the tail of the chain and can change in place.
+        // Rebuilding for an owner handoff would discard the learned RNNoise state in both
+        // noise suppression and voice detection even though their processing is unchanged.
+        if (_capture != null && _captureSettings is { } current &&
+            current.Input == options.Input && current.Suppression == options.Suppression &&
+            current.EchoCancellation == options.EchoCancellation && current.AutoGainControl == options.AutoGainControl)
+        {
+            _capture.SetVolume(options.Volume);
+            _capture.SetVoiceGate(options.Gate);
+            _captureSettings = options;
+            return true;
+        }
+
+        return Rebuild(options);
     }
 
     private bool Rebuild(Options options)
     {
         var previous = Interlocked.Exchange(ref _capture, null);
+        _captureSettings = null;
         previous?.Dispose();
         try
         {
@@ -205,7 +227,11 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
             capture.SamplesReady += ForwardSamples;
             Volatile.Write(ref _capture, capture);
             if (capture.Start())
+            {
+                _captureSettings = options;
+                _captureGeneration++;
                 return true;
+            }
             Interlocked.Exchange(ref _capture, null)?.Dispose();
         }
         catch (Exception error)
@@ -217,8 +243,16 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
 
     private void ForwardSamples(ReadOnlySpan<short> samples)
     {
-        foreach (var owner in Volatile.Read(ref _owners))
-            owner.Deliver(samples);
+        var owners = Volatile.Read(ref _owners);
+        if (owners.Length == 0)
+            return;
+
+        // All owners receive the same processed PCM. Scan it once, regardless of peer count.
+        var peak = 0;
+        foreach (var sample in samples)
+            peak = Math.Max(peak, Math.Abs((int)sample));
+        foreach (var owner in owners)
+            owner.Deliver(samples, peak);
     }
 
     private void Release(Microphone owner)
@@ -228,9 +262,12 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
             var wasCurrent = _owners.LastOrDefault() == owner;
             _owners = _owners.Where(item => item != owner).ToArray();
             if (_owners.Length == 0)
+            {
                 Interlocked.Exchange(ref _capture, null)?.Dispose();
-            else if (wasCurrent && owner.Settings != _owners[^1].Settings)
-                Rebuild(_owners[^1].Settings);
+                _captureSettings = null;
+            }
+            else if (wasCurrent)
+                ConfigureCapture(_owners[^1].Settings);
         }
     }
 
@@ -240,6 +277,7 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
         {
             _owners = [];
             Interlocked.Exchange(ref _capture, null)?.Dispose();
+            _captureSettings = null;
             // Bus handlers never take this lock, and stop before their element wrappers are freed.
             _bus?.Dispose();
             _bus = null;
@@ -263,13 +301,10 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
         private volatile bool _disposed;
         public event AudioSamplesHandler? SamplesReady;
         public bool Start() => !_disposed && device.Activate(this);
-        public void Deliver(ReadOnlySpan<short> samples)
+        public void Deliver(ReadOnlySpan<short> samples, int peak)
         {
             if (_disposed)
                 return;
-            var peak = 0;
-            foreach (var sample in samples)
-                peak = Math.Max(peak, Math.Abs((int)sample));
             int previous;
             do { previous = Volatile.Read(ref _peak); }
             while (peak > previous && Interlocked.CompareExchange(ref _peak, peak, previous) != previous);

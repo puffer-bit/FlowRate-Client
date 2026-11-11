@@ -79,7 +79,7 @@
                 </Grid>
             </Button>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <Button Classes="borderless" Width="36" Height="36" Padding="8"
+                <Button Classes="ghost" Width="36" Height="36" Padding="8" CornerRadius="6"
                         IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}"
                         AutomationProperties.Name="{l:Text calls.start}">
                     <Image Source="{StaticResource ChatCallStartedIcon}"/>

@@ -162,6 +162,9 @@ network -> libwebrtc / NetEq / PLC -> decode and mix, including track volumes ->
 - `IVoiceAudioDevice` is the media boundary. `GstVoiceAudioDevice` owns one playback pipeline and
   one processed microphone for all native peers. It shares the microphone frames between callers;
   the last caller to configure it controls its settings until released, then its predecessor resumes.
+  Owner handoffs apply volume and voice-gate options in place, preserving the learned RNNoise state.
+  Capture is rebuilt when the input, suppression mode, echo cancellation or automatic gain changes,
+  and stops when the last microphone owner is released.
 - Capture reuses `MicrophoneChain`, `MicrophoneProcessing`, `VoiceGate` and the same settings as the
   microphone test. The neural modes and speech detection use the bundled `audiornnoise` plugin.
   An older GStreamer runtime without it keeps the existing Moderate fallback.

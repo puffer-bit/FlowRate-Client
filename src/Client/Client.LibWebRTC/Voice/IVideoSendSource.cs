@@ -41,7 +41,7 @@ public interface IAudioSendSource : IDisposable
 {
     /// <summary>
     /// The next 10 ms, in 16-bit samples, interleaved when there are two channels. Any thread, one at
-    /// a time.
+    /// a time. The samples are borrowed for this call; consume or copy them before returning.
     /// </summary>
     void Push(ReadOnlySpan<short> samples, int sampleRate, int channels);
 }

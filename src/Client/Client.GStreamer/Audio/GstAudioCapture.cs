@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.GStreamer.Interop;
 using Gst;
@@ -10,7 +11,7 @@ namespace Client.GStreamer.Audio;
 /// The capture of one sound in a pipeline of its own: the source of the input, converted to the
 /// samples of <see cref="IAudioCapture"/> and read out of a sink on a thread of its own.
 /// </summary>
-internal sealed unsafe partial class GstAudioCapture : IAudioCapture
+internal sealed partial class GstAudioCapture : IAudioCapture
 {
     private const string SinkName = "samples";
 
@@ -118,8 +119,10 @@ internal sealed unsafe partial class GstAudioCapture : IAudioCapture
                     using var buffer = sample.GetBuffer();
 
                     if (buffer != null && SamplesReady is { } onSamples)
-                        GstEncodedNative.Read(buffer, data =>
-                            onSamples(new ReadOnlySpan<short>((void*)data.Data, data.Length / sizeof(short))));
+                    {
+                        using var map = buffer.Map(MapFlags.Read);
+                        onSamples(MemoryMarshal.Cast<byte, short>(map.Span));
+                    }
                 },
                 exception => LogSamplesFailed(_logger, exception, _name));
 

@@ -73,6 +73,23 @@ internal sealed class OutgoingSound : IDisposable
     {
         while (!samples.IsEmpty)
         {
+            // Capture memory remains valid until this callback returns. Native Push consumes it
+            // synchronously, so complete frames at unity gain need no intermediate copy.
+            if (_filled == 0 && samples.Length >= FrameSamples)
+            {
+                if (_isMuted)
+                {
+                    samples = samples[FrameSamples..];
+                    continue;
+                }
+                if (_volume == 1)
+                {
+                    _source.Push(samples[..FrameSamples], IAudioCapture.SampleRate, IAudioCapture.Channels);
+                    samples = samples[FrameSamples..];
+                    continue;
+                }
+            }
+
             var count = Math.Min(samples.Length, FrameSamples - _filled);
             samples[..count].CopyTo(_frame.AsSpan(_filled));
             samples = samples[count..];
