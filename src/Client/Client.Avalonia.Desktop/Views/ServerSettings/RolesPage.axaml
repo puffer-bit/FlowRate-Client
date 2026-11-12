@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
@@ -47,11 +48,8 @@
         <Grid ColumnDefinitions="*, Auto">
             <controls:SettingsHeader Text="{l:Text serverSettings.roles.section.roles}"/>
             <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding CreateCommand}"
-                    IsVisible="{Binding CanCreate}">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Width="16" Height="16" Source="{StaticResource PlusIcon}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{l:Text serverSettings.roles.create}"/>
-                </StackPanel>
+                    IsVisible="{Binding CanCreate}" AutomationProperties.Name="{l:Text serverSettings.roles.create}">
+                <common:ActionLabel Icon="{StaticResource PlusIcon}" Text="{l:Text serverSettings.roles.create}"/>
             </Button>
         </Grid>
 
@@ -175,18 +173,12 @@
 
             <Grid ColumnDefinitions="Auto, *, Auto">
                 <Button Grid.Column="0" Classes="danger" Command="{Binding DeleteCommand}"
-                        IsVisible="{Binding Editor.CanDelete}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Width="16" Height="16" Source="{StaticResource TrashIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text serverSettings.roles.delete}"/>
-                    </StackPanel>
+                        IsVisible="{Binding Editor.CanDelete}" AutomationProperties.Name="{l:Text serverSettings.roles.delete}">
+                    <common:ActionLabel Icon="{StaticResource TrashIcon}" Text="{l:Text serverSettings.roles.delete}"/>
                 </Button>
                 <Button Grid.Column="2" Classes="primary" Command="{Binding SaveCommand}"
-                        IsVisible="{Binding Editor.CanEdit}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Width="16" Height="16" Source="{StaticResource SaveIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text serverSettings.roles.save}"/>
-                    </StackPanel>
+                        IsVisible="{Binding Editor.CanEdit}" AutomationProperties.Name="{l:Text serverSettings.roles.save}">
+                    <common:ActionLabel Icon="{StaticResource SaveIcon}" Text="{l:Text serverSettings.roles.save}"/>
                 </Button>
             </Grid>
         </StackPanel>

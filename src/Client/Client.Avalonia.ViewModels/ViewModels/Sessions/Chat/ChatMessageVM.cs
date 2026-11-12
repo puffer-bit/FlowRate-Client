@@ -1,17 +1,26 @@
-using Client.Services;
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Client.Avalonia.Localization;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Core.Chat;
+using Client.Services;
 using ReactiveUI;
 using Shared.Enums.User;
-using Client.Core.Chat;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
 
 public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 {
+    public DateTime LocalSentTime => Message.SentTime.Kind != DateTimeKind.Local
+        ? Message.SentTime.ToLocalTime()
+        : Message.SentTime;
+
     private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(1.5);
 
     public ChatMessageModel Message
@@ -19,13 +28,48 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         get;
         set
         {
+            var result = value.TextContent?.CommandResult;
+            if (result != CommandResult?.Result)
+            {
+                CommandResult?.Finish();
+                CommandResult = result != null && result.IsValid() ? new ChatCommandResultVM(result) : null;
+                this.RaisePropertyChanged(nameof(CommandResult));
+                this.RaisePropertyChanged(nameof(HasCommandResult));
+                this.RaisePropertyChanged(nameof(HasPlainText));
+            }
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsSystem));
+            this.RaisePropertyChanged(nameof(SystemEventKind));
+            SystemParts = ChatSystemMessageText.Parts(value, _ => null);
+            this.RaisePropertyChanged(nameof(LocalSentTime));
+            this.RaisePropertyChanged(nameof(IsPinned));
             this.RaisePropertyChanged(nameof(CanEdit));
+            this.RaisePropertyChanged(nameof(CanReact));
+            this.RaisePropertyChanged(nameof(Reactions));
+            this.RaisePropertyChanged(nameof(ReactionChoices));
+            this.RaisePropertyChanged(nameof(HasReactions));
             this.RaisePropertyChanged(nameof(CanDelete));
+            this.RaisePropertyChanged(nameof(CanPin));
             this.RaisePropertyChanged(nameof(HasText));
+            this.RaisePropertyChanged(nameof(HasPlainText));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
         }
     }
+
+    public bool IsSystem => Message.IsSystem;
+    public ChatSystemEventKind SystemEventKind => Message.IsSystem && Message.SystemContent?.IsValid() == true
+        ? Message.SystemContent.Kind : 0;
+    public IReadOnlyList<ChatSystemMessagePart> SystemParts
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(SystemText));
+        }
+    } = [];
+    public string SystemText => string.Concat(SystemParts.Select(part => part.Text));
+    public ReactiveCommand<int, RxVoid> OpenSystemUserCommand => _viewProfileCommand;
 
     /// <summary>
     /// The text as it is shown, with its mentions written as names. Null until the chat renders it,
@@ -54,7 +98,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     /// <summary>
     /// Only the author may change a message, and only its text.
     /// </summary>
-    public bool CanEdit => Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
+    public bool CanEdit => Message.TextContent?.CommandResult == null && Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
 
     /// <summary>The roles of the current user let it delete messages of others.</summary>
     public bool CanManageMessages
@@ -64,7 +108,47 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanDelete));
+            this.RaisePropertyChanged(nameof(CanPin));
         }
+    }
+
+    public bool IsPinned => Message.IsPinned;
+    public bool IsPinAllowed { get; set; }
+    public string? PinError
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasPinError));
+        }
+    }
+    public bool HasPinError => PinError != null;
+    private bool _settingPin;
+    public bool CanPinInDirectChat { get; init; }
+    public bool CanPin => SetPinned != null && (CanManageMessages || CanPinInDirectChat) && IsPinAllowed && !Message.IsSystem && !Message.IsDeleted
+                          && _composer is { IsConnected: true };
+    public Func<bool, Task<bool>>? SetPinned { get; init; }
+    public void TogglePinned() => _ = TogglePinnedAsync();
+    private async Task TogglePinnedAsync()
+    {
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await SetPinStateAsync(!IsPinned);
+    }
+
+    public Task UnpinAsync() => SetPinStateAsync(false);
+
+    private async Task SetPinStateAsync(bool pinned)
+    {
+        if (!CanPin || SetPinned == null || _settingPin || IsPinned == pinned) return;
+        _settingPin = true;
+        PinError = null;
+        try
+        {
+            if (!await SetPinned(pinned)) PinError = Strings.Get("chat.pinned.failed");
+        }
+        catch { PinError = Strings.Get("chat.pinned.failed"); }
+        finally { _settingPin = false; }
     }
 
     /// <summary>The author deletes their messages; roles that manage messages delete any.</summary>
@@ -128,6 +212,17 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public IReadOnlyList<ChatFileVM> Files { get; }
     public bool HasFiles => Files.Count > 0;
     public bool HasText => Message.TextContent != null;
+    public ChatCommandResultVM? CommandResult { get; private set; }
+    public bool HasCommandResult => CommandResult != null;
+    public bool HasPlainText => HasText && !HasCommandResult;
+
+    public bool TakeLiveArrival()
+    {
+        if (!IsNew) return false;
+        IsNew = false;
+        CommandResult?.Play();
+        return true;
+    }
 
     public bool IsSequenceStart
     {
@@ -197,6 +292,32 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public bool HasCopyLink => CopyLinkText != null;
 
+    /// <summary>The image under the pointer when the message menu opens.</summary>
+    public ChatImageVM? CopyImageTarget
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasCopyImage));
+        }
+    }
+
+    public bool HasCopyImage => CopyImageTarget != null;
+
+    /// <summary>The file under the pointer when the message menu opens.</summary>
+    public ChatFileVM? ContextFile
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasContextFile));
+        }
+    }
+
+    public bool HasContextFile => ContextFile != null;
+
     /// <summary>
     /// Asked by the view before it opens a link of the message; false leaves the link closed.
     /// </summary>
@@ -204,14 +325,87 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public Interaction<RxVoid, RxVoid> CloseFlyoutInteraction { get; } = new();
     public Interaction<string, RxVoid> CopyMessageInteraction { get; } = new();
+    public Interaction<ChatImageVM, RxVoid> CopyImageInteraction { get; } = new();
+    public Interaction<ChatImageVM, RxVoid> SaveImageInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> OpenReplyCommand { get; }
+
+    public bool IsPinnedListItem { get; internal set; }
+
+    public void GoToMessage() => _ = GoToMessageAsync();
+
+    private async Task GoToMessageAsync()
+    {
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        _jumpToMessageCommand.Execute(Message.Id).Subscribe();
+    }
 
     private readonly ReactiveCommand<int, RxVoid> _jumpToMessageCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _replyCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _deleteCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
+    private readonly ChatComposerVM? _composer;
+
+    public Func<string, bool, Task<bool>>? SetReaction { get; init; }
+
+    public bool IsReactionAllowed { get; set; } = true;
+
+    public bool CanReact => IsReactionAllowed && SetReaction != null && Message is { IsSystem: false, IsReadOnly: false, IsDeleted: false }
+                            && _composer is { CanWrite: true, IsConnected: true };
+
+    public IReadOnlyList<ChatReactionVM> Reactions => Message.Reactions
+        .GroupBy(reaction => reaction.Emoji)
+        .Select(group => new ChatReactionVM(group.Key, group.Select(r => r.UserId).Distinct().Count(),
+            group.Any(r => r.UserId == _currentUserId), ReactAsync)).ToList();
+
+    public IReadOnlyList<ChatReactionVM> ReactionChoices => ChatReactionEmoji.All.Select(emoji =>
+        new ChatReactionVM(emoji, Message.Reactions.Count(r => r.Emoji == emoji),
+            Message.Reactions.Any(r => r.Emoji == emoji && r.UserId == _currentUserId), ReactAsync)).ToList();
+
+    public bool HasReactions => Message.Reactions.Count > 0;
+
+    public string? ReactionError
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasReactionError));
+        }
+    }
+    public bool HasReactionError => ReactionError != null;
+    private bool _isSettingReaction;
+
+    private async Task ReactAsync(string emoji, bool closeMenu)
+    {
+        if (closeMenu)
+            await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        if (!CanReact || _isSettingReaction)
+            return;
+
+        _isSettingReaction = true;
+        ReactionError = null;
+        try
+        {
+            var add = !Message.Reactions.Any(r => r.UserId == _currentUserId && r.Emoji == emoji);
+            if (!await SetReaction!(emoji, add))
+                ReactionError = Strings.Get("chat.reaction.failed");
+        }
+        finally
+        {
+            _isSettingReaction = false;
+        }
+    }
+
+    public bool CanMentionUser => _composer is { CanWrite: true, IsConnected: true };
+
+    public void MentionUser(int userId, string name) => _composer?.MentionUser(userId, name);
+
+    public bool CanOpenDirectChat(int userId) => userId != _currentUserId && _openDirectChatCommand != null;
+    public void OpenDirectChat(int userId) => _openDirectChatCommand?.Execute(userId).Subscribe();
+    public void OpenUserProfile(int userId) => _viewProfileCommand.Execute(userId).Subscribe();
 
     private readonly int _currentUserId;
     private int _highlightVersion;
@@ -224,7 +418,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         Func<Uri, Task<bool>> confirmOpenLink,
         IReadOnlyList<ChatImageVM>? images = null,
-        IReadOnlyList<ChatFileVM>? files = null)
+        IReadOnlyList<ChatFileVM>? files = null,
+        ChatComposerVM? composer = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         ConfirmOpenLink = confirmOpenLink;
         _currentUserId = currentUserId;
@@ -237,12 +433,20 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         _deleteCommand = deleteCommand;
         _jumpToMessageCommand = jumpToMessageCommand;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
+        _composer = composer;
 
         // A deleted original has nowhere to jump to
         OpenReplyCommand = ReactiveCommand.Create(OpenReply,
             Reply == null
                 ? Observable.Return(false)
                 : Reply.WatchProperty(nameof(ChatReplyPreviewVM.IsDeleted), reply => !reply.IsDeleted));
+    }
+
+    public void RefreshReactionAccess()
+    {
+        this.RaisePropertyChanged(nameof(CanReact));
+        this.RaisePropertyChanged(nameof(CanPin));
     }
 
     public void SetCopyText(string? text, bool isTextSelected)
@@ -263,9 +467,23 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public void CopyLink() => _ = CopyLinkAsync();
 
+    public void CopyImage() => _ = CopyImageAsync();
+
+    public void SaveImageAs() => _ = SaveImageAsAsync();
+
+    public void SaveFileAs() => _ = SaveFileAsAsync();
+
     public void ViewProfile() => _ = ViewProfileAsync();
 
-    public async void Highlight()
+    public void OpenSenderProfile()
+    {
+        if (!IsSenderDeleted)
+            OpenUserProfile(Message.SenderUserId);
+    }
+
+    public void Highlight() => _ = HighlightAsync();
+
+    private async Task HighlightAsync()
     {
         int version = ++_highlightVersion;
         IsHighlighted = true;
@@ -303,14 +521,38 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             await CopyMessageInteraction.Handle(CopyLinkText);
     }
 
+    private async Task CopyImageAsync()
+    {
+        var image = CopyImageTarget;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (image != null)
+            await CopyImageInteraction.Handle(image);
+    }
+
+    private async Task SaveImageAsAsync()
+    {
+        var image = CopyImageTarget;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (image != null)
+            await SaveImageInteraction.Handle(image);
+    }
+
+    private async Task SaveFileAsAsync()
+    {
+        var file = ContextFile;
+        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+
+        if (file is { IsDownloading: false })
+            file.DownloadCommand.Execute().Subscribe();
+    }
+
     private async Task ViewProfileAsync()
     {
         await CloseFlyoutInteraction.Handle(RxVoid.Default);
 
-        if (IsSenderDeleted)
-            return;
-
-        _viewProfileCommand.Execute(Message.SenderUserId).Subscribe();
+        OpenSenderProfile();
     }
 
     private async Task StartReplyAsync()

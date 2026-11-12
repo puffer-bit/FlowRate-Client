@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Client.Avalonia.Localization;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Panels;
 using Client.Services;
 using Client.ViewModels.Sessions.Chat;
@@ -42,6 +44,7 @@ public partial class ChatView : UserControl
     private readonly SerialDisposable _menuSubscriptions = new();
 
     private bool _isLoadingOlder;
+    private ChatMentionPickerVM? _mentionPicker;
 
     public ChatView()
     {
@@ -53,7 +56,15 @@ public partial class ChatView : UserControl
         MessageInput.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty || e.Property == TextBox.CaretIndexProperty)
-                (DataContext as ActiveChatSessionVM)?.Composer.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+                UpdateMentionPicker();
+        };
+        MessageInput.GotFocus += (_, _) => UpdateMentionPicker();
+        MessageInput.LostFocus += (_, _) => Chat?.Composer.MentionPicker.Close();
+        DetachedFromVisualTree += (_, _) => Chat?.Composer.MentionPicker.Close();
+        DataContextChanged += (_, _) =>
+        {
+            _mentionPicker?.Close();
+            _mentionPicker = Chat?.Composer.MentionPicker;
         };
 
         // A long press asks for the context menu, as the right button does with a mouse
@@ -78,7 +89,25 @@ public partial class ChatView : UserControl
         return MessageMenu;
     }
 
+    private void OpenDirectChatProfile()
+    {
+        if (Chat?.StatusBar is { IsDirect: true } statusBar)
+            statusBar.OpenInfoCommand.Execute().Subscribe();
+    }
+
+    private void OnChatTitleClick(object? sender, RoutedEventArgs e) => OpenDirectChatProfile();
+
+    private void OnChatTitleTapped(object? sender, TappedEventArgs e) => OpenDirectChatProfile();
+
     private ActiveChatSessionVM? Chat => DataContext as ActiveChatSessionVM;
+
+    private void UpdateMentionPicker()
+    {
+        if (MessageInput.IsFocused)
+            Chat?.Composer.MentionPicker.Update(MessageInput.Text, MessageInput.CaretIndex);
+        else
+            Chat?.Composer.MentionPicker.Close();
+    }
 
     private MessageListPanel? Panel => MessagesList.ItemsPanelRoot as MessageListPanel;
 
@@ -109,8 +138,14 @@ public partial class ChatView : UserControl
 
     private void OnMessageContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (e.Source is not StyledElement { DataContext: ChatMessageVM message })
+        var message = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
+        if (message == null)
             return;
+        if (message.IsSystem) { e.Handled = true; return; }
+
+        message.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();
 
         e.Handled = true;
         TryCloseMenu();
@@ -158,7 +193,9 @@ public partial class ChatView : UserControl
             chat.Composer.PickAttachmentFiles.RegisterHandler(async interaction =>
                 interaction.SetOutput(await PickFiles())),
             chat.PickFileSaveTarget.RegisterHandler(async interaction =>
-                interaction.SetOutput(await PickSaveTarget(interaction.Input)))
+                interaction.SetOutput(await PickSaveTarget(interaction.Input))),
+            chat.OpenFileInteraction.RegisterHandler(async interaction =>
+                interaction.SetOutput(await ChatFileLauncher.OpenAsync(this, interaction.Input)))
         };
 
         // The viewer of an image is made anew for each image; saving asks this view where to
@@ -167,6 +204,15 @@ public partial class ChatView : UserControl
         subscriptions.Add(chat.WatchProperty(nameof(ActiveChatSessionVM.ImageViewer), x => x.ImageViewer)
             .Subscribe(viewer => viewerSubscription.Disposable = viewer?.PickSaveTarget.RegisterHandler(
                 async interaction => interaction.SetOutput(await PickSaveTarget(interaction.Input)))));
+
+        void FocusMention() => Dispatcher.UIThread.Post(() =>
+        {
+            MessageInput.Focus();
+            MessageInput.CaretIndex = MessageInput.Text?.Length ?? 0;
+            MessageInput.SelectionStart = MessageInput.SelectionEnd = MessageInput.CaretIndex;
+        }, DispatcherPriority.Background);
+        chat.Composer.MentionInserted += FocusMention;
+        subscriptions.Add(Disposable.Create(() => chat.Composer.MentionInserted -= FocusMention));
 
         // Choosing Reply moves the caret to the input so the answer can be typed right away
         subscriptions.Add(chat.Composer.WatchProperty(nameof(ChatComposerVM.ReplyPreview), x => x.ReplyPreview)
@@ -193,9 +239,15 @@ public partial class ChatView : UserControl
         return subscriptions;
     }
 
-    /// <summary>
-    /// Closes the image opened over the chat, if one is.
-    /// </summary>
+    /// <summary>Closes the pinned messages panel before Back leaves the chat.</summary>
+    public bool TryClosePinnedMessages()
+    {
+        if (Chat?.StatusBar.IsPinsOpen != true) return false;
+        Chat.StatusBar.IsPinsOpen = false;
+        return true;
+    }
+
+    /// <summary>Closes the image opened over the chat, if one is.</summary>
     public bool TryCloseImageViewer()
     {
         if (Chat is not { IsImageViewerOpen: true } chat)
@@ -246,10 +298,13 @@ public partial class ChatView : UserControl
         if (Panel is not { } panel || Chat is not { } chat)
             return;
 
-        chat.IsScrolledUp = panel.DistanceToEnd > ScrolledUpThreshold;
+        chat.IsScrolledUp = chat.HasNewerMessages || panel.DistanceToEnd > ScrolledUpThreshold;
 
         if (panel.DistanceToStart < panel.ViewportHeight * PrefetchScreens)
             _ = LoadOlder(chat);
+
+        if (panel.DistanceToEnd < panel.ViewportHeight * PrefetchScreens)
+            _ = chat.LoadNewerMessagesAsync();
     }
 
     // One page per call: its rows change the extent of the list, which reports the scroll state again,
@@ -272,6 +327,9 @@ public partial class ChatView : UserControl
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (Chat is { IsLoadingNewer: true })
+            Panel?.HoldScrollPosition();
+
         // A message appended while the user reads the newest ones keeps the list at the bottom
         if (Chat is { IsScrolledUp: false } chat
             && e.Action == NotifyCollectionChangedAction.Add
@@ -283,6 +341,12 @@ public partial class ChatView : UserControl
 
     private void OnMenuClick(object? sender, RoutedEventArgs e) => MenuRequested?.Invoke();
 
+    private void OnMentionPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (Chat?.Composer.MentionPicker is { } picker && sender is Button { DataContext: ChatMentionSuggestionVM suggestion })
+            picker.SelectSuggestion(suggestion);
+    }
+
     private void OnMentionClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not ActiveChatSessionVM { Composer.MentionPicker: var picker }
@@ -290,7 +354,8 @@ public partial class ChatView : UserControl
             || picker.Complete(MessageInput.Text, MessageInput.CaretIndex, suggestion) is not { } completed)
             return;
 
-        MessageInput.Text = completed.Text;
+        MessageInput.SelectAll();
+        MessageInput.SelectedText = completed.Text;
         MessageInput.CaretIndex = completed.CaretIndex;
     }
 }

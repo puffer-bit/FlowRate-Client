@@ -15,6 +15,7 @@ using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
@@ -29,7 +30,7 @@ namespace Client.ViewModels.Sessions.Chat;
 public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 {
     public int Id { get; }
-    public string Name { get; }
+    public string Name { get; private set { this.RaiseAndSetIfChanged(ref field, value); } }
 
     public ChatComposerVM Composer { get; }
 
@@ -131,6 +132,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             Composer.IsConnected = value;
+            foreach (var message in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
+                message.RefreshReactionAccess();
         }
     }
 
@@ -140,9 +143,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     // Loaded messages by id; touched only on the UI thread
     private readonly Dictionary<int, ChatMessageVM> _messageVms = new();
+    private int _newestMessageId;
     private readonly ChatReadTracker _readTracker;
     private readonly ChatSenderDirectory _senders;
     private Task<int>? _loadingOlder;
+    private Task? _initialLoad;
+    private bool _isDisposed;
 
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
     public Interaction<RxVoid, RxVoid> ScrollToEndInteraction { get; } = new();
@@ -153,6 +159,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     /// the stream to write into, or null when the user changed their mind.
     /// </summary>
     public Interaction<string, Stream?> PickFileSaveTarget { get; } = new();
+    public Interaction<string, bool> OpenFileInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> ScrollToEndCommand { get; }
 
@@ -161,14 +168,29 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _editMessageCommand;
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _deleteMessageCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
 
-    // Upper bound for pages fetched while looking for a replied-to message
-    private const int MaxPagesPerJump = 20;
+    private readonly System.Threading.SemaphoreSlim _historyGate = new(1, 1);
+    private readonly Dictionary<int, ChatMessageModel> _messageChanges = new();
+    private readonly Dictionary<int, long> _deletedMessages = new();
+    public bool HasNewerMessages => _pager.HasNewer;
+    public bool IsLoadingNewer
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+    private void HistoryBoundsChanged()
+    {
+        this.RaisePropertyChanged(nameof(HasNewerMessages));
+        if (HasNewerMessages) IsScrolledUp = true;
+        UpdateReading();
+    }
 
     private readonly ICoordinatorSession _coordinatorSession;
     // The chat as last sent, for its permission overrides
     private ChatSessionModel _model;
     private readonly IChatImageService _images;
+    private readonly IMediaCache _mediaCache;
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly EventSubscriptions _subscriptions = new();
     private readonly int _currentUserId;
@@ -178,13 +200,18 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public ActiveChatSessionVM(ChatSessionModel sessionModel, ICoordinatorSession coordinatorSession,
         ChatSessionServices services, ChatReadTracker readTracker,
-        ReactiveCommand<int, RxVoid> viewProfileCommand)
+        ReactiveCommand<int, RxVoid> viewProfileCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         _dismissedPrompts = services.DismissedPrompts;
         _readTracker = readTracker;
         _coordinatorSession = coordinatorSession;
         _images = services.Images;
+        _mediaCache = services.MediaCache;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
         _model = sessionModel;
         Id = sessionModel.Id;
         Name = sessionModel.Name;
@@ -206,16 +233,26 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         // The message leaves the list once the server broadcasts the deletion, like for any other client
         _deleteMessageCommand = ReactiveCommand.CreateFromTask<ChatMessageModel>(
             message => _coordinatorSession.DeleteChatMessage(message.ChatId, message.Id));
-        ScrollToEndCommand = ReactiveCommand.Create(ScrollToEnd);
+        ScrollToEndCommand = ReactiveCommand.CreateFromTask(GoToLatestAsync);
 
-        StatusBar = new ChatStatusBarVM(sessionModel);
-        this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder))
-            .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder)
+        StatusBar = new ChatStatusBarVM(sessionModel, viewProfileCommand)
+        {
+            Viewers = sessionModel.Kind == ChatKind.Direct ? null : new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
+                services.Appearance, openDirectChatCommand)
+        };
+        StatusBar.AttachCalling(coordinatorSession);
+        this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
+            .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)
             .Subscribe(loading => StatusBar.IsLoading = loading);
 
         // Subscribe before the first page so nothing sent meanwhile is missed; duplicates are dropped by id
         _subscriptions
+            .Add(() => StatusBar.PropertyChanged += OnPinsPanelChanged,
+                () => StatusBar.PropertyChanged -= OnPinsPanelChanged)
+            .Add(() => Strings.LanguageChanged += ApplySenders, () => Strings.LanguageChanged -= ApplySenders)
             .Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts, () => Strings.LanguageChanged -= StatusBar.UpdateTexts)
+            .Add(() => coordinatorSession.ChatUserTyping += OnChatUserTyping,
+                () => coordinatorSession.ChatUserTyping -= OnChatUserTyping)
             .Add(() => coordinatorSession.TextMessageAdded += OnTextMessageAdded,
                 () => coordinatorSession.TextMessageAdded -= OnTextMessageAdded)
             .Add(() => coordinatorSession.TextMessageEdited += OnTextMessageEdited,
@@ -226,12 +263,24 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 () => coordinatorSession.StateChanged -= OnCoordinatorStateChanged)
             .Add(() => coordinatorSession.PermissionsChanged += OnPermissionsChanged,
                 () => coordinatorSession.PermissionsChanged -= OnPermissionsChanged)
+            .Add(() => coordinatorSession.UserUpdated += OnUserUpdated,
+                () => coordinatorSession.UserUpdated -= OnUserUpdated)
             .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
 
-        _ = LoadInitialPage(fromCache: true);
+        _ = UpdateChatNameAsync(sessionModel);
+        RestoreTyping();
+
     }
+
+    /// <summary>
+    /// Starts history loading once, after navigation has displayed the chat.
+    /// Called on the UI thread; creating the view model does not start I/O.
+    /// </summary>
+    public Task EnsureLoadedAsync() => _isDisposed
+        ? Task.CompletedTask
+        : _initialLoad ??= LoadInitialPage(fromCache: true);
 
     private void OpenImage(ChatImageVM image) =>
         ImageViewer = new ChatImageViewerVM(image, _coordinatorSession, _images, CloseImageViewer);
@@ -248,7 +297,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         model.Files.Count == 0
             ? []
             : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
-                async fileName => await PickFileSaveTarget.Handle(fileName))).ToList();
+                async fileName => await PickFileSaveTarget.Handle(fileName), _mediaCache,
+                async path => await OpenFileInteraction.Handle(path))).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.
@@ -272,32 +322,44 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     private async Task<int> LoadOlderPage()
     {
+        await _historyGate.WaitAsync();
         IsLoadingOlder = true;
         try
         {
-            var page = await _pager.LoadOlderAsync(_messageVms.Count > 0 ? _messageVms.Keys.Min() : null);
+            if (_isDisposed) return 0;
+            var page = await _pager.LoadOlderAsync(_pager.IsHistoricalWindow ? _pager.OldestMessageId
+                : _messageVms.Count > 0 ? _messageVms.Keys.Min() : null);
             if (page == null)
                 return 0;
 
             int added = 0;
-            await UiThread.RunAsync(() => added = AddMessages(page.Messages));
+            await UiThread.RunAsync(() =>
+            {
+                if (!_isDisposed) added = AddMessages(CurrentPage(page.Messages));
+            });
             return added;
         }
         finally
         {
             IsLoadingOlder = false;
             _loadingOlder = null;
+            _historyGate.Release();
         }
     }
 
     /// <summary>
-    /// Applies the current state of messages by their ids: removes, replaces or adds them. The list is
-    /// rebuilt once for all of them, so a long run of changes after a gap does not rebuild it for each.
+    /// Applies the current state of messages by their ids with local removals and batched inserts.
     /// </summary>
     private void ApplyChanges(IReadOnlyList<ChatMessageModel> changes)
     {
-        if (changes.Count == 0)
-            return;
+        if (changes.Count == 0) return;
+        foreach (var change in changes)
+        {
+            if (change.IsDeleted) _deletedMessages[change.Id] = change.Revision;
+            else if (!_messageChanges.TryGetValue(change.Id, out var previous) || change.Revision > previous.Revision)
+                _messageChanges[change.Id] = change;
+        }
+        ApplyPinnedChanges(changes);
 
         // Changes come in the order of their revisions, so a later state of a message replaces an earlier one
         var latest = new Dictionary<int, ChatMessageModel>();
@@ -306,7 +368,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         // The messages themselves may be older than what is loaded, while replies to them are on screen.
         // Quotes of a removed message stay in place but can no longer lead to it
-        foreach (var messageVm in _messageVms.Values)
+        foreach (var messageVm in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
         {
             if (messageVm.Reply is not { } reply || !latest.TryGetValue(reply.MessageId, out var quoted))
                 continue;
@@ -323,10 +385,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         bool removed = false;
         foreach (var message in latest.Values)
         {
+            if (!message.IsDeleted && _deletedMessages.ContainsKey(message.Id)) continue;
             if (message.IsDeleted)
             {
                 Composer.OnMessageRemoved(message.Id);
-                removed |= _messageVms.Remove(message.Id);
+                removed |= RemoveLoadedMessage(message.Id);
                 continue;
             }
 
@@ -344,7 +407,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             }
 
             // Only what continues the loaded messages is added; older history comes with its page
-            if (_pager.IsFullyLoaded || oldestLoaded == null || message.Id > oldestLoaded)
+            if ((!HasNewerMessages && (_pager.IsFullyLoaded || oldestLoaded == null || message.Id > oldestLoaded))
+                || (oldestLoaded != null && message.Id >= oldestLoaded && message.Id <= _newestMessageId))
                 added.Add(message);
         }
 
@@ -356,28 +420,46 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
                 _senders.Apply(messageVm);
         }
 
-        // Adding rebuilds the list, which then takes the removals too
+        // Adding publishes the count change too; deletion-only batches need their own notification.
         if (AddMessages(added) == 0 && removed)
-            RebuildTimeline();
+            this.RaisePropertyChanged(nameof(HasMessages));
     }
+
+    private ChatMessageVM CreateMessageView(ChatMessageModel model, bool isNew = false) =>
+        new(model, _currentUserId, _setReplyMessageCommand,
+            _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
+            ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer, _openDirectChatCommand)
+        {
+            IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
+            IsPinAllowed = !_model.IsArchived,
+            CanPinInDirectChat = _model.Kind == ChatKind.Direct,
+            SetPinned = async pinned =>
+                (await _coordinatorSession.SetMessagePinned(model.ChatId, model.Id, pinned)).IsSuccess,
+            SetReaction = async (emoji, added) =>
+                (await _coordinatorSession.SetMessageReaction(model.ChatId, model.Id, emoji, added)).IsSuccess,
+            IsNew = isNew,
+            CanManageMessages = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages)
+        };
 
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
     {
-        var canManage = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages);
         var addedVms = new List<ChatMessageVM>();
         foreach (var model in models)
         {
-            if (_messageVms.ContainsKey(model.Id))
-                continue;
-
-            var messageVm = new ChatMessageVM(model, _currentUserId, _setReplyMessageCommand,
-                _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
-                ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model))
+            if (model.IsDeleted || _deletedMessages.ContainsKey(model.Id)) continue;
+            if (_messageVms.TryGetValue(model.Id, out var existing))
             {
-                IsNew = isNew,
-                CanManageMessages = canManage
-            };
+                if (model.Revision > existing.Message.Revision)
+                {
+                    existing.Message = model;
+                    _senders.Apply(existing);
+                }
+                continue;
+            }
+
+            var messageVm = CreateMessageView(model, isNew);
             _messageVms.Add(model.Id, messageVm);
+            _newestMessageId = Math.Max(_newestMessageId, model.Id);
             addedVms.Add(messageVm);
         }
 
@@ -389,14 +471,15 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         foreach (var messageVm in addedVms)
             _senders.Apply(messageVm);
 
-        RebuildTimeline();
+        _timeline.AddRange(addedVms);
+        this.RaisePropertyChanged(nameof(HasMessages));
         UpdateReading();
         return addedVms.Count;
     }
 
     /// <summary>
     /// Tells the tracker whether the user reads the chat now, and when so, that everything
-    /// loaded is read: the loaded messages always end with the newest one.
+    /// loaded is read, provided the window reaches the live end.
     /// </summary>
     private void UpdateReading()
     {
@@ -404,10 +487,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         if (_readTracker == null)
             return;
 
-        bool isReading = IsOnScreen && !IsScrolledUp && !IsInitialLoading;
+        bool isReading = IsOnScreen && !IsScrolledUp && !IsInitialLoading && !HasNewerMessages;
         _readTracker.SetReading(Id, isReading);
         if (isReading && _messageVms.Count > 0)
-            _readTracker.MarkRead(Id, _messageVms.Keys.Max());
+            _readTracker.MarkRead(Id, _newestMessageId);
     }
 
     // The counts came from the server, maybe with messages this chat shows already as read
@@ -436,12 +519,14 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _senders.Apply(messageVm);
 
         Composer.ApplySenders();
+        UpdateTypingNames();
+        PublishPins();
     }
 
     private void RemoveMessage(int messageId)
     {
         // Quotes of the removed message stay in place but can no longer lead to it
-        foreach (var messageVm in _messageVms.Values)
+        foreach (var messageVm in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
         {
             if (messageVm.Reply?.MessageId == messageId)
                 messageVm.Reply.IsDeleted = true;
@@ -449,25 +534,45 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         Composer.OnMessageRemoved(messageId);
 
-        if (_messageVms.Remove(messageId))
-            RebuildTimeline();
+        if (RemoveLoadedMessage(messageId))
+            this.RaisePropertyChanged(nameof(HasMessages));
     }
 
-    private void RebuildTimeline()
+    private bool RemoveLoadedMessage(int messageId)
     {
-        _timeline.Update(_messageVms.Values);
-        this.RaisePropertyChanged(nameof(HasMessages));
+        if (!_messageVms.Remove(messageId, out var message))
+            return false;
+
+        _timeline.Remove(message);
+        if (messageId == _newestMessageId)
+            _newestMessageId = _messageVms.Count > 0 ? _messageVms.Keys.Max() : 0;
+        return true;
     }
 
     /// <summary>
-    /// Scrolls to a message and highlights it, fetching older pages first when it is not loaded yet.
+    /// Opens a history window around a message and highlights it, without loading intervening pages.
     /// </summary>
     private async Task JumpToMessage(int messageId)
     {
-        for (int page = 0; !_messageVms.ContainsKey(messageId) && page < MaxPagesPerJump; page++)
+        if (IsInitialLoading || _isDisposed) return;
+        if (!_messageVms.ContainsKey(messageId))
         {
-            if (_pager.IsFullyLoaded || await LoadOlderMessagesAsync() == 0)
-                break;
+            await _historyGate.WaitAsync();
+            try
+            {
+                if (_isDisposed) return;
+                var window = await _pager.LoadAroundAsync(messageId);
+                if (window == null || _isDisposed) return;
+                IsScrolledUp = true;
+                ClearHistory();
+                HistoryBoundsChanged();
+                AddMessages(CurrentPage(window.Messages));
+                // Notifications received after the snapshot may already extend its live tail.
+                if (!HasNewerMessages)
+                    AddMessages(_messageChanges.Values.Where(x => x.Revision > window.Revision
+                        && x.Id > _newestMessageId && !_deletedMessages.ContainsKey(x.Id)));
+            }
+            finally { _historyGate.Release(); }
         }
 
         if (!_messageVms.TryGetValue(messageId, out var messageVm))
@@ -509,15 +614,52 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         return true;
     }
 
+    private async Task GoToLatestAsync()
+    {
+        if (HasNewerMessages) await ReloadAsync();
+        if (!_isDisposed) ScrollToEnd();
+    }
+
     private void ScrollToEnd() => ScrollToEndInteraction.Handle(RxVoid.Default).Subscribe();
 
     public void CloseSession()
     {
+        Composer.StopTyping();
+        StatusBar.Viewers?.Close();
+        StatusBar.IsPinsOpen = false;
+        ClearTyping();
     }
 
     // Raised on the transport thread
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => ApplyAccess(permissions));
+
+    private void OnUserUpdated(Client.Core.Users.UserModel user) => Dispatcher.UIThread.Post(() =>
+    {
+        if (!_isDisposed && _model.Kind == ChatKind.Direct && user.Id != _currentUserId && _model.MemberIds.Contains(user.Id))
+        {
+            Name = user.DisplayName ?? user.Username;
+            StatusBar.ApplyPeer(user);
+        }
+    });
+
+    private async Task UpdateChatNameAsync(ChatSessionModel model)
+    {
+        if (model.Kind == ChatKind.Direct)
+        {
+            var otherId = model.MemberIds.FirstOrDefault(id => id != _coordinatorSession.GetCurrentUser().Id);
+            if (await _coordinatorSession.GetUser(otherId) is { } other)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!_isDisposed && ReferenceEquals(_model, model))
+                    {
+                        Name = other.DisplayName ?? other.Username;
+                        StatusBar.ApplyPeer(other);
+                    }
+                });
+        }
+        else Name = model.Name;
+    }
 
     // Raised on the transport thread
     private void OnChatSessionReconfigured(ChatSessionModel session)
@@ -528,6 +670,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Dispatcher.UIThread.Post(() =>
         {
             _model = session;
+            _ = UpdateChatNameAsync(session);
+            StatusBar.ApplySession(session);
             ApplyAccess(_coordinatorSession.Permissions);
         });
     }
@@ -537,15 +681,24 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     {
         var granted = permissions.InSession(_model);
         Composer.CanWrite = granted.HasFlag(Permission.SendMessages);
+        foreach (var message in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
+        {
+            message.IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived;
+            message.IsPinAllowed = !_model.IsArchived;
+            message.RefreshReactionAccess();
+        }
         Composer.CanAttachFiles = granted.HasFlag(Permission.AttachFiles);
 
         var canManage = granted.HasFlag(Permission.ManageMessages);
-        foreach (var message in _messageVms.Values)
+        foreach (var message in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
             message.CanManageMessages = canManage;
     }
 
     public void Dispose()
     {
+        _isDisposed = true;
+        StatusBar.Dispose();
+        ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();
         _readTracker.SetReading(Id, false);

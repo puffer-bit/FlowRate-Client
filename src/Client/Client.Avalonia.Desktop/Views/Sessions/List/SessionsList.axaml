@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -15,32 +16,6 @@
              x:Name="Root">
     
     <UserControl.Styles>
-        <!-- Placeholders shown in place of the list, one at a time -->
-        <Style Selector="StackPanel.placeholder">
-            <Setter Property="Orientation" Value="Vertical"/>
-            <Setter Property="Spacing" Value="12"/>
-            <Setter Property="Margin" Value="16"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="StackPanel.placeholder > Image">
-            <Setter Property="Width" Value="56"/>
-            <Setter Property="Height" Value="56"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-        </Style>
-        <Style Selector="StackPanel.placeholder TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-            <Setter Property="TextWrapping" Value="WrapWithOverflow"/>
-            <Setter Property="TextAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="StackPanel.placeholder TextBlock.title">
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-
-        <!-- Each placeholder and the list rise in as they are switched to, instead of snapping in -->
-        <Style Selector="StackPanel.placeholder">
-            <Setter Property="anim:Presence.Appear" Value="Rise"/>
-        </Style>
         <!-- The list from before a lost connection stays, but takes no input until it is loaded again -->
         <Style Selector="ListBox.sessionsList:disabled">
             <Setter Property="Opacity" Value="0.5"/>
@@ -61,45 +36,31 @@
             <StackPanel Spacing="2" x:DataType="listVm:SessionsListVM">
                 <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                                       menus:FlyoutMenu.CloseOnClick="True"
-                                      IsVisible="{Binding Access.CanCreateSessions}"
+                                      IsVisible="{Binding CanCreateSession}"
                                       Command="{Binding CreateSessionCommand}"/>
                 <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
                                       menus:FlyoutMenu.CloseOnClick="True"
-                                      IsVisible="{Binding Access.CanManageSessions}"
+                                      IsVisible="{Binding CanCreateCategory}"
                                       Command="{Binding CreateCategoryCommand}"/>
             </StackPanel>
         </Flyout>
     </UserControl.Resources>
 
+    <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Margin="12,8" IsVisible="{Binding CanCreate}">
+            <TextBlock Text="{l:Text privateChats.showPrivate}" IsVisible="{Binding IsPrivateMode}" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock Text="{l:Text privateChats.showChannels}" IsVisible="{Binding !IsPrivateMode}" FontWeight="SemiBold" FontSize="12"/>
+        </StackPanel>
     <Grid x:Name="ListArea" Background="{DynamicResource GeneralBrush}">
-        <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
-            <Image Source="{StaticResource PlugIcon}"/>
-            <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
-            <TextBlock Text="{l:Text sessions.notConnected.text}"/>
-            <Button Classes="primary" Command="{Binding ConnectCommand}"
-                    HorizontalAlignment="Center" MinWidth="110" Margin="0,4,0,0">
-                <TextBlock Text="{l:Text connect.button}" Foreground="{DynamicResource OnAccentTextBrush}"/>
-            </Button>
-        </StackPanel>
-        <StackPanel Classes="placeholder" IsVisible="{Binding IsReconnecting}">
-            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
-                                            IsIndeterminate="True" BorderThickness="4"
-                                            Foreground="{DynamicResource ProgressRingBrush}"/>
-            <TextBlock Classes="title" Text="{l:Text sessions.connectionLost.title}"/>
-            <TextBlock Text="{l:Text sessions.connectionLost.text}"/>
-        </StackPanel>
-        <StackPanel Classes="placeholder" IsVisible="{Binding IsLoading}">
-            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
-                                            IsIndeterminate="True" BorderThickness="4"
-                                            Foreground="{DynamicResource ProgressRingBrush}"/>
-            <TextBlock Text="{l:Text sessions.retrieving}"/>
-        </StackPanel>
-        <StackPanel Classes="placeholder" IsVisible="{Binding IsFailed}">
-            <Image Source="{StaticResource DashInCircleIcon}"/>
-            <TextBlock Text="{Binding ErrorMessage}"/>
-        </StackPanel>
-        <StackPanel Classes="placeholder" IsVisible="{Binding IsEmpty}">
-            <Image Source="{StaticResource TipIcon}"/>
+        <common:StatePanel IsVisible="{Binding IsOffline}" Icon="{StaticResource PlugIcon}"
+                           Title="{l:Text sessions.notConnected.title}" Text="{l:Text sessions.notConnected.text}">
+            <Button Classes="primary" Command="{Binding ConnectCommand}" HorizontalAlignment="Center"
+                    MinWidth="110" Content="{l:Text connect.button}"/>
+        </common:StatePanel>
+        <common:StatePanel IsVisible="{Binding IsReconnecting}" IsBusy="True" Title="{l:Text sessions.connectionLost.title}" Text="{l:Text sessions.connectionLost.text}"/>
+        <common:StatePanel IsVisible="{Binding IsLoading}" IsBusy="True" Text="{l:Text sessions.retrieving}"/>
+        <common:StatePanel IsVisible="{Binding IsFailed}" Icon="{StaticResource DashInCircleIcon}" Text="{Binding ErrorMessage}"/>
+        <common:StatePanel IsVisible="{Binding IsEmpty}" Icon="{StaticResource TipIcon}">
             <TextBlock>
                 <Run x:Name="EmptyHintBeforeIcon"/>
                 <InlineUIContainer>
@@ -108,7 +69,7 @@
                 </InlineUIContainer>
                 <Run x:Name="EmptyHintAfterIcon"/>
             </TextBlock>
-        </StackPanel>
+        </common:StatePanel>
         <ListBox x:Name="SessionsListBox"
                  Classes="sessionsList byContent"
                  ItemsSource="{Binding Rows}"
@@ -140,4 +101,5 @@
         <Canvas x:Name="DragLayer" IsHitTestVisible="False" ClipToBounds="False"/>
 
     </Grid>
+    </DockPanel>
 </UserControl>

@@ -1,13 +1,14 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
 using Client.Core.Coordinator;
+using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using ReactiveUI;
+using Shared.Enums;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -15,7 +16,7 @@ public class HybridSessionParticipantsListVM : ReactiveObject
 {
     // UI Collections
     public ObservableCollection<HybridSessionParticipantVM> Participants { get; set; } = new();
-    
+
     // UI Commands
     public ReactiveCommand<HybridSessionParticipantVM, RxVoid> ApproveParticipant { get; }
     public ReactiveCommand<HybridSessionParticipantVM, RxVoid> RejectParticipant { get; }
@@ -26,6 +27,7 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     // What the current user may do and whether they host the session, as of the last ApplyAccess
     private CoordinatorPermissions _permissions = CoordinatorPermissions.None;
     private bool _isHost;
+    private SessionModel? _session;
 
     /// <param name="kickPeer">Removes the user with the given id from the session.</param>
     /// <param name="approvePeer">Lets the user with the given id, who waits for it, into the session.</param>
@@ -54,8 +56,12 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     public void AddPeerToSession(PeerModel peerModel)
     {
         var peer = Participants.FirstOrDefault(p => p.PeerData.UserId == peerModel.UserId);
-        if (peer != null) 
+        if (peer != null)
+        {
+            peer.UpdatePeerModel(peerModel);
+            ApplyAccess(peer);
             return;
+        }
 
         var added = new HybridSessionParticipantVM(peerModel, peerModel.UserId == _currentUserId);
         ApplyAccess(added);
@@ -66,10 +72,11 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     /// Shows what the current user may do to the participants, after their roles and whether they host the
     /// session. Called again whenever either changes.
     /// </summary>
-    public void ApplyAccess(CoordinatorPermissions permissions, bool isHost)
+    public void ApplyAccess(CoordinatorPermissions permissions, bool isHost, SessionModel? session = null)
     {
         _permissions = permissions;
         _isHost = isHost;
+        _session = session;
 
         foreach (var participant in Participants)
             ApplyAccess(participant);
@@ -77,22 +84,34 @@ public class HybridSessionParticipantsListVM : ReactiveObject
 
     private void ApplyAccess(HybridSessionParticipantVM participant)
     {
+        if (_session is Client.Core.Sessions.Hybrid.HybridSessionModel { DirectCallId: not null })
+        {
+            participant.IsVoiceForbidden = false;
+            participant.CanKick = false;
+            participant.CanApprove = false;
+            return;
+        }
+        participant.IsVoiceForbidden = _session != null
+            && (participant.IsCurrentUser || participant.UserData != null)
+            && !_permissions.InSession(_session,
+                    participant.IsCurrentUser ? _permissions.RoleIds : participant.UserData!.RoleIds)
+                .HasFlag(Permission.Speak);
         participant.CanKick = !participant.IsCurrentUser
                               && _permissions.CanInSessionOn(Permission.KickMembers, _isHost,
                                   participant.UserData?.RoleIds ?? []);
         participant.CanApprove = !participant.IsCurrentUser && participant.IsWaiting
                                  && _permissions.CanInSession(Permission.ApproveMembers, _isHost);
     }
-    
+
     public void RemovePeerFromSession(int userId)
     {
         var peer = Participants.FirstOrDefault(p => p.PeerData.UserId == userId);
-        if (peer == null) 
+        if (peer == null)
             return;
 
         Participants.Remove(peer);
     }
-    
+
     /// <summary>
     /// Attaches the user data to the peer of that user. Matched by user id, since the server reuses
     /// peer ids once a peer leaves.
@@ -115,6 +134,9 @@ public class HybridSessionParticipantsListVM : ReactiveObject
         if (peer != null)
             peer.IsSpeaking = isSpeaking;
     }
+
+    public void UpdateMicrophoneMuted(int userId, bool isMuted) =>
+        Participants.FirstOrDefault(p => p.PeerData.UserId == userId)?.UpdateMicrophoneMuted(isMuted);
 
     public void UpdateScreenShare(int userId, bool isSharing)
     {

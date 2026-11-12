@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -10,22 +9,19 @@ using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Application.Sounds;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using Client.Core.Push;
+using Client.Droid.Platform.Calls;
 using Client.Droid.Platform.Notifications;
 using Client.Services;
-using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
-using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions.Chat;
-using Client.ViewModels.Sessions.Create;
+using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
@@ -43,19 +39,13 @@ public partial class MainView : UserControl
 {
     private readonly MainWindowVM? _viewModel;
     private readonly ChatView _chatView = new();
+    private readonly HybridSessionView _hybridView = new();
 
     // The chat on screen asks for its message boxes itself; the registration follows the chat
     private readonly SerialDisposable _chatDialogs = new();
+    private readonly SerialDisposable _hybridDialogs = new();
 
-    // The message boxes on screen, the topmost one last, each with what the back button answers it
-    private readonly List<(TaskCompletionSource<Result> Answer, Result BackAnswer)> _messageBoxes = [];
-
-    private ConnectView? _connectView;
-    private ProfileView? _profileView;
-    private AccountSecurityView? _securityView;
-    private readonly List<LoginPromptVM> _loginPrompts = [];
-    private SettingsView? _settingsView;
-    private CreateSessionView? _createSessionView;
+    private readonly MainViewNavigation _navigation;
     private readonly IServiceProvider? _services;
     private TopLevel? _topLevel;
     private IInputPane? _inputPane;
@@ -63,6 +53,8 @@ public partial class MainView : UserControl
     // Where the open keyboard starts, in the coordinates of the top level; null while it is closed
     private double? _keyboardTop;
     private bool _isInitialized;
+    private bool _readyForCallActions;
+    private bool _handlingCallAction;
 
     // Set while the menu is open because back led to it from a session: back pressed again then
     // goes on to leaving the application instead of returning to the session
@@ -71,12 +63,16 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
+        _navigation = new MainViewNavigation(this, DialogLayer, ShowCurrentScreen,
+            () => _viewModel?.CurrentContent as ActiveHybridSessionVM, () => _services);
 
         ServerMenu.Dismissed += () => TryCloseServerMenu();
         ChatMenu.Dismissed += () => TryCloseChatMenu();
         SessionMoveMenu.Dismissed += () => TryClose(SessionMoveMenu);
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
         StatusMenu.Dismissed += () => TryClose(StatusMenu);
+        PeerMenu.Dismissed += () => TryClose(PeerMenu);
+        AudioDevicesMenu.Dismissed += () => TryClose(AudioDevicesMenu);
 
         // Shown from here and not from the chat, which ends above the status bar
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
@@ -93,8 +89,13 @@ public partial class MainView : UserControl
         Sessions.ChatMenuRequested += OpenChatMenu;
         Sessions.SessionMoveMenuRequested += OpenSessionMoveMenu;
         Sessions.CategoryMenuRequested += OpenCategoryMenu;
-        Sessions.SettingsRequested += OpenSettings;
+        Sessions.SettingsRequested += _navigation.OpenSettings;
         Sessions.StatusMenuRequested += () => StatusMenu.IsOpen = true;
+        Sessions.PeerMenuRequested += OpenPeerMenu;
+        _hybridView.PeerMenuRequested += OpenPeerMenu;
+        _hybridView.MenuRequested += OpenDrawer;
+        _hybridView.StatsRequested += _navigation.OpenHybridStats;
+        _hybridView.AudioDevicesRequested += () => AudioDevicesMenu.IsOpen = true;
 
         // A tap on the session that is already shown changes nothing in the view model, but still means "go to it"
         Sessions.SessionTapped += () => Dispatcher.UIThread.Post(() =>
@@ -104,28 +105,35 @@ public partial class MainView : UserControl
         });
 
         viewModel.ShowMessageBox.RegisterHandler(async context =>
-            context.SetOutput(await ShowMessageBoxAsync(context.Input)));
+            context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
         viewModel.SessionsList.ShowMessageBox.RegisterHandler(async context =>
-            context.SetOutput(await ShowMessageBoxAsync(context.Input)));
+            context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
         viewModel.ShowConnectWindow.RegisterHandler(async context =>
-            context.SetOutput(await ShowConnectAsync(context.Input)));
+            context.SetOutput(await _navigation.ShowConnectAsync(context.Input)));
         viewModel.ShowCreateSessionWindow.RegisterHandler(async context =>
         {
-            await ShowCreateSessionAsync(context.Input);
+            await _navigation.ShowCreateSessionAsync(context.Input);
             context.SetOutput(RxVoid.Default);
         });
         viewModel.ShowUserProfileWindow.RegisterHandler(async context =>
         {
-            await ShowProfileAsync(context.Input);
+            await _navigation.ShowProfileAsync(context.Input);
             context.SetOutput(RxVoid.Default);
         });
         viewModel.ShowAccountSecurityWindow.RegisterHandler(async context =>
         {
-            await ShowAccountSecurityAsync(context.Input);
+            await _navigation.ShowAccountSecurityAsync(context.Input);
             context.SetOutput(RxVoid.Default);
         });
         viewModel.AskLogin.RegisterHandler(async context =>
-            context.SetOutput(await ShowLoginPromptAsync(context.Input)));
+            context.SetOutput(await _navigation.ShowLoginPromptAsync(context.Input)));
+
+        // The list is filled again after a lost connection, with new peers for the session on screen
+        viewModel.SessionsList.Sessions.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (viewModel.CurrentContent is ActiveHybridSessionVM shown)
+                _hybridView.ShowPeers(FindListSession(shown.Model.Id)?.Peers);
+        });
 
         // A session that ends is taken off the screen from the thread its event came on
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
@@ -146,11 +154,28 @@ public partial class MainView : UserControl
         // The chat of a tapped notification can be shown once the list of the server has it
         viewModel.SessionsList.WatchProperty(nameof(SessionsListVM.State), list => list.State)
             .Subscribe(_ => Dispatcher.UIThread.Post(() => ShowRequestedChat(isListFresh: true)));
-        MainActivity.ChatRequested += () => ShowRequestedChat(isListFresh: false);
+        MainActivity.ChatRequested += () =>
+        {
+            ShowRequestedChat(isListFresh: false);
+            _ = HandleRequestedCallAsync();
+        };
         MainActivity.IsInFrontChanged += OnIsInFrontChanged;
         viewModel.ChatMessageReceived += OnChatMessageReceived;
+        // During the background grace period a live socket can deliver the invitation before FCM.
+        viewModel.CallNotificationReceived += payload =>
+            IncomingCallNotifications.Handle(global::Android.App.Application.Context, payload);
+        viewModel.UsesSystemIncomingCallSound = true;
+        PushMessageHandler.IsCallAccountOnScreen = viewModel.IsCallAccountOnScreen;
         viewModel.IsWindowActive = MainActivity.IsInFront;
         viewModel.ChatReads.StateChanged += OnChatReadStateChanged;
+        PushMessageHandler.ChatMarkedRead = (coordinatorId, chatId, messageId) => Dispatcher.UIThread.Post(() =>
+        {
+            if (viewModel.ConnectedCoordinatorId == coordinatorId)
+                viewModel.ChatReads.MarkRead(chatId, messageId);
+        });
+
+        // The voice session goes on off the screen, with a notification of its own
+        _ = new CallTracker(viewModel);
 
         ShowCurrentScreen();
     }
@@ -168,7 +193,7 @@ public partial class MainView : UserControl
                 _services?.GetService<IMediaCache>());
     }
 
-    // A chat read here or on another device needs its notification no more. Raised on any thread
+    // A chat read on this device needs its notification no more. Raised on any thread
     private void OnChatReadStateChanged(ChatReadState state)
     {
         if (state.UnreadCount == 0 && _viewModel?.ConnectedCoordinatorId is { } coordinatorId)
@@ -183,6 +208,9 @@ public partial class MainView : UserControl
 
         _ = isInFront ? _viewModel.ResumeConnection() : _viewModel.SuspendConnection();
         _viewModel.IsWindowActive = isInFront;
+        _viewModel.RefreshCallRinging();
+        if (isInFront && _viewModel.ConnectedCoordinatorId is { } coordinatorId)
+            IncomingCallNotifications.Clear(global::Android.App.Application.Context, coordinatorId);
         UpdateChatOnScreen();
     }
 
@@ -201,6 +229,26 @@ public partial class MainView : UserControl
         // Another server, or the chat was deleted: the request must not fire on some later connect
         if (isListFresh && _viewModel.SessionsList is { HasSessions: true, IsStale: false })
             MainActivity.RequestedChat = null;
+    }
+
+    private async Task HandleRequestedCallAsync()
+    {
+        if (!_readyForCallActions || _handlingCallAction || _viewModel == null) return;
+        _handlingCallAction = true;
+        try
+        {
+            while (MainActivity.RequestedCall is { } call)
+            {
+                MainActivity.RequestedCall = null;
+                await _viewModel.HandlePushCallAsync(call.CoordinatorId, call.UserId, call.ChatId, call.CallId,
+                    call.Action == "accept");
+            }
+        }
+        catch (Exception exception)
+        {
+            Serilog.Log.Warning(exception, "Handling an incoming call notification failed");
+        }
+        finally { _handlingCallAction = false; }
     }
 
     // What the user is looking at needs no notification, and the one it already has goes away
@@ -286,6 +334,8 @@ public partial class MainView : UserControl
     private async Task InitializeAsync(MainWindowVM viewModel)
     {
         await viewModel.Initialize();
+        _readyForCallActions = true;
+        await HandleRequestedCallAsync();
 
         // There is nothing to see before connecting, so the menu opens on its offer to connect
         if (!viewModel.IsConnected)
@@ -295,12 +345,12 @@ public partial class MainView : UserControl
     private void ShowCurrentScreen()
     {
         UpdateChatOnScreen();
+        if (_viewModel?.CurrentContent is not ActiveHybridSessionVM)
+            TryClose(AudioDevicesMenu);
 
-        var overlay = (Control?)_connectView ?? (Control?)_securityView ?? (Control?)_profileView
-                      ?? (Control?)_createSessionView ?? _settingsView;
+        var overlay = _navigation.GetOverlay();
         if (!ReferenceEquals(Overlay.Content, overlay))
         {
-            // A form that closes leaves the way it came
             Overlay.IsTransitionReversed = overlay == null;
             Overlay.Content = overlay;
         }
@@ -311,10 +361,26 @@ public partial class MainView : UserControl
             {
                 _chatView.DataContext = chat;
                 _chatDialogs.Disposable = chat.ShowMessageBox.RegisterHandler(async context =>
-                    context.SetOutput(await ShowMessageBoxAsync(context.Input)));
+                    context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
             }
 
             Screen.Content = _chatView;
+            Home.IsVisible = false;
+            return;
+        }
+
+        if (_viewModel?.CurrentContent is ActiveHybridSessionVM hybrid)
+        {
+            if (!ReferenceEquals(_hybridView.DataContext, hybrid))
+            {
+                _hybridView.DataContext = hybrid;
+                _hybridDialogs.Disposable = hybrid.ShowMessageBox.RegisterHandler(async context =>
+                    context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
+            }
+
+            // Shown since it was joined, so its row is in the list already
+            _hybridView.ShowPeers(FindListSession(hybrid.Model.Id)?.Peers);
+            Screen.Content = _hybridView;
             Home.IsVisible = false;
             return;
         }
@@ -324,24 +390,6 @@ public partial class MainView : UserControl
     }
 
     private void OpenDrawer() => Drawer.Classes.Set("open", true);
-
-    // The settings are built anew each time, so they open on what is saved
-    private void OpenSettings()
-    {
-        if (_settingsView != null || _services == null)
-            return;
-
-        _settingsView = new SettingsView(_services, ShowMessageBoxAsync);
-        _settingsView.CloseRequested += CloseSettings;
-        ShowCurrentScreen();
-    }
-
-    private void CloseSettings()
-    {
-        _settingsView?.Release();
-        _settingsView = null;
-        ShowCurrentScreen();
-    }
 
     /// <returns>False when the menu was not open.</returns>
     private bool CloseDrawer()
@@ -357,6 +405,10 @@ public partial class MainView : UserControl
     private void OnMenuClick(object? sender, RoutedEventArgs e) => OpenDrawer();
 
     private void OnDrawerBackdropTapped(object? sender, TappedEventArgs e) => CloseDrawer();
+
+    private void OnListModeClick(object? sender, RoutedEventArgs e) => TryCloseServerMenu();
+
+    private void OnChatActionClick(object? sender, RoutedEventArgs e) => TryCloseChatMenu();
 
     private void OpenServerMenu() => ServerMenu.IsOpen = true;
 
@@ -385,6 +437,20 @@ public partial class MainView : UserControl
         ChatMenu.IsOpen = false;
         return true;
     }
+
+    private void OpenPeerMenu(PeerVM peer)
+    {
+        PeerMenu.DataContext = peer;
+        PeerMenu.IsOpen = true;
+    }
+
+    /// <summary>The voice session of the list of sessions with the given id, or null.</summary>
+    private HybridSessionVM? FindListSession(int sessionId) => _viewModel?.SessionsList.Sessions
+        .OfType<HybridSessionVM>()
+        .FirstOrDefault(session => session.Model.Id == sessionId);
+
+    // Watching a screen opens it, so the sheet goes out of its way
+    private void OnPeerMenuClick(object? sender, RoutedEventArgs e) => TryClose(PeerMenu);
 
     private void OpenSessionMoveMenu(ISessionVM session)
     {
@@ -512,188 +578,6 @@ public partial class MainView : UserControl
         _viewModel?.ServerTitle.DisconnectCommand.Execute().Subscribe();
     }
 
-    /// <summary>
-    /// Shows the connect form until it is closed: with the session it connected, or with nothing.
-    /// </summary>
-    private async Task<ICoordinatorSession?> ShowConnectAsync(ConnectWindowVM connect)
-    {
-        // The form is taken off the screen after the view model is done with closing it
-        var closed = new TaskCompletionSource<ICoordinatorSession?>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        using var close = connect.CloseWindow.RegisterHandler(context =>
-        {
-            closed.TrySetResult(context.Input);
-            context.SetOutput(RxVoid.Default);
-        });
-        using var messageBoxes = connect.ShowMessageBox.RegisterHandler(async context =>
-            context.SetOutput(await ShowMessageBoxAsync(context.Input)));
-        using var loginPrompts = connect.AskLogin.RegisterHandler(async context =>
-            context.SetOutput(await ShowLoginPromptAsync(context.Input)));
-
-        _connectView = new ConnectView { DataContext = connect };
-        ShowCurrentScreen();
-
-        try
-        {
-            return await closed.Task;
-        }
-        finally
-        {
-            _connectView = null;
-            ShowCurrentScreen();
-
-            // The form is gone, however it was closed: stop connecting in the background
-            connect.CancelTasks();
-        }
-    }
-
-    /// <summary>
-    /// Shows the profile of a user over the screen it was asked from, until it is closed.
-    /// </summary>
-    private async Task ShowProfileAsync(UserProfileWindowVM profile)
-    {
-        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var view = new ProfileView { DataContext = profile };
-
-        using var close = profile.CloseWindow.RegisterHandler(context =>
-        {
-            closed.TrySetResult();
-            context.SetOutput(RxVoid.Default);
-        });
-        using var focus = profile.FocusName.RegisterHandler(context =>
-        {
-            view.FocusNameInput();
-            context.SetOutput(RxVoid.Default);
-        });
-        using var pickAvatar = profile.AvatarPicker.PickAvatarFile.RegisterHandler(async context =>
-        {
-            var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
-            var files = storage == null
-                ? []
-                : await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = Strings.Get("profile.avatar.pickerTitle"),
-                    AllowMultiple = false,
-                    FileTypeFilter = [PickedFiles.ImageFileType(Strings.Get("profile.avatar.fileType"))]
-                });
-
-            context.SetOutput((await PickedFiles.FromAsync(files)).FirstOrDefault());
-        });
-
-        _profileView = view;
-        ShowCurrentScreen();
-
-        try
-        {
-            await closed.Task;
-        }
-        finally
-        {
-            _profileView = null;
-            ShowCurrentScreen();
-        }
-    }
-
-    /// <summary>
-    /// Shows the form of a new session until it is closed: by the user, or by itself once the session is created.
-    /// </summary>
-    private async Task ShowCreateSessionAsync(CreateSessionWindowVM createSession)
-    {
-        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        using var close = createSession.CloseWindow.RegisterHandler(context =>
-        {
-            closed.TrySetResult();
-            context.SetOutput(RxVoid.Default);
-        });
-
-        _createSessionView = new CreateSessionView { DataContext = createSession };
-        ShowCurrentScreen();
-
-        try
-        {
-            await closed.Task;
-        }
-        finally
-        {
-            _createSessionView = null;
-            ShowCurrentScreen();
-        }
-    }
-
-    /// <summary>
-    /// Shows what the user logs in with, opened from the menu of the server, until it is closed.
-    /// </summary>
-    private async Task ShowAccountSecurityAsync(AccountSecurityVM security)
-    {
-        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        using var close = security.CloseWindow.RegisterHandler(context =>
-        {
-            closed.TrySetResult();
-            context.SetOutput(RxVoid.Default);
-        });
-
-        _securityView = new AccountSecurityView { DataContext = security };
-        ShowCurrentScreen();
-
-        try
-        {
-            await closed.Task;
-        }
-        finally
-        {
-            _securityView = null;
-            ShowCurrentScreen();
-        }
-    }
-
-    /// <summary>Asks for what finishes a login over everything else, like a message box.</summary>
-    private async Task<LoginAnswer?> ShowLoginPromptAsync(LoginPromptVM prompt)
-    {
-        var view = new LoginPromptView { DataContext = prompt };
-        var answer = new TaskCompletionSource<LoginAnswer?>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        using var answers = prompt.Answers.Subscribe(given => answer.TrySetResult(given));
-
-        _loginPrompts.Add(prompt);
-        DialogLayer.Children.Add(view);
-
-        try
-        {
-            return await answer.Task;
-        }
-        finally
-        {
-            DialogLayer.Children.Remove(view);
-            _loginPrompts.Remove(prompt);
-        }
-    }
-
-    private Task<Result> ShowMessageBoxAsync(MessageBoxVM messageBox) => ShowMessageBoxAsync(messageBox, Result.Cancel);
-
-    /// <param name="backAnswer">What the system back button answers while the box is the topmost one.</param>
-    private async Task<Result> ShowMessageBoxAsync(MessageBoxVM messageBox, Result backAnswer)
-    {
-        var view = new MessageBoxView { DataContext = messageBox };
-        var answer = new TaskCompletionSource<Result>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        using var buttons = messageBox.Answers.Subscribe(result => answer.TrySetResult(result));
-
-        _messageBoxes.Add((answer, backAnswer));
-        DialogLayer.Children.Add(view);
-
-        try
-        {
-            return await answer.Task;
-        }
-        finally
-        {
-            DialogLayer.Children.Remove(view);
-            _messageBoxes.RemoveAll(box => ReferenceEquals(box.Answer, answer));
-        }
-    }
-
     // The system back button undoes the last step: closes a message box, then the connect form, the
     // profile, the form of a new session, a page of the settings and the settings, the menu of the
     // server, the menu with the sessions the user opened over a chat, the menu of a message. From a
@@ -702,66 +586,8 @@ public partial class MainView : UserControl
     // and pressed once more it leaves
     private void OnBackRequested(object? sender, RoutedEventArgs e)
     {
-        if (_messageBoxes.Count > 0)
+        if (_navigation.TryGoBack())
         {
-            var (answer, backAnswer) = _messageBoxes[^1];
-            answer.TrySetResult(backAnswer);
-            e.Handled = true;
-            return;
-        }
-
-        if (_loginPrompts.Count > 0)
-        {
-            _loginPrompts[^1].CancelCommand.Execute().Subscribe();
-            e.Handled = true;
-            return;
-        }
-
-        if (_connectView?.DataContext is ConnectWindowVM connect)
-        {
-            // While it connects the form stays: it closes itself or tells why it could not connect
-            if (!connect.IsBusy)
-                connect.CloseCommand.Execute().Subscribe();
-
-            e.Handled = true;
-            return;
-        }
-
-        if (_securityView?.DataContext is AccountSecurityVM security)
-        {
-            // Back leaves a change first, then the screen; a change being made is waited for
-            if (!security.IsBusy)
-                (security.IsChanging ? security.BackCommand : security.CloseCommand).Execute().Subscribe();
-
-            e.Handled = true;
-            return;
-        }
-
-        if (_profileView?.DataContext is UserProfileWindowVM profile)
-        {
-            // Back leaves the editing first, then the profile; a name being saved is waited for
-            if (!profile.IsBusy)
-                (profile.IsEditing ? profile.CancelEditCommand : profile.CloseCommand).Execute().Subscribe();
-
-            e.Handled = true;
-            return;
-        }
-
-        if (_createSessionView?.DataContext is CreateSessionWindowVM createSession)
-        {
-            // A session being created is waited for: the form closes itself or tells why it could not
-            if (!createSession.IsBusy)
-                createSession.CloseCommand.Execute().Subscribe();
-
-            e.Handled = true;
-            return;
-        }
-
-        if (_settingsView != null)
-        {
-            if (!_settingsView.TryGoBack())
-                CloseSettings();
-
             e.Handled = true;
             return;
         }
@@ -773,10 +599,17 @@ public partial class MainView : UserControl
             return;
         }
 
+        // A screen watched over the whole display covers the session
+        if (_hybridView.TryCloseFullscreen())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Over a session the menu the user opened is closed to get back to it. The menu back itself
         // led to stays, and so does the one without a session, see below
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
-            || TryClose(StatusMenu)
+            || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(AudioDevicesMenu)
             || (_viewModel?.CurrentContent != null && !_isDrawerOpenedByBack && CloseDrawer()))
         {
             e.Handled = true;
@@ -785,7 +618,7 @@ public partial class MainView : UserControl
 
         if (_viewModel?.CurrentContent != null && !Drawer.Classes.Contains("open"))
         {
-            if (!_chatView.TryCloseMenu())
+            if (!_chatView.TryCloseMenu() && !_chatView.TryClosePinnedMessages())
             {
                 // Back from a session leads to the menu with the sessions. The session stays shown
                 // under it, so closing the menu returns to it
@@ -814,7 +647,7 @@ public partial class MainView : UserControl
     // more agrees, so two presses in a row leave the application as they do in most others
     private async Task AskToExitAsync()
     {
-        var answer = await ShowMessageBoxAsync(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+        var answer = await _navigation.ShowMessageBoxAsync(new MessageBoxVM(Icon.Question, Buttons.YesNo,
             Strings.Get("closeApp.question.back"), Strings.Get("closeApp.title")), Result.Yes);
 
         if (answer == Result.Yes)

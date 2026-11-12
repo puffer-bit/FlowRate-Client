@@ -11,6 +11,7 @@ using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
+
 using Result = Client.ViewModels.Dialogs.Result;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -18,7 +19,7 @@ namespace Client.ViewModels.Settings.Pages;
 
 /// <summary>
 /// What of the chats is kept on this device: the messages and the images, how much of them,
-/// and how much they take now.
+/// and how much they take now, along with the journal files on this device.
 /// </summary>
 public class StorageControlVM : ReactiveObject, ISettingVM
 {
@@ -30,7 +31,8 @@ public class StorageControlVM : ReactiveObject, ISettingVM
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("storage",
         ("messages", ["keepMessages", "messagesPerChat", "clearMessages"]),
-        ("media", ["mediaLimit", "clearMedia"]));
+        ("media", ["mediaLimit", "clearMedia"]),
+        ("logs", ["files"]));
 
     public bool IsChatCacheEnabled
     {
@@ -86,6 +88,19 @@ public class StorageControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool HasLogFiles => LogDirectory != null;
+
+    public string? LogDirectory => _debugAndLogService.LogDirectory;
+
+    /// <summary>What the files take.</summary>
+    public string? LogFilesText
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public ReactiveCommand<RxVoid, RxVoid> ClearLogFilesCommand { get; }
+
     public ReactiveCommand<RxVoid, RxVoid> ClearChatCacheCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ClearMediaCacheCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
@@ -94,13 +109,16 @@ public class StorageControlVM : ReactiveObject, ISettingVM
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
 
     private readonly IStorageService _storageService;
+    private readonly IDebugAndLogService _debugAndLogService;
 
     // Set while the view model fills its own properties, so that only user changes get saved
     private bool _isUpdating = true;
 
-    public StorageControlVM(IStorageService storageService)
+    public StorageControlVM(IStorageService storageService, IDebugAndLogService debugAndLogService)
     {
         _storageService = storageService;
+        _debugAndLogService = debugAndLogService;
+        ClearLogFilesCommand = ReactiveCommand.CreateFromTask(ClearLogFilesAsync);
 
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
         ClearChatCacheCommand = ReactiveCommand.CreateFromTask(
@@ -110,6 +128,11 @@ public class StorageControlVM : ReactiveObject, ISettingVM
             () => ClearAsync("clearMedia", _storageService.ClearMediaCacheAsync),
             this.WatchProperty(nameof(HasMediaCache), vm => vm.HasMediaCache));
 
+        ObserveSettingsChanges();
+    }
+
+    private void ObserveSettingsChanges()
+    {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(IsChatCacheEnabled),
@@ -145,6 +168,28 @@ public class StorageControlVM : ReactiveObject, ISettingVM
         _isUpdating = false;
 
         await RefreshUsageAsync();
+        await RefreshFilesAsync();
+    }
+
+    private async Task RefreshFilesAsync()
+    {
+        if (!HasLogFiles)
+            return;
+
+        LogFilesText = Strings.Format("settings.storage.filesUsage",
+            ("size", SizeText.Format(await _debugAndLogService.GetLogFilesSizeAsync())));
+    }
+
+    private async Task ClearLogFilesAsync()
+    {
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+            Strings.Get("settings.storage.files.question"), Strings.Get("settings.storage.files.title")));
+
+        if (answer != Result.Yes)
+            return;
+
+        await _debugAndLogService.ClearLogFilesAsync();
+        await RefreshFilesAsync();
     }
 
     private async Task SaveAsync()

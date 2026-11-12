@@ -1,11 +1,14 @@
 using System;
-using ReactiveUI;
-using Shared.Enums;
-using Client.Core.Sessions.Hybrid;
-using Client.Core.Users;
 using Client.Application.Coordinator.Users;
 using Client.Avalonia.Localization;
+using Client.Core.Sessions.Hybrid;
+using Client.Core.Users;
+using Client.ViewModels.Sessions.Hybrid;
+using ReactiveUI;
+using Shared.Enums;
+using Shared.Enums.User;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -16,21 +19,15 @@ public class PeerVM : ReactiveObject
     public PeerModel PeerData { get; private set; }
     public UserModel? UserData { get; private set; }
 
-    public string DisplayedName
-    {
-        get => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
-    }
+    public string DisplayedName => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
 
-    public bool IsConnected
-    {
-        get => PeerData.State == HybridSessionPeerState.Connected;
-    }
+    public bool IsBanned => UserData?.State == UserState.Banned;
+    public bool IsFrozen => UserData?.State == UserState.Suspended;
+
+    public bool IsConnected => PeerData.State == HybridSessionPeerState.Connected;
 
     /// <summary>The user waits for the host to let them in.</summary>
-    public bool IsWaiting
-    {
-        get => PeerData.State == HybridSessionPeerState.WaitingForApprove;
-    }
+    public bool IsWaiting => PeerData.State == HybridSessionPeerState.WaitingForApprove;
 
     public bool IsCurrentUser { get; }
 
@@ -61,8 +58,28 @@ public class PeerVM : ReactiveObject
     /// <summary>The reason the away user gave, shown under their name; null without one.</summary>
     public string? AfkReason => IsAfk && !string.IsNullOrEmpty(PeerData.AfkReason) ? PeerData.AfkReason : null;
 
-    /// <summary>The microphone mark shows only outside AFK, whose mark stands for it.</summary>
-    public bool ShowsMicrophoneOff => IsMicrophoneMuted && !IsAfk;
+    /// <summary>AFK replaces the ordinary mute mark; a permission restriction always stays visible.</summary>
+    public bool ShowsMicrophoneOff => IsVoiceForbidden || (_hasMicrophoneState && IsMicrophoneMuted && !IsAfk);
+
+    // Joining precedes capture startup; wait for a microphone event before showing an ordinary mute.
+    private bool _hasMicrophoneState;
+
+    public bool IsVoiceForbidden
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            if (value)
+                _hasMicrophoneState = true;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+        }
+    }
+
+    public string MicrophoneIconKey => IsVoiceForbidden ? "ForbiddenMicrophoneIcon" : "CrossedMicrophoneIcon";
 
     /// <summary>The sound mark shows only outside AFK, whose mark stands for it.</summary>
     public bool ShowsSoundOff => IsDeafened && !IsAfk;
@@ -100,10 +117,38 @@ public class PeerVM : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(SelfSession));
             this.RaisePropertyChanged(nameof(CanWatchScreen));
             this.RaisePropertyChanged(nameof(CanPoke));
+            this.RaisePropertyChanged(nameof(CanShowConnectionStats));
+            this.RaisePropertyChanged(nameof(ConnectionStats));
         }
     }
+
+    private HybridSessionStatusBarVM? _sessionControls;
+
+    /// <summary>The active session controls, available only on our own row.</summary>
+    public HybridSessionStatusBarVM? SelfSession => IsCurrentUser && IsInEnteredSession ? _sessionControls : null;
+
+    public void SetSessionControls(HybridSessionStatusBarVM? controls)
+    {
+        _sessionControls = controls;
+        this.RaisePropertyChanged(nameof(SelfSession));
+    }
+
+    /// <summary>
+    /// The statistics of how the streams of the user reach us, kept by the session we are in.
+    /// </summary>
+    public Func<PeerStatsVM>? GetConnectionStats { get; init; }
+
+    /// <summary>Only another user of the session we are in sends us anything to measure.</summary>
+    public bool CanShowConnectionStats => IsInEnteredSession && !IsCurrentUser && GetConnectionStats != null;
+
+    /// <summary>
+    /// The statistics of the user while <see cref="CanShowConnectionStats"/>, otherwise null: a
+    /// session we are not in has none, and asking would keep empty ones for it.
+    /// </summary>
+    public PeerStatsVM? ConnectionStats => CanShowConnectionStats ? GetConnectionStats!() : null;
 
     /// <summary>
     /// The user speaks right now. Known only for the session we are in.
@@ -183,6 +228,7 @@ public class PeerVM : ReactiveObject
         _admit = admit;
         ViewProfileCommand = viewProfileCommand;
         PeerData = peerData;
+        _hasMicrophoneState = peerData.State == HybridSessionPeerState.Connected;
         IsCurrentUser = isCurrentUser;
         UserData = userData;
         _playbackService = playbackService;
@@ -340,17 +386,36 @@ public class PeerVM : ReactiveObject
     {
         IsOverdriveEnabled = !IsOverdriveEnabled;
     }
-    
+
     public void UpdateUserModel(UserModel? userModel)
     {
         UserData = userModel;
         this.RaisePropertyChanged(nameof(DisplayedName));
+        this.RaisePropertyChanged(nameof(IsBanned));
+        this.RaisePropertyChanged(nameof(IsFrozen));
         this.RaisePropertyChanged(nameof(PokeTitle));
         this.RaisePropertyChanged(nameof(UserData));
     }
 
-    public void UpdateMicrophoneMuted(bool isMuted)
+    public void UpdatePeerModel(PeerModel peerModel)
     {
+        UpdatePeerStatus(peerModel.State);
+        UpdateMicrophoneMuted(peerModel.IsMicrophoneMuted, isConfirmed: peerModel.State == HybridSessionPeerState.Connected);
+        UpdateSoundMuted(peerModel.IsSoundMuted);
+        UpdateAfk(peerModel.IsAfk, peerModel.AfkReason);
+        UpdateScreenShare(peerModel.IsScreenShareActive);
+        PeerData = peerModel;
+        this.RaisePropertyChanged(nameof(PeerData));
+    }
+
+    public void UpdateMicrophoneMuted(bool isMuted, bool isConfirmed = true)
+    {
+        if (IsLeaving)
+            return;
+        var stateConfirmed = isConfirmed && !_hasMicrophoneState;
+        _hasMicrophoneState |= isConfirmed;
+        if (PeerData.IsMicrophoneMuted == isMuted && !stateConfirmed)
+            return;
         PeerData.IsMicrophoneMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsMicrophoneMuted));
         this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
@@ -358,6 +423,8 @@ public class PeerVM : ReactiveObject
 
     public void UpdateSoundMuted(bool isMuted)
     {
+        if (IsLeaving || PeerData.IsSoundMuted == isMuted)
+            return;
         PeerData.IsSoundMuted = isMuted;
         this.RaisePropertyChanged(nameof(IsDeafened));
         this.RaisePropertyChanged(nameof(ShowsSoundOff));
@@ -365,6 +432,9 @@ public class PeerVM : ReactiveObject
 
     public void UpdateAfk(bool isAfk, string? reason)
     {
+        reason = isAfk ? reason : null;
+        if (IsLeaving || (PeerData.IsAfk == isAfk && PeerData.AfkReason == reason))
+            return;
         PeerData.IsAfk = isAfk;
         PeerData.AfkReason = isAfk ? reason : null;
         this.RaisePropertyChanged(nameof(IsAfk));
@@ -376,6 +446,8 @@ public class PeerVM : ReactiveObject
 
     public void UpdateScreenShare(bool isActive)
     {
+        if (IsLeaving || PeerData.IsScreenShareActive == isActive)
+            return;
         PeerData.IsScreenShareActive = isActive;
         this.RaisePropertyChanged(nameof(IsSharingScreen));
         this.RaisePropertyChanged(nameof(CanWatchScreen));
@@ -383,12 +455,17 @@ public class PeerVM : ReactiveObject
 
     public void UpdatePeerStatus(HybridSessionPeerState newState)
     {
+        if (IsLeaving || PeerData.State == newState)
+            return;
         PeerData.State = newState;
 
-        // The server unmutes a peer that loses its connection, and its screen is gone with it
+        // Without a transport the microphone is off, and the screen is gone with it
         if (newState != HybridSessionPeerState.Connected)
         {
-            UpdateMicrophoneMuted(false);
+            _hasMicrophoneState = IsVoiceForbidden;
+            IsSpeaking = false;
+            IsWatchingScreen = false;
+            UpdateMicrophoneMuted(true, isConfirmed: false);
             UpdateSoundMuted(false);
             UpdateAfk(false, null);
             UpdateScreenShare(false);
@@ -397,5 +474,6 @@ public class PeerVM : ReactiveObject
         this.RaisePropertyChanged(nameof(PeerData));
         this.RaisePropertyChanged(nameof(IsConnected));
         this.RaisePropertyChanged(nameof(IsWaiting));
+        this.RaisePropertyChanged(nameof(ShowsMicrophoneOff));
     }
 }

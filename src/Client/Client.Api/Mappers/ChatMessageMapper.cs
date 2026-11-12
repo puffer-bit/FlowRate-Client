@@ -22,6 +22,8 @@ internal static class ChatMessageMapper
             DelayedSentTime = dto.DelayedSentTime,
             DisposeTime = dto.DisposeTime,
             EditTime = dto.EditTime,
+            PinnedAt = dto.PinnedAt,
+            PinnedByUserId = dto.PinnedByUserId,
 
             TextContent = MapTextContent(dto.TextContent),
             ReplyContent = MapReplyContent(dto.ReplyContent),
@@ -43,12 +45,13 @@ internal static class ChatMessageMapper
             IsDeleted = dto.IsDeleted,
             IsReadOnly = dto.IsReadOnly,
             IsSystem = dto.IsSystem,
+            SystemContent = dto.SystemContent,
             IsDisposable = dto.IsDisposable,
         };
     }
 
     private static ChatTextContent? MapTextContent(ChatTextContentDTO? dto)
-        => dto == null ? null : new ChatTextContent { Text = dto.Text };
+        => dto == null ? null : new ChatTextContent { Text = dto.Text, CommandResult = dto.CommandResult };
     
     private static ChatReplyContent? MapReplyContent(ChatReplyContentDTO? dto)
     {
@@ -58,6 +61,7 @@ internal static class ChatMessageMapper
         return new ChatReplyContent
         {
             MessageId = dto.MessageId,
+            HasAttachments = dto.HasAttachments,
             IsDeleted = dto.IsDeleted,
             SenderUserId = dto.SenderUserId,
             SentTime = dto.SentTime,

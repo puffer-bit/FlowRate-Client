@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Gst;
 
 namespace Client.GStreamer.Video;
@@ -17,6 +18,9 @@ public static class VideoDecoderSelector
     /// </summary>
     public static IReadOnlyList<string> GetAvailableDecoders(VideoCodec codec) =>
         GetCandidates(codec).Where(factory => ElementFactory.Find(factory) != null).ToList();
+
+    internal static bool IsKnownDecoder(string factory) =>
+        Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Contains(factory);
 
     private static string[] GetCandidates(VideoCodec codec) => codec switch
     {

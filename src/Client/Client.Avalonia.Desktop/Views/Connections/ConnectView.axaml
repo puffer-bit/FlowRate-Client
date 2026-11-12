@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -12,27 +13,23 @@
         x:Class="Client.Views.Connections.ConnectView"
         x:DataType="connectVm:ConnectWindowVM"
         Background="{DynamicResource GeneralBrush}"
-        Width="420">
+        MaxWidth="420"
+        HorizontalAlignment="Stretch">
 
     <UserControl.Resources>
         <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+    <common:DialogLayout>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource PlugIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text connect.title}"/>
-            </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text connect.subtitle}"/>
-        </StackPanel>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource PlugIcon}"
+                             Title="{l:Text connect.title}" Subtitle="{l:Text connect.subtitle}"/>
 
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <!-- Form -->
-        <StackPanel Grid.Row="2" Margin="20,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
+        <StackPanel Grid.Row="2" Margin="{StaticResource DialogBodyMargin}" Spacing="18" IsEnabled="{Binding !IsBusy}">
 
             <!-- Address and port -->
             <StackPanel Spacing="6">
@@ -96,65 +93,56 @@
             <!-- Identity -->
             <StackPanel Spacing="6">
                 <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.identity}"/>
-                <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding Identities}"
-                          SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="models:SavedUserModel">
-                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                                <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
-                                                    UserName="{Binding Username}"
-                                                    Coordinator="{Binding CoordinatorId}"
-                                                    AvatarUrl="{Binding AvatarUrl}"/>
-                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                    <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                               Text="{Binding Username}"/>
-                                    <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
-                                         The entry that registers a new user has none -->
-                                    <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                               Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
-                                               IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                    <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Identities}"
+                              SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:SavedUserModel">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                        UserName="{Binding Username}"
+                                                        Coordinator="{Binding CoordinatorId}"
+                                                        AvatarUrl="{Binding AvatarUrl}"/>
+                                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Text="{Binding SelectionLabel}"/>
+                                        <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
+                                             The entry that registers a new user has none -->
+                                        <TextBlock Classes="hint" TextWrapping="NoWrap"
+                                                   Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
+                                                   IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" Width="44" MinHeight="44"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            IsEnabled="{Binding IsIdentityQrAvailable}"
+                            ToolTip.Tip="{l:Text settings.accounting.exportIdentityQr}"
+                            AutomationProperties.Name="{l:Text settings.accounting.exportIdentityQr}">
+                        <Image Width="24" Height="24" Source="{StaticResource QrCodeIcon}"/>
+                    </Button>
+                </Grid>
             </StackPanel>
 
-            <CheckBox Content="{l:Text connect.saveToProfiles}"/>
         </StackPanel>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
-            <!-- What the connection is waiting for at the moment -->
-            <!-- The indicator is as wide as its dot, so the dot starts at the left edge of the form;
-                 the glow around it is painted past the bounds -->
-            <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="10" IsVisible="{Binding IsBusy}">
-                <loadingIndicators:PulseLoadingIndicator Grid.Column="0" Width="10"
-                                                         Color="{DynamicResource ButtonMainBrush}"/>
-                <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
-                           Text="{Binding ConnectionStatus}"/>
-            </Grid>
-
-            <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{l:Text common.cancel}"/>
-                </StackPanel>
+        <Grid Grid.Row="4" Classes="dialogFooter" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
+            <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
             </Button>
 
             <Button Grid.Column="2" Classes="primary" MinWidth="130" HorizontalContentAlignment="Left"
                     Command="{Binding ConnectCommand}"
                     IsEnabled="{Binding IsFormValid}"
-                    IsDefault="True">
+                    IsDefault="True" AutomationProperties.Name="{l:Text connect.button}">
                 <Grid>
-                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
-                                IsVisible="{Binding !IsBusy}">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PlugIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text connect.button}"/>
-                    </StackPanel>
+                    <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource PlugIcon}" Text="{l:Text connect.button}"/>
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                 IsVisible="{Binding IsBusy}">
                         <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
@@ -165,5 +153,5 @@
                 </Grid>
             </Button>
         </Grid>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>

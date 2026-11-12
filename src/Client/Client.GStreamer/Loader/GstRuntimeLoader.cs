@@ -4,7 +4,6 @@ using Client.Application.Ports;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Video;
-using Client.GStreamer.WebRTC;
 
 namespace Client.GStreamer.Loader;
 
@@ -28,12 +27,16 @@ public static class DependencyInjection
     public static IServiceCollection AddGStreamer(this IServiceCollection services)
     {
         services.AddSingleton<IMediaRuntimeLoader, GstRuntimeLoader>();
+        services.AddSingleton<INativeLog, GstNativeLog>();
 
         services.AddSingleton<GstAudioDeviceProvider>();
         services.AddSingleton<IAudioDeviceProvider>(provider => provider.GetRequiredService<GstAudioDeviceProvider>());
         services.AddSingleton<IMicrophoneTester, GstMicrophoneTester>();
-        services.AddSingleton<IWebRTCTransportFactory, WebRTCTransportFactory>();
         services.AddSingleton<IMediaCapabilities, GstMediaCapabilities>();
+        services.AddSingleton<IVideoMedia, GstVideoMedia>();
+        services.AddSingleton<ICameraDeviceProvider, GstCameraDeviceProvider>();
+        services.AddSingleton<IAudioMedia, GstAudioMedia>();
+        services.AddSingleton<IVoiceAudioDevice, GstVoiceAudioDevice>();
 
         return services;
     }

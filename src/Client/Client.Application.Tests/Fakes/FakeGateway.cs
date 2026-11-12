@@ -4,6 +4,7 @@ using Client.Application.Ports.Repositories;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Core.Push;
+using Client.Core.Sessions;
 using Client.Core.Users;
 using Shared.Enums;
 using Shared.Enums.Auth;
@@ -19,11 +20,15 @@ public class FakeGateway : DispatchProxy
 {
     public const string CoordinatorId = "coordinator";
 
+    public Func<int, Guid, Shared.Models.DataTransferObjects.DirectCallAction,
+        Task<Shared.Models.DataTransferObjects.DirectCallDTO>>? CallHandler { get; set; }
     public int Connects { get; private set; }
     public int Disconnects { get; private set; }
     public List<(string Token, PushPlatform Platform, PushKey Key)> Registered { get; } = [];
     public List<string> Unregistered { get; } = [];
-    public PushTokenResult PushResult { get; set; } = PushTokenResult.NoError;
+    public List<NewSessionModel> CreatedSessions { get; } = [];
+    /// <summary>What the server fails the push requests with; null accepts them.</summary>
+    public ErrorCode? PushError { get; set; }
     public string ReplyToken { get; set; } = "reply-token";
 
     /// <summary>The uploads the server holds, by the id it gave them.</summary>
@@ -32,7 +37,7 @@ public class FakeGateway : DispatchProxy
 
     /// <summary>The avatar requests: the upload, null for a reset, and the user named.</summary>
     public List<(string? UploadId, int? UserId)> AvatarRequests { get; } = [];
-    public SetAvatarResult AvatarResult { get; set; } = SetAvatarResult.NoError;
+    public ErrorCode? AvatarError { get; set; }
 
     /// <summary>The roles the server answers the login with, lowest first.</summary>
     public IReadOnlyList<RoleModel> Roles { get; set; } =
@@ -41,8 +46,10 @@ public class FakeGateway : DispatchProxy
         new(2, "Admin", null, 1, Permission.Administrator, false, 0)
     ];
 
-    /// <summary>What the server answers the login with.</summary>
-    public AuthResult LoginResult { get; set; } = AuthResult.Success;
+    /// <summary>What the server fails the login with; null lets it go on.</summary>
+    public ErrorCode? LoginError { get; set; }
+    public string? LoginErrorDetails { get; set; }
+    public string? TransportBanReason { get; set; }
 
     /// <summary>The users banned, frozen, reinstated or deleted, with the state asked; null for a deletion.</summary>
     public List<(int UserId, UserState? State)> ModerationRequests { get; } = [];
@@ -59,11 +66,19 @@ public class FakeGateway : DispatchProxy
     /// <summary>The answers to the second login stage, as they came.</summary>
     public List<(string? Password, string? Code)> SecondStageAnswers { get; } = [];
 
+    /// <summary>The identity and session token of every login.</summary>
+    public List<(string? Identity, string? SessionToken)> SentLogins { get; } = [];
+
+    /// <summary>The token of the session the server knows: the last one it gave out, or none.</summary>
+    public string? SessionToken { get; set; }
+
+    private int _issuedTokens;
+
     /// <summary>The roles of the user who logs in.</summary>
     public IReadOnlyList<int> UserRoleIds { get; set; } = [];
 
     /// <summary>Hands the session an event as the server would send it.</summary>
-    public void Raise(Client.Core.Events.CoordinatorEvent coordinatorEvent) => _eventReceived?.Invoke(coordinatorEvent);
+    public void Raise(Client.Core.Coordinator.CoordinatorEvent coordinatorEvent) => _eventReceived?.Invoke(coordinatorEvent);
 
     /// <summary>Whether the socket is open, as the gateway under test would see it.</summary>
     public bool IsOpen { get; private set; }
@@ -86,7 +101,7 @@ public class FakeGateway : DispatchProxy
     public int OverlappingCalls => Volatile.Read(ref _overlappingCalls);
 
     private Action<string>? _connectionLost;
-    private Action<Client.Core.Events.CoordinatorEvent>? _eventReceived;
+    private Action<Client.Core.Coordinator.CoordinatorEvent>? _eventReceived;
     private int _runningCalls;
     private int _overlappingCalls;
 
@@ -109,8 +124,8 @@ public class FakeGateway : DispatchProxy
         {
             await Task.Yield();
             Connects++;
-            IsOpen = IsReachable;
-            return new TransportConnectResult(IsReachable, IsReachable ? null : "unreachable");
+            IsOpen = IsReachable && TransportBanReason == null;
+            return new TransportConnectResult(IsOpen, IsOpen ? null : "unreachable", BanReason: TransportBanReason);
         }
         finally
         {
@@ -148,8 +163,26 @@ public class FakeGateway : DispatchProxy
         return new MediaUploadOutcome(MediaTransferResult.NoError, id);
     }
 
+    public string ActiveCoordinatorId { get; set; } = CoordinatorId;
+
     private UserModel LoggedInUser() =>
-        new() { Id = 1, CoordinatorInstanceId = CoordinatorId, Username = "alice", RoleIds = UserRoleIds };
+        new() { Id = 1, CoordinatorInstanceId = ActiveCoordinatorId, Username = "alice", RoleIds = UserRoleIds };
+
+    private AuthenticationResult Authenticate(string? userIdentity, string? sessionToken)
+    {
+        SentLogins.Add((userIdentity, sessionToken));
+
+        if (LoginError is { } loginError)
+            throw new RequestFailedException(loginError, LoginErrorDetails);
+        // The token of the session lets the device in without the second stage, and is not told the identity
+        if (sessionToken != null && sessionToken == SessionToken)
+            return new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken());
+        if (Challenge != null)
+            return new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge);
+        return new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity", SessionToken: IssueToken());
+    }
+
+    private string IssueToken() => SessionToken = $"token-{++_issuedTokens}";
 
     private AuthenticationResult FinishLogin(string? password, string? code)
     {
@@ -160,9 +193,11 @@ public class FakeGateway : DispatchProxy
                        && (!Challenge.AsksTwoFactorCode || code == TwoFactorCode);
 
         return isProven
-            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null)
-            : new AuthenticationResult(AuthResult.AuthFailed, null, null);
+            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken())
+            : throw new RequestFailedException(ErrorCode.AuthFailed, null);
     }
+
+    private static Task<T> Fail<T>(ErrorCode code) => Task.FromException<T>(new RequestFailedException(code, null));
 
     private void Enter()
     {
@@ -184,6 +219,9 @@ public class FakeGateway : DispatchProxy
     {
         switch (targetMethod!.Name)
         {
+            case "ChangeDirectCall":
+                return CallHandler!((int)args![0]!, (Guid)args[1]!,
+                    (Shared.Models.DataTransferObjects.DirectCallAction)args[2]!);
             case "add_ConnectionLost":
                 _connectionLost += (Action<string>)args![0]!;
                 return null;
@@ -191,63 +229,73 @@ public class FakeGateway : DispatchProxy
                 _connectionLost -= (Action<string>)args![0]!;
                 return null;
             case "add_EventReceived":
-                _eventReceived += (Action<Client.Core.Events.CoordinatorEvent>)args![0]!;
+                _eventReceived += (Action<Client.Core.Coordinator.CoordinatorEvent>)args![0]!;
                 return null;
             case "remove_EventReceived":
-                _eventReceived -= (Action<Client.Core.Events.CoordinatorEvent>)args![0]!;
+                _eventReceived -= (Action<Client.Core.Coordinator.CoordinatorEvent>)args![0]!;
                 return null;
             case nameof(IDisposable.Dispose):
                 return null;
             case nameof(ICoordinatorGateway.GetRoles):
-                return Task.FromResult<(Shared.Enums.Coordinator.CoordinatorRoleResult, IReadOnlyList<RoleModel>?)>(
-                    (Shared.Enums.Coordinator.CoordinatorRoleResult.NoError, Roles));
+                return Task.FromResult(Roles);
+            case nameof(ICoordinatorGateway.CreateSession):
+                CreatedSessions.Add((NewSessionModel)args![0]!);
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.ConnectWebSocketAsync):
                 return ConnectAsync();
             case nameof(ICoordinatorGateway.DisconnectWebSocketAsync):
                 return DisconnectAsync();
             case nameof(ICoordinatorGateway.CheckConnectionAsync):
                 return CheckAsync((TimeSpan)args![0]!);
-            case nameof(ICoordinatorGateway.AuthenticateAsync) when LoginResult != AuthResult.Success:
-                return Task.FromResult(new AuthenticationResult(LoginResult, null, null));
-            case nameof(ICoordinatorGateway.AuthenticateAsync) when Challenge != null:
-                return Task.FromResult(new AuthenticationResult(AuthResult.SecondStageRequeried, null, null, Challenge));
             case nameof(ICoordinatorGateway.AuthenticateAsync):
-                return Task.FromResult(new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity"));
+                try
+                {
+                    return Task.FromResult(Authenticate((string?)args![1], (string?)args[2]));
+                }
+                catch (RequestFailedException exception)
+                {
+                    return Task.FromException<AuthenticationResult>(exception);
+                }
             case nameof(ICoordinatorGateway.FinishLoginAsync):
-                return Task.FromResult(FinishLogin((string?)args![0], (string?)args[1]));
+                try
+                {
+                    return Task.FromResult(FinishLogin((string?)args![0], (string?)args[1]));
+                }
+                catch (RequestFailedException exception)
+                {
+                    return Task.FromException<AuthenticationResult>(exception);
+                }
             case nameof(ICoordinatorGateway.SetAccountPassword):
                 AccountPassword = (string?)args![1];
                 Challenge = AccountPassword == null ? null : new LoginChallenge(true, false, false);
-                return Task.FromResult<(UserSecurityResult, AccountSecurity?)>((UserSecurityResult.NoError,
-                    new AccountSecurity(AccountPassword != null, false, false, false, [])));
+                return Task.FromResult(new AccountSecurity(AccountPassword != null, false, false, false, []));
             case nameof(ICoordinatorGateway.GetCoordinatorInfo):
-                return Task.FromResult<CoordinatorSessionModel?>(new CoordinatorSessionModel { Id = CoordinatorId, Name = "Test" });
+                return Task.FromResult<CoordinatorSessionModel?>(new CoordinatorSessionModel { Id = ActiveCoordinatorId, Name = "Test" });
             case nameof(ICoordinatorGateway.RegisterPushToken):
                 Registered.Add(((string)args![0]!, (PushPlatform)args[1]!, (PushKey)args[2]!));
-                return Task.FromResult<(PushTokenResult, string?)>((PushResult,
-                    PushResult == PushTokenResult.NoError ? ReplyToken : null));
+                return PushError is { } pushError ? Fail<string?>(pushError) : Task.FromResult<string?>(ReplyToken);
             case nameof(ICoordinatorGateway.UploadMedia):
                 return UploadAsync((MediaUpload)args![0]!);
             case nameof(ICoordinatorGateway.SetAvatar):
                 AvatarRequests.Add(((string?)args![0], (int?)args[1]));
-                return Task.FromResult<(SetAvatarResult, UserModel?)>(AvatarResult == SetAvatarResult.NoError
-                    ? (AvatarResult, new UserModel
+                return AvatarError is { } avatarError
+                    ? Fail<UserModel>(avatarError)
+                    : Task.FromResult(new UserModel
                     {
                         Id = 1,
                         CoordinatorInstanceId = CoordinatorId,
                         Username = "alice",
                         AvatarUrl = args[0] == null ? null : $"/media/avatars/{args[0]}"
-                    })
-                    : (AvatarResult, null));
+                    });
             case nameof(ICoordinatorGateway.SetUserState):
                 ModerationRequests.Add(((int)args![0]!, (UserState)args[1]!));
-                return Task.FromResult<(ModerateUserResult, UserModel?)>((ModerateUserResult.NoError, null));
+                return Task.FromResult(new UserModel { Id = (int)args[0]!, CoordinatorInstanceId = CoordinatorId, Username = "bob" });
             case nameof(ICoordinatorGateway.DeleteUser):
                 ModerationRequests.Add(((int)args![0]!, null));
-                return Task.FromResult(ModerateUserResult.NoError);
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.UnregisterPushToken):
                 Unregistered.Add((string)args![0]!);
-                return Task.FromResult(PushResult);
+                return PushError is { } unregisterError ? Fail<object>(unregisterError) : Task.CompletedTask;
             default:
                 throw new NotSupportedException(targetMethod.Name);
         }

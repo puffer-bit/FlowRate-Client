@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 
 
 namespace Client.Application.Coordinator;
@@ -9,8 +9,23 @@ public partial class CoordinatorSession
     {
         switch (coordinatorEvent)
         {
+            case DirectCallChangedEvent call:
+                ApplyDirectCall(call.Call);
+                break;
+            case BannedEvent banned:
+                Post(new BanReceived(banned.Reason));
+                break;
+
             case ServerClosingEvent:
                 _ = Disconnect();
+                break;
+
+            // The identity would log in again at once: the device stays out until the user connects
+            case SessionEndedEvent ended:
+                LogSessionEnded(LogName, ended.Reason);
+                KeepSessionToken(null);
+                _ = Disconnect();
+                SessionEnded?.Invoke(ended.Reason);
                 break;
 
             case CoordinatorReconfiguredEvent reconfigured:
@@ -70,16 +85,29 @@ public partial class CoordinatorSession
             
             case ChatMessageAddedEvent messageAdded:
                 messageAdded.Message.IsMine = messageAdded.Message.SenderUserId == GetCurrentUser().Id;
+                _chatTyping.Update(messageAdded.ChatId, messageAdded.Message.SenderUserId, false);
                 TextMessageAdded?.Invoke(messageAdded.ChatId, messageAdded.Message);
                 break;
 
             case ChatMessageEditedEvent messageEdited:
                 messageEdited.Message.IsMine = messageEdited.Message.SenderUserId == GetCurrentUser().Id;
+                // Reaction updates use this event too and must not stop the author's typing activity.
                 TextMessageEdited?.Invoke(messageEdited.ChatId, messageEdited.Message);
                 break;
 
             case ChatMessageDeletedEvent messageDeleted:
                 TextMessageDeleted?.Invoke(messageDeleted.ChatId, messageDeleted.MessageId, messageDeleted.Revision);
+                break;
+
+            case ChatUserTypingEvent typing:
+                if (ConnectionStatus != CoordinatorState.Connected || typing.UserId == GetCurrentUser().Id)
+                    break;
+                _chatTyping.Update(typing.ChatId, typing.UserId, typing.IsTyping);
+                ChatUserTyping?.Invoke(typing.ChatId, typing.UserId, typing.IsTyping);
+                break;
+
+            case ChatViewersChangedEvent viewers:
+                ChatViewersChanged?.Invoke(viewers);
                 break;
 
             case ChatReadStateChangedEvent readChanged:

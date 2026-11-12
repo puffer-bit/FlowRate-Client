@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,10 +12,12 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Services;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -23,7 +26,7 @@ namespace Client.ViewModels.Sessions.Chat;
 /// The input of a chat: the text being typed, the files attached to it, the message it answers
 /// or edits, and sending all of that.
 /// </summary>
-public sealed class ChatComposerVM : ReactiveObject, IDisposable
+public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
 {
     public string InputWatermark => CanWrite
         ? Strings.Format("chat.input.watermark", ("chat", _chatName))
@@ -37,6 +40,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(InputWatermark));
+            if (!value) StopTyping();
         }
     } = true;
 
@@ -45,7 +49,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         get;
         set
         {
+            if (field == value)
+                return;
             this.RaiseAndSetIfChanged(ref field, value);
+            OnTypingInputChanged();
             this.RaisePropertyChanged(nameof(RemainingCharacters));
             this.RaisePropertyChanged(nameof(IsLengthCounterVisible));
             // A failed send is about the text that was there; editing it starts over
@@ -122,7 +129,11 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     public bool IsConnected
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (!value) StopTyping();
+        }
     }
 
     /// <summary>
@@ -229,6 +240,17 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     /// The list of users that opens while a mention is typed in the input.
     /// </summary>
     public ChatMentionPickerVM MentionPicker { get; }
+
+    public event Action? MentionInserted;
+
+    public void MentionUser(int userId, string name)
+    {
+        if (!CanWrite || !IsConnected)
+            return;
+
+        InputtedText = MentionPicker.AppendUser(InputtedText, userId, name);
+        MentionInserted?.Invoke();
+    }
 
     public Interaction<RxVoid, IReadOnlyList<PickedFile>> PickAttachmentFiles { get; } = new();
 
@@ -362,7 +384,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         EditMessage = messageModel;
         EditPreview = new ChatReplyPreviewVM(messageModel, isEdit: true);
         EditPreview.RenderText(_senders.RenderText);
-        InputtedText = MentionPicker.Decode(messageModel.TextContent.Text, _senders.FindName);
+        SetRestoredText(MentionPicker.Decode(messageModel.TextContent.Text, _senders.FindName));
     }
 
     private void EndEdit()
@@ -372,7 +394,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
 
         EditMessage = null;
         EditPreview = null;
-        InputtedText = _draftText ?? string.Empty;
+        SetRestoredText(_draftText ?? string.Empty);
         _draftText = null;
     }
 
@@ -442,7 +464,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
     private async Task SendMessage()
     {
         // Enter in the input calls the command directly, so the checks are repeated here
-        if (IsMessageSending || !IsConnected)
+        if (IsMessageSending || !IsConnected || !CanWrite)
             return;
 
         var textContent = ChatTextContent.FromUserInput(
@@ -467,6 +489,14 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             return;
         }
 
+        if (ChatCommandRequest.Parse(textContent?.Text) is { IsValid: false } command)
+        {
+            SendError = Strings.Get(command.Kind == ChatCommandKind.Roll
+                ? "chat.command.roll.invalid" : "chat.command.flip.invalid");
+            return;
+        }
+
+        StopTyping();
         IsMessageSending = true;
         SendError = null;
         using var cancellation = _sendCancellation = new CancellationTokenSource();
@@ -477,52 +507,58 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             if (!await UploadAttachments(attachments, cancellation.Token))
                 return;
 
-            var message = new NewChatMessage
-            {
-                ChatId = _chatId,
-                SenderUserId = _session.GetCurrentUser().Id,
-                SentTime = DateTime.UtcNow,
-                TextContent = textContent,
-                ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
-                Images = attachments.Where(attachment => attachment.IsImage)
-                    .Select(attachment => attachment.Upload.Image!).ToList(),
-                Files = attachments.Where(attachment => attachment.IsFile)
-                    .Select(attachment => attachment.FileUpload.File!).ToList()
-            };
-
+            var message = CreateMessage(textContent, attachments);
             var result = await _session.SendChatMessage(message);
-            switch (result)
-            {
-                case AddMessageResult.NoError:
-                    InputtedText = string.Empty;
-                    MentionPicker.Reset();
-                    Attachments.Clear();
-                    ResetReply();
-                    break;
-                // A rejection is reported by the main window
-                case AddMessageResult.Rejected:
-                    break;
-                // The server does not hold the uploads anymore, so the next try sends the files again
-                case AddMessageResult.AttachmentNotReady or AddMessageResult.AttachmentInvalid:
-                    foreach (var attachment in attachments)
-                        attachment.ResetUpload();
-                    SendError = Strings.Get("chat.send.imagesLost");
-                    break;
-                // The text and the files stay in the composer for another try
-                default:
-                    SendError = Strings.Get(result switch
-                    {
-                        AddMessageResult.TimedOut => "chat.send.timedOut",
-                        AddMessageResult.AttachmentsNotAllowed => "chat.attach.turnedOff",
-                        _ => "chat.send.refused"
-                    });
-                    break;
-            }
+            ApplySendResult(result, attachments);
         }
         finally
         {
             _sendCancellation = null;
             IsMessageSending = false;
+        }
+    }
+
+    private NewChatMessage CreateMessage(ChatTextContent? textContent, IReadOnlyList<ChatAttachmentVM> attachments) => new()
+    {
+        ChatId = _chatId,
+        SenderUserId = _session.GetCurrentUser().Id,
+        SentTime = DateTime.UtcNow,
+        TextContent = textContent,
+        ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
+        Images = attachments.Where(attachment => attachment.IsImage)
+            .Select(attachment => attachment.Upload.Image!).ToList(),
+        Files = attachments.Where(attachment => attachment.IsFile)
+            .Select(attachment => attachment.FileUpload.File!).ToList()
+    };
+
+    private void ApplySendResult(RequestResult result, IReadOnlyList<ChatAttachmentVM> attachments)
+    {
+        switch (result)
+        {
+            case { IsSuccess: true }:
+                InputtedText = string.Empty;
+                MentionPicker.Reset();
+                Attachments.Clear();
+                ResetReply();
+                break;
+            // A rejection is reported by the main window
+            case { IsRejected: true }:
+                break;
+            // The server does not hold the uploads anymore, so the next try sends the files again
+            case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
+                foreach (var attachment in attachments)
+                    attachment.ResetUpload();
+                SendError = Strings.Get("chat.send.imagesLost");
+                break;
+            // The text and the files stay in the composer for another try
+            default:
+                SendError = Strings.Get(result switch
+                {
+                    { Error: ErrorCode.TimedOut } => "chat.send.timedOut",
+                    { Error: ErrorCode.AttachmentsNotAllowed } => "chat.attach.turnedOff",
+                    _ => "chat.send.refused"
+                });
+                break;
         }
     }
 
@@ -577,6 +613,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
                 ChatMediaUploadResult.TooManyUploads => "chat.attach.error.tooMany",
                 ChatMediaUploadResult.StorageFull => "chat.attach.error.storageFull",
                 ChatMediaUploadResult.ConnectionFailed => "chat.attach.error.connection",
+                ChatMediaUploadResult.Unreadable => "chat.attach.error.unreadable",
                 _ => "chat.attach.error.failed"
             });
             SendError = Strings.Format("chat.send.imageFailed", ("file", attachment.FileName), ("reason", attachment.Error));
@@ -597,6 +634,7 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             return;
         }
 
+        StopTyping();
         IsMessageSending = true;
         try
         {
@@ -604,15 +642,15 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
             switch (result)
             {
                 // The message may have been deleted while the request was on its way, which ended the edit already
-                case EditMessageResult.NoError when EditMessage?.Id == edited.Id:
+                case { IsSuccess: true } when EditMessage?.Id == edited.Id:
                     EndEdit();
                     break;
                 // A rejection is reported by the main window
-                case EditMessageResult.NoError or EditMessageResult.Rejected:
+                case { IsSuccess: true } or { IsRejected: true }:
                     break;
                 // The text stays in the input for another try
                 default:
-                    SendError = Strings.Get(result == EditMessageResult.TimedOut ? "chat.edit.timedOut" : "chat.edit.refused");
+                    SendError = Strings.Get(result.Error == ErrorCode.TimedOut ? "chat.edit.timedOut" : "chat.edit.refused");
                     break;
             }
         }
@@ -622,5 +660,10 @@ public sealed class ChatComposerVM : ReactiveObject, IDisposable
         }
     }
 
-    public void Dispose() => _sendCancellation?.Cancel();
+    public void Dispose()
+    {
+        StopTyping();
+        _typingDisposed = true;
+        _sendCancellation?.Cancel();
+    }
 }

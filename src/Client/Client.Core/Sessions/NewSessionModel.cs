@@ -18,13 +18,6 @@ public abstract record NewSessionOptions
 
 public sealed record NewHybridSessionOptions(
     WebRTCEngine EngineType,
-    VideoResolutions Resolution = VideoResolutions.FHD,
-    int? VideoBitrate = 2500,
-    bool IsAudioTransferEnabled = false,
-    bool IsDataChannelEnabled = false,
-    bool IsSimulcastEnabled = false,
-    bool IsTunnelingEnabled = false,
-    bool IsProxyActive = false,
     MediaSettings? Media = null
 ) : NewSessionOptions
 {
@@ -38,7 +31,9 @@ public sealed record NewChatSessionOptions(
     bool IsAttachmentsAllowed = true,
     bool IsVoiceMessageAllowed = true,
     bool IsVideoMessagesAllowed = true,
-    bool IsDelayedMessagesAllowed = true
+    bool IsDelayedMessagesAllowed = true,
+    ChatKind Kind = ChatKind.ServerChannel,
+    int[]? MemberIds = null
 ) : NewSessionOptions
 {
     public override SessionType SessionType => SessionType.Chat;

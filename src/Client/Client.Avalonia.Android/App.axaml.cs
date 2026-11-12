@@ -17,6 +17,8 @@ namespace Client.Droid;
 
 public partial class App : global::Avalonia.Application
 {
+    internal static IServiceProvider? Services { get; private set; }
+
     public override void Initialize()
     {
         Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
@@ -29,15 +31,11 @@ public partial class App : global::Avalonia.Application
         // Android has no windows: the application shows one root view
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
         {
-            // Before the container, so that every service gets a working logger from the start.
-            // The console ends up in logcat
-            Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions());
-            ClientLogging.LogUnhandledExceptions();
-
             var services = InitDependencies()
                 .AddClientLogging(Log.Logger)
                 .BuildServiceProvider();
 
+            Services = services;
             singleView.MainView = new MainView(services.GetRequiredService<MainWindowVM>(), services);
         }
 

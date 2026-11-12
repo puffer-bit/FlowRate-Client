@@ -12,6 +12,9 @@ namespace Client.Application.Ports;
 /// </summary>
 public interface IWebRTCTransport : IDisposable
 {
+    /// <summary>The capture of an outbound video track failed after starting.</summary>
+    event Action<string>? VideoCaptureFailed;
+
     /// <summary>
     /// Raised once the local description is set. The parameters have to be delivered to the SFU
     /// with transport.connect before the DTLS handshake can succeed.
@@ -35,6 +38,13 @@ public interface IWebRTCTransport : IDisposable
     event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     /// <summary>
+    /// Raised with the user and the source of an inbound video track when its decoder reports how it
+    /// decodes, before the first frame and again after it was rebuilt. Not raised where the transport
+    /// decodes without an <see cref="IVideoDecoder"/>. Raised on a thread of the track.
+    /// </summary>
+    event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
+
+    /// <summary>
     /// Raised with the ids of the inbound tracks the transport can receive from now on: their
     /// sections went through a negotiation round. The SFU must not send a track before that, since
     /// packets of a stream the transport does not know yet are attached to the wrong section, or
@@ -47,6 +57,14 @@ public interface IWebRTCTransport : IDisposable
     /// seconds while the transport runs. Raised on a thread of webrtcbin.
     /// </summary>
     event Action<TransportStatsSample>? StatsSampled;
+
+    /// <summary>
+    /// Raised with what the media, its encoders and decoders did over the last window, every
+    /// <see cref="Client.Core.Settings.DebugSettings.MediaPerfInterval"/> while the statistics of the
+    /// media are shown or written (<see cref="Client.Core.Settings.DebugSettings.IsMediaPerfNeeded"/>).
+    /// Raised on a timer thread.
+    /// </summary>
+    event Action<MediaPerfReport>? PerfSampled;
 
     WebRTCConnectionState ConnectionState { get; }
 
@@ -97,8 +115,11 @@ public interface IWebRTCTransport : IDisposable
     /// <param name="isEchoCancellationEnabled">
     /// Whether the voices played on the speakers are taken out of a microphone.
     /// </param>
+    /// <param name="isAutoGainControlEnabled">
+    /// Whether a quiet microphone is brought up to the level of speech. Other inputs are sent as they are.
+    /// </param>
     bool StartOutbound(OutboundTrack outbound, AudioInput input, double volume, VoiceGateOptions? voiceGate,
-        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled);
+        NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Starts sending a video track captured from <paramref name="input"/> to a producer the SFU created for it.
@@ -112,12 +133,12 @@ public interface IWebRTCTransport : IDisposable
     void SetOutboundVolume(string outboundId, double volume);
 
     /// <summary>
-    /// Makes a running audio track capture from another input, or with another noise suppression or
-    /// echo cancelling, without touching its section or its producer. A failure is only logged, and
+    /// Makes a running audio track capture from another input, or with another noise suppression,
+    /// echo cancelling or gain control, without touching its section or its producer. A failure is only logged, and
     /// the track then sends nothing until the next change.
     /// </summary>
     void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled);
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Changes the voice gate of a running microphone track, null sends it all the time.
@@ -133,6 +154,12 @@ public interface IWebRTCTransport : IDisposable
     /// Stops or resumes sending an outbound track without touching its section or its producer.
     /// </summary>
     bool SetOutboundMuted(string outboundId, bool isMuted);
+
+    /// <summary>
+    /// Starts or stops the preview of a screen we show, see <see cref="IScreenCapture.SetPreviewShown"/>.
+    /// Nothing happens for an outbound that is no screen.
+    /// </summary>
+    void SetOutboundPreviewShown(string outboundId, bool isShown);
 
     Task<bool> WaitUntilConnectedAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
 }

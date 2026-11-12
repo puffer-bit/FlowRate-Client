@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace Client.Avalonia.Controls.Menus;
 
@@ -32,6 +33,9 @@ public class MenuItemButton : Button
     public static readonly StyledProperty<IImage?> IconProperty =
         AvaloniaProperty.Register<MenuItemButton, IImage?>(nameof(Icon));
 
+    public static readonly StyledProperty<object?> IconContentProperty =
+        AvaloniaProperty.Register<MenuItemButton, object?>(nameof(IconContent));
+
     public static readonly StyledProperty<KeyGesture?> GestureProperty =
         AvaloniaProperty.Register<MenuItemButton, KeyGesture?>(nameof(Gesture));
 
@@ -46,6 +50,15 @@ public class MenuItemButton : Button
     {
         get => GetValue(IconProperty);
         set => SetValue(IconProperty, value);
+    }
+
+    /// <summary>
+    /// A control in the place of the <see cref="Icon"/>, for an icon that changes with its data.
+    /// </summary>
+    public object? IconContent
+    {
+        get => GetValue(IconContentProperty);
+        set => SetValue(IconContentProperty, value);
     }
 
     public KeyGesture? Gesture
@@ -68,7 +81,22 @@ public class MenuItemButton : Button
         if (change.Property == GestureProperty)
             GestureKeys = Split(Gesture);
         else if (change.Property == FlyoutProperty)
+        {
+            if (change.OldValue is PopupFlyoutBase oldSubmenu)
+                oldSubmenu.Opening -= OnSubmenuOpening;
+            if (change.NewValue is PopupFlyoutBase newSubmenu)
+                newSubmenu.Opening += OnSubmenuOpening;
             PseudoClasses.Set(SubmenuPseudoClass, Flyout != null);
+        }
+    }
+
+    private void OnSubmenuOpening(object? sender, EventArgs e)
+    {
+        // Flyout copies its overlay settings to Popup before raising Opening, so update
+        // the actual popup here. The presenter belongs to the visual tree of the menu.
+        if (sender is PopupFlyoutBase submenu)
+            submenu.Popup.SetCurrentValue(Popup.OverlayInputPassThroughElementProperty,
+                this.FindAncestorOfType<FlyoutPresenter>());
     }
 
     protected override void OnPointerEntered(PointerEventArgs e)

@@ -1,71 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
 using Client.Application.Chat;
 using Client.Services;
 using ReactiveUI;
 
 namespace Client.ViewModels.Sessions.Chat;
-
-/// <summary>
-/// A file picked in the file dialog, as the view hands it over.
-/// </summary>
-/// <param name="Key">
-/// What tells the file from another one, shown as a hint: its path, or the address the platform knows it by.
-/// </param>
-/// <param name="Open">Opens the content from its start; called every time the file is read.</param>
-public record PickedFile(string Name, string? Key, long Size, Func<Task<Stream>> Open);
-
-public static class PickedFiles
-{
-    /// <summary>
-    /// The files the platform gave, by the picker, a drop or the clipboard. Each is kept open to
-    /// be read later, when the message is sent.
-    /// </summary>
-    public static async Task<IReadOnlyList<PickedFile>> FromAsync(IEnumerable<IStorageItem> items)
-    {
-        var picked = new List<PickedFile>();
-        foreach (var item in items)
-        {
-            if (item is not IStorageFile file)
-                continue;
-
-            var properties = await file.GetBasicPropertiesAsync();
-            picked.Add(new PickedFile(file.Name, file.TryGetLocalPath() ?? file.Path.ToString(),
-                (long)(properties.Size ?? 0), file.OpenReadAsync));
-        }
-
-        return picked;
-    }
-
-    /// <summary>A picture that is not a file, as the clipboard holds a screenshot.</summary>
-    public static PickedFile FromBitmap(Bitmap bitmap, string name)
-    {
-        using var encoded = new MemoryStream();
-        bitmap.Save(encoded);
-        var bytes = encoded.ToArray();
-        return new PickedFile(name, null, bytes.Length,
-            () => Task.FromResult<Stream>(new MemoryStream(bytes, writable: false)));
-    }
-
-    public static FilePickerFileType AnyFileType(string name) => new(name)
-    {
-        Patterns = ["*"],
-        MimeTypes = ["*/*"],
-        AppleUniformTypeIdentifiers = ["public.item"]
-    };
-
-    public static FilePickerFileType ImageFileType(string name) => new(name)
-    {
-        Patterns = ChatComposerVM.ImageFilePatterns,
-        MimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"],
-        AppleUniformTypeIdentifiers = ["public.image"]
-    };
-}
 
 /// <summary>
 /// A file attached to the message being typed, shown as a card above the input. An image goes as one and

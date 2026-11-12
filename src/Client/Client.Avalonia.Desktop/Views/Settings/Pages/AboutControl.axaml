@@ -3,6 +3,7 @@
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:releaseText="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
@@ -21,6 +22,22 @@
         <!-- Each library is alone in the container of its item, so its row cannot tell that rows stand above it -->
         <Style Selector="ContentPresenter:nth-child(n+2) > ui|SettingsRow /template/ Border#separator">
             <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Button.releaseAction:pointerover /template/ ContentPresenter, Button.releaseAction:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBorderBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <Style Selector="Expander.releaseNote /template/ ToggleButton /template/ ContentPresenter, Expander.releaseNote /template/ ToggleButton:checked /template/ ContentPresenter, Expander.releaseNote /template/ ToggleButton:pointerover /template/ ContentPresenter, Expander.releaseNote /template/ ToggleButton:pressed /template/ ContentPresenter, Expander.releaseNote /template/ ToggleButton:checked:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Expander.releaseNote /template/ ToggleButton:pointerover /template/ Border#ToggleButtonBackground, Expander.releaseNote /template/ ToggleButton:checked:pointerover /template/ Border#ToggleButtonBackground, Expander.releaseNote /template/ ToggleButton:pressed /template/ Border#ToggleButtonBackground, Expander.releaseNote /template/ ToggleButton:checked:pressed /template/ Border#ToggleButtonBackground">
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <Style Selector="Expander.releaseNote /template/ ToggleButton:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:checked:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:pressed /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:checked:pressed /template/ Border#ExpandCollapseChevronBorder">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
     </UserControl.Styles>
 
@@ -64,6 +81,137 @@
                 </Button>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="about.releaseNotes"/>
+        <StackPanel ui:SettingsPage.SearchKey="about.releaseNotes" Spacing="10"
+                    DataContext="{Binding $parent[UserControl].((pagesVm:AboutControlVM)DataContext).ReleaseHistory}" x:DataType="pagesVm:ReleaseHistoryVM">
+            <TextBlock Text="{l:Text settings.about.releaseNotes.description}"
+                       TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                <Border Background="{DynamicResource SettingsCardBackgroundBrush}"
+                        BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1"
+                        CornerRadius="9" Padding="4" MaxWidth="300" HorizontalAlignment="Left">
+                    <ListBox SelectedIndex="{Binding ChannelIndex}" Background="Transparent" Padding="0"
+                             BorderThickness="0" MinWidth="190" SelectionMode="Single"
+                             AutomationProperties.Name="{l:Text settings.about.releaseNotes.channel}">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerTheme>
+                            <ControlTheme TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="18,8"/>
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <Border Name="ChannelBorder" CornerRadius="6" Background="Transparent"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter Name="PART_ContentPresenter"
+                                                              Content="{TemplateBinding Content}"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter>
+                                <Style Selector="^:pointerover /template/ Border#ChannelBorder">
+                                    <Setter Property="Background" Value="{DynamicResource SettingsCardBorderBrush}"/>
+                                </Style>
+                                <Style Selector="^:selected /template/ Border#ChannelBorder">
+                                    <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+                                </Style>
+                                <Style Selector="^:focus-visible /template/ Border#ChannelBorder">
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+                                </Style>
+                            </ControlTheme>
+                        </ListBox.ItemContainerTheme>
+                        <ListBoxItem Content="{l:Text settings.about.releaseNotes.stable}"/>
+                        <ListBoxItem Content="{l:Text settings.about.releaseNotes.dev}"/>
+                    </ListBox>
+                </Border>
+                <Button Classes="releaseAction" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsLoading}"
+                        VerticalAlignment="Center" Content="{l:Text settings.about.releaseNotes.refresh}"/>
+            </WrapPanel>
+            <StackPanel Spacing="8" IsVisible="{Binding IsLoading}">
+                <ProgressBar IsIndeterminate="True" Height="3"/>
+                <TextBlock Text="{l:Text settings.about.releaseNotes.loading}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+            </StackPanel>
+            <Border IsVisible="{Binding HasError}" Padding="18" CornerRadius="{StaticResource SurfaceCornerRadius}"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}">
+                <TextBlock Text="{l:Text settings.about.releaseNotes.error}" TextWrapping="Wrap"/>
+            </Border>
+            <Border IsVisible="{Binding IsEmpty}" Padding="18" CornerRadius="{StaticResource SurfaceCornerRadius}"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}">
+                <TextBlock Text="{l:Text settings.about.releaseNotes.empty}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Releases}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Spacing="8"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="pagesVm:ReleaseNote">
+                        <Border Background="{DynamicResource SettingsCardBackgroundBrush}" CornerRadius="10"
+                                BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
+                            <Expander Classes="releaseNote" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                      IsExpanded="{Binding IsExpanded, Mode=OneTime}"
+                                      BorderThickness="0" Background="Transparent" CornerRadius="10" Padding="0">
+                                <Expander.Header>
+                                    <StackPanel Spacing="2" Margin="2,0">
+                                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Date}" FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+                                </Expander.Header>
+                                <StackPanel Spacing="10" Margin="8,0,8,12">
+                                    <ItemsControl ItemsSource="{Binding Sections}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate><StackPanel Spacing="10"/></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="pagesVm:ReleaseNoteSection">
+                                                <StackPanel Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding HasHeading}">
+                                                        <Image Width="15" Height="15" VerticalAlignment="Center"
+                                                               Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                                                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="13"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                    <ItemsControl ItemsSource="{Binding Blocks}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="pagesVm:ReleaseNoteBlock">
+                                                                <Grid ColumnDefinitions="Auto,*">
+                                                                    <TextBlock Text="{Binding Marker}" IsVisible="{Binding IsListItem}"
+                                                                               Width="16" FontSize="13" LineHeight="18"
+                                                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                                    <releaseText:ReleaseNoteText Grid.Column="1" Markdown="{Binding Markdown}"
+                                                                         TextWrapping="Wrap" FontSize="13" LineHeight="18"
+                                                                         Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Classes="releaseAction" Click="OnReleaseClick" Tag="{Binding Url}" HorizontalAlignment="Left"
+                                            Padding="8,5" FontSize="12" Background="Transparent"
+                                            Foreground="{DynamicResource SecondaryTextBrush}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Image Source="{StaticResource GitHubIcon}" Width="16" Height="16"/>
+                                            <TextBlock Text="{l:Text settings.about.releaseNotes.open}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Expander>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
 
         <controls:SettingsHeader services:SettingText.Section="about.libraries"/>
         <ui:SettingsCard ItemsSource="{Binding Libraries}">

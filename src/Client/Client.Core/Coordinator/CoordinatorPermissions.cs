@@ -25,8 +25,11 @@ public sealed class CoordinatorPermissions
     /// <summary>The highest position among the roles of the current user; 0 for the everyone role alone.</summary>
     public int HighestPosition { get; }
 
-    public CoordinatorPermissions(IReadOnlyList<RoleModel> roles, IReadOnlyCollection<int> roleIds)
+    public int CurrentUserId { get; }
+
+    public CoordinatorPermissions(IReadOnlyList<RoleModel> roles, IReadOnlyCollection<int> roleIds, int currentUserId = 0)
     {
+        CurrentUserId = currentUserId;
         Roles = roles.OrderBy(role => role.Position).ToList();
         RoleIds = roleIds;
         Granted = PermissionsOf(roleIds);
@@ -38,10 +41,23 @@ public sealed class CoordinatorPermissions
     public bool Has(Permission permission) => (Granted & permission) == permission;
 
     /// <summary>What the current user may do in the session, after its overrides.</summary>
-    public Permission InSession(SessionModel session) =>
+    public Permission InSession(SessionModel session)
+    {
+        if (session is ChatSessionModel { IsPrivate: true } chat)
+        {
+            if (!chat.MemberIds.Contains(CurrentUserId)) return Permission.None;
+            var granted = Permission.ViewSessions | Permission.SendMessages | Permission.AttachFiles;
+            return chat.Kind == ChatKind.Group && chat.AdminUserId == CurrentUserId
+                ? granted | Permission.ManageSessions | Permission.ManageMessages : granted;
+        }
+        return InSession(session, RoleIds);
+    }
+
+    /// <summary>What a user with the given roles may do in this session.</summary>
+    public Permission InSession(SessionModel session, IReadOnlyCollection<int> roleIds) =>
         Everyone is { } everyone
-            ? SessionPermissions.Resolve(Granted, session.PermissionOverrides, everyone.Id, RoleIds)
-            : Granted;
+            ? SessionPermissions.Resolve(PermissionsOf(roleIds), session.PermissionOverrides, everyone.Id, roleIds)
+            : PermissionsOf(roleIds);
 
     public bool HasIn(SessionModel session, Permission permission) =>
         (InSession(session) & permission) == permission;
@@ -101,5 +117,5 @@ public sealed class CoordinatorPermissions
 
     /// <summary>What the host of a hybrid session may do in it, whatever its roles.</summary>
     public const Permission HostPermissions =
-        Permission.ManageSessions | Permission.KickMembers | Permission.BanMembers | Permission.ApproveMembers;
+        Permission.ManageSessions | Permission.KickMembers | Permission.ApproveMembers;
 }

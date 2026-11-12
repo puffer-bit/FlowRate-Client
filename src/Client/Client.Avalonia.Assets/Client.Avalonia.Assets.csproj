@@ -21,6 +21,9 @@
       <AvaloniaResource Include="Icons\**" />
       <AvaloniaResource Include="Sounds\*.wav" />
       <AvaloniaResource Include="Fonts\*.ttf" />
+      <AvaloniaResource Include="AppIcons\**\svg\*.svg" />
+      <AvaloniaResource Include="AppIcons\**\png\*.png" />
+      <AvaloniaResource Include="AppIcons\**\*.ico" />
     </ItemGroup>
     
     <ItemGroup>

@@ -77,8 +77,10 @@ public class StorageServiceTests
     [Fact]
     public async Task Usage_AndClearing()
     {
-        _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1).Replace([Message(1), Message(2)], 2, true);
-        await _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1).LoadNewestAsync(1);
+        var cache = _caches.Open(Chat.CoordinatorInstanceId, Chat.ChatId, 1);
+        cache.Replace([Message(1), Message(2)], 2, true);
+        // Reads on the same cache wait for its queued writes.
+        await cache.LoadNewestAsync(1);
         _mediaCache.Size = 700;
 
         Assert.Equal(new StorageUsage(2, 20, 700), await _service.GetUsageAsync());
@@ -106,6 +108,9 @@ public class StorageServiceTests
         public Task<string?> StoreAsync(string coordinatorInstanceId, int imageId, bool preview, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
         public string? FindAvatar(string coordinatorInstanceId, string avatarId) => null;
+        public string? FindFile(string coordinatorInstanceId, int fileId, string fileName) => null;
+        public Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write) =>
+            Task.FromResult<string?>(null);
         public Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
     }

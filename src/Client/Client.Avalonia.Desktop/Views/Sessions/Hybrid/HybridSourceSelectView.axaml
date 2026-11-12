@@ -1,26 +1,28 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+        xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
         xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="520"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="520"
         x:Class="Client.Views.Sessions.Hybrid.HybridSourceSelectView"
         x:DataType="hybridVm:VideoSourceSelectWindowVM"
         x:CompileBindings="True"
         Background="{DynamicResource GeneralBrush}"
-        Width="500"
-        MaxHeight="620">
+        MaxWidth="440" HorizontalAlignment="Stretch"
+        MaxHeight="560">
 
     <UserControl.Styles>
         <!-- The two kinds of sources, one of which is chosen from at a time -->
         <Style Selector="Button.kind">
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Padding" Value="8,4"/>
         </Style>
         <Style Selector="Border.sources">
-            <Setter Property="Height" Value="170"/>
+            <Setter Property="Height" Value="120"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="ClipToBounds" Value="True"/>
             <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
@@ -30,27 +32,31 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, 1, *, 1, Auto">
+    <common:DialogLayout>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text source.title}"/>
-            </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text source.hint}"/>
-        </StackPanel>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource ScreenShareIcon}" IsVisible="{Binding !IsCameraMode}"
+                             Title="{l:Text source.title}" Subtitle="{l:Text source.hint}"/>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource VideoCameraIcon}" IsVisible="{Binding IsCameraMode}"
+                             Title="{l:Text camera.source.title}" Subtitle="{l:Text camera.source.hint}"/>
 
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
 
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20,16" Spacing="18">
+        <ScrollViewer x:Name="SettingsScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16,12" Spacing="12">
 
+                <StackPanel Spacing="6" IsVisible="{Binding IsCameraMode}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text camera.source.title}"/>
+                    <ComboBox x:Name="CameraSourceBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Cameras}" SelectedItem="{Binding SelectedCamera}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="hint" IsVisible="{Binding !Cameras.Count}" Text="{l:Text camera.source.empty}"/>
+                </StackPanel>
                 <!-- The source, picked here: the application lists the windows and monitors itself -->
-                <StackPanel Spacing="8" IsVisible="{Binding !UsesSystemPicker}">
+                <StackPanel Spacing="6" IsVisible="{Binding ListsScreens}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text source.field.source}"/>
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
-                        <Button Grid.Column="0" Classes="choiceCard kind"
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="6">
+                        <Button x:Name="WindowsSourceButton" Grid.Column="0" Classes="choiceCard kind"
                                 Classes.selected="{Binding IsWindowsMode}"
                                 Command="{Binding SelectWindowsCommand}">
                             <TextBlock Text="{l:Text source.applications}"/>
@@ -98,9 +104,9 @@
                 </StackPanel>
 
                 <!-- The source, picked in the dialog of the system, which is called from here -->
-                <StackPanel Spacing="8" IsVisible="{Binding UsesSystemPicker}">
+                <StackPanel Spacing="6" IsVisible="{Binding UsesSystemPicker}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text source.field.source}"/>
-                    <Border Padding="14,12" CornerRadius="8" Background="{DynamicResource DarkBackgroundBrush}">
+                    <Border Padding="10,8" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource DarkBackgroundBrush}">
                         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
                             <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
                                 <Image Source="{StaticResource ScreenShareIcon}" IsVisible="{Binding !HasSystemInput}"/>
@@ -124,7 +130,7 @@
                                            Text="{Binding SystemInputSize}"/>
                             </StackPanel>
 
-                            <Button Grid.Column="2" VerticalAlignment="Center" MinWidth="96"
+                            <Button x:Name="SystemSourceButton" Grid.Column="2" VerticalAlignment="Center" MinWidth="96"
                                     HorizontalContentAlignment="Center"
                                     Command="{Binding PickSystemSourceCommand}">
                                 <Panel>
@@ -143,9 +149,9 @@
                 </StackPanel>
 
                 <!-- The sound, from what is shown: the window, or the whole system for a monitor -->
-                <StackPanel Spacing="8" IsVisible="{Binding HasAudioToggle}">
+                <StackPanel Spacing="6" IsVisible="{Binding HasAudioToggle}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text source.field.audio}"/>
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="6">
                         <Button Grid.Column="0" Classes="choiceCard kind"
                                 Classes.selected="{Binding IsAudioDisabled}"
                                 Command="{Binding DisableAudioCommand}">
@@ -163,100 +169,78 @@
                 </StackPanel>
 
                 <!-- The sound, from an application chosen apart: the system dialog does not tell whose window it is -->
-                <StackPanel Spacing="8" IsVisible="{Binding HasAudioApps}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.audio}"/>
-                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding AudioApps}"
-                              SelectedItem="{Binding SelectedAudioApp}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="hybridVm:AudioAppOptionVM">
-                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                <StackPanel Spacing="6" IsVisible="{Binding HasAudioApps}">
+                    <Grid ColumnDefinitions="126, *" ColumnSpacing="12">
+                        <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text source.field.audio}"/>
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding AudioApps}"
+                                  SelectedItem="{Binding SelectedAudioApp}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="hybridVm:AudioAppOptionVM">
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
                     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text source.audio.app.hint}"/>
                     <TextBlock Classes="hint" TextWrapping="Wrap" IsVisible="{Binding HasNoAudioApps}"
                                Text="{l:Text source.audio.app.empty}"/>
                 </StackPanel>
 
-                <!-- The options of the share, one block per option -->
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.resolution}"/>
-                    <ItemsControl ItemsSource="{Binding Resolutions}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" ColumnSpacing="10"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
+                <!-- Quality controls share a compact label/value layout. -->
+                <Grid ColumnDefinitions="126, *" RowDefinitions="Auto, Auto, Auto, Auto"
+                      ColumnSpacing="12" RowSpacing="10">
+                    <TextBlock Classes="fieldLabel" VerticalAlignment="Center"
+                               Text="{l:Text source.field.resolution}"/>
+                    <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Resolutions}" SelectedItem="{Binding SelectedResolution}"
+                              ToolTip.Tip="{l:Text source.resolution.hint}">
+                        <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="hybridVm:ScreenShareOptionVM">
-                                <Button Classes="choiceCard kind"
-                                        Classes.selected="{Binding IsSelected}"
-                                        Command="{Binding SelectCommand}">
+                                <TextBlock Text="{Binding Label}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="1" Classes="fieldLabel" VerticalAlignment="Center"
+                               Text="{l:Text source.field.framerate}"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Framerates}" SelectedItem="{Binding SelectedFramerate}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="hybridVm:ScreenShareOptionVM">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Text="{Binding Label}"/>
-                                </Button>
+                                    <Image Width="16" Height="16" VerticalAlignment="Center"
+                                           Source="{StaticResource LightningIcon}" IsVisible="{Binding IsDemanding}"/>
+                                </StackPanel>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text source.resolution.hint}"/>
-                </StackPanel>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
 
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.framerate}"/>
-                    <ItemsControl ItemsSource="{Binding Framerates}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" ColumnSpacing="8"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="hybridVm:ScreenShareOptionVM">
-                                <!-- Four rates share the row, so these cards are narrower than the others -->
-                                <Button Classes="choiceCard kind" Padding="6,8"
-                                        Classes.selected="{Binding IsSelected}"
-                                        Command="{Binding SelectCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center">
-                                        <Image Width="18" Height="18" VerticalAlignment="Center"
-                                               Source="{StaticResource LightningIcon}"
-                                               IsVisible="{Binding IsDemanding}"/>
-                                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
-                                    </StackPanel>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text source.field.bitrate}"/>
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
-                        <Button Grid.Column="0" Classes="choiceCard kind"
-                                Classes.selected="{Binding IsAutoBitrate}"
+                    <TextBlock Grid.Row="2" Classes="fieldLabel" VerticalAlignment="Center"
+                               IsEnabled="{Binding !IsBitrateOverridden}" Text="{l:Text source.field.bitrate}"/>
+                    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*, Auto" ColumnSpacing="6"
+                          IsEnabled="{Binding !IsBitrateOverridden}">
+                        <Button Classes="choiceCard kind" Classes.selected="{Binding IsAutoBitrate}"
                                 Command="{Binding SelectAutoBitrateCommand}">
-                            <TextBlock Text="{Binding AutoBitrateLabel}"/>
+                            <TextBlock Text="{Binding AutoBitrateLabel}" TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding AutoBitrateLabel}"/>
                         </Button>
-                        <Button Grid.Column="1" Classes="choiceCard kind"
-                                Classes.selected="{Binding IsCustomBitrate}"
+                        <Button Grid.Column="1" Classes="choiceCard kind" Classes.selected="{Binding IsCustomBitrate}"
                                 Command="{Binding SelectCustomBitrateCommand}">
                             <TextBlock Text="{l:Text source.bitrate.custom}"/>
                         </Button>
                     </Grid>
-
-                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8" IsVisible="{Binding IsCustomBitrate}">
-                        <TextBox Grid.Column="0" Text="{Binding CustomBitrate}" MaxLength="6"/>
+                    <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*, Auto" ColumnSpacing="8"
+                          IsVisible="{Binding IsCustomBitrate}" IsEnabled="{Binding !IsBitrateOverridden}">
+                        <TextBox Text="{Binding CustomBitrate}" MaxLength="6"/>
                         <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
                                    Text="{l:Text source.bitrate.unit}"/>
                     </Grid>
+                </Grid>
 
-                    <!-- Only a warning: the share starts with such a bitrate all the same -->
-                    <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
-                            BorderBrush="{DynamicResource WarningBrush}"
-                            IsVisible="{Binding BitrateWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
-                            <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
-                            <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding BitrateWarning}"/>
-                        </Grid>
-                    </Border>
-                </StackPanel>
+                <banners:WarningBanner IsVisible="{Binding IsBitrateOverridden}"
+                                       Header="{l:Text source.bitrate.encoderOverride.title}"
+                                       Message="{Binding EncoderBitrateWarning}"/>
 
                 <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
                         BorderBrush="{DynamicResource ErrorBrush}"
@@ -269,15 +253,12 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
-        <StackPanel Grid.Row="4" Margin="20,12" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{l:Text common.cancel}"/>
-                </StackPanel>
+        <StackPanel Grid.Row="4" Margin="16,10" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
             </Button>
 
             <Button Classes="save" Command="{Binding GoLive}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left">
@@ -288,5 +269,5 @@
                 </StackPanel>
             </Button>
         </StackPanel>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>

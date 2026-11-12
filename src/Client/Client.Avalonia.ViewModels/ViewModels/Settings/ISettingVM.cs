@@ -2,7 +2,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Client.Application.Settings.Search;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings;
 
@@ -22,8 +23,13 @@ public interface ISettingVM : IReactiveObject
     /// </summary>
     IReadOnlyList<SettingSearchEntry> SearchEntries => [];
 
+    /// <summary>
+    /// The sections of the page that the list of tabs offers as sub-items while the tab is open.
+    /// </summary>
+    IReadOnlyList<SettingAnchor> Anchors => [];
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; }
-    
+
     /// <summary>
     /// Restores the defaults of this tab. Saved servers, profiles and the remembered auto
     /// connection are data, not settings, and are kept.

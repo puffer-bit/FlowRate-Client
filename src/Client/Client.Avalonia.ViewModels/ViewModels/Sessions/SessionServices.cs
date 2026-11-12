@@ -7,6 +7,7 @@ using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Services;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.ViewModels.Sessions;
 
@@ -17,7 +18,9 @@ public sealed record ChatSessionServices(
     IChatCacheStore Caches,
     IChatMediaUploader MediaUploader,
     IChatImageService Images,
-    IDismissedPromptsRepository DismissedPrompts);
+    IDismissedPromptsRepository DismissedPrompts,
+    IMediaCache MediaCache,
+    IAppearanceService? Appearance = null);
 
 /// <summary>
 /// The services the hybrid session we are in uses. Resolved only when a session is entered: a
@@ -34,6 +37,7 @@ public sealed record HybridSessionServices(
     INotificationService Notifications,
     IVoiceActivityService VoiceActivity,
     IScreenWatchService ScreenWatch,
+    PeerStatsService PeerStats,
     IPeerPlaybackService Playback,
     IHybridSessionFactory SessionFactory,
     IScreenSourceProvider? ScreenSources,
@@ -41,4 +45,6 @@ public sealed record HybridSessionServices(
     IMediaCapabilities MediaCapabilities,
     IScreenShareSettingsRepository ScreenShareSettings,
     IDismissedPromptsRepository DismissedPrompts,
-    ICoordinatorStateRepository CoordinatorStates);
+    ICoordinatorStateRepository CoordinatorStates,
+    ICameraDeviceProvider? Cameras = null,
+    ICameraPreferencesRepository? CameraPreferences = null);

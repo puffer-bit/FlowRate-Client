@@ -40,6 +40,7 @@ capsfilter
 appsrc
 appsink
 fakesink
+clocksync
 
 # Video
 videoconvert
@@ -66,3 +67,25 @@ rtpvp8depay
 
 # Screen capture, registered only when libpipewire is on the system
 ?pipewiresrc
+
+# Chat audio playback
+filesrc
+decodebin
+id3demux
+typefind
+mpegaudioparse
+mpg123audiodec
+wavparse
+
+# Chat video containers
+playbin
+qtdemux
+matroskademux
+avidemux
+
+# AAC audio in MP4 attachments
+fdkaacdec
+
+# Camera capture
+v4l2src
+jpegdec

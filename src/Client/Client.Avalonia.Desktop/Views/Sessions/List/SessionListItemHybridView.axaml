@@ -69,10 +69,19 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="listVm:MoveTargetVM">
-                                                <menus:MenuItemButton Content="{Binding Name}"
-                                                                      menus:FlyoutMenu.CloseOnClick="True"
-                                                                      Command="{Binding MoveHereCommand}"
-                                                                      CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                                <StackPanel>
+                                                    <menus:MenuItemButton Content="{l:Text sessions.category.none}"
+                                                                          Icon="{StaticResource DashInCircleIcon}"
+                                                                          IsVisible="{Binding IsUncategorized}"
+                                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                                          Command="{Binding MoveHereCommand}"
+                                                                          CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                                    <menus:MenuItemButton Content="{Binding Name}"
+                                                                          IsVisible="{Binding !IsUncategorized}"
+                                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                                          Command="{Binding MoveHereCommand}"
+                                                                          CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -91,11 +100,16 @@
             <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                 <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                     <Image Source="{StaticResource HybridSessionIcon}"
-                           Opacity="{Binding IsCorrupted, Converter={StaticResource BoolToOpacityConverter}}"/>
+                           Opacity="{Binding HasStatusWarning, Converter={StaticResource BoolToOpacityConverter}}"/>
                     <Image Width="10" Height="10" Margin="0,0,-3,-3"
                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
                            IsVisible="{Binding IsCorrupted}"
                            ToolTip.Tip="{l:Text sessions.loadFailed}"
+                           Source="{StaticResource CrossIcon}"/>
+                    <Image Width="10" Height="10" Margin="0,0,-3,-3"
+                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           IsVisible="{Binding ShowsFullWarning}"
+                           ToolTip.Tip="{l:Text sessions.full}"
                            Source="{StaticResource CrossIcon}"/>
                 </Panel>
 

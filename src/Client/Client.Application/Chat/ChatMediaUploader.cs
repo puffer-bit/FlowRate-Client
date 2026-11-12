@@ -51,6 +51,8 @@ public enum ChatMediaUploadResult
     TooLarge,
     TooManyUploads,
     StorageFull,
+    /// <summary>The file could not be read here: gone, locked by another program, or not ours to read.</summary>
+    Unreadable,
     Failed
 }
 
@@ -95,6 +97,10 @@ public class ChatMediaUploader : IChatMediaUploader
         {
             return ChatMediaUploadResult.Canceled;
         }
+        catch (Exception exception) when (IsUnreadable(exception))
+        {
+            return ChatMediaUploadResult.Unreadable;
+        }
 
         if (state.Preview is not { } preview || !Limits.ChatImageMimeTypes.Contains(preview.MimeType))
             return ChatMediaUploadResult.NotAnImage;
@@ -114,9 +120,18 @@ public class ChatMediaUploader : IChatMediaUploader
         }
 
         var size = Math.Max(source.Size, 1);
-        var result = await UploadAsync(session, new MediaUpload(chatId, MediaUploadKind.Image, preview.MimeType,
-                source.Size, source.Open, state.UploadId),
-            progress == null ? null : new Progress(progress, size), id => state.UploadId = id, cancellationToken);
+        MediaTransferResult result;
+        try
+        {
+            result = await UploadAsync(session, new MediaUpload(chatId, MediaUploadKind.Image, preview.MimeType,
+                    source.Size, source.Open, state.UploadId),
+                progress == null ? null : new Progress(progress, size), id => state.UploadId = id, cancellationToken);
+        }
+        catch (Exception exception) when (IsUnreadable(exception))
+        {
+            return ChatMediaUploadResult.Unreadable;
+        }
+
         if (result != MediaTransferResult.NoError)
             return ResultOf(result);
 
@@ -143,10 +158,19 @@ public class ChatMediaUploader : IChatMediaUploader
         if (source.Size <= 0)
             return ChatMediaUploadResult.Empty;
 
-        var result = await UploadAsync(session, new MediaUpload(chatId, MediaUploadKind.File,
-                FileMimeTypes.Of(source.FileName), source.Size, source.Open, state.UploadId),
-            progress == null ? null : new Progress(progress, source.Size), id => state.UploadId = id,
-            cancellationToken);
+        MediaTransferResult result;
+        try
+        {
+            result = await UploadAsync(session, new MediaUpload(chatId, MediaUploadKind.File,
+                    FileMimeTypes.Of(source.FileName), source.Size, source.Open, state.UploadId),
+                progress == null ? null : new Progress(progress, source.Size), id => state.UploadId = id,
+                cancellationToken);
+        }
+        catch (Exception exception) when (IsUnreadable(exception))
+        {
+            return ChatMediaUploadResult.Unreadable;
+        }
+
         if (result != MediaTransferResult.NoError)
             return ResultOf(result);
 
@@ -191,6 +215,10 @@ public class ChatMediaUploader : IChatMediaUploader
             ? cleaned[..(Limits.FileNameMaxLength - extension.Length)] + extension
             : cleaned[..Limits.FileNameMaxLength];
     }
+
+    // Reading the picked file failed, as Windows refuses a file another program writes to without
+    // sharing it; the transfer itself reports its network failures as results
+    private static bool IsUnreadable(Exception exception) => exception is IOException or UnauthorizedAccessException;
 
     private static ChatMediaUploadResult ResultOf(MediaTransferResult result) => result switch
     {

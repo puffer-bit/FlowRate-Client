@@ -6,7 +6,21 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <application android:label="FlowRate">
+    <!-- Voice -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- SCO call routing on Android 7–11; newer versions use AudioManager communication devices. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+
+    <!-- The voice session off the screen, see Platform/Calls/CallService -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application android:label="FlowRate"
+                 android:icon="@mipmap/ic_launcher"
+                 android:roundIcon="@mipmap/ic_launcher">
 
         <service
                 android:name="Client.Droid.Platform.Firebase.ApplicationFirebaseMessagingService"

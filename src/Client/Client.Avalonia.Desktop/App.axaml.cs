@@ -1,27 +1,29 @@
 using System;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Client.Api;
 using Client.Application;
 using Client.GStreamer.Loader;
+using Client.GStreamer.WebRTC;
 using Client.Infrastructure;
+using Client.LibWebRTC;
 using Client.OpenAL;
 using Client.Services;
 using Client.Services.HotKeys;
 using Client.Services.Keyring;
+using Client.Services.Media;
+using Client.Services.Chat;
 using Client.Services.ScreenCast;
 using Client.Services.Tray;
 using Client.Services.Updates;
 using Client.Application.Ports;
 using Client.Tools.Logging;
+using Client.Tools.AppInfo;
 using Client.Views.Common;
-#if DEBUG
-using HotAvalonia;
-#endif
 using Microsoft.Extensions.DependencyInjection;
 using Client.Application.Settings;
 using Client.Application.Sounds;
@@ -41,16 +43,12 @@ public partial class App : global::Avalonia.Application
     
     public override void Initialize()
     {
-        // The saved language is in the database, which is read after the main window is shown
+        global::Client.Avalonia.Styles.Animation.FlyoutMotion.Initialize();
+
+        // The saved language is applied after the database is unlocked, before the window is shown.
         new LanguageService().Apply(null);
 
         AvaloniaXamlLoader.Load(this);
-#if DEBUG
-        if (Debugger.IsAttached)
-        {
-            this.UseHotReload(); 
-        }
-#endif
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -62,30 +60,60 @@ public partial class App : global::Avalonia.Application
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Before the main window: the features are applied while it is already shown
+            // Subscribe before startup applies the saved window chrome.
             ExperimentalFeatures.Changed += () => WindowChrome.Apply(ExperimentalFeatures.UseCustomTitleBar);
 
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = Services.GetRequiredService<MainWindowVM>(),
                 Sounds = Services.GetRequiredService<ISoundService>(),
             };
             PlayErrorNotifications(Services.GetRequiredService<INotificationService>(),
                 Services.GetRequiredService<ISoundService>());
-            _trayService = new TrayService(desktop, desktop.MainWindow, Services.GetRequiredService<IBehaviorService>(),
-                Services.GetRequiredService<ILogger<TrayService>>());
 
             // Before the settings are read: the keys follow them once they are
             var hotKeys = Services.GetRequiredService<IHotKeysService>();
-            WindowHotKeys.Attach(desktop.MainWindow, hotKeys);
+            WindowHotKeys.Attach(mainWindow, hotKeys);
             var globalHotKeys = new GlobalHotKeys(hotKeys, Services.GetRequiredService<ILogger<GlobalHotKeys>>());
-            globalHotKeys.Start();
+            if (!LaunchOptions.Current.SafeMode)
+                globalHotKeys.Start();
 
             desktop.Exit += (_, _) =>
             {
                 globalHotKeys.Dispose();
-                _trayService.Dispose();
+                Services.GetRequiredService<ChatAudioSession>().Dispose();
+                Services.GetRequiredService<ChatVideoSession>().Dispose();
+                _trayService?.Dispose();
             };
+
+            // Leave MainWindow unset while the lifetime starts, otherwise Avalonia shows it before
+            // the database has supplied the theme, custom colors, scale and window decorations.
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    await mainWindow.InitializeBeforeShowAsync(() =>
+                    {
+                        desktop.MainWindow = mainWindow;
+                        if (!mainWindow.IsVisible)
+                            mainWindow.Show();
+                        _trayService ??= new TrayService(desktop, mainWindow,
+                            Services.GetRequiredService<IBehaviorService>(),
+                            Services.GetRequiredService<ILogger<TrayService>>());
+                    });
+                    // Prompts during unlock must stay visible; minimize only once initialization completes.
+                    if (LaunchOptions.Current.Minimized)
+                        _trayService?.HideToTray();
+                    // Requests received during startup are replayed once initialization has finished.
+                    Program.Instance?.SetActivationHandler(() => Dispatcher.UIThread.Post(() =>
+                        _trayService?.ShowWindow()));
+                }
+                catch (Exception exception)
+                {
+                    Log.Fatal(exception, "Application initialization failed");
+                    desktop.Shutdown(-1);
+                }
+            });
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -111,10 +139,19 @@ public partial class App : global::Avalonia.Application
             .AddInfrastructure()
             .AddScreenCast()
             .AddGStreamer()
+            .AddGStreamerWebRTC()
+            .AddLibWebRTC()
             .AddOpenAL();
 
+        // The engine of each session follows the experimental setting
+        services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
+        services.AddSingleton<Client.Services.ChatMediaPlayback>();
+        services.AddSingleton<ChatAudioSession>();
+        services.AddSingleton<ChatVideoSession>();
+
         // Over the one of AddApplication, which does nothing
-        services.AddSingleton<IAppUpdater, VelopackUpdater>();
+        if (!LaunchOptions.Current.DisableUpdates)
+            services.AddSingleton<IAppUpdater, VelopackUpdater>();
 
         // Over the one of AddApplication, which has no keyring
         if (OperatingSystem.IsLinux())

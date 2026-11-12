@@ -5,6 +5,9 @@ public class AudioSettings
     public const double MinInputVolume = 0.0;
     public const double MaxInputVolume = 2.0;
 
+    public const double MinOutputVolume = 0.0;
+    public const double MaxOutputVolume = 2.0;
+
     public const double MinSoundsVolume = 0.0;
     public const double MaxSoundsVolume = 1.0;
 
@@ -16,6 +19,13 @@ public class AudioSettings
     /// Stable id of the chosen input device, or null for the system default one.
     /// </summary>
     public string? InputDeviceId { get; set; }
+
+    /// <summary>Stable id of the output device, or null for the system default.</summary>
+    public string? OutputDeviceId { get; set; }
+    public string? OutputDeviceName { get; set; }
+
+    /// <summary>Playback gain for calls and microphone monitoring; 1.0 keeps the level unchanged.</summary>
+    public double OutputVolume { get; set; } = 1.0;
     
     /// <summary>
     /// Name of the chosen device, used to find it again when the backend changes its id.
@@ -57,6 +67,12 @@ public class AudioSettings
     /// not hear themselves back. Headphones need none, but it does them no harm.
     /// </summary>
     public bool IsEchoCancellationEnabled { get; set; }
+
+    /// <summary>
+    /// Whether a quiet microphone is brought up to the level speech is expected at. Off sends the
+    /// voice as loud as the device delivers it, with only the input volume on top.
+    /// </summary>
+    public bool IsAutoGainControlEnabled { get; set; } = true;
 
     /// <summary>
     /// Whether the interface makes sounds: someone joining, the microphone being muted and the like.

@@ -1,0 +1,154 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:loading="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls">
+    <Style Selector="common|ActionLabel">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
+                    <Image Width="{StaticResource SmallIconSize}" Height="{StaticResource SmallIconSize}"
+                           Margin="0,1,0,0" VerticalAlignment="Center" Source="{TemplateBinding Icon}"
+                           IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Grid.Column="1" Text="{TemplateBinding Text}" VerticalAlignment="Center"
+                               Foreground="{TemplateBinding Foreground}"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="common|DialogHeader">
+        <Setter Property="Padding" Value="{StaticResource DialogHeaderPadding}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Margin="{TemplateBinding Padding}" ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+                    <Border Name="IconTile" VerticalAlignment="Center"
+                            IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Image Name="Icon" Source="{TemplateBinding Icon}"/>
+                    </Border>
+                    <TextBlock Name="Title" Grid.Column="1" Text="{TemplateBinding Title}"
+                               TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <ContentPresenter Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center"
+                                      Content="{TemplateBinding InlineContent}"
+                                      IsVisible="{TemplateBinding InlineContent, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Grid.Column="3" Grid.RowSpan="2" Classes="borderless iconButton"
+                            VerticalAlignment="Center" Command="{TemplateBinding CloseCommand}"
+                            IsVisible="{TemplateBinding CloseCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            ToolTip.Tip="{l:Text common.close}" AutomationProperties.Name="{l:Text common.close}">
+                        <Image Width="16" Height="16" Source="{DynamicResource CloseIcon}"/>
+                    </Button>
+                    <TextBlock Name="Subtitle" Grid.Row="1" Classes="hint"
+                               Text="{TemplateBinding Subtitle}" TextWrapping="Wrap"
+                               IsVisible="{TemplateBinding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <ContentPresenter Margin="0,4,0,0" Grid.Row="2" Grid.ColumnSpan="4" Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="common|DialogHeader /template/ Image#Icon">
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
+    </Style>
+    <Style Selector="common|DialogHeader /template/ TextBlock#Title">
+        <Setter Property="FontSize" Value="{StaticResource DialogTitleFontSize}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="common|DialogHeader /template/ TextBlock#Subtitle">
+        <Setter Property="Grid.ColumnSpan" Value="2"/>
+        <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+    <Style Selector="common|DialogHeader.compact">
+        <Setter Property="Padding" Value="{StaticResource SettingsHeaderPadding}"/>
+        <Setter Property="MinHeight" Value="{StaticResource SessionHeaderHeight}"/>
+    </Style>
+    <Style Selector="common|DialogHeader.compact /template/ Border#IconTile">
+        <Setter Property="Grid.RowSpan" Value="2"/>
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SurfaceCornerRadius}"/>
+        <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+    </Style>
+    <Style Selector="common|DialogHeader.compact /template/ Image#Icon">
+        <Setter Property="Width" Value="22"/>
+        <Setter Property="Height" Value="22"/>
+    </Style>
+    <Style Selector="common|DialogHeader.compact /template/ TextBlock#Title">
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleFontSize}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="common|DialogHeader.compact /template/ TextBlock#Subtitle">
+        <Setter Property="Grid.Column" Value="1"/>
+        <Setter Property="Grid.ColumnSpan" Value="1"/>
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}"/>
+    </Style>
+    <Style Selector="Button.iconButton">
+        <Setter Property="Width" Value="{StaticResource IconButtonSize}"/>
+        <Setter Property="Height" Value="{StaticResource IconButtonSize}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <!-- Keep the existing button template and its keyboard focus adorner. -->
+    <Style Selector="Button.iconButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+    </Style>
+    <Style Selector="Button.iconButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+    </Style>
+    <Style Selector="Border.dialogSeparator">
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+        <Setter Property="Height" Value="1"/>
+    </Style>
+    <Style Selector="Grid.dialogFooter">
+        <Setter Property="Margin" Value="{StaticResource DialogFooterMargin}"/>
+    </Style>
+    <Style Selector="Grid.navigationRow">
+        <Setter Property="MinHeight" Value="{StaticResource NavigationRowHeight}"/>
+    </Style>
+    <Style Selector="Grid.navigationRow > Image">
+        <Setter Property="Width" Value="{StaticResource NavigationIconSize}"/>
+        <Setter Property="Height" Value="{StaticResource NavigationIconSize}"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+    </Style>
+    <Style Selector="Grid.navigationRow > TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="MaxLines" Value="2"/>
+    </Style>
+    <Style Selector="common|StatePanel">
+        <Setter Property="Margin" Value="16"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="anim:Presence.Appear" Value="Rise"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Spacing="12">
+                    <Image Width="56" Height="56" Margin="0,0,0,4" Source="{TemplateBinding Icon}"
+                           IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <loading:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0" BorderThickness="4"
+                                          Foreground="{DynamicResource ProgressRingBrush}" IsIndeterminate="True"
+                                          IsVisible="{TemplateBinding IsBusy}"/>
+                    <TextBlock Text="{TemplateBinding Title}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"
+                               IsVisible="{TemplateBinding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{TemplateBinding Text}" Foreground="{DynamicResource SecondaryTextBrush}"
+                               TextAlignment="Center" TextWrapping="Wrap"
+                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="common|StatePanel TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+</Styles>

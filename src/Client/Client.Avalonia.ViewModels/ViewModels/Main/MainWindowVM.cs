@@ -1,29 +1,28 @@
-﻿using Client.Application.Push;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
+using Client.Application.Chat;
+using Client.Application.Coordinator;
+using Client.Application.Coordinator.Users;
+using Client.Application.Push;
+using Client.Application.Ports.Repositories;
+using Client.Application.Sessions.Hybrid;
+using Client.Application.Settings;
 using Client.Avalonia.Localization;
-using Client.Services;
-using Microsoft.Extensions.Logging;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
-using Shared.Permissions;
+using Client.Avalonia.Styles.Animation;
+using Client.Core.Coordinator;
 using Client.Core.Push;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Settings;
 using Client.Core.Users;
-using Client.Application.Chat;
-using Client.Application.Coordinator;
-using Client.Application.Coordinator.Users;
-using Client.Application.Sessions.Hybrid;
-using Client.Application.Settings;
+using Client.Services;
+using Client.Tools.AppInfo;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.ViewModels.Notifications;
 using Client.ViewModels.Profile;
 using Client.ViewModels.ServerSettings;
@@ -34,6 +33,12 @@ using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Sessions.Permissions;
 using Client.ViewModels.Settings;
+using Microsoft.Extensions.Logging;
+using ReactiveUI;
+using Shared.Permissions;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
 
@@ -75,7 +80,7 @@ public partial class MainWindowVM : ReactiveObject
     /// <summary>
     /// The unread counts of the chats of the connection, shared by the list and the open chats.
     /// </summary>
-    public ChatReadTracker ChatReads { get; } = new(TimeSpan.FromSeconds(1));
+    public ChatReadTracker ChatReads { get; }
 
     // The chat last told that it is on screen
     private ActiveChatSessionVM? _chatOnScreen;
@@ -136,11 +141,7 @@ public partial class MainWindowVM : ReactiveObject
     public bool IsInitialized
     {
         get;
-        private set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(MenuVisibility));
-        }
+        private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     /// <summary>
@@ -158,19 +159,52 @@ public partial class MainWindowVM : ReactiveObject
         }
     }
 
-    public bool GridOpacity
+    /// <summary>What the startup screen says the application is busy with, until it is initialized.</summary>
+    public string? StartupStage
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool MenuVisibility => IsInitialized && !IsContentFullScreen;
-
-    public double MenuOpacity
+    /// <summary>
+    /// The startup screen is in the window: it stays there through its fade out after the start, and
+    /// for good when the start failed.
+    /// </summary>
+    public bool IsStartupScreenShown
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = 0.6;
+    } = true;
+
+    /// <summary>The startup screen fades out: the content under it is ready to be seen.</summary>
+    public bool IsStartupScreenLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsDevelopmentWarningShown
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool DoNotShowDevelopmentWarning { get; set; }
+
+    public bool IsDevelopmentWarningLeaving
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    private TaskCompletionSource<bool>? _developmentWarningAnswer;
+    public void ContinueStartup() => _developmentWarningAnswer?.TrySetResult(true);
+
+    /// <summary>The version under the startup screen.</summary>
+    public string Version { get; } = AppInformation.GetClientVersion();
+
+    // The content is laid out from the start under the startup screen, not at its end
+    public bool MenuVisibility => !IsContentFullScreen;
 
     public UserModel? User
     {
@@ -196,6 +230,7 @@ public partial class MainWindowVM : ReactiveObject
     public Interaction<ServerSettingsVM, RxVoid> ShowServerSettings { get; } = new();
     public Interaction<ConnectWindowVM, ICoordinatorSession?> ShowConnectWindow { get; } = new();
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
+    public Interaction<RxVoid, RxVoid> RestartWithoutMedia { get; } = new();
     public Interaction<DatabasePasswordVM, bool> AskDatabasePassword { get; } = new();
     public Interaction<CreateSessionWindowVM, RxVoid> ShowCreateSessionWindow { get; } = new();
     public Interaction<EditProfileWindowVM, RxVoid> ShowEditProfileWindow { get; } = new();
@@ -217,8 +252,8 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
     private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
-        ChangeSessionSettingsResult> _changeHybridSessionSettingsCommand;
-    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>
+        RequestResult> _changeHybridSessionSettingsCommand;
+    private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>
         _changeSessionPermissionsCommand;
 
     private readonly UserActions _users;
@@ -228,6 +263,7 @@ public partial class MainWindowVM : ReactiveObject
     // DI
     private readonly ICoordinatorFactory _coordinatorFactory;
     private readonly ApplicationLoader _applicationLoader;
+    private readonly INotificationService _notifications;
     private readonly IBehaviorService _behaviorService;
     private readonly IAccountingService _accounting;
     private readonly IAvatarService _avatars;
@@ -244,12 +280,15 @@ public partial class MainWindowVM : ReactiveObject
         ICoordinatorFactory coordinatorFactory,
         ApplicationLoader applicationLoader,
         IAvatarService avatars,
+        IUserNotesRepository userNotes,
+        IChatReadStateRepository chatReads,
         INotificationService notifications,
         IHotKeysService hotKeys,
         PushRegistration pushRegistration,
         IPeerPlaybackService playback,
         IVoiceActivityService voiceActivity,
         IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         SessionListPreferences listPreferences,
         ChatSessionServices chatServices,
         Func<HybridSessionServices> hybridServices,
@@ -257,12 +296,16 @@ public partial class MainWindowVM : ReactiveObject
         UpdaterVM updater,
         ILoggerFactory loggerFactory,
         Func<ConnectWindowVM> createConnectWindow,
-        Func<SettingsWindowVM> createSettings)
+        Func<SettingsWindowVM> createSettings,
+        Client.Application.Sounds.ISoundService? callSounds = null)
     {
+        ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
         _accounting = accounting;
         _coordinatorFactory = coordinatorFactory;
         _applicationLoader = applicationLoader;
+        _notifications = notifications;
+        _callSounds = callSounds;
         _avatars = avatars;
         _pushRegistration = pushRegistration;
         _chatServices = chatServices;
@@ -277,7 +320,7 @@ public partial class MainWindowVM : ReactiveObject
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
-            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow);
+            ShowMessageBox, ShowEditProfileWindow, ShowUserProfileWindow, ShowAccountSecurityWindow, userNotes);
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
@@ -288,11 +331,10 @@ public partial class MainWindowVM : ReactiveObject
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeHybridSessionSettingsCommand = ReactiveCommand
             .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
-                ChangeSessionSettingsResult>(
+                RequestResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
                     change.Capacity, change.IsHostMustApprove, change.Media));
-        _changeSessionPermissionsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), ChangeSessionPermissionsResult>(
+        _changeSessionPermissionsCommand = ReactiveCommand.CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>(
                 change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
         // Leaves only the session asked for: the menu may have been opened before we moved to another one
@@ -303,19 +345,38 @@ public partial class MainWindowVM : ReactiveObject
         });
 
         SessionsList = new SessionsListVM(ConnectCommand,
-            ReactiveCommand.Create<SessionModel>(OpenSession),
+            ReactiveCommand.CreateFromTask<SessionModel>(OpenSession),
+            ReactiveCommand.Create<int>(chatId =>
+            {
+                if (CurrentContent is ActiveChatSessionVM chat && chat.Id == chatId)
+                    ChangeContent(null);
+            }),
             leaveHybridSessionCommand,
             ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
             _users.PokePeerCommand,
             ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
-            playback, voiceActivity, screenWatch, listPreferences,
+            playback, voiceActivity, screenWatch, peerStats, listPreferences,
             ChatReads,
             Access,
             loggerFactory.CreateLogger<SessionsListVM>());
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
-            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access);
+            OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access)
+        { SessionList = SessionsList };
+        SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
+        _users.OpenDirectChat = async user =>
+        {
+            if (_coordinatorSession is not { } coordinator) return;
+            var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
+                coordinator.GetCurrentUser().Id, Shared.Validation.Limits.SessionCapacityUnlimited,
+                new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
+            if (result.IsSuccess)
+            {
+                SessionsList.IsPrivateMode = true;
+                await OpenSession(result.Value);
+            }
+        };
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(
@@ -353,24 +414,93 @@ public partial class MainWindowVM : ReactiveObject
             command.Execute(null);
     }
 
-    public async Task Initialize()
+    public async Task Initialize(Action? onInitialized = null, Func<Task>? fadeOutStartupScreen = null)
     {
+        if (onInitialized != null && !System.IO.File.Exists(DevelopmentWarningPreferencePath))
+        {
+            onInitialized();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            _developmentWarningAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            IsDevelopmentWarningShown = true;
+            await _developmentWarningAnswer.Task;
+            IsDevelopmentWarningLeaving = true;
+            await Task.Delay(Motion.Get(MotionDuration.Medium));
+            if (DoNotShowDevelopmentWarning)
+            {
+                try
+                {
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DevelopmentWarningPreferencePath)!);
+                    await System.IO.File.WriteAllTextAsync(DevelopmentWarningPreferencePath, "dismissed");
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Could not save the development warning preference");
+                }
+            }
+            IsDevelopmentWarningShown = false;
+            IsDevelopmentWarningLeaving = false;
+            _developmentWarningAnswer = null;
+        }
+
         await StatusLine.SetAsync(() => Strings.Get("main.status.loading"), true);
 
-        var result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog));
+        ApplicationLoadResult result;
 
-        // The user chose to leave instead of typing the password
-        if (result == ApplicationLoadResult.DatabaseLocked)
+        // A database this build cannot open is not the end: the user may start with a new one
+        while (true)
         {
-            Environment.Exit(0);
-            return;
+            result = await _applicationLoader.InitializeAsync(async dialog => await AskDatabasePassword.Handle(dialog),
+                stage => StartupStage = Strings.Get(stage switch
+                {
+                    ApplicationLoadStage.Database => "main.startup.stage.database",
+                    ApplicationLoadStage.Components => "main.startup.stage.components",
+                    _ => "main.startup.stage.settings"
+                }));
+
+            if (!ApplicationLoader.CanResetDatabase(result))
+                break;
+
+            if (!await OfferDatabaseResetAsync(result))
+            {
+                // Leaving instead of typing the password is the user's choice, not a failure
+                Environment.Exit(result == ApplicationLoadResult.DatabaseLocked ? 0 : -1);
+                return;
+            }
+
+            if (!await _applicationLoader.ResetDatabaseAsync())
+            {
+                result = ApplicationLoadResult.DatabaseError;
+                break;
+            }
         }
 
         if (result != ApplicationLoadResult.NoError)
         {
-            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
-                GetInitializationErrorMessage(result), Strings.Get("main.startup.title")));
+            var error = new MessageBoxVM(Icon.Fatal, Buttons.Ok,
+                GetInitializationErrorMessage(result), Strings.Get("main.startup.title"));
+            if (Client.Core.Media.MediaRuntime.IsEnabled && result is
+                ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                error.ButtonsList.Insert(0, new ButtonVM(Strings.Get("main.startup.restartWithoutMedia"), error.NoCommand));
 
+            if (await ShowMessageBox.Handle(error) == Result.No)
+            {
+                try
+                {
+                    await RestartWithoutMedia.Handle(default);
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Could not restart without media");
+                    await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("main.startup.restartFailed"), Strings.Get("main.startup.title")));
+                }
+            }
+
+            if (result is ApplicationLoadResult.MediaComponentsBroken or ApplicationLoadResult.NativeAssembliesFailedToLoad
+                or ApplicationLoadResult.NativeLibraryFail)
+                Client.Tools.AppInfo.AppRestart.ExitAfterNativeFailure();
             Environment.Exit(-1);
             return;
         }
@@ -378,34 +508,74 @@ public partial class MainWindowVM : ReactiveObject
         await StatusLine.SetAsync(() => Strings.Get("main.status.offline"), false);
 
         IsInitialized = true;
-        GridOpacity = true;
-        MenuOpacity = 1;
+
+        // Desktop keeps the window hidden until its saved appearance and chrome are ready.
+        onInitialized?.Invoke();
+
+        // Showing the desktop window schedules Loaded; let it register the session dialogs before
+        // auto connection can ask for credentials or certificate trust.
+        if (onInitialized != null)
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
+        // The desktop transition holds a snapshot of the main interface. Start connection-driven
+        // content changes after it completes so revealing the live interface cannot jump.
+        await HideStartupScreenAsync(fadeOutStartupScreen);
 
         // Not awaited: a slow network must not hold the auto connection back
         _ = Updater.CheckOnStartupAsync();
 
-        if ((await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
+        if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
+            && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
             await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
     }
 
-    private static string GetInitializationErrorMessage(ApplicationLoadResult result)
-    {
-        var reason = result switch
-        {
-            ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
-            ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
-            ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
-            ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
-            ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
-            ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
-            ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
-            ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
-            _ => "main.startup.internalError"
-        };
+    // The content under the screen has been laid out all along, so the screen leaves at once; it is out
+    // of the window after its fade, so its ring stops turning
+    private static string DevelopmentWarningPreferencePath => System.IO.Path.Combine(
+        AppDirectories.Data, "development-warning-dismissed");
 
-        return Strings.Format("main.startup.failed", ("reason", Strings.Get(reason)));
+    private async Task HideStartupScreenAsync(Func<Task>? fadeOutStartupScreen)
+    {
+        IsStartupScreenLeaving = true;
+        if (fadeOutStartupScreen != null)
+            await fadeOutStartupScreen();
+        else
+            await Task.Delay(Motion.Get(MotionDuration.Startup));
+        IsStartupScreenShown = false;
     }
+
+    /// <returns>Whether the user chose to start with a new database.</returns>
+    private async Task<bool> OfferDatabaseResetAsync(ApplicationLoadResult result)
+    {
+        // A forgotten password is no error, the user only gave up on it
+        var text = result == ApplicationLoadResult.DatabaseLocked
+            ? Strings.Get("main.startup.resetForgottenPassword")
+            : Strings.Format("main.startup.resetOffer", ("reason", Strings.Get(GetInitializationErrorReason(result))));
+
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(
+            result == ApplicationLoadResult.DatabaseLocked ? Icon.KeyQuestion : Icon.Fatal, Buttons.YesNo,
+            text, Strings.Get(result == ApplicationLoadResult.DatabaseLocked ? "main.startup.resetTitle" : "main.startup.title")));
+
+        return answer == Result.Yes;
+    }
+
+    private static string GetInitializationErrorMessage(ApplicationLoadResult result) =>
+        Strings.Format("main.startup.failed", ("reason", Strings.Get(GetInitializationErrorReason(result))));
+
+    /// <returns>The key of the text that names the reason.</returns>
+    private static string GetInitializationErrorReason(ApplicationLoadResult result) => result switch
+    {
+        ApplicationLoadResult.UnexpectedError => "main.startup.unexpectedError",
+        ApplicationLoadResult.DatabaseError => "main.startup.databaseError",
+        ApplicationLoadResult.DatabaseCorrupted => "main.startup.databaseCorrupted",
+        ApplicationLoadResult.DatabaseNewerThanApplication => "main.startup.databaseNewer",
+        ApplicationLoadResult.DatabaseInUse => "main.startup.databaseInUse",
+        ApplicationLoadResult.NativeAssembliesFailedToLoad => "main.startup.nativeLibraries",
+        ApplicationLoadResult.MediaComponentsBroken => "main.startup.mediaComponents",
+        ApplicationLoadResult.NativeLibraryFail => "main.startup.nativeLibrary",
+        _ => "main.startup.internalError"
+    };
 
     private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
         new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,
@@ -420,15 +590,17 @@ public partial class MainWindowVM : ReactiveObject
     private void OnHybridSessionChanged(ActiveHybridSessionVM? session)
     {
         HybridSession = session;
-        SessionsList.SetEnteredHybridSession(session?.Model.Id);
+        SessionsList.SetEnteredHybridSession(session?.Model.Id, session?.StatusBar);
         RememberLastSession();
     }
 
     /// <param name="categoryId">The category the new session goes into, or null for none.</param>
     private async Task CreateNewSession(int? categoryId)
     {
-        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId);
+        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId, privateMode: SessionsList.IsPrivateMode);
         await ShowCreateSessionWindow.Handle(vm);
+        if (vm.CreatedSession is { } created)
+            await OpenSession(created);
     }
 
     private async Task OpenServerSettings()
@@ -459,8 +631,15 @@ public partial class MainWindowVM : ReactiveObject
         await ShowSessionPermissionsWindow.Handle(vm);
     }
 
-    private void OpenSession(SessionModel sessionModel)
+    private async Task OpenSession(SessionModel sessionModel)
     {
+        if (sessionModel is HybridSessionModel && !Client.Core.Media.MediaRuntime.IsEnabled)
+        {
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("media.disabled.voiceSession"), Strings.Get("media.disabled.title")));
+            return;
+        }
+
         var session = OpenedSessions?.Open(sessionModel);
         if (session != null)
             ChangeContent(session);
@@ -484,7 +663,7 @@ public partial class MainWindowVM : ReactiveObject
         if (chat == null)
             return false;
 
-        OpenSession(chat.Model);
+        _ = OpenSession(chat.Model);
         return true;
     }
 
@@ -504,6 +683,12 @@ public partial class MainWindowVM : ReactiveObject
         {
             case ActiveChatSessionVM chat:
                 SessionsList.SetShownSession(chat.Id, false);
+                // Let the new content complete layout and rendering before starting history work.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (CurrentContent == chat)
+                        _ = chat.EnsureLoadedAsync();
+                }, DispatcherPriority.Background);
                 break;
             case ActiveHybridSessionVM hybrid:
                 SessionsList.SetShownSession(hybrid.Model.Id, true);

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class DatabaseProtectionTests
 {
     [Fact]

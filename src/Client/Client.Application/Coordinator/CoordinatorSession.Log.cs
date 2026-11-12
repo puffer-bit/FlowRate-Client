@@ -1,4 +1,5 @@
-using Shared.Enums.Coordinator;
+using Shared.Enums;
+using Shared.Enums.User;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Application.Coordinator;
@@ -84,6 +85,9 @@ public partial class CoordinatorSession
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] The account logs in with passkeys alone, which this client cannot use")]
     private partial void LogPasskeyLoginUnsupported(string coordinator);
 
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The server ended the session of this device: {Reason}")]
+    private partial void LogSessionEnded(string coordinator, UserSessionEndReason reason);
+
     [LoggerMessage(LogLevel.Debug, "[{Coordinator}] Auth attempt timed out")]
     private partial void LogAuthTimedOut(string coordinator);
 
@@ -96,5 +100,5 @@ public partial class CoordinatorSession
         string answeredId);
 
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Roles not loaded: {Result}")]
-    private partial void LogRolesNotLoaded(string coordinator, CoordinatorRoleResult result);
+    private partial void LogRolesNotLoaded(string coordinator, ErrorCode result);
 }

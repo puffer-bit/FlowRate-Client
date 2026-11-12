@@ -1,3 +1,5 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using Xunit;
 using Client.Application.Ports.Repositories;
 using Client.Core.Chat;
@@ -5,20 +7,23 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class ChatCacheRepositoryTests
 {
     private static readonly ChatCacheKey Chat = new("instance", 7);
     private static readonly DateTime SentTime = new(2026, 10, 13, 8, 0, 0, DateTimeKind.Utc);
 
     private static ChatMessageModel Message(int id, long revision, string text = "text", int? replyTo = null,
-        bool isDeleted = false) => new()
+        bool isDeleted = false, bool pinned = false, ChatCommandResult? outcome = null) => new()
     {
         Id = id,
         ChatId = Chat.ChatId,
         Revision = revision,
+        PinnedAt = pinned ? SentTime : null,
+        PinnedByUserId = pinned ? 42 : null,
         SenderUserId = 3,
         SentTime = SentTime.AddMinutes(id),
-        TextContent = isDeleted ? null : new ChatTextContent { Text = text },
+        TextContent = isDeleted ? null : new ChatTextContent { Text = text, CommandResult = outcome },
         ReplyContent = replyTo is { } targetId
             ? new ChatReplyContent
             {
@@ -41,6 +46,65 @@ public class ChatCacheRepositoryTests
     private static int[] Ids(CachedChatPage? page) => page!.Messages.Select(message => message.Id).ToArray();
 
     [Fact]
+    public async Task SystemEventSurvivesCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var content = new ChatSystemContent
+        {
+            Kind = ChatSystemEventKind.MemberAdded, ActorUserId = 3, SubjectUserId = 5
+        };
+        var message = new ChatMessageModel
+        {
+            Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
+            IsSystem = true, IsReadOnly = true, SystemContent = content,
+            TextContent = new ChatTextContent { Text = content.ToFallbackText() },
+            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        };
+        await repository.ReplaceAsync(Chat, [message], 1, true);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var stored = Assert.Single((await reloaded.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.True(stored.IsSystem);
+        Assert.True(stored.IsReadOnly);
+        Assert.Equal(content, stored.SystemContent);
+        Assert.Equal(message.SentTime, stored.SentTime);
+    }
+
+    [Fact]
+    public async Task CallOutcomeAndDurationSurviveCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var content = new ChatSystemContent { Kind = ChatSystemEventKind.CallEnded,
+            CallId = Guid.NewGuid(), CallEndReason = Shared.Models.DataTransferObjects.DirectCallEndReason.Completed,
+            CallDurationSeconds = 75 };
+        var message = new ChatMessageModel
+        {
+            Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
+            IsSystem = true, IsReadOnly = true, SystemContent = content,
+            TextContent = new ChatTextContent { Text = content.ToFallbackText() },
+            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        };
+        await repository.ReplaceAsync(Chat, [message], 1, false);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var stored = Assert.Single((await reloaded.GetNewestAsync(Chat, 20))!.Messages);
+        Assert.Equal(content, stored.SystemContent);
+    }
+
+    [Fact]
+    public async Task CommandOutcomeSurvivesCacheReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        var outcome = new ChatCommandResult { Kind = ChatCommandKind.Flip, Minimum = 0, Maximum = 1, Value = 1 };
+        await repository.ReplaceAsync(Chat, [Message(1, 1, outcome.ToFallbackText(), outcome: outcome)], 1, true);
+        var reloaded = new ChatCacheRepository(database.Database);
+        var message = Assert.Single((await reloaded.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.Equal(outcome, message.TextContent!.CommandResult);
+        Assert.Equal(outcome.ToFallbackText(), message.TextContent.Text);
+    }
+
+    [Fact]
     public async Task ChatWithoutATailHasNoPages()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
@@ -48,6 +112,23 @@ public class ChatCacheRepositoryTests
 
         Assert.Null(await repository.GetNewestAsync(Chat, 10));
         Assert.Null(await repository.GetBeforeAsync(Chat, 5, 10));
+    }
+
+    [Fact]
+    public async Task PinMetadataSurvivesCacheReloadAndUnpinning()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new ChatCacheRepository(database.Database);
+        await repository.ReplaceAsync(Chat, [Message(1, 4, pinned: true)], 4, true);
+        var message = Assert.Single((await repository.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.True(message.IsPinned);
+        Assert.Equal(SentTime, message.PinnedAt);
+        Assert.Equal(42, message.PinnedByUserId);
+        await repository.ApplyAsync(Chat, [Message(1, 5)], [], 5);
+        message = Assert.Single((await repository.GetNewestAsync(Chat, 10))!.Messages);
+        Assert.False(message.IsPinned);
+        Assert.Null(message.PinnedAt);
+        Assert.Null(message.PinnedByUserId);
     }
 
     [Fact]

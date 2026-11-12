@@ -24,7 +24,8 @@ internal static class PeerMapper
             IsAfk = dto.IsAfk,
             AfkReason = dto.IsAfk ? dto.AfkMessage : null,
             IsScreenShareActive = dto.IsScreenShareActive,
-            IsScreenAudioActive = dto.IsScreenAudioActive
+            IsScreenAudioActive = dto.IsScreenAudioActive,
+            WatchedScreenShares = dto.WatchedScreenShares.ToArray()
         };
     }
 }

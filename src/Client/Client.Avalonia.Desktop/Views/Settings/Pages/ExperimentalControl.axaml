@@ -21,5 +21,16 @@
                 <CheckBox IsChecked="{Binding UseCustomTitleBar}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="experimental.voice"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ui:SettingsRow services:SettingText.Key="experimental.gstreamer"
+                            IsEnabled="{Binding IsExperimentalEnabled}">
+                <CheckBox IsChecked="{Binding UseGStreamer}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                   Text="{Binding LibWebRTCError}"
+                   IsVisible="{Binding LibWebRTCError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
     </ui:SettingsPage>
 </UserControl>

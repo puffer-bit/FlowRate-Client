@@ -39,10 +39,11 @@ internal sealed partial class TrayService : IDisposable
     private readonly NativeMenuItem _afkItem;
     private readonly NativeMenuItemSeparator _voiceSeparator;
     private readonly MainWindowVM? _mainVM;
+    private readonly IDisposable? _trayMenuSubscription;
 
     // Shown while we are in no hybrid session
     private readonly WindowIcon _appIcon =
-        new(AssetLoader.Open(new Uri("avares://Client.Avalonia.Desktop/Assets/avalonia-logo.ico")));
+        new(AssetLoader.Open(new Uri("avares://Client.Avalonia.Assets/AppIcons/Headphones/png/tray-purple-48.png")));
 
     // The session the icon follows, null outside of one
     private ActiveHybridSessionVM? _session;
@@ -97,6 +98,9 @@ internal sealed partial class TrayService : IDisposable
             },
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
+
+        if (OperatingSystem.IsWindows())
+            _trayMenuSubscription = Window.WindowOpenedEvent.AddClassHandler<Window>(OnTrayMenuOpened);
 
         UpdateMenuTexts();
         Strings.LanguageChanged += UpdateMenuTexts;
@@ -212,7 +216,7 @@ internal sealed partial class TrayService : IDisposable
         }
     }
 
-    private void HideToTray()
+    public void HideToTray()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -227,7 +231,7 @@ internal sealed partial class TrayService : IDisposable
         }
     }
 
-    private void ShowWindow()
+    public void ShowWindow()
     {
         if (OperatingSystem.IsWindows())
             _window.Show();
@@ -333,6 +337,7 @@ internal sealed partial class TrayService : IDisposable
 
     public void Dispose()
     {
+        _trayMenuSubscription?.Dispose();
         Strings.LanguageChanged -= UpdateMenuTexts;
         if (_mainVM != null)
             _mainVM.PropertyChanged -= OnMainPropertyChanged;

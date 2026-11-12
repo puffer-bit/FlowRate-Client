@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using Client.Core.Settings;
 using Shared.Enums;
 using Shared.Models.Media;
@@ -23,7 +24,8 @@ public interface IHybridSession : IDisposable
     /// </summary>
     string ClientEpoch { get; }
 
-    void Connect(TransportParameters transportParameters);
+    /// <summary>A join without transport enters the session while waiting for an SFU node.</summary>
+    void Connect(TransportParameters? transportParameters);
     
     /// <summary>
     /// Asks the SFU for a voice producer and starts sending the microphone to it.
@@ -37,19 +39,20 @@ public interface IHybridSession : IDisposable
     /// <param name="isEchoCancellationEnabled">
     /// Whether the voices played on the speakers are taken out of the microphone.
     /// </param>
+    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
     /// <param name="isMuted">Starts muted, so that nothing is heard before the mute is put back.</param>
-    Task<StartVoiceShareResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
+    Task<RequestResult> StartVoiceShareAsync(string? inputDeviceId, double inputVolume,
         VoiceGateOptions? voiceGate, NoiseSuppressionLevel noiseSuppression, bool isEchoCancellationEnabled,
-        bool isMuted = false);
+        bool isAutoGainControlEnabled, bool isMuted = false);
 
     /// <summary>
     /// Same as the microphone overload, but sends any <paramref name="input"/>: a looped file or a tone as well.
     /// </summary>
-    Task<StartVoiceShareResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
+    Task<RequestResult> StartVoiceShareAsync(AudioInput input, double inputVolume,
         VoiceGateOptions? voiceGate = null, NoiseSuppressionLevel noiseSuppression = NoiseSuppressionLevel.Moderate,
-        bool isEchoCancellationEnabled = false, bool isMuted = false);
+        bool isEchoCancellationEnabled = false, bool isAutoGainControlEnabled = true, bool isMuted = false);
 
-    Task<StopVoiceShareResult> StopVoiceShareAsync();
+    Task<RequestResult> StopVoiceShareAsync();
 
     /// <summary>
     /// Whether our microphone has a producer on the SFU, muted or not.
@@ -62,7 +65,7 @@ public interface IHybridSession : IDisposable
     /// Mutes or unmutes the microphone. The producer is paused on the SFU rather than closed, so
     /// unmuting is instant and the listeners keep their consumers.
     /// </summary>
-    Task<SetMicrophoneMuteResult> SetMicrophoneMutedAsync(bool isMuted);
+    Task<RequestResult> SetMicrophoneMutedAsync(bool isMuted);
 
     /// <summary>
     /// Whether the voices of the session are silenced. Kept over a reconnect, unlike the server,
@@ -74,7 +77,7 @@ public interface IHybridSession : IDisposable
     /// Silences or brings back the voices of everybody, and tells the server, which shows it to the
     /// others. The sound of a shown screen plays on. The voices change here whatever the server answers.
     /// </summary>
-    Task<SetSoundMuteResult> SetSoundMutedAsync(bool isMuted);
+    Task<RequestResult> SetSoundMutedAsync(bool isMuted);
 
     /// <summary>
     /// Whether we are away from the keyboard, and the reason we gave. Kept over a reconnect, unlike the server,
@@ -84,10 +87,10 @@ public interface IHybridSession : IDisposable
     string? AfkReason { get; }
 
     /// <summary>Tells the others that we are away, and why, or that we are back; kept here whatever the server answers.</summary>
-    Task<SetAfkResult> SetAfkAsync(bool isAfk, string? reason);
+    Task<RequestResult> SetAfkAsync(bool isAfk, string? reason);
 
     /// <summary>Pokes another peer of the session, with a message if there is one.</summary>
-    Task<PokeResult> PokeAsync(int userId, string? message);
+    Task<RequestResult> PokeAsync(int userId, string? message);
 
     /// <summary>
     /// Asks the SFU for a screen producer and starts sending <paramref name="input"/> to it.
@@ -97,7 +100,7 @@ public interface IHybridSession : IDisposable
     /// The sound sent along with the picture, or null to share it silent. A sound that cannot be
     /// captured is left out, and the picture is sent anyway.
     /// </param>
-    Task<StartScreenShareResult> StartScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+    Task<RequestResult> StartScreenShareAsync(VideoInput input, ScreenShareSettings settings,
         AudioInput? audioInput = null);
 
     /// <summary>
@@ -106,15 +109,24 @@ public interface IHybridSession : IDisposable
     /// added to a share that went out silent.
     /// </summary>
     /// <param name="audioInput">The sound sent along, or null to mute it.</param>
-    Task<StartScreenShareResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
+    Task<RequestResult> ChangeScreenShareAsync(VideoInput input, ScreenShareSettings settings,
         AudioInput? audioInput = null);
 
-    Task<StopScreenShareResult> StopScreenShareAsync();
+    Task<RequestResult> StopScreenShareAsync();
 
     /// <summary>
     /// Whether our screen has a producer on the SFU. A transport that is rebuilt takes it away.
     /// </summary>
     bool IsScreenShareStarted { get; }
+
+    bool IsCameraStarted { get; }
+    IReadOnlyCollection<int> CameraUsers { get; }
+    event Action<int, bool>? CameraChanged;
+    Task<RequestResult> StartCameraAsync(CameraVideoInput input, ScreenShareSettings settings);
+    Task<RequestResult> StopCameraAsync();
+    bool IsWatchingCamera(int userId);
+    void SetCameraWatch(int userId, bool isWatching);
+
 
     /// <summary>
     /// Raised with a user id when the user starts or stops showing a screen, ourselves included.
@@ -127,8 +139,8 @@ public interface IHybridSession : IDisposable
     /// asked for; a screen that is no longer watched is paused on the SFU, so watching it again is
     /// quick. Our own screen is watched as a local preview.
     /// </summary>
-    /// <returns><see cref="SetScreenShareWatchResult.ScreenShareNotActive"/> if the user shows nothing.</returns>
-    Task<SetScreenShareWatchResult> SetScreenWatchAsync(int userId, bool isWatching);
+    /// <returns><see cref="Shared.Enums.ErrorCode.MediaNotActive"/> if the user shows nothing.</returns>
+    Task<RequestResult> SetScreenWatchAsync(int userId, bool isWatching);
 
     bool IsWatchingScreen(int userId);
 
@@ -151,10 +163,23 @@ public interface IHybridSession : IDisposable
     event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
 
     /// <summary>
+    /// Raised with the user and the source of a watched screen when its decoder reports how it
+    /// decodes, before its first frame and again after it was rebuilt. Raised on a thread of the track.
+    /// </summary>
+    event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
+
+    /// <summary>
     /// Raised with how the media of the current transport fared, every few seconds while it runs.
     /// Raised on any thread.
     /// </summary>
     event Action<TransportStatsSample>? StatsSampled;
+
+    /// <summary>
+    /// Raised with what the media of the current transport did over the last window, while the
+    /// statistics of the media are read (<see cref="Client.Core.Settings.DebugSettings.IsMediaPerfNeeded"/>).
+    /// Raised on any thread.
+    /// </summary>
+    event Action<MediaPerfReport>? PerfSampled;
 
     /// <summary>
     /// Changes the gain of the running microphone. Without one nothing happens: the next start
@@ -168,7 +193,7 @@ public interface IHybridSession : IDisposable
     /// </summary>
     /// <param name="inputDeviceId">Capture device, or null for the system default one.</param>
     void SetMicrophoneInput(string? inputDeviceId, NoiseSuppressionLevel noiseSuppression,
-        bool isEchoCancellationEnabled);
+        bool isEchoCancellationEnabled, bool isAutoGainControlEnabled);
 
     /// <summary>
     /// Changes the voice gate of the running microphone, null turns the gate off. Without a running

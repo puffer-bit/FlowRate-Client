@@ -6,6 +6,12 @@ namespace Client.Application.Settings;
 public class AppearanceService : IAppearanceService
 {
     private readonly IAppearanceSettingsRepository _appearanceSettingsRepository;
+
+    public Task<bool> GetGroupOnlineChatUsersAsync() =>
+        _appearanceSettingsRepository.GetGroupOnlineChatUsersAsync();
+
+    public Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers) =>
+        _appearanceSettingsRepository.UpdateGroupOnlineChatUsersAsync(groupOnlineUsers);
     
     public AppearanceService(IAppearanceSettingsRepository appearanceSettingsRepository)
     {

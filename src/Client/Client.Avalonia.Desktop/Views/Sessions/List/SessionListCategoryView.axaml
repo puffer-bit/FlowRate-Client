@@ -69,7 +69,8 @@
                         ToolTip.Tip="{l:Text sessions.category.createSession}"
                         Width="26" Height="26" Padding="0"
                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                        Command="{Binding CreateSessionCommand}">
+                        Command="{Binding CreateSessionCommand}"
+                        AutomationProperties.Name="{l:Text sessions.category.createSession}">
                     <Image Width="20" Height="20" Source="{StaticResource PlusIcon}"/>
                 </Button>
             </Panel>

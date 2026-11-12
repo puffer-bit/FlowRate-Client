@@ -1,12 +1,16 @@
-using Client.Services;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Client.Application.Coordinator.Users;
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
+using Client.Avalonia.Controls.Media;
+using Client.Services;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+using Shared.Models.Media;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -16,11 +20,35 @@ namespace Client.ViewModels.Sessions.Hybrid;
 public sealed class ScreenStreamVM : ReactiveObject
 {
     public int UserId { get; }
+    public MediaSourceType SourceType { get; init; } = MediaSourceType.Screen;
+    public void UpdateTexts()
+    {
+        this.RaisePropertyChanged(nameof(SharingLabel));
+        this.RaisePropertyChanged(nameof(OwnLabel));
+    }
+    public bool IsCamera => SourceType == MediaSourceType.Camera;
+    public bool HasSoundControls => !IsSelf && !IsCamera;
+    public string SharingLabel => Client.Avalonia.Localization.Strings.Get(IsCamera ? "camera.sharing" : "hybrid.screen.sharing");
+    public string OwnLabel => Client.Avalonia.Localization.Strings.Get(IsCamera ? "camera.own" : "hybrid.screen.own");
 
     /// <summary>
     /// Our own screen, watched as a local preview.
     /// </summary>
     public bool IsSelf { get; }
+
+    /// <summary>Remote viewers, shared by the avatar group and the complete audience list.</summary>
+    public IReadOnlyList<ScreenViewerItem> Viewers
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
+    public void SetViewers(IEnumerable<ScreenViewerItem> viewers)
+    {
+        var updated = viewers.ToArray();
+        if (!Viewers.SequenceEqual(updated))
+            Viewers = updated;
+    }
 
     public string DisplayedName
     {
@@ -182,9 +210,28 @@ public sealed class ScreenStreamVM : ReactiveObject
     public event Action<RawVideoFrame>? FrameReady;
 
     /// <summary>
+    /// Raised when the decoder of the screen reports how it decodes, on a thread of its track.
+    /// </summary>
+    public event Action<VideoDecoding>? DecodingChanged;
+
+    /// <summary>How the screen is decoded, as last reported; null before its first frame.</summary>
+    public VideoDecoding? Decoding => _decoding;
+
+    private volatile VideoDecoding? _decoding;
+
+    /// <summary>
     /// The stream ended or is no longer watched, so its last frame must not stay on the tile.
     /// </summary>
     public event Action? Cleared;
+
+    /// <summary>
+    /// Raised with every window of the statistics of the media that this device measured of the
+    /// screen, on the UI thread; null parts while the transport reports none of it.
+    /// </summary>
+    public event Action<StreamPerf?, NetworkPerf?>? PerfChanged;
+
+    /// <summary>The latest window of the statistics of the screen, for a tile that shows it later.</summary>
+    public (StreamPerf? Stream, NetworkPerf? Network) Perf { get; private set; }
 
     /// <param name="setWatched">Starts or stops watching this screen.</param>
     /// <param name="toggleExpand">Expands this screen over the others, or brings them back.</param>
@@ -228,7 +275,7 @@ public sealed class ScreenStreamVM : ReactiveObject
 
     private void PublishPlayback()
     {
-        if (_isApplyingPlayback || IsSelf)
+        if (_isApplyingPlayback || IsSelf || IsCamera)
             return;
 
         _playbackService.Set(UserId, PeerAudioChannel.Screen, new PeerPlayback(Volume, IsMuted, IsOverdriveEnabled));
@@ -239,6 +286,12 @@ public sealed class ScreenStreamVM : ReactiveObject
     public void ToggleOverdrive() => IsOverdriveEnabled = !IsOverdriveEnabled;
 
     public void PushFrame(RawVideoFrame frame) => FrameReady?.Invoke(frame);
+
+    public void PushDecoding(VideoDecoding decoding)
+    {
+        _decoding = decoding;
+        DecodingChanged?.Invoke(decoding);
+    }
 
     /// <summary>
     /// Takes a reading of the transport statistics into what is wrong with the stream.
@@ -252,12 +305,24 @@ public sealed class ScreenStreamVM : ReactiveObject
 
         if (_analyzer == null)
         {
-            _analyzer = new StreamHealthAnalyzer(UserId, now);
+            _analyzer = new StreamHealthAnalyzer(UserId, now, SourceType);
             return;
         }
 
         if (_analyzer.Update(sample, ReadFrameStats?.Invoke(), isAudioExpected, now))
             Issues = _analyzer.Issues;
+    }
+
+    /// <summary>Takes the part of a window of the statistics of the media that is about this screen.</summary>
+    public void PushPerf(MediaPerfReport report)
+    {
+        var stream = IsSelf
+            ? report.Streams.FirstOrDefault(perf => perf.IsOwn && perf.SourceType == SourceType)
+            : report.Streams.FirstOrDefault(perf =>
+                !perf.IsOwn && perf.UserId == UserId && perf.SourceType == SourceType);
+
+        Perf = (stream, report.Network);
+        PerfChanged?.Invoke(stream, report.Network);
     }
 
     public void Clear() => Cleared?.Invoke();

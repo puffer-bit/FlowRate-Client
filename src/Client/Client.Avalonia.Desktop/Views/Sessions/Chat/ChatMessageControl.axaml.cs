@@ -1,14 +1,20 @@
 using System;
+using System.Linq;
 using System.Reactive.Disposables;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Client.Avalonia.Styles.Animation;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using Client.Views.Common;
+using Client.Views.Dialogs;
+using Client.ViewModels.Dialogs;
+using Client.Avalonia.Localization;
 using Client.ViewModels.Sessions.Chat;
 
 namespace Client.Views.Sessions.Chat;
@@ -21,6 +27,7 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
 
         // On the way down, so the link under the pointer is known before the flyout opens
         AddHandler(ContextRequestedEvent, OnContextRequested, RoutingStrategies.Tunnel);
+        NameTextBlock.AddHandler(TappedEvent, OnNameTapped, handledEventsToo: true);
 
         this.WhenActivated(disposables =>
         {
@@ -36,6 +43,56 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
                 await ClipboardAccess.SetTextAsync(this, interaction.Input);
                 interaction.SetOutput(RxVoid.Default);
             }).DisposeWith(disposables);
+
+            ViewModel!.CopyImageInteraction.RegisterHandler(async interaction =>
+            {
+                bool copied = false;
+                try
+                {
+                    using var bitmap = await interaction.Input.LoadOriginalBitmapAsync();
+                    if (bitmap != null)
+                        copied = await ClipboardAccess.SetBitmapAsync(this, bitmap);
+                }
+                catch (Exception)
+                {
+                    // Loading and platform clipboard failures are reported together below.
+                }
+
+                if (!copied)
+                    await MessageBoxInteraction.ShowAsync(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("chat.image.copyFailed"), Strings.Get("chat.menu.copyImage")), this);
+
+                interaction.SetOutput(RxVoid.Default);
+            }).DisposeWith(disposables);
+
+            ViewModel!.SaveImageInteraction.RegisterHandler(async interaction =>
+            {
+                try
+                {
+                    var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+                    if (storage != null)
+                    {
+                        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+                        {
+                            Title = Strings.Get("chat.menu.saveFileAs"),
+                            SuggestedFileName = interaction.Input.Image.FileName,
+                            ShowOverwritePrompt = true
+                        });
+                        if (file != null)
+                        {
+                            await using var target = await file.OpenWriteAsync();
+                            await interaction.Input.SaveOriginalAsync(target);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    await MessageBoxInteraction.ShowAsync(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                        Strings.Get("chat.image.saveFailed"), Strings.Get("chat.menu.saveFileAs")), this);
+                }
+
+                interaction.SetOutput(RxVoid.Default);
+            }).DisposeWith(disposables);
         });
     }
 
@@ -44,20 +101,59 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
     {
         base.OnDataContextChanged(e);
 
-        if (DataContext is ChatMessageVM { IsNew: true } vm)
+        if (DataContext is ChatMessageVM vm && vm.TakeLiveArrival())
         {
-            vm.IsNew = false;
             // A new message fades in while rising into its place from slightly below
             Presence.Play(this, AppearEffect.Rise);
+        }
+    }
+
+    private void OnAvatarTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is ChatMessageVM vm)
+        {
+            vm.OpenSenderProfile();
+            e.Handled = true;
         }
     }
 
     private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (DataContext is ChatMessageVM vm)
+        {
+            if (vm.IsSystem) { e.Handled = true; return; }
+            if (ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e))
+                return;
+
+            vm.CopyImageTarget = (e.Source as Visual)?.GetSelfAndVisualAncestors()
+                .OfType<Control>().Select(control => control.DataContext).OfType<ChatImageVM>().FirstOrDefault();
+            vm.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors()
+                .OfType<Control>().Select(control => control.DataContext).OfType<ChatFileVM>().FirstOrDefault();
+
             vm.CopyLinkText = e.TryGetPosition(MessageTextBlock, out var position)
                 ? ChatMessageText.GetLinkAt(MessageTextBlock, position)
                 : null;
+        }
+    }
+
+    private void OnNameTapped(object? sender, TappedEventArgs e)
+    {
+        if (NameTextBlock.SelectionStart != NameTextBlock.SelectionEnd)
+            return;
+
+        if (DataContext is ChatMessageVM vm)
+        {
+            ChatUserMenu.Open(NameTextBlock, vm, vm.Message.SenderUserId, vm.SenderName, vm.IsSenderDeleted);
+            e.Handled = true;
+        }
+    }
+
+    private void FlyoutBase_OnOpening(object? sender, EventArgs e)
+    {
+        // Most realized messages never open a menu. Build its controls and bindings only
+        // when requested, instead of doing this work for every row during chat layout.
+        if (sender is Flyout { Content: null } flyout)
+            flyout.Content = new ChatMessageFlyout();
     }
 
     private void FlyoutBase_OnOpened(object? sender, EventArgs e)
@@ -81,7 +177,11 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
         // The text block holds runs when the message has links, so its own Text may be empty
         string? fullText = ChatMessageText.GetText(MessageTextBlock);
 
-        if (string.IsNullOrEmpty(fullText)) return;
+        if (string.IsNullOrEmpty(fullText))
+        {
+            vm.SetCopyText(null, false);
+            return;
+        }
 
         string textToSend;
 

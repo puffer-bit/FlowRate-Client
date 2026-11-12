@@ -1,5 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
@@ -8,6 +10,7 @@
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views"
              x:Class="Client.Droid.Views.ChatView"
@@ -17,6 +20,38 @@
              anim:Presence.Duration="Medium">
 
     <UserControl.Styles>
+        <Style Selector="ToggleButton.pinsToggle">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pointerover /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.pinsToggle:checked /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter,
+                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+        <Style Selector="Border.pins-panel">
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.pins-panel.open">
+            <Setter Property="Width" Value="260"/>
+        </Style>
+
         <!-- Round buttons of the header and of the list, sized for a finger -->
         <Style Selector="Button.chat-round">
             <Setter Property="Width" Value="44"/>
@@ -202,14 +237,20 @@
     <Grid RowDefinitions="Auto, 1, *, Auto">
 
         <!-- Header: the menu with the sessions, then the chat with its status under the name -->
-        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, Auto, *" ColumnSpacing="8">
+        <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="8">
             <Button Grid.Column="0" Classes="borderless chat-round" Click="OnMenuClick">
                 <Path Classes="burger"/>
             </Button>
 
-            <Image Grid.Column="1" Width="32" Height="32" VerticalAlignment="Center" Source="{StaticResource HashIcon}"/>
+            <Button Grid.Column="1" Classes="borderless chat-round" Click="OnChatTitleClick">
+                <Panel Width="40" Height="40">
+                    <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !StatusBar.IsDirect}"/>
+                    <avatars:UserAvatar Width="40" Height="40" UserName="{Binding StatusBar.Name}" AvatarUrl="{Binding StatusBar.AvatarUrl}"
+                                        Status="{Binding StatusBar.PeerStatus}" IsVisible="{Binding StatusBar.IsDirect}"/>
+                </Panel>
+            </Button>
 
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2" Tapped="OnChatTitleTapped">
                 <TextBlock Text="{Binding StatusBar.Name}"
                            FontSize="16"
                            FontWeight="SemiBold"
@@ -226,13 +267,25 @@
                                                     BorderThickness="2"
                                                     IsVisible="{Binding StatusBar.IsLoading}"/>
                     <TextBlock Grid.Column="1"
+                               Classes="chat-status"
+                               Classes.typing="{Binding StatusBar.IsTyping}"
                                Text="{Binding StatusBar.StatusText}"
                                FontSize="12"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"
-                               MaxLines="1"
-                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                               MaxLines="1"/>
                 </Grid>
+            </StackPanel>
+            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.IsDirect}"
+                        Command="{Binding StatusBar.CallCommand}" ToolTip.Tip="{l:Text calls.start}">
+                    <Image Width="24" Height="24" Source="{StaticResource ChatCallStartedIcon}"/>
+                </Button>
+            <ToggleButton Classes="pinsToggle" Grid.Column="3" Width="44" Height="44" Padding="10"
+                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
+                          IsChecked="{Binding StatusBar.IsPinsOpen, Mode=TwoWay}">
+                <Image Source="{StaticResource PinIcon}"/>
+            </ToggleButton>
             </StackPanel>
         </Grid>
 
@@ -280,6 +333,19 @@
             </ItemsControl.Styles>
         </ItemsControl>
 
+        <loadingIndicators:ChatSkeleton Grid.Row="2"
+                                        Margin="4,0"
+                                        VerticalAlignment="Stretch"
+                                        IsVisible="{Binding IsInitialLoading}"/>
+
+        <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
+        <loadingIndicators:ChatSkeleton Grid.Row="2"
+                                        Margin="4,0"
+                                        VerticalAlignment="Top"
+                                        Background="{DynamicResource GeneralBrush}"
+                                        IsCompact="True"
+                                        IsVisible="{Binding IsLoadingOlder}"/>
+
         <!-- Shown while the chat has no messages -->
         <emptyStates:EmptyState Grid.Row="2"
                                 anim:Presence.Appear="Rise"
@@ -306,30 +372,36 @@
 
         <!-- Composer: the input and the send button in one rounded box. Enter starts a new line, as
              the keyboard of a phone has no other key for it; the button sends -->
-        <StackPanel Grid.Row="3" Margin="10,6,10,10" Spacing="6" IsVisible="{Binding !IsInitialLoading}">
-            <!-- Users to mention while a name after "@" is typed; a tap writes the name into the input -->
+        <StackPanel Grid.Row="3" Margin="10,6,10,10" Spacing="6" IsEnabled="{Binding !IsInitialLoading}">
+            <!-- Mention and command suggestions; a tap completes the input -->
             <Border Classes="mention-list" IsVisible="{Binding Composer.MentionPicker.IsOpen}">
                 <ScrollViewer MaxHeight="220">
-                    <ItemsControl ItemsSource="{Binding Composer.MentionPicker.Suggestions}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
-                                <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
-                                        Click="OnMentionClick">
-                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
-                                        <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
-                                                            IsVisible="{Binding !IsGroup}"
-                                                            UserName="{Binding Name}"
-                                                            AvatarUrl="{Binding AvatarUrl}"
-                                                            Status="{Binding Status}"/>
-                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="15"
-                                                   Text="{Binding Name, StringFormat=@\{0\}}"/>
-                                        <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
-                                                   IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding Composer.MentionPicker.Suggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                                    <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                            Click="OnMentionClick" PointerEntered="OnMentionPointerEntered">
+                                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
+                                            <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
+                                                                IsVisible="{Binding !IsGroup}"
+                                                                UserName="{Binding Name}"
+                                                                AvatarUrl="{Binding AvatarUrl}"
+                                                                Status="{Binding Status}"/>
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="15"
+                                                       Text="{Binding DisplayName}"/>
+                                            <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                                       IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                            <hints:HintBlock IsVisible="{Binding Composer.MentionPicker.ShowRollHint}"
+                                             Text="{l:Text chat.command.roll.hint}" Margin="10,6"/>
+                            <hints:HintBlock IsVisible="{Binding Composer.MentionPicker.ShowFlipHint}"
+                                             Text="{l:Text chat.command.flip.hint}" Margin="10,6"/>
+                        </StackPanel>
                 </ScrollViewer>
             </Border>
 
@@ -374,11 +446,16 @@
                             <StackPanel>
                                 <TextBlock Classes="msg-reply-username"
                                            Text="{Binding Composer.ReplyBarPreview.ReplyTitle}"/>
-                                <TextBlock FontSize="13"
+                                <Grid ColumnDefinitions="Auto,*">
+                                        <Image Width="14" Height="14" Margin="0,0,5,0"
+                                               Source="{StaticResource ClipIcon}"
+                                               IsVisible="{Binding Composer.ReplyBarPreview.HasAttachments, FallbackValue=False}"/>
+                                        <TextBlock Grid.Column="1" FontSize="13"
                                            Foreground="{DynamicResource PrimaryTextBrush}"
                                            Text="{Binding Composer.ReplyBarPreview.Text}"
                                            MaxLines="1"
                                            TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
                             </StackPanel>
                         </Border>
                     </Button>
@@ -457,12 +534,37 @@
 
                     <TextBox Grid.Column="1"
                              x:Name="MessageInput"
+                             text:ChatInputFormatting.Enabled="True"
                              Classes="composer-input"
                              PlaceholderText="{Binding Composer.InputWatermark}"
                              Text="{Binding Composer.InputtedText}"
                              MaxLength="{Binding Composer.MaxMessageLength}"
                              IsReadOnly="{Binding Composer.IsMessageSending}"
-                             IsEnabled="{Binding Composer.CanWrite}"/>
+                             IsEnabled="{Binding Composer.CanWrite}">
+                            <TextBox.ContextFlyout>
+                                <Flyout Placement="TopEdgeAlignedLeft">
+                                    <StackPanel Spacing="2">
+                                        <menus:MenuItemButton Icon="{StaticResource CutIcon}" Content="{l:Text chat.input.cut}" Gesture="Ctrl+X"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanCut}"
+                                                              Command="{Binding $parent[TextBox].Cut}"/>
+                                        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.input.copy}" Gesture="Ctrl+C"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanCopy}"
+                                                              Command="{Binding $parent[TextBox].Copy}"/>
+                                        <menus:MenuItemButton Icon="{StaticResource PasteIcon}" Content="{l:Text chat.input.paste}" Gesture="Ctrl+V"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              IsEnabled="{Binding $parent[TextBox].CanPaste}"
+                                                              Command="{Binding $parent[TextBox].Paste}"/>
+                                        <Separator/>
+                                        <menus:MenuItemButton Icon="{StaticResource SelectAllIcon}" Content="{l:Text chat.input.selectAll}" Gesture="Ctrl+A"
+                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding $parent[TextBox].SelectAll}"/>
+                                        <text:ChatFormattingMenu Target="{Binding $parent[TextBox]}"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </TextBox.ContextFlyout>
+                    </TextBox>
 
                     <!-- Characters left; appears only near the limit -->
                     <TextBlock Grid.Column="2"
@@ -513,6 +615,11 @@
 
         <!-- An image of a message opened over the whole chat; two fingers or a double tap zoom it, a
              finger moves the zoomed one, a tap beside it or back closes it -->
+        <Border Grid.Row="2" Grid.RowSpan="2" Classes="pins-panel" Classes.open="{Binding StatusBar.IsPinsOpen}"
+                HorizontalAlignment="Right" ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsPinsOpen}">
+            <views:ChatPinnedMessagesPanel Width="260" HorizontalAlignment="Left"/>
+        </Border>
+
         <ContentControl Grid.Row="0" Grid.RowSpan="4"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
@@ -575,6 +682,39 @@
                     </StackPanel>
                 </Border>
 
+                <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
+                                      IsVisible="{Binding CanReact}">
+                    <menus:MenuItemButton.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="reaction-picker">
+                            <ItemsControl ItemsSource="{Binding ReactionChoices}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="chatVm:ChatReactionVM">
+                                        <menus:MenuItemButton Command="{Binding Choose}" menus:FlyoutMenu.CloseOnClick="True">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <menus:MenuItemButton.IconContent>
+                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMine}"/>
+                                            </menus:MenuItemButton.IconContent>
+                                        </menus:MenuItemButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Flyout>
+                    </menus:MenuItemButton.Flyout>
+                </menus:MenuItemButton>
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                      IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
+                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                              IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
+                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                              IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                              Command="{Binding TogglePinned}"/>
                 <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
                                       Command="{Binding StartReply}"/>
                 <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
@@ -583,6 +723,10 @@
                 <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
                                       IsEnabled="{Binding HasCopyText}"
                                       Command="{Binding Copy}"/>
+                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                      IsVisible="{Binding HasContextFile}"
+                                      IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
+                                      Command="{Binding SaveFileAs}"/>
                 <!-- The profile is also where a user is renamed -->
                 <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
                                       IsEnabled="{Binding !IsSenderDeleted}"

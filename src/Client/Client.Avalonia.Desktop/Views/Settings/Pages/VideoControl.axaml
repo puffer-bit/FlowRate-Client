@@ -6,29 +6,76 @@
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Settings.Pages.VideoControl"
              x:DataType="pagesVm:VideoControlVM">
+    <UserControl.Resources>
+        <DataTemplate x:Key="CodecSelectionTemplate" x:DataType="pagesVm:CodecSelectionVM">
+            <ui:SettingsRow services:SettingText.Key="{Binding SettingKey}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="160" ItemsSource="{Binding Choices}" SelectedIndex="{Binding SelectedIndex}"/>
+                    <Button Classes="ghost codecSettings iconButton" Classes.modified="{Binding HasOverrides}" IsEnabled="{Binding CanConfigure}"
+                            Click="ConfigureCodec"
+                            ToolTip.Tip="{l:Text settings.video.codecSettings.title}"
+                            AutomationProperties.Name="{l:Text settings.video.codecSettings.title}">
+                        <Image Width="18" Height="18" Source="{StaticResource GearIcon}"/>
+                    </Button>
+                </StackPanel>
+            </ui:SettingsRow>
+        </DataTemplate>
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Button.codecSettings.modified">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Button.codecSettings.modified /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.codecSettings.modified:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Button.codecSettings.modified:pressed /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+        <!-- A fact, on the right of what it is -->
+        <Style Selector="ui|SettingsRow TextBlock.value">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="280"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
     <ui:SettingsPage>
-        <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
         <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="video.hardwareDecoding">
-                <CheckBox IsChecked="{Binding IsHardwareDecodingEnabled}"/>
+            <ui:SettingsRow Title="{l:Text video.target}">
+                <ComboBox MinWidth="180" SelectedIndex="{Binding VideoTargetIndex}">
+                    <ComboBoxItem Content="{l:Text video.target.screen}"/>
+                    <ComboBoxItem Content="{l:Text video.target.camera}"/>
+                </ComboBox>
             </ui:SettingsRow>
-            <!-- Which decoder and how frames leave it only matter while the GPU decodes -->
-            <ui:SettingsRow services:SettingText.Key="video.decoder"
-                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
-                <ComboBox MinWidth="160" ItemsSource="{Binding DecoderChoices}"
-                          SelectedIndex="{Binding DecoderIndex}"/>
-            </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="video.zeroCopy"
-                            IsExpanded="{Binding IsHardwareDecodingEnabled}">
+        </ui:SettingsCard>
+        <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ItemsControl ItemsSource="{Binding Decoders}" ItemTemplate="{StaticResource CodecSelectionTemplate}"/>
+            <ui:SettingsRow services:SettingText.Key="video.zeroCopy">
                 <CheckBox IsChecked="{Binding IsZeroCopyEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.zeroCopyStatus" IndentLevel="1"
+                            IsExpanded="{Binding IsZeroCopyEnabled}">
+                <TextBlock Classes="value" Text="{Binding ZeroCopyStatus}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="video.presentation"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="video.timedPresentation">
                 <CheckBox IsChecked="{Binding IsTimedPresentationEnabled}"/>
             </ui:SettingsRow>
@@ -37,17 +84,10 @@
                 <ComboBox MinWidth="120" ItemsSource="{Binding PresentationBufferChoices}"
                           SelectedIndex="{Binding PresentationBufferIndex}"/>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="video.frameStats">
-                <CheckBox IsChecked="{Binding ShowFrameStats}"/>
-            </ui:SettingsRow>
         </ui:SettingsCard>
 
         <controls:SettingsHeader services:SettingText.Section="video.encoding"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="video.encoder">
-                <ComboBox MinWidth="160" ItemsSource="{Binding EncoderChoices}"
-                          SelectedIndex="{Binding EncoderIndex}"/>
-            </ui:SettingsRow>
-        </ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}"
+                         ItemsSource="{Binding Encoders}" ItemTemplate="{StaticResource CodecSelectionTemplate}"/>
     </ui:SettingsPage>
 </UserControl>

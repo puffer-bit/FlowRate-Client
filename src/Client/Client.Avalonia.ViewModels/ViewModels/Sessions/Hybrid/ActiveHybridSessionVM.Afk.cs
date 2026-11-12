@@ -1,11 +1,10 @@
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using Client.Avalonia.Localization;
 using Client.Application.Sounds;
-using Client.Core.Events;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
 using Client.Services;
 using Client.ViewModels.Notifications;
-using Shared.Enums;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -35,7 +34,7 @@ public partial class ActiveHybridSessionVM
 
     /// <summary>
     /// Goes away with the reason typed in the bar, or comes back. Remembered on this coordinator, as the mutes are.
-    /// Away nothing is heard and the microphone is always off; back, both return to what the user chose for them.
+    /// Away no voice is heard (the sound of screens still is) and the microphone is always off; back, both return to what the user chose for them.
     /// </summary>
     private async Task ToggleAfk()
     {
@@ -52,7 +51,7 @@ public partial class ActiveHybridSessionVM
         await _coordinatorStates.SetAfkAsync(CoordinatorInstanceId, isAfk, _hybridSession.AfkReason);
 
         // Kept here anyway; a rejection is reported by the main window
-        if (result is not (SetAfkResult.NoError or SetAfkResult.Rejected))
+        if (!(result.IsSuccess || result.IsRejected))
             ShowPopUp(NotificationPopUpVM.PopUpType.Error, Strings.Format("hybrid.afk.failed", ("reason", result)),
                 "AfkFailed");
 

@@ -1,0 +1,1 @@
+ALTER TABLE AudioSettings ADD COLUMN OutputVolume REAL NOT NULL DEFAULT 1.0;

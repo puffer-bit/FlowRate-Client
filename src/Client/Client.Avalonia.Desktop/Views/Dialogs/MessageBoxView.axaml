@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:dialogVm="clr-namespace:Client.ViewModels.Dialogs;assembly=Client.Avalonia.ViewModels"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="180"
@@ -25,6 +26,23 @@
                         CornerRadius="6" Padding="10, 8">
                     <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap"/>
                 </Border>
+                <ContentControl IsVisible="{Binding HasBanForm}" Content="{Binding BanForm}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate x:DataType="dialogVm:BanFormVM">
+                            <StackPanel Spacing="8" MinWidth="300">
+                                <TextBlock Text="{l:Text ban.kind}"/>
+                                <ComboBox ItemsSource="{Binding Kinds}" SelectedIndex="{Binding KindIndex}" HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="{l:Text ban.ip.description}" TextWrapping="Wrap" IsVisible="{Binding IsIp}"/>
+                                <TextBox Text="{Binding Address}" PlaceholderText="{l:Text ban.ip.placeholder}" IsVisible="{Binding IsIp}"/>
+                                <TextBlock Text="{l:Text ban.reason}"/>
+                                <TextBox Text="{Binding Reason}" MaxLength="1000" AcceptsReturn="True" MinHeight="70" TextWrapping="Wrap"
+                                         TextAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Top"/>
+                                <TextBlock Text="{l:Text ban.duration}"/>
+                                <ComboBox ItemsSource="{Binding Durations}" SelectedIndex="{Binding DurationIndex}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
                 <CheckBox IsVisible="{Binding HasCheckBox}"
                           IsChecked="{Binding IsChecked}"
                           Content="{Binding CheckBoxText}"/>

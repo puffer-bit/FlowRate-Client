@@ -48,6 +48,7 @@
             <Transitions>
                 <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
                 <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}"/>
             </Transitions>
         </Setter>
     </Style>
@@ -62,6 +63,12 @@
     <!-- A list marked byContent fills the session shown in the main window, not the clicked item -->
     <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader, Border.sessionHeader.shown">
         <Setter Property="Background" Value="{DynamicResource ListBoxItemSelectedBrush}"/>
+    </Style>
+    <Style Selector="Border.sessionHeader > Grid TextBlock.sessionPreview">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader > Grid TextBlock.sessionPreview, Border.sessionHeader.shown > Grid TextBlock.sessionPreview">
+        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
     </Style>
     <!-- Through the Grid of the header: the context menu of the header is its logical child too, and keeps its own colors -->
     <Style Selector="ListBox.sessionsList:not(.byContent) > ListBoxItem:selected Border.sessionHeader > Grid TextBlock, Border.sessionHeader.shown > Grid TextBlock">
@@ -149,6 +156,7 @@
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="RenderTransform" Value="translate(0px, 0px)"/>
         <!-- The row is cut, not squeezed over its neighbours, while its height animates -->
         <Setter Property="ClipToBounds" Value="True"/>
     </Style>
@@ -171,22 +179,27 @@
 
     <Style Selector="ListBox.peersList > ListBoxItem /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Transitions">
             <Transitions>
                 <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
             </Transitions>
         </Setter>
     </Style>
     <Style Selector="ListBox.peersList > ListBoxItem:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
     </Style>
-    <!-- A translucent highlight, not a fill, so the regular text color stays -->
+    <!-- A soft fill and outline keep the menu's active peer visible in either theme. -->
     <Style Selector="ListBox.peersList > ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PeerItemSelectedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
     </Style>
     <Style Selector="ListBox.peersList > ListBoxItem:selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
     </Style>
 
     <!-- ====== Category headers ====== -->
@@ -196,10 +209,15 @@
         <Setter Property="MinHeight" Value="30"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Transitions">
             <Transitions>
                 <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                <anim:SmoothBrushTransition Property="BorderBrush" Duration="{anim:Motion Brief}"/>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Brief}" Easing="{anim:Ease Enter}"/>
             </Transitions>
         </Setter>
     </Style>
@@ -256,23 +274,33 @@
     <!-- A session dragged over a header goes into that category -->
     <Style Selector="Border.categoryHeader.dropTarget">
         <Setter Property="Background" Value="{DynamicResource SessionDropTargetBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SessionDropIndicatorBrush}"/>
+        <Setter Property="RenderTransform" Value="translate(3px, 0px)"/>
+    </Style>
+    <Style Selector="Border.categoryHeader.dropTarget TextBlock.categoryName">
+        <Setter Property="Foreground" Value="{DynamicResource SessionDropIndicatorBrush}"/>
+    </Style>
+    <Style Selector="Border.categoryHeader.dropTarget Path.categoryChevron">
+        <Setter Property="Stroke" Value="{DynamicResource SessionDropIndicatorBrush}"/>
     </Style>
     <!-- The row being dragged stays in place as an empty slot until it is dropped -->
     <Style Selector="Border.sessionHeader.dragged, Border.categoryHeader.dragged">
         <Setter Property="Background" Value="{DynamicResource SessionDragSourceBrush}"/>
+        <Setter Property="Opacity" Value="0.45"/>
     </Style>
     <Style Selector="Border.sessionHeader.dragged TextBlock, Border.categoryHeader.dragged TextBlock.categoryName">
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
     </Style>
     <Style Selector="Border.sessionDropIndicator">
-        <Setter Property="Height" Value="2"/>
-        <Setter Property="CornerRadius" Value="1"/>
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="CornerRadius" Value="1.5"/>
         <Setter Property="Background" Value="{DynamicResource SessionDropIndicatorBrush}"/>
         <Setter Property="IsHitTestVisible" Value="False"/>
     </Style>
     <Style Selector="Border.sessionDragGhost">
-        <Setter Property="Padding" Value="10,6"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,7,14,7"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="BoxShadow" Value="{DynamicResource SessionDragShadow}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Background" Value="{DynamicResource SessionDragGhostBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SessionDragGhostBorderBrush}"/>
@@ -281,5 +309,10 @@
     <Style Selector="Border.sessionDragGhost TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Border.sessionDragIcon">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{DynamicResource SessionDropTargetBrush}"/>
     </Style>
 </Styles>

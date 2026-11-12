@@ -18,7 +18,7 @@
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="appearance.language"/>
         <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="appearance.language">
+            <ui:SettingsRow services:SettingText.Key="appearance.language" IsEnabled="{x:Static services:LaunchSettings.CanChangeLanguage}">
                 <ComboBox MinWidth="180" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="pagesVm:LanguageOption">

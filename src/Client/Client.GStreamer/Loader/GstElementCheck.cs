@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Video;
@@ -18,7 +19,7 @@ internal static partial class GstElementCheck
         "opusenc", "opusdec", "rtpopuspay", "rtpopusdepay",
         "audioconvert", "audioresample", "audiomixer", "audiodynamic", "volume", "valve", "autoaudiosrc", "autoaudiosink",
         // Generic
-        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink",
+        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink", "clocksync",
         // Video
         "videoconvert", "videoscale", "videorate",
         "h264parse", "openh264enc", "openh264dec", "rtph264pay", "rtph264depay",
@@ -41,11 +42,15 @@ internal static partial class GstElementCheck
         "webrtcdsp",
         // RNNoise, bundled since the neural noise suppression. Without it the neural levels run as
         // the moderate one of webrtcdsp and the voice gate goes by the level alone
-        "audiornnoise"
+        "audiornnoise",
+        // Older runtimes can still join calls; the chat player reports unavailable decoders.
+        "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
     ];
 
-    // Missing only without PipeWire on the system, then screen sharing on Wayland is impossible anyway
-    private static readonly string[] OptionalLinux = ["pipewiresrc"];
+    private static readonly string[] OptionalWindows = ["mfaacdec", "mfvideosrc", "jpegdec"];
+
+    // PipeWire needs system support; older Linux runtimes may also lack the chat AAC decoder.
+    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec", "v4l2src", "jpegdec"];
 
     /// <summary>
     /// Logs what is missing and what encoders and decoders are available.
@@ -55,7 +60,8 @@ internal static partial class GstElementCheck
     public static bool Run(ILogger logger, bool isBundled)
     {
         var required = OperatingSystem.IsWindows() ? Required.Concat(RequiredWindows) : Required;
-        var optional = OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
+        var optional = OperatingSystem.IsWindows() ? Optional.Concat(OptionalWindows)
+            : OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
         if (isBundled)
             required = required.Concat(Av1);
         else

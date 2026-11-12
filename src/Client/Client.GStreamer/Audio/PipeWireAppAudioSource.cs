@@ -1,7 +1,7 @@
 using System.Globalization;
 using Gst;
 using Client.Application.Ports;
-using Client.GStreamer.WebRTC;
+using Client.GStreamer.Interop;
 
 namespace Client.GStreamer.Audio;
 
@@ -18,7 +18,7 @@ namespace Client.GStreamer.Audio;
 /// drops errors, and the mixer goes on with the other inputs. A silent input keeps the mixer and
 /// its timestamps running while the application plays nothing.
 /// </remarks>
-internal sealed class PipeWireAppAudioSource : IDisposable
+public sealed class PipeWireAppAudioSource : IDisposable
 {
     private const string MixerName = "mix";
     private const string Caps = "audio/x-raw,rate=48000,channels=2,format=F32LE";
@@ -164,7 +164,7 @@ internal sealed class PipeWireAppAudioSource : IDisposable
         if (!_streams.Remove(serial, out var stream))
             return;
 
-        PipelineBranch.Shutdown(stream.Branch);
+        GstBranch.Shutdown(stream.Branch);
         _bin.Remove(stream.Branch);
         _mixer.ReleaseRequestPad(stream.MixerPad);
         stream.MixerPad.Dispose();

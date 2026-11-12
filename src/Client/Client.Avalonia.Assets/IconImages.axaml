@@ -7,7 +7,224 @@
          and at most one filled accent in a color. Status badges are a filled colored shape with a white
          2 px glyph; colored marks (check, cross, plus, arrows) are 2 px as well -->
 
+    <!-- ===== Chat formatting ===== -->
+
+    <!-- Chat formatting. Source: Icons/FormatBoldIcon.svg -->
+    <DrawingImage x:Key="FormatBoldIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M7 4 V20 H13 A4 4 0 0 0 13 12 H7 M7 4 H12 A4 4 0 0 1 12 12">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatItalicIcon.svg -->
+    <DrawingImage x:Key="FormatItalicIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M10 4 H19 M5 20 H14 M15 4 L9 20">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatStrikeIcon.svg -->
+    <DrawingImage x:Key="FormatStrikeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M17 6 C15 3 7 3 7 8 C7 10 9 11 12 12 M7 18 C9 21 17 21 17 16 C17 14 15 13 12 12 M3 12 H21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatCodeIcon.svg -->
+    <DrawingImage x:Key="FormatCodeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8 7 L3 12 L8 17 M16 7 L21 12 L16 17 M14 4 L10 20">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatCodeBlockIcon.svg -->
+    <DrawingImage x:Key="FormatCodeBlockIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M4 3 H20 Q22 3 22 5 V19 Q22 21 20 21 H4 Q2 21 2 19 V5 Q2 3 4 3 Z M2 7 H22 M8 11 L5 14 L8 17 M16 11 L19 14 L16 17 M13 10 L11 18">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat formatting. Source: Icons/FormatLinkIcon.svg -->
+    <DrawingImage x:Key="FormatLinkIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M10 14 L14 10 M9 16 L7 18 A4 4 0 0 1 1 12 L6 7 A4 4 0 0 1 12 7 M15 8 L17 6 A4 4 0 0 1 23 12 L18 17 A4 4 0 0 1 12 17">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- ===== Common ===== -->
+    <DrawingImage x:Key="PinIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8 3 H16 M9 3 V9 L6 13 V15 H18 V13 L15 9 V3 M12 15 V22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Add a reaction: a smile with a plus. Source: Icons/AddReactionIcon.svg -->
+    <DrawingImage x:Key="AddReactionIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M21 12 A9 9 0 1 1 12 3 M8 14 Q12 18 16 14 M8 9 H8.01 M15 9 H15.01 M19 2 V8 M16 5 H22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- QR code. Source: Icons/QrCodeIcon.svg -->
+    <DrawingImage x:Key="QrCodeIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M3 3h6v1h-6Z M3 8h6v1h-6Z M3 4h1v4h-1Z M8 4h1v4h-1Z M5 5h2v2h-2Z M15 3h6v1h-6Z M15 8h6v1h-6Z M15 4h1v4h-1Z M20 4h1v4h-1Z M17 5h2v2h-2Z M3 15h6v1h-6Z M3 20h6v1h-6Z M3 16h1v4h-1Z M8 16h1v4h-1Z M5 17h2v2h-2Z M11 3h2v2h-2Z M11 5h2v2h-2Z M9 9h2v2h-2Z M13 9h2v2h-2Z M17 9h2v2h-2Z M19 9h2v2h-2Z M3 11h2v2h-2Z M5 11h2v2h-2Z M9 11h2v2h-2Z M11 11h2v2h-2Z M15 11h2v2h-2Z M19 11h2v2h-2Z M11 13h2v2h-2Z M13 13h2v2h-2Z M15 13h2v2h-2Z M17 13h2v2h-2Z M9 15h2v2h-2Z M13 15h2v2h-2Z M17 15h2v2h-2Z M19 15h2v2h-2Z M11 17h2v2h-2Z M15 17h2v2h-2Z M19 17h2v2h-2Z M9 19h2v2h-2Z M11 19h2v2h-2Z M15 19h2v2h-2Z M17 19h2v2h-2Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="MediaStopIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 5 H18 Q19 5 19 6 V18 Q19 19 18 19 H6 Q5 19 5 18 V6 Q5 5 6 5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Session journal. Source: Icons/LogsIcon.svg -->
+    <DrawingImage x:Key="LogsIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M6 3 H18 Q20 3 20 5 V19 Q20 21 18 21 H6 Q4 21 4 19 V5 Q4 3 6 3 Z M8 8 H16 M8 12 H16 M8 16 H13">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat system action; neutral strokes follow the current theme. -->
+    <DrawingImage x:Key="ChatMemberAddedIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M9 11 A4 4 0 1 0 9 3 A4 4 0 1 0 9 11">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M2 21 V19 A7 7 0 0 1 16 19 V21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M19 5 V11 M16 8 H22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat system action; neutral strokes follow the current theme. -->
+    <DrawingImage x:Key="ChatMemberRemovedIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M9 11 A4 4 0 1 0 9 3 A4 4 0 1 0 9 11">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M2 21 V19 A7 7 0 0 1 16 19 V21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M16 8 H22">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat system action; neutral strokes follow the current theme. -->
+    <DrawingImage x:Key="ChatMemberLeftIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M10 4 H4 V20 H10">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 12 H21 M16 7 L21 12 L16 17">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat system action; neutral strokes follow the current theme. -->
+    <DrawingImage x:Key="ChatCallStartedIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 3 H9 L11 8 L8 10 C9.5 13 11 14.5 14 16 L16 13 L21 15 V19 C21 20.1 20.1 21 19 21 C10 21 3 14 3 5 C3 3.9 3.9 3 5 3">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M15 3 A6 6 0 0 1 21 9 M15 6 A3 3 0 0 1 18 9">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Chat system action; neutral strokes follow the current theme. -->
+    <DrawingImage x:Key="ChatCallEndedIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M3 15 C7 10 17 10 21 15 L20 19 L15 18 V15 C13 14.5 11 14.5 9 15 V18 L4 19 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.6" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
 
     <!-- Single user outline. Source: Icons/BaseUserIcon.svg -->
     <DrawingImage x:Key="BaseUserIcon">
@@ -136,6 +353,19 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Two sheets with a blue picture on the front one. Source: Icons/ChatView/CopyImageIcon.svg -->
+    <DrawingImage x:Key="CopyImageIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M15.5 8.5 V5.5 A2 2 0 0 0 13.5 3.5 H5.5 A2 2 0 0 0 3.5 5.5 V13.5 A2 2 0 0 0 5.5 15.5 H8.5 M10.5 8.5 H18.5 A2 2 0 0 1 20.5 10.5 V18.5 A2 2 0 0 1 18.5 20.5 H10.5 A2 2 0 0 1 8.5 18.5 V10.5 A2 2 0 0 1 10.5 8.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Brush="#00B4FF" Geometry="M11 17.5 L13.5 14 L15.2 16 L16.5 14.5 L18.5 17.5 Z M11.2 11.8 A0.8 0.8 0 1 0 12.8 11.8 A0.8 0.8 0 1 0 11.2 11.8 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Two sheets, a blue selection on the front one (copy the selected text). Source: Icons/CopySelectionIcon.svg -->
     <DrawingImage x:Key="CopySelectionIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -203,6 +433,38 @@
             <GeometryDrawing Geometry="M4 4 L20 20">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Voice is forbidden by the session permissions; the entire icon stays red. -->
+    <DrawingImage x:Key="ForbiddenMicrophoneIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M12,3 H12 A3,3 0 0 1 15,6 V11 A3,3 0 0 1 12,14 H12 A3,3 0 0 1 9,11 V6 A3,3 0 0 1 12,3 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M5 11 A7 7 0 0 0 19 11">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M12 18 V21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 21 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M3 3 L21 21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource ErrorBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>
@@ -395,15 +657,14 @@
     <DrawingImage x:Key="DoorWithRedArrowIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
-            <GeometryDrawing Geometry="M5 3 H11.5 A1.5 1.5 0 0 1 13 4.5 V19.5 A1.5 1.5 0 0 1 11.5 21 H5 A1.5 1.5 0 0 1 3.5 19.5 V4.5 A1.5 1.5 0 0 1 5 3 Z">
+            <GeometryDrawing Geometry="M10 4 H5 A2 2 0 0 0 3 6 V18 A2 2 0 0 0 5 20 H10">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
-            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M9.5 12 A0.9 0.9 0 1 0 11.3 12 A0.9 0.9 0 1 0 9.5 12 Z"/>
-            <GeometryDrawing Geometry="M15 12 H21.5 M18.5 8.8 L21.7 12 L18.5 15.2">
+            <GeometryDrawing Geometry="M9 12 H21 M17 8 L21 12 L17 16">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#F44336" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                    <Pen Brush="#F44336" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>
@@ -557,6 +818,19 @@
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Die with five pips. Source: Icons/ChatView/DiceIcon.svg -->
+    <DrawingImage x:Key="DiceIcon">
+        <DrawingGroup>
+            <GeometryDrawing Geometry="M7 3 H17 A4 4 0 0 1 21 7 V17 A4 4 0 0 1 17 21 H7 A4 4 0 0 1 3 17 V7 A4 4 0 0 1 7 3 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.8"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}"
+                             Geometry="M6.1 7.5 A1.4 1.4 0 1 0 8.9 7.5 A1.4 1.4 0 1 0 6.1 7.5 Z M15.1 7.5 A1.4 1.4 0 1 0 17.9 7.5 A1.4 1.4 0 1 0 15.1 7.5 Z M10.6 12 A1.4 1.4 0 1 0 13.4 12 A1.4 1.4 0 1 0 10.6 12 Z M6.1 16.5 A1.4 1.4 0 1 0 8.9 16.5 A1.4 1.4 0 1 0 6.1 16.5 Z M15.1 16.5 A1.4 1.4 0 1 0 17.9 16.5 A1.4 1.4 0 1 0 15.1 16.5 Z"/>
         </DrawingGroup>
     </DrawingImage>
 
@@ -862,6 +1136,13 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <DrawingImage x:Key="AudioPauseIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M6 5 H10 V19 H6 Z M14 5 H18 V19 H14 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Green play triangle. Source: Icons/PlayIcon.svg -->
     <DrawingImage x:Key="PlayIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -886,6 +1167,23 @@
             <GeometryDrawing Geometry="M14 6 L17 9">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Pencil over a dimmed photo; keep contrast in both themes. -->
+    <DrawingImage x:Key="PencilOnImageIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M16.5 3.5 A2.12 2.12 0 0 1 19.5 6.5 L7.5 18.5 L3 20 L4.5 15.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M14 6 L17 9">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource OnAccentTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>
@@ -1179,6 +1477,14 @@
 
     <!-- ===== Chat view ===== -->
 
+    <!-- Filled triangle for broadcast source selection. -->
+    <DrawingImage x:Key="DropdownTriangleIcon">
+        <DrawingGroup ClipGeometry="M0,0 H12 V12 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H12 V12 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M2,4 L10,4 L6,8 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Down arrow (scroll to end). Source: Icons/ChatView/DownArrowIcon.svg -->
     <DrawingImage x:Key="DownArrowIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -1299,6 +1605,18 @@
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
             <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M8,8 A4,4 0 1 0 16,8 A4,4 0 1 0 8,8 Z"/>
             <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M4 20 C4 16 8 14 12 14 S20 16 20 20 V21 H4 V20 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Mention a user. Source: Icons/ChatView/MentionIcon.svg -->
+    <DrawingImage x:Key="MentionIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M15.5 8.5 V14 A2.5 2.5 0 0 0 20.5 14 V12 A8.5 8.5 0 1 0 17.5 18.5 M8.5 12 A3.5 3.5 0 1 0 15.5 12 A3.5 3.5 0 1 0 8.5 12 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
         </DrawingGroup>
     </DrawingImage>
 
@@ -1682,6 +2000,35 @@
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
             <GeometryDrawing Brush="{DynamicResource SecondaryTextBrush}" Geometry="F0 M2,12 A10,10 0 1 0 22,12 A10,10 0 1 0 2,12 Z M7,12 A5,5 0 1 0 17,12 A5,5 0 1 0 7,12 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Selected headphones wordmark. Source: AppIcons/Headphones/svg/wordmark-on-light.svg.
+         The symbol follows the accent; the lettering follows the active text color. -->
+    <SolidColorBrush x:Key="FlowRateLogoAccentBrush" Color="{DynamicResource ColorPrimary}"/>
+    <DrawingImage x:Key="FlowRateLogo">
+        <DrawingGroup ClipGeometry="M0,0 H850 V256 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H850 V256 H0 Z"/>
+            <DrawingGroup>
+                <DrawingGroup.Transform>
+                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                </DrawingGroup.Transform>
+                <GeometryDrawing Geometry="M112 281V240C112 160 176 100 256 100S400 160 400 240V281">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{DynamicResource FlowRateLogoAccentBrush}" Thickness="30" LineCap="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="{DynamicResource FlowRateLogoAccentBrush}" Geometry="M115 249H119A27 27 0 0 1 146 276V359A27 27 0 0 1 119 386H115A27 27 0 0 1 88 359V276A27 27 0 0 1 115 249Z"/>
+                <GeometryDrawing Brush="{DynamicResource FlowRateLogoAccentBrush}" Geometry="M393 249H397A27 27 0 0 1 424 276V359A27 27 0 0 1 397 386H393A27 27 0 0 1 366 359V276A27 27 0 0 1 393 249Z"/>
+                <DrawingGroup>
+                    <DrawingGroup.Transform>
+                        <MatrixTransform Matrix="0.66,0,0,0.66,83.1,139.2"/>
+                    </DrawingGroup.Transform>
+                    <GeometryDrawing Brush="{DynamicResource FlowRateLogoAccentBrush}" Geometry="M127 369V143H239V183H171V235H227V275H171V369Z"/>
+                    <GeometryDrawing Brush="{DynamicResource FlowRateLogoAccentBrush}" Geometry="F0 M260 369V143H313C364 143 391 167 391 208C391 238 377 258 353 269L397 369H347L310 281H304V369ZM304 183V242H313C336 242 347 231 347 212C347 193 336 183 313 183Z"/>
+                </DrawingGroup>
+            </DrawingGroup>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M316.766 167.500 L300.078 167.500 L300.078 88.000 L345.891 88.000 L345.891 101.828 L316.766 101.828 L316.766 122.172 L343.875 122.172 L343.875 136.000 L316.766 136.000 Z M376.422 166.750 L359.734 166.750 L359.734 82.000 L376.422 82.000 Z M449.281 136.391 C449.281 146.484 446.609 154.277 441.266 159.766 C435.930 165.258 428.676 168.000 419.500 168.000 C413.820 168.000 408.758 166.777 404.312 164.328 C399.875 161.883 396.383 158.305 393.844 153.594 C391.312 148.875 390.047 143.141 390.047 136.391 C390.047 126.297 392.691 118.543 397.984 113.125 C403.285 107.711 410.566 105.000 419.828 105.000 C425.578 105.000 430.656 106.227 435.062 108.672 C439.469 111.121 442.938 114.668 445.469 119.312 C448.008 123.949 449.281 129.641 449.281 136.391 Z M407.062 136.391 C407.062 142.391 408.051 146.934 410.031 150.016 C412.008 153.090 415.238 154.625 419.719 154.625 C424.125 154.625 427.316 153.090 429.297 150.016 C431.273 146.934 432.266 142.391 432.266 136.391 C432.266 130.383 431.273 125.875 429.297 122.875 C427.316 119.875 424.086 118.375 419.609 118.375 C415.203 118.375 412.008 119.875 410.031 122.875 C408.051 125.875 407.062 130.383 407.062 136.391 Z M508.312 145.656 C508.020 144.387 507.594 142.508 507.031 140.016 C506.469 137.516 505.848 134.836 505.172 131.969 C504.504 129.105 503.875 126.465 503.281 124.047 C502.688 121.621 502.273 119.852 502.047 118.734 L501.594 118.734 C501.375 119.852 500.984 121.621 500.422 124.047 C499.859 126.465 499.238 129.105 498.562 131.969 C497.895 134.836 497.266 137.539 496.672 140.078 C496.078 142.609 495.629 144.543 495.328 145.875 L490.406 167.000 L472.484 167.000 L455.125 106.000 L471.703 106.000 L478.750 133.031 C479.270 134.898 479.734 137.133 480.141 139.734 C480.555 142.340 480.953 144.855 481.328 147.281 C481.703 149.699 481.961 151.617 482.109 153.031 L482.562 153.031 C482.633 151.992 482.781 150.594 483.000 148.844 C483.227 147.086 483.508 145.277 483.844 143.422 C484.188 141.570 484.488 139.875 484.750 138.344 C485.008 136.812 485.211 135.789 485.359 135.266 L492.859 106.000 L511.234 106.000 L518.406 135.266 C518.695 136.309 519.047 137.984 519.453 140.297 C519.867 142.602 520.242 144.945 520.578 147.328 C520.922 149.715 521.094 151.617 521.094 153.031 L521.531 153.031 C521.688 151.762 521.945 149.918 522.312 147.500 C522.688 145.086 523.117 142.539 523.609 139.859 C524.098 137.172 524.602 134.898 525.125 133.031 L532.406 106.000 L548.750 106.000 L531.172 167.000 L513.031 167.000 Z M583.375 87.000 C594.281 87.000 602.328 88.969 607.516 92.906 C612.703 96.836 615.297 102.809 615.297 110.828 C615.297 114.465 614.602 117.641 613.219 120.359 C611.844 123.070 610.016 125.371 607.734 127.266 C605.453 129.152 603.008 130.688 600.406 131.875 L623.922 166.500 L605.109 166.500 L586.062 136.000 L576.984 136.000 L576.984 166.500 L560.078 166.500 L560.078 87.000 Z M582.141 100.828 L576.984 100.828 L576.984 122.281 L582.484 122.281 C588.078 122.281 592.086 121.359 594.516 119.516 C596.941 117.664 598.156 114.918 598.156 111.281 C598.156 107.500 596.867 104.812 594.297 103.219 C591.723 101.625 587.672 100.828 582.141 100.828 Z M657.828 104.719 C666.035 104.719 672.320 106.492 676.688 110.031 C681.062 113.574 683.250 118.984 683.250 126.266 L683.250 166.891 L671.594 166.891 L668.359 158.641 L667.906 158.641 C665.289 161.914 662.523 164.293 659.609 165.781 C656.703 167.258 652.707 168.000 647.625 168.000 C642.176 168.000 637.660 166.414 634.078 163.234 C630.492 160.059 628.703 155.180 628.703 148.594 C628.703 142.094 630.977 137.293 635.531 134.188 C640.094 131.074 646.926 129.516 656.031 129.516 L666.672 129.516 L666.672 126.703 C666.672 123.352 665.828 120.898 664.141 119.344 C662.461 117.781 660.133 117.000 657.156 117.000 C654.164 117.000 651.250 117.434 648.406 118.297 C645.570 119.164 642.738 120.234 639.906 121.516 L634.422 110.188 C637.703 108.480 641.336 107.141 645.328 106.172 C649.328 105.203 653.492 104.719 657.828 104.719 Z M660.172 139.000 C654.797 139.000 651.062 139.902 648.969 141.703 C646.883 143.496 645.844 145.855 645.844 148.781 C645.844 151.312 646.586 153.125 648.078 154.219 C649.566 155.305 651.508 155.844 653.906 155.844 C657.488 155.844 660.508 154.809 662.969 152.734 C665.438 150.664 666.672 147.727 666.672 143.922 L666.672 139.000 Z M726.500 154.734 C728.363 154.734 730.156 154.555 731.875 154.188 C733.594 153.812 735.312 153.367 737.031 152.844 L737.031 165.219 C735.238 165.961 733.016 166.605 730.359 167.156 C727.711 167.719 724.820 168.000 721.688 168.000 C718.020 168.000 714.750 167.406 711.875 166.219 C709.000 165.031 706.723 162.969 705.047 160.031 C703.367 157.094 702.531 153.027 702.531 147.828 L702.531 118.484 L694.578 118.484 L694.578 111.469 L703.766 105.875 L708.578 93.000 L719.219 93.000 L719.219 106.000 L736.359 106.000 L736.359 118.484 L719.219 118.484 L719.219 147.828 C719.219 150.133 719.891 151.859 721.234 153.016 C722.578 154.164 724.332 154.734 726.500 154.734 Z M774.938 105.000 C783.375 105.000 790.055 107.418 794.984 112.250 C799.910 117.086 802.375 123.965 802.375 132.891 L802.375 141.000 L762.953 141.000 C763.098 145.543 764.492 149.117 767.141 151.719 C769.797 154.324 773.477 155.625 778.188 155.625 C782.145 155.625 785.727 155.246 788.938 154.484 C792.145 153.727 795.469 152.555 798.906 150.969 L798.906 163.656 C795.914 165.148 792.758 166.246 789.438 166.953 C786.113 167.648 782.102 168.000 777.406 168.000 C771.281 168.000 765.863 166.871 761.156 164.609 C756.457 162.352 752.766 158.918 750.078 154.312 C747.391 149.711 746.047 143.918 746.047 136.938 C746.047 129.824 747.254 123.906 749.672 119.188 C752.098 114.469 755.477 110.930 759.812 108.562 C764.145 106.188 769.188 105.000 774.938 105.000 Z M775.047 116.812 C771.836 116.812 769.164 117.883 767.031 120.016 C764.906 122.152 763.656 125.465 763.281 129.953 L786.703 129.953 C786.617 126.141 785.645 123.000 783.781 120.531 C781.914 118.055 779.004 116.812 775.047 116.812 Z M807.000 167.000"/>
         </DrawingGroup>
     </DrawingImage>
 </ResourceDictionary>

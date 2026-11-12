@@ -7,8 +7,111 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class SettingsRepositoriesTests
 {
+    [Fact]
+    public async Task ChatViewerGroupingPersistsWithoutOverwritingAppearance()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AppearanceSettingsRepository(database.Database);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+
+        await repository.UpdateCurrentThemeTypeAsync(ThemeType.Light);
+        await repository.UpdateLanguageAsync("ru");
+        await repository.UpdateGroupOnlineChatUsersAsync(true);
+
+        var reopened = new AppearanceSettingsRepository(database.Database);
+        Assert.True(await reopened.GetGroupOnlineChatUsersAsync());
+        Assert.Equal(ThemeType.Light, await reopened.GetCurrentThemeTypeAsync());
+        Assert.Equal("ru", await reopened.GetLanguageAsync());
+
+        await reopened.UpdateGroupOnlineChatUsersAsync(false);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+    }
+
+    [Fact]
+    public async Task ExistingDatabaseGainsChatViewerGroupingWithoutChangingAppearance()
+    {
+        await using var database = await TestDatabase.CreateAtVersionAsync(29);
+        await database.ExecuteAsync("""
+            UPDATE AppearanceSettings SET LanguageCode = 'ru';
+            """);
+
+        var initializer = new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Infrastructure.Database.DatabaseInitializer>.Instance);
+        Assert.Equal(Client.Application.Ports.DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        var repository = new AppearanceSettingsRepository(database.Database);
+        Assert.False(await repository.GetGroupOnlineChatUsersAsync());
+        Assert.Equal("ru", await repository.GetLanguageAsync());
+        await repository.UpdateGroupOnlineChatUsersAsync(true);
+        Assert.True(await repository.GetGroupOnlineChatUsersAsync());
+    }
+
+    [Fact]
+    public async Task ChatAudioVolumePersistsWithoutOverwritingOtherAudioSettings()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        Assert.Equal(1, await repository.GetChatAudioVolumeAsync());
+
+        await repository.UpdateChatAudioVolumeAsync(0.25);
+        await repository.SaveAsync(new AudioSettings { InputVolume = 1.5, SoundsVolume = 0.4 });
+        var reopened = new AudioSettingsRepository(database.Database);
+        Assert.Equal(0.25, await reopened.GetChatAudioVolumeAsync());
+
+        await reopened.UpdateChatAudioVolumeAsync(0.6);
+        var settings = await reopened.GetAsync();
+        Assert.Equal(1.5, settings.InputVolume);
+        Assert.Equal(0.4, settings.SoundsVolume);
+        Assert.Equal(0.6, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(2, 1)]
+    [InlineData(double.NaN, 1)]
+    public async Task ChatAudioVolumeIsClamped(double requested, double expected)
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        await repository.UpdateChatAudioVolumeAsync(requested);
+        Assert.Equal(expected, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Fact]
+    public async Task ChatVideoVolumePersistsWithoutOverwritingOtherAudioSettings()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        Assert.Equal(1, await repository.GetChatVideoVolumeAsync());
+
+        await repository.UpdateChatAudioVolumeAsync(0.8);
+        await repository.UpdateChatVideoVolumeAsync(0.25);
+        await repository.SaveAsync(new AudioSettings { InputVolume = 1.5, SoundsVolume = 0.4 });
+        var reopened = new AudioSettingsRepository(database.Database);
+        Assert.Equal(0.25, await reopened.GetChatVideoVolumeAsync());
+
+        await reopened.UpdateChatVideoVolumeAsync(0.6);
+        var settings = await reopened.GetAsync();
+        Assert.Equal(1.5, settings.InputVolume);
+        Assert.Equal(0.4, settings.SoundsVolume);
+        Assert.Equal(0.6, await repository.GetChatVideoVolumeAsync());
+        Assert.Equal(0.8, await repository.GetChatAudioVolumeAsync());
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(2, 1)]
+    [InlineData(double.NaN, 1)]
+    public async Task ChatVideoVolumeIsClamped(double requested, double expected)
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+        await repository.UpdateChatVideoVolumeAsync(requested);
+        Assert.Equal(expected, await repository.GetChatVideoVolumeAsync());
+    }
+
     [Fact]
     public async Task StorageSettingsStartWithTheDefaultsAndRoundTrip()
     {
@@ -73,6 +176,7 @@ public class SettingsRepositoriesTests
         Assert.False(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.Moderate, settings.NoiseSuppression);
         Assert.False(settings.IsEchoCancellationEnabled);
+        Assert.True(settings.IsAutoGainControlEnabled);
         Assert.True(settings.AreSoundsEnabled);
         Assert.Equal(0.7, settings.SoundsVolume);
         Assert.Null(settings.SoundPack);
@@ -91,7 +195,7 @@ public class SettingsRepositoriesTests
             IsVoiceGateEnabled = false, VoiceGateThresholdDb = -32.5,
             IsVoiceDetectionEnabled = true, IsAdaptiveThresholdEnabled = true,
             NoiseSuppression = NoiseSuppressionLevel.NeuralAndWebRtc, IsEchoCancellationEnabled = true,
-            AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
+            IsAutoGainControlEnabled = false, AreSoundsEnabled = false, SoundsVolume = 0.35, SoundPack = "Retro",
             DisabledSounds = ["join", "message_sent"]
         });
         var settings = await repository.GetAsync();
@@ -105,6 +209,7 @@ public class SettingsRepositoriesTests
         Assert.True(settings.IsAdaptiveThresholdEnabled);
         Assert.Equal(NoiseSuppressionLevel.NeuralAndWebRtc, settings.NoiseSuppression);
         Assert.True(settings.IsEchoCancellationEnabled);
+        Assert.False(settings.IsAutoGainControlEnabled);
         Assert.False(settings.AreSoundsEnabled);
         Assert.Equal(0.35, settings.SoundsVolume);
         Assert.Equal("Retro", settings.SoundPack);
@@ -134,6 +239,23 @@ public class SettingsRepositoriesTests
         await repository.SaveAsync(new AudioSettings { InputVolume = 0.5 });
 
         Assert.Equal(0.5, (await repository.GetAsync()).InputVolume);
+    }
+
+    [Fact]
+    public async Task UseGStreamerRoundTrip()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AudioSettingsRepository(database.Database);
+
+        // Nothing chosen yet: the voice goes over libwebrtc
+        Assert.False(await repository.GetUseGStreamerAsync());
+
+        await repository.UpdateUseGStreamerAsync(true);
+        Assert.True(await repository.GetUseGStreamerAsync());
+
+        // Saving the other audio settings keeps the choice
+        await repository.SaveAsync(new AudioSettings { InputVolume = 0.5 });
+        Assert.True(await repository.GetUseGStreamerAsync());
     }
 
     [Fact]
@@ -198,6 +320,48 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task CameraPreferencesAndIndependentCodecOverridesSurviveReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var preferences = new CameraPreferencesRepository(database.Database);
+        Assert.False((await preferences.GetAsync()).LastWasCamera);
+        var choice = new CameraPreferences { DeviceId = "usb-camera", LastWasCamera = true, MaxHeight = 480, Framerate = 60 };
+        await preferences.SaveAsync(choice);
+        Assert.Equal(choice, await new CameraPreferencesRepository(database.Database).GetAsync());
+        var repository = new VideoSettingsRepository(database.Database);
+        await repository.SaveAsync(new VideoSettings
+        {
+            Encoder = "openh264enc", CodecOverrides = [new("vp8enc", "cpu-used", "4")],
+            Camera = new VideoSettings { Encoder = "vah264enc", CodecOverrides = [new("vp8enc", "cpu-used", "8")] }
+        });
+        var loaded = await new VideoSettingsRepository(database.Database).GetAsync();
+        Assert.Equal("openh264enc", loaded.Encoder);
+        Assert.Equal("vah264enc", loaded.ForCamera().Encoder);
+        Assert.Equal("4", Assert.Single(loaded.CodecOverrides).Value);
+        Assert.Equal("8", Assert.Single(loaded.ForCamera().CodecOverrides).Value);
+        await repository.SaveAsync(loaded with { Encoder = null });
+        Assert.Equal("vah264enc", (await repository.GetAsync()).ForCamera().Encoder);
+    }
+
+    [Fact]
+    public async Task CameraMigrationPreservesScreenCodecsAndStartsCameraWithDefaults()
+    {
+        await using var database = await TestDatabase.CreateAtVersionAsync(34);
+        await database.ExecuteAsync("UPDATE VideoSettings SET Encoder = 'openh264enc', Vp8Decoder = 'vp8dec'");
+        await database.ExecuteAsync("INSERT INTO CodecParameters (Factory, Name, Value) VALUES ('vp8enc', 'cpu-used', '7')");
+        var initializer = new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Infrastructure.Database.DatabaseInitializer>.Instance);
+        Assert.Equal(Client.Application.Ports.DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        var settings = await new VideoSettingsRepository(database.Database).GetAsync();
+        Assert.Equal("openh264enc", settings.Encoder);
+        Assert.Equal("vp8dec", settings.Vp8Decoder);
+        Assert.Single(settings.CodecOverrides);
+        Assert.Null(settings.ForCamera().Encoder);
+        Assert.Empty(settings.ForCamera().CodecOverrides);
+        Assert.False((await new CameraPreferencesRepository(database.Database).GetAsync()).LastWasCamera);
+    }
+
+    [Fact]
     public async Task VideoSettingsRoundTrip()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
@@ -209,22 +373,93 @@ public class SettingsRepositoriesTests
         {
             IsHardwareDecodingEnabled = false,
             Decoder = "vah264dec",
+            Av1Decoder = "dav1ddec",
             Encoder = "openh264enc",
+            Av1Encoder = "svtav1enc",
+            IsCodecSettingsWarningAcknowledged = true,
+            Vp8Encoder = "vp8enc", Vp9Encoder = "vp9enc",
+            Vp8Decoder = "vp8dec", Vp9Decoder = "vp9dec",
             IsZeroCopyEnabled = false,
             IsTimedPresentationEnabled = false,
-            PresentationBufferFrames = 4,
-            ShowFrameStats = true
+            PresentationBufferFrames = 4
         };
         await repository.SaveAsync(changed);
 
         Assert.Equal(changed, await repository.GetAsync());
 
         // A buffer that cannot be chosen any more reads as the default one
-        await repository.SaveAsync(changed with { PresentationBufferFrames = 9, Decoder = " " });
+        await repository.SaveAsync(changed with { PresentationBufferFrames = 9, Decoder = " ", Av1Encoder = " ", Av1Decoder = " " });
         var normalized = await repository.GetAsync();
 
         Assert.Equal(new VideoSettings().PresentationBufferFrames, normalized.PresentationBufferFrames);
         Assert.Null(normalized.Decoder);
+        Assert.Null(normalized.Av1Encoder);
+        Assert.Null(normalized.Av1Decoder);
+    }
+
+    [Fact]
+    public async Task CodecParametersRoundTripAndReset()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new VideoSettingsRepository(database.Database);
+        var parameters = new CodecPropertyOverride[]
+        {
+            new("vaav1enc", "qp", "120"),
+            new("qsvav1enc", "target-usage", "3"),
+            new("openh264enc", "bitrate", "4000000"),
+            new("vp8enc", "cpu-used", "8"),
+            new("vp9dec", "threads", "4"),
+            new("dav1ddec", "n-threads", "2")
+        };
+        await repository.SaveAsync(new VideoSettings { CodecOverrides = parameters });
+        Assert.Equal(parameters.OrderBy(p => p.Factory), (await repository.GetAsync()).CodecOverrides);
+
+        await repository.SaveAsync(new VideoSettings());
+        Assert.Empty((await repository.GetAsync()).CodecOverrides);
+    }
+
+    [Fact]
+    public async Task DebugSettingsRoundTrip()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new DebugSettingsRepository(database.Database);
+
+        Assert.Equal(new DebugSettings(), await repository.GetAsync());
+
+        var changed = new DebugSettings
+        {
+            JournalLevel = JournalLevel.Verbose,
+            WriteToFiles = false,
+            GStreamerLogLevel = NativeLogLevel.Warning,
+            LibWebRTCLogLevel = NativeLogLevel.Verbose,
+            MediaPerfOverlay = MediaPerfOverlayMode.ExpandedOnly,
+            IsMediaPerfExpanded = true,
+            MediaPerfSections = MediaPerfSections.Codec | MediaPerfSections.Render,
+            MediaPerfIntervalMs = 500,
+            ShowMediaPerfGraphs = false,
+            MediaPerfJournal = MediaPerfJournalMode.Detailed,
+            MediaPerfSummarySeconds = 30,
+            LogMediaPerfAnomalies = false
+        };
+        await repository.SaveAsync(changed);
+
+        Assert.Equal(changed, await repository.GetAsync());
+
+        // The level of the build again, and levels a newer build may have written read as off
+        await repository.SaveAsync(changed with
+        {
+            JournalLevel = null, GStreamerLogLevel = (NativeLogLevel)42, LibWebRTCLogLevel = (NativeLogLevel)(-1),
+            MediaPerfOverlay = (MediaPerfOverlayMode)7, MediaPerfIntervalMs = 123, MediaPerfSummarySeconds = 0
+        });
+        var normalized = await repository.GetAsync();
+
+        Assert.Equal(MediaPerfOverlayMode.Off, normalized.MediaPerfOverlay);
+        Assert.Equal(1000, normalized.MediaPerfIntervalMs);
+        Assert.Equal(10, normalized.MediaPerfSummarySeconds);
+
+        Assert.Null(normalized.JournalLevel);
+        Assert.Equal(NativeLogLevel.Off, normalized.GStreamerLogLevel);
+        Assert.Equal(NativeLogLevel.Off, normalized.LibWebRTCLogLevel);
     }
 
     [Fact]
@@ -393,6 +628,9 @@ public class SettingsRepositoriesTests
         await repository.UpdateCurrentThemeTypeAsync(ThemeType.Light);
 
         Assert.Equal(ThemeType.Light, await repository.GetCurrentThemeTypeAsync());
+
+        await repository.UpdateCurrentThemeTypeAsync(ThemeType.System);
+        Assert.Equal(ThemeType.System, await repository.GetCurrentThemeTypeAsync());
     }
 
     [Fact]

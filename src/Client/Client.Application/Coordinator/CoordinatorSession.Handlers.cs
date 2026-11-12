@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 
@@ -48,6 +48,7 @@ public partial class CoordinatorSession
                 break;
 
             case Shared.Enums.SessionType.Chat:
+                _chatTyping.RemoveChat(deleted.SessionId);
                 ChatSessionDeleted?.Invoke(deleted.SessionId);
                 LogSessionDeleted(LogName, "Chat", deleted.SessionId);
                 break;

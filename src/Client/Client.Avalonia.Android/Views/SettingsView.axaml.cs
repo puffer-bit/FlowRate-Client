@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading;
@@ -11,6 +12,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
@@ -40,6 +42,7 @@ public partial class SettingsView : UserControl
     private readonly BehaviorControlVM? _behavior;
     private readonly AudioControlVM? _audio;
     private readonly StorageControlVM? _storage;
+    private readonly DebugAndLogsControlVM? _debug;
     private readonly AccountingControlVM? _accounting;
     private readonly AboutControlVM? _about;
     private readonly Func<MessageBoxVM, Task<Result>>? _showMessageBox;
@@ -84,27 +87,33 @@ public partial class SettingsView : UserControl
             services.GetRequiredService<IAppearanceService>(),
             services.GetRequiredService<IThemeService>(),
             services.GetRequiredService<ILanguageService>());
-        _behavior = new BehaviorControlVM(services.GetRequiredService<IBehaviorService>());
+        _behavior = new BehaviorControlVM(services.GetRequiredService<IBehaviorService>(), services.GetRequiredService<IAccountingService>());
         _audio = new AudioControlVM(
             services.GetRequiredService<IAudioService>(),
             services.GetRequiredService<IMicrophoneTester>(),
             services.GetRequiredService<ISoundService>(),
             services.GetRequiredService<ISoundPackCatalog>());
-        _storage = new StorageControlVM(services.GetRequiredService<IStorageService>());
+        _storage = new StorageControlVM(services.GetRequiredService<IStorageService>(),
+            services.GetRequiredService<IDebugAndLogService>());
+        _debug = new DebugAndLogsControlVM(services.GetRequiredService<IDebugAndLogService>());
         _accounting = new AccountingControlVM(services.GetRequiredService<IAccountingService>(),
             services.GetRequiredService<IDatabaseSecurityService>());
 
-        _about = new AboutControlVM(ApplicationDetails.Version, ApplicationDetails.SystemDescription);
+        _about = new AboutControlVM(ApplicationDetails.Version,
+            services.GetRequiredService<IReleaseNotesSource>(), ApplicationDetails.SystemDescription, _behavior);
 
         _accounting.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await showMessageBox(context.Input)));
         _storage.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await showMessageBox(context.Input)));
+        _debug.PickArchiveTarget.RegisterHandler(async context =>
+            context.SetOutput(await PickArchiveTarget(context.Input)));
 
         AppearancePage.DataContext = _appearance;
         BehaviorPage.DataContext = _behavior;
         AudioPage.DataContext = _audio;
         StoragePage.DataContext = _storage;
+        DebugPage.DataContext = _debug;
         AccountingPage.DataContext = _accounting;
         AboutPage.DataContext = _about;
 
@@ -112,6 +121,7 @@ public partial class SettingsView : UserControl
         _behavior.LoadCommand.Execute().Subscribe();
         _audio.LoadCommand.Execute().Subscribe();
         _storage.LoadCommand.Execute().Subscribe();
+        _debug.LoadCommand.Execute().Subscribe();
         _accounting.LoadCommand.Execute().Subscribe();
 
         _collapsedSectionsRepository = services.GetRequiredService<ICollapsedSectionsRepository>();
@@ -148,7 +158,11 @@ public partial class SettingsView : UserControl
     /// <summary>
     /// Lets go of the services the pages listen to, once the settings are closed for good.
     /// </summary>
-    public void Release() => _audio?.Dispose();
+    public void Release()
+    {
+        _audio?.Dispose();
+        _about?.Dispose();
+    }
 
     /// <summary>
     /// Raised when the user leaves the settings from the list of categories.
@@ -186,7 +200,7 @@ public partial class SettingsView : UserControl
 
         foreach (var (tab, page) in (ReadOnlySpan<(ISettingVM?, SettingsPage)>)
                  [(_appearance, AppearancePage), (_behavior, BehaviorPage), (_audio, AudioPage),
-                     (_storage, StoragePage), (_accounting, AccountingPage), (_about, AboutPage)])
+                     (_storage, StoragePage), (_debug, DebugPage), (_accounting, AccountingPage), (_about, AboutPage)])
         {
             if (tab == null)
                 continue;
@@ -276,6 +290,7 @@ public partial class SettingsView : UserControl
             BehaviorControlVM => (BehaviorPage, "settings.behavior.name"),
             AudioControlVM => (AudioPage, "settings.audio.name"),
             StorageControlVM => (StoragePage, "settings.storage.name"),
+            DebugAndLogsControlVM => (DebugPage, "settings.debug.name"),
             AboutControlVM => (AboutPage, "settings.about.name"),
             _ => (AccountingPage, "settings.accounting.name")
         };
@@ -289,6 +304,8 @@ public partial class SettingsView : UserControl
     // A page slides in over the list of categories and back out of it
     private async Task ShowPageAsync(Control? page, string titleKey)
     {
+        if (page == AboutPage && _about != null)
+            _ = _about.ReleaseHistory.EnsureLoadedAsync();
         var from = _shown;
         var to = page ?? Categories;
 
@@ -329,7 +346,7 @@ public partial class SettingsView : UserControl
 
     private void ShowOnlyCurrent()
     {
-        foreach (var screen in (Control[])[Categories, AppearancePage, BehaviorPage, AudioPage, StoragePage, AccountingPage, AboutPage])
+        foreach (var screen in (Control[])[Categories, AppearancePage, BehaviorPage, AudioPage, StoragePage, DebugPage, AccountingPage, AboutPage])
             screen.IsVisible = ReferenceEquals(screen, _shown);
     }
 
@@ -355,8 +372,43 @@ public partial class SettingsView : UserControl
         _ = ShowPageAsync(StoragePage, "settings.storage.name");
     }
 
+    private void OnDebugClick(object? sender, RoutedEventArgs e)
+    {
+        // The size of the files changes all the time
+        _debug?.LoadCommand.Execute().Subscribe();
+        _ = ShowPageAsync(DebugPage, "settings.debug.name");
+    }
+
+    // A sub-item of logging and debug: its page, at the section the sub-item names
+    private async void OnDebugAnchorClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.Tag is not string section)
+            return;
+
+        _debug?.LoadCommand.Execute().Subscribe();
+        await ShowPageAsync(DebugPage, "settings.debug.name");
+        Dispatcher.UIThread.Post(() => DebugPage.ScrollTo(section), DispatcherPriority.Loaded);
+    }
+
+    // Through the documents of the system: the folder of the journal is the application's own
+    private async Task<Stream?> PickArchiveTarget(string fileName)
+    {
+        var storage = _topLevel?.StorageProvider ?? TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (storage == null)
+            return null;
+
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions { SuggestedFileName = fileName });
+        return file == null ? null : await file.OpenWriteAsync();
+    }
+
     private void OnAccountingClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AccountingPage, "settings.accounting.name");
+
+    private void OnReleaseClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: Uri url })
+            _ = _topLevel?.Launcher.LaunchUriAsync(url);
+    }
 
     private void OnAboutClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AboutPage, "settings.about.name");
@@ -384,6 +436,8 @@ public partial class SettingsView : UserControl
             await _audio.ResetAllAsync();
         if (_storage != null)
             await _storage.ResetAllAsync();
+        if (_debug != null)
+            await _debug.ResetAllAsync();
         await _appearance.ResetAllAsync();
     }
 }

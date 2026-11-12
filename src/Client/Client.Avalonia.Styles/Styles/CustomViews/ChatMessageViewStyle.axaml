@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets">
 
     <Styles.Resources>
         <SolidColorBrush x:Key="MsgReplyBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.10"/>
@@ -9,6 +10,26 @@
         <SolidColorBrush x:Key="MsgHighlightBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.22"/>
     </Styles.Resources>
     
+    <Style Selector="Button.msg-reaction">
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="Margin" Value="0,0,4,4"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Background" Value="{DynamicResource MsgReplyBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-reaction.mine">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyPressedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.msg-reaction:pointerover, Button.msg-reaction:focus-visible">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyHoverBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-reaction:pressed">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyPressedBrush}"/>
+    </Style>
+
     <Style Selector="Border.msg-root">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="6,6,12,6"/>
@@ -32,6 +53,9 @@
     </Style>
     <Style Selector="Border.msg-root.has-opened-flyout">
         <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/> 
+    </Style>
+    <Style Selector="Border.msg-root.system, Border.msg-root.system:pointerover, Border.msg-root.system:pressed">
+        <Setter Property="Background" Value="Transparent"/>
     </Style>
     <!-- A message calling the current user stays yellow under the pointer and the menu -->
     <Style Selector="Border.msg-root.mentioned:pointerover, Border.msg-root.mentioned:pressed, Border.msg-root.mentioned.has-opened-flyout">
@@ -107,25 +131,9 @@
          ☺ or ✔ written without the variation selector are in color too -->
     <Style Selector=":is(TextBlock).msg-body.jumbo">
         <Setter Property="FontSize" Value="40"/>
-        <Setter Property="FontFamily" Value="avares://Client.Avalonia.Assets/Fonts#Noto Color Emoji"/>
+        <Setter Property="FontFamily" Value="{x:Static icons:EmojiFont.Family}"/>
     </Style>
-    <!-- A web address in the text; underlined while the pointer is over it -->
-    <Style Selector=":is(TextBlock).msg-body Run.link">
-        <Setter Property="Foreground" Value="{DynamicResource LinkTextBrush}"/>
-    </Style>
-    <Style Selector=":is(TextBlock).msg-body Run.link.hover">
-        <Setter Property="TextDecorations" Value="Underline"/>
-    </Style>
-    <!-- A mentioned name; the current user's own stands out more -->
-    <Style Selector=":is(TextBlock).msg-body Run.mention">
-        <Setter Property="Foreground" Value="{DynamicResource MentionTextBrush}"/>
-        <Setter Property="Background" Value="{DynamicResource MentionBackgroundBrush}"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-    </Style>
-    <Style Selector=":is(TextBlock).msg-body Run.mention.self">
-        <Setter Property="Foreground" Value="{DynamicResource MentionSelfTextBrush}"/>
-        <Setter Property="Background" Value="{DynamicResource MentionSelfBackgroundBrush}"/>
-    </Style>
+    <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageTextStyle.axaml"/>
 
     <!-- Reply quote: a tinted card with an accent bar, clickable to jump to the original -->
     <Style Selector="Button.msg-reply">
@@ -205,7 +213,7 @@
     <!-- ====== Images of a message ====== -->
     <Style Selector="ItemsControl.msg-images">
         <Setter Property="Margin" Value="0,4,0,0"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
 
     <!-- A tile shows the reduced copy cut to its shape; until it is loaded the tile is a plain plate
@@ -242,10 +250,11 @@
     <!-- ====== Files of a message, saved rather than shown ====== -->
     <Style Selector="ItemsControl.msg-files">
         <Setter Property="Margin" Value="0,4,0,0"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="Button.msg-file">
         <Setter Property="Padding" Value="6"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Margin" Value="0,0,0,4"/>
         <Setter Property="Width" Value="260"/>
         <Setter Property="CornerRadius" Value="8"/>
@@ -282,6 +291,8 @@
     <Style Selector="Button.msg-file Border.msg-file-icon Image">
         <Setter Property="Width" Value="18"/>
         <Setter Property="Height" Value="18"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.msg-file TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>

@@ -2,52 +2,105 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using Client.Avalonia.Localization;
-using Client.Services;
-using ReactiveUI;
-using ReactiveUI.Primitives;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.Application.Settings;
-using Client.Application.Sounds;
 using Client.Application.Settings.Search;
-using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
-using Client.ViewModels.Settings.Pages;
+using Client.Application.Sounds;
+using Client.Avalonia.Localization;
+using Client.Services;
 using Client.Tools.AppInfo;
+using Client.ViewModels.Dialogs;
+using Client.ViewModels.Settings.Pages;
+using ReactiveUI;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings;
 
 public class SettingsWindowVM : ReactiveObject, IDisposable
 {
+    public bool IsSafeMode => LaunchOptions.Current.SafeMode;
+    public bool IsMediaDisabled => !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
+    public bool IsSoftwareRendering => LaunchOptions.Current.SoftwareRendering;
+
     public bool IsLoaded
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ObservableCollection<ISettingVM> SettingList { get; } = new ObservableCollection<ISettingVM>();
+    public ObservableCollection<ISettingVM> SettingList { get; } = new();
 
     /// <summary>
     /// The keys of the sections that are collapsed on the tabs. The view changes the collection as
     /// the sections are collapsed and shown, and every change is saved.
     /// </summary>
-    public ObservableCollection<string> CollapsedSections { get; } = new ObservableCollection<string>();
-    
+    public ObservableCollection<string> CollapsedSections { get; } = new();
+
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ResetAllSettingsCommand { get; init; }
-    
+
     public Interaction<RxVoid, RxVoid> CloseWindow { get; init; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; init; }
 
     public ISettingVM? SelectedSetting
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            // The two selections set each other, and stop once they agree
+            if (ReferenceEquals(field, value))
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+
+            // The line of the tab, unless one of its sub-items is picked already
+            if (SelectedNavigationItem?.Setting != value)
+                SelectedNavigationItem = NavigationItems.FirstOrDefault(line => line.Setting == value && !line.IsSubItem);
+
+            // Only the open tab shows its sub-items
+            foreach (var line in NavigationItems.Where(line => line.HasSubItems))
+                line.IsExpanded = line.Setting == value;
+        }
+    }
+
+    /// <summary>
+    /// The lines of the list of tabs: <see cref="SettingList"/>, with the sub-items of each tab under it.
+    /// </summary>
+    public IReadOnlyList<SettingNavItemVM> NavigationItems { get; private set; } = [];
+
+    public SettingNavItemVM? SelectedNavigationItem
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (value == null)
+                return;
+
+            SelectedSetting = value.Setting;
+            ShowSection(value);
+        }
+    }
+
+    /// <summary>
+    /// Scrolls the page to the section a sub-item leads to; the view calls it again when the sub-item
+    /// that is picked already is clicked.
+    /// </summary>
+    public void ShowSection(SettingNavItemVM item)
+    {
+        if (item.Anchor is { } anchor)
+            _ = TaskObservableExtensions.ToTask(ShowSetting.Handle(anchor.SectionKey));
     }
 
     /// <summary>
@@ -88,7 +141,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Asks the view to scroll to the setting with the given key on the tab that has just been opened.
+    /// Asks the view to scroll to the setting with the given key on the tab that has just been opened,
+    /// or to the header of a section, given its key.
     /// </summary>
     public Interaction<string, RxVoid> ShowSetting { get; } = new();
 
@@ -123,30 +177,36 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         IHotKeysService hotKeysService,
         IThemeService themeService,
         ILanguageService languageService,
-        ICollapsedSectionsRepository collapsedSectionsRepository)
+        ICollapsedSectionsRepository collapsedSectionsRepository,
+        ILibWebRTCLoader libWebRTCLoader,
+        IReleaseNotesSource releaseNotes)
     {
         _collapsedSectionsRepository = collapsedSectionsRepository;
         CloseWindow = new Interaction<RxVoid, RxVoid>();
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
-        
-        CloseCommand = ReactiveCommand
-            .CreateFromTask(CloseAsync);
-        ResetAllSettingsCommand = ReactiveCommand
-            .CreateFromTask(ResetAllSettings);
-        
+
+        CloseCommand = ReactiveCommand.CreateFromTask(CloseAsync);
+        ResetAllSettingsCommand = ReactiveCommand.CreateFromTask(ResetAllSettings);
+
         SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity));
-        SettingList.Add(new BehaviorControlVM(behaviorService));
+        var behavior = new BehaviorControlVM(behaviorService, accountingService);
+        SettingList.Add(behavior);
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));
         SettingList.Add(new VideoControlVM(videoService, mediaCapabilities));
         SettingList.Add(new AppearanceControlVM(appearanceService, themeService, languageService));
-        SettingList.Add(new StorageControlVM(storageService));
+        SettingList.Add(new StorageControlVM(storageService, debugAndLogService));
         SettingList.Add(new HotKeysControlVM(hotKeysService));
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));
-        SettingList.Add(new ExperimentalControlVM(appearanceService));
-        SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion()));
+        SettingList.Add(new ExperimentalControlVM(appearanceService, audioService, libWebRTCLoader));
+        SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion(), releaseNotes, updatePreferences: behavior));
 
         Strings.LanguageChanged += OnLanguageChanged;
+
+        foreach (var setting in SettingList)
+            setting.PropertyChanged += OnSettingPropertyChanged;
+
+        NavigationItems = SettingNavItemVM.Build(SettingList);
 
         _ = LoadAllSettings();
     }
@@ -155,8 +215,22 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     {
         foreach (var setting in SettingList)
             setting.RaisePropertyChanged(nameof(ISettingVM.Name));
+        foreach (var line in NavigationItems)
+            line.RaisePropertyChanged(nameof(SettingNavItemVM.Name));
 
         // The index holds the texts of the previous language
+        _searchIndex = null;
+        if (IsSearching)
+            UpdateSearchResults();
+    }
+
+    // A tab may show other settings, as the audio one for another engine of the voice. Its own
+    // change is waited for, not the cause of it, so the index is built from the new entries
+    private void OnSettingPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ISettingVM.SearchEntries))
+            return;
+
         _searchIndex = null;
         if (IsSearching)
             UpdateSearchResults();
@@ -175,10 +249,10 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         CollapsedSections.CollectionChanged += OnCollapsedSectionsChanged;
 
         SelectedSetting = SettingList.FirstOrDefault(c => c.IsEnabled);
-        
+
         IsLoaded = true;
     }
-    
+
     private void OnCollapsedSectionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         foreach (string key in e.OldItems ?? Array.Empty<string>())
@@ -231,7 +305,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
 
     private async Task ResetAllSettings()
     {
-        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo, 
+        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Get("settings.reset.question"), Strings.Get("common.warning"))) == Result.Yes)
         {
             foreach (var setting in SettingList)
@@ -245,6 +319,10 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
     public void Dispose()
     {
         Strings.LanguageChanged -= OnLanguageChanged;
+
+        foreach (var setting in SettingList)
+            setting.PropertyChanged -= OnSettingPropertyChanged;
+
         CollapsedSections.CollectionChanged -= OnCollapsedSectionsChanged;
 
         foreach (var setting in SettingList.OfType<IDisposable>())

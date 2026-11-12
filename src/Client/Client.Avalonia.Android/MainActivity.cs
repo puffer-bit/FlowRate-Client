@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Android;
 using Android.App;
 using Android.Content;
@@ -9,6 +10,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Avalonia.Android;
 using Client.Droid.Platform.Notifications;
+using Client.Tools.AppInfo;
 using Firebase;
 
 namespace Client.Droid;
@@ -25,6 +27,55 @@ namespace Client.Droid;
 public class MainActivity : AvaloniaMainActivity
 {
     private const int NotificationPermissionRequest = 1001;
+    private const int MicrophonePermissionRequest = 7001;
+    // Of the process, not of the activity: a request survives the activity recreated under its
+    // dialog, and its answer comes to the new one
+    private static TaskCompletionSource<bool>? _microphonePermission;
+
+    internal Task<bool> RequestMicrophonePermissionAsync()
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        RunOnUiThread(() =>
+        {
+            if (!ReferenceEquals(Current, this))
+            {
+                completion.TrySetResult(false);
+                return;
+            }
+
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.RecordAudio) == Permission.Granted)
+            {
+                completion.TrySetResult(true);
+                return;
+            }
+
+            if (_microphonePermission is { } pending)
+            {
+                ForwardPermissionAsync(pending.Task, completion);
+                return;
+            }
+
+            _microphonePermission = completion;
+            ActivityCompat.RequestPermissions(this, [Manifest.Permission.RecordAudio], MicrophonePermissionRequest);
+        });
+
+        return completion.Task;
+    }
+
+    private static async void ForwardPermissionAsync(Task<bool> pending, TaskCompletionSource<bool> completion) =>
+        completion.TrySetResult(await pending);
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode != MicrophonePermissionRequest)
+            return;
+
+        _microphonePermission?.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
+        _microphonePermission = null;
+    }
 
     /// <summary>
     /// The activity that shows the application, for the root view to close it once the user has agreed to.
@@ -51,9 +102,13 @@ public class MainActivity : AvaloniaMainActivity
     /// </summary>
     public static event Action? ChatRequested;
 
+    public static (string CoordinatorId, int ChatId, Guid CallId, int UserId, string Action)? RequestedCall { get; set; }
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Current = this;
+        // The list of sessions names the phone; the machine name of Android is "localhost"
+        DeviceInformation.Name = $"{Build.Manufacturer} {Build.Model}".Trim();
         base.OnCreate(savedInstanceState);
 
         FirebaseApp.InitializeApp(this);
@@ -89,6 +144,13 @@ public class MainActivity : AvaloniaMainActivity
 
     protected override void OnDestroy()
     {
+        // A recreated activity still gets the answer; one closed for good never will
+        if (IsFinishing && !IsChangingConfigurations)
+        {
+            _microphonePermission?.TrySetResult(false);
+            _microphonePermission = null;
+        }
+
         if (ReferenceEquals(Current, this))
             Current = null;
 
@@ -100,6 +162,10 @@ public class MainActivity : AvaloniaMainActivity
         if (ChatNotifications.ReadTarget(intent) is not { } chat)
             return;
 
+        if (IncomingCallNotifications.ReadAction(global::Android.App.Application.Context, intent) is { } call)
+            RequestedCall = (chat.CoordinatorInstanceId, chat.ChatId, call.CallId, call.UserId, call.Action);
+        if (Guid.TryParse(intent?.GetStringExtra(IncomingCallNotifications.CallExtra), out _))
+            IncomingCallNotifications.Clear(global::Android.App.Application.Context, chat.CoordinatorInstanceId);
         RequestedChat = chat;
         ChatRequested?.Invoke();
     }

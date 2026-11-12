@@ -48,14 +48,13 @@
                                         UserName="{Binding Username}"
                                         AvatarUrl="{Binding ShownAvatarUrl}"
                                         Source="{Binding AvatarPicker.Avatar}"
-                                        Status="{Binding Status}"/>
+                                        Status="{Binding Status}">
+                        <avatars:UserAvatar.Overlay>
+                            <avatars:AvatarEditButton Command="{Binding ChangeAvatarCommand}" IsVisible="{Binding IsCurrentUser}"/>
+                        </avatars:UserAvatar.Overlay>
+                    </avatars:UserAvatar>
 
                     <StackPanel Classes="actions" Spacing="10" IsVisible="{Binding IsEditing}">
-                        <Button Command="{Binding AvatarPicker.ChooseAvatarCommand}"
-                                IsVisible="{Binding IsCurrentUser}">
-                            <TextBlock Text="{l:Text profile.avatar.chooseImage}"/>
-                        </Button>
-
                         <Button Command="{Binding ResetAvatarCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Image Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
@@ -90,6 +89,26 @@
                         <TextBlock Classes="hint" Text="{Binding NameHint}"
                                    IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
                     </StackPanel>
+                </StackPanel>
+
+                <!-- Private local note -->
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text profile.note.title}"/>
+                        <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                        IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
+                    </Grid>
+                    <TextBlock Classes="hint" Text="{l:Text profile.note.hint}"/>
+                    <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                             MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
+                             IsEnabled="{Binding Note.IsLoaded}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             PlaceholderText="{l:Text profile.note.placeholder}"/>
+                    <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
+                    <TextBlock Classes="fieldError" Text="{Binding Note.Error}"
+                               IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Command="{Binding Note.LoadCommand}" IsVisible="{Binding !Note.IsLoaded}"
+                            HorizontalAlignment="Left" Content="{l:Text serverSettings.users.retry}"/>
                 </StackPanel>
 
                 <!-- Connections -->
@@ -134,6 +153,12 @@
 
                 <!-- Viewing -->
                 <StackPanel Classes="actions" Margin="0,4,0,0" IsVisible="{Binding !IsEditing}">
+                    <Button Command="{Binding WriteMessageCommand}" IsVisible="{Binding CanWriteMessage}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="16" Height="16" Source="{StaticResource SendIcon}"/>
+                            <TextBlock Text="{l:Text privateChats.write}"/>
+                        </StackPanel>
+                    </Button>
                     <Button Classes="primary" Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Image Width="16" Height="16" Source="{StaticResource PencilIcon}" VerticalAlignment="Center"/>

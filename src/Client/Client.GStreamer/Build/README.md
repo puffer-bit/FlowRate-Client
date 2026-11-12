@@ -65,6 +65,8 @@ libva itself is never bundled: it must match the VA drivers installed on the sys
 3. Check the license: `verify.sh` fails on a GPL plugin, `collect.sh` on a GPL library.
 4. Run `./build.sh`.
 
+AAC decoding for MP4 attachments uses `fdkaacdec` and the shared FDK AAC library built in the Dockerfile. Its Fraunhofer license text and source reference are included in the bundle. The codec is enabled after building that dependency, separately from `meson-options.txt`.
+
 ## Windows (win-x64)
 
 Run on Windows, no administrator rights needed:
@@ -75,10 +77,23 @@ powershell -ExecutionPolicy Bypass -File collect.ps1
 ```
 
 The runtime is taken unmodified from the official GStreamer MSVC build.
+Downloads and existing cached installers are checked against the official `.sha256sum` file before
+execution. Failed or incomplete downloads are retried up to three times; temporary downloads are
+only promoted to the installer cache after their checksum matches.
+The installer runs with `/TYPE=runtime /CURRENTUSER /portable=1`, so it only extracts the runtime
+into a temporary folder without registering an installation or changing environment variables.
+On failure, the last 100 lines of `install.log` are printed; Windows CI also uploads the full log
+as the `gstreamer-win-x64-installer-log` artifact when it exists.
+
+AAC decoding for MP4 attachments uses `mfaacdec` from the bundled `mediafoundation` plugin and the
+Windows Media Foundation AAC decoder. The official installer does not include `fdkaac`; the Windows
+bundle does not require the separate FDK AAC library used by the Linux build. `verify.ps1` requires
+`mfaacdec`, so missing Windows media components still fail verification rather than silently shipping
+without AAC support. The chat player's `playbin` selects the available decoder automatically.
 
 | File | Purpose |
 |---|---|
-| `collect.ps1` | the official installer (Inno Setup) cannot be unpacked without running it, so it installs it for the current user into a temporary folder, copies the plugins listed in `$plugins` together with the DLLs they import, collects licenses, uninstalls again, runs `verify.ps1` and packs the result |
+| `collect.ps1` | runs the official installer (Inno Setup) in portable runtime mode into a temporary folder, copies the plugins listed in `$plugins` together with the DLLs they import, collects licenses, removes the temporary files, runs `verify.ps1` and packs the result |
 | `verify.ps1` | checks the bundle with the environment the client sets and a PATH holding only the bundle and Windows: elements from `required-elements.txt`, every plugin loads from the bundle, no GPL |
 | `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
 

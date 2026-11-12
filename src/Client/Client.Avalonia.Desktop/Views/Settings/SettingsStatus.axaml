@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:settingsVm="clr-namespace:Client.ViewModels.Settings;assembly=Client.Avalonia.ViewModels"
+             x:DataType="settingsVm:SettingsWindowVM"
+             x:Class="Client.Views.Settings.SettingsStatus">
+    <UserControl.Styles>
+        <Style Selector="Border.launchMode">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="{DynamicResource WarningBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBannerBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+    <StackPanel Spacing="8">
+        <StackPanel.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                <Binding Path="IsSafeMode"/>
+                <Binding Path="IsMediaDisabled"/>
+                <Binding Path="IsSoftwareRendering"/>
+            </MultiBinding>
+        </StackPanel.IsVisible>
+        <WrapPanel ItemSpacing="8" LineSpacing="8">
+            <Border Classes="launchMode" IsVisible="{Binding IsSafeMode}"
+                    AutomationProperties.Name="{l:Text settings.mode.safe.title}">
+                <ToolTip.Tip>
+                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.safe.description}"/>
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                            Foreground="{DynamicResource WarningBrush}"
+                            Text="{l:Text settings.mode.safe.title}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+            <Border Classes="launchMode" IsVisible="{Binding IsMediaDisabled}"
+                    AutomationProperties.Name="{l:Text media.disabled.title}">
+                <ToolTip.Tip>
+                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text media.disabled.startup}"/>
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                            Foreground="{DynamicResource WarningBrush}"
+                            Text="{l:Text media.disabled.title}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+            <Border Classes="launchMode" IsVisible="{Binding IsSoftwareRendering}"
+                    AutomationProperties.Name="{l:Text settings.mode.software.title}">
+                <ToolTip.Tip>
+                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.software.description}"/>
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>
+                    <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                            Foreground="{DynamicResource WarningBrush}"
+                            Text="{l:Text settings.mode.software.title}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+    </StackPanel>
+</UserControl>

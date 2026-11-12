@@ -30,11 +30,11 @@ public class AccountingService : IAccountingService
         await _accountingSettingsRepository.SaveUserAsync(userModel);
     }
 
-    public async Task<SavedCoordinatorModel?> GetSavedCoordinator(
-        string address, 
-        int port)
+    public async Task<IReadOnlyList<SavedCoordinatorModel>> GetSavedCoordinatorsAsync(string address, int port)
     {
-        return await _accountingSettingsRepository.GetCoordinatorAsync(address, port);
+        var coordinators = await _accountingSettingsRepository.GetAllCoordinatorsAsync();
+        return coordinators.Where(c => string.Equals(c.Address, address, StringComparison.OrdinalIgnoreCase)
+            && c.Port == port).ToList();
     }
 
     public async Task<IReadOnlyList<SavedCoordinatorModel>> GetAllSavedCoordinatorsAsync()
@@ -44,6 +44,9 @@ public class AccountingService : IAccountingService
     
     public Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword) =>
         _accountingSettingsRepository.SetAccountPasswordAsync(coordinatorId, userId, accountPassword);
+
+    public Task RemoveUserIdentityAsync(string coordinatorId, int userId) =>
+        _accountingSettingsRepository.DeleteUserAsync(coordinatorId, userId);
 
     public async Task RemoveCoordinatorInstanceAsync(string coordinatorId)
     {

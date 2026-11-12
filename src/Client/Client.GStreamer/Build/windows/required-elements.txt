@@ -38,6 +38,7 @@ capsfilter
 appsrc
 appsink
 fakesink
+clocksync
 
 # Video
 videoconvert
@@ -62,5 +63,27 @@ rtpvp8depay
 ?rtpvp9pay
 ?rtpvp9depay
 
+# Camera capture
+?mfvideosrc
+jpegdec
+
 # Screen capture
 d3d11screencapturesrc
+
+# Chat audio playback
+filesrc
+decodebin
+id3demux
+typefind
+mpegaudioparse
+mpg123audiodec
+wavparse
+
+# Chat video containers
+playbin
+qtdemux
+matroskademux
+avidemux
+
+# AAC audio in MP4 attachments, supplied by the Windows Media Foundation plugin
+mfaacdec

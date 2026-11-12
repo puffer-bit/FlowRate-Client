@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions;
+using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Settings;
 
@@ -37,7 +38,9 @@ public static class DependencyInjection
             provider.GetRequiredService<IChatCacheStore>(),
             provider.GetRequiredService<IChatMediaUploader>(),
             provider.GetRequiredService<IChatImageService>(),
-            provider.GetRequiredService<IDismissedPromptsRepository>()));
+            provider.GetRequiredService<IDismissedPromptsRepository>(),
+            provider.GetRequiredService<IMediaCache>(),
+            provider.GetRequiredService<IAppearanceService>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),
@@ -46,6 +49,7 @@ public static class DependencyInjection
             provider.GetRequiredService<INotificationService>(),
             provider.GetRequiredService<IVoiceActivityService>(),
             provider.GetRequiredService<IScreenWatchService>(),
+            provider.GetRequiredService<PeerStatsService>(),
             provider.GetRequiredService<IPeerPlaybackService>(),
             provider.GetRequiredService<IHybridSessionFactory>(),
             provider.GetService<IScreenSourceProvider>(),
@@ -53,10 +57,13 @@ public static class DependencyInjection
             provider.GetRequiredService<IMediaCapabilities>(),
             provider.GetRequiredService<IScreenShareSettingsRepository>(),
             provider.GetRequiredService<IDismissedPromptsRepository>(),
-            provider.GetRequiredService<ICoordinatorStateRepository>()));
+            provider.GetRequiredService<ICoordinatorStateRepository>(),
+            provider.GetService<ICameraDeviceProvider>(),
+            provider.GetRequiredService<ICameraPreferencesRepository>()));
         // Resolved when a hybrid session is entered, see HybridSessionServices
         services.AddSingleton<Func<HybridSessionServices>>(provider => provider.GetRequiredService<HybridSessionServices>);
         services.AddSingleton<LastSessionKeeper>();
+        services.AddSingleton<PeerStatsService>();
         services.AddSingleton<SessionListPreferences>();
         services.AddSingleton<UpdaterVM>();
 
@@ -82,7 +89,9 @@ public static class DependencyInjection
             provider.GetRequiredService<IHotKeysService>(),
             provider.GetRequiredService<IThemeService>(),
             provider.GetRequiredService<ILanguageService>(),
-            provider.GetRequiredService<ICollapsedSectionsRepository>()));
+            provider.GetRequiredService<ICollapsedSectionsRepository>(),
+            provider.GetRequiredService<ILibWebRTCLoader>(),
+            provider.GetRequiredService<IReleaseNotesSource>()));
 
         return services;
     }

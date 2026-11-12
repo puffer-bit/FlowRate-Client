@@ -46,6 +46,12 @@ public sealed record OutboundTrack : MediaTrack
     /// <summary>SSRC of the RTX stream, or 0 when the track has none.</summary>
     public uint RtxSSRC { get; init; }
 
+    /// <summary>
+    /// Id the SFU reads the transport-wide sequence number of our packets under and answers with
+    /// transport-cc feedback on, or 0 when it gives none.
+    /// </summary>
+    public int TransportCcExtensionId { get; init; }
+
     /// <summary>An Opus track carries a copy of the previous packet in each one, to restore single losses.</summary>
     public bool IsFecEnabled { get; init; } = true;
 

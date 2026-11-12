@@ -7,23 +7,18 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
              xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
-             xmlns:video="clr-namespace:Client.Views.Sessions.Hybrid.Video"
+             xmlns:video="clr-namespace:Client.Avalonia.Video;assembly=Client.Avalonia.Video"
+             xmlns:media="clr-namespace:Client.Avalonia.Controls.Media;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="270"
              x:Class="Client.Views.Sessions.Hybrid.HybridScreenTile"
              x:DataType="hybridVm:ScreenStreamVM"
              Padding="4">
 
     <UserControl.Styles>
-        <!-- The controls of a screen stay out of its tile until the pointer is over it -->
         <Style Selector="Border.streamBar">
             <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Brief}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
         </Style>
-        <Style Selector="Border.streamTile:pointerover Border.streamBar">
+        <Style Selector="Border.streamBar:pointerover, hybridViews|HybridScreenTile.keyboardControls Border.streamBar">
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Button.streamBarAction">
@@ -59,7 +54,7 @@
             Background="{DynamicResource SettingsCardBackgroundBrush}"
             BorderBrush="{DynamicResource SettingsCardBorderBrush}"
             BorderThickness="1"
-            CornerRadius="8"
+            CornerRadius="{StaticResource SurfaceCornerRadius}"
             ClipToBounds="True">
         <Panel>
 
@@ -76,12 +71,12 @@
                            HorizontalAlignment="Center"
                            TextTrimming="CharacterEllipsis"/>
                 <!-- Our own screen is told apart from the screens of the others -->
-                <TextBlock Text="{l:Text hybrid.screen.sharing}"
+                <TextBlock Text="{Binding SharingLabel}"
                            IsVisible="{Binding !IsSelf}"
                            HorizontalAlignment="Center"
                            FontSize="12"
                            Foreground="{DynamicResource SecondaryTextBrush}"/>
-                <TextBlock Text="{l:Text hybrid.screen.own}"
+                <TextBlock Text="{Binding OwnLabel}"
                            IsVisible="{Binding IsSelf}"
                            HorizontalAlignment="Center"
                            FontSize="12"
@@ -104,6 +99,12 @@
                 <Border Background="Transparent" DoubleTapped="OnPictureDoubleTapped">
                     <video:VideoView x:Name="Picture" Stretch="Uniform"/>
                 </Border>
+                <!-- The statistics of the screen, as the debug settings ask; a click expands them -->
+                <media:StreamPerfOverlay x:Name="Perf"
+                                         IsExpandedTile="{Binding IsExpanded}"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Bottom"
+                                         Margin="8"/>
                 <!-- Under the bar at the top edge, out of its way -->
                 <video:StreamIssuesOverlay Issues="{Binding Issues}"
                                            HorizontalAlignment="Right"
@@ -111,49 +112,62 @@
                                            Margin="8"/>
             </Panel>
 
-            <!-- The controls over the top edge, the same on the card and on the picture; only the eye
+            <!-- Keep the transparent bar hit-testable so hovering the top edge reveals its controls.
+                 The controls are the same on the card and on the picture; only the eye
                  changes with what it does. The bar is opaque: its icons and the name are in the
                  text color of the theme, which the picture can match -->
             <Border Classes="streamBar"
                     VerticalAlignment="Top"
                     Padding="8,4"
                     Background="{DynamicResource GeneralBrush}">
-                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="4">
+                <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto" ColumnSpacing="4">
                     <TextBlock Grid.Column="0"
                                Text="{Binding DisplayedName}"
+                               MaxWidth="160"
+                               HorizontalAlignment="Left"
                                IsVisible="{Binding !IsSelf}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="0"
-                               Text="{l:Text hybrid.screen.own}"
+                               Text="{Binding OwnLabel}"
+                               HorizontalAlignment="Left"
                                IsVisible="{Binding IsSelf}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <Panel Grid.Column="1">
+                    <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="1" Viewers="{Binding Viewers}" IsVisible="{Binding !IsCamera}"
+                                               HorizontalAlignment="Right"/>
+                    <Border Grid.Column="2" Width="1" Height="18" Margin="4,0" VerticalAlignment="Center"
+                            Background="{DynamicResource SettingsCardBorderBrush}"
+                            IsVisible="{Binding #ViewersButton.HasViewers}"/>
+                    <Panel Grid.Column="3">
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsExpanded}"
                                 Command="{Binding ToggleExpandCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.expand}">
+                                ToolTip.Tip="{l:Text hybrid.screen.expand}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.expand}">
                             <Image Width="20" Height="20" Source="{StaticResource ExpandIcon}"/>
                         </Button>
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding IsExpanded}"
                                 Command="{Binding ToggleExpandCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.collapse}">
+                                ToolTip.Tip="{l:Text hybrid.screen.collapse}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.collapse}">
                             <Image Width="20" Height="20" Source="{StaticResource CollapseIcon}"/>
                         </Button>
                     </Panel>
-                    <Panel Grid.Column="2">
+                    <Panel Grid.Column="4">
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding !IsWatched}"
                                 Command="{Binding WatchCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.watch}">
+                                ToolTip.Tip="{l:Text hybrid.screen.watch}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.watch}">
                             <Image Width="20" Height="20" Source="{StaticResource EyeIcon}"/>
                         </Button>
                         <Button Classes="streamBarAction"
                                 IsVisible="{Binding IsWatched}"
                                 Command="{Binding StopWatchingCommand}"
-                                ToolTip.Tip="{l:Text hybrid.screen.stopWatching}">
+                                ToolTip.Tip="{l:Text hybrid.screen.stopWatching}"
+                                AutomationProperties.Name="{l:Text hybrid.screen.stopWatching}">
                             <Image Width="20" Height="20" Source="{StaticResource CrossedEyeIcon}"/>
                         </Button>
                     </Panel>

@@ -1,4 +1,3 @@
-using Client.Avalonia.Styles.Animation;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,13 +8,13 @@ using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Sounds;
 using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
+using Client.Core.Coordinator;
 using Client.Core.Media;
 using Client.Core.Users;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
-using Shared.Models.Media;
 using Client.ViewModels.Notifications;
+using ReactiveUI;
+using Shared.Models.Media;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -36,17 +35,30 @@ public partial class ActiveHybridSessionVM
     // The same screens as in ScreenStreams by user, read on the threads of the video tracks
     private readonly ConcurrentDictionary<int, ScreenStreamVM> _screenStreamsByUser = new();
 
+    // How the screen of each user is decoded, as last reported. A decoder reports it once, on its
+    // first frame, and outlives a tile that is taken out and added again, or comes before its tile
+    private readonly ConcurrentDictionary<int, VideoDecoding> _screenDecodings = new();
+
     // Whose screens the user asked to watch, kept across a reconnect of the transport. UI thread only
     private readonly HashSet<int> _wantedScreens = [];
 
-    // Screens that were watched when the media settings changed. They stop and come back on new
-    // tracks, and are watched again then without a sound. UI thread only
+    // Keep the tiles and last frames while screens switch to tracks with new media settings.
     private readonly HashSet<int> _restartingScreens = [];
+    private readonly HashSet<int> _stoppedRestartingScreens = [];
+    private int _screenRestartVersion;
 
     // How long a screen may take to come back on its new track before it is no longer waited for
     private static readonly TimeSpan ScreenRestartTimeout = TimeSpan.FromSeconds(30);
 
     private async Task ToggleScreenShare()
+    {
+        if (!await _broadcastChange.WaitAsync(0)) return;
+        StatusBar.IsBroadcastBusy = true;
+        try { await ToggleScreenShareCoreAsync(); }
+        finally { StatusBar.IsBroadcastBusy = false; _broadcastChange.Release(); }
+    }
+
+    private async Task ToggleScreenShareCoreAsync()
     {
         if (_screenInput != null)
         {
@@ -125,7 +137,7 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        if (result == StartScreenShareResult.NoError)
+        if (result.IsSuccess)
             StatusBar.IsScreenShareOn = true;
         else
         {
@@ -134,7 +146,7 @@ public partial class ActiveHybridSessionVM
             StatusBar.IsScreenShareOn = false;
             ReleaseScreenInput();
 
-            if (result != StartScreenShareResult.Rejected)
+            if (!result.IsRejected)
                 NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
         }
 
@@ -157,7 +169,8 @@ public partial class ActiveHybridSessionVM
 
         var dialog = new VideoSourceSelectWindowVM(_screenSourceProvider, _screenCastClient,
             _mediaCapabilities.CanCaptureScreenAudio ? _audioApps : null, _mediaCapabilities.CanCaptureScreenAudio,
-            settings, _dismissedPrompts, sharedInput);
+            settings, _dismissedPrompts, sharedInput, _mediaCapabilities,
+            Model.Media.ScreenCodec == Shared.Enums.WebRTC.WebRTCVideoCodecs.AV1 ? VideoCodec.AV1 : VideoCodec.H264);
         ScreenShareRequest? request = null;
 
         _sourceSelect = dialog;
@@ -190,9 +203,11 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        if (result == StartScreenShareResult.NoError)
+        if (result.IsSuccess)
         {
             StatusBar.IsScreenShareOn = true;
+            if (!isSilent)
+                await RememberBroadcastAsync(false);
 
             if (!isSilent)
                 _sounds.Play(SoundEvent.ScreenShareStart);
@@ -200,15 +215,24 @@ public partial class ActiveHybridSessionVM
             return;
         }
 
+        StatusBar.IsScreenShareOn = false;
+        var userId = _coordinatorSession.GetCurrentUser().Id;
+        _restartingScreens.Remove(userId);
+        _stoppedRestartingScreens.Remove(userId);
+        OnScreenShareChanged(userId, false);
         ReleaseScreenInput();
 
         // A rejection is reported by the main window
-        if (result != StartScreenShareResult.Rejected)
+        if (!result.IsRejected)
             NotifyScreenShareError(Strings.Format("hybrid.screen.startFailed", ("reason", result)));
     }
 
     private async Task StopScreenShareAsync()
     {
+        var userId = _coordinatorSession.GetCurrentUser().Id;
+        _restartingScreens.Remove(userId);
+        _stoppedRestartingScreens.Remove(userId);
+
         if (StatusBar.IsScreenShareOn)
             _sounds.Play(SoundEvent.ScreenShareStop);
 
@@ -260,9 +284,16 @@ public partial class ActiveHybridSessionVM
         if (IsClosed)
             return;
 
-        ParticipantsListVM.UpdateScreenShare(userId, isSharing);
-
         var isRestarting = _restartingScreens.Contains(userId);
+
+        if (isRestarting && !isSharing)
+        {
+            _stoppedRestartingScreens.Add(userId);
+            return;
+        }
+
+        ParticipantsListVM.UpdateScreenShare(userId, isSharing);
+        _stoppedRestartingScreens.Remove(userId);
 
         // Our own share sounds where it is started and stopped; a repeated report changes nothing
         if (!isRestarting && userId != _coordinatorSession.GetCurrentUser().Id
@@ -277,26 +308,37 @@ public partial class ActiveHybridSessionVM
 
         AddScreenStream(userId);
 
-        if (isRestarting && _restartingScreens.Remove(userId))
+        if (isRestarting && _restartingScreens.Remove(userId) && _wantedScreens.Contains(userId))
             _ = SetScreenWatchedAsync(userId, true);
     });
 
     /// <summary>
-    /// Remembers the screens watched now, ours among them, to watch them again once they are back
-    /// on the tracks that follow new media settings.
+    /// Retains the screens, including expanded views, until their replacement tracks arrive.
     /// </summary>
     private void RememberRestartingScreens()
     {
-        var watched = _screenStreamsByUser.Keys.Where(_hybridSession.IsWatchingScreen).ToArray();
+        var screens = _screenStreamsByUser.Keys.ToArray();
+        var version = ++_screenRestartVersion;
 
-        foreach (var userId in watched)
+        foreach (var userId in screens)
             _restartingScreens.Add(userId);
 
         // A sharer whose client does not restart its screen keeps it, and is not waited for
         DispatcherTimer.RunOnce(() =>
         {
-            foreach (var userId in watched)
+            if (IsClosed || version != _screenRestartVersion)
+                return;
+
+            foreach (var userId in _restartingScreens.ToArray())
+            {
                 _restartingScreens.Remove(userId);
+
+                if (_stoppedRestartingScreens.Remove(userId))
+                {
+                    ParticipantsListVM.UpdateScreenShare(userId, false);
+                    RemoveScreenStream(userId);
+                }
+            }
         }, ScreenRestartTimeout);
     }
 
@@ -316,7 +358,13 @@ public partial class ActiveHybridSessionVM
         };
 
         _screenStreamsByUser[userId] = stream;
+
+        // After the stream is in the map, so that a report arriving now is not missed by both
+        if (_screenDecodings.TryGetValue(userId, out var decoding))
+            stream.PushDecoding(decoding);
+
         ScreenStreams.Add(stream);
+        UpdateScreenViewers();
         UpdateCanExpand();
     }
 
@@ -327,6 +375,11 @@ public partial class ActiveHybridSessionVM
         if (!_screenStreamsByUser.TryRemove(userId, out var stream))
             return;
 
+        RemoveStreamTile(stream);
+    }
+
+    private void RemoveStreamTile(ScreenStreamVM stream)
+    {
         // Nothing to fade while another screen covers this one. It is taken out before the last
         // screen is brought back from being expanded, which would show it again for its fade
         if (stream.IsHidden)
@@ -361,6 +414,12 @@ public partial class ActiveHybridSessionVM
 
     private void UpdateScreenStreamName(int userId)
     {
+        UpdateScreenViewers();
+        if (_cameraStreamsByUser.TryGetValue(userId, out var camera))
+        {
+            camera.DisplayedName = ResolveDisplayedName(userId);
+            camera.AvatarUrl = ResolveAvatarUrl(userId);
+        }
         if (!_screenStreamsByUser.TryGetValue(userId, out var stream))
             return;
 
@@ -383,7 +442,7 @@ public partial class ActiveHybridSessionVM
 
         stream.IsBusy = true;
 
-        SetScreenShareWatchResult result;
+        RequestResult result;
 
         try
         {
@@ -394,14 +453,16 @@ public partial class ActiveHybridSessionVM
             stream.IsBusy = false;
         }
 
-        if (IsClosed || result == SetScreenShareWatchResult.NoError)
+        if (IsClosed || result.IsSuccess)
             return;
 
         if (isWatched)
             _wantedScreens.Remove(userId);
 
+        OnScreenWatchChanged(userId, false);
+
         // A rejection is reported by the main window
-        if (isWatched && result != SetScreenShareWatchResult.Rejected)
+        if (isWatched && !result.IsRejected)
             NotifyScreenShareError(Strings.Format("hybrid.screen.watchFailed", ("reason", result)));
     }
 
@@ -421,6 +482,10 @@ public partial class ActiveHybridSessionVM
     private void OnScreenWatchChanged(int userId, bool isWatched) => Dispatcher.UIThread.Post(() =>
     {
         if (IsClosed || !_screenStreamsByUser.TryGetValue(userId, out var stream))
+            return;
+
+        // A track replacement is a short pause, not an instruction to close the watched screen.
+        if (!isWatched && _restartingScreens.Contains(userId) && _wantedScreens.Contains(userId))
             return;
 
         stream.IsWatched = isWatched;
@@ -474,9 +539,9 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private void UpdateCanExpand()
     {
-        var canExpand = _screenStreamsByUser.Count > 1;
+        var canExpand = _screenStreamsByUser.Count + _cameraStreamsByUser.Count > 1;
 
-        foreach (var stream in _screenStreamsByUser.Values)
+        foreach (var stream in _screenStreamsByUser.Values.Concat(_cameraStreamsByUser.Values))
         {
             if (!canExpand && stream.IsExpanded)
                 ToggleExpanded(stream);
@@ -488,8 +553,28 @@ public partial class ActiveHybridSessionVM
     // Raised on a thread of the track, and the pixels are only valid during the call
     private void OnVideoFrame(int userId, MediaSourceType source, RawVideoFrame frame)
     {
-        if (source == MediaSourceType.Screen && _screenStreamsByUser.TryGetValue(userId, out var stream))
+        var streams = source == MediaSourceType.Camera ? _cameraStreamsByUser : _screenStreamsByUser;
+        if (streams.TryGetValue(userId, out var stream))
             stream.PushFrame(frame);
+    }
+
+    // Raised on a thread of the track
+    private void OnVideoDecoding(int userId, MediaSourceType source, VideoDecoding decoding)
+    {
+        if (source == MediaSourceType.Camera)
+        {
+            _cameraDecodings[userId] = decoding;
+            if (_cameraStreamsByUser.TryGetValue(userId, out var camera))
+                camera.PushDecoding(decoding);
+            return;
+        }
+        if (source != MediaSourceType.Screen)
+            return;
+
+        _screenDecodings[userId] = decoding;
+
+        if (_screenStreamsByUser.TryGetValue(userId, out var stream))
+            stream.PushDecoding(decoding);
     }
 
     private void NotifyScreenShareError(string text) =>

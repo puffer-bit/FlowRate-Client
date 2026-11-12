@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -8,39 +10,91 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="chatVm:ChatStatusBarVM"
              x:Class="Client.Views.Sessions.Chat.ChatStatusBarControl">
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.viewersToggle">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ToggleButton.viewersToggle /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:checked /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:pointerover /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:pressed /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:checked:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.viewersToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.viewersToggle:checked /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:checked:pointerover /template/ ContentPresenter,
+                         ToggleButton.viewersToggle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+    </UserControl.Styles>
     <!-- The background spans the whole width; only the content is inset -->
     <Border Background="{DynamicResource GeneralBrush}" Padding="12,0">
-        <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
+        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
 
-            <Image Grid.Column="0" Width="36" Height="36" Source="{StaticResource HashIcon}"/>
+            <Button Grid.Column="0" Classes="borderless" Padding="0"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    Command="{Binding OpenInfoCommand}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Panel Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center">
+                        <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsDirect}"/>
+                        <avatars:UserAvatar Width="36" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}"
+                                            Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
+                    </Panel>
 
-            <!-- Name with the chat status under it, as in Telegram -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <text:MarqueeTextBlock Text="{Binding Name}"
-                                       FontSize="15"
-                                       FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis"/>
+                    <!-- Name with the chat status under it, as in Telegram -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <text:MarqueeTextBlock Text="{Binding Name}"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
 
-                <!-- A grid, not a horizontal stack panel, so a long description is trimmed -->
-                <Grid ColumnDefinitions="Auto, *">
-                    <loadingIndicators:ProgressRing Grid.Column="0"
-                                                    Margin="0,0,6,0"
-                                                    Width="12"
-                                                    Height="12"
-                                                    MinWidth="0"
-                                                    MinHeight="0"
-                                                    VerticalAlignment="Center"
-                                                    IsIndeterminate="True"
-                                                    BorderThickness="2"
-                                                    IsVisible="{Binding IsLoading}"/>
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding StatusText}"
-                               FontSize="12"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"
-                               MaxLines="1"
-                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <!-- A grid, not a horizontal stack panel, so a long description is trimmed -->
+                        <Grid ColumnDefinitions="Auto, *">
+                            <loadingIndicators:ProgressRing Grid.Column="0"
+                                                            Margin="0,0,6,0"
+                                                            Width="12"
+                                                            Height="12"
+                                                            MinWidth="0"
+                                                            MinHeight="0"
+                                                            VerticalAlignment="Center"
+                                                            IsIndeterminate="True"
+                                                            BorderThickness="2"
+                                                            IsVisible="{Binding IsLoading}"/>
+                            <TextBlock Grid.Column="1"
+                                       Classes="chat-status"
+                                       Classes.typing="{Binding IsTyping}"
+                                       Text="{Binding StatusText}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxLines="1"/>
+                        </Grid>
+                    </StackPanel>
                 </Grid>
+            </Button>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="ghost" Width="36" Height="36" Padding="8" CornerRadius="6"
+                        IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}"
+                        AutomationProperties.Name="{l:Text calls.start}">
+                    <Image Source="{StaticResource ChatCallStartedIcon}"/>
+                </Button>
+                <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
+                              VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
+                              IsChecked="{Binding IsPinsOpen, Mode=TwoWay}">
+                    <Image Source="{StaticResource PinIcon}"/>
+                </ToggleButton>
+                <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
+                              VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.viewers.title}"
+                              IsVisible="{Binding HasViewers}"
+                              IsChecked="{Binding Viewers.IsOpen, Mode=TwoWay}">
+                    <Image Source="{StaticResource BaseUsersIcon}"/>
+                </ToggleButton>
             </StackPanel>
         </Grid>
     </Border>

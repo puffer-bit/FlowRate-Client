@@ -22,6 +22,26 @@ public class PushCipherTests
     }
 
     [Fact]
+    public void CallPush_DecryptsCallIdentityStateAndExpiry()
+    {
+        var id = Guid.NewGuid();
+        var json = System.Text.Encoding.UTF8.GetBytes($$"""
+            {"coordinatorId":"coordinator","chatId":7,"chatName":"alice","senderId":1,
+             "senderName":"alice","sentTime":1000,"callId":"{{id}}","callState":0,
+             "expiresAt":46000,"recipientId":2}
+            """);
+        var bytes = new byte[12 + json.Length + 16];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes.AsSpan(0, 12));
+        using (var aes = new System.Security.Cryptography.AesGcm(Key, 16))
+            aes.Encrypt(bytes.AsSpan(0, 12), json, bytes.AsSpan(12, json.Length), bytes.AsSpan(12 + json.Length));
+        var call = Assert.IsType<PushPayload>(PushCipher.Decrypt(Key, Convert.ToBase64String(bytes)));
+        Assert.Equal(id, call.CallId);
+        Assert.Equal(0, call.CallState);
+        Assert.Equal(2, call.RecipientId);
+        Assert.Equal(46000, call.ExpiresAt);
+    }
+
+    [Fact]
     public void Decrypt_WithAnotherKey_ReturnsNull()
     {
         var key = Key.ToArray();

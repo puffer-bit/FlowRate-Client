@@ -1,15 +1,23 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation">
 
     <!-- Every flyout is a menu card: rounded, thin border, items close to the edge.
          Menu items are MenuItemButton (Client.Avalonia.Controls), stacked with Spacing="2" -->
     <Style Selector="FlyoutPresenter">
+        <Setter Property="anim:Presence.Appear" Value="Fade"/>
+        <Setter Property="anim:Presence.Leave" Value="Fade"/>
+        <Setter Property="anim:Presence.Duration" Value="Short"/>
         <Setter Property="Padding" Value="4"/>
         <Setter Property="MinWidth" Value="200"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
         <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+    </Style>
+
+    <Style Selector="FlyoutPresenter.reaction-picker">
+        <Setter Property="MinWidth" Value="112"/>
     </Style>
 
     <!-- Splits a menu into groups -->

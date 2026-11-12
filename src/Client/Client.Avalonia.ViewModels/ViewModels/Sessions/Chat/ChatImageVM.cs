@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Client.Application.Coordinator;
 using Client.Core.Chat;
 using Client.Services;
@@ -80,6 +82,32 @@ public class ChatImageVM : ReactiveObject
     {
         if (_viewers > 0 && --_viewers == 0)
             Release(Preview);
+    }
+
+    /// <summary>Loads a still frame of the original at full size for the clipboard.</summary>
+    public async Task<Bitmap?> LoadOriginalBitmapAsync()
+    {
+        var (result, path) = await _images.FetchOriginalAsync(_session, Image.Id);
+        if (result != MediaTransferResult.NoError || path == null)
+            return null;
+
+        return await ImageDecoding.RunAsync(() =>
+        {
+            using var content = File.OpenRead(path);
+            using var decoded = SkiaImages.Decode(content, int.MaxValue);
+            return decoded == null ? null : Pictures.ToBitmap(decoded.Bitmap);
+        });
+    }
+
+    /// <summary>Saves the original file, preserving its format and animation.</summary>
+    public async Task SaveOriginalAsync(Stream target)
+    {
+        var (result, path) = await _images.FetchOriginalAsync(_session, Image.Id);
+        if (result != MediaTransferResult.NoError || path == null)
+            throw new IOException("The original image could not be downloaded.");
+
+        await using var source = File.OpenRead(path);
+        await source.CopyToAsync(target);
     }
 
     // The bitmap is native memory the collector does not count, so it is freed at once rather than

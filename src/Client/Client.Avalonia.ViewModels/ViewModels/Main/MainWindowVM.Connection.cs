@@ -13,12 +13,11 @@ using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
-using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
-using Result = Client.ViewModels.Dialogs.Result;
+using Shared.Enums.User;
 
 namespace Client.ViewModels.Main;
 
@@ -47,7 +46,7 @@ public partial class MainWindowVM
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
         await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-            user.AccountPassword);
+            user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -60,7 +59,7 @@ public partial class MainWindowVM
 
             await StatusLine.SetAsync(Connecting, true);
             await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-                user.AccountPassword);
+                user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)
@@ -81,6 +80,25 @@ public partial class MainWindowVM
         // The password may have been typed, or found changed, on the way
         if (session.AccountPasswordToSave != user.AccountPassword)
             await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
+
+        try
+        {
+            var credentials = session.GetCurrentUserCredentials();
+            await _accounting.SaveCoordinatorInstanceAsync(coordinator, new SavedUserModel
+            {
+                CoordinatorId = coordinator.CoordinatorId,
+                Id = credentials.Id,
+                Username = credentials.Username,
+                UserIdentity = credentials.UserIdentity,
+                Password = user.Password,
+                AccountPassword = session.AccountPasswordToSave,
+                SessionToken = credentials.SessionToken
+            });
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinator.CoordinatorId);
+        }
 
         _coordinatorSession = session;
         await FinalizeCoordinatorConnection();
@@ -127,11 +145,15 @@ public partial class MainWindowVM
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
+            .Add(() => session.DirectCallFailed += OnDirectCallFailed, () => session.DirectCallFailed -= OnDirectCallFailed)
+            .Add(() => session.DirectCallChanged += OnDirectCallChanged,
+                () => { session.DirectCallChanged -= OnDirectCallChanged; DismissCallToast(); })
             .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
                 () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
+            .Add(() => session.SessionEnded += OnSessionEnded, () => session.SessionEnded -= OnSessionEnded)
             .Add(() => session.PermissionsChanged += OnPermissionsChanged, () => session.PermissionsChanged -= OnPermissionsChanged)
             .Add(() => session.CurrentUserChanged += OnCurrentUserChanged, () => session.CurrentUserChanged -= OnCurrentUserChanged)
             .Add(() => session.ServerRoundTripChanged += OnServerRoundTripChanged,
@@ -189,7 +211,6 @@ public partial class MainWindowVM
             return;
 
         SessionsList.ShowLoading();
-        await Task.Delay(700);
         if (IsRestoreCurrent(session, restoreId))
             await AttachSessionManager(session, restoreId);
     }
@@ -218,6 +239,11 @@ public partial class MainWindowVM
     /// </summary>
     private async Task RestoreLastSessionAsync()
     {
+        if (Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect)
+        {
+            _lastSession.IsKept = false;
+            return;
+        }
         if (!_lastSession.IsKept)
             return;
 
@@ -269,7 +295,21 @@ public partial class MainWindowVM
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => Access.Update(permissions));
 
-    private void OnRequestRejected(RequestRejectedException exception)
+    // The session disconnects on its own; the user is told why it does not come back
+    private void OnSessionEnded(UserSessionEndReason reason)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await SetStatus("main.status.offline", false);
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get(reason == UserSessionEndReason.IdentityReset
+                    ? "main.sessionEnded.identityReset"
+                    : "main.sessionEnded.revoked"),
+                Strings.Get("main.sessionEnded.title")));
+        });
+    }
+
+    private void OnRequestRejected(RequestFailedException exception)
     {
         Dispatcher.UIThread.Post(async () =>
         {
@@ -285,7 +325,7 @@ public partial class MainWindowVM
             try
             {
                 await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
-                    RequestRejectionMessages.Get(exception.Reason), RequestRejectionMessages.Title));
+                    RequestRejectionMessages.Get(exception.Code), RequestRejectionMessages.Title));
             }
             finally
             {
@@ -374,7 +414,12 @@ public partial class MainWindowVM
 
             await ServerTitle.AttachCoordinator(session);
             AttachOpenedSessions(session);
-            await RestoreLastSessionAsync();
+            if (session.DirectCall is not { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended })
+                await RestoreLastSessionAsync();
+            // A push action may complete while the initial session list is still loading.
+            if (session.DirectCall is { State: Shared.Models.DataTransferObjects.DirectCallState.Active,
+                    IsSelectedDevice: true } call && OpenedSessions?.HybridSession?.Model.DirectCallId != call.CallId)
+                OnDirectCallChanged(call);
             if (IsRestoreCurrent(session, restoreId))
                 await SetStatus("main.status.connected", false);
         }
@@ -410,7 +455,7 @@ public partial class MainWindowVM
         if (OpenedSessions == null)
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
-                _users.ViewProfileCommand);
+                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
             OpenedSessions = sessions;
@@ -422,7 +467,7 @@ public partial class MainWindowVM
 
     private void RestoreOpenedChats(OpenedSessions sessions)
     {
-        if (!SessionsList.IsEmpty && !SessionsList.HasSessions)
+        if (SessionsList.State != Client.ViewModels.Sessions.List.SessionsListState.Loaded)
             return;
 
         sessions.CloseChatsExcept(SessionsList.Sessions
@@ -455,6 +500,7 @@ public partial class MainWindowVM
     /// </summary>
     public Task SuspendConnection() =>
         _coordinatorSession == null || OpenedSessions?.IsInHybridSession == true
+            || _coordinatorSession.DirectCall is { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended }
             ? Task.CompletedTask
             : _coordinatorSession.Suspend();
 
@@ -466,6 +512,7 @@ public partial class MainWindowVM
     // Raised on socket and thread pool threads
     private void OnConnectionStateChanged(CoordinatorState status)
     {
+        if (status != CoordinatorState.Connected) Dispatcher.UIThread.Post(DismissCallToast);
         switch (status)
         {
             case CoordinatorState.Connecting:
@@ -476,6 +523,12 @@ public partial class MainWindowVM
                 PostDisconnect(Strings.Get("main.reconnect.failed"));
                 return;
             // Only a reconnect reports it here, after the server rejected the credentials
+            case CoordinatorState.OnlineLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.onlineLimitReached"));
+                return;
+            case CoordinatorState.UserLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.userLimitReached"));
+                return;
             case CoordinatorState.AuthenticationFailed:
                 PostDisconnect(Strings.Get("main.reconnect.loginRejected"));
                 return;
@@ -488,7 +541,7 @@ public partial class MainWindowVM
                 return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:
-                PostDisconnect(Strings.Get("main.reconnect.banned"));
+                PostDisconnect(Strings.Get("main.reconnect.banned") + (string.IsNullOrWhiteSpace(_coordinatorSession?.BanReason) ? "" : "\n" + _coordinatorSession.BanReason));
                 return;
             // Only a reconnect reports it here: the server was updated or rolled back while the user was online
             case CoordinatorState.ClientOutdated:

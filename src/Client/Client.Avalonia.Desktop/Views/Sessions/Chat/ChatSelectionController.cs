@@ -112,7 +112,7 @@ internal sealed class ChatSelectionController
                     text.Append('\n');
                 text.Append(partText, from, to - from);
                 if (part == NamePart && from == 0 && to == partText.Length)
-                    text.Append(" — ").Append(vm.Message.SentTime.ToString("HH:mm"));
+                    text.Append(" — ").Append(vm.LocalSentTime.ToString("HH:mm"));
             }
         }
         return text.ToString();
@@ -122,15 +122,16 @@ internal sealed class ChatSelectionController
     {
         if (vm.IsSequenceStart && !string.IsNullOrEmpty(vm.SenderName))
             yield return (NamePart, vm.SenderName);
-        if (vm.HasText && vm.Body?.Text is { Length: > 0 } body)
+        if (vm.HasText && vm.Body is { } messageBody && Client.Core.Chat.ChatMarkdown.Render(messageBody).Text is { Length: > 0 } body)
             yield return (BodyPart, body);
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // The scroll bar is dragged, not selected through; taking the pointer from its thumb would stop the drag
+        // Buttons and range controls own their pointer gesture; text selection must not steal it.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
-            || (e.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) != null)
+            || (e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) != null
+            || (e.Source as Visual)?.FindAncestorOfType<RangeBase>(includeSelf: true) != null)
             return;
 
         Clear();

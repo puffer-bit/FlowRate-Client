@@ -1,4 +1,3 @@
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,15 +5,18 @@ using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
-using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.Avalonia.Localization;
 using Client.Core.Media;
-using Avalonia.Threading;
+using Client.Core.Settings;
+using Client.Services;
+using Client.ViewModels.Dialogs;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -25,6 +27,15 @@ namespace Client.ViewModels.Sessions.Hybrid;
 /// </summary>
 public class VideoSourceSelectWindowVM : ReactiveObject
 {
+    public bool IsCameraMode { get; }
+    public bool ListsScreens => !IsCameraMode && !UsesSystemPicker;
+    public ObservableCollection<CameraDevice> Cameras { get; } = new();
+    public CameraDevice? SelectedCamera
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public ObservableCollection<ScreenSource> Windows { get; } = new();
 
     public ScreenSource? SelectedWindow
@@ -162,6 +173,26 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
     public IReadOnlyList<ScreenShareOptionVM> Framerates { get; }
 
+    public ScreenShareOptionVM? SelectedResolution
+    {
+        get => Resolutions.FirstOrDefault(option => option.IsSelected);
+        set
+        {
+            if (value != null && Resolutions.Contains(value))
+                SelectOption(Resolutions, value);
+        }
+    }
+
+    public ScreenShareOptionVM? SelectedFramerate
+    {
+        get => Framerates.FirstOrDefault(option => option.IsSelected);
+        set
+        {
+            if (value != null && Framerates.Contains(value))
+                SelectOption(Framerates, value);
+        }
+    }
+
     /// <summary>
     /// The user sets the bitrate; otherwise it is counted from the resolution and the frame rate.
     /// </summary>
@@ -177,6 +208,10 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     }
 
     public bool IsAutoBitrate => !IsCustomBitrate;
+
+    public bool IsBitrateOverridden { get; }
+    public string? EncoderBitrateWarning { get; }
+
 
     /// <summary>
     /// The bitrate as the user typed it, in kbit/s.
@@ -199,17 +234,6 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
-
-    /// <summary>
-    /// What is wrong with the bitrate the user set. It does not stop the share: a bitrate that is
-    /// far from the recommended one is still used, and one that cannot be read gives way to the
-    /// automatic one.
-    /// </summary>
-    public string? BitrateWarning
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
 
     /// <summary>
     /// How the share is set up right now.
@@ -273,8 +297,14 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     /// <param name="sharedInput">What the running share shows, when the dialog changes it, offered again.</param>
     public VideoSourceSelectWindowVM(IScreenSourceProvider? screenSourceProvider, IScreenCastClient? screenCastClient,
         IAudioAppProvider? audioApps, bool canShareAudio, ScreenShareSettings settings,
-        IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null)
+        IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null,
+        IMediaCapabilities? mediaCapabilities = null, VideoCodec codec = VideoCodec.H264,
+        IReadOnlyList<CameraDevice>? cameras = null, string? selectedCameraId = null)
     {
+        IsCameraMode = cameras != null;
+        foreach (var camera in cameras ?? [])
+            Cameras.Add(camera);
+        SelectedCamera = Cameras.FirstOrDefault(camera => camera.Id == selectedCameraId) ?? Cameras.FirstOrDefault();
         _dismissedPrompts = dismissedPrompts;
         _screenSourceProvider = screenSourceProvider;
         _screenCastClient = screenCastClient;
@@ -284,6 +314,10 @@ public class VideoSourceSelectWindowVM : ReactiveObject
             SystemInput = sharedInput;
 
         settings = settings.Normalize();
+        var bitrateOverride = mediaCapabilities?.GetScreenShareBitrateOverride(codec, IsCameraMode ? VideoSettings.Current.ForCamera() : VideoSettings.Current);
+        IsBitrateOverridden = bitrateOverride != null;
+        EncoderBitrateWarning = bitrateOverride == null ? null : Strings.Format("source.bitrate.encoderOverride.message",
+            ("encoder", bitrateOverride.Factory));
 
         HasAudioToggle = canShareAudio && screenSourceProvider != null && screenCastClient == null;
         HasAudioApps = canShareAudio && audioApps != null && screenCastClient != null;
@@ -315,17 +349,16 @@ public class VideoSourceSelectWindowVM : ReactiveObject
 
         EnableAudioCommand = ReactiveCommand.Create(() => { IsAudioEnabled = true; });
         DisableAudioCommand = ReactiveCommand.Create(() => { IsAudioEnabled = false; });
-        SelectAutoBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = false; });
-        SelectCustomBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = true; });
+        SelectAutoBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = false; }, Observable.Return(!IsBitrateOverridden));
+        SelectCustomBitrateCommand = ReactiveCommand.Create(() => { IsCustomBitrate = true; }, Observable.Return(!IsBitrateOverridden));
         SelectWindowsCommand = ReactiveCommand.Create(() => { IsMonitorsMode = false; });
         SelectMonitorsCommand = ReactiveCommand.Create(() => { IsMonitorsMode = true; });
         PickSystemSourceCommand = ReactiveCommand.CreateFromTask(PickSystemSourceAsync);
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(null); });
         GoLive = ReactiveCommand.CreateFromTask(ConfirmAsync,
-            Observable.Select(
-                this.WatchProperties(nameof(SelectedWindow), nameof(SelectedMonitor), nameof(IsMonitorsMode),
-                    nameof(SystemInput), nameof(IsPicking)),
-                vm => !vm.IsPicking && (UsesSystemPicker
+            this.WatchProperties(nameof(SelectedWindow), nameof(SelectedMonitor), nameof(IsMonitorsMode),
+                    nameof(SystemInput), nameof(IsPicking), nameof(SelectedCamera))
+                .Select(vm => !vm.IsPicking && (IsCameraMode ? vm.SelectedCamera != null : UsesSystemPicker
                     ? vm.SystemInput != null
                     : (vm.IsMonitorsMode ? vm.SelectedMonitor : vm.SelectedWindow) != null)));
     }
@@ -333,13 +366,21 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     /// <param name="group">The options made here, of which one is selected at a time.</param>
     private List<ScreenShareOptionVM> CreateOptions(IEnumerable<int> values, int selected,
         Func<int, string> label, Func<IReadOnlyList<ScreenShareOptionVM>> group, Func<int, bool>? isDemanding = null) =>
-        values.Select(value => new ScreenShareOptionVM(value, label(value), option =>
-        {
-            foreach (var other in group())
-                other.IsSelected = other == option;
+        values.Select(value => new ScreenShareOptionVM(value, label(value), option => SelectOption(group(), option))
+        { IsSelected = value == selected, IsDemanding = isDemanding?.Invoke(value) == true }).ToList();
 
-            UpdateBitrate();
-        }) { IsSelected = value == selected, IsDemanding = isDemanding?.Invoke(value) == true }).ToList();
+    private void SelectOption(IReadOnlyList<ScreenShareOptionVM> options, ScreenShareOptionVM selected)
+    {
+        if (selected.IsSelected)
+            return;
+
+        foreach (var option in options)
+            option.IsSelected = option == selected;
+
+        this.RaisePropertyChanged(nameof(SelectedResolution));
+        this.RaisePropertyChanged(nameof(SelectedFramerate));
+        UpdateBitrate();
+    }
 
     /// <returns>Null when what the user typed is not a bitrate that can be set.</returns>
     private int? ParseCustomBitrate() =>
@@ -349,7 +390,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
             : null;
 
     /// <summary>
-    /// Brings the recommended bitrate and the warning in line with the options.
+    /// Updates the automatic bitrate label for the current quality settings.
     /// </summary>
     private void UpdateBitrate()
     {
@@ -357,21 +398,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         if (Resolutions == null || Framerates == null)
             return;
 
-        var settings = Settings;
-        var recommended = ("bitrate", (object?)settings.RecommendedBitrateKbps);
-
-        AutoBitrateLabel = Strings.Format("source.bitrate.auto", recommended);
-
-        if (!IsCustomBitrate)
-            BitrateWarning = null;
-        else if (settings.BitrateKbps is not { } bitrate)
-            BitrateWarning = Strings.Format("source.bitrate.invalid", recommended);
-        else if (settings.IsBitrateTooLow(bitrate))
-            BitrateWarning = Strings.Format("source.bitrate.tooLow", recommended);
-        else if (settings.IsBitrateTooHigh(bitrate))
-            BitrateWarning = Strings.Format("source.bitrate.tooHigh", recommended);
-        else
-            BitrateWarning = null;
+        AutoBitrateLabel = Strings.Format("source.bitrate.auto", ("bitrate", (object?)Settings.RecommendedBitrateKbps));
     }
 
     public void LoadSources()
@@ -514,7 +541,9 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     {
         VideoInput? input;
 
-        if (UsesSystemPicker)
+        if (IsCameraMode)
+            input = SelectedCamera == null ? null : new CameraVideoInput(SelectedCamera.Id);
+        else if (UsesSystemPicker)
             input = SystemInput;
         else if (IsMonitorsMode)
             input = SelectedMonitor == null ? null : new MonitorVideoInput(SelectedMonitor.Handle);

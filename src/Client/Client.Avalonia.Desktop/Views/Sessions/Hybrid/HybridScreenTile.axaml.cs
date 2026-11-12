@@ -15,6 +15,9 @@ public partial class HybridScreenTile : UserControl
     public HybridScreenTile()
     {
         InitializeComponent();
+
+        Perf.ReadFrames = () => Picture.Stats;
+        Perf.ReadRoute = () => Picture.Route;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -22,6 +25,23 @@ public partial class HybridScreenTile : UserControl
         base.OnDataContextChanged(e);
 
         Attach(DataContext as ScreenStreamVM);
+    }
+
+    protected override void OnGotFocus(FocusChangedEventArgs e)
+    {
+        base.OnGotFocus(e);
+
+        // Pointer focus must not pin the bar open after clicking a control.
+        Classes.Set("keyboardControls",
+            e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional);
+    }
+
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+
+        if (!IsKeyboardFocusWithin)
+            Classes.Set("keyboardControls", false);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -48,18 +68,26 @@ public partial class HybridScreenTile : UserControl
         {
             _stream.FrameReady -= OnFrame;
             _stream.Cleared -= Picture.Clear;
+            _stream.DecodingChanged -= Picture.SetDecoding;
+            _stream.PerfChanged -= Perf.SetPerf;
             _stream.ReadFrameStats = null;
         }
 
         _stream = stream;
         Picture.Clear();
+        Picture.SetDecoding(null);
+        Perf.Reset();
 
         if (stream == null)
             return;
 
         stream.FrameReady += OnFrame;
         stream.Cleared += Picture.Clear;
+        stream.DecodingChanged += Picture.SetDecoding;
+        Picture.SetDecoding(stream.Decoding);
         stream.ReadFrameStats = () => Picture.Stats;
+        stream.PerfChanged += Perf.SetPerf;
+        Perf.SetPerf(stream.Perf.Stream, stream.Perf.Network);
     }
 
     private void OnPictureDoubleTapped(object? sender, TappedEventArgs e)

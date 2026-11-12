@@ -1,0 +1,10 @@
+flowrate_webrtc.dll, built by Build/windows/build.ps1
+Date:      2026-11-08T18:07:25Z
+WebRTC:    webrtc-sdk/webrtc a545de45259b47dfac5f3635863e47cb601f1bb2
+Wrapper:   webrtc-sdk/libwebrtc libwebrtc.m150.7871.06
+Audio:     GStreamer capture/playback, external PCM ABI 1
+Patches:   custom_audio_source_m150 add_libwebrtc_build_target allow_176k4_192k_shared_mode_formats flowrate_audio_processing flowrate_keep_sps flowrate_wasapi_autoconvert flowrate_no_builtin_aec flowrate_screen_audio_options flowrate_target
+FlowRate:  de42c25 (with uncommitted changes)
+SHA-256:   3312d0df089e794c3e797d6f5a62f14aee830ec6ab749dcd75b0b3c56319a271
+Toolchain: Visual Studio 2026, Windows SDK 10.0.26100.0
+GN args:   target_os="win" target_cpu="x64" is_debug=false is_clang=true is_component_build=false symbol_level=0 enable_iterator_debugging=false treat_warnings_as_errors=false use_custom_libcxx=false rtc_include_tests=true rtc_build_tools=false rtc_build_examples=false rtc_enable_protobuf=false rtc_use_h265=false libwebrtc_desktop_capture=false

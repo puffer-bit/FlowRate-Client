@@ -1,5 +1,3 @@
-using Client.Services;
-using Client.Avalonia.Localization;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -7,13 +5,6 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
-using Client.Core.Coordinator;
-using Client.Core.Events;
-using Client.Core.Sessions.Hybrid;
-using Client.Core.Users;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Ports;
@@ -21,10 +12,20 @@ using Client.Application.Ports.Repositories;
 using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
+using Client.Core.Media;
+using Client.Core.Sessions.Hybrid;
+using Client.Core.Users;
+using Client.Services;
 using Client.ViewModels.Dialogs;
-using Result = Client.ViewModels.Dialogs.Result;
 using Client.ViewModels.Main;
 using Client.ViewModels.Notifications;
+using ReactiveUI;
+using Shared.Enums;
+
+using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
@@ -43,6 +44,16 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     }
 
     private bool IsClosed { get; set; }
+    private DispatcherTimer? _callDurationTimer;
+    private void UpdateCallDuration()
+    {
+        if (IsTransportConnected && Model.DirectCallStartedAt is { } started)
+        {
+            var elapsed = DateTimeOffset.UtcNow - started;
+            if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+            StatusBar.ShortStatusText = elapsed.ToString(elapsed.TotalHours >= 1 ? @"h\:mm\:ss" : @"mm\:ss");
+        }
+    }
 
     /// <summary>
     /// The WebRTC transport is up, so tracks can be sent.
@@ -78,7 +89,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     }
 
     public HybridSessionStatusBarVM StatusBar { get; set; }
-    
+
     public HybridSessionParticipantsListVM ParticipantsListVM { get; set; }
     public ObservableCollection<NotificationPopUpVM> NotificationsListViewModel { get; } = new();
     public HybridSessionBitmapFlyoutVM BitmapFlyoutVM { get; set; }
@@ -87,7 +98,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     public Interaction<VideoSourceSelectWindowVM, ScreenShareRequest?> SelectSources { get; set; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<bool, RxVoid> ToggleUserListCommand { get; }
-    
+
     /// <summary>
     /// The screens shown in the session, one per user who shows one. None is watched until asked for.
     /// </summary>
@@ -105,7 +116,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     // Set while the tracks are restarted for new media settings, and when they are to be once more. UI thread only
     private bool _isRestartingMedia;
     private bool _isMediaRestartPending;
-    
+
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly IScreenCastClient? _screenCastClient;
     private readonly IAudioPlayerService _audioPlayerService;
@@ -114,6 +125,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private readonly INotificationService _notifications;
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly IPeerPlaybackService _playbackService;
     private readonly IScreenSourceProvider? _screenSourceProvider;
     private readonly IAudioAppProvider? _audioApps;
@@ -122,12 +134,13 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly ICoordinatorStateRepository _coordinatorStates;
     private IHybridSession _hybridSession;
+    private readonly ScreenShareAudience _screenAudience;
 
     // Set once the server has let us in, so disposing knows there is a session to leave
     private bool _isJoined;
-    
+
     public ActiveHybridSessionVM(
-        HybridSessionModel hybridSessionModel, 
+        HybridSessionModel hybridSessionModel,
         ICoordinatorSession coordinatorSession,
         HybridSessionServices services,
         ReactiveCommand<RxVoid, RxVoid> toggleFullscreenCommand,
@@ -137,6 +150,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _coordinatorStates = services.CoordinatorStates;
         _mediaCapabilities = services.MediaCapabilities;
         _screenShareSettings = services.ScreenShareSettings;
+        _cameras = services.Cameras;
+        _cameraPreferences = services.CameraPreferences;
         _dismissedPrompts = services.DismissedPrompts;
         _coordinatorSession = coordinatorSession;
         _audioPlayerService = services.AudioPlayer;
@@ -152,22 +167,30 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         };
         _voiceActivity = services.VoiceActivity;
         _screenWatch = services.ScreenWatch;
+        _peerStats = services.PeerStats;
         _playbackService = services.Playback;
         Model = hybridSessionModel;
+        _screenAudience = new ScreenShareAudience(Model.Id);
         _screenCastClient = services.CreateScreenCastClient?.Invoke();
         _screenSourceProvider = services.ScreenSources;
         _audioApps = services.AudioApps;
 
         var hybridSession = _hybridSession = services.SessionFactory.CreateHybridSession(Model, _coordinatorSession);
         _subscriptions
+            .Add(() => coordinatorSession.HybridSessionUpdated += OnScreenViewerChanged,
+                () => coordinatorSession.HybridSessionUpdated -= OnScreenViewerChanged)
             .Add(() => _audioService.SettingsChanged += OnAudioSettingsChanged, () => _audioService.SettingsChanged -= OnAudioSettingsChanged)
             .Add(() => _voiceActivity.Changed += OnSpeakingChanged, () => _voiceActivity.Changed -= OnSpeakingChanged)
+            .Add(() => hybridSession.CameraChanged += OnCameraChanged, () => hybridSession.CameraChanged -= OnCameraChanged)
             .Add(() => hybridSession.ScreenShareChanged += OnScreenShareChanged,
                 () => hybridSession.ScreenShareChanged -= OnScreenShareChanged)
             .Add(() => hybridSession.ScreenWatchChanged += OnScreenWatchChanged,
                 () => hybridSession.ScreenWatchChanged -= OnScreenWatchChanged)
             .Add(() => hybridSession.VideoFrameReady += OnVideoFrame, () => hybridSession.VideoFrameReady -= OnVideoFrame)
+            .Add(() => hybridSession.VideoDecodingChanged += OnVideoDecoding,
+                () => hybridSession.VideoDecodingChanged -= OnVideoDecoding)
             .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
+            .Add(() => hybridSession.PerfSampled += OnPerfSampled, () => hybridSession.PerfSampled -= OnPerfSampled)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)
             .Add(() => coordinatorSession.HybridSessionReconfigured += OnSessionReconfigured,
@@ -175,61 +198,65 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
         if (_screenCastClient is { } screenCastClient)
             _subscriptions.Add(() => screenCastClient.Closed += OnScreenCastClosed, () => screenCastClient.Closed -= OnScreenCastClosed);
-        
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
         SelectSources = new Interaction<VideoSourceSelectWindowVM, ScreenShareRequest?>();
-        
+
         ToggleFullscreenCommand = toggleFullscreenCommand;
-        ToggleUserListCommand = ReactiveCommand
-            .Create<bool>(ToggleUserList);
-        
+        ToggleUserListCommand = ReactiveCommand.Create<bool>(ToggleUserList);
+
+        var canShareVideo = this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted), nameof(CanShareVideo))
+            .Select(vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo);
+
         StatusBar = new HybridSessionStatusBarVM(
-            hybridSessionModel.Name, 
+            hybridSessionModel.Name,
             ToggleUserListCommand,
-            toggleFullscreenCommand, 
+            toggleFullscreenCommand,
             ReactiveCommand.Create(CloseSession),
             ReactiveCommand.CreateFromTask(ToggleMicrophone,
-                Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted), nameof(CanSpeak)),
-                    vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanSpeak)),
+                this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted), nameof(CanSpeak))
+                    .Select(vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanSpeak)),
             ReactiveCommand.CreateFromTask(ToggleSound,
                 this.WatchProperty(nameof(IsTransportConnected), vm => vm.IsTransportConnected)),
             ReactiveCommand.CreateFromTask(ToggleAfk,
                 this.WatchProperty(nameof(IsTransportConnected), vm => vm.IsTransportConnected)),
-            ReactiveCommand.CreateFromTask(ToggleScreenShare,
-                Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
-                        nameof(CanShareVideo)),
-                    vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo)),
-            ReactiveCommand.CreateFromTask(ChangeScreenShare,
-                Observable.Select(this.WatchProperties(nameof(IsTransportConnected), nameof(IsAdmitted),
-                        nameof(CanShareVideo)),
-                    vm => vm.IsTransportConnected && vm.IsAdmitted && vm.CanShareVideo)));
-        _subscriptions.Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts,
-            () => Strings.LanguageChanged -= StatusBar.UpdateTexts);
+            ReactiveCommand.CreateFromTask(ToggleScreenShare, canShareVideo),
+            ReactiveCommand.CreateFromTask(ChangeScreenShare, canShareVideo))
+        {
+            SessionId = hybridSessionModel.Id,
+            ToggleBroadcastCommand = ReactiveCommand.CreateFromTask(ToggleBroadcastAsync, canShareVideo),
+            ToggleCameraCommand = ReactiveCommand.CreateFromTask(ToggleCameraAsync,
+                canShareVideo.Select(allowed => allowed && _cameras != null)),
+            CanUseCamera = _cameras != null
+        };
+        _subscriptions.Add(() => Strings.LanguageChanged += UpdateVideoTexts,
+            () => Strings.LanguageChanged -= UpdateVideoTexts);
         // Corrected by our own peer as soon as the server reports it
         IsAdmitted = !hybridSessionModel.IsApprovalRequested
                      || hybridSessionModel.HostId == _coordinatorSession.GetCurrentUser().Id;
         ParticipantsListVM = new HybridSessionParticipantsListVM(_coordinatorSession.GetCurrentUser().Id,
-            userId => ObservableExtensions.Subscribe(kickPeerCommand.Execute((Model.Id, userId))),
-            userId => ObservableExtensions.Subscribe(admitPeerCommand.Execute((Model.Id, userId, true))),
-            userId => ObservableExtensions.Subscribe(admitPeerCommand.Execute((Model.Id, userId, false))));
+            userId => kickPeerCommand.Execute((Model.Id, userId)).Subscribe(),
+            userId => admitPeerCommand.Execute((Model.Id, userId, true)).Subscribe(),
+            userId => admitPeerCommand.Execute((Model.Id, userId, false)).Subscribe());
         ApplyAccess(_coordinatorSession.Permissions);
         _subscriptions.Add(() => coordinatorSession.PermissionsChanged += OnPermissionsChanged,
             () => coordinatorSession.PermissionsChanged -= OnPermissionsChanged);
         BitmapFlyoutVM = new HybridSessionBitmapFlyoutVM();
 
-        _disposables.Add(
-            ObservableExtensions.Subscribe(BitmapFlyoutVM.WatchProperty(nameof(HybridSessionBitmapFlyoutVM.Volume), x => x.Volume), newVolume =>
-            {
-                _audioPlayerService.ChangeVolume(newVolume);
-            })
-        );
+        _disposables.Add(BitmapFlyoutVM.WatchProperty(nameof(HybridSessionBitmapFlyoutVM.Volume), vm => vm.Volume)
+            .Subscribe(_audioPlayerService.ChangeVolume));
 
+        if (Model.DirectCallStartedAt.HasValue)
+        {
+            _callDurationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _callDurationTimer.Tick += (_, _) => UpdateCallDuration();
+            _callDurationTimer.Start();
+        }
         _ = JoinSession();
     }
 
     public async Task JoinSession()
     {
-        await Task.Delay(200);
         if (IsClosed)
             return;
 
@@ -240,12 +267,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // Left before the server answered: nothing is set up yet, only the join itself is undone
             if (IsClosed)
             {
-                if (result.Result == HybridSessionJoinResult.NoError)
+                if (result.Result.IsSuccess && Model.DirectCallId == null)
                     _ = _coordinatorSession.LeaveSession(Model.Id);
                 return;
             }
 
-            if (result.Result == HybridSessionJoinResult.NoError && 
+            if (result.Result.IsSuccess &&
                 _coordinatorSession.ConnectionStatus == CoordinatorState.Connected)
             {
                 // Subscribed before the snapshot is taken, so that a peer joining or connecting in
@@ -253,6 +280,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 var session = _coordinatorSession;
                 _subscriptions
                     .Add(() => session.HybridSessionPeerJoined += OnPeerJoined, () => session.HybridSessionPeerJoined -= OnPeerJoined)
+                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
+                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => session.HybridSessionPeerLeft += OnPeerLeft, () => session.HybridSessionPeerLeft -= OnPeerLeft)
                     .Add(() => session.HybridSessionPeerStateChanged += OnPeerStateChanged,
                         () => session.HybridSessionPeerStateChanged -= OnPeerStateChanged)
@@ -261,30 +290,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _isJoined = true;
                 _sounds.Play(SoundEvent.Join);
 
-                var getAllPeerResult = await _coordinatorSession!.GetAllHybridSessionPeers(Model.Id);
-                if (getAllPeerResult.Result != PeerListRequestResult.NoError)
-                    throw new Exception($"Failed to get Peers for HybridSession {Model.Name}");
-
-                var peers = getAllPeerResult.Peers!.Values;
-
-                foreach (var peer in peers)
-                {
-                    ParticipantsListVM.AddPeerToSession(peer);
-                    if (peer.UserId == _coordinatorSession.GetCurrentUser().Id)
-                        await UpdateAdmissionAsync(peer.State);
-
-                    // Screens that were shown before we came are known from the peers only
-                    if (peer.IsScreenShareActive)
-                        AddScreenStream(peer.UserId);
-                }
-
-                var users = await _coordinatorSession.GetUsers(peers.Select(peer => peer.UserId).ToList());
-
-                foreach (var (userId, user) in users)
-                {
-                    ParticipantsListVM.UpdateUserModel(userId, user);
-                    UpdateScreenStreamName(userId);
-                }
+                await LoadPeersAsync();
 
                 await HandleSessionStatus(_hybridSession.State);
 
@@ -297,13 +303,11 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _subscriptions
                     .Add(() => hybridSession.StateChanged += OnSessionStateChanged,
                         () => hybridSession.StateChanged -= OnSessionStateChanged)
-                    .Add(() => session.HybridSessionPeerMicrophoneMuteChanged += HandleMicroState,
-                        () => session.HybridSessionPeerMicrophoneMuteChanged -= HandleMicroState)
                     .Add(() => hybridSession.ErrorOccurred += OnSessionError, () => hybridSession.ErrorOccurred -= OnSessionError);
-                
+
                 // Off the UI thread: the first transport of a run loads the WebRTC plugins while
                 // it builds its pipeline, and the window would stand still for that long
-                await Task.Run(() => _hybridSession.Connect(result.Transport!));
+                await Task.Run(() => _hybridSession.Connect(result.Value));
 
                 if (IsClosed)
                     return;
@@ -316,11 +320,14 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             else
             {
                 // A rejection is reported by the main window
-                if (!IsClosed && result.Result != HybridSessionJoinResult.Rejected)
+                if (!IsClosed && !result.Result.IsRejected)
                 {
-                    var message = result.Result == HybridSessionJoinResult.SFUNotActive
-                        ? Strings.Get("hybrid.join.noVoiceServer")
-                        : Strings.Format("hybrid.join.failed", ("code", result.Result));
+                    var message = result.Result.Error switch
+                    {
+                        ErrorCode.SFUUnavailable => Strings.Get("hybrid.join.noVoiceServer"),
+                        ErrorCode.SessionFull => Strings.Get("hybrid.join.sessionFull"),
+                        _ => Strings.Format("hybrid.join.failed", ("code", result.Result))
+                    };
 
                     await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok, message,
                         Strings.Get("common.error")));
@@ -332,8 +339,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         {
             if (!IsClosed)
             {
-                await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok, 
-                    Strings.Get("hybrid.join.timedOut"), 
+                await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                    Strings.Get("hybrid.join.timedOut"),
                     Strings.Get("common.error")));
                 _ = _coordinatorSession.LeaveSession(Model.Id);
                 CloseSession();
@@ -341,12 +348,46 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         }
     }
 
+    private async Task LoadPeersAsync()
+    {
+        var getAllPeerResult = await _coordinatorSession.GetAllHybridSessionPeers(Model.Id);
+        if (!getAllPeerResult.Result.IsSuccess)
+            throw new Exception($"Failed to get Peers for HybridSession {Model.Name}");
+
+        var peers = getAllPeerResult.Value!.Values;
+        foreach (var userId in _hybridSession.CameraUsers)
+            OnCameraChanged(userId, true);
+        if (_cameraPreferences != null)
+            StatusBar.LastWasCamera = (await _cameraPreferences.GetAsync()).LastWasCamera;
+        _screenAudience.LoadSnapshot(peers);
+
+        foreach (var peer in peers)
+        {
+            ParticipantsListVM.AddPeerToSession(peer);
+            if (peer.UserId == _coordinatorSession.GetCurrentUser().Id)
+                await UpdateAdmissionAsync(peer.State);
+
+            // Screens that were shown before we came are known from the peers only
+            if (peer.IsScreenShareActive)
+                AddScreenStream(peer.UserId);
+        }
+
+        var users = await _coordinatorSession.GetUsers(peers.Select(peer => peer.UserId).ToList());
+
+        foreach (var (userId, user) in users)
+        {
+            ParticipantsListVM.UpdateUserModel(userId, user);
+            UpdateScreenStreamName(userId);
+        }
+        UpdateScreenViewers();
+    }
+
     public void CloseSession()
     {
         if (!IsClosed)
             Closed?.Invoke(this);
     }
-    
+
     private async Task HandleSessionStatus(HybridSessionState state)
     {
         StatusBar.ChangeStatus(state);
@@ -358,6 +399,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         {
             StatusBar.IsMicrophoneOn = false;
             StatusBar.IsScreenShareOn = false;
+            StatusBar.IsCameraOn = false;
             ForgetMicrophoneInput();
         }
 
@@ -377,6 +419,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             return;
 
         await RestoreAfkAsync();
+        await RestoreCameraAsync();
 
         if (CanSpeak)
             await StartVoiceAsync();
@@ -390,7 +433,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (!IsClosed)
             await RestoreWatchedScreensAsync();
     }
-    
+
     /// <summary>
     /// Starts our running tracks again, so that they follow the media settings the session was just
     /// given: the server puts them into a track only when it starts. The others restart theirs the
@@ -431,10 +474,15 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // The microphone comes back muted or not as the user left it
             await _hybridSession.StopVoiceShareAsync();
             ForgetMicrophoneInput();
-            StatusBar.IsMicrophoneOn = false;
 
             if (!IsClosed && CanSpeak)
                 await StartVoiceAsync();
+        }
+
+        if (!IsClosed && _hybridSession.IsCameraStarted)
+        {
+            await _hybridSession.StopCameraAsync();
+            await RestoreCameraAsync();
         }
 
         // The source stays granted, only the track it is sent on is replaced
@@ -445,7 +493,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
             await _hybridSession.StopScreenShareAsync();
 
-            if (!IsClosed)
+            if (!IsClosed && _screenInput == screenInput)
                 await StartScreenShareAsync(screenInput, screenSettings, audioInput, isSilent: true);
         }
     }
@@ -459,19 +507,39 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 return;
 
             StatusBar.Stats.Add(sample);
+            _peerStats.Add(Model.Id, sample);
 
             var now = TimeSpan.FromMilliseconds(Environment.TickCount64);
 
             foreach (var stream in ScreenStreams)
-                stream.Analyze(sample, _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
+                stream.Analyze(sample, !stream.IsCamera && _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
+        });
+
+    private void OnPerfSampled(MediaPerfReport report) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsClosed)
+                return;
+
+            foreach (var stream in ScreenStreams)
+                stream.PushPerf(report);
         });
 
     private void OnSessionStateChanged(HybridSessionState state) =>
         Dispatcher.UIThread.Post(async () => await HandleSessionStatus(state));
 
     private void OnSessionError(HybridSessionError error) =>
-        Dispatcher.UIThread.Post(() => ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error),
-            "GstWebRTCError"));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsClosed) return;
+            if (error.Kind == HybridSessionErrorKind.CameraCaptureFailed)
+            {
+                _cameraInput = null;
+                _cameraSettings = null;
+                StatusBar.IsCameraOn = false;
+            }
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "GstWebRTCError");
+        });
 
     private void ShowPopUp(NotificationPopUpVM.PopUpType type, string text, string tag) =>
         NotificationsListViewModel.Add(new NotificationPopUpVM(type, text, NotificationsListViewModel, tag));
@@ -524,10 +592,15 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     private void ApplyAccess(CoordinatorPermissions permissions)
     {
-        var granted = permissions.InSession(Model);
+        var granted = Model.DirectCallId.HasValue
+            ? Permission.ViewSessions | Permission.JoinSessions | Permission.Speak
+            : permissions.InSession(Model);
         CanSpeak = granted.HasFlag(Permission.Speak);
+        StatusBar.CanSpeak = CanSpeak;
+        if (!CanSpeak && _hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
+            _ = SetMicrophoneMutedAsync(true);
         CanShareVideo = granted.HasFlag(Permission.ShareVideo);
-        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id);
+        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id, Model);
     }
 
     private void OnUserUpdated(UserModel user)
@@ -550,12 +623,25 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 Dispatcher.UIThread.Post(() => _ = OnKicked(kicked));
             else if (notification is PeerRejectedEvent rejected)
                 Dispatcher.UIThread.Post(() => _ = OnRejected(rejected));
+            else
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _isJoined = false;
+                    CloseSession();
+                });
             return;
         }
 
         _sounds.Play(notification is PeerKickedEvent or PeerRejectedEvent ? SoundEvent.UserKicked : SoundEvent.Leave);
 
-        Dispatcher.UIThread.Post(() => ParticipantsListVM.RemovePeerFromSession(notification.UserId));
+        Dispatcher.UIThread.Post(() =>
+        {
+            _restartingScreens.Remove(notification.UserId);
+            _stoppedRestartingScreens.Remove(notification.UserId);
+            RemoveScreenStream(notification.UserId);
+            RemoveCameraStream(notification.UserId);
+            ParticipantsListVM.RemovePeerFromSession(notification.UserId);
+        });
     }
 
     // The server has already taken us out, so the session is closed without leaving it
@@ -639,20 +725,26 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         IsUserListVisible = isToggled;
     }
-    
+
     public void Dispose()
     {
         if (IsClosed)
             return;
         IsClosed = true;
 
+        _callDurationTimer?.Stop();
         _subscriptions.Dispose();
+        _peerStats.Clear(Model.Id);
 
-        if (_isJoined)
+        if (Model.DirectCallId is { } callId)
+            _ = _coordinatorSession.ChangeDirectCall(Model.Id, callId,
+                Shared.Models.DataTransferObjects.DirectCallAction.End);
+        if (_isJoined && Model.DirectCallId == null)
         {
             _ = _coordinatorSession.LeaveSession(Model.Id);
-            _sounds.Play(SoundEvent.Leave);
         }
+        if (_isJoined)
+            _sounds.Play(SoundEvent.Leave);
 
         _hybridSession?.Dispose();
         _disposables.Dispose();

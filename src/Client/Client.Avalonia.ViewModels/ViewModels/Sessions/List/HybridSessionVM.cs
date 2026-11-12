@@ -1,19 +1,22 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using ReactiveUI;
-using ReactiveUI.Primitives;
-using Shared.Enums;
+using Client.Application.Coordinator.Users;
+using Client.Application.Sessions.Hybrid;
+using Client.Avalonia.Styles.Animation;
 using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
-using Client.Application.Coordinator.Users;
-using Client.Application.Sessions.Hybrid;
-using Client.Avalonia.Styles.Animation;
 using Client.ViewModels.Dialogs;
+using Client.ViewModels.Sessions.Hybrid;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
 
@@ -23,7 +26,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     public SessionModel Model
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            UpdateCapacityStatus();
+        }
     }
 
     // UI
@@ -37,6 +44,15 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             foreach (var peer in Peers)
                 peer.IsInEnteredSession = value;
         }
+    }
+
+    private HybridSessionStatusBarVM? _sessionControls;
+
+    public void SetSessionControls(HybridSessionStatusBarVM? controls)
+    {
+        _sessionControls = controls;
+        foreach (var peer in Peers)
+            peer.SetSessionControls(controls);
     }
 
     public bool IsShown
@@ -88,13 +104,30 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
     // What the current user may do, as of the last ApplyAccess
     private CoordinatorPermissions _permissions = CoordinatorPermissions.None;
-    
+
     public bool IsCorrupted
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasStatusWarning));
+            this.RaisePropertyChanged(nameof(ShowsFullWarning));
+        }
     }
-    public ObservableCollection<PeerVM> Peers { get; set; } = new();
+
+    public bool IsFull => Model.Capacity is > 0 && Peers.Count(peer => !peer.IsLeaving) >= Model.Capacity;
+    public bool HasStatusWarning => IsCorrupted || IsFull;
+    public bool ShowsFullWarning => IsFull && !IsCorrupted;
+
+    public ObservableCollection<PeerVM> Peers { get; } = new();
+
+    private void UpdateCapacityStatus()
+    {
+        this.RaisePropertyChanged(nameof(IsFull));
+        this.RaisePropertyChanged(nameof(HasStatusWarning));
+        this.RaisePropertyChanged(nameof(ShowsFullWarning));
+    }
 
     public PeerVM? SelectedPeer
     {
@@ -105,26 +138,28 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     private readonly int _currentUserId;
     private readonly IPeerPlaybackService _playbackService;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
-    
+
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
-    
+
     // Reactive commands
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> LeaveSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditSessionCommand { get; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
-    
+
     public HybridSessionVM(
         HybridSessionModel model,
         int currentUserId,
         IPeerPlaybackService playbackService,
         IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> leaveSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editSessionCommand,
@@ -137,10 +172,12 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand)
     {
         Model = model;
+        Peers.CollectionChanged += (_, _) => UpdateCapacityStatus();
 
         _currentUserId = currentUserId;
         _playbackService = playbackService;
         _screenWatch = screenWatch;
+        _peerStats = peerStats;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
         _banUserCommand = banUserCommand;
@@ -155,7 +192,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         EditPermissionsCommand = editPermissionsCommand;
         DeleteSessionCommand = deleteSessionCommand;
     }
-    
+
     /// <summary>
     /// Joins this session, or brings it back on screen when we are already in it.
     /// </summary>
@@ -175,7 +212,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == peerModel.UserId);
         if (peer is { IsLeaving: false })
+        {
+            peer.UpdatePeerModel(peerModel);
+            ApplyAccess(peer);
             return;
+        }
 
         // Came back while the old row was still folding away; the new one replaces it at once
         if (peer != null)
@@ -185,8 +226,10 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             _viewProfileCommand, ToggleScreenWatch, KickPeer, BanPeer, AdmitPeer, PokePeer)
         {
             IsInEnteredSession = IsEntered,
-            IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId)
+            IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId),
+            GetConnectionStats = () => _peerStats.Get(Model.Id, peerModel.UserId)
         };
+        added.SetSessionControls(_sessionControls);
         ApplyAccess(added);
         Peers.Insert(SortedIndexOf(added), added);
     }
@@ -251,6 +294,9 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
     private void ApplyAccess(PeerVM peer)
     {
+        peer.IsVoiceForbidden = (peer.IsCurrentUser || peer.UserData != null)
+            && !_permissions.InSession(Model, peer.IsCurrentUser ? _permissions.RoleIds : peer.UserData!.RoleIds)
+                .HasFlag(Permission.Speak);
         peer.CanKick = !peer.IsCurrentUser
                        && _permissions.CanInSessionOn(Permission.KickMembers, IsHost, peer.UserData?.RoleIds ?? []);
         peer.CanApprove = !peer.IsCurrentUser && peer.IsWaiting
@@ -298,11 +344,11 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         if (isWatching)
             Connect();
     }
-    
+
     public async Task RemovePeerFromSession(int userId)
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId && !p.IsLeaving);
-        if (peer == null) 
+        if (peer == null)
             return;
 
         if (SelectedPeer == peer)
@@ -310,6 +356,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
         // The row folds away first, so the rows below slide up instead of jumping
         peer.IsLeaving = true;
+        UpdateCapacityStatus();
         await Task.Delay(Presence.LeaveTime);
 
         Peers.Remove(peer);
@@ -335,7 +382,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         if (oldIndex != newIndex)
             Peers.Move(oldIndex, newIndex);
     }
-    
+
     public void ApplyPlayback(int userId, PeerPlayback playback)
     {
         var peer = Peers.FirstOrDefault(p => p.PeerData.UserId == userId);

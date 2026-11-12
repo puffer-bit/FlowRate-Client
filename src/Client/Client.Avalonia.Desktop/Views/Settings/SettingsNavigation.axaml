@@ -64,214 +64,114 @@
                    IsVisible="{Binding HasNoSearchResults}"/>
 
         <ListBox Grid.Row="1"
-                 ItemsSource="{Binding SettingList}"
-                 SelectedItem="{Binding SelectedSetting}"
+                 x:Name="TabList"
+                 ItemsSource="{Binding NavigationItems}"
+                 Tapped="TabList_OnTapped"
+                 SelectedItem="{Binding SelectedNavigationItem}"
                  IsVisible="{Binding !IsSearching}"
                  Margin="12,8,12,12"
                  Background="Transparent"
                  BorderThickness="0">
             <ListBox.Styles>
-                <Style Selector="ListBoxItem" x:DataType="settingsVm:ISettingVM">
-                    <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                <!-- The sub-items of a tab come out under it while it is open; the view shows and folds them -->
+                <Style Selector="ListBoxItem" x:DataType="settingsVm:SettingNavItemVM">
+                    <Setter Property="IsEnabled" Value="{Binding Setting.IsEnabled}" />
                 </Style>
-                <!-- The icon of a tab that asks for it (experimental features, once they are on) turns round
-                     slowly without a stop and trembles by about half a pixel a few times a second -->
-                <Style Selector="Image.agitated:shown">
-                    <Style.Animations>
-                        <Animation Duration="0:0:5.5" IterationCount="INFINITE">
-                                <KeyFrame Cue="0%">
-                                    <Setter Property="RotateTransform.Angle" Value="0"/>
-                                    <Setter Property="TranslateTransform.X" Value="0"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="3.03%">
-                                    <Setter Property="RotateTransform.Angle" Value="10.91"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="6.061%">
-                                    <Setter Property="RotateTransform.Angle" Value="21.82"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="9.091%">
-                                    <Setter Property="RotateTransform.Angle" Value="32.73"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.6"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.24"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="12.121%">
-                                    <Setter Property="RotateTransform.Angle" Value="43.64"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.44"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.36"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="15.152%">
-                                    <Setter Property="RotateTransform.Angle" Value="54.55"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.32"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.56"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="18.182%">
-                                    <Setter Property="RotateTransform.Angle" Value="65.45"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.56"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.32"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="21.212%">
-                                    <Setter Property="RotateTransform.Angle" Value="76.36"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="24.242%">
-                                    <Setter Property="RotateTransform.Angle" Value="87.27"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="27.273%">
-                                    <Setter Property="RotateTransform.Angle" Value="98.18"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.6"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.24"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="30.303%">
-                                    <Setter Property="RotateTransform.Angle" Value="109.09"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.44"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.36"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="33.333%">
-                                    <Setter Property="RotateTransform.Angle" Value="120"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.32"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.56"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="36.364%">
-                                    <Setter Property="RotateTransform.Angle" Value="130.91"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.56"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.32"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="39.394%">
-                                    <Setter Property="RotateTransform.Angle" Value="141.82"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="42.424%">
-                                    <Setter Property="RotateTransform.Angle" Value="152.73"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="45.455%">
-                                    <Setter Property="RotateTransform.Angle" Value="163.64"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.6"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.24"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="48.485%">
-                                    <Setter Property="RotateTransform.Angle" Value="174.55"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.44"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.36"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="51.515%">
-                                    <Setter Property="RotateTransform.Angle" Value="185.45"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.32"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.56"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="54.545%">
-                                    <Setter Property="RotateTransform.Angle" Value="196.36"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.56"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.32"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="57.576%">
-                                    <Setter Property="RotateTransform.Angle" Value="207.27"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="60.606%">
-                                    <Setter Property="RotateTransform.Angle" Value="218.18"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="63.636%">
-                                    <Setter Property="RotateTransform.Angle" Value="229.09"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.6"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.24"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="66.667%">
-                                    <Setter Property="RotateTransform.Angle" Value="240"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.44"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.36"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="69.697%">
-                                    <Setter Property="RotateTransform.Angle" Value="250.91"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.32"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.56"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="72.727%">
-                                    <Setter Property="RotateTransform.Angle" Value="261.82"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.56"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.32"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="75.758%">
-                                    <Setter Property="RotateTransform.Angle" Value="272.73"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="78.788%">
-                                    <Setter Property="RotateTransform.Angle" Value="283.64"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="81.818%">
-                                    <Setter Property="RotateTransform.Angle" Value="294.55"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.6"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.24"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="84.848%">
-                                    <Setter Property="RotateTransform.Angle" Value="305.45"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.44"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.36"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="87.879%">
-                                    <Setter Property="RotateTransform.Angle" Value="316.36"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.32"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.56"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="90.909%">
-                                    <Setter Property="RotateTransform.Angle" Value="327.27"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.56"/>
-                                    <Setter Property="TranslateTransform.Y" Value="-0.32"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="93.939%">
-                                    <Setter Property="RotateTransform.Angle" Value="338.18"/>
-                                    <Setter Property="TranslateTransform.X" Value="-0.48"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.4"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="96.97%">
-                                    <Setter Property="RotateTransform.Angle" Value="349.09"/>
-                                    <Setter Property="TranslateTransform.X" Value="0.36"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0.52"/>
-                                </KeyFrame>
-                                <KeyFrame Cue="100%">
-                                    <Setter Property="RotateTransform.Angle" Value="360"/>
-                                    <Setter Property="TranslateTransform.X" Value="0"/>
-                                    <Setter Property="TranslateTransform.Y" Value="0"/>
-                                </KeyFrame>
-                        </Animation>
-                    </Style.Animations>
+
+                <!-- A tab, and under it its sub-items: lower, without an icon, set in by
+                     a line -->
+                <Style Selector="Grid.tab.sub">
+                    <Setter Property="MinHeight" Value="30"/>
                 </Style>
+                <Style Selector="Grid.tab.sub > TextBlock">
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Grid.tab.sub > TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+                </Style>
+                <!-- The lines of the sub-items stand close to each other, so that the line down them is whole:
+                     each draws its own piece of it over its whole height, the padding as well -->
+                <Style Selector="ListBoxItem.sub">
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="Padding" Value="6,4"/>
+                </Style>
+                <Style Selector="Path.guide">
+                    <Setter Property="Margin" Value="0,-4"/>
+                    <Setter Property="Height" Value="38"/>
+                    <Setter Property="Data" Value="M 12,0 L 12,38"/>
+                    <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+                    <Setter Property="StrokeThickness" Value="2"/>
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Style>
+                <!-- The piece of the sub-item that is picked is lighter and thicker -->
+                <Style Selector="ListBoxItem:selected Path.guide">
+                    <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+                    <Setter Property="StrokeThickness" Value="4"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
+
+                <!-- Marks a tab that has sub-items: points down while they are out, to the right otherwise -->
+                <Style Selector="Path.subItemsMark">
+                    <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+                    <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="Path.subItemsMark.expanded">
+                    <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Path.subItemsMark">
+                    <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+                </Style>
+
+                <StyleInclude Source="/Views/Settings/Styles/ExperimentalIcon.axaml"/>
             </ListBox.Styles>
 
+            <!-- A few lines, some of them hidden: not virtualized, so that they keep their places -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+
             <ListBox.ItemTemplate>
-                <DataTemplate DataType="settingsVm:ISettingVM">
-                    <Grid ColumnDefinitions="Auto, *" Height="40" VerticalAlignment="Center">
-                        <Image Width="32"
-                               Height="32"
-                               Classes.agitated="{Binding IsIconAgitated}"
+                <DataTemplate DataType="settingsVm:SettingNavItemVM">
+                    <Grid Classes="tab navigationRow" Classes.sub="{Binding IsSubItem}"
+                          ColumnDefinitions="Auto, Auto, *, Auto" VerticalAlignment="Center">
+                        <!-- The line the sub-items are set in by -->
+                        <Path Grid.Column="0" Classes="guide"
+                              Width="24" Stretch="None"
+                              IsVisible="{Binding IsSubItem}"/>
+
+                        <Image Grid.Column="1"
+                               Classes.agitated="{Binding Setting.IsIconAgitated}"
                                anim:ShownState.Track="True"
-                               Source="{Binding Type, Converter={StaticResource SettingIconConverter}}"
+                               Source="{Binding Setting.Type, Converter={StaticResource SettingIconConverter}}"
+                               IsVisible="{Binding !IsSubItem}"
                                Stretch="Uniform"/>
 
-                        <TextBlock Grid.Column="1"
+                        <TextBlock Grid.Column="2"
                                    Text="{Binding Name}"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"
                                    MaxLines="2"
-                                   FontSize="14"
                                    TextTrimming="CharacterEllipsis"
                                    TextWrapping="Wrap"/>
+
+                        <Path Grid.Column="3" Classes="subItemsMark"
+                              Classes.expanded="{Binding IsExpanded}"
+                              IsVisible="{Binding HasSubItems}"
+                              Width="10" Height="6" Stretch="None"
+                              Margin="4,0,4,0"
+                              VerticalAlignment="Center"
+                              Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                              StrokeThickness="1.5"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"/>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

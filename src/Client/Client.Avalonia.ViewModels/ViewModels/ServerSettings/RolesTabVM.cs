@@ -5,17 +5,17 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
-using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Services;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Roles;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.ServerSettings;
 
@@ -150,7 +150,7 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
         Error = null;
         var (result, saved) = await _coordinatorSession.UpdateRole(role.Id, Editor.ToChange(), role.Revision);
 
-        if (result == CoordinatorRoleResult.Conflict)
+        if (result.Error == ErrorCode.Conflict)
         {
             Editor.IsChangedElsewhere = true;
             return;
@@ -209,22 +209,4 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
         MoveDownCommand.Dispose();
         ReloadCommand.Dispose();
     }
-}
-
-/// <summary>A role in the list of the roles tab.</summary>
-public sealed class RoleRowVM(RoleModel role, bool canManage, bool canMoveUp, bool canMoveDown)
-{
-    public RoleModel Role { get; } = role;
-    public string Name => Role.Name;
-
-    /// <summary>0xRRGGBB, or null for no color.</summary>
-    public int? Color => Role.Color;
-
-    public bool IsEveryone => Role.IsEveryone;
-
-    /// <summary>The role is below the highest role of the current user, who may manage roles.</summary>
-    public bool CanManage { get; } = canManage;
-
-    public bool CanMoveUp { get; } = canMoveUp;
-    public bool CanMoveDown { get; } = canMoveDown;
 }

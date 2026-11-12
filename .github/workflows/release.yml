@@ -26,9 +26,18 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  validate:
+    name: Validate
+    uses: ./.github/workflows/tests.yml
+
   build:
     name: Build
+    needs: validate
     uses: ./.github/workflows/build.yml
     with:
       aot: ${{ inputs.aot }}

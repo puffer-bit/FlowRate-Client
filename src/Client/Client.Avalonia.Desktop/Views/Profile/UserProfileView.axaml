@@ -1,178 +1,216 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
-             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="320"
+             mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="380"
              x:Class="Client.Views.Profile.UserProfileView"
              x:DataType="profileVm:UserProfileWindowVM"
              Background="{DynamicResource GeneralBrush}"
-             Width="460">
+             MaxWidth="460"
+             HorizontalAlignment="Stretch">
 
-    <Grid RowDefinitions="Auto, 1, Auto, 1, Auto">
+    <common:DialogLayout>
+        <!-- Header follows the create-session dialog and stays visible while the profile scrolls. -->
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource BaseUserIcon}"
+                             Title="{l:Text main.profile.title}"/>
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="20,16,20,14" Spacing="4">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Width="20" Height="20" Source="{StaticResource BaseUserIcon}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Text="{l:Text main.profile.title}"/>
+        <ScrollViewer Grid.Row="2" MaxHeight="560" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="10">
+                <Border Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <StackPanel Spacing="10" IsEnabled="{Binding !IsBusy}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <avatars:UserAvatar Width="64" Height="64" VerticalAlignment="Top"
+                                                UserName="{Binding Name}"
+                                                AvatarUrl="{Binding ShownAvatarUrl}"
+                                                Source="{Binding AvatarPicker.Avatar}"
+                                                Status="{Binding Status}">
+                                <avatars:UserAvatar.Overlay>
+                                    <avatars:AvatarEditButton Command="{Binding ChangeAvatarCommand}" IsVisible="{Binding IsCurrentUser}"/>
+                                </avatars:UserAvatar.Overlay>
+                            </avatars:UserAvatar>
+                            <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                                <SelectableTextBlock FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                     Text="{Binding Username}" IsVisible="{Binding !IsEditing}"/>
+                                <TextBlock Classes="hint" Text="{Binding StatusText}"/>
+                                <SelectableTextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                     Text="{Binding UserId, StringFormat='ID: {0}'}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+                            <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                <Button Classes="ghost" Command="{Binding ResetAvatarCommand}"
+                                        Content="{l:Text profile.avatar.reset}"/>
+                            </WrapPanel>
+                            <TextBlock Classes="hint" Text="{l:Text profile.avatar.resetsOnSave}"
+                                       IsVisible="{Binding IsAvatarReset}"/>
+                            <TextBlock Classes="fieldError" Text="{Binding AvatarPicker.AvatarError}"
+                                       IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                            <TextBox x:Name="NameInput" PlaceholderText="{l:Text profile.name.short}"
+                                     Text="{Binding Name}"
+                                     Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <TextBlock Classes="fieldError" Text="{Binding NameError}"
+                                       IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <TextBlock Classes="hint" Text="{Binding NameHint}"
+                                       IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource SettingsCardBackgroundBrush}"
+                        IsVisible="{Binding HasRoles}" IsEnabled="{Binding !IsBusy}">
+                    <!-- Role changes are applied immediately, independently of profile editing. -->
+                    <StackPanel Spacing="6" IsVisible="{Binding HasRoles}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text profile.field.roles}"/>
+                            <Button Grid.Column="1" Classes="ghost" IsVisible="{Binding CanManageRoles}"
+                                    IsEnabled="{Binding !IsChangingRole}" ToolTip.Tip="{l:Text roles.permission.manageRoles}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Image Width="16" Height="16" Source="{StaticResource PencilIcon}"/>
+                                    <TextBlock Text="{l:Text common.edit}"/>
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Spacing="2">
+                                            <ScrollViewer MaxHeight="280" HorizontalScrollBarVisibility="Disabled">
+                                                <ItemsControl ItemsSource="{Binding ManageableRoles}" IsEnabled="{Binding !IsChangingRole}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Spacing="2"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="profileVm:UserRoleVM">
+                                                            <menus:MenuItemButton
+                                                                Command="{Binding $parent[ItemsControl].((profileVm:UserProfileWindowVM)DataContext).ToggleRoleCommand}"
+                                                                CommandParameter="{Binding}">
+                                                                <menus:MenuItemButton.IconContent>
+                                                                    <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsAssigned}"/>
+                                                                </menus:MenuItemButton.IconContent>
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                                             Fill="{DynamicResource PrimaryTextBrush}"
+                                                                             IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                                             Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                                             IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                                    <TextBlock MaxWidth="240" TextWrapping="Wrap" Text="{Binding Name}"/>
+                                                                </StackPanel>
+                                                            </menus:MenuItemButton>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                            <TextBlock Classes="fieldError" Margin="8,4" MaxWidth="280" Text="{Binding RoleError}"
+                                                       IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding AssignedRoles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel ItemSpacing="10" LineSpacing="4"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="profileVm:UserRoleVM">
+                                    <Grid>
+                                        <Border Padding="8,4" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource DarkBackgroundBrush}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{DynamicResource PrimaryTextBrush}"
+                                                         IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                         IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding RoleError}"
+                                   IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text profile.note.title}"/>
+                            <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
+                        </Grid>
+                        <TextBlock Classes="hint" Text="{l:Text profile.note.hint}"/>
+                        <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
+                                 IsEnabled="{Binding Note.IsLoaded}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 PlaceholderText="{l:Text profile.note.placeholder}"/>
+                        <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
+                        <TextBlock Classes="fieldError" Text="{Binding Note.Error}"
+                                   IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Command="{Binding Note.LoadCommand}" IsVisible="{Binding !Note.IsLoaded}"
+                                HorizontalAlignment="Left" Content="{l:Text serverSettings.users.retry}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource SettingsCardBackgroundBrush}">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                        <TextBlock Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.firstConnected}"/>
+                        <SelectableTextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                             Text="{Binding FirstConnected}"/>
+                        <TextBlock Grid.Row="1" Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.lastConnected}"/>
+                        <SelectableTextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                             Text="{Binding LastConnected}"/>
+                    </Grid>
+                </Border>
             </StackPanel>
-            <TextBlock Classes="hint" Text="{l:Text profile.view.hint}"/>
-        </StackPanel>
-
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
-
-        <!-- Profile -->
-        <Grid Grid.Row="2" Margin="20,18" ColumnDefinitions="Auto, *" ColumnSpacing="20" IsEnabled="{Binding !IsBusy}">
-
-            <!-- Avatar -->
-            <StackPanel Grid.Column="0" Spacing="8" Width="112">
-                <avatars:UserAvatar Width="96" Height="96" HorizontalAlignment="Center"
-                                    UserName="{Binding Username}"
-                                    AvatarUrl="{Binding ShownAvatarUrl}"
-                                    Source="{Binding AvatarPicker.Avatar}"
-                                    Status="{Binding Status}"/>
-
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        Command="{Binding AvatarPicker.ChooseAvatarCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="IsEditing"/>
-                            <Binding Path="IsCurrentUser"/>
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <TextBlock Text="{l:Text profile.avatar.chooseImage}" FontSize="12"/>
-                </Button>
-
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        Command="{Binding ResetAvatarCommand}"
-                        IsVisible="{Binding IsEditing}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text profile.avatar.reset}" FontSize="12"/>
-                    </StackPanel>
-                </Button>
-
-                <TextBlock Classes="hint" TextAlignment="Center" Text="{l:Text profile.avatar.resetsOnSave}"
-                           IsVisible="{Binding IsAvatarReset}"/>
-
-                <TextBlock Classes="fieldError" TextAlignment="Center" Text="{Binding AvatarPicker.AvatarError}"
-                           IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Spacing="14">
-
-                <!-- Name -->
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
-
-                    <SelectableTextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"
-                                         Text="{Binding Username}"
-                                         IsVisible="{Binding !IsEditing}"/>
-
-                    <StackPanel Spacing="6" IsVisible="{Binding IsEditing}">
-                        <TextBox x:Name="NameInput"
-                                 PlaceholderText="{l:Text profile.name.short}"
-                                 Text="{Binding Name}"
-                                 Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Classes="fieldError" Text="{Binding NameError}"
-                                   IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Classes="hint" Text="{Binding NameHint}"
-                                   IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNull}}"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- Roles: those the user has, and those the current user may give; a click gives or takes -->
-                <StackPanel Spacing="6" IsVisible="{Binding HasRoles}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.roles}"/>
-                    <ItemsControl ItemsSource="{Binding Roles}" IsEnabled="{Binding !IsChangingRole}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel ItemSpacing="10" LineSpacing="4"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="profileVm:UserRoleVM">
-                                <CheckBox IsChecked="{Binding IsAssigned, Mode=OneWay}"
-                                          IsEnabled="{Binding CanChange}"
-                                          Command="{Binding $parent[ItemsControl].((profileVm:UserProfileWindowVM)DataContext).ToggleRoleCommand}"
-                                          CommandParameter="{Binding}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <Ellipse Width="10" Height="10" VerticalAlignment="Center"
-                                                 Fill="{DynamicResource PrimaryTextBrush}"
-                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
-                                        <Ellipse Width="10" Height="10" VerticalAlignment="Center"
-                                                 Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
-                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </CheckBox>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding RoleError}"
-                               IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                </StackPanel>
-
-                <!-- Connections -->
-                <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                    <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.firstConnected}"/>
-                        <TextBlock Text="{Binding FirstConnected}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.lastConnected}"/>
-                        <TextBlock Text="{Binding LastConnected}"/>
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-        </Grid>
-
-        <Border Grid.Row="3" Background="{DynamicResource DarkBackgroundBrush}"/>
+        </ScrollViewer>
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="4" Margin="20,12" ColumnDefinitions="*, Auto">
-            <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
-                                 Text="{Binding UserId, StringFormat='ID: {0}'}"/>
-
+        <Grid Grid.Row="4" Classes="dialogFooter" ColumnDefinitions="*">
             <!-- Viewing -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" IsVisible="{Binding !IsEditing}">
-                <Button Command="{Binding CloseCommand}" IsCancel="{Binding !IsEditing}" HorizontalContentAlignment="Left">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text common.close}"/>
-                    </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !IsEditing}">
+                <Button Command="{Binding WriteMessageCommand}" IsVisible="{Binding CanWriteMessage}"
+                        Content="{l:Text privateChats.write}"/>
+                <Button Command="{Binding CloseCommand}" IsCancel="{Binding !IsEditing}" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.close}">
+                    <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.close}"/>
                 </Button>
 
                 <Button Classes="primary" Command="{Binding EditCommand}" MinWidth="110" HorizontalContentAlignment="Left"
-                        IsVisible="{Binding CanEdit}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource PencilIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text common.edit}"/>
-                    </StackPanel>
+                        IsVisible="{Binding CanEdit}" AutomationProperties.Name="{l:Text common.edit}">
+                    <common:ActionLabel Icon="{StaticResource PencilIcon}" Text="{l:Text common.edit}"/>
                 </Button>
             </StackPanel>
 
             <!-- Editing -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsEditing}">
-                <Button Command="{Binding CancelEditCommand}" IsCancel="{Binding IsEditing}" HorizontalContentAlignment="Left">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource CrossIcon}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{l:Text common.cancel}"/>
-                    </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEditing}">
+                <Button Command="{Binding CancelEditCommand}" IsCancel="{Binding IsEditing}" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                    <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
                 </Button>
 
-                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="{Binding IsEditing}" MinWidth="110" HorizontalContentAlignment="Left">
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="{Binding IsEditing}" MinWidth="110" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.save}">
                     <Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
-                                    IsVisible="{Binding !IsBusy}">
-                            <Image Margin="0,1,0,0" Width="16" Height="16" Source="{StaticResource DisketteIcon}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{l:Text common.save}"/>
-                        </StackPanel>
+                        <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DisketteIcon}" Text="{l:Text common.save}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                     IsVisible="{Binding IsBusy}">
                             <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
@@ -184,5 +222,5 @@
                 </Button>
             </StackPanel>
         </Grid>
-    </Grid>
+    </common:DialogLayout>
 </UserControl>

@@ -1,22 +1,23 @@
-using Client.Application.Ports;
-using Client.Application.Settings;
-using Client.Application.Settings.Search;
-using Client.Avalonia.Localization;
-using Client.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Client.Application.Ports;
+using Client.Application.Settings;
+using Client.Application.Settings.Search;
+using Client.Avalonia.Localization;
 using Client.Core.Settings;
+using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
 
-public class AccountingControlVM : ReactiveObject, ISettingVM
+public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => SettingText.TabName("accounting");
     public SettingTabType Type => SettingTabType.Accounting;
@@ -34,19 +35,19 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
 
     public bool IsDatabaseEncryptionEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsDatabasePasswordSaveEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
-    
+
     public bool IsDatabaseLockEnabled
     {
-        get; 
+        get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
@@ -63,38 +64,47 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; set; } = [];
+    public ObservableCollection<SavedCoordinatorModel> CoordinatorSessions { get; } = [];
     public ObservableCollection<TrustedCertificateItem> TrustedCertificates { get; } = [];
-    
-    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteIdentityCommand { get; init; }
+
+    public SettingsListPageVM<SavedCoordinatorModel> ServersPage { get; }
+    public SettingsListPageVM<TrustedCertificateItem> CertificatesPage { get; }
+
+    public ReactiveCommand<SavedCoordinatorModel, RxVoid> DeleteCoordinatorCommand { get; init; }
+    public ReactiveCommand<SavedUserModel, RxVoid> DeleteIdentityCommand { get; }
     public ReactiveCommand<TrustedCertificateItem, RxVoid> ForgetCertificateCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ChangeDatabasePasswordCommand { get; }
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; } = new();
     public Interaction<DatabasePasswordVM, bool> AskDatabasePassword { get; } = new();
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
-    
+
     private readonly IAccountingService _accountingService;
     private readonly IDatabaseSecurityService _databaseSecurity;
     private bool _isUpdating = true;
-    
+
     public AccountingControlVM(IAccountingService accountingService, IDatabaseSecurityService databaseSecurity)
     {
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
-        
-        DeleteIdentityCommand = ReactiveCommand
-            .CreateFromTask<SavedCoordinatorModel>(DeleteIdentity);
 
-        ForgetCertificateCommand = ReactiveCommand
-            .CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
+        ServersPage = new(CoordinatorSessions, (server, filter) =>
+            Contains(server.Name, filter) || Contains($"{server.Address}:{server.Port}", filter) ||
+            Contains(server.CoordinatorId, filter) || server.Users.Any(user => Contains(user.Username, filter)));
+        CertificatesPage = new(TrustedCertificates, (certificate, filter) =>
+            Contains(certificate.Address, filter) || Contains(certificate.Subject, filter) ||
+            Contains(certificate.Coordinator, filter) || Contains(certificate.Certificate.Fingerprint, filter) ||
+            Contains(certificate.Fingerprint, filter));
 
-        ChangeDatabasePasswordCommand = ReactiveCommand
-            .CreateFromTask(ChangeDatabasePasswordAsync,
+        DeleteCoordinatorCommand = ReactiveCommand.CreateFromTask<SavedCoordinatorModel>(DeleteCoordinator);
+        DeleteIdentityCommand = ReactiveCommand.CreateFromTask<SavedUserModel>(DeleteIdentity);
+
+        ForgetCertificateCommand = ReactiveCommand.CreateFromTask<TrustedCertificateItem>(ForgetCertificate);
+
+        ChangeDatabasePasswordCommand = ReactiveCommand.CreateFromTask(ChangeDatabasePasswordAsync,
                 this.WatchProperties(nameof(IsDatabaseEncryptionEnabled), nameof(IsDatabaseBusy))
                     .Select(vm => vm.IsDatabaseEncryptionEnabled && !vm.IsDatabaseBusy));
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
+
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         // Each change is a dialog or a rewrite of the file: one at a time, and the box shows the
         // outcome rather than the click
@@ -105,7 +115,7 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         OnUserChange(nameof(IsDatabaseLockEnabled), vm => vm.IsDatabaseLockEnabled,
             isLocked => _databaseSecurity.SetFileLockedAsync(isLocked));
     }
-    
+
     public async Task ResetAllAsync()
     {
         // A reset of the settings neither decrypts the data nor forgets where its password is kept
@@ -225,7 +235,7 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             Strings.Get("settings.accounting.keyringPassword.title")));
     }
 
-    private async Task DeleteIdentity(SavedCoordinatorModel coordinator)
+    private async Task DeleteCoordinator(SavedCoordinatorModel coordinator)
     {
         var name = coordinator.Name ?? $"{coordinator.Address}:{coordinator.Port}";
         var consequence = coordinator.Users.Count switch
@@ -233,16 +243,28 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             0 => Strings.Get("settings.accounting.forgetServer.noAccounts"),
             var count => Strings.Format("settings.accounting.forgetServer.accounts", ("count", count))
         };
-        
+
         var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
             Strings.Format("settings.accounting.forgetServer.question", ("server", name), ("consequence", consequence)),
             Strings.Get("settings.accounting.forgetServer.title")));
 
         if (answer != Result.Yes)
             return;
-        
+
         await _accountingService.RemoveCoordinatorInstanceAsync(coordinator.CoordinatorId);
         CoordinatorSessions.Remove(coordinator);
+    }
+
+    private async Task DeleteIdentity(SavedUserModel user)
+    {
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+            Strings.Format("settings.accounting.forgetIdentity.question", ("user", user.Username)),
+            Strings.Get("settings.accounting.forgetIdentity.title")));
+        if (answer != Result.Yes)
+            return;
+
+        await _accountingService.RemoveUserIdentityAsync(user.CoordinatorId, user.Id);
+        await LoadAsync();
     }
 
     private async Task ForgetCertificate(TrustedCertificateItem item)
@@ -267,22 +289,22 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
         var databaseSettings = await _databaseSecurity.GetSettingsAsync();
 
         _isUpdating = true;
-        
+
         IsDatabaseEncryptionEnabled = databaseSettings.IsDatabaseEncryptionEnabled;
         IsDatabasePasswordSaveEnabled = databaseSettings.IsDatabasePasswordSaveEnabled;
         IsDatabaseLockEnabled = databaseSettings.IsDatabaseLockEnabled;
-        
+
         _isUpdating = false;
     }
-    
+
     private async Task LoadAsync()
     {
         await ApplyDatabaseSettingsAsync();
-        
+
         var coordinators = await _accountingService.GetAllSavedCoordinatorsAsync();
-        
-        CoordinatorSessions.Clear(); 
-        foreach (var item in coordinators) 
+
+        CoordinatorSessions.Clear();
+        foreach (var item in coordinators)
         {
             CoordinatorSessions.Add(item);
         }
@@ -296,4 +318,14 @@ public class AccountingControlVM : ReactiveObject, ISettingVM
             TrustedCertificates.Add(new TrustedCertificateItem(certificate, coordinatorName));
         }
     }
+
+    private static bool Contains(string? text, string filter) =>
+        text?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true;
+
+    public void Dispose()
+    {
+        ServersPage.Dispose();
+        CertificatesPage.Dispose();
+    }
+
 }

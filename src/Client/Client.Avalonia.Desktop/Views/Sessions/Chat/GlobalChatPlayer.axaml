@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Views.Sessions.Chat.GlobalChatPlayer"
+             x:DataType="vm:ChatFileVM"
+             Width="440" anim:Presence.Appear="Fade" anim:Presence.Leave="Fade" anim:Presence.Duration="Short"
+             IsVisible="False">
+    <Border x:Name="PlayerBorder" Padding="4,0" Margin="0" CornerRadius="6"
+            Background="{DynamicResource ColorOverlayMedium}">
+        <Grid x:Name="PlaybackLayout" ColumnDefinitions="Auto,120,*,Auto,Auto,Auto,Auto" ColumnSpacing="4">
+            <TextBlock x:Name="FileNameText" Grid.Column="1" FontSize="11" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+            <TextBlock x:Name="TimeText" Grid.Column="3" Text="0:00 / 0:00" FontSize="10"
+                       VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Button x:Name="CloseButton" Grid.Column="6" Classes="ghost" Click="OnClose" Width="24" Height="24" Padding="0"
+                    ToolTip.Tip="{l:Text chat.media.close}"
+                    AutomationProperties.Name="{l:Text chat.media.close}">
+                <Image Source="{StaticResource CloseIcon}" Width="14" Height="14"/>
+            </Button>
+            <Button x:Name="PlayButton" Classes="ghost" Click="OnPlay" Width="24" Height="24" Padding="0"
+                    ToolTip.Tip="{l:Text chat.audio.play}"
+                    AutomationProperties.Name="{l:Text chat.audio.play}">
+                <Panel>
+                    <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="14" Height="14" IsVisible="False"/>
+                    <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="14" Height="14"/>
+                    <Image x:Name="PauseImage" Source="{StaticResource AudioPauseIcon}" Width="14" Height="14" IsVisible="False"/>
+                </Panel>
+            </Button>
+            <Slider x:Name="SeekSlider" Grid.Column="2" Minimum="0" Maximum="1" IsEnabled="False"
+                    Height="24" VerticalAlignment="Center"
+                    ValueChanged="OnSeek" ToolTip.Tip="{l:Text chat.audio.seek}"/>
+            <Button x:Name="VolumeButton" Grid.Column="4" Classes="ghost" Width="24" Height="24" Padding="0"
+                    ToolTip.Tip="{l:Text peer.volume}">
+                <Image Source="{StaticResource HighVolumeIcon}" Width="14" Height="14"/>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="menuLabel" Text="{l:Text peer.volume}"/>
+                            <Grid Classes="menuRow" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="100"
+                                        ValueChanged="OnVolumeChanged" ToolTip.Tip="{l:Text peer.volume}"/>
+                                <TextBlock x:Name="VolumeText" Grid.Column="1" Text="100%" MinWidth="34"
+                                           TextAlignment="Right" VerticalAlignment="Center" FontSize="11"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <Button x:Name="StopButton" Grid.Column="5" Classes="ghost" Click="OnStop" Width="24" Height="24" Padding="0"
+                    ToolTip.Tip="{l:Text chat.media.stop}"
+                    AutomationProperties.Name="{l:Text chat.media.stop}">
+                <Image Source="{StaticResource MediaStopIcon}" Width="14" Height="14"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

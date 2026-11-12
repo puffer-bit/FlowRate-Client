@@ -68,6 +68,9 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     private readonly ChatReadTracker _readTracker;
     private readonly Func<HybridSessionModel, ActiveHybridSessionVM> _createHybridSession;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
+    private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUserCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _unbanUserCommand;
 
     // The most recently opened chat is the last one
     private readonly List<ActiveChatSessionVM> _chats = new();
@@ -76,13 +79,19 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
         ChatSessionServices chatServices,
         ChatReadTracker readTracker,
         Func<HybridSessionModel, ActiveHybridSessionVM> createHybridSession,
-        ReactiveCommand<int, RxVoid> viewProfileCommand)
+        ReactiveCommand<int, RxVoid> viewProfileCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         _coordinatorSession = coordinatorSession;
         _chatServices = chatServices;
         _readTracker = readTracker;
         _createHybridSession = createHybridSession;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
+        _banUserCommand = banUserCommand;
+        _unbanUserCommand = unbanUserCommand;
 
         _coordinatorSession.ChatSessionDeleted += OnChatSessionDeleted;
         _coordinatorSession.HybridSessionDeleted += OnHybridSessionDeleted;
@@ -94,7 +103,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     public IMainWindowContentVM? Open(SessionModel sessionModel) => sessionModel switch
     {
         ChatSessionModel chatModel => OpenChat(chatModel),
-        HybridSessionModel hybridModel => OpenHybridSession(hybridModel),
+        HybridSessionModel hybridModel when Client.Core.Media.MediaRuntime.IsEnabled => OpenHybridSession(hybridModel),
         _ => null
     };
 
@@ -142,7 +151,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
             _chats.Remove(chat);
         else
             chat = new ActiveChatSessionVM(chatModel, _coordinatorSession, _chatServices, _readTracker,
-                _viewProfileCommand);
+                _viewProfileCommand, _banUserCommand, _unbanUserCommand, _openDirectChatCommand);
 
         _chats.Add(chat);
 

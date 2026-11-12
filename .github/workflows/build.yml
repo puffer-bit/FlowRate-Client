@@ -38,8 +38,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 env:
   DOTNET_NOLOGO: true
@@ -149,6 +153,23 @@ jobs:
           if ("${{ inputs.aot }}" -eq "true") { $arguments.Aot = $true }
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
+
+      - name: Upload GStreamer installer log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gstreamer-win-x64-installer-log
+          path: ${{ runner.temp }}/flowrate-gstreamer-*/install.log
+          if-no-files-found: warn
+
+      # Only once the Windows library is committed: until then the client falls back to GStreamer
+      - name: Check published libwebrtc runtime
+        if: hashFiles('src/Client/Client.LibWebRTC/Build/prebuilt/win-x64/flowrate_webrtc.dll') != ''
+        shell: powershell
+        run: |
+          $suffix = if ("${{ inputs.aot }}" -eq "true") { "-aot" } else { "" }
+          & src\Client\Client.LibWebRTC\Build\windows\verify.ps1 `
+              -RuntimeDirectory "src\Client\Client.Avalonia.Desktop\bin\publish\win-x64$suffix"
 
       - uses: actions/upload-artifact@v7
         with:

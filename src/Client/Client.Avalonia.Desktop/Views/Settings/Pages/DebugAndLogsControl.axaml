@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Settings.Pages.DebugAndLogsControl"
+             x:DataType="pagesVm:DebugAndLogsControlVM">
+    <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="debug.journal"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="debug.level" IsEnabled="{x:Static services:LaunchSettings.CanChangeLogLevel}">
+                <!-- The order of DebugAndLogsControlVM.JournalLevels, after the level of the build -->
+                <ComboBox Width="200" SelectedIndex="{Binding JournalLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.default}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <!-- The order of NativeLogLevel -->
+            <ui:SettingsRow services:SettingText.Key="debug.gstreamer" IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}" IsVisible="{Binding HasGStreamerLog}">
+                <ComboBox Width="200" SelectedIndex="{Binding GStreamerLogLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.libwebrtc" IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}" IsVisible="{Binding HasLibWebRTCLog}">
+                <ComboBox Width="200" SelectedIndex="{Binding LibWebRTCLogLevelIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.error}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.warning}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.information}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.debug}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.verbose}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfJournal" IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
+                <!-- The order of MediaPerfJournalMode -->
+                <ComboBox Width="200" SelectedIndex="{Binding MediaPerfJournalIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.levels.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.summary}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfJournal.detailed}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSummary" IsEnabled="{Binding IsMediaJournalOn}">
+                <!-- DebugSettings.MediaPerfSummaryPeriods -->
+                <ComboBox Width="200" SelectedIndex="{Binding MediaPerfSummaryIndex}" IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.five}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.ten}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.thirty}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfSummary.sixty}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfAnomalies" IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
+                <CheckBox IsChecked="{Binding LogMediaPerfAnomalies}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.writeToFiles" IsEnabled="{x:Static services:LaunchSettings.CanWriteLogFiles}">
+                <CheckBox IsChecked="{Binding WriteToFiles}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.archive">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12" MaxWidth="260" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding ArchiveText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding SaveArchiveCommand}" Content="{l:Text settings.debug.archive.save}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="debug.mediaOverlay"/>
+        <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanUseMedia}">
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfOverlay">
+                <!-- The order of MediaPerfOverlayMode -->
+                <ComboBox MinWidth="200" SelectedIndex="{Binding MediaPerfOverlayIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.off}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.all}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfOverlay.expanded}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfExpanded" IsEnabled="{Binding IsOverlayShown}">
+                <CheckBox IsChecked="{Binding IsMediaPerfExpanded}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfSections" IsEnabled="{Binding IsOverlayShown}">
+                <WrapPanel MaxWidth="320" HorizontalAlignment="Right" ItemSpacing="12">
+                    <CheckBox IsChecked="{Binding ShowNetworkSection}" Content="{l:Text settings.debug.mediaPerfSections.network}"/>
+                    <CheckBox IsChecked="{Binding ShowTransportSection}" Content="{l:Text settings.debug.mediaPerfSections.transport}"/>
+                    <CheckBox IsChecked="{Binding ShowCodecSection}" Content="{l:Text settings.debug.mediaPerfSections.codec}"/>
+                    <CheckBox IsChecked="{Binding ShowRenderSection}" Content="{l:Text settings.debug.mediaPerfSections.render}"/>
+                    <CheckBox IsChecked="{Binding ShowAudioSection}" Content="{l:Text settings.debug.mediaPerfSections.audio}"/>
+                </WrapPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfInterval">
+                <!-- DebugSettings.MediaPerfIntervals -->
+                <ComboBox MinWidth="120" SelectedIndex="{Binding MediaPerfIntervalIndex}">
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.half}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.one}"/>
+                    <ComboBoxItem Content="{l:Text settings.debug.mediaPerfInterval.two}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="debug.mediaPerfGraphs" IsEnabled="{Binding IsOverlayShown}">
+                <CheckBox IsChecked="{Binding ShowMediaPerfGraphs}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+    </ui:SettingsPage>
+</UserControl>

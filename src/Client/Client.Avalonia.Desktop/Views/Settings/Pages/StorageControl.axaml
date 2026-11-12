@@ -50,5 +50,20 @@
                 </StackPanel>
             </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <controls:SettingsHeader services:SettingText.Section="storage.logs" IsVisible="{Binding HasLogFiles}"/>
+        <ui:SettingsCard IsVisible="{Binding HasLogFiles}">
+            <ui:SettingsRow services:SettingText.Key="storage.files" IsVisible="{Binding HasLogFiles}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding LogFilesText}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Click="OnOpenFolder" Content="{l:Text settings.storage.files.open}"/>
+                    <Button MinWidth="90" HorizontalContentAlignment="Center"
+                            Command="{Binding ClearLogFilesCommand}" Content="{l:Text common.clear}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

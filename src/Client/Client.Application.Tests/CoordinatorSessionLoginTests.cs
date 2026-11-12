@@ -44,6 +44,37 @@ public class CoordinatorSessionLoginTests
         return (session, fake);
     }
 
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_ReportsItsReasonAndClosesSocket(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            gateway.LoginError = error;
+            await session.Connect("server", 1, null, null);
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_OnResume_StopsAndReportsItsReason(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, null);
+            gateway.LoginError = error;
+            await ReconnectAsync(session);
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
     // Suspended and back at once: the reconnect logs in again, the way a lost connection does
     private static async Task ReconnectAsync(CoordinatorSession session)
     {
@@ -83,12 +114,13 @@ public class CoordinatorSessionLoginTests
     }
 
     [Fact]
-    public async Task Code_IsAskedAtEveryLogin_ThePasswordOnce()
+    public async Task Code_IsAskedAtEveryLoginWithTheIdentity_ThePasswordOnce()
     {
         var user = new User(new LoginAnswer("secret-password", "123456", true), new LoginAnswer(null, "123456", false));
         var (session, gateway) = Create(PasswordAndCode, user);
 
         await session.Connect("server", 1, "#identity", null);
+        gateway.SessionToken = null; // the session ended meanwhile: the reconnect logs in with the identity
         await ReconnectAsync(session);
 
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
@@ -179,12 +211,40 @@ public class CoordinatorSessionLoginTests
         await session.Connect("server", 1, "#identity", null, "secret-password");
 
         var (result, _) = await session.SetAccountPassword(new AccountProof("secret-password", null), "new-password");
+        gateway.SessionToken = null; // the session ended meanwhile: the reconnect logs in with the identity
         await ReconnectAsync(session);
 
-        Assert.Equal(Shared.Enums.User.UserSecurityResult.NoError, result);
+        Assert.True(result.IsSuccess);
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
         Assert.Empty(user.Prompts);
         Assert.Equal("new-password", gateway.SecondStageAnswers[^1].Password);
         Assert.Equal("new-password", session.AccountPasswordToSave);
+    }
+    [Fact]
+    public async Task SavedIdentity_CannotAttachToAnotherCoordinatorAtTheSameAddress()
+    {
+        var (session, _) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, "#identity", null, expectedCoordinatorId: "old-coordinator");
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Null(session.CoordinatorModel);
+            Assert.Equal("old-coordinator", session.CoordinatorMismatch!.ExpectedCoordinatorId);
+        }
+    }
+
+    [Fact]
+    public async Task Reconnect_RejectsAReplacementCoordinatorEvenWithoutAPinnedCertificate()
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, null);
+            Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+            gateway.ActiveCoordinatorId = "replacement";
+            await ReconnectAsync(session);
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Equal(FakeGateway.CoordinatorId, session.CoordinatorModel!.Id);
+        }
     }
 }

@@ -46,7 +46,7 @@
     </UserControl.Styles>
 
     <ui:SettingsPage>
-        <controls:SettingsHeader Text="{l:Text serverSettings.users.section.limits}"/>
+        <controls:SettingsHeader Text="{l:Text serverSettings.users.section.limits}" SectionKey="serverSettings.users.limits"/>
         <ui:SettingsCard IsEnabled="{Binding CanEditLimits}">
             <ui:SettingsRow Title="{l:Text serverSettings.users.maxOnline}"
                             Description="{l:Text serverSettings.users.maxOnline.description}">
@@ -62,14 +62,25 @@
 
         <!-- Every user of the server, by name -->
         <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
-            <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}"/>
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13"
-                       Foreground="{DynamicResource SecondaryTextBrush}"
-                       Text="{Binding TotalCount}"/>
+            <controls:SettingsHeader Text="{l:Text serverSettings.users.section.list}" SectionKey="serverSettings.users.list"/>
+            <Border Grid.Column="1" VerticalAlignment="Center" Padding="10,4" CornerRadius="12"
+                    Background="{DynamicResource SettingsCardBackgroundBrush}"
+                    BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Image Width="14" Height="14" Source="{StaticResource BaseUsersIcon}"/>
+                    <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding CountText}"/>
+                </StackPanel>
+            </Border>
             <TextBox Grid.Column="2" Width="200" VerticalAlignment="Center" Classes="search"
                      PlaceholderText="{l:Text serverSettings.users.filter}"
                      Text="{Binding Filter}"/>
         </Grid>
+
+        <TextBlock Text="{Binding RangeText}" FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding !!Users.Count}"/>
+
+        <TextBlock Text="{l:Text serverSettings.users.empty}" HorizontalAlignment="Center"
+                   Margin="0,16" Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding IsEmpty}"/>
 
         <loadingIndicators:ProgressRing Width="24" Height="24" HorizontalAlignment="Center"
                                         IsIndeterminate="True"
@@ -154,16 +165,12 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <text:MarqueeTextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                                Text="{Binding Username}"/>
-                                        <Border Classes="chip" BorderBrush="{DynamicResource ErrorBrush}"
-                                                IsVisible="{Binding IsBanned}">
-                                            <TextBlock Text="{l:Text serverSettings.users.banned}"/>
-                                        </Border>
-                                        <Border Classes="chip" IsVisible="{Binding IsFrozen}">
-                                            <StackPanel Orientation="Horizontal" Spacing="3">
-                                                <Image Width="10" Height="10" Source="{StaticResource SnowflakeIcon}"/>
-                                                <TextBlock Text="{l:Text serverSettings.users.frozen}"/>
-                                            </StackPanel>
-                                        </Border>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                                                   IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                                            <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                                                   IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
@@ -204,5 +211,33 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12" Margin="0,4,0,0"
+              IsVisible="{Binding HasMultiplePages}">
+            <Button Content="{l:Text serverSettings.users.previousPage}" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Grid.Column="1" Text="{Binding PageText}" HorizontalAlignment="Center"
+                       VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding NextPageCommand}"/>
+        </Grid>
+        <StackPanel IsVisible="{Binding CanManageBans}" Spacing="8">
+            <controls:SettingsHeader Text="{l:Text ban.list}" SectionKey="ban.list"/>
+            <ItemsControl ItemsSource="{Binding Bans}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="serverSettingsVm:BanRowVM">
+                        <ui:SettingsCard Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding Target}" FontWeight="SemiBold"/>
+                                    <SelectableTextBlock Text="{Binding Reason}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Details}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{l:Text serverSettings.users.action.unban}" IsVisible="{Binding IsActive}"
+                                        Command="{Binding $parent[UserControl].((serverSettingsVm:ServerUsersTabVM)DataContext).RevokeBanCommand}"
+                                        CommandParameter="{Binding}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </ui:SettingsPage>
 </UserControl>

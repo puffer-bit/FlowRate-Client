@@ -26,6 +26,7 @@ public sealed class ChatSenderDirectory : IDisposable
     private const string PendingMentionName = "…";
 
     private readonly Dictionary<int, string> _names = new();
+    private readonly Dictionary<int, string> _displayNames = new();
     private readonly Dictionary<int, string?> _avatars = new();
     private readonly Dictionary<int, UserStatus> _statuses = new();
     private readonly Dictionary<int, IReadOnlyList<int>> _roleIds = new();
@@ -93,7 +94,12 @@ public sealed class ChatSenderDirectory : IDisposable
     /// </summary>
     public static void CollectUserIds(ChatMessageVM message, HashSet<int> userIds)
     {
-        userIds.Add(message.Message.SenderUserId);
+        if (message.Message.SenderUserId > 0) userIds.Add(message.Message.SenderUserId);
+        if (message.Message.IsSystem && message.Message.SystemContent is { } content)
+        {
+            if (content.ActorUserId is > 0) userIds.Add(content.ActorUserId.Value);
+            if (content.SubjectUserId is > 0) userIds.Add(content.SubjectUserId.Value);
+        }
         if (message.Reply?.SenderUserId is { } replySenderId)
             userIds.Add(replySenderId);
         userIds.UnionWith(ChatMessageBody.UserIdsIn(message.Message.TextContent?.Text));
@@ -104,7 +110,7 @@ public sealed class ChatSenderDirectory : IDisposable
     private void OnUserUpdated(UserModel user) => Dispatcher.UIThread.Post(() =>
     {
         if (!_names.TryGetValue(user.Id, out var name)
-            || (name == user.Username && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
+            || (name == user.Username && _displayNames.GetValueOrDefault(user.Id) == DisplayNameOf(user) && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
                 && _statuses.GetValueOrDefault(user.Id) == user.Status
                 && _roleIds.GetValueOrDefault(user.Id, []).SequenceEqual(user.RoleIds)))
             return;
@@ -128,15 +134,20 @@ public sealed class ChatSenderDirectory : IDisposable
     private void Remember(UserModel user)
     {
         _names[user.Id] = user.Username;
+        _displayNames[user.Id] = DisplayNameOf(user);
         _avatars[user.Id] = user.AvatarUrl;
         _statuses[user.Id] = user.Status;
         _roleIds[user.Id] = user.RoleIds;
     }
 
+    private static string DisplayNameOf(UserModel user) =>
+        string.IsNullOrWhiteSpace(user.DisplayName) ? user.Username : user.DisplayName;
+
     private void MarkDeleted(int userId)
     {
         _deleted.Add(userId);
         _names[userId] = DeletedName;
+        _displayNames.Remove(userId);
         _avatars.Remove(userId);
         _statuses.Remove(userId);
         _roleIds.Remove(userId);
@@ -150,6 +161,9 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
         messageVm.SenderStatus = _statuses.TryGetValue(senderId, out var status) ? status : null;
         messageVm.SenderColor = GetColor(senderId);
+        messageVm.SystemParts = ChatSystemMessageText.Parts(messageVm.Message,
+            id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),
+            id => _displayNames.ContainsKey(id) && !_deleted.Contains(id));
         messageVm.Body = messageVm.Message.TextContent is { } text ? RenderBody(text.Text) : null;
 
         if (messageVm.Reply != null)
@@ -166,12 +180,14 @@ public sealed class ChatSenderDirectory : IDisposable
     public ChatMessageBody RenderBody(string text) =>
         ChatMessageBody.Create(text, GetMentionName, _currentUserId, UnknownName);
 
-    public string RenderText(string text) => RenderBody(text).Text;
+    public string RenderText(string text) => ChatMarkdown.Render(RenderBody(text)).Text;
 
     /// <summary>
     /// The name as it is known, or null.
     /// </summary>
     public string? FindName(int userId) => _names.GetValueOrDefault(userId);
+    public string? FindAvatarUrl(int userId) => _avatars.GetValueOrDefault(userId);
+    public UserStatus? FindStatus(int userId) => _statuses.TryGetValue(userId, out var status) ? status : null;
 
     /// <summary>
     /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.

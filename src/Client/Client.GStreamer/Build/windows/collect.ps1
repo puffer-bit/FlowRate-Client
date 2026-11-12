@@ -3,10 +3,10 @@
 Builds the GStreamer runtime shipped with the client for win-x64 from the official MSVC installer.
 
 .DESCRIPTION
-The official installer (Inno Setup) cannot be unpacked without running it, so the script installs it
-for the current user only into a temporary folder, copies the plugins the client needs together with
-the DLLs they import, removes the installation again and checks the result with verify.ps1. No administrator rights are
-needed and nothing stays installed.
+The official installer (Inno Setup) runs in portable mode for the current user into a temporary
+folder. The script copies the plugins the client needs together with the DLLs they import,
+removes the temporary folder and checks the result with verify.ps1. No administrator rights are
+needed, and portable mode disables installer registration and environment changes.
 
 Output in ..\artifacts:
   win-x64\gstreamer\{bin, lib\gstreamer-1.0, libexec\gstreamer-1.0}   the folder shipped with the client
@@ -29,26 +29,30 @@ $scriptDir = $PSScriptRoot
 $artifacts = Join-Path (Split-Path $scriptDir -Parent) "artifacts"
 $out = Join-Path $artifacts "win-x64"
 $dest = Join-Path $out "gstreamer"
-$work = Join-Path $env:TEMP "flowrate-gstreamer-$Version"
+$workRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
+$work = Join-Path $workRoot "flowrate-gstreamer-$Version"
 $installDir = Join-Path $work "install"
+$installLog = Join-Path $work "install.log"
 $installer = Join-Path $work "gstreamer-1.0-msvc-x86_64-$Version.exe"
 $installerUrl = "https://gstreamer.freedesktop.org/data/pkg/windows/$Version/msvc/gstreamer-1.0-msvc-x86_64-$Version.exe"
 
 # Plugins the client builds its pipelines from (file gst<name>.dll). Hardware plugins register their
 # elements only when the device is present. No GPL plugin is on the list (x264, x265, libav, ...).
 $plugins = @(
+    "isomp4", "matroska", "avi", "playback", "typefindfunctions", "id3demux", "audioparsers", "wavparse", "mpg123",
     "coreelements", "app", "audioconvert", "audioresample", "audiomixer", "audiofx", "audiotestsrc", "volume", "level", "rawparse",
     "audiobuffersplit", "webrtcdsp", "autodetect", "videoconvertscale", "videorate",
     "opus", "rtp", "rtpmanager", "udp", "nice", "webrtc", "dtls", "srtp", "sctp", "sdpelem",
     "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp", "rsaudiofx",
-    "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
+    # Media Foundation supplies mfaacdec for AAC in MP4 attachments; the installer has no fdkaac.
+    "jpeg", "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
 )
 
 # License folders (share\licenses\<name>) of the components in the bundle. The installer carries the
 # licenses of everything it contains, x264 and ffmpeg included; only these are shipped.
 $licensePackages = @(
     "gstreamer-1.0", "gst-plugins-base-1.0", "gst-plugins-bad-1.0", "gst-plugins-rs",
-    "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
+    "libjpeg-turbo", "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
     "opus", "webrtc-audio-processing", "abseil-cpp", "openh264", "libvpx", "dav1d", "svt-av1", "libnice", "libsrtp", "openssl"
 )
 
@@ -111,21 +115,63 @@ function Get-PeImports([string]$path) {
 
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 
-if (-not (Test-Path $installer)) {
-    Write-Host "== Downloading $installerUrl"
-    $ProgressPreference = "SilentlyContinue"
-    Invoke-WebRequest -Uri $installerUrl -OutFile $installer
+$ProgressPreference = "SilentlyContinue"
+$checksumResponse = Invoke-WebRequest -UseBasicParsing -Uri "$installerUrl.sha256sum" -TimeoutSec 60
+$checksumText = if ($checksumResponse.Content -is [byte[]]) {
+    [System.Text.Encoding]::ASCII.GetString($checksumResponse.Content)
+} else { [string]$checksumResponse.Content }
+if ($checksumText -notmatch '^\s*([0-9a-fA-F]{64})\s') {
+    throw "Invalid SHA-256 response from $installerUrl.sha256sum"
+}
+$expectedHash = $Matches[1]
+$installerValid = (Test-Path $installer) -and ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -eq $expectedHash)
+if ((Test-Path $installer) -and -not $installerValid) {
+    Write-Warning "The cached GStreamer installer failed SHA-256 verification; downloading a new copy."
+}
+
+for ($attempt = 1; -not $installerValid -and $attempt -le 3; $attempt++) {
+    $download = "$installer.download"
+    try {
+        Write-Host "== Downloading $installerUrl (attempt $attempt/3)"
+        Invoke-WebRequest -UseBasicParsing -Uri $installerUrl -OutFile $download -TimeoutSec 600
+        $actualHash = (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash
+        $downloadSize = (Get-Item -LiteralPath $download).Length
+        Write-Host "== Downloaded $downloadSize bytes; SHA-256: $actualHash"
+        if ($actualHash -ne $expectedHash) {
+            throw "GStreamer installer SHA-256 mismatch: expected $expectedHash, got $actualHash ($downloadSize bytes)."
+        }
+        Move-Item -LiteralPath $download -Destination $installer -Force
+        $installerValid = $true
+    }
+    catch {
+        if ($attempt -eq 3) { throw }
+        Write-Warning "GStreamer installer download failed: $($_.Exception.Message). Retrying."
+    }
+    finally {
+        if (Test-Path $download) { Remove-Item -LiteralPath $download -Force }
+    }
 }
 
 if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
 
-Write-Host "== Installing for the current user into $installDir (removed again at the end)"
-$arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/NOICONS", "/CURRENTUSER",
-    "/TYPE=complete", "/DIR=`"$installDir`"", "/LOG=`"$(Join-Path $work 'install.log')`"")
-$process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
-if ($process.ExitCode -ne 0) { throw "The installer failed with exit code $($process.ExitCode), see $work\install.log" }
-
 try {
+    Write-Host "== Extracting the runtime in portable mode into $installDir (removed again at the end)"
+    # Cerbero defines runtime, devel and debug types; there is no complete type.
+    # Portable mode disables registration, environment changes and the VC++ redistributable task.
+    $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/NOICONS", "/CURRENTUSER",
+        "/TYPE=runtime", "/portable=1", "/DIR=`"$installDir`"", "/LOG=`"$installLog`"")
+    $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
+    if ($process.ExitCode -ne 0) {
+        if (Test-Path $installLog) {
+            Write-Host "== Installer log (last 100 lines)"
+            Get-Content -LiteralPath $installLog -Tail 100 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+        }
+        else {
+            Write-Host "== The installer did not create $installLog"
+        }
+        throw "The installer failed with exit code $($process.ExitCode), see $installLog"
+    }
+
     # The installer may nest the runtime (1.0\msvc_x86_64) under the chosen folder
     $core = Get-ChildItem -Path $installDir -Recurse -Filter "gstreamer-1.0-0.dll" | Select-Object -First 1
     if ($null -eq $core) { throw "gstreamer-1.0-0.dll not found under $installDir" }
@@ -160,7 +206,7 @@ try {
     foreach ($library in @("gstreamer-1.0-0.dll", "gstbase-1.0-0.dll", "gstapp-1.0-0.dll", "gstvideo-1.0-0.dll",
             "gstaudio-1.0-0.dll", "gstwebrtc-1.0-0.dll", "gstsdp-1.0-0.dll", "gstrtp-1.0-0.dll",
             "gstpbutils-1.0-0.dll", "gstcontroller-1.0-0.dll", "gstnet-1.0-0.dll", "gsttag-1.0-0.dll",
-            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll")) {
+            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll", "nice-10.dll")) {
         Copy-Item (Join-Path $bin $library) $destBin
     }
 

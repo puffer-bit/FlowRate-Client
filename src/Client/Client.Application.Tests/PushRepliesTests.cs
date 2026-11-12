@@ -13,11 +13,12 @@ public class PushRepliesTests
     private readonly MemoryPushKeys _keys = new();
     private readonly RecordingTransport _transport = new();
     private readonly PushReplies _replies;
+    private readonly MemoryReads _reads = new();
 
     public PushRepliesTests()
     {
-        _replies = new PushReplies(_keys, new NoTrustedCertificates(), _transport);
-        _keys.Keys[Coordinator] = new PushKey("00", Coordinator, new byte[32]);
+        _replies = new PushReplies(_keys, new NoTrustedCertificates(), _transport, _reads);
+        _keys.Keys[Coordinator] = new PushKey("00", Coordinator, new byte[32], 5);
     }
 
     [Fact]
@@ -53,24 +54,35 @@ public class PushRepliesTests
     }
 
     [Fact]
-    public async Task MarkRead_GoesToTheKeptAddress()
+    public async Task MarkRead_IsSavedLocallyWithoutAReplyToken()
     {
-        var target = new PushReplyTarget("server", 1, "reply-token");
-        await _keys.SetReplyTargetAsync(Coordinator, target);
-
         var result = await _replies.MarkReadAsync(Coordinator, 7, 42, TestContext.Current.CancellationToken);
 
         Assert.Equal(PushReplyResult.Sent, result);
-        Assert.Equal((target, 7, 42), Assert.Single(_transport.Read));
+        Assert.Equal((Coordinator, 5, new Client.Core.Chat.ChatReadState(7, 42, 0, 0)), Assert.Single(_reads.Saved));
+        Assert.Empty(_transport.Read);
     }
 
     [Fact]
-    public async Task MarkRead_WithoutAReplyToken_IsNotRegistered()
+    public async Task MarkRead_WithoutALocalAccount_IsNotRegistered()
     {
+        _keys.Keys[Coordinator] = _keys.Keys[Coordinator] with { UserId = null };
         var result = await _replies.MarkReadAsync(Coordinator, 7, 42, TestContext.Current.CancellationToken);
 
         Assert.Equal(PushReplyResult.NotRegistered, result);
         Assert.Empty(_transport.Read);
+    }
+
+    private sealed class MemoryReads : Client.Application.Ports.Repositories.IChatReadStateRepository
+    {
+        public List<(string, int, Client.Core.Chat.ChatReadState)> Saved { get; } = [];
+        public Task<IReadOnlyList<Client.Core.Chat.ChatReadState>> GetAsync(string coordinatorInstanceId, int userId) =>
+            Task.FromResult<IReadOnlyList<Client.Core.Chat.ChatReadState>>([]);
+        public Task SetAsync(string coordinatorInstanceId, int userId, Client.Core.Chat.ChatReadState state)
+        {
+            Saved.Add((coordinatorInstanceId, userId, state));
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class RecordingTransport : IPushReplyTransport

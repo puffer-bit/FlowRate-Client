@@ -8,6 +8,9 @@ public partial class MainWindowVM
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Failed to keep the account password")]
     private partial void LogAccountPasswordSaveFailed(Exception exception, string coordinator);
 
+    [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Failed to remember the successful connection")]
+    private partial void LogSuccessfulConnectionSaveFailed(Exception exception, string coordinator);
+
     [LoggerMessage(LogLevel.Error, "[{Coordinator}] Failed to retrieve the sessions info")]
     private partial void LogSessionsInfoFailed(Exception exception, string coordinator);
 

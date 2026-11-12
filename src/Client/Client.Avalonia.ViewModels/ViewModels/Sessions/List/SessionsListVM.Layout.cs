@@ -1,4 +1,3 @@
-using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,11 +5,14 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
+using Client.Core.Sessions;
+using Client.ViewModels.Dialogs;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
-using Client.Core.Sessions;
-using Client.ViewModels.Dialogs;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
@@ -50,6 +52,7 @@ public partial class SessionsListVM
 
     private void ClearList()
     {
+        foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.Dispose();
         Sessions.Clear();
         Rows.Clear();
         _categories.Clear();
@@ -90,8 +93,18 @@ public partial class SessionsListVM
     {
         SyncCategories();
 
+        if (IsPrivateMode)
+        {
+            ApplyRows(Sessions.OfType<ChatSessionVM>().Where(chat => chat.IsPrivate)
+                .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTime.MinValue)
+                .ThenByDescending(chat => chat.Model.Id).Cast<ISessionListRow>().ToList());
+            RestoreSelection();
+            RaiseStateProperties();
+            return;
+        }
+        var serverSessions = Sessions.Where(session => session is not ChatSessionVM { IsPrivate: true }).ToList();
         var sessionsById = new Dictionary<int, ISessionVM>();
-        foreach (var session in Sessions)
+        foreach (var session in serverSessions)
             sessionsById.TryAdd(session.Model.Id, session);
 
         var desired = new List<ISessionListRow>(Sessions.Count + _categories.Count);
@@ -117,7 +130,7 @@ public partial class SessionsListVM
         // A session the layout does not know: one just created, whose place comes with the next
         // layout, or one folding away after it was deleted. It stays behind the row it follows now,
         // so nothing jumps; a new one goes to the end of the sessions outside any category.
-        foreach (var session in Sessions)
+        foreach (var session in serverSessions)
         {
             if (placed.Contains(session))
                 continue;
@@ -143,6 +156,22 @@ public partial class SessionsListVM
                 rootEnd++;
         }
 
+        ApplyRows(desired);
+        RaiseStateProperties();
+
+        UpdateFolding();
+        RefreshCategoryCounts();
+        RestoreSelection();
+
+        if (_categoryToRename is { } renamed && _categories.TryGetValue(renamed, out var created))
+        {
+            _categoryToRename = null;
+            created.BeginRename();
+        }
+    }
+
+    private void ApplyRows(IReadOnlyList<ISessionListRow> desired)
+    {
         _isRebuildingRows = true;
         try
         {
@@ -165,16 +194,6 @@ public partial class SessionsListVM
         finally
         {
             _isRebuildingRows = false;
-        }
-
-        UpdateFolding();
-        RefreshCategoryCounts();
-        RestoreSelection();
-
-        if (_categoryToRename is { } renamed && _categories.TryGetValue(renamed, out var created))
-        {
-            _categoryToRename = null;
-            created.BeginRename();
         }
     }
 
@@ -346,7 +365,8 @@ public partial class SessionsListVM
 
     private async Task MoveSession(ISessionVM session, int? categoryId, int index)
     {
-        if (_coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
+        if (IsPrivateMode || session is ChatSessionVM { IsPrivate: true }
+            || _coordinatorSession is not { } coordinatorSession || !Access.CanManageSessions)
             return;
 
         index = Math.Min(index, Limits.SessionLayoutIndexMax);
@@ -389,26 +409,26 @@ public partial class SessionsListVM
     /// A refused change goes back to the last layout of the server; an accepted one is followed by
     /// that layout anyway.
     /// </summary>
-    private async Task OnLayoutRequestDone(SessionLayoutResult result)
+    private async Task OnLayoutRequestDone(RequestResult result)
     {
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
             return;
 
         _shownLayout = _serverLayout;
         RebuildRows();
 
         // A rejection is reported by the main window
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 
-    private async Task ShowLayoutError(SessionLayoutResult result) =>
+    private async Task ShowLayoutError(RequestResult result) =>
         await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok, result switch
         {
-            SessionLayoutResult.TooManyCategories => Strings.Format("sessions.category.tooMany",
+            { Error: ErrorCode.TooManyCategories } => Strings.Format("sessions.category.tooMany",
                 ("limit", Limits.SessionCategoriesMaxCount)),
-            SessionLayoutResult.TimedOut => Strings.Get("sessions.layout.timedOut"),
-            _ => Strings.Format("sessions.layout.failed", ("code", (int)result))
+            { Error: ErrorCode.TimedOut } => Strings.Get("sessions.layout.timedOut"),
+            _ => Strings.Format("sessions.layout.failed", ("code", (int?)result.Error))
         }, Strings.Get("common.error")));
 
     private async Task CreateCategory()
@@ -417,9 +437,9 @@ public partial class SessionsListVM
             return;
 
         var (result, categoryId) = await coordinatorSession.CreateSessionCategory(Strings.Get("sessions.category.newName"));
-        if (result != SessionLayoutResult.NoError)
+        if (!result.IsSuccess)
         {
-            if (result != SessionLayoutResult.Rejected)
+            if (!result.IsRejected)
                 await ShowLayoutError(result);
             return;
         }
@@ -443,11 +463,11 @@ public partial class SessionsListVM
         category.Name = name;
 
         var result = await coordinatorSession.RenameSessionCategory(category.Id, name);
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
             return;
 
         category.Name = _serverLayout.FindCategory(category.Id)?.Name ?? previous;
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 
@@ -462,13 +482,13 @@ public partial class SessionsListVM
             return;
 
         var result = await coordinatorSession.DeleteSessionCategory(category.Id);
-        if (result == SessionLayoutResult.NoError)
+        if (result.IsSuccess)
         {
             _ = _preferences.SaveCategoryCollapseAsync(coordinatorSession.GetCurrentUser().CoordinatorInstanceId, category.Id, false);
             return;
         }
 
-        if (result != SessionLayoutResult.Rejected)
+        if (!result.IsRejected)
             await ShowLayoutError(result);
     }
 

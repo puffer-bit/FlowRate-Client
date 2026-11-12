@@ -1,3 +1,5 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
+
 namespace Client.Core.Chat;
 
 public class ChatMessageModel
@@ -15,6 +17,9 @@ public class ChatMessageModel
     public DateTime? DelayedSentTime { get; init; }
     public DateTime? DisposeTime { get; init; }
     public DateTime? EditTime { get; init; }
+    public DateTime? PinnedAt { get; init; }
+    public int? PinnedByUserId { get; init; }
+    public bool IsPinned => PinnedAt.HasValue;
 
     public ChatTextContent? TextContent { get; init; }
     public ChatReplyContent? ReplyContent { get; init; }
@@ -40,6 +45,7 @@ public class ChatMessageModel
     public bool IsDeleted { get; init; }
     public bool IsReadOnly { get; init; }
     public bool IsSystem { get; init; }
+    public ChatSystemContent? SystemContent { get; init; }
     public bool IsDisposable { get; init; }
     public bool IsMine { get; set; }
 

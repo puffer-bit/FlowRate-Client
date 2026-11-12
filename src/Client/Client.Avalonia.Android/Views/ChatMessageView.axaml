@@ -1,9 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:views="clr-namespace:Client.Droid.Views"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Droid.Views.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
@@ -13,11 +16,16 @@
     <Border Classes="msg-root"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
+            Classes.system="{Binding IsSystem}"
             Classes.mentioned="{Binding IsMentioningMe}">
         <!-- The avatar column stays in continuations, so their text lines up with the first message -->
-        <Grid ColumnDefinitions="46, *">
+        <Panel>
+            <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
+                                          Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
+        <Grid ColumnDefinitions="46, *" IsVisible="{Binding !IsSystem}">
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
+                                x:Name="SenderAvatar" Tapped="OnAvatarTapped"
                                 UserName="{Binding SenderName}"
                                 IsDeleted="{Binding IsSenderDeleted}"
                                 AvatarUrl="{Binding SenderAvatarUrl}"
@@ -27,6 +35,7 @@
 
                 <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
                     <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
+                               x:Name="NameTextBlock" Tapped="OnNameTapped"
                                Classes.deleted-user="{Binding IsSenderDeleted}"
                                Text="{Binding SenderName}"
                                Classes.role-colored="{Binding SenderColor, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -39,7 +48,7 @@
                         </TextBlock.Styles>
                     </TextBlock>
                     <TextBlock Classes="msg-time"
-                               Text="{Binding Message.SentTime, StringFormat=\{0:HH:mm\}}"/>
+                               Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>
 
                 <!-- A tap on the quote goes to the message it quotes -->
@@ -51,9 +60,13 @@
                         <StackPanel>
                             <TextBlock Classes="msg-reply-username" Text="{Binding Reply.SenderName}"
                                        Classes.deleted-user="{Binding Reply.IsSenderDeleted, FallbackValue=False}"/>
-                            <TextBlock Classes="msg-reply-text"
-                                       IsVisible="{Binding !Reply.IsDeleted, FallbackValue=False}"
-                                       Text="{Binding Reply.Text}"/>
+                            <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding !Reply.IsDeleted, FallbackValue=False}">
+                                <Image Width="14" Height="14" Margin="0,0,5,0"
+                                       Source="{StaticResource ClipIcon}"
+                                       IsVisible="{Binding Reply.HasAttachments, FallbackValue=False}"/>
+                                <TextBlock Grid.Column="1" Classes="msg-reply-text"
+                                           Text="{Binding Reply.Text}"/>
+                            </Grid>
                             <TextBlock Classes="msg-deleted-text"
                                        IsVisible="{Binding Reply.IsDeleted, FallbackValue=False}"
                                        Text="{l:Text chat.messageDeleted}"/>
@@ -63,10 +76,37 @@
 
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
-                <text:TrailingMarkPanel IsVisible="{Binding HasText}">
-                    <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
-                               chatVm:ChatMessageText.Body="{Binding Body}"
-                               chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
+                <Border IsVisible="{Binding HasCommandResult}" Background="{DynamicResource MsgReplyBrush}"
+                        Padding="6,3" CornerRadius="5" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Panel Width="18" Height="18" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                            <Panel.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="{Binding CommandResult.TokenScaleX}"/>
+                                    <RotateTransform Angle="{Binding CommandResult.TokenAngle}"/>
+                                </TransformGroup>
+                            </Panel.RenderTransform>
+                            <Image Source="{StaticResource CoinIcon}" IsVisible="{Binding CommandResult.IsFlip}"/>
+                            <Image Source="{StaticResource DiceIcon}" IsVisible="{Binding CommandResult.IsRoll}"/>
+                        </Panel>
+                        <TextBlock Text="{Binding CommandResult.Caption}" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <TextBlock Text="→" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <TextBlock Text="{Binding CommandResult.DisplayValue}" FontSize="14" MinWidth="32"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <text:TrailingMarkPanel IsVisible="{Binding HasPlainText}">
+                    <Grid>
+                        <chatVm:ChatCodeBlockBackground Target="{Binding #MessageTextBlock}" IsHitTestVisible="False"/>
+                        <TextBlock Classes="msg-body" Classes.jumbo="{Binding IsJumboEmoji}"
+                                   x:Name="MessageTextBlock"
+                                   chatVm:ChatMessageText.Body="{Binding Body}"
+                                   chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
+                        <chatVm:ChatCodeBlockCopyButtons Target="{Binding #MessageTextBlock}"/>
+                    </Grid>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
 
@@ -79,30 +119,44 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatImageVM">
-                            <Button Classes="msg-image"
-                                    Width="{Binding TileWidth}" Height="{Binding TileHeight}"
-                                    chatVm:ChatImagePresence.Image="{Binding}"
-                                    Command="{Binding OpenCommand}">
-                                <Panel>
-                                    <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
-                                    <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
-                                           IsVisible="{Binding IsFailed}"/>
-                                </Panel>
-                            </Button>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                     MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}">
+                                <Button Classes="msg-image"
+                                        Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                        chatVm:ChatImagePresence.Image="{Binding}"
+                                        Command="{Binding OpenCommand}">
+                                    <Panel>
+                                        <Image Classes="msg-image-picture" Source="{Binding Preview}"/>
+                                        <Image Classes="msg-image-failed" Source="{StaticResource WarningIcon}"
+                                               IsVisible="{Binding IsFailed}"/>
+                                    </Panel>
+                                </Button>
+                            </Viewbox>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Files that are not shown; a tap saves one where the user picks -->
+                <!-- The first tap downloads an attachment; its check mark signals that another tap opens it -->
                 <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatFileVM">
-                            <Button Classes="msg-file" Classes.error="{Binding HasError}"
-                                    Command="{Binding DownloadCommand}">
+                            <Panel>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                     MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
+                                <views:ChatAudioPlayer/>
+                            </Viewbox>
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                     MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsVideo}">
+                                <views:ChatVideoPlayer/>
+                            </Viewbox>
+                            <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
+                                    MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
+                                    Command="{Binding OpenCommand}">
                                 <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                     <Border Grid.Column="0" Classes="msg-file-icon">
                                         <Panel>
-                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding !IsDownloading}"/>
+                                            <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
                                             <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
                                         </Panel>
                                     </Border>
@@ -119,10 +173,35 @@
                                     </StackPanel>
                                 </Grid>
                             </Button>
+                            </Panel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}"
+                              IsEnabled="{Binding CanReact}" Margin="0,4,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatReactionVM">
+                            <Button Classes="msg-reaction" Classes.mine="{Binding IsMine}"
+                                    Command="{Binding Toggle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding PinError}" IsVisible="{Binding HasPinError}"
+                           FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                <Image Source="{StaticResource PinIcon}" Width="14" Height="14"
+                       HorizontalAlignment="Left" IsVisible="{Binding IsPinned}" ToolTip.Tip="{l:Text chat.pinned.title}"/>
+                <TextBlock Text="{Binding ReactionError}" IsVisible="{Binding HasReactionError}"
+                           Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
             </StackPanel>
         </Grid>
+        </Panel>
     </Border>
 </UserControl>

@@ -3,6 +3,7 @@
         xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
         xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -24,7 +25,7 @@
     </UserControl.ContextFlyout>
     
     <UserControl.Styles>
-        <!-- A user away from the keyboard fades out, all but the AFK mark -->
+        <!-- A user away from the keyboard fades out, except the AFK mark and screen watch button -->
         <Style Selector="listViews|HybridSessionPeer :is(Control).afkDim">
             <Setter Property="Transitions">
                 <Transitions>
@@ -86,9 +87,17 @@
 
         <!-- The reason of an away user goes under the name, and stays readable while the rest fades -->
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <text:MarqueeTextBlock Classes="peerName afkDim"
-                                   Classes.connecting="{Binding !IsConnected}"
-                                   Text="{Binding DisplayedName}"/>
+            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                <text:MarqueeTextBlock Classes="peerName afkDim"
+                                       Classes.connecting="{Binding !IsConnected}"
+                                       Text="{Binding DisplayedName}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                           IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                    <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                           IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                </StackPanel>
+            </Grid>
             <text:MarqueeTextBlock Text="{Binding AfkReason}"
                                    IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
                                    FontSize="11"
@@ -99,7 +108,7 @@
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
             <!-- The user shows a screen; everyone sees the mark, in the session or not. Inside the
                  session it starts and stops watching that screen, outside it is only a mark -->
-            <Button Classes="screenWatch afkDim"
+            <Button Classes="screenWatch"
                     Classes.watching="{Binding IsWatchingScreen}"
                     IsVisible="{Binding IsSharingScreen}"
                     IsHitTestVisible="{Binding CanWatchScreen}"
@@ -125,7 +134,7 @@
 
             <!-- The user turned their own microphone off; everyone sees it -->
             <Image Width="20" Height="20"
-                   Source="{StaticResource CrossedMicrophoneIcon}"
+                   Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
                    IsVisible="{Binding ShowsMicrophoneOff}"
                    ToolTip.Tip="{l:Text peer.microphoneOff}"/>
 

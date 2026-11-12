@@ -48,24 +48,23 @@ internal static class VideoOutputSelector
     // What decoders output anyway; anything else (10-bit, 4:4:4) is converted by videoconvert
     private const string YuvCaps = "video/x-raw,format=(string){NV12,I420}";
 
-    private static readonly string[] SoftwareDecoders = ["openh264dec", "dav1ddec", "vp8dec", "vp9dec"];
-
     /// <param name="allowGpuSurfaces">False to deliver frames in memory whatever is supported.</param>
     /// <returns>Null when the system has no decoder for the codec.</returns>
-    public static VideoOutput? Select(VideoCodec codec, bool allowGpuSurfaces = true)
+    public static VideoOutput? Select(VideoCodec codec, bool allowGpuSurfaces = true, VideoSettings? settings = null)
     {
-        var settings = VideoSettings.Current;
+        settings ??= VideoSettings.Current;
         var decoders = VideoDecoderSelector.GetAvailableDecoders(codec);
 
         if (decoders.Count == 0)
             return null;
 
+        var preferred = settings.GetDecoder(codec);
         string decoder;
 
         if (!settings.IsHardwareDecodingEnabled)
             decoder = decoders.FirstOrDefault(IsSoftware) ?? decoders[0];
-        else if (settings.Decoder != null && decoders.Contains(settings.Decoder))
-            decoder = settings.Decoder;
+        else if (preferred != null && decoders.Contains(preferred))
+            decoder = preferred;
         else
             decoder = decoders[0];
 
@@ -106,7 +105,13 @@ internal static class VideoOutputSelector
 
         var head = decoderCaps == null ? decoder : $"{decoder} ! {decoderCaps}";
 
-        // Without a shared texture the GPU still converts to BGRA, so only the download is left to the CPU
+        // Without a shared texture the planes as decoded are downloaded for the screen to upload: NV12
+        // is under half of BGRA, and a screen of 144 fps fell behind on the download of BGRA
+        if ((surfaces & VideoSurfaceKinds.D3D11Shared) == 0 && VideoSurfaceSupport.Supports(VideoSurfaceKinds.YuvMemory) &&
+            Has("d3d11download"))
+            return new VideoOutput(decoder, VideoOutputKind.MemoryYuv, $"{head} ! d3d11download ! {YuvCaps}");
+
+        // Otherwise the GPU still converts to BGRA, so only the download is left to the CPU
         if ((surfaces & VideoSurfaceKinds.D3D11Shared) == 0)
             return Has("d3d11download")
                 ? new VideoOutput(decoder, VideoOutputKind.Memory,
@@ -126,7 +131,7 @@ internal static class VideoOutputSelector
             ? new VideoOutput(decoder, VideoOutputKind.MemoryYuv, $"{decoder} ! videoconvert ! {YuvCaps}")
             : new VideoOutput(decoder, VideoOutputKind.Memory, $"{decoder} ! videoconvert ! {MemoryCaps}");
 
-    private static bool IsSoftware(string decoder) => SoftwareDecoders.Contains(decoder);
+    private static bool IsSoftware(string decoder) => VideoElementNames.IsSoftware(decoder);
 
     private static bool Has(string factory) => ElementFactory.Find(factory) != null;
 }
