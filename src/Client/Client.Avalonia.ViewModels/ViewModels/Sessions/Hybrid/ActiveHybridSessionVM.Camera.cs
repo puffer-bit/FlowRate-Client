@@ -140,10 +140,7 @@ public partial class ActiveHybridSessionVM
     {
         _cameraDecodings.TryRemove(userId, out _);
         if (!_cameraStreamsByUser.TryRemove(userId, out var stream)) return;
-        if (stream.IsExpanded) ToggleExpanded(stream);
-        stream.Clear();
-        ScreenStreams.Remove(stream);
-        UpdateCanExpand();
+        RemoveStreamTile(stream);
     }
 
     private async Task RestoreCameraAsync()
