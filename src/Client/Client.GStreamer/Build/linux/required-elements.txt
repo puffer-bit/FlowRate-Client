@@ -85,3 +85,7 @@ avidemux
 
 # AAC audio in MP4 attachments
 fdkaacdec
+
+# Camera capture
+v4l2src
+jpegdec

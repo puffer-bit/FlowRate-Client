@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ca-certificates git curl pkg-config python3 python3-pip \
         ninja-build cmake nasm flex bison patchelf file xz-utils zstd \
         libmpg123-dev libglib2.0-dev libssl-dev libopus-dev libvpx-dev libsrtp2-dev \
-        libva-dev libdrm-dev libpulse-dev libasound2-dev libffi-dev zlib1g-dev \
+        libjpeg-dev libva-dev libdrm-dev libpulse-dev libasound2-dev libffi-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir 'meson>=1.4,<2'

@@ -90,3 +90,7 @@
 -Dgst-plugins-bad:drm=enabled
 
 # fdkaac is enabled by the Dockerfile after building its shared FDK dependency.
+
+# Camera capture and MJPEG USB cameras
+-Dgst-plugins-good:v4l2=enabled
+-Dgst-plugins-good:jpeg=enabled

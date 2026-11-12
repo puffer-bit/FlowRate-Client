@@ -45,14 +45,14 @@ $plugins = @(
     "opus", "rtp", "rtpmanager", "udp", "nice", "webrtc", "dtls", "srtp", "sctp", "sdpelem",
     "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp", "rsaudiofx",
     # Media Foundation supplies mfaacdec for AAC in MP4 attachments; the installer has no fdkaac.
-    "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
+    "jpeg", "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
 )
 
 # License folders (share\licenses\<name>) of the components in the bundle. The installer carries the
 # licenses of everything it contains, x264 and ffmpeg included; only these are shipped.
 $licensePackages = @(
     "gstreamer-1.0", "gst-plugins-base-1.0", "gst-plugins-bad-1.0", "gst-plugins-rs",
-    "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
+    "libjpeg-turbo", "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
     "opus", "webrtc-audio-processing", "abseil-cpp", "openh264", "libvpx", "dav1d", "svt-av1", "libnice", "libsrtp", "openssl"
 )
 
