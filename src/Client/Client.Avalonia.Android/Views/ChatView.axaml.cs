@@ -18,6 +18,8 @@ using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Panels;
 using Client.Services;
 using Client.ViewModels.Sessions.Chat;
+using Client.ViewModels.Dialogs;
+using Client.Droid.Platform;
 using ReactiveUI;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -149,6 +151,7 @@ public partial class ChatView : UserControl
 
         e.Handled = true;
         TryCloseMenu();
+        var chat = Chat;
 
         // Every item closes the menu before it acts
         _menuSubscriptions.Disposable = new CompositeDisposable
@@ -164,6 +167,22 @@ public partial class ChatView : UserControl
                     await clipboard.SetTextAsync(interaction.Input);
 
                 interaction.SetOutput(RxVoid.Default);
+            }),
+            message.SaveImageInteraction.RegisterHandler(async interaction =>
+            {
+                try
+                {
+                    await using var target = await PickSaveTarget(interaction.Input.Image.FileName);
+                    if (target != null)
+                        await interaction.Input.SaveOriginalAsync(target);
+                }
+                catch (Exception)
+                {
+                    if (chat != null)
+                        await chat.ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                            Strings.Get("chat.image.saveFailed"), Strings.Get("chat.menu.saveFileAs")));
+                }
+                interaction.SetOutput(RxVoid.Default);
             })
         };
 
@@ -174,6 +193,14 @@ public partial class ChatView : UserControl
 
         MessageMenu.DataContext = message;
         MessageMenu.IsOpen = true;
+    }
+
+    private void OnSelectMessageTextClick(object? sender, RoutedEventArgs e)
+    {
+        if (MessageMenu.DataContext is not ChatMessageVM message || string.IsNullOrEmpty(message.Message.TextContent?.Text))
+            return;
+        TryCloseMenu();
+        NativeMessageText.Show(message.Message.TextContent.Text);
     }
 
     private CompositeDisposable Follow(ActiveChatSessionVM chat)

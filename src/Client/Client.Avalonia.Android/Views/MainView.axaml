@@ -9,6 +9,8 @@
              xmlns:views="clr-namespace:Client.Droid.Views"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:user="clr-namespace:Shared.Enums.User;assembly=Shared.Core"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              x:Class="Client.Droid.Views.MainView"
              x:DataType="mainVm:MainWindowVM"
              Background="{DynamicResource GeneralBrush}">
@@ -318,8 +320,34 @@
                         </menus:MenuItemButton.IsVisible>
                     </menus:MenuItemButton>
 
-                    <!-- Nothing to adjust about ourselves. The sheet stays open while the volume is set -->
+                    <StackPanel Spacing="2" IsVisible="{Binding SelfSession, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <menus:MenuItemButton Icon="{StaticResource CrossedMicrophoneIcon}" Content="{l:Text call.microphoneOff}"
+                                              Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                              IsVisible="{Binding SelfSession.IsMicrophoneOn}"/>
+                        <menus:MenuItemButton Icon="{StaticResource MicrophoneIcon}" Content="{l:Text call.microphoneOn}"
+                                              Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                              IsVisible="{Binding !SelfSession.IsMicrophoneOn}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CrossedHeadphonesIcon}" Content="{l:Text peer.muteSound}"
+                                              Command="{Binding SelfSession.ToggleSoundCommand}"
+                                              IsVisible="{Binding SelfSession.IsSoundOn}"/>
+                        <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
+                                              Command="{Binding SelfSession.ToggleSoundCommand}"
+                                              IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+                        <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                              Click="OnPeerAfkClick" IsVisible="{Binding !SelfSession.IsAfk}"/>
+                        <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
+                                              Command="{Binding SelfSession.ToggleAfkCommand}"
+                                              Click="OnPeerMenuClick" IsVisible="{Binding SelfSession.IsAfk}"/>
+                        <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                              Click="OnPeerSelfStatsClick"/>
+                    </StackPanel>
+
+                    <!-- The sheet stays open while playback is adjusted. -->
                     <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+                        <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                              IsVisible="{Binding CanPoke}" Click="OnPeerPokeClick"/>
+                        <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                              IsVisible="{Binding CanShowConnectionStats}" Click="OnPeerStatsClick"/>
                         <Grid ColumnDefinitions="*, Auto" Margin="12,6,12,0">
                             <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
                             <TextBlock Grid.Column="1"
@@ -349,8 +377,57 @@
                                               Command="{Binding ToggleOverdrive}"
                                               IsVisible="{Binding IsOverdriveEnabled}"
                                               IsEnabled="{Binding !IsMuted}"/>
+
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                              IsVisible="{Binding CanApprove}" Command="{Binding Approve}" Click="OnPeerMenuClick"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                              IsVisible="{Binding CanApprove}" Command="{Binding Reject}" Click="OnPeerMenuClick"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                                              IsVisible="{Binding CanKick}" Command="{Binding Kick}" Click="OnPeerMenuClick"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}" Content="{l:Text peer.ban}"
+                                              IsVisible="{Binding CanBan}" Command="{Binding Ban}" Click="OnPeerMenuClick"/>
                     </StackPanel>
+                    <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
+                                          Command="{Binding ViewProfileCommand}" CommandParameter="{Binding PeerData.UserId}"
+                                          Click="OnPeerMenuClick"/>
                 </StackPanel>
+            </views:BottomSheet>
+
+            <views:BottomSheet x:Name="PokeMenu" DataContext="{x:Null}" x:DataType="listVm:PeerVM">
+                <StackPanel Margin="12,8" Spacing="12">
+                    <TextBlock Text="{Binding PokeTitle}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Text="{l:Text peer.poke.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    <TextBox Text="{Binding PokeMessage}" PlaceholderText="{l:Text peer.poke.message.placeholder}"
+                             MaxLength="{x:Static validation:Limits.PokeMessageMaxLength}"/>
+                    <TextBlock Text="{Binding PokeMessageCounter}" HorizontalAlignment="Right"/>
+                    <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke.send}"
+                                          IsEnabled="{Binding CanPoke}" Command="{Binding Poke}" Click="OnPokeSendClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <views:BottomSheet x:Name="AfkMenu" DataContext="{x:Null}" x:DataType="hybridVm:HybridSessionStatusBarVM">
+                <StackPanel Margin="12,8" Spacing="12">
+                    <TextBlock Text="{l:Text hybrid.afk.title}" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Text="{l:Text hybrid.afk.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    <ItemsControl ItemsSource="{Binding AfkPresets}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <menus:MenuItemButton Content="{Binding}"
+                                                      Command="{Binding $parent[ItemsControl].((hybridVm:HybridSessionStatusBarVM)DataContext).GoAfkWithPresetCommand}"
+                                                      CommandParameter="{Binding}" Click="OnAfkConfirmClick"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBox Text="{Binding AfkReasonDraft}" PlaceholderText="{l:Text hybrid.afk.reason.placeholder}"
+                             MaxLength="{x:Static validation:Limits.ReasonMaxLength}"/>
+                    <TextBlock Text="{Binding AfkReasonCounter}" HorizontalAlignment="Right"/>
+                    <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.confirm}"
+                                          Command="{Binding ToggleAfkCommand}" Click="OnAfkConfirmClick"/>
+                </StackPanel>
+            </views:BottomSheet>
+
+            <views:BottomSheet x:Name="PeerStatsMenu" DataContext="{x:Null}">
+                <views:PeerStatsView/>
             </views:BottomSheet>
 
             <!-- Where a session goes: a step up or down, or into a category. The data context is the session -->

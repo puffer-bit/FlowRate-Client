@@ -2,6 +2,8 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using System.Linq;
 using Client.Avalonia.Styles.Animation;
 using Client.ViewModels.Sessions.Chat;
 
@@ -17,8 +19,17 @@ public partial class ChatMessageView : UserControl
 
     private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (DataContext is ChatMessageVM vm)
-            ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e);
+        if (DataContext is not ChatMessageVM vm)
+            return;
+        if (vm.IsSystem) { e.Handled = true; return; }
+        if (ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e))
+            return;
+
+        vm.CopyImageTarget = (e.Source as global::Avalonia.Visual)?.GetSelfAndVisualAncestors()
+            .OfType<Control>().Select(control => control.DataContext).OfType<ChatImageVM>().FirstOrDefault();
+        vm.CopyLinkText = e.TryGetPosition(MessageTextBlock, out var position)
+            ? ChatMessageText.GetLinkAt(MessageTextBlock, position)
+            : null;
     }
 
     private void OnNameTapped(object? sender, TappedEventArgs e)

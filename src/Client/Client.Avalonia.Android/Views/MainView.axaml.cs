@@ -15,6 +15,7 @@ using Client.Application.Sounds;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using Client.Core.Push;
+using Client.Droid.Platform;
 using Client.Droid.Platform.Calls;
 using Client.Droid.Platform.Notifications;
 using Client.Services;
@@ -72,6 +73,14 @@ public partial class MainView : UserControl
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
         StatusMenu.Dismissed += () => TryClose(StatusMenu);
         PeerMenu.Dismissed += () => TryClose(PeerMenu);
+        PokeMenu.Dismissed += () => TryClose(PokeMenu);
+        AfkMenu.Dismissed += () => TryClose(AfkMenu);
+        PeerStatsMenu.Dismissed += () => TryClose(PeerStatsMenu);
+        PeerStatsMenu.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BottomSheet.IsOpenProperty && !PeerStatsMenu.IsOpen)
+                PeerStatsMenu.DataContext = null;
+        };
         AudioDevicesMenu.Dismissed += () => TryClose(AudioDevicesMenu);
 
         // Shown from here and not from the chat, which ends above the status bar
@@ -303,6 +312,8 @@ public partial class MainView : UserControl
     // screens are squeezed into what is left above it, so the field being typed in stays in sight
     private void OnInputPaneStateChanged(object? sender, InputPaneStateEventArgs e)
     {
+        if (e.NewState != InputPaneState.Open)
+            NativeTextMenu.TryDismissActive();
         _keyboardTop = e.NewState == InputPaneState.Open ? e.EndRect.Y : null;
         MakeRoomForKeyboard();
     }
@@ -454,6 +465,43 @@ public partial class MainView : UserControl
     // Watching a screen opens it, so the sheet goes out of its way
     private void OnPeerMenuClick(object? sender, RoutedEventArgs e) => TryClose(PeerMenu);
 
+    private void OnPeerPokeClick(object? sender, RoutedEventArgs e)
+    {
+        if (PeerMenu.DataContext is not PeerVM { CanPoke: true } peer)
+            return;
+        TryClose(PeerMenu);
+        PokeMenu.DataContext = peer;
+        PokeMenu.IsOpen = true;
+    }
+
+    private void OnPokeSendClick(object? sender, RoutedEventArgs e) => TryClose(PokeMenu);
+
+    private void OnPeerAfkClick(object? sender, RoutedEventArgs e)
+    {
+        if (PeerMenu.DataContext is not PeerVM { SelfSession: { } session })
+            return;
+        TryClose(PeerMenu);
+        AfkMenu.DataContext = session;
+        AfkMenu.IsOpen = true;
+    }
+
+    private void OnAfkConfirmClick(object? sender, RoutedEventArgs e) => TryClose(AfkMenu);
+
+    private void OnPeerSelfStatsClick(object? sender, RoutedEventArgs e)
+    {
+        TryClose(PeerMenu);
+        _navigation.OpenHybridStats();
+    }
+
+    private void OnPeerStatsClick(object? sender, RoutedEventArgs e)
+    {
+        if (PeerMenu.DataContext is not PeerVM { ConnectionStats: { } stats })
+            return;
+        TryClose(PeerMenu);
+        PeerStatsMenu.DataContext = stats;
+        PeerStatsMenu.IsOpen = true;
+    }
+
     private void OpenSessionMoveMenu(ISessionVM session)
     {
         SessionMoveMenu.DataContext = session;
@@ -588,6 +636,12 @@ public partial class MainView : UserControl
     // and pressed once more it leaves
     private void OnBackRequested(object? sender, RoutedEventArgs e)
     {
+        if (NativeTextMenu.TryDismissActive())
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (_navigation.TryGoBack())
         {
             e.Handled = true;
@@ -618,7 +672,8 @@ public partial class MainView : UserControl
         // Over a session the menu the user opened is closed to get back to it. The menu back itself
         // led to stays, and so does the one without a session, see below
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
-            || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(AudioDevicesMenu)
+            || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(PokeMenu) || TryClose(AfkMenu)
+            || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu)
             || (_viewModel?.CurrentContent != null && !_isDrawerOpenedByBack && CloseDrawer()))
         {
             e.Handled = true;

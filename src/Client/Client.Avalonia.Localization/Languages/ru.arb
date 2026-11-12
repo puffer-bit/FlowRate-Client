@@ -876,6 +876,7 @@
   "chat.edit.refused": "Сообщение не изменено: сервер его отклонил.",
   "chat.edited": "Изменено",
   "chat.menu.copySelected": "Копировать выделенный текст",
+  "chat.menu.selectText": "Выделить текст",
   "chat.menu.copyAll": "Копировать весь текст",
   "chat.menu.copyLink": "Копировать ссылку",
   "chat.menu.copyImage": "Копировать изображение",

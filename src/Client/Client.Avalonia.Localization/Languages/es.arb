@@ -663,6 +663,7 @@
   "chat.edit.refused": "El mensaje no se modificó: el servidor lo rechazó.",
   "chat.edited": "Editado",
   "chat.menu.copySelected": "Copiar el texto seleccionado",
+  "chat.menu.selectText": "Seleccionar texto",
   "chat.menu.copyAll": "Copiar todo el texto",
   "chat.menu.copyLink": "Copiar enlace",
   "chat.input.cut": "Cortar",

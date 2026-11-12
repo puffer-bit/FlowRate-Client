@@ -18,11 +18,15 @@
                             BorderBrush="{DynamicResource DialogBorderBrush}"
                             BorderThickness="1,1,1,0"
                             CornerRadius="16,16,0,0"
+                            MaxHeight="{Binding Bounds.Height, RelativeSource={RelativeSource TemplatedParent}}"
                             Padding="8,8,8,12"
                             BoxShadow="{DynamicResource DialogShadow}">
-                        <ContentPresenter Name="PART_ContentPresenter"
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ContentPresenter Name="PART_ContentPresenter"
                                           Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                        </ScrollViewer>
                     </Border>
                 </Panel>
             </ControlTemplate>

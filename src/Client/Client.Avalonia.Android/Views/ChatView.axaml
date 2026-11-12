@@ -541,29 +541,6 @@
                              MaxLength="{Binding Composer.MaxMessageLength}"
                              IsReadOnly="{Binding Composer.IsMessageSending}"
                              IsEnabled="{Binding Composer.CanWrite}">
-                            <TextBox.ContextFlyout>
-                                <Flyout Placement="TopEdgeAlignedLeft">
-                                    <StackPanel Spacing="2">
-                                        <menus:MenuItemButton Icon="{StaticResource CutIcon}" Content="{l:Text chat.input.cut}" Gesture="Ctrl+X"
-                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
-                                                              IsEnabled="{Binding $parent[TextBox].CanCut}"
-                                                              Command="{Binding $parent[TextBox].Cut}"/>
-                                        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.input.copy}" Gesture="Ctrl+C"
-                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
-                                                              IsEnabled="{Binding $parent[TextBox].CanCopy}"
-                                                              Command="{Binding $parent[TextBox].Copy}"/>
-                                        <menus:MenuItemButton Icon="{StaticResource PasteIcon}" Content="{l:Text chat.input.paste}" Gesture="Ctrl+V"
-                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
-                                                              IsEnabled="{Binding $parent[TextBox].CanPaste}"
-                                                              Command="{Binding $parent[TextBox].Paste}"/>
-                                        <Separator/>
-                                        <menus:MenuItemButton Icon="{StaticResource SelectAllIcon}" Content="{l:Text chat.input.selectAll}" Gesture="Ctrl+A"
-                                                              Focusable="False" menus:FlyoutMenu.CloseOnClick="True"
-                                                              Command="{Binding $parent[TextBox].SelectAll}"/>
-                                        <text:ChatFormattingMenu Target="{Binding $parent[TextBox]}"/>
-                                    </StackPanel>
-                                </Flyout>
-                            </TextBox.ContextFlyout>
                     </TextBox>
 
                     <!-- Characters left; appears only near the limit -->
@@ -685,7 +662,8 @@
                 <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
                                       IsVisible="{Binding CanReact}">
                     <menus:MenuItemButton.Flyout>
-                        <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="reaction-picker">
+                        <Flyout Placement="Top" FlyoutPresenterClasses="reaction-picker">
+                            <ScrollViewer MaxHeight="288" HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding ReactionChoices}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
@@ -704,6 +682,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            </ScrollViewer>
                         </Flyout>
                     </menus:MenuItemButton.Flyout>
                 </menus:MenuItemButton>
@@ -723,6 +702,15 @@
                 <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
                                       IsEnabled="{Binding HasCopyText}"
                                       Command="{Binding Copy}"/>
+                <menus:MenuItemButton Icon="{StaticResource CopySelectionIcon}" Content="{l:Text chat.menu.selectText}"
+                                      IsVisible="{Binding HasCopyText}"
+                                      Click="OnSelectMessageTextClick"/>
+                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
+                                      IsVisible="{Binding HasCopyLink}"
+                                      Command="{Binding CopyLink}"/>
+                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                      IsVisible="{Binding HasCopyImage}"
+                                      Command="{Binding SaveImageAs}"/>
                 <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
                                       IsVisible="{Binding HasContextFile}"
                                       IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"

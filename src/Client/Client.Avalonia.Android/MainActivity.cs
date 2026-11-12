@@ -10,6 +10,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Avalonia.Android;
 using Client.Droid.Platform.Notifications;
+using Client.Droid.Platform;
 using Client.Tools.AppInfo;
 using Firebase;
 
@@ -138,6 +139,7 @@ public class MainActivity : AvaloniaMainActivity
 
     protected override void OnStop()
     {
+        NativeTextMenu.TryDismissActive();
         SetIsInFront(false);
         base.OnStop();
     }

@@ -663,6 +663,7 @@
   "chat.edit.refused": "メッセージは変更されませんでした: サーバーに拒否されました。",
   "chat.edited": "編集済み",
   "chat.menu.copySelected": "選択したテキストをコピー",
+  "chat.menu.selectText": "テキストを選択",
   "chat.menu.copyAll": "テキストをすべてコピー",
   "chat.menu.copyLink": "リンクをコピー",
   "chat.input.cut": "切り取り",
