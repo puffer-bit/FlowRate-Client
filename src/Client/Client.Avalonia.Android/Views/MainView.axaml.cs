@@ -280,7 +280,8 @@ public partial class MainView : UserControl
         if (!_isInitialized && _viewModel != null)
         {
             _isInitialized = true;
-            _ = InitializeAsync(_viewModel);
+            // Let the root and its startup screen enter the tree before loading begins.
+            Dispatcher.UIThread.Post(() => _ = InitializeAsync(_viewModel), DispatcherPriority.Background);
         }
     }
 
@@ -333,7 +334,8 @@ public partial class MainView : UserControl
 
     private async Task InitializeAsync(MainWindowVM viewModel)
     {
-        await viewModel.Initialize();
+        // The root is already visible; the callback also enables the shared development warning.
+        await viewModel.Initialize(() => { }, StartupOverlay.FadeOutAsync);
         _readyForCallActions = true;
         await HandleRequestedCallAsync();
 
@@ -588,6 +590,13 @@ public partial class MainView : UserControl
     {
         if (_navigation.TryGoBack())
         {
+            e.Handled = true;
+            return;
+        }
+
+        if (_viewModel?.IsStartupScreenShown == true)
+        {
+            MainActivity.Current?.FinishAndRemoveTask();
             e.Handled = true;
             return;
         }

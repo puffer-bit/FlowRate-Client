@@ -123,7 +123,7 @@ internal static class ChatNotifications
         var notificationId = GetId(coordinatorInstanceId, chatId);
 
         var builder = new NotificationCompat.Builder(context, channelId);
-        builder.SetSmallIcon(Resource.Drawable.ic_notification);
+        builder.SetSmallIcon(Resource.Drawable.ic_stat_flowrate);
         builder.SetStyle(style);
         builder.SetCategory(NotificationCompat.CategoryMessage);
         builder.SetPriority(NotificationCompat.PriorityHigh);

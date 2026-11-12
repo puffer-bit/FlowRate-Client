@@ -54,7 +54,7 @@ internal static class IncomingCallNotifications
                 system.CreateNotificationChannel(channel);
             }
             var builder = new NotificationCompat.Builder(context, ChannelId)
-                .SetSmallIcon(Resource.Drawable.ic_call)!
+                .SetSmallIcon(Resource.Drawable.ic_stat_flowrate)!
                 .SetContentTitle(Strings.Get("calls.incoming"))!
                 .SetContentText(payload.SenderName)!
                 .SetCategory(NotificationCompat.CategoryCall)!

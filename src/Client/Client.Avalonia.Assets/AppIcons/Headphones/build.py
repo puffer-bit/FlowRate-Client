@@ -100,6 +100,21 @@ foreground = '''<vector xmlns:android="http://schemas.android.com/apk/res/androi
 </vector>
 '''
 (android / 'drawable/ic_launcher_foreground.xml').write_text(foreground, encoding='utf-8')
+# Small-size tray geometry, with no background: Android tints notification icons.
+notification = '''<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="32" android:viewportHeight="32">
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round"
+        android:pathData="M5 18V14C5 7.9 9.9 3 16 3S27 7.9 27 14V18"/>
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M5 16H5.5A2 2 0 0 1 7.5 18V25A2 2 0 0 1 5.5 27H5A2 2 0 0 1 3 25V18A2 2 0 0 1 5 16Z"/>
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M26.5 16H27A2 2 0 0 1 29 18V25A2 2 0 0 1 27 27H26.5A2 2 0 0 1 24.5 25V18A2 2 0 0 1 26.5 16Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M10 25V14H15V16.4H12.4V18.3H14.8V20.7H12.4V25Z"/>
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M17 25V14H19.5C22.1 14 23.2 15.4 23.2 17.5C23.2 19 22.6 20 21.5 20.6L23.5 25H20.8L19.4 21.2V25ZM19.4 16.3V18.8H19.6C20.5 18.8 20.9 18.3 20.9 17.5S20.5 16.3 19.6 16.3Z"/>
+</vector>
+'''
+(android / 'drawable/ic_stat_flowrate.xml').write_text(notification, encoding='utf-8')
 (android / 'values/icon_colors.xml').write_text('<resources><color name="flowrate_icon_background">#FF6C63FF</color></resources>\n', encoding='utf-8')
 for version in (26, 33):
     monochrome = '<monochrome android:drawable="@drawable/ic_launcher_foreground"/>' if version == 33 else ''
