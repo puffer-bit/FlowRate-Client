@@ -13,6 +13,31 @@ namespace Client.Application.Tests;
 public class VideoSourceSelectWindowTests
 {
     [Fact]
+    public async Task CameraSelectionReturnsCameraInputWithoutAudioAndRequiresADevice()
+    {
+        var vm = new VideoSourceSelectWindowVM(null, null, null, false, new ScreenShareSettings(),
+            new DismissedPrompts(), cameras: [new("first", "First camera"), new("second", "Second camera")],
+            selectedCameraId: "second");
+        Assert.True(vm.IsCameraMode);
+        Assert.False(vm.ListsScreens);
+        Assert.False(vm.HasAudioToggle);
+        Assert.False(vm.HasAudioApps);
+        Assert.Equal("second", vm.SelectedCamera!.Id);
+        ScreenShareRequest? request = null;
+        using var handler = vm.CloseWindow.RegisterHandler(context =>
+        {
+            request = context.Input;
+            context.SetOutput(ReactiveUI.Primitives.RxVoid.Default);
+        });
+        await vm.GoLive.Execute().ToTask();
+        Assert.Equal(new CameraVideoInput("second"), request!.Input);
+        Assert.Null(request.AudioInput);
+        Assert.False(request.Settings.IsAudioEnabled);
+        vm.SelectedCamera = null;
+        Assert.False(await vm.GoLive.CanExecute.FirstAsync());
+    }
+
+    [Fact]
     public void QualitySelectionsUpdateTheShareSettingsAndAutomaticBitrate()
     {
         var vm = Create(new ScreenShareSettings { MaxHeight = 480, Framerate = 15 });

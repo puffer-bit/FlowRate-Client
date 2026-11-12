@@ -35,16 +35,25 @@
     <common:DialogLayout>
 
         <!-- Header -->
-        <common:DialogHeader Grid.Row="0" Icon="{StaticResource ScreenShareIcon}"
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource ScreenShareIcon}" IsVisible="{Binding !IsCameraMode}"
                              Title="{l:Text source.title}" Subtitle="{l:Text source.hint}"/>
+        <common:DialogHeader Grid.Row="0" Icon="{StaticResource VideoCameraIcon}" IsVisible="{Binding IsCameraMode}"
+                             Title="{l:Text camera.source.title}" Subtitle="{l:Text camera.source.hint}"/>
 
         <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <ScrollViewer x:Name="SettingsScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16,12" Spacing="12">
 
+                <StackPanel Spacing="6" IsVisible="{Binding IsCameraMode}">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text camera.source.title}"/>
+                    <ComboBox x:Name="CameraSourceBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Cameras}" SelectedItem="{Binding SelectedCamera}">
+                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="hint" IsVisible="{Binding !Cameras.Count}" Text="{l:Text camera.source.empty}"/>
+                </StackPanel>
                 <!-- The source, picked here: the application lists the windows and monitors itself -->
-                <StackPanel Spacing="6" IsVisible="{Binding !UsesSystemPicker}">
+                <StackPanel Spacing="6" IsVisible="{Binding ListsScreens}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text source.field.source}"/>
                     <Grid ColumnDefinitions="*, *" ColumnSpacing="6">
                         <Button x:Name="WindowsSourceButton" Grid.Column="0" Classes="choiceCard kind"

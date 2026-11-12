@@ -12,6 +12,7 @@ public static class HybridSessionMessages
     {
         var text = Strings.Get(error.Kind switch
         {
+            HybridSessionErrorKind.CameraCaptureFailed => "camera.unavailable",
             HybridSessionErrorKind.TransportStartFailed => "hybrid.error.transportStartFailed",
             HybridSessionErrorKind.DtlsParametersRejected => "hybrid.error.dtlsRejected",
             HybridSessionErrorKind.DtlsParametersSendFailed => "hybrid.error.dtlsSendFailed",

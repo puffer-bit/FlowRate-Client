@@ -71,12 +71,12 @@
                            HorizontalAlignment="Center"
                            TextTrimming="CharacterEllipsis"/>
                 <!-- Our own screen is told apart from the screens of the others -->
-                <TextBlock Text="{l:Text hybrid.screen.sharing}"
+                <TextBlock Text="{Binding SharingLabel}"
                            IsVisible="{Binding !IsSelf}"
                            HorizontalAlignment="Center"
                            FontSize="12"
                            Foreground="{DynamicResource SecondaryTextBrush}"/>
-                <TextBlock Text="{l:Text hybrid.screen.own}"
+                <TextBlock Text="{Binding OwnLabel}"
                            IsVisible="{Binding IsSelf}"
                            HorizontalAlignment="Center"
                            FontSize="12"
@@ -129,12 +129,12 @@
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
                     <TextBlock Grid.Column="0"
-                               Text="{l:Text hybrid.screen.own}"
+                               Text="{Binding OwnLabel}"
                                HorizontalAlignment="Left"
                                IsVisible="{Binding IsSelf}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="1" Viewers="{Binding Viewers}"
+                    <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="1" Viewers="{Binding Viewers}" IsVisible="{Binding !IsCamera}"
                                                HorizontalAlignment="Right"/>
                     <Border Grid.Column="2" Width="1" Height="18" Margin="4,0" VerticalAlignment="Center"
                             Background="{DynamicResource SettingsCardBorderBrush}"

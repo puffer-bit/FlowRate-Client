@@ -1395,5 +1395,20 @@
   "chat.system.memberLeft": "{subject} salió del grupo",
   "chat.system.callStarted": "{actor} inició una llamada",
   "chat.system.callEnded": "Llamada finalizada",
-  "chat.system.event": "Evento del chat"
+  "chat.system.event": "Evento del chat",
+  "video.target.screen": "Pantalla",
+  "video.target.camera": "Cámara",
+  "camera.source.title": "Elegir cámara",
+  "camera.source.hint": "Selecciona la cámara y la calidad de vídeo.",
+  "camera.source.empty": "No se encontraron cámaras",
+  "camera.sharing": "Compartiendo cámara",
+  "camera.own": "Tu cámara",
+  "camera.start": "Iniciar cámara",
+  "camera.stop": "Detener cámara",
+  "camera.startFailed": "No se pudo iniciar la cámara: {reason}",
+  "camera.unavailable": "No se pudo acceder a la cámara. Comprueba la conexión y los permisos.",
+  "broadcast.toggle": "Activar o detener transmisión",
+  "broadcast.choose": "Elegir qué transmitir",
+  "broadcast.screen.start": "Compartir pantalla",
+  "video.target": "Ajustes de vídeo para"
 }

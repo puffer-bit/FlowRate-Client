@@ -20,6 +20,16 @@ namespace Client.ViewModels.Sessions.Hybrid;
 public sealed class ScreenStreamVM : ReactiveObject
 {
     public int UserId { get; }
+    public MediaSourceType SourceType { get; init; } = MediaSourceType.Screen;
+    public void UpdateTexts()
+    {
+        this.RaisePropertyChanged(nameof(SharingLabel));
+        this.RaisePropertyChanged(nameof(OwnLabel));
+    }
+    public bool IsCamera => SourceType == MediaSourceType.Camera;
+    public bool HasSoundControls => !IsSelf && !IsCamera;
+    public string SharingLabel => Client.Avalonia.Localization.Strings.Get(IsCamera ? "camera.sharing" : "hybrid.screen.sharing");
+    public string OwnLabel => Client.Avalonia.Localization.Strings.Get(IsCamera ? "camera.own" : "hybrid.screen.own");
 
     /// <summary>
     /// Our own screen, watched as a local preview.
@@ -265,7 +275,7 @@ public sealed class ScreenStreamVM : ReactiveObject
 
     private void PublishPlayback()
     {
-        if (_isApplyingPlayback || IsSelf)
+        if (_isApplyingPlayback || IsSelf || IsCamera)
             return;
 
         _playbackService.Set(UserId, PeerAudioChannel.Screen, new PeerPlayback(Volume, IsMuted, IsOverdriveEnabled));
@@ -295,7 +305,7 @@ public sealed class ScreenStreamVM : ReactiveObject
 
         if (_analyzer == null)
         {
-            _analyzer = new StreamHealthAnalyzer(UserId, now);
+            _analyzer = new StreamHealthAnalyzer(UserId, now, SourceType);
             return;
         }
 
@@ -307,9 +317,9 @@ public sealed class ScreenStreamVM : ReactiveObject
     public void PushPerf(MediaPerfReport report)
     {
         var stream = IsSelf
-            ? report.Streams.FirstOrDefault(perf => perf.IsOwn && perf.SourceType == MediaSourceType.Screen)
+            ? report.Streams.FirstOrDefault(perf => perf.IsOwn && perf.SourceType == SourceType)
             : report.Streams.FirstOrDefault(perf =>
-                !perf.IsOwn && perf.UserId == UserId && perf.SourceType == MediaSourceType.Screen);
+                !perf.IsOwn && perf.UserId == UserId && perf.SourceType == SourceType);
 
         Perf = (stream, report.Network);
         PerfChanged?.Invoke(stream, report.Network);

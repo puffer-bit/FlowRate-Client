@@ -1395,5 +1395,20 @@
   "chat.system.memberLeft": "{subject}退出了群组",
   "chat.system.callStarted": "{actor}发起了通话",
   "chat.system.callEnded": "通话已结束",
-  "chat.system.event": "聊天事件"
+  "chat.system.event": "聊天事件",
+  "video.target.screen": "屏幕",
+  "video.target.camera": "摄像头",
+  "camera.source.title": "选择摄像头",
+  "camera.source.hint": "选择摄像头和视频质量。",
+  "camera.source.empty": "未找到摄像头",
+  "camera.sharing": "正在共享摄像头",
+  "camera.own": "你的摄像头",
+  "camera.start": "开启摄像头",
+  "camera.stop": "关闭摄像头",
+  "camera.startFailed": "无法开启摄像头：{reason}",
+  "camera.unavailable": "无法访问摄像头。请检查连接和权限。",
+  "broadcast.toggle": "开启或停止直播",
+  "broadcast.choose": "选择直播内容",
+  "broadcast.screen.start": "共享屏幕",
+  "video.target": "视频设置对象"
 }

@@ -43,7 +43,12 @@ You need a running FlowRate server to connect. Ask your community administrator 
 - Watch screen shares on demand and adjust screen sharing and video settings.
 - Use hardware video paths where the operating system, driver, codec, and capture backend support them.
 
-Webcam calling is not currently implemented.
+Camera sharing is available in desktop hybrid sessions alongside screen sharing. Use the small
+arrow beside the broadcast button to choose Camera or Screen; the main button uses the last
+successfully started kind, remembered across restarts. Camera tiles open automatically and have
+no sound or viewer controls. Settings → Video offers separate Screen and Camera codec preferences.
+Camera sharing requires the updated client, coordinator, and capture runtime. Direct calls remain
+audio-only. See [camera capture](src/Client/Client.GStreamer/Docs/CameraCapture.md) for runtime details.
 
 Session settings can select AV1 for screen sharing when the server and all viewers support it;
 H.264 remains the default. AV1 requires an updated coordinator and SFU. Desktop builds using

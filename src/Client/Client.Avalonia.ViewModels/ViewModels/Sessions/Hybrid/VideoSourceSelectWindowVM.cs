@@ -27,6 +27,15 @@ namespace Client.ViewModels.Sessions.Hybrid;
 /// </summary>
 public class VideoSourceSelectWindowVM : ReactiveObject
 {
+    public bool IsCameraMode { get; }
+    public bool ListsScreens => !IsCameraMode && !UsesSystemPicker;
+    public ObservableCollection<CameraDevice> Cameras { get; } = new();
+    public CameraDevice? SelectedCamera
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public ObservableCollection<ScreenSource> Windows { get; } = new();
 
     public ScreenSource? SelectedWindow
@@ -289,8 +298,13 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     public VideoSourceSelectWindowVM(IScreenSourceProvider? screenSourceProvider, IScreenCastClient? screenCastClient,
         IAudioAppProvider? audioApps, bool canShareAudio, ScreenShareSettings settings,
         IDismissedPromptsRepository dismissedPrompts, VideoInput? sharedInput = null,
-        IMediaCapabilities? mediaCapabilities = null, VideoCodec codec = VideoCodec.H264)
+        IMediaCapabilities? mediaCapabilities = null, VideoCodec codec = VideoCodec.H264,
+        IReadOnlyList<CameraDevice>? cameras = null, string? selectedCameraId = null)
     {
+        IsCameraMode = cameras != null;
+        foreach (var camera in cameras ?? [])
+            Cameras.Add(camera);
+        SelectedCamera = Cameras.FirstOrDefault(camera => camera.Id == selectedCameraId) ?? Cameras.FirstOrDefault();
         _dismissedPrompts = dismissedPrompts;
         _screenSourceProvider = screenSourceProvider;
         _screenCastClient = screenCastClient;
@@ -300,7 +314,7 @@ public class VideoSourceSelectWindowVM : ReactiveObject
             SystemInput = sharedInput;
 
         settings = settings.Normalize();
-        var bitrateOverride = mediaCapabilities?.GetScreenShareBitrateOverride(codec, VideoSettings.Current);
+        var bitrateOverride = mediaCapabilities?.GetScreenShareBitrateOverride(codec, IsCameraMode ? VideoSettings.Current.ForCamera() : VideoSettings.Current);
         IsBitrateOverridden = bitrateOverride != null;
         EncoderBitrateWarning = bitrateOverride == null ? null : Strings.Format("source.bitrate.encoderOverride.message",
             ("encoder", bitrateOverride.Factory));
@@ -343,8 +357,8 @@ public class VideoSourceSelectWindowVM : ReactiveObject
         CloseCommand = ReactiveCommand.CreateFromTask(async () => { await CloseWindow.Handle(null); });
         GoLive = ReactiveCommand.CreateFromTask(ConfirmAsync,
             this.WatchProperties(nameof(SelectedWindow), nameof(SelectedMonitor), nameof(IsMonitorsMode),
-                    nameof(SystemInput), nameof(IsPicking))
-                .Select(vm => !vm.IsPicking && (UsesSystemPicker
+                    nameof(SystemInput), nameof(IsPicking), nameof(SelectedCamera))
+                .Select(vm => !vm.IsPicking && (IsCameraMode ? vm.SelectedCamera != null : UsesSystemPicker
                     ? vm.SystemInput != null
                     : (vm.IsMonitorsMode ? vm.SelectedMonitor : vm.SelectedWindow) != null)));
     }
@@ -527,7 +541,9 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     {
         VideoInput? input;
 
-        if (UsesSystemPicker)
+        if (IsCameraMode)
+            input = SelectedCamera == null ? null : new CameraVideoInput(SelectedCamera.Id);
+        else if (UsesSystemPicker)
             input = SystemInput;
         else if (IsMonitorsMode)
             input = SelectedMonitor == null ? null : new MonitorVideoInput(SelectedMonitor.Handle);

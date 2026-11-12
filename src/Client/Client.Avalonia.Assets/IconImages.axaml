@@ -1477,6 +1477,14 @@
 
     <!-- ===== Chat view ===== -->
 
+    <!-- Filled triangle for broadcast source selection. -->
+    <DrawingImage x:Key="DropdownTriangleIcon">
+        <DrawingGroup ClipGeometry="M0,0 H12 V12 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H12 V12 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M2,4 L10,4 L6,8 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Down arrow (scroll to end). Source: Icons/ChatView/DownArrowIcon.svg -->
     <DrawingImage x:Key="DownArrowIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
