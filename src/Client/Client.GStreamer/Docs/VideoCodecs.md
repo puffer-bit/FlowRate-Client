@@ -7,6 +7,8 @@ Both transports use the same elements: the screen is captured and encoded by `Gs
 and decoded by `GstVideoDecoder` (`IVideoMedia`), whether the packets travel through webrtcbin or
 libwebrtc.
 
+Camera capture and its independent codec preferences are described in [CameraCapture.md](CameraCapture.md).
+
 ## Buffer ownership and queue budgets
 
 `GstEncodedNative.Read` lends the source `Gst.Buffer` through `EncodedVideoFrame.NativeBuffer`

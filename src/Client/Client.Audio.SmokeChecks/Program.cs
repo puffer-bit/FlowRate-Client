@@ -42,6 +42,11 @@ if (args.Contains("--video-codec-settings"))
     Console.WriteLine("Codec settings smoke checks passed.");
     return;
 }
+if (args.Contains("--camera"))
+{
+    CameraSmokeChecks.Run();
+    return;
+}
 if (args.Contains("--video-buffers"))
 {
     VideoBufferSmokeChecks.Run();

@@ -32,6 +32,7 @@ public sealed class StreamHealthAnalyzer
     private const double BurstyLateFrames = 4;
 
     private readonly int _userId;
+    private readonly MediaSourceType _sourceType;
     private readonly TimeSpan _startedAt;
     private readonly Dictionary<StreamIssueKind, Tracked> _tracked = [];
 
@@ -42,9 +43,10 @@ public sealed class StreamHealthAnalyzer
 
     /// <param name="userId">The user who shares the screen.</param>
     /// <param name="startedAt">When watching started, on the clock the readings are timed with.</param>
-    public StreamHealthAnalyzer(int userId, TimeSpan startedAt)
+    public StreamHealthAnalyzer(int userId, TimeSpan startedAt, MediaSourceType sourceType = MediaSourceType.Screen)
     {
         _userId = userId;
+        _sourceType = sourceType;
         _startedAt = startedAt;
         _previousAt = startedAt;
     }
@@ -147,7 +149,7 @@ public sealed class StreamHealthAnalyzer
     {
         foreach (var stream in sample.Inbound ?? [])
         {
-            if (stream.UserId == _userId && stream.SourceType == MediaSourceType.Screen && stream.MediaType == mediaType)
+            if (stream.UserId == _userId && stream.SourceType == _sourceType && stream.MediaType == mediaType)
                 return stream;
         }
 

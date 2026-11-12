@@ -21,6 +21,8 @@ namespace Client.LibWebRTC.Voice;
 /// </summary>
 public sealed partial class VoiceTransport : IWebRTCTransport
 {
+    public event Action<string>? VideoCaptureFailed;
+
     // How often the statistics are read: often enough for the speaking indicator, which goes by
     // the levels in them
     private static readonly TimeSpan StatsInterval = TimeSpan.FromMilliseconds(200);
@@ -283,7 +285,8 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         return new IncomingVideoStream(_videoReceiver!, inbound.SSRC, () =>
             {
-                var decoder = _video!.CreateDecoder(codec, name);
+                var decoder = _video!.CreateDecoder(codec, name, inbound.SourceType == MediaSourceType.Camera
+                    ? VideoSettings.Current.ForCamera() : VideoSettings.Current);
 
                 if (decoder != null)
                     LogDecodingVideo(_sessionId, inbound.UserId, codec);
@@ -537,6 +540,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         }
 
         video.Source = source;
+        capture.Failed += _ => VideoCaptureFailed?.Invoke(outbound.Id);
         capture.EncodedFrameReady += source.Push;
         capture.PreviewFrameReady += frame => VideoFrameReady?.Invoke(outbound.UserId, outbound.SourceType, frame);
 

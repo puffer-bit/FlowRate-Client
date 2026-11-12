@@ -26,6 +26,7 @@ internal sealed partial class OutgoingTracks
     private readonly Func<bool> _negotiate;
     private readonly OutgoingRetransmission _retransmission;
     private readonly Action<int, MediaSourceType, RawVideoFrame> _onVideoFrame;
+    private readonly Action<string> _onVideoCaptureFailed;
     private readonly ILogger _logger;
 
     // The level and valve elements of the gates, see Release
@@ -76,7 +77,7 @@ internal sealed partial class OutgoingTracks
     /// <param name="onVideoFrame">Receives the preview frames of the outgoing video tracks.</param>
     public OutgoingTracks(TransportCore core, MediaSections sections, GstAudioDeviceProvider? devices,
         IVideoMedia video, Func<bool> negotiate, OutgoingRetransmission retransmission,
-        Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger)
+        Action<int, MediaSourceType, RawVideoFrame> onVideoFrame, ILogger logger, Action<string>? onVideoCaptureFailed = null)
     {
         _core = core;
         _sections = sections;
@@ -85,6 +86,7 @@ internal sealed partial class OutgoingTracks
         _negotiate = negotiate;
         _retransmission = retransmission;
         _onVideoFrame = onVideoFrame;
+        _onVideoCaptureFailed = onVideoCaptureFailed ?? (_ => { });
         _logger = logger;
     }
 
@@ -398,6 +400,7 @@ internal sealed partial class OutgoingTracks
             LogVideoFramesDropped(_core.SessionId, outbound.SSRC, gate.Dropped);
             capture.RequestKeyFrame(isUrgent: true);
         };
+        capture.Failed += _ => _onVideoCaptureFailed(outbound.Id);
         capture.PreviewFrameReady += frame => _onVideoFrame(outbound.UserId, outbound.SourceType, frame);
 
         if (!capture.Start())

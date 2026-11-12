@@ -119,6 +119,8 @@ internal static class VideoNegotiationSmokeChecks
 
     private sealed class SilentCapture : IScreenCapture
     {
+        public event Action<Exception>? Failed { add { } remove { } }
+
         public string Description => "Negotiation check without captured frames";
         public event Action<RawVideoFrame>? PreviewFrameReady { add { } remove { } }
         public event Action<EncodedVideoFrame>? EncodedFrameReady { add { } remove { } }

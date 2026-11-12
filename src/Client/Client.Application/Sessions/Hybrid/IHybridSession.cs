@@ -119,6 +119,15 @@ public interface IHybridSession : IDisposable
     /// </summary>
     bool IsScreenShareStarted { get; }
 
+    bool IsCameraStarted { get; }
+    IReadOnlyCollection<int> CameraUsers { get; }
+    event Action<int, bool>? CameraChanged;
+    Task<RequestResult> StartCameraAsync(CameraVideoInput input, ScreenShareSettings settings);
+    Task<RequestResult> StopCameraAsync();
+    bool IsWatchingCamera(int userId);
+    void SetCameraWatch(int userId, bool isWatching);
+
+
     /// <summary>
     /// Raised with a user id when the user starts or stops showing a screen, ourselves included.
     /// Raised on any thread.

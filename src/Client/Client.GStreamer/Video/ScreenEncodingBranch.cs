@@ -164,10 +164,13 @@ internal static class ScreenEncodingBranch
     /// </param>
     /// <returns>Null when an element is missing.</returns>
     public static Result? Build(VideoCodec codec, ScreenShareSettings settings, bool isD3D11Source = false,
-        bool isDmaBufSource = false, Action<Exception>? onError = null)
+        bool isDmaBufSource = false, Action<Exception>? onError = null,
+        Client.Core.Settings.VideoSettings? videoSettings = null)
     {
         Bin? ParseBranch(string description) => Parse(description, onError);
-        var encoder = SelectEncoder(codec, settings.EffectiveBitrateKbps);
+        var preferences = videoSettings ?? Client.Core.Settings.VideoSettings.Current;
+        var encoder = VideoEncoderSelector.Select(codec, settings.EffectiveBitrateKbps,
+            preferences.GetEncoder(codec), preferences.CodecOverrides);
 
         if (encoder == null)
             return null;

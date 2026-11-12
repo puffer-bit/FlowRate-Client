@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddSingleton<IMicrophoneTester, GstMicrophoneTester>();
         services.AddSingleton<IMediaCapabilities, GstMediaCapabilities>();
         services.AddSingleton<IVideoMedia, GstVideoMedia>();
+        services.AddSingleton<ICameraDeviceProvider, GstCameraDeviceProvider>();
         services.AddSingleton<IAudioMedia, GstAudioMedia>();
         services.AddSingleton<IVoiceAudioDevice, GstVoiceAudioDevice>();
 

@@ -22,6 +22,9 @@ public interface IVideoMedia
     /// <param name="name">Tells the decoder apart in the log and names its threads.</param>
     /// <returns>Null when no decoder of the codec is there.</returns>
     IVideoDecoder? CreateDecoder(VideoCodec codec, string name);
+
+    IVideoDecoder? CreateDecoder(VideoCodec codec, string name, Client.Core.Settings.VideoSettings settings) =>
+        CreateDecoder(codec, name);
 }
 
 /// <summary>
@@ -30,6 +33,9 @@ public interface IVideoMedia
 /// </summary>
 public interface IScreenCapture : IDisposable
 {
+    /// <summary>A running capture lost its input. Raised on a capture thread.</summary>
+    event Action<Exception>? Failed;
+
     /// <summary>The encoder and where the picture is scaled, for the log.</summary>
     string Description { get; }
 

@@ -104,14 +104,62 @@ internal static class VideoSourceFactory
     /// </param>
     public static VideoSource? Create(VideoInput input, int framerate, Action<Exception> onError,
         Action<double, string>? onRate = null, bool acceptDmaBuf = false,
-        Action<double>? onSourceRate = null) => input switch
+        Action<double>? onSourceRate = null, int maxHeight = 1080) => input switch
     {
         PipeWireVideoInput pipeWire => CreatePipeWire(pipeWire, framerate, onError, onRate, acceptDmaBuf, onSourceRate),
         MonitorVideoInput monitor => CreateScreenCapture("monitor-handle", monitor.Handle, isWindow: false, framerate, onRate),
         WindowVideoInput window => CreateScreenCapture("window-handle", window.Handle, isWindow: true, framerate, onRate),
+        CameraVideoInput camera => CreateCamera(camera, maxHeight, framerate),
         TestPatternVideoInput => TestPatternSource.Create(framerate),
         _ => null
     };
+
+    private static VideoSource? CreateCamera(CameraVideoInput input, int height, int framerate)
+    {
+        using var source = GstCameraDeviceProvider.CreateSource(input.DeviceId, out var formats);
+        if (source == null)
+            return null;
+        return CreateCamera(source, formats == null ? null : SelectCameraCaps(formats, height, framerate));
+    }
+
+    internal static string? SelectCameraCaps(string formats, int height, int framerate)
+    {
+        using var supported = Caps.FromString(formats);
+        var width = (height * 16 / 9 + 1) & ~1;
+        // Prefer the requested mode, then its frame rate, then any supported raw or MJPEG mode.
+        // This avoids a USB camera choosing a high-resolution raw mode limited to a few FPS.
+        var preferred = $"video/x-raw,width={width},height={height},framerate={framerate}/1; " +
+            $"image/jpeg,width={width},height={height},framerate={framerate}/1; " +
+            $"video/x-raw,framerate={framerate}/1; image/jpeg,framerate={framerate}/1; video/x-raw; image/jpeg";
+        using var wanted = Caps.FromString(preferred);
+        if (wanted == null || supported == null) return null;
+        using var intersection = wanted.IntersectFull(supported, CapsIntersectMode.First);
+        if (intersection.IsEmpty()) return null;
+        using var fixedCaps = intersection.Fixate();
+        return fixedCaps?.ToString();
+    }
+
+    internal static VideoSource? CreateCamera(Element source, string? caps = null)
+    {
+        // decodebin accepts both raw cameras and cameras which expose MJPEG. The source and
+        // decoder negotiate a native mode; the shared encoding branch limits size and rate.
+        var bin = Global.ParseBinFromDescription("capsfilter name=camera_mode ! decodebin ! videoconvert", true);
+        if (bin == null)
+            return null;
+        using var sink = bin.GetStaticPad("sink");
+        if (sink != null)
+            bin.RemovePad(sink);
+        bin.Add(source);
+        using var decoder = bin.GetByName("camera_mode");
+        if (decoder != null && caps != null)
+            Global.UtilSetObjectArg(decoder, "caps", caps);
+        if (decoder == null || !source.Link(decoder))
+        {
+            bin.Dispose();
+            return null;
+        }
+        return new VideoSource(bin);
+    }
 
     private static VideoSource? CreatePipeWire(PipeWireVideoInput input, int framerate, Action<Exception> onError,
         Action<double, string>? onRate, bool acceptDmaBuf, Action<double>? onSourceRate)
