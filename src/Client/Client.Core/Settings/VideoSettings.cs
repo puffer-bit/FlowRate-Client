@@ -7,6 +7,17 @@ namespace Client.Core.Settings;
 /// </summary>
 public sealed record VideoSettings
 {
+    /// <summary>Independent codec preferences for camera streams; null uses defaults.</summary>
+    public VideoSettings? Camera { get; init; }
+
+    public VideoSettings ForCamera() => (Camera ?? new VideoSettings()) with
+    {
+        Camera = null,
+        IsZeroCopyEnabled = IsZeroCopyEnabled,
+        IsTimedPresentationEnabled = IsTimedPresentationEnabled,
+        PresentationBufferFrames = PresentationBufferFrames
+    };
+
     public static IReadOnlyList<int> PresentationBufferChoices { get; } = [1, 2, 3, 4];
 
     /// <summary>

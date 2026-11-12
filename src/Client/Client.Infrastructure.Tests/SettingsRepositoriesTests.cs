@@ -320,6 +320,48 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task CameraPreferencesAndIndependentCodecOverridesSurviveReload()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var preferences = new CameraPreferencesRepository(database.Database);
+        Assert.False((await preferences.GetAsync()).LastWasCamera);
+        var choice = new CameraPreferences { DeviceId = "usb-camera", LastWasCamera = true, MaxHeight = 480, Framerate = 60 };
+        await preferences.SaveAsync(choice);
+        Assert.Equal(choice, await new CameraPreferencesRepository(database.Database).GetAsync());
+        var repository = new VideoSettingsRepository(database.Database);
+        await repository.SaveAsync(new VideoSettings
+        {
+            Encoder = "openh264enc", CodecOverrides = [new("vp8enc", "cpu-used", "4")],
+            Camera = new VideoSettings { Encoder = "vah264enc", CodecOverrides = [new("vp8enc", "cpu-used", "8")] }
+        });
+        var loaded = await new VideoSettingsRepository(database.Database).GetAsync();
+        Assert.Equal("openh264enc", loaded.Encoder);
+        Assert.Equal("vah264enc", loaded.ForCamera().Encoder);
+        Assert.Equal("4", Assert.Single(loaded.CodecOverrides).Value);
+        Assert.Equal("8", Assert.Single(loaded.ForCamera().CodecOverrides).Value);
+        await repository.SaveAsync(loaded with { Encoder = null });
+        Assert.Equal("vah264enc", (await repository.GetAsync()).ForCamera().Encoder);
+    }
+
+    [Fact]
+    public async Task CameraMigrationPreservesScreenCodecsAndStartsCameraWithDefaults()
+    {
+        await using var database = await TestDatabase.CreateAtVersionAsync(34);
+        await database.ExecuteAsync("UPDATE VideoSettings SET Encoder = 'openh264enc', Vp8Decoder = 'vp8dec'");
+        await database.ExecuteAsync("INSERT INTO CodecParameters (Factory, Name, Value) VALUES ('vp8enc', 'cpu-used', '7')");
+        var initializer = new Client.Infrastructure.Database.DatabaseInitializer(database.Database,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Infrastructure.Database.DatabaseInitializer>.Instance);
+        Assert.Equal(Client.Application.Ports.DatabaseState.NoError, await initializer.VerifyDatabaseAsync());
+        var settings = await new VideoSettingsRepository(database.Database).GetAsync();
+        Assert.Equal("openh264enc", settings.Encoder);
+        Assert.Equal("vp8dec", settings.Vp8Decoder);
+        Assert.Single(settings.CodecOverrides);
+        Assert.Null(settings.ForCamera().Encoder);
+        Assert.Empty(settings.ForCamera().CodecOverrides);
+        Assert.False((await new CameraPreferencesRepository(database.Database).GetAsync()).LastWasCamera);
+    }
+
+    [Fact]
     public async Task VideoSettingsRoundTrip()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();

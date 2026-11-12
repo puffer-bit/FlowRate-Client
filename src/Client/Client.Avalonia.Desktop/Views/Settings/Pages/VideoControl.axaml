@@ -54,6 +54,14 @@
         </Style>
     </UserControl.Styles>
     <ui:SettingsPage>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text video.target}">
+                <ComboBox MinWidth="180" SelectedIndex="{Binding VideoTargetIndex}">
+                    <ComboBoxItem Content="{l:Text video.target.screen}"/>
+                    <ComboBoxItem Content="{l:Text video.target.camera}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
         <controls:SettingsHeader services:SettingText.Section="video.decoding"/>
         <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ItemsControl ItemsSource="{Binding Decoders}" ItemTemplate="{StaticResource CodecSelectionTemplate}"/>

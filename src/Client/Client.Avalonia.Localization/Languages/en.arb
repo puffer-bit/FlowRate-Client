@@ -2029,5 +2029,20 @@
   "chat.system.memberLeft": "{subject} left the group",
   "chat.system.callStarted": "{actor} started a call",
   "chat.system.callEnded": "Call ended",
-  "chat.system.event": "Chat event"
+  "chat.system.event": "Chat event",
+  "video.target.screen": "Screen",
+  "video.target.camera": "Camera",
+  "camera.source.title": "Choose a camera",
+  "camera.source.hint": "Select the camera and video quality.",
+  "camera.source.empty": "No cameras found",
+  "camera.sharing": "Sharing camera",
+  "camera.own": "Your camera",
+  "camera.start": "Start camera",
+  "camera.stop": "Stop camera",
+  "camera.startFailed": "Camera could not start: {reason}",
+  "camera.unavailable": "Could not access the camera. Check its connection and permissions.",
+  "broadcast.toggle": "Toggle broadcast",
+  "broadcast.choose": "Choose what to broadcast",
+  "broadcast.screen.start": "Share screen",
+  "video.target": "Video settings for"
 }

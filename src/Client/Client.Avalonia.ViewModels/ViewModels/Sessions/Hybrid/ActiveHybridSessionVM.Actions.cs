@@ -52,6 +52,14 @@ public partial class ActiveHybridSessionVM
 
     private async Task ToggleScreenShare()
     {
+        if (!await _broadcastChange.WaitAsync(0)) return;
+        StatusBar.IsBroadcastBusy = true;
+        try { await ToggleScreenShareCoreAsync(); }
+        finally { StatusBar.IsBroadcastBusy = false; _broadcastChange.Release(); }
+    }
+
+    private async Task ToggleScreenShareCoreAsync()
+    {
         if (_screenInput != null)
         {
             await StopScreenShareAsync();
@@ -198,6 +206,8 @@ public partial class ActiveHybridSessionVM
         if (result.IsSuccess)
         {
             StatusBar.IsScreenShareOn = true;
+            if (!isSilent)
+                await RememberBroadcastAsync(false);
 
             if (!isSilent)
                 _sounds.Play(SoundEvent.ScreenShareStart);
@@ -365,6 +375,11 @@ public partial class ActiveHybridSessionVM
         if (!_screenStreamsByUser.TryRemove(userId, out var stream))
             return;
 
+        RemoveStreamTile(stream);
+    }
+
+    private void RemoveStreamTile(ScreenStreamVM stream)
+    {
         // Nothing to fade while another screen covers this one. It is taken out before the last
         // screen is brought back from being expanded, which would show it again for its fade
         if (stream.IsHidden)
@@ -400,6 +415,11 @@ public partial class ActiveHybridSessionVM
     private void UpdateScreenStreamName(int userId)
     {
         UpdateScreenViewers();
+        if (_cameraStreamsByUser.TryGetValue(userId, out var camera))
+        {
+            camera.DisplayedName = ResolveDisplayedName(userId);
+            camera.AvatarUrl = ResolveAvatarUrl(userId);
+        }
         if (!_screenStreamsByUser.TryGetValue(userId, out var stream))
             return;
 
@@ -519,9 +539,9 @@ public partial class ActiveHybridSessionVM
     /// </summary>
     private void UpdateCanExpand()
     {
-        var canExpand = _screenStreamsByUser.Count > 1;
+        var canExpand = _screenStreamsByUser.Count + _cameraStreamsByUser.Count > 1;
 
-        foreach (var stream in _screenStreamsByUser.Values)
+        foreach (var stream in _screenStreamsByUser.Values.Concat(_cameraStreamsByUser.Values))
         {
             if (!canExpand && stream.IsExpanded)
                 ToggleExpanded(stream);
@@ -533,13 +553,21 @@ public partial class ActiveHybridSessionVM
     // Raised on a thread of the track, and the pixels are only valid during the call
     private void OnVideoFrame(int userId, MediaSourceType source, RawVideoFrame frame)
     {
-        if (source == MediaSourceType.Screen && _screenStreamsByUser.TryGetValue(userId, out var stream))
+        var streams = source == MediaSourceType.Camera ? _cameraStreamsByUser : _screenStreamsByUser;
+        if (streams.TryGetValue(userId, out var stream))
             stream.PushFrame(frame);
     }
 
     // Raised on a thread of the track
     private void OnVideoDecoding(int userId, MediaSourceType source, VideoDecoding decoding)
     {
+        if (source == MediaSourceType.Camera)
+        {
+            _cameraDecodings[userId] = decoding;
+            if (_cameraStreamsByUser.TryGetValue(userId, out var camera))
+                camera.PushDecoding(decoding);
+            return;
+        }
         if (source != MediaSourceType.Screen)
             return;
 

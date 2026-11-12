@@ -108,11 +108,11 @@
                                             <TextBlock FontSize="15" TextTrimming="CharacterEllipsis"
                                                        Text="{Binding DisplayedName}"/>
                                             <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
-                                                       Text="{l:Text hybrid.screen.sharing}"/>
+                                                       Text="{Binding SharingLabel}"/>
                                         </StackPanel>
 
                                         <media:ScreenViewersButton x:Name="ViewersButton" Grid.Column="2"
-                                                                   Viewers="{Binding Viewers}" HorizontalAlignment="Right"/>
+                                                                   Viewers="{Binding Viewers}" IsVisible="{Binding !IsCamera}" HorizontalAlignment="Right"/>
                                         <Border Grid.Column="3" Width="1" Height="18" VerticalAlignment="Center"
                                                 Background="{DynamicResource SettingsCardBorderBrush}"
                                                 IsVisible="{Binding #ViewersButton.HasViewers}"/>
@@ -138,7 +138,7 @@
                                         </Panel>
 
                                         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8" Margin="8,4">
-                                            <Button Grid.Column="0" Classes="screen-action" Command="{Binding ToggleMute}">
+                                            <Button Grid.Column="0" Classes="screen-action" Command="{Binding ToggleMute}" IsVisible="{Binding HasSoundControls}">
                                                 <Panel>
                                                     <Image Width="20" Height="20" Source="{StaticResource HighVolumeIcon}"
                                                            IsVisible="{Binding !IsMuted}"/>
@@ -146,7 +146,7 @@
                                                            IsVisible="{Binding IsMuted}"/>
                                                 </Panel>
                                             </Button>
-                                            <Slider Grid.Column="1" VerticalAlignment="Center"
+                                            <Slider Grid.Column="1" VerticalAlignment="Center" IsVisible="{Binding HasSoundControls}"
                                                     Minimum="0"
                                                     Maximum="{Binding MaxVolume}"
                                                     Value="{Binding Volume}"

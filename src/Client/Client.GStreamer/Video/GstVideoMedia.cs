@@ -16,6 +16,9 @@ public sealed class GstVideoMedia(ILoggerFactory loggerFactory) : IVideoMedia
     public IScreenCapture? CreateCapture(VideoInput input, ScreenShareSettings settings, VideoCodec codec, string name) =>
         GstScreenCapture.Create(input, settings, codec, name, _captureLogger);
 
+    public IVideoDecoder? CreateDecoder(VideoCodec codec, string name, Client.Core.Settings.VideoSettings settings) =>
+        GstVideoDecoder.Create(codec, name, _decoderLogger, settings);
+
     public IVideoDecoder? CreateDecoder(VideoCodec codec, string name) =>
         GstVideoDecoder.Create(codec, name, _decoderLogger);
 }

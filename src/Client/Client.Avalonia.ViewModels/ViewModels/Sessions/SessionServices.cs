@@ -45,4 +45,6 @@ public sealed record HybridSessionServices(
     IMediaCapabilities MediaCapabilities,
     IScreenShareSettingsRepository ScreenShareSettings,
     IDismissedPromptsRepository DismissedPrompts,
-    ICoordinatorStateRepository CoordinatorStates);
+    ICoordinatorStateRepository CoordinatorStates,
+    ICameraDeviceProvider? Cameras = null,
+    ICameraPreferencesRepository? CameraPreferences = null);

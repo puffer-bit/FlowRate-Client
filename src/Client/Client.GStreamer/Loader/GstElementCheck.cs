@@ -47,10 +47,10 @@ internal static partial class GstElementCheck
         "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
     ];
 
-    private static readonly string[] OptionalWindows = ["mfaacdec"];
+    private static readonly string[] OptionalWindows = ["mfaacdec", "mfvideosrc", "jpegdec"];
 
     // PipeWire needs system support; older Linux runtimes may also lack the chat AAC decoder.
-    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec"];
+    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec", "v4l2src", "jpegdec"];
 
     /// <summary>
     /// Logs what is missing and what encoders and decoders are available.

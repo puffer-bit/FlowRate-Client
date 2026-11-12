@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IBehaviorSettingsRepository, BehaviorSettingsRepository>();
         services.AddSingleton<IAudioSettingsRepository, AudioSettingsRepository>();
         services.AddSingleton<IScreenShareSettingsRepository, ScreenShareSettingsRepository>();
+        services.AddSingleton<ICameraPreferencesRepository, CameraPreferencesRepository>();
         services.AddSingleton<ICollapsedSectionsRepository, CollapsedSectionsRepository>();
         services.AddSingleton<IDismissedPromptsRepository, DismissedPromptsRepository>();
         services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();

@@ -23,7 +23,7 @@ public partial class ActiveHybridSessionVM
 
     private void UpdateScreenViewers()
     {
-        foreach (var stream in ScreenStreams)
+        foreach (var stream in ScreenStreams.Where(stream => !stream.IsCamera))
             stream.SetViewers(_screenAudience.GetViewers(stream.UserId)
                 .Select(userId => new ScreenViewerItem(userId, ResolveDisplayedName(userId), ResolveAvatarUrl(userId)))
                 .OrderBy(viewer => viewer.Username, System.StringComparer.CurrentCultureIgnoreCase)

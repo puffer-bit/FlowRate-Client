@@ -15,19 +15,26 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
 
     public async Task<VideoSettings> GetAsync()
     {
+        var screen = await GetProfileAsync(1);
+        var camera = await GetProfileAsync(2);
+        return screen with { Camera = camera == new VideoSettings() ? null : camera };
+    }
+
+    private async Task<VideoSettings> GetProfileAsync(int profile)
+    {
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<VideoSettingsRow>("""
             SELECT IsHardwareDecodingEnabled, Decoder, Av1Decoder, Vp8Decoder, Vp9Decoder, Encoder, Av1Encoder, Vp8Encoder, Vp9Encoder,
                    IsZeroCopyEnabled, IsTimedPresentationEnabled, PresentationBufferFrames, IsCodecSettingsWarningAcknowledged
-            FROM VideoSettings WHERE Id = 1
-            """);
+            FROM VideoSettings WHERE Id = @profile
+            """, new { profile });
 
         if (row == null)
             return new VideoSettings();
 
         var parameters = (await connection.QueryAsync<CodecPropertyOverride>(
-            "SELECT Factory, Name, Value FROM CodecParameters ORDER BY Factory, Name")).ToArray();
+            "SELECT Factory, Name, Value FROM CodecParameters WHERE Profile = @profile ORDER BY Factory, Name", new { profile })).ToArray();
 
         return new VideoSettings
         {
@@ -53,11 +60,19 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
         await using var connection = await _database.OpenAsync();
         using var transaction = connection.BeginTransaction();
 
+        await SaveProfileAsync(connection, transaction, settings, 1);
+        await SaveProfileAsync(connection, transaction, settings.Camera ?? new VideoSettings(), 2);
+        transaction.Commit();
+    }
+
+    private static async Task SaveProfileAsync(System.Data.Common.DbConnection connection,
+        System.Data.Common.DbTransaction transaction, VideoSettings settings, int profile)
+    {
         await connection.ExecuteAsync("""
             INSERT INTO VideoSettings (Id, IsHardwareDecodingEnabled, Decoder, Av1Decoder, Vp8Decoder, Vp9Decoder,
                                        Encoder, Av1Encoder, Vp8Encoder, Vp9Encoder, IsZeroCopyEnabled,
                                        IsTimedPresentationEnabled, PresentationBufferFrames, IsCodecSettingsWarningAcknowledged)
-            VALUES (1, @IsHardwareDecodingEnabled, @Decoder, @Av1Decoder, @Vp8Decoder, @Vp9Decoder,
+            VALUES (@profile, @IsHardwareDecodingEnabled, @Decoder, @Av1Decoder, @Vp8Decoder, @Vp9Decoder,
                     @Encoder, @Av1Encoder, @Vp8Encoder, @Vp9Encoder, @IsZeroCopyEnabled,
                     @IsTimedPresentationEnabled, @PresentationBufferFrames, @IsCodecSettingsWarningAcknowledged)
             ON CONFLICT (Id) DO UPDATE SET
@@ -76,6 +91,7 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
                 IsCodecSettingsWarningAcknowledged = excluded.IsCodecSettingsWarningAcknowledged
             """, new
             {
+                profile,
                 settings.IsHardwareDecodingEnabled,
                 settings.Decoder,
                 settings.Av1Decoder,
@@ -91,11 +107,10 @@ internal sealed class VideoSettingsRepository : IVideoSettingsRepository
                 settings.PresentationBufferFrames
             }, transaction);
 
-        await connection.ExecuteAsync("DELETE FROM CodecParameters", transaction: transaction);
+        await connection.ExecuteAsync("DELETE FROM CodecParameters WHERE Profile = @profile", new { profile }, transaction: transaction);
         foreach (var parameter in settings.CodecOverrides)
-            await connection.ExecuteAsync("INSERT INTO CodecParameters (Factory, Name, Value) VALUES (@Factory, @Name, @Value)",
-                new { parameter.Factory, parameter.Name, parameter.Value }, transaction);
-        transaction.Commit();
+            await connection.ExecuteAsync("INSERT INTO CodecParameters (Profile, Factory, Name, Value) VALUES (@profile, @Factory, @Name, @Value)",
+                new { profile, parameter.Factory, parameter.Name, parameter.Value }, transaction);
     }
 }
 

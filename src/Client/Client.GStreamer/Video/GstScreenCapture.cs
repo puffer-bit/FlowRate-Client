@@ -15,6 +15,8 @@ namespace Client.GStreamer.Video;
 internal sealed partial class GstScreenCapture : IScreenCapture
 {
     private readonly string _name;
+    private bool _isCamera;
+    private readonly TaskCompletionSource<bool> _firstPicture = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly VideoCodec _codec;
     private readonly ILogger _logger;
     private readonly Pipeline _pipeline;
@@ -63,6 +65,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
     public string Description { get; }
 
+    public event Action<Exception>? Failed;
     public event Action<RawVideoFrame>? PreviewFrameReady;
     public event Action<EncodedVideoFrame>? EncodedFrameReady;
 
@@ -97,7 +100,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         var source = VideoSourceFactory.Create(input, settings.Framerate,
             exception => LogCaptureFailed(logger, exception, name),
             (rate, caps) => LogCaptureRate(logger, name, rate, settings.Framerate, caps), isDmaBuf,
-            rate => LogCompositorRate(logger, name, rate));
+            rate => LogCompositorRate(logger, name, rate), maxHeight: settings.MaxHeight);
 
         if (source == null)
         {
@@ -109,7 +112,8 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         var branch = ScreenEncodingBranch.Build(codec, settings,
             isD3D11Source: OperatingSystem.IsWindows() && input is MonitorVideoInput or WindowVideoInput,
             isDmaBufSource: isDmaBuf,
-            onError: exception => LogBranchParseFailed(logger, exception, name));
+            onError: exception => LogBranchParseFailed(logger, exception, name),
+            videoSettings: input is CameraVideoInput ? Client.Core.Settings.VideoSettings.Current.ForCamera() : null);
 
         if (branch == null)
         {
@@ -146,6 +150,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
         return new GstScreenCapture(name, codec, pipeline, branch, source.Resource, logger)
         {
+            _isCamera = input is CameraVideoInput,
             _targetKbps = settings.EffectiveBitrateKbps
         };
     }
@@ -194,6 +199,11 @@ internal sealed partial class GstScreenCapture : IScreenCapture
             }
         }
 
+        if (_isCamera && (!_firstPicture.Task.Wait(TimeSpan.FromSeconds(5)) || !_firstPicture.Task.Result))
+        {
+            LogStartFailed(_logger, _name);
+            return false;
+        }
         LogStarted(_logger, _name, Description);
         return true;
     }
@@ -201,6 +211,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     // On the thread of the reader
     private void OnEncodedFrame(EncodedVideoFrame frame)
     {
+        _firstPicture.TrySetResult(true);
         if (frame.IsKeyFrame)
         {
             _encodedKeyFrames++;
@@ -344,7 +355,12 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
     private void OnMessage(Message message)
     {
+        if (message.Type == MessageType.Error)
+            _firstPicture.TrySetResult(false);
         var (error, debug) = message.Type == MessageType.Error ? message.ParseError() : message.ParseWarning();
+        if (_isCamera && message.Type == MessageType.Error &&
+            _firstPicture.Task.IsCompletedSuccessfully && _firstPicture.Task.Result)
+            Failed?.Invoke(new InvalidOperationException(error.Message));
         LogPipelineMessage(_logger, _name, message.Type, GstNative.GetPath(GstNative.GetMessageSource(message)),
             error.Message, debug);
     }

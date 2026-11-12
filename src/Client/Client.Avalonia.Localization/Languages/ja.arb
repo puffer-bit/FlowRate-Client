@@ -1395,5 +1395,20 @@
   "chat.system.memberLeft": "{subject}がグループを退出しました",
   "chat.system.callStarted": "{actor}が通話を開始しました",
   "chat.system.callEnded": "通話が終了しました",
-  "chat.system.event": "チャットのイベント"
+  "chat.system.event": "チャットのイベント",
+  "video.target.screen": "画面",
+  "video.target.camera": "カメラ",
+  "camera.source.title": "カメラを選択",
+  "camera.source.hint": "カメラと画質を選択してください。",
+  "camera.source.empty": "カメラが見つかりません",
+  "camera.sharing": "カメラを共有中",
+  "camera.own": "自分のカメラ",
+  "camera.start": "カメラを開始",
+  "camera.stop": "カメラを停止",
+  "camera.startFailed": "カメラを開始できませんでした: {reason}",
+  "camera.unavailable": "カメラにアクセスできません。接続と権限を確認してください。",
+  "broadcast.toggle": "配信を開始・停止",
+  "broadcast.choose": "配信する内容を選択",
+  "broadcast.screen.start": "画面を共有",
+  "video.target": "動画設定の対象"
 }

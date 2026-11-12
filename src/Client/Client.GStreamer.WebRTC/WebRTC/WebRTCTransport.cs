@@ -27,6 +27,8 @@ namespace Client.GStreamer.WebRTC;
 /// </remarks>
 public sealed partial class WebRTCTransport : IWebRTCTransport
 {
+    public event Action<string>? VideoCaptureFailed;
+
     private readonly TransportCore _core;
     private readonly MediaSections _sections = new();
     private readonly IncomingTracks _incoming;
@@ -101,7 +103,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
         _retransmission = new OutgoingRetransmission(_core, logger);
         _video = video;
         _outgoing = new OutgoingTracks(_core, _sections, devices, video, Negotiate, _retransmission,
-            (userId, sourceType, frame) => VideoFrameReady?.Invoke(userId, sourceType, frame), logger);
+            (userId, sourceType, frame) => VideoFrameReady?.Invoke(userId, sourceType, frame), logger,
+            outboundId => VideoCaptureFailed?.Invoke(outboundId));
         _states = new TransportStateObserver(_core, state => ConnectionStateChanged?.Invoke(state), logger);
         _tuning = new WebRTCBinTuning(_core, logger);
         _negotiator = new Negotiator(_core, () => _sections.Build(_incoming.Find, _outgoing.Find),
@@ -221,7 +224,8 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
 
             _states.Connect(webrtc);
             _core.Player = new IncomingStreamPlayer(pipeline, _video, _logger, _core.SessionId, _incoming.ResolveSectionVolume,
-                OnIncomingVideoFrame, OnIncomingVideoDecoding, _isPlaybackEnabled);
+                OnIncomingVideoFrame, OnIncomingVideoDecoding, _isPlaybackEnabled,
+                mline => _incoming.FindBySection(mline)?.SourceType == MediaSourceType.Camera);
             webrtc.PadAdded += OnPadAdded;
             webrtc.PadRemoved += OnPadRemoved;
 

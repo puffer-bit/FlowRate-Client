@@ -134,35 +134,7 @@
                 <Image Source="{StaticResource AfkIcon}"/>
             </Button>
 
-            <Button Classes="barAction"
-                    IsVisible="{Binding !IsScreenShareOn}"
-                    Command="{Binding ToggleScreenShareCommand}"
-                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
-                    AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
-                <Image Source="{StaticResource ScreenShareIcon}"/>
-            </Button>
-
-            <!-- A running share is changed or stopped from a menu -->
-            <Button Classes="barAction sharing"
-                    IsVisible="{Binding IsScreenShareOn}"
-                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
-                    AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
-                <Button.Flyout>
-                    <Flyout Placement="BottomEdgeAlignedRight">
-                        <StackPanel Spacing="2">
-                            <menus:MenuItemButton Icon="{StaticResource GearIcon}"
-                                                  Content="{l:Text hybrid.screen.change}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"
-                                                  Command="{Binding ChangeScreenShareCommand}"/>
-                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
-                                                  Content="{l:Text hybrid.screen.stop}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"
-                                                  Command="{Binding ToggleScreenShareCommand}"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-                <Image Source="{StaticResource ScreenShareIcon}"/>
-            </Button>
+            <hybrid:HybridBroadcastButton/>
 
             <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
 

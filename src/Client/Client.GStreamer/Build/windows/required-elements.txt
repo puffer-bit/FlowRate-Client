@@ -63,6 +63,10 @@ rtpvp8depay
 ?rtpvp9pay
 ?rtpvp9depay
 
+# Camera capture
+?mfvideosrc
+jpegdec
+
 # Screen capture
 d3d11screencapturesrc
 

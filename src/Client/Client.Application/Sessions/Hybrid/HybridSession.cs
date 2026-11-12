@@ -177,6 +177,7 @@ public partial class HybridSession : IHybridSession
         transport.ConnectionStateChanged += state => HandleConnectionStatus(transport, state);
         transport.LocalDtlsParametersReady += parameters => SendLocalDtlsParameters(transport, parameters);
         transport.InboundsReady += inboundIds => ResumeInbounds(transport, inboundIds);
+        transport.VideoCaptureFailed += outboundId => _ = Task.Run(() => HandleCameraCaptureFailedAsync(transport, outboundId));
         transport.SpeakingChanged += (userId, isSpeaking) => OnSpeakingChanged(transport, userId, isSpeaking);
         transport.StatsSampled += sample =>
         {
@@ -201,6 +202,8 @@ public partial class HybridSession : IHybridSession
             if (source == MediaSourceType.Screen && !_watchedScreens.ContainsKey(userId))
                 return;
 
+            if (source == MediaSourceType.Camera && !IsWatchingCamera(userId))
+                return;
             VideoFrameReady?.Invoke(userId, source, frame);
         };
         transport.VideoDecodingChanged += (userId, source, decoding) =>
@@ -937,6 +940,9 @@ public partial class HybridSession : IHybridSession
 
         // Same for the screen: the owner shows it again once connected
         _screenAudioOutbound = null;
+        _cameraOutbound = null;
+        foreach (var userId in _cameraUsers.Keys)
+            SetCameraActive(userId, false);
 
         if (Interlocked.Exchange(ref _screenOutbound, null) is { } screen)
             ScreenShareChanged?.Invoke(screen.UserId, false);

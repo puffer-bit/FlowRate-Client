@@ -150,6 +150,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _coordinatorStates = services.CoordinatorStates;
         _mediaCapabilities = services.MediaCapabilities;
         _screenShareSettings = services.ScreenShareSettings;
+        _cameras = services.Cameras;
+        _cameraPreferences = services.CameraPreferences;
         _dismissedPrompts = services.DismissedPrompts;
         _coordinatorSession = coordinatorSession;
         _audioPlayerService = services.AudioPlayer;
@@ -179,6 +181,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 () => coordinatorSession.HybridSessionUpdated -= OnScreenViewerChanged)
             .Add(() => _audioService.SettingsChanged += OnAudioSettingsChanged, () => _audioService.SettingsChanged -= OnAudioSettingsChanged)
             .Add(() => _voiceActivity.Changed += OnSpeakingChanged, () => _voiceActivity.Changed -= OnSpeakingChanged)
+            .Add(() => hybridSession.CameraChanged += OnCameraChanged, () => hybridSession.CameraChanged -= OnCameraChanged)
             .Add(() => hybridSession.ScreenShareChanged += OnScreenShareChanged,
                 () => hybridSession.ScreenShareChanged -= OnScreenShareChanged)
             .Add(() => hybridSession.ScreenWatchChanged += OnScreenWatchChanged,
@@ -220,10 +223,14 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             ReactiveCommand.CreateFromTask(ToggleScreenShare, canShareVideo),
             ReactiveCommand.CreateFromTask(ChangeScreenShare, canShareVideo))
         {
-            SessionId = hybridSessionModel.Id
+            SessionId = hybridSessionModel.Id,
+            ToggleBroadcastCommand = ReactiveCommand.CreateFromTask(ToggleBroadcastAsync, canShareVideo),
+            ToggleCameraCommand = ReactiveCommand.CreateFromTask(ToggleCameraAsync,
+                canShareVideo.Select(allowed => allowed && _cameras != null)),
+            CanUseCamera = _cameras != null
         };
-        _subscriptions.Add(() => Strings.LanguageChanged += StatusBar.UpdateTexts,
-            () => Strings.LanguageChanged -= StatusBar.UpdateTexts);
+        _subscriptions.Add(() => Strings.LanguageChanged += UpdateVideoTexts,
+            () => Strings.LanguageChanged -= UpdateVideoTexts);
         // Corrected by our own peer as soon as the server reports it
         IsAdmitted = !hybridSessionModel.IsApprovalRequested
                      || hybridSessionModel.HostId == _coordinatorSession.GetCurrentUser().Id;
@@ -348,6 +355,10 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             throw new Exception($"Failed to get Peers for HybridSession {Model.Name}");
 
         var peers = getAllPeerResult.Value!.Values;
+        foreach (var userId in _hybridSession.CameraUsers)
+            OnCameraChanged(userId, true);
+        if (_cameraPreferences != null)
+            StatusBar.LastWasCamera = (await _cameraPreferences.GetAsync()).LastWasCamera;
         _screenAudience.LoadSnapshot(peers);
 
         foreach (var peer in peers)
@@ -388,6 +399,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         {
             StatusBar.IsMicrophoneOn = false;
             StatusBar.IsScreenShareOn = false;
+            StatusBar.IsCameraOn = false;
             ForgetMicrophoneInput();
         }
 
@@ -407,6 +419,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             return;
 
         await RestoreAfkAsync();
+        await RestoreCameraAsync();
 
         if (CanSpeak)
             await StartVoiceAsync();
@@ -466,6 +479,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 await StartVoiceAsync();
         }
 
+        if (!IsClosed && _hybridSession.IsCameraStarted)
+        {
+            await _hybridSession.StopCameraAsync();
+            await RestoreCameraAsync();
+        }
+
         // The source stays granted, only the track it is sent on is replaced
         if (!IsClosed && _hybridSession.IsScreenShareStarted && _screenInput is { } screenInput
             && _screenSettings is { } screenSettings)
@@ -493,7 +512,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             var now = TimeSpan.FromMilliseconds(Environment.TickCount64);
 
             foreach (var stream in ScreenStreams)
-                stream.Analyze(sample, _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
+                stream.Analyze(sample, !stream.IsCamera && _hybridSession.HasWatchedScreenAudio(stream.UserId), now);
         });
 
     private void OnPerfSampled(MediaPerfReport report) =>
@@ -510,8 +529,17 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         Dispatcher.UIThread.Post(async () => await HandleSessionStatus(state));
 
     private void OnSessionError(HybridSessionError error) =>
-        Dispatcher.UIThread.Post(() => ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error),
-            "GstWebRTCError"));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsClosed) return;
+            if (error.Kind == HybridSessionErrorKind.CameraCaptureFailed)
+            {
+                _cameraInput = null;
+                _cameraSettings = null;
+                StatusBar.IsCameraOn = false;
+            }
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "GstWebRTCError");
+        });
 
     private void ShowPopUp(NotificationPopUpVM.PopUpType type, string text, string tag) =>
         NotificationsListViewModel.Add(new NotificationPopUpVM(type, text, NotificationsListViewModel, tag));
@@ -611,6 +639,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             _restartingScreens.Remove(notification.UserId);
             _stoppedRestartingScreens.Remove(notification.UserId);
             RemoveScreenStream(notification.UserId);
+            RemoveCameraStream(notification.UserId);
             ParticipantsListVM.RemovePeerFromSession(notification.UserId);
         });
     }

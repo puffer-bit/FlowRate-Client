@@ -13,6 +13,45 @@ namespace Client.Application.Tests;
 public class VideoSettingsTests
 {
     [Fact]
+    public async Task CameraCodecWarningAcknowledgmentRemainsSharedWhenChangingProfiles()
+    {
+        var service = new VideoService(new VideoSettings());
+        var video = new VideoControlVM(service, new Capabilities());
+        await video.LoadCommand.Execute().ToTask();
+        video.VideoTargetIndex = 1;
+        using (video.ShowMessageBox.RegisterHandler(context => context.SetOutput(Result.Ok)))
+            Assert.NotNull(await video.OpenCodecSettingsAsync(video.Encoders[0]));
+        video.Encoders[0].SelectedIndex = 1;
+        Assert.True(service.Settings.IsCodecSettingsWarningAcknowledged);
+        video.VideoTargetIndex = 0;
+        Assert.NotNull(await video.OpenCodecSettingsAsync(video.Encoders[0]));
+    }
+
+    [Fact]
+    public async Task SwitchingVideoTargetPreservesIndependentSelectionsAndOverrides()
+    {
+        var service = new VideoService(new VideoSettings
+        {
+            Av1Encoder = "svtav1enc", CodecOverrides = [new("vp8enc", "qp", "20")],
+            Camera = new VideoSettings { Av1Encoder = "vaav1enc", CodecOverrides = [new("vp8enc", "qp", "40")] }
+        });
+        var video = new VideoControlVM(service, new Capabilities());
+        await video.LoadCommand.Execute().ToTask();
+        Assert.Equal("svtav1enc", video.Encoders.Single(e => e.Codec == VideoCodec.AV1).PreferredFactory);
+        video.VideoTargetIndex = 1;
+        Assert.Equal(0, service.SaveCount);
+        var selection = video.Encoders.Single(e => e.Codec == VideoCodec.AV1);
+        Assert.Equal("vaav1enc", selection.PreferredFactory);
+        selection.SelectedIndex = 0;
+        Assert.Null(service.Settings.ForCamera().Av1Encoder);
+        Assert.Equal("svtav1enc", service.Settings.Av1Encoder);
+        Assert.Equal("20", Assert.Single(service.Settings.CodecOverrides).Value);
+        Assert.Equal("40", Assert.Single(service.Settings.ForCamera().CodecOverrides).Value);
+        video.VideoTargetIndex = 0;
+        Assert.Equal("svtav1enc", video.Encoders.Single(e => e.Codec == VideoCodec.AV1).PreferredFactory);
+    }
+
+    [Fact]
     public async Task CodecWarningCancellationDoesNotOpenOrSaveAndAcknowledgmentSurvivesReloadAndReset()
     {
         var service = new VideoService(new VideoSettings());

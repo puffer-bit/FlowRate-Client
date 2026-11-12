@@ -114,7 +114,7 @@
             </Button>
 
             <Button Grid.Column="2" Classes="hybridAction leave"
-                    Width="32" Margin="6,0,0,0" VerticalAlignment="Center"
+                    Width="32" Margin="6,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
                     Command="{Binding StatusBar.CloseCommand, FallbackValue={x:Null}}"
                     ToolTip.Tip="{l:Text main.voice.leave}"
                     AutomationProperties.Name="{l:Text main.voice.leave}">
@@ -164,37 +164,9 @@
                     </Button>
                 </Panel>
 
-                <Panel>
-                    <Button Classes="hybridAction"
-                            IsVisible="{Binding !StatusBar.IsScreenShareOn, FallbackValue=True}"
-                            Command="{Binding StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"
-                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
-                            AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
-                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
-                    </Button>
+                <hybrid:HybridBroadcastButton Classes="panel" HorizontalAlignment="Stretch"
+                                              HorizontalContentAlignment="Stretch" DataContext="{Binding StatusBar}"/>
 
-                    <!-- A running share is changed or stopped from a menu -->
-                    <Button Classes="hybridAction sharing"
-                            IsVisible="{Binding StatusBar.IsScreenShareOn, FallbackValue=False}"
-                            ToolTip.Tip="{l:Text main.voice.toggleScreenShare}"
-                            AutomationProperties.Name="{l:Text main.voice.toggleScreenShare}">
-                        <Button.Flyout>
-                            <Flyout Placement="TopEdgeAlignedRight">
-                                <StackPanel Spacing="2">
-                                    <menus:MenuItemButton Icon="{StaticResource GearIcon}"
-                                                          Content="{l:Text hybrid.screen.change}"
-                                                          menus:FlyoutMenu.CloseOnClick="True"
-                                                          Command="{Binding StatusBar.ChangeScreenShareCommand, FallbackValue={x:Null}}"/>
-                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
-                                                          Content="{l:Text hybrid.screen.stop}"
-                                                          menus:FlyoutMenu.CloseOnClick="True"
-                                                          Command="{Binding StatusBar.ToggleScreenShareCommand, FallbackValue={x:Null}}"/>
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                        <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
-                    </Button>
-                </Panel>
             </UniformGrid>
         </Grid>
     </Border>

@@ -83,6 +83,7 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
     private readonly Pipeline _pipeline;
     private readonly IVideoMedia _video;
+    private readonly Func<uint, bool> _isCamera;
     private readonly ILogger _logger;
     private readonly int _sessionId;
     private readonly ConcurrentDictionary<string, Branch> _branches = new();
@@ -117,8 +118,9 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
     /// </param>
     public IncomingStreamPlayer(Pipeline pipeline, IVideoMedia video, ILogger logger, int sessionId,
         Func<uint, double> resolveVolume, Action<uint, RawVideoFrame> onVideoFrame,
-        Action<uint, VideoDecoding> onVideoDecoding, bool isPlaybackEnabled = true)
+        Action<uint, VideoDecoding> onVideoDecoding, bool isPlaybackEnabled = true, Func<uint, bool>? isCamera = null)
     {
+        _isCamera = isCamera ?? (_ => false);
         _onVideoFrame = onVideoFrame;
         _onVideoDecoding = onVideoDecoding;
         _pipeline = pipeline;
@@ -341,7 +343,8 @@ internal sealed partial class IncomingStreamPlayer : IDisposable
 
         var video = new IncomingVideo(() =>
             {
-                var decoder = _video.CreateDecoder(codec, $"{_sessionId}_{padName}");
+                var decoder = _video.CreateDecoder(codec, $"{_sessionId}_{padName}", _isCamera(mline)
+                    ? Client.Core.Settings.VideoSettings.Current.ForCamera() : Client.Core.Settings.VideoSettings.Current);
 
                 if (decoder != null)
                 {

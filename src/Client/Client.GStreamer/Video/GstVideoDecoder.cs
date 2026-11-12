@@ -41,10 +41,7 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     private readonly string _name;
     private readonly ILogger _logger;
     // Keep codec preferences stable when rebuilding after a surface failure.
-    private readonly VideoSettings _settings = VideoSettings.Current with
-    {
-        CodecOverrides = VideoSettings.Current.CodecOverrides.ToArray()
-    };
+    private readonly VideoSettings _settings;
     private readonly Lock _lock = new();
 
     private Running? _running;
@@ -59,17 +56,18 @@ internal sealed partial class GstVideoDecoder : IVideoDecoder
     public event Action<VideoDecoding>? DecodingChanged;
     public event Action? KeyFrameNeeded;
 
-    private GstVideoDecoder(VideoCodec codec, string name, ILogger logger)
+    private GstVideoDecoder(VideoCodec codec, string name, ILogger logger, VideoSettings settings)
     {
+        _settings = settings with { CodecOverrides = settings.CodecOverrides.ToArray() };
         _codec = codec;
         _name = name;
         _logger = logger;
     }
 
     /// <returns>Null when the runtime has no decoder of the codec or an element is missing.</returns>
-    public static GstVideoDecoder? Create(VideoCodec codec, string name, ILogger logger)
+    public static GstVideoDecoder? Create(VideoCodec codec, string name, ILogger logger, VideoSettings? settings = null)
     {
-        var decoder = new GstVideoDecoder(codec, name, logger);
+        var decoder = new GstVideoDecoder(codec, name, logger, settings ?? VideoSettings.Current);
 
         if (decoder.Build(true) is not { } running)
             return null;

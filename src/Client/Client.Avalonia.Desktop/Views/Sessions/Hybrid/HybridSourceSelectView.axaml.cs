@@ -37,7 +37,9 @@ public partial class HybridSourceSelectView : ViewControl<VideoSourceSelectWindo
             if (!IsLoaded)
                 return;
 
-            if (ViewModel?.UsesSystemPicker == true)
+            if (ViewModel?.IsCameraMode == true)
+                CameraSourceBox.Focus();
+            else if (ViewModel?.UsesSystemPicker == true)
                 SystemSourceButton.Focus();
             else
                 WindowsSourceButton.Focus();

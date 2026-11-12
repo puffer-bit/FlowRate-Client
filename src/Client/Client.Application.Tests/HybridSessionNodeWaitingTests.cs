@@ -116,6 +116,9 @@ public class HybridSessionNodeWaitingTests
         public TaskCompletionSource WaitingObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Dictionary<string, Delegate?> _events = [];
 
+        public void RaiseEvent(string name, params object?[] values) =>
+            _events.GetValueOrDefault(name)?.DynamicInvoke(values);
+
         public void Raise(string name, HybridSessionNodeEvent value) =>
             ((Action<HybridSessionNodeEvent>?)_events.GetValueOrDefault(name))?.Invoke(value);
 

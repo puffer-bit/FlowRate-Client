@@ -12,6 +12,9 @@ namespace Client.Application.Ports;
 /// </summary>
 public interface IWebRTCTransport : IDisposable
 {
+    /// <summary>The capture of an outbound video track failed after starting.</summary>
+    event Action<string>? VideoCaptureFailed;
+
     /// <summary>
     /// Raised once the local description is set. The parameters have to be delivered to the SFU
     /// with transport.connect before the DTLS handshake can succeed.

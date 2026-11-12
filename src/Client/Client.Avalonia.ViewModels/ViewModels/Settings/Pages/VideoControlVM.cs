@@ -34,6 +34,21 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         ("presentation", ["timedPresentation", "presentationBuffer"]),
         ("encoding", ["encoder", "av1Encoder", "vp8Encoder", "vp9Encoder"]));
 
+    private VideoSettings _profiles = new();
+    public int VideoTargetIndex
+    {
+        get;
+        set
+        {
+            if (value is not (0 or 1) || field == value) return;
+            _profiles = ToSettings();
+            this.RaiseAndSetIfChanged(ref field, value);
+            _isUpdating = true;
+            Apply(_profiles);
+            _isUpdating = false;
+        }
+    }
+
     public IReadOnlyList<CodecSelectionVM> Encoders { get; }
     public IReadOnlyList<CodecSelectionVM> Decoders { get; }
 
@@ -87,7 +102,12 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         try
         {
             var combined = _codecOverrides.Where(p => p.Factory != factory).Concat(values).ToArray();
-            await _videoService.SaveSettingsAsync(ToSettings() with { CodecOverrides = combined });
+            var current = ToSettings();
+            var updated = VideoTargetIndex == 1
+                ? current with { Camera = current.ForCamera() with { CodecOverrides = combined } }
+                : current with { CodecOverrides = combined };
+            await _videoService.SaveSettingsAsync(updated);
+            _profiles = updated;
             _codecOverrides = combined;
             UpdateOverrideIndicators();
         }
@@ -228,7 +248,19 @@ public class VideoControlVM : ReactiveObject, ISettingVM
         await SaveSettingsAsync(() => defaults);
     }
 
-    private VideoSettings ToSettings() => new()
+    private VideoSettings ToSettings()
+    {
+        var selected = ReadSelectedSettings();
+        _profiles = VideoTargetIndex == 1
+            ? _profiles with { Camera = selected, IsCodecSettingsWarningAcknowledged = _isCodecSettingsWarningAcknowledged,
+                IsZeroCopyEnabled = selected.IsZeroCopyEnabled,
+                IsTimedPresentationEnabled = selected.IsTimedPresentationEnabled,
+                PresentationBufferFrames = selected.PresentationBufferFrames }
+            : selected with { Camera = _profiles.Camera };
+        return _profiles;
+    }
+
+    private VideoSettings ReadSelectedSettings() => new()
     {
         IsHardwareDecodingEnabled = true,
         CodecOverrides = _codecOverrides,
@@ -249,8 +281,11 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 
     private void Apply(VideoSettings settings)
     {
+        _profiles = settings;
+        if (VideoTargetIndex == 1)
+            settings = settings.ForCamera();
         _codecOverrides = settings.CodecOverrides;
-        _isCodecSettingsWarningAcknowledged = settings.IsCodecSettingsWarningAcknowledged;
+        _isCodecSettingsWarningAcknowledged = _profiles.IsCodecSettingsWarningAcknowledged;
         UpdateOverrideIndicators();
         foreach (var encoder in Encoders)
             encoder.Load(settings.GetEncoder(encoder.Codec));
