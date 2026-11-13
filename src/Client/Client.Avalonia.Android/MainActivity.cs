@@ -122,14 +122,45 @@ public class MainActivity : AvaloniaMainActivity
 
         // Created again by the system, the activity gets the intent it was first started with once more
         if (savedInstanceState == null)
+        {
+            ShowOverLockScreenForCall(Intent);
             RequestChat(Intent);
+        }
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
         base.OnNewIntent(intent);
+        ShowOverLockScreenForCall(intent);
         RequestChat(intent);
     }
+
+    /// <summary>
+    /// A call accepted on the lock screen goes on over it, as a phone call does.
+    /// </summary>
+    private void ShowOverLockScreenForCall(Intent? intent)
+    {
+        if (IncomingCallNotifications.ReadAction(this, intent) is { Action: "accept" })
+            SetOverLockScreen(true);
+    }
+
+    private void SetOverLockScreen(bool value)
+    {
+        if (_isOverLockScreen == value)
+            return;
+        _isOverLockScreen = value;
+        if (OperatingSystem.IsAndroidVersionAtLeast(27))
+        {
+            SetShowWhenLocked(value);
+            SetTurnScreenOn(value);
+        }
+        else if (value)
+            Window?.AddFlags(WindowManagerFlags.ShowWhenLocked | WindowManagerFlags.TurnScreenOn);
+        else
+            Window?.ClearFlags(WindowManagerFlags.ShowWhenLocked | WindowManagerFlags.TurnScreenOn);
+    }
+
+    private bool _isOverLockScreen;
 
     protected override void OnStart()
     {
@@ -140,6 +171,8 @@ public class MainActivity : AvaloniaMainActivity
     protected override void OnStop()
     {
         NativeTextMenu.TryDismissActive();
+        // Once the user has left, the lock screen protects the application again
+        SetOverLockScreen(false);
         SetIsInFront(false);
         base.OnStop();
     }

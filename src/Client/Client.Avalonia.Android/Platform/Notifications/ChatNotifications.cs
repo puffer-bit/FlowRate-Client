@@ -212,19 +212,27 @@ internal static class ChatNotifications
     }
 
     // Only an avatar that is kept already: a push comes with no connection to fetch one over
-    private static IconCompat? FindAvatar(PushPayload payload, IMediaCache? mediaCache)
+    private static IconCompat? FindAvatar(PushPayload payload, IMediaCache? mediaCache) =>
+        FindRoundAvatar(payload.CoordinatorId, payload.SenderAvatarUrl, mediaCache) is { } round
+            ? IconCompat.CreateWithBitmap(round)
+            : null;
+
+    /// <summary>
+    /// The avatar at <paramref name="avatarUrl"/> cut round, when it is kept already.
+    /// </summary>
+    internal static Bitmap? FindRoundAvatar(string coordinatorId, string? avatarUrl, IMediaCache? mediaCache)
     {
-        if (mediaCache == null || AvatarAddress.IdOf(payload.SenderAvatarUrl) is not { } avatarId)
+        if (mediaCache == null || AvatarAddress.IdOf(avatarUrl) is not { } avatarId)
             return null;
 
         try
         {
-            if (mediaCache.FindAvatar(payload.CoordinatorId, avatarId) is not { } file)
+            if (mediaCache.FindAvatar(coordinatorId, avatarId) is not { } file)
                 return null;
 
             using var picture = BitmapFactory.DecodeFile(file);
 
-            return picture == null ? null : IconCompat.CreateWithBitmap(CropCircle(picture));
+            return picture == null ? null : CropCircle(picture);
         }
         catch (Exception)
         {
