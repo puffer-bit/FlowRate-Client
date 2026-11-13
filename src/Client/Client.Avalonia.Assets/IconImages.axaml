@@ -955,6 +955,29 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Read receipts of own messages: one check when sent, two when someone read it -->
+    <DrawingImage x:Key="ReceiptSentIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 12.5 L9.5 17 L19 7.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource SecondaryTextBrush}" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="ReceiptReadIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M1.5 12.5 L6 17 L15.5 7.5 M10.5 15.5 L12 17 L21.5 7.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource LinkTextBrush}" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- White check mark in green circle (success). Source: Icons/MarkInCircleIcon.svg -->
     <DrawingImage x:Key="MarkInCircleIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

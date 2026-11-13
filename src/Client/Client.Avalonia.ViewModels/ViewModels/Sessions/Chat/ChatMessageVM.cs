@@ -48,6 +48,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(Reactions));
             this.RaisePropertyChanged(nameof(ReactionChoices));
             this.RaisePropertyChanged(nameof(HasReactions));
+            this.RaisePropertyChanged(nameof(ReactionDetails));
+            this.RaisePropertyChanged(nameof(CanShowReaders));
             this.RaisePropertyChanged(nameof(CanDelete));
             this.RaisePropertyChanged(nameof(CanPin));
             this.RaisePropertyChanged(nameof(HasText));
@@ -358,7 +360,99 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public IReadOnlyList<ChatReactionVM> Reactions => Message.Reactions
         .GroupBy(reaction => reaction.Emoji)
         .Select(group => new ChatReactionVM(group.Key, group.Select(r => r.UserId).Distinct().Count(),
-            group.Any(r => r.UserId == _currentUserId), ReactAsync)).ToList();
+            group.Any(r => r.UserId == _currentUserId), ReactAsync,
+            string.Join("\n", DetailsOf(group).Select(detail => $"{detail.Name} — {detail.TimeText}")))).ToList();
+
+    /// <summary>Every reaction with who set it and when, the earliest first.</summary>
+    public IReadOnlyList<ChatReactionDetailVM> ReactionDetails => DetailsOf(Message.Reactions);
+
+    private List<ChatReactionDetailVM> DetailsOf(IEnumerable<ChatReaction> reactions) => reactions
+        .OrderBy(reaction => reaction.ReactedAt ?? DateTime.MinValue)
+        .Select(reaction => new ChatReactionDetailVM(reaction.Emoji,
+            _nameOf?.Invoke(reaction.UserId) ?? Strings.Get("chat.unknownUser"),
+            ChatReceiptTime.Format(reaction.ReactedAt)))
+        .ToList();
+
+    private Func<int, string>? _nameOf;
+
+    /// <summary>Names of the users who reacted, from the chat's directory; called again when they change.</summary>
+    public void ApplyUserNames(Func<int, string> nameOf)
+    {
+        _nameOf = nameOf;
+        if (Message.Reactions.Count == 0)
+            return;
+        this.RaisePropertyChanged(nameof(Reactions));
+        this.RaisePropertyChanged(nameof(ReactionDetails));
+    }
+
+    // ----- Read receipts: own messages of direct chats and groups -----
+
+    /// <summary>Set by the chat; None for messages of others, system messages and server channels.</summary>
+    public ChatDeliveryStatus DeliveryStatus
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasDeliveryStatus));
+            this.RaisePropertyChanged(nameof(IsDelivered));
+            this.RaisePropertyChanged(nameof(IsRead));
+            this.RaisePropertyChanged(nameof(DeliveryTooltip));
+        }
+    }
+
+    public bool HasDeliveryStatus => DeliveryStatus != ChatDeliveryStatus.None;
+    public bool IsDelivered => DeliveryStatus == ChatDeliveryStatus.Sent;
+    public bool IsRead => DeliveryStatus == ChatDeliveryStatus.Read;
+
+    /// <summary>A direct chat names the time it was read once that is known; groups have the readers list.</summary>
+    public bool ShowsReadTime { get; init; }
+
+    public string DeliveryTooltip => DeliveryStatus switch
+    {
+        ChatDeliveryStatus.Read when ShowsReadTime && _readers?.FirstReadAt is { } at =>
+            Strings.Format("chat.receipts.readAt", ("time", ChatReceiptTime.Format(at))),
+        ChatDeliveryStatus.Read => Strings.Get("chat.receipts.read"),
+        ChatDeliveryStatus.Sent => Strings.Get("chat.receipts.sent"),
+        _ => ""
+    };
+
+    /// <summary>Creates the readers list of this message; null where the user may not see one.</summary>
+    public Func<ChatMessageReadersVM>? CreateReaders { get; init; }
+
+    public bool CanShowReaders => CreateReaders != null && HasDeliveryStatus && !Message.IsDeleted;
+
+    private ChatMessageReadersVM? _readers;
+
+    /// <summary>The readers list, made and loaded on first use; kept up to date while the message lives.</summary>
+    public ChatMessageReadersVM? Readers
+    {
+        get
+        {
+            if (_readers == null && CanShowReaders)
+            {
+                _readers = CreateReaders!();
+                _readers.Changed += () => this.RaisePropertyChanged(nameof(DeliveryTooltip));
+                _ = _readers.LoadAsync();
+            }
+            return _readers;
+        }
+    }
+
+    /// <summary>Asks who read the message when the time of reading is about to be shown.</summary>
+    public void LoadReadTime()
+    {
+        if (ShowsReadTime && IsRead)
+            _ = Readers;
+    }
+
+    public void DisposeReaders()
+    {
+        _readers?.Dispose();
+        _readers = null;
+    }
 
     public IReadOnlyList<ChatReactionVM> ReactionChoices => ChatReactionEmoji.All.Select(emoji =>
         new ChatReactionVM(emoji, Message.Reactions.Count(r => r.Emoji == emoji),

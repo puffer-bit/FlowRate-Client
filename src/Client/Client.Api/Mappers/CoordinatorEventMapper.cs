@@ -4,6 +4,7 @@ using Shared.Models.Notifications.CoordinatorInfo;
 using Shared.Models.Notifications.Heartbeat;
 using Shared.Models.Notifications.SessionInfo;
 using Shared.Models.Media;
+using Client.Core.Chat;
 using Client.Core.Coordinator;
 
 namespace Client.Api.Mappers;
@@ -48,6 +49,9 @@ internal static class CoordinatorEventMapper
         ChatViewersChangedNotification changed => new ChatViewersChangedEvent(changed.ChatId,
             changed.SubscriptionId, changed.Upserted.Select(user => user.ToModel()).ToList(), changed.Removed),
         ChatReadStateChangedNotification readChanged => new ChatReadStateChangedEvent(readChanged.State.ToModel()),
+        ChatPeerReadNotification peerRead => new ChatPeerReadEvent(new ChatPeerRead(peerRead.ChatId,
+            peerRead.ReaderUserId, peerRead.LastReadMessageId,
+            DateTime.SpecifyKind(peerRead.ReadAt.ToUniversalTime(), DateTimeKind.Utc))),
 
         HybridSessionStateChangedNotification changed => new SessionNodeStateChangedEvent(changed.SessionId, changed.State),
         HybridSessionSFUNodeChangedNotification changed => new SessionNodeReplacedEvent(changed.SessionId),

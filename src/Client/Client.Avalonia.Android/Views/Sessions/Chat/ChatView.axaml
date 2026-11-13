@@ -660,6 +660,57 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Who read an own message and when; only its author sees it -->
+                <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding CanShowReaders}">
+                    <TextBlock Text="{l:Text chat.menu.readers}" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="{l:Text chat.readers.loading}" FontSize="13"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
+                    <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource ErrorBrush}"
+                               IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
+                    <TextBlock Text="{l:Text chat.readers.empty}" FontSize="13"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
+                    <ScrollViewer MaxHeight="180" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="chatVm:ChatMessageReaderVM">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
+                                        <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Who reacted and when, for everyone -->
+                <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding HasReactions}">
+                    <TextBlock Text="{l:Text chat.reaction.who}" FontSize="13" FontWeight="SemiBold"/>
+                    <ScrollViewer MaxHeight="160" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding ReactionDetails}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="chatVm:ChatReactionDetailVM">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2">
+                                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
+                                                   FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
                 <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
                                       IsVisible="{Binding CanReact}">
                     <menus:MenuItemButton.Flyout>

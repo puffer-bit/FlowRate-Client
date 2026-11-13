@@ -22,7 +22,15 @@
         <Panel>
             <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
                                           Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
-        <Grid ColumnDefinitions="46, *" IsVisible="{Binding !IsSystem}">
+        <Grid ColumnDefinitions="46, *, Auto" IsVisible="{Binding !IsSystem}">
+
+            <!-- Own messages of direct chats and groups: one check when sent, two once someone read it;
+                 who and when is in the menu of the message -->
+            <Panel Grid.Column="2" IsVisible="{Binding HasDeliveryStatus}"
+                   Width="16" Height="16" Margin="6,2,0,0" VerticalAlignment="Top">
+                <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
+                <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
+            </Panel>
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped"

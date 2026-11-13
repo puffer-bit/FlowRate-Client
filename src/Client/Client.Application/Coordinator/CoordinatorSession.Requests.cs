@@ -239,6 +239,9 @@ public partial class CoordinatorSession
     public Task<RequestResult<ChatReadState>> MarkChatRead(int chatId, int messageId) =>
         SendAsync(() => _gateway.MarkChatRead(chatId, messageId));
 
+    public Task<RequestResult<IReadOnlyList<ChatMessageReader>>> RequestChatMessageReaders(int chatId, int messageId) =>
+        SendAsync(() => _gateway.RequestChatMessageReaders(chatId, messageId));
+
     public Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress = null,
         CancellationToken cancellationToken = default) =>
         _gateway.UploadMedia(upload, progress, cancellationToken);

@@ -227,6 +227,7 @@ public interface ICoordinatorGateway : IDisposable
     Task<IReadOnlyList<ChatReadState>> RequestChatReadStates();
     Task<ChatReadState> MarkChatRead(int sessionId,
         int messageId);
+    Task<IReadOnlyList<ChatMessageReader>> RequestChatMessageReaders(int sessionId, int messageId);
     Task LeaveSession(int sessionId);
     Task KickFromHybridSession(int sessionId, int userId);
     Task ApproveInHybridSession(int sessionId, int userId);
