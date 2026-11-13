@@ -1,3 +1,4 @@
+using Client.Views.Dialogs;
 using Client.ViewModels.Sessions.Chat;
 using Client.Views.Common;
 using ReactiveUI;
