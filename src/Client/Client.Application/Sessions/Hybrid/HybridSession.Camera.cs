@@ -77,6 +77,26 @@ public partial class HybridSession
         return await _coordinatorSession.StopVideoShareInHybridSession(Model.Id);
     }
 
+    public async Task<RequestResult> SwitchCameraAsync(CameraVideoInput input, ScreenShareSettings settings)
+    {
+        await _cameraChange.WaitAsync();
+        try
+        {
+            if (IsDisposed || _cameraOutbound is not { } outbound) return ErrorCode.Internal;
+            var transport = _webRTCService;
+            if (await Task.Run(() => transport.SwitchOutboundInput(outbound.Id, input)))
+                return RequestResult.Success;
+            await StopCameraCoreAsync();
+            return await StartCameraCoreAsync(input, settings);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Camera could not be switched in session {SessionId}", Model.Id);
+            return ErrorCode.UnsupportedMedia;
+        }
+        finally { _cameraChange.Release(); }
+    }
+
     private async Task HandleCameraCaptureFailedAsync(IWebRTCTransport transport, string outboundId)
     {
         await _cameraChange.WaitAsync();

@@ -1,3 +1,4 @@
+using Client.Application.Ports;
 using Client.Core.Media;
 
 namespace Client.LibWebRTC.Voice;
@@ -22,6 +23,13 @@ public interface IVideoSendSource : IDisposable
 /// <param name="Encoded">Pictures the encoder of the section took; the rest libwebrtc never sent on.</param>
 /// <param name="Queue">From a push to the encoder taking the picture.</param>
 public readonly record struct VideoSendTiming(long Pushed, long Encoded, TimingStats Queue);
+
+/// <summary>
+/// A picture the peer captures and encodes itself, as the camera of a phone: it is the capture and
+/// the source of its section at once, so nothing is pushed into it and libwebrtc keeps the bitrate and
+/// the keyframes to itself.
+/// </summary>
+public interface IPeerVideoCapture : IScreenCapture, IVideoSendSource;
 
 /// <summary>What libwebrtc wants of the encoder of a screen we send. Called on a thread of libwebrtc.</summary>
 public interface IVideoSendListener

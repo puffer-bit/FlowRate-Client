@@ -29,7 +29,7 @@ internal sealed partial class AndroidWebRTCTransportFactory(ILoggerFactory logge
                 LogMicrophoneDenied(logger, sessionId);
 
             return new AndroidVoicePeer(peerListener, isMicrophoneAllowed);
-        }, listener), logger, isPlaybackEnabled, isVideoDecodedByPeer: true);
+        }, listener) { VideoCaptures = AndroidCameraCapture.Create }, logger, isPlaybackEnabled, isVideoDecodedByPeer: true);
     }
 
     [LoggerMessage(LogLevel.Warning, "[Session {SessionId}] Microphone permission was not granted: the session is only listened to")]

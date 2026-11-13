@@ -701,5 +701,8 @@ public partial class MainWindowVM : ReactiveObject
         RememberLastSession();
     }
 
+    /// <summary>Returns to the home screen while keeping chats and voice sessions available.</summary>
+    public void ShowHome() => ChangeContent(null);
+
     public void ExitFullScreen() => IsContentFullScreen = false;
 }

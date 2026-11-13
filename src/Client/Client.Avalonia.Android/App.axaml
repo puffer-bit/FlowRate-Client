@@ -1,5 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:platform="clr-namespace:Client.Droid.Platform"
              x:Class="Client.Droid.App">
 
     <Application.Styles>
@@ -16,16 +18,27 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/ListBox/ListBoxItemStyles.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/ListBox/SessionsListBoxStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxStyle.axaml"/>
+        <Style Selector=":is(TextBox)">
+            <Setter Property="platform:NativeTextMenu.Enabled" Value="True"/>
+            <Setter Property="ContextFlyout" Value="{x:Null}"/>
+        </Style>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBlocks/TextBlockStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageViewStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Hints/HintBlock.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/EmptyStates/EmptyState.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Avatars/UserAvatar.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Menus/MenuItemButton.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/FlyoutStyle.axaml"/>
+        <Style Selector="menus|MenuItemButton">
+            <Setter Property="ShowGesture" Value="False"/>
+            <Setter Property="MinHeight" Value="48"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/LoadingIndicators/ProgressRing.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
-        <StyleInclude Source="/Views/BottomSheet.axaml"/>
+        <StyleInclude Source="/Views/Common/Styles/BottomSheet.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/ExpandableSection.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsPage.axaml"/>

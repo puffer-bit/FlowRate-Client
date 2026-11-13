@@ -6,7 +6,7 @@ using Client.Api;
 using Client.Application;
 using Client.Avalonia.Localization;
 using Client.Droid.Platform;
-using Client.Droid.Views;
+using Client.Droid.Views.Main;
 using Client.Infrastructure;
 using Client.Tools.Logging;
 using Client.ViewModels.Main;

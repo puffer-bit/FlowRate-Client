@@ -5,12 +5,18 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- An incoming call rings over the lock screen, see Platform/Notifications/IncomingCallNotifications -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- Voice -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- SCO call routing on Android 7–11; newer versions use AudioManager communication devices. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+
+    <!-- Camera in a session, captured by libwebrtc; a phone without one still installs -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <!-- The voice session off the screen, see Platform/Calls/CallService -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

@@ -100,6 +100,8 @@ public sealed class ChatSenderDirectory : IDisposable
             if (content.ActorUserId is > 0) userIds.Add(content.ActorUserId.Value);
             if (content.SubjectUserId is > 0) userIds.Add(content.SubjectUserId.Value);
         }
+        foreach (var reaction in message.Message.Reactions)
+            if (reaction.UserId > 0) userIds.Add(reaction.UserId);
         if (message.Reply?.SenderUserId is { } replySenderId)
             userIds.Add(replySenderId);
         userIds.UnionWith(ChatMessageBody.UserIdsIn(message.Message.TextContent?.Text));
@@ -165,6 +167,7 @@ public sealed class ChatSenderDirectory : IDisposable
             id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),
             id => _displayNames.ContainsKey(id) && !_deleted.Contains(id));
         messageVm.Body = messageVm.Message.TextContent is { } text ? RenderBody(text.Text) : null;
+        messageVm.ApplyUserNames(id => _deleted.Contains(id) ? DeletedName : GetName(id) ?? UnknownName);
 
         if (messageVm.Reply != null)
             Apply(messageVm.Reply);

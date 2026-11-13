@@ -39,6 +39,9 @@ public class MenuItemButton : Button
     public static readonly StyledProperty<KeyGesture?> GestureProperty =
         AvaloniaProperty.Register<MenuItemButton, KeyGesture?>(nameof(Gesture));
 
+    public static readonly StyledProperty<bool> ShowGestureProperty =
+        AvaloniaProperty.Register<MenuItemButton, bool>(nameof(ShowGesture), true);
+
     public static readonly DirectProperty<MenuItemButton, IReadOnlyList<GestureKey>> GestureKeysProperty =
         AvaloniaProperty.RegisterDirect<MenuItemButton, IReadOnlyList<GestureKey>>(nameof(GestureKeys), o => o.GestureKeys);
 
@@ -65,6 +68,12 @@ public class MenuItemButton : Button
     {
         get => GetValue(GestureProperty);
         set => SetValue(GestureProperty, value);
+    }
+
+    public bool ShowGesture
+    {
+        get => GetValue(ShowGestureProperty);
+        set => SetValue(ShowGestureProperty, value);
     }
 
     /// <summary>The gesture split into its keycaps, modifiers first</summary>
@@ -102,6 +111,9 @@ public class MenuItemButton : Button
     protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
+
+        if (e.Pointer.Type != PointerType.Mouse)
+            return;
 
         CloseSiblingSubmenus();
         if (Flyout == null || Flyout.IsOpen)

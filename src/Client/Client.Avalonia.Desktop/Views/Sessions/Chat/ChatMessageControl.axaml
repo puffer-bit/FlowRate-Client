@@ -31,7 +31,7 @@
         <Panel>
             <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
                                           Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
-        <Grid ColumnDefinitions="46, *" IsVisible="{Binding !IsSystem}">
+        <Grid ColumnDefinitions="46, *, Auto" IsVisible="{Binding !IsSystem}">
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped" Cursor="Hand"
@@ -200,7 +200,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatReactionVM">
                             <Button Classes="msg-reaction" Classes.mine="{Binding IsMine}"
-                                    Command="{Binding Toggle}">
+                                    Command="{Binding Toggle}" ToolTip.Tip="{Binding Details}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
@@ -220,6 +220,14 @@
             <!-- A continuation of a sequence shows its time at the start, on hover only. The hidden text
                  is one line of the message body, so the time is centered on that first line;
                  the panel is as wide as the avatar, so the time sits under the avatar's center. -->
+            <!-- Own messages of direct chats and groups: one check when sent, two once someone read it -->
+            <Panel Grid.Column="2" Classes="msg-receipt" IsVisible="{Binding HasDeliveryStatus}"
+                   Background="Transparent" Width="18" Height="18" Margin="8,2,0,0" VerticalAlignment="Top"
+                   ToolTip.Tip="{Binding DeliveryTooltip}" PointerEntered="OnReceiptPointerEntered">
+                <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
+                <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
+            </Panel>
+
             <Panel Grid.Column="0" IsVisible="{Binding !IsSequenceStart}"
                    Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
