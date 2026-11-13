@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
 import org.webrtc.Loggable;
 import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
@@ -91,6 +93,11 @@ public final class VoicePeer {
 
     private static PeerConnectionFactory factory;
 
+    // What the camera and the encoders draw with; null where the device gave no EGL, and then the
+    // camera is not offered
+    private static EglBase egl;
+    private static Context applicationContext;
+
     private final Listener listener;
     private final PeerConnection connection;
     private final AudioSource microphoneSource;
@@ -146,11 +153,22 @@ public final class VoicePeer {
                 .createAudioDeviceModule();
 
         try {
+            egl = EglBase.create();
+        } catch (RuntimeException exception) {
+            egl = null;
+        }
+
+        applicationContext = context.getApplicationContext();
+
+        try {
             // Screens are decoded by MediaCodec where the device can, into memory: without an EGL
             // context the pictures come as planes, which the application draws itself
             factory = PeerConnectionFactory.builder()
                     .setAudioDeviceModule(audioDevices)
                     .setVideoDecoderFactory(new DefaultVideoDecoderFactory(null))
+                    // The camera is encoded by MediaCodec where the device can, in software otherwise
+                    .setVideoEncoderFactory(new DefaultVideoEncoderFactory(
+                            egl == null ? null : egl.getEglBaseContext(), true, true))
                     .createPeerConnectionFactory();
         } finally {
             // The factory holds its own native reference.
@@ -208,13 +226,21 @@ public final class VoicePeer {
      * Runs one offer/answer round: applies the description of the SFU, puts the microphone into the
      * sections we send in, answers, and gives each of those sections the SSRC the SFU expects there.
      *
-     * @param sendMids  the sections we send in
-     * @param sendSsrcs the SSRC of each of them, as the SFU created its producer
+     * @param sendMids     the sections we send in
+     * @param sendSsrcs    the SSRC of each of them, as the SFU created its producer
+     * @param sendRtxSsrcs the SSRC of the resent packets of each of them, 0 where there are none
+     * @param sendCameras  the camera of each video section that sends one, null in the others
      */
-    public void negotiate(String offer, final String[] sendMids, final long[] sendSsrcs) {
-        final Map<String, Long> sends = new HashMap<>();
-        for (int i = 0; i < sendMids.length; i++)
-            sends.put(sendMids[i], sendSsrcs[i]);
+    public void negotiate(String offer, final String[] sendMids, final long[] sendSsrcs, final long[] sendRtxSsrcs,
+                          final CameraCapture[] sendCameras) {
+        final Map<String, long[]> sends = new HashMap<>();
+        final Map<String, CameraCapture> cameras = new HashMap<>();
+        for (int i = 0; i < sendMids.length; i++) {
+            sends.put(sendMids[i], new long[] { sendSsrcs[i], sendRtxSsrcs[i] });
+
+            if (sendCameras[i] != null)
+                cameras.put(sendMids[i], sendCameras[i]);
+        }
 
         connection.setRemoteDescription(new Observer("set-remote-description") {
             @Override public void onSetSuccess() {
@@ -223,7 +249,15 @@ public final class VoicePeer {
 
                     if (mid != null && sends.containsKey(mid)) {
                         transceiver.setDirection(RtpTransceiver.RtpTransceiverDirection.SEND_ONLY);
-                        transceiver.getSender().setTrack(microphone, false);
+                        CameraCapture camera = cameras.get(mid);
+
+                        if (camera != null)
+                            transceiver.getSender().setTrack(camera.track(), false);
+                        else if (transceiver.getMediaType() == MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO)
+                            // A camera that stopped: its stream stays, silent, until it is back
+                            transceiver.getSender().setTrack(null, false);
+                        else
+                            transceiver.getSender().setTrack(microphone, false);
                     } else if (transceiver.getSender().track() != null) {
                         // A track that stopped: its section stays, emptied
                         transceiver.getSender().setTrack(null, false);
@@ -244,6 +278,21 @@ public final class VoicePeer {
                 }, new MediaConstraints());
             }
         }, new SessionDescription(SessionDescription.Type.OFFER, offer));
+    }
+
+    /**
+     * Prepares the capture of a camera at the given size and rate, by its name in Camera2; it goes into
+     * a section through negotiate. Null where the device gave no EGL to capture with.
+     */
+    public static CameraCapture createCamera(String device, int width, int height, int framerate,
+                                             CameraCapture.Listener listener) {
+        synchronized (VoicePeer.class) {
+            if (factory == null || egl == null)
+                return null;
+        }
+
+        return new CameraCapture(applicationContext, factory, egl.getEglBaseContext(), device, width, height,
+                framerate, listener);
     }
 
     /** Hands the pictures of the screen of a section to the listener, as I420. */
@@ -376,33 +425,94 @@ public final class VoicePeer {
     }
 
     /**
-     * Replaces the SSRC libwebrtc picked in each section we send in with the one of the producer
-     * of the SFU, which knows our stream by it alone. libwebrtc sends with what the local
-     * description says.
+     * Replaces the SSRCs libwebrtc picked in each section we send in with the ones of the producer of
+     * the SFU, which knows our streams by them alone: the first of the section, or of its group FID, is
+     * the stream, the second of the group the stream of the resent packets. libwebrtc sends with what
+     * the local description says.
      */
-    private static String rewriteSsrcs(String sdp, Map<String, Long> sends) {
+    private static String rewriteSsrcs(String sdp, Map<String, long[]> sends) {
         String[] sections = sdp.split("(?=\r\nm=)");
         StringBuilder result = new StringBuilder();
 
         for (String section : sections) {
-            Long ssrc = null;
+            long[] ssrcs = null;
 
-            for (Map.Entry<String, Long> send : sends.entrySet()) {
+            for (Map.Entry<String, long[]> send : sends.entrySet()) {
                 if (section.contains("\r\na=mid:" + send.getKey() + "\r\n")) {
-                    ssrc = send.getValue();
+                    ssrcs = send.getValue();
                     break;
                 }
             }
 
-            int start = section.indexOf("\r\na=ssrc:");
-
-            if (ssrc != null && start >= 0) {
-                int from = start + "\r\na=ssrc:".length();
-                String old = section.substring(from, section.indexOf(' ', from));
-                section = section.replace("a=ssrc:" + old + " ", "a=ssrc:" + ssrc + " ");
-            }
+            if (ssrcs != null)
+                section = renameSsrcs(section, ssrcs[0], ssrcs[1]);
 
             result.append(section);
+        }
+
+        return result.toString();
+    }
+
+    private static String renameSsrcs(String section, long ssrc, long rtxSsrc) {
+        Map<String, String> renames = new HashMap<>();
+        String group = "\r\na=ssrc-group:FID ";
+        String marker = "\r\na=ssrc:";
+        int groupAt = section.indexOf(group);
+
+        if (groupAt >= 0) {
+            int from = groupAt + group.length();
+            int end = section.indexOf("\r\n", from);
+            String[] members = (end < 0 ? section.substring(from) : section.substring(from, end)).split(" ");
+
+            renames.put(members[0], Long.toString(ssrc));
+
+            if (members.length > 1 && rtxSsrc != 0)
+                renames.put(members[1], Long.toString(rtxSsrc));
+        } else {
+            int at = section.indexOf(marker);
+
+            if (at < 0)
+                return section;
+
+            int from = at + marker.length();
+            renames.put(section.substring(from, section.indexOf(' ', from)), Long.toString(ssrc));
+        }
+
+        String[] lines = section.split("\r\n", -1);
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            if (line.startsWith("a=ssrc:")) {
+                int space = line.indexOf(' ');
+                String old = space < 0 ? line.substring(7) : line.substring(7, space);
+                String renamed = renames.get(old);
+
+                if (renamed != null)
+                    line = "a=ssrc:" + renamed + (space < 0 ? "" : line.substring(space));
+            } else if (line.startsWith("a=ssrc-group:")) {
+                String[] parts = line.split(" ");
+
+                for (int j = 1; j < parts.length; j++) {
+                    String renamed = renames.get(parts[j]);
+
+                    if (renamed != null)
+                        parts[j] = renamed;
+                }
+
+                StringBuilder joined = new StringBuilder(parts[0]);
+
+                for (int j = 1; j < parts.length; j++)
+                    joined.append(' ').append(parts[j]);
+
+                line = joined.toString();
+            }
+
+            if (i > 0)
+                result.append("\r\n");
+
+            result.append(line);
         }
 
         return result.toString();

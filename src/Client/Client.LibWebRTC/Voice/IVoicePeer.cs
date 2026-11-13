@@ -30,6 +30,13 @@ public interface IVoicePeer : IDisposable
     IVideoSendSource? CreateVideoSource(int width, int height, int maxFramerate, IVideoSendListener listener) => null;
 
     /// <summary>
+    /// A picture the peer captures and encodes itself, as the camera of a phone: it goes into a
+    /// section through <see cref="Negotiate"/>.
+    /// </summary>
+    /// <returns>Null where the peer captures no such input; the picture is then captured by the media.</returns>
+    IPeerVideoCapture? CreateVideoCapture(VideoInput input, ScreenShareSettings settings) => null;
+
+    /// <summary>
     /// A sound to send besides the microphone, as the one of a shown screen: it goes into a section
     /// through <see cref="Negotiate"/>.
     /// </summary>

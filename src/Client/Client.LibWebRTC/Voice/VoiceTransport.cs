@@ -494,13 +494,14 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     }
 
     /// <summary>
-    /// Shows a screen: <see cref="IVideoMedia"/> captures and encodes it, libwebrtc sends the pictures.
+    /// Shows a screen or a camera: <see cref="IVideoMedia"/> captures and encodes it, or the peer does
+    /// both itself (<see cref="IVoicePeer.CreateVideoCapture"/>); libwebrtc sends the pictures.
     /// What is sent also comes back through <see cref="VideoFrameReady"/>, as our own screen is not
     /// received from the SFU.
     /// </summary>
     public bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings)
     {
-        if (outbound.MediaType != MediaType.Video || _video == null || RtpCodec.VideoCodecOf(outbound.MimeType) is not { } codec)
+        if (outbound.MediaType != MediaType.Video || RtpCodec.VideoCodecOf(outbound.MimeType) is not { } codec)
             return false;
 
         IVoicePeer? peer;
@@ -516,7 +517,10 @@ public sealed partial class VoiceTransport : IWebRTCTransport
                 return true;
         }
 
-        var capture = _video.CreateCapture(input, settings, codec, _sessionId.ToString(CultureInfo.InvariantCulture));
+        // A peer that captures the input itself, as the camera of a phone, also encodes it: never inside
+        // the lock, like the microphone
+        var ownCapture = peer.CreateVideoCapture(input, settings);
+        var capture = ownCapture ?? _video?.CreateCapture(input, settings, codec, _sessionId.ToString(CultureInfo.InvariantCulture));
 
         if (capture == null)
         {
@@ -530,8 +534,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         var height = settings.MaxHeight;
         var width = (height * 16 / 9 + 1) & ~1;
 
-        // Never inside the lock, like the microphone
-        if (peer.CreateVideoSource(width, height, settings.Framerate, video) is not { } source)
+        if (((IVideoSendSource?)ownCapture ?? peer.CreateVideoSource(width, height, settings.Framerate, video)) is not { } source)
         {
             capture.Dispose();
             LogCaptureFailed(_sessionId, input, codec,
@@ -637,6 +640,16 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             peer?.StopMicrophone();
 
         Negotiate();
+    }
+
+    public bool SwitchOutboundInput(string outboundId, VideoInput input)
+    {
+        OutgoingVideo? video;
+
+        lock (_lock)
+            _outgoingVideos.TryGetValue(outboundId, out video);
+
+        return video?.SwitchInput(input) == true;
     }
 
     public void SetOutboundPreviewShown(string outboundId, bool isShown)

@@ -128,6 +128,13 @@ public interface IWebRTCTransport : IDisposable
     bool StartOutbound(OutboundTrack outbound, VideoInput input, ScreenShareSettings settings);
 
     /// <summary>
+    /// Moves a video track we send to another input, such as the other camera of a phone, without
+    /// stopping it; see <see cref="IScreenCapture.SwitchInput"/>.
+    /// </summary>
+    /// <returns>False when the track is not sent or its capture cannot switch; it is then stopped and started again.</returns>
+    bool SwitchOutboundInput(string outboundId, VideoInput input) => false;
+
+    /// <summary>
     /// Changes the gain of a running outbound track.
     /// </summary>
     void SetOutboundVolume(string outboundId, double volume);

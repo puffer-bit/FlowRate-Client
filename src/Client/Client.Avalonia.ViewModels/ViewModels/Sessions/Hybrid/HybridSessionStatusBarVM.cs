@@ -19,6 +19,9 @@ public class HybridSessionStatusBarVM : ReactiveObject
     }
     public ReactiveCommand<RxVoid, RxVoid> ToggleBroadcastCommand { get; init; } = null!;
     public ReactiveCommand<RxVoid, RxVoid> ToggleCameraCommand { get; init; } = null!;
+
+    /// <summary>Sends the next camera instead of the one sent now, such as the other side of a phone.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SwitchCameraCommand { get; init; } = null!;
     public bool LastWasCamera
     {
         get;

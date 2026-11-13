@@ -46,7 +46,7 @@ Project paths in this table are relative to `src/`.
 - The GStreamer WebRTC transport is available as an experimental alternative and as a fallback when the native libwebrtc library is unavailable.
 - `IWebRTCTransport`, `IVideoMedia`, and related application ports separate transport from media implementation. Preserve those boundaries when changing audio or video behavior.
 - `Client.OpenAL` provides desktop interface and notification sounds independently of voice and video media.
-- Android uses libwebrtc and platform media services, without the desktop GStreamer or OpenAL runtime. Android supports watching shared screens; screen sharing originates from desktop.
+- Android uses libwebrtc and platform media services, without the desktop GStreamer or OpenAL runtime. Android supports watching shared screens and cameras and sends its own camera (front or back, captured by Camera2 and encoded by libwebrtc); screen sharing originates from desktop.
 - Preserve media-disabled behavior: voice and video must not initialize when disabled, while interface sounds remain independent.
 - Treat native frame ownership, disposal, threading, and GPU resource lifetimes as explicit contracts. Preserve supported memory-backed rendering paths when changing accelerated rendering.
 - Changes to native interfaces must remain consistent with managed bindings and the distributed native libraries.

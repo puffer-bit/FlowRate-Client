@@ -396,6 +396,8 @@ public partial class MainView : UserControl
             if (!ReferenceEquals(_hybridView.DataContext, hybrid))
             {
                 _hybridView.DataContext = hybrid;
+                // A phone switches its cameras while it sends, so there is nothing to choose before
+                hybrid.StartsCameraWithoutDialog = true;
                 _hybridDialogs.Disposable = hybrid.ShowMessageBox.RegisterHandler(async context =>
                     context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
             }

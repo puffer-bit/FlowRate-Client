@@ -35,9 +35,14 @@ internal sealed class AndroidVoicePeer : IVoicePeer
         AndroidCallAudioRouter.Instance.BeginCall();
     }
 
-    // Only the microphone: no screen is sent from here
+    // The microphone and the camera: no screen is sent from here
     public void Negotiate(string offer, IReadOnlyList<SendSection> sends) =>
-        _peer.Negotiate(offer, sends.Select(send => send.Mid).ToArray(), sends.Select(send => (long)send.Ssrc).ToArray());
+        _peer.Negotiate(offer, sends.Select(send => send.Mid).ToArray(), sends.Select(send => (long)send.Ssrc).ToArray(),
+            sends.Select(send => (long)send.RtxSsrc).ToArray(),
+            sends.Select(send => (send.Video as AndroidCameraCapture)?.Java).ToArray());
+
+    public IPeerVideoCapture? CreateVideoCapture(VideoInput input, ScreenShareSettings settings) =>
+        AndroidCameraCapture.Create(input, settings);
 
     public void SetMicrophoneEnabled(bool isEnabled) => _peer.SetMicrophoneEnabled(isEnabled && _isMicrophoneAllowed);
 

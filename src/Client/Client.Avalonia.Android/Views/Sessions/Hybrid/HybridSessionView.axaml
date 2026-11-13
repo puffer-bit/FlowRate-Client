@@ -50,8 +50,8 @@
         </Style>
     </UserControl.Styles>
 
-    <!-- The session we are in: the screens shown in it, who is in it, and the microphone, the sound and
-         the way out. Screens are only watched from here, not shared -->
+    <!-- The session we are in: the screens and cameras shown in it, who is in it, and the microphone,
+         the camera, the sound and the way out. Screens are only watched from here, not shared -->
     <Grid RowDefinitions="Auto, *, Auto">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" Margin="4,8,16,8">
             <Button Grid.Column="0" Classes="borderless screen-action" Width="44" Height="44"
@@ -89,17 +89,23 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel>
-                <!-- A card per screen: who shows it and a button to watch it, then its picture and the
-                     volume of its sound. Our own screen is not shared from Android, so it never shows -->
+                <!-- A card per screen or camera: who shows it and a button to watch it, then its picture
+                     and the volume of its sound. Our own screen is not shared from Android, so it never
+                     shows; our own camera does, with the button that turns it to the other side -->
                 <ItemsControl Margin="8,0" ItemsSource="{Binding ScreenStreams}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="hybridVm:ScreenStreamVM">
                             <Border Margin="0,4" CornerRadius="12" ClipToBounds="True"
                                     Background="{DynamicResource DarkBackgroundBrush}"
-                                    IsVisible="{Binding !IsSelf}"
                                     anim:Presence.Appear="Fade"
                                     anim:Presence.Leave="Fade"
                                     anim:Presence.IsLeaving="{Binding IsLeaving}">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                        <Binding Path="!IsSelf"/>
+                                        <Binding Path="IsCamera"/>
+                                    </MultiBinding>
+                                </Border.IsVisible>
                                 <StackPanel>
                                     <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="6" Margin="12,8">
                                         <avatars:UserAvatar Grid.Column="0" Width="28" Height="28"
@@ -117,18 +123,30 @@
                                         <Border Grid.Column="3" Width="1" Height="18" VerticalAlignment="Center"
                                                 Background="{DynamicResource SettingsCardBorderBrush}"
                                                 IsVisible="{Binding #ViewersButton.HasViewers}"/>
-                                        <Panel Grid.Column="4">
-                                            <Button Classes="screen-action" Command="{Binding WatchCommand}"
-                                                    IsVisible="{Binding !IsWatched}"
-                                                    ToolTip.Tip="{l:Text hybrid.screen.watch}">
-                                                <Image Width="20" Height="20" Source="{StaticResource EyeIcon}"/>
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6">
+                                            <Button Classes="screen-action" Click="OnSwitchCameraClick"
+                                                    ToolTip.Tip="{l:Text camera.switch}">
+                                                <Button.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                        <Binding Path="IsSelf"/>
+                                                        <Binding Path="IsCamera"/>
+                                                    </MultiBinding>
+                                                </Button.IsVisible>
+                                                <Image Width="20" Height="20" Source="{StaticResource SwitchCameraIcon}"/>
                                             </Button>
-                                            <Button Classes="screen-action" Command="{Binding StopWatchingCommand}"
-                                                    IsVisible="{Binding IsWatched}"
-                                                    ToolTip.Tip="{l:Text hybrid.screen.stopWatching}">
-                                                <Image Width="20" Height="20" Source="{StaticResource CrossedEyeIcon}"/>
-                                            </Button>
-                                        </Panel>
+                                            <Panel>
+                                                <Button Classes="screen-action" Command="{Binding WatchCommand}"
+                                                        IsVisible="{Binding !IsWatched}"
+                                                        ToolTip.Tip="{l:Text hybrid.screen.watch}">
+                                                    <Image Width="20" Height="20" Source="{StaticResource EyeIcon}"/>
+                                                </Button>
+                                                <Button Classes="screen-action" Command="{Binding StopWatchingCommand}"
+                                                        IsVisible="{Binding IsWatched}"
+                                                        ToolTip.Tip="{l:Text hybrid.screen.stopWatching}">
+                                                    <Image Width="20" Height="20" Source="{StaticResource CrossedEyeIcon}"/>
+                                                </Button>
+                                            </Panel>
+                                        </StackPanel>
                                     </Grid>
 
                                     <StackPanel IsVisible="{Binding IsWatched}">
@@ -234,6 +252,55 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- Who is in a call, which the list of sessions does not have: the participants of the
+                     session itself. Shown from code in place of the list above -->
+                <ItemsControl x:Name="CallParticipants" Margin="8,0" IsVisible="False"
+                              ItemsSource="{Binding ParticipantsListVM.Participants}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="hybridVm:HybridSessionParticipantVM">
+                            <Grid ColumnDefinitions="40, *, Auto" ColumnSpacing="12" Margin="8,6">
+                                <Panel Grid.Column="0" Width="40" Height="40">
+                                    <avatars:UserAvatar UserName="{Binding UserData.Username, FallbackValue={x:Null}}"
+                                                        AvatarUrl="{Binding UserData.AvatarUrl, FallbackValue={x:Null}}"
+                                                        IsAnimated="True"
+                                                        IsSpeaking="{Binding IsSpeaking}"
+                                                        IsWaiting="{Binding IsWaiting}">
+                                        <avatars:UserAvatar.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="IsConnected"/>
+                                                <Binding Path="IsWaiting"/>
+                                            </MultiBinding>
+                                        </avatars:UserAvatar.IsVisible>
+                                    </avatars:UserAvatar>
+                                    <loadingIndicators:ProgressRing Width="20" Height="20"
+                                                                    MinWidth="0" MinHeight="0"
+                                                                    IsIndeterminate="True"
+                                                                    BorderThickness="2"
+                                                                    Foreground="{DynamicResource PrimaryTextBrush}">
+                                        <loadingIndicators:ProgressRing.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="!IsConnected"/>
+                                                <Binding Path="!IsWaiting"/>
+                                            </MultiBinding>
+                                        </loadingIndicators:ProgressRing.IsVisible>
+                                    </loadingIndicators:ProgressRing>
+                                </Panel>
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16"
+                                           TextTrimming="CharacterEllipsis" Text="{Binding DisplayedName}"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <Image Width="20" Height="20"
+                                           Source="{StaticResource ScreenShareIcon}"
+                                           IsVisible="{Binding IsSharingScreen}"/>
+                                    <Image Width="20" Height="20"
+                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
@@ -241,6 +308,18 @@
             <Button Classes="voice-action" Command="{Binding StatusBar.ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
                 <Image Width="24" Height="24" Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+            </Button>
+
+            <!-- Starts with the camera facing the user; the card of our camera turns it around -->
+            <Button Classes="voice-action" Command="{Binding StatusBar.ToggleCameraCommand}"
+                    IsVisible="{Binding StatusBar.CanUseCamera}"
+                    ToolTip.Tip="{l:Text camera.start}">
+                <Panel>
+                    <Image Width="24" Height="24" Source="{StaticResource VideoCameraIcon}"
+                           IsVisible="{Binding StatusBar.IsCameraOn}"/>
+                    <Image Width="24" Height="24" Source="{StaticResource CrossedVideoCameraIcon}"
+                           IsVisible="{Binding !StatusBar.IsCameraOn}"/>
+                </Panel>
             </Button>
 
             <Button Classes="voice-action" Command="{Binding StatusBar.ToggleSoundCommand}"

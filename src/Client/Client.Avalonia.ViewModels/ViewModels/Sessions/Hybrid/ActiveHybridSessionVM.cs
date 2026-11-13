@@ -227,6 +227,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             ToggleBroadcastCommand = ReactiveCommand.CreateFromTask(ToggleBroadcastAsync, canShareVideo),
             ToggleCameraCommand = ReactiveCommand.CreateFromTask(ToggleCameraAsync,
                 canShareVideo.Select(allowed => allowed && _cameras != null)),
+            SwitchCameraCommand = ReactiveCommand.CreateFromTask(SwitchCameraAsync),
             CanUseCamera = _cameras != null
         };
         _subscriptions.Add(() => Strings.LanguageChanged += UpdateVideoTexts,

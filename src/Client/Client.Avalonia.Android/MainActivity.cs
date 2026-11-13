@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Android;
 using Android.App;
@@ -28,14 +29,24 @@ namespace Client.Droid;
 public class MainActivity : AvaloniaMainActivity
 {
     private const int NotificationPermissionRequest = 1001;
-    private const int MicrophonePermissionRequest = 7001;
-    // Of the process, not of the activity: a request survives the activity recreated under its
-    // dialog, and its answer comes to the new one
-    private static TaskCompletionSource<bool>? _microphonePermission;
+    // A request of the media by the permission it asks for
+    private static readonly Dictionary<string, int> MediaPermissionRequests = new()
+    {
+        [Manifest.Permission.RecordAudio] = 7001,
+        [Manifest.Permission.Camera] = 7002
+    };
 
-    internal Task<bool> RequestMicrophonePermissionAsync()
+    // Of the process, not of the activity: a request survives the activity recreated under its
+    // dialog, and its answer comes to the new one. By request code
+    private static readonly Dictionary<int, TaskCompletionSource<bool>> _mediaPermissions = [];
+
+    internal Task<bool> RequestMicrophonePermissionAsync() => RequestPermissionAsync(Manifest.Permission.RecordAudio);
+
+    /// <summary>Asks for the microphone or the camera, or answers at once where it is allowed already.</summary>
+    internal Task<bool> RequestPermissionAsync(string permission)
     {
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var requestCode = MediaPermissionRequests[permission];
 
         RunOnUiThread(() =>
         {
@@ -45,20 +56,20 @@ public class MainActivity : AvaloniaMainActivity
                 return;
             }
 
-            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.RecordAudio) == Permission.Granted)
+            if (ContextCompat.CheckSelfPermission(this, permission) == Permission.Granted)
             {
                 completion.TrySetResult(true);
                 return;
             }
 
-            if (_microphonePermission is { } pending)
+            if (_mediaPermissions.TryGetValue(requestCode, out var pending))
             {
                 ForwardPermissionAsync(pending.Task, completion);
                 return;
             }
 
-            _microphonePermission = completion;
-            ActivityCompat.RequestPermissions(this, [Manifest.Permission.RecordAudio], MicrophonePermissionRequest);
+            _mediaPermissions[requestCode] = completion;
+            ActivityCompat.RequestPermissions(this, [permission], requestCode);
         });
 
         return completion.Task;
@@ -71,11 +82,10 @@ public class MainActivity : AvaloniaMainActivity
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode != MicrophonePermissionRequest)
+        if (!_mediaPermissions.Remove(requestCode, out var pending))
             return;
 
-        _microphonePermission?.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
-        _microphonePermission = null;
+        pending.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
     }
 
     /// <summary>
@@ -182,8 +192,10 @@ public class MainActivity : AvaloniaMainActivity
         // A recreated activity still gets the answer; one closed for good never will
         if (IsFinishing && !IsChangingConfigurations)
         {
-            _microphonePermission?.TrySetResult(false);
-            _microphonePermission = null;
+            foreach (var pending in _mediaPermissions.Values)
+                pending.TrySetResult(false);
+
+            _mediaPermissions.Clear();
         }
 
         if (ReferenceEquals(Current, this))

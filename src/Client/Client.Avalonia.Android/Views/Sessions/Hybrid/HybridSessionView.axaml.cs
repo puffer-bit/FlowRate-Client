@@ -35,12 +35,22 @@ public partial class HybridSessionView : UserControl
     public event Action<PeerVM>? PeerMenuRequested;
 
     /// <summary>
-    /// Shows the peers of the session as the list of sessions has them, or nobody.
+    /// Shows the peers of the session as the list of sessions has them. A call is not in that list, so
+    /// without them the participants of the session itself are shown.
     /// </summary>
     public void ShowPeers(IEnumerable<PeerVM>? peers)
     {
         if (!ReferenceEquals(Participants.ItemsSource, peers))
             Participants.ItemsSource = peers;
+
+        Participants.IsVisible = peers != null;
+        CallParticipants.IsVisible = peers == null;
+    }
+
+    private void OnSwitchCameraClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ActiveHybridSessionVM session)
+            session.StatusBar.SwitchCameraCommand.Execute().Subscribe();
     }
 
     private void OnParticipantTapped(object? sender, TappedEventArgs e)
