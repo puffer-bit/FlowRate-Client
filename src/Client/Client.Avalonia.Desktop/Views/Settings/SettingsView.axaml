@@ -59,6 +59,16 @@
         <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
                              Icon="{StaticResource GearIcon}" Title="{l:Text settings.title}"
                              Subtitle="{Binding SelectedSetting?.Name}" CloseCommand="{Binding CloseCommand}">
+            <dialogs:DialogHeader.InlineContent>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !IsLoaded}">
+                    <loadingIndicators:ProgressRing Width="18" Height="18" MinWidth="18" MinHeight="18"
+                                                    IsIndeterminate="True" BorderThickness="2"
+                                                    Foreground="{DynamicResource ProgressRingBrush}"/>
+                    <TextBlock VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{l:Text settings.loading}"/>
+                </StackPanel>
+            </dialogs:DialogHeader.InlineContent>
             <settingsViews:SettingsStatus/>
         </dialogs:DialogHeader>
 

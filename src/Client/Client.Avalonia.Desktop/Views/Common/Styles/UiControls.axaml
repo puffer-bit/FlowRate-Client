@@ -22,14 +22,17 @@
         <Setter Property="Padding" Value="{StaticResource DialogHeaderPadding}"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid Margin="{TemplateBinding Padding}" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+                <Grid Margin="{TemplateBinding Padding}" ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
                     <Border Name="IconTile" VerticalAlignment="Center"
                             IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Image Name="Icon" Source="{TemplateBinding Icon}"/>
                     </Border>
                     <TextBlock Name="Title" Grid.Column="1" Text="{TemplateBinding Title}"
                                TextWrapping="Wrap" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Grid.RowSpan="2" Classes="borderless iconButton"
+                    <ContentPresenter Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center"
+                                      Content="{TemplateBinding InlineContent}"
+                                      IsVisible="{TemplateBinding InlineContent, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Grid.Column="3" Grid.RowSpan="2" Classes="borderless iconButton"
                             VerticalAlignment="Center" Command="{TemplateBinding CloseCommand}"
                             IsVisible="{TemplateBinding CloseCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
                             ToolTip.Tip="{l:Text common.close}" AutomationProperties.Name="{l:Text common.close}">
@@ -38,7 +41,7 @@
                     <TextBlock Name="Subtitle" Grid.Row="1" Classes="hint"
                                Text="{TemplateBinding Subtitle}" TextWrapping="Wrap"
                                IsVisible="{TemplateBinding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                    <ContentPresenter Margin="0,4,0,0" Grid.Row="2" Grid.ColumnSpan="3" Name="PART_ContentPresenter"
+                    <ContentPresenter Margin="0,4,0,0" Grid.Row="2" Grid.ColumnSpan="4" Name="PART_ContentPresenter"
                                       Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                       IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </Grid>

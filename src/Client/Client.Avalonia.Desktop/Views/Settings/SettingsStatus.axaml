@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
-             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:settingsVm="clr-namespace:Client.ViewModels.Settings;assembly=Client.Avalonia.ViewModels"
              x:DataType="settingsVm:SettingsWindowVM"
              x:Class="Client.Views.Settings.SettingsStatus">
@@ -18,25 +17,11 @@
     <StackPanel Spacing="8">
         <StackPanel.IsVisible>
             <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                <Binding Path="!IsLoaded"/>
                 <Binding Path="IsSafeMode"/>
                 <Binding Path="IsMediaDisabled"/>
                 <Binding Path="IsSoftwareRendering"/>
             </MultiBinding>
         </StackPanel.IsVisible>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !IsLoaded}">
-            <loadingIndicators:ProgressRing
-                    x:Name="LoadingIcon"
-                    Width="18" Height="18"
-                    MinWidth="18"
-                    MinHeight="18"
-                    IsIndeterminate="True"
-                    BorderThickness="2"
-                    Foreground="{DynamicResource ProgressRingBrush}"/>
-            <TextBlock VerticalAlignment="Center" FontSize="12"
-                    Foreground="{DynamicResource SecondaryTextBrush}"
-                    Text="{l:Text settings.loading}"/>
-        </StackPanel>
         <WrapPanel ItemSpacing="8" LineSpacing="8">
             <Border Classes="launchMode" IsVisible="{Binding IsSafeMode}"
                     AutomationProperties.Name="{l:Text settings.mode.safe.title}">

@@ -16,9 +16,12 @@ public class DialogHeader : ContentControl
         AvaloniaProperty.Register<DialogHeader, IImage?>(nameof(Icon));
     public static readonly StyledProperty<ICommand?> CloseCommandProperty =
         AvaloniaProperty.Register<DialogHeader, ICommand?>(nameof(CloseCommand));
+    public static readonly StyledProperty<Control?> InlineContentProperty =
+        AvaloniaProperty.Register<DialogHeader, Control?>(nameof(InlineContent));
 
     public string? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public string? Subtitle { get => GetValue(SubtitleProperty); set => SetValue(SubtitleProperty, value); }
     public IImage? Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
     public ICommand? CloseCommand { get => GetValue(CloseCommandProperty); set => SetValue(CloseCommandProperty, value); }
+    public Control? InlineContent { get => GetValue(InlineContentProperty); set => SetValue(InlineContentProperty, value); }
 }
