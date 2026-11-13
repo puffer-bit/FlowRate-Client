@@ -3,8 +3,8 @@
  * The counterpart of VoicePeer.java on Android: the description of the SFU is built on the .NET side,
  * this answers it and exchanges processed PCM with the desktop media engine.
  *
- * Callbacks come on the threads of libwebrtc: the signaling thread for the peer, the audio thread
- * for the capture level. None of them may block for long.
+ * Callbacks come on the threads of libwebrtc: the signaling thread for the peer, the encoder and
+ * decoder threads for the video. None of them may block for long.
  */
 #ifndef FLOWRATE_WEBRTC_H
 #define FLOWRATE_WEBRTC_H
@@ -40,12 +40,6 @@ typedef void (*fr_failed_callback)(void* context, const char* error);
  */
 typedef void (*fr_stats_callback)(void* context, const char* json);
 
-/*
- * The peak of the last 10 ms of the microphone, in dBFS after the input volume; returns whether the
- * voice gate is open. Called on the audio thread, 100 times a second, only while the gate is on.
- */
-typedef int (*fr_level_callback)(void* context, double peak_db);
-
 typedef struct fr_peer_callbacks {
     fr_state_callback state;
     fr_negotiated_callback negotiated;
@@ -66,42 +60,22 @@ typedef void (*fr_log_callback)(int severity, const char* message);
  */
 FR_API void fr_set_log(fr_log_callback callback, int min_severity);
 
-/* Loads libwebrtc and opens the audio devices once per process; 0 on failure. */
+/* Loads libwebrtc and creates its factory once per process; 0 on failure. Opens no audio device. */
 FR_API int fr_initialize(void);
 
-/* The audio devices: count, then name and id (the PulseAudio or WASAPI one) by index. */
-FR_API int fr_recording_device_count(void);
-FR_API int fr_playout_device_count(void);
-FR_API int fr_recording_device(int index, char* name, int name_size, char* guid, int guid_size);
-FR_API int fr_playout_device(int index, char* name, int name_size, char* guid, int guid_size);
-FR_API int fr_set_recording_device(int index);
-FR_API int fr_set_playout_device(int index);
-
 /*
- * The id of the device the system plays to or records from by default (its WASAPI endpoint id, as
- * the device list gives it); 0 where there is none to ask, as on Linux, whose list starts with it.
+ * The audio device of the process has no hardware: the media engine owns it. The version of this
+ * boundary, 1, is checked before fr_initialize. fr_pull_playout fills exactly 480 stereo frames
+ * (960 samples) of the decoded and mixed voices, after NetEq, on the clock of the caller.
  */
-FR_API int fr_default_device(int is_recording, char* guid, int guid_size);
-
-/*
- * What happens to the microphone after the processing of libwebrtc: the input volume, then the voice
- * gate, which asks on_level whether it is open while it is on. Shared by every peer, as the
- * microphone is.
- */
-/* External audio ABI. Pull exactly 480 stereo frames (960 samples) after NetEq. */
 FR_API int fr_audio_bridge_version(void);
 FR_API void fr_pull_playout(int16_t* samples);
 
-FR_API void fr_set_capture_volume(double volume);
-FR_API void fr_set_voice_gate(fr_level_callback on_level, void* context);
-
 /*
- * A peer connection with a microphone track that stays muted until a section sends it.
- * noise_suppression: 0 off, 1 low, 2 moderate, 3 high, 4 very high. The processing is one for the
- * process, as the microphone is, so the level is the one of the last microphone set.
+ * A peer connection with a microphone track that stays muted until a section sends it. The
+ * microphone is processed by the media engine and comes in through fr_peer_capture.
  */
-FR_API fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context,
-                               int echo_cancellation, int noise_suppression, int auto_gain_control);
+FR_API fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context);
 
 /* A section we send in, and what goes into it. */
 typedef struct fr_send_section {
@@ -123,15 +97,7 @@ FR_API void fr_peer_negotiate(fr_peer* peer, const char* offer, const fr_send_se
 
 FR_API void fr_peer_set_microphone_enabled(fr_peer* peer, int is_enabled);
 
-/*
- * Changes where the sound we send comes from and how it is processed: a new track replaces the one the
- * sections send. A custom source takes its sound from fr_peer_capture instead of the microphone, and
- * goes past the processing of libwebrtc and past the input volume and the voice gate.
- */
-FR_API void fr_peer_set_audio_options(fr_peer* peer, int is_custom, int echo_cancellation, int noise_suppression,
-                                      int auto_gain_control);
-
-/* 10 ms of 16-bit interleaved sound for a custom source; nothing for the microphone. */
+/* The next 10 ms of the processed microphone: 16-bit samples, interleaved when there are two channels. */
 FR_API void fr_peer_capture(fr_peer* peer, const int16_t* samples, int frames, int sample_rate, int channels);
 
 /* The playback volume of the voice of a section, 0 silences it. */

@@ -6,22 +6,14 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
-#if defined(_WIN32)
-#include <windows.h>
-#include <mmdeviceapi.h>
-#endif
-
 #include "libwebrtc.h"
-#include "rtc_audio_device.h"
 #include "rtc_audio_processing.h"
 #include "rtc_audio_source.h"
 #include "rtc_audio_track.h"
@@ -39,95 +31,10 @@ using namespace libwebrtc;
 
 namespace {
 
-// What the microphone goes through after the processing of libwebrtc: the input volume, then the
-// voice gate. The samples are floats in the range of 16-bit ones, 10 ms at a time.
-class CaptureProcessing : public RTCAudioProcessing::CustomProcessing {
- public:
-  void SetVolume(double volume) { volume_.store(static_cast<float>(volume)); }
-
-  void SetGate(fr_level_callback on_level, void* context) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    on_level_ = on_level;
-    context_ = context;
-  }
-
-  void Initialize(int sample_rate_hz, int) override { Reset(sample_rate_hz); }
-
-  void Reset(int new_rate) override {
-    std::lock_guard<std::mutex> lock(mutex_);
-    sample_rate_ = new_rate > 0 ? new_rate : 48000;
-    delay_.clear();
-  }
-
-  void Release() override {}
-
-  void Process(int, int num_frames, int, float* buffer) override {
-    const float volume = volume_.load();
-
-    if (volume != 1.0f) {
-      for (int i = 0; i < num_frames; i++)
-        buffer[i] = std::clamp(buffer[i] * volume, -32768.0f, 32767.0f);
-    }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    if (on_level_ == nullptr) {
-      position_ = 1.0;
-      delay_.clear();
-      return;
-    }
-
-    float peak = 0;
-
-    for (int i = 0; i < num_frames; i++)
-      peak = std::max(peak, std::fabs(buffer[i]));
-
-    const double peak_db = peak > 0 ? 20.0 * std::log10(peak / 32768.0) : -100.0;
-    const bool is_open = on_level_(context_, peak_db) != 0;
-
-    // The pre-roll: what goes out is the audio of a moment ago, so the gate that opens on a loud
-    // reading does not cut the start of the syllable that made it loud
-    const size_t delay_frames = static_cast<size_t>(sample_rate_ * kPreRollMs / 1000);
-    delay_.insert(delay_.end(), buffer, buffer + num_frames);
-
-    if (delay_.size() < delay_frames + num_frames) {
-      std::fill(buffer, buffer + num_frames, 0.0f);
-      return;
-    }
-
-    std::copy(delay_.begin(), delay_.begin() + num_frames, buffer);
-    delay_.erase(delay_.begin(), delay_.begin() + num_frames);
-
-    // A smoothstep ramp, so the voice starts without a click and its tail fades out
-    const double step = 1000.0 / (sample_rate_ * (is_open ? kAttackMs : kReleaseMs));
-
-    for (int i = 0; i < num_frames; i++) {
-      position_ = is_open ? std::min(1.0, position_ + step) : std::max(0.0, position_ - step);
-      const double gain = position_ * position_ * (3 - 2 * position_);
-      buffer[i] = static_cast<float>(buffer[i] * gain);
-    }
-  }
-
- private:
-  // The same as the ones of the GStreamer gate, VoiceGate.PreRoll and VoiceGateFade
-  static constexpr int kPreRollMs = 20;
-  static constexpr double kAttackMs = 8;
-  static constexpr double kReleaseMs = 200;
-
-  std::atomic<float> volume_{1.0f};
-  std::mutex mutex_;
-  fr_level_callback on_level_ = nullptr;
-  void* context_ = nullptr;
-  int sample_rate_ = 48000;
-  std::vector<float> delay_;
-  double position_ = 0;
-};
-
 // Never destroyed: the threads of libwebrtc run until the process is gone, and would find them
 // destroyed by the exit handlers
 std::mutex& g_mutex = *new std::mutex();
 scoped_refptr<RTCPeerConnectionFactory>& g_factory = *new scoped_refptr<RTCPeerConnectionFactory>();
-CaptureProcessing& g_capture = *new CaptureProcessing();
 
 // How loud a voice we receive is, from its sound before the playback volume scales it: the level of
 // the statistics is taken after, so a voice turned down or muted would never read as speaking
@@ -438,52 +345,26 @@ std::string RewriteSsrcs(const std::string& sdp, const std::map<std::string, Sen
   return result;
 }
 
-int CopyDeviceName(int32_t status, const char* name, const char* guid, char* name_out, int name_size,
-                   char* guid_out, int guid_size) {
-  if (status != 0)
-    return 0;
-
-  snprintf(name_out, name_size, "%s", name);
-  snprintf(guid_out, guid_size, "%s", guid);
-  return 1;
-}
-
-// The processing of the microphone, one for the process. The voice engine configures it from the options
-// of the sources; what they cannot say is set on it here, and the engine keeps it
-// (flowrate_audio_processing.patch). A configuration the engine applies at the same moment may be lost:
-// it is set before the sources that would apply one are created.
+// The processing of the microphone, one for the process. The microphone comes processed by the media
+// engine into a custom source, so only its configuration of fr_initialize is left here
 webrtc::AudioProcessing* Processing(const scoped_refptr<RTCPeerConnectionFactory>& factory) {
   auto processing = factory->GetAudioProcessing();
   return processing != nullptr ? static_cast<RTCAudioProcessingImpl*>(processing.get())->GetAudioProcessing().get()
                                : nullptr;
 }
 
-void SetNoiseSuppressionLevel(const scoped_refptr<RTCPeerConnectionFactory>& factory, int level) {
-  auto processing = Processing(factory);
-
-  if (processing == nullptr || level < 1 || level > 4)
-    return;
-
-  auto config = processing->GetConfig();
-  config.noise_suppression.level = static_cast<webrtc::AudioProcessing::Config::NoiseSuppression::Level>(level - 1);
-  processing->ApplyConfig(config);
-}
-
-void CreateMicrophone(scoped_refptr<RTCPeerConnectionFactory> factory, fr_peer* peer, bool is_custom,
-                      int echo_cancellation, int noise_suppression, int auto_gain_control, bool is_enabled) {
-  SetNoiseSuppressionLevel(factory, noise_suppression);
-
+// The microphone of a peer: a custom source the processed sound of the media engine is pushed into,
+// muted until a section sends it
+void CreateMicrophone(const scoped_refptr<RTCPeerConnectionFactory>& factory, fr_peer* peer) {
   RTCAudioOptions options;
-  options.echo_cancellation = echo_cancellation != 0;
-  options.noise_suppression = noise_suppression != 0;
-  options.auto_gain_control = auto_gain_control != 0;
+  options.echo_cancellation = false;
+  options.noise_suppression = false;
+  options.auto_gain_control = false;
   options.highpass_filter = true;
 
-  auto source = factory->CreateAudioSource(
-      "microphone", is_custom ? RTCAudioSource::SourceType::kCustom : RTCAudioSource::SourceType::kMicrophone,
-      options);
+  auto source = factory->CreateAudioSource("microphone", RTCAudioSource::SourceType::kCustom, options);
   auto track = factory->CreateAudioTrack(source, "microphone");
-  track->set_enabled(is_enabled);
+  track->set_enabled(false);
 
   std::lock_guard<std::mutex> lock(peer->source_mutex);
   peer->microphone_source = source;
@@ -493,11 +374,6 @@ void CreateMicrophone(scoped_refptr<RTCPeerConnectionFactory> factory, fr_peer* 
 scoped_refptr<RTCPeerConnectionFactory> Factory() {
   std::lock_guard<std::mutex> lock(g_mutex);
   return g_factory;
-}
-
-scoped_refptr<RTCAudioDevice> AudioDevice() {
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_factory != nullptr ? g_factory->GetAudioDevice() : nullptr;
 }
 
 }  // namespace
@@ -542,8 +418,6 @@ int fr_initialize(void) {
   if (factory == nullptr || !factory->Initialize())
     return 0;
 
-  factory->GetAudioProcessing()->SetCapturePostProcessing(&g_capture);
-
   // The whole band of the voice, up to 24 kHz, as the processing of GStreamer keeps it: by default
   // the processing runs at 32 kHz at most, and what is above 16 kHz is lost
   if (auto processing = Processing(factory)) {
@@ -556,89 +430,7 @@ int fr_initialize(void) {
   return 1;
 }
 
-int fr_recording_device_count(void) {
-  auto device = AudioDevice();
-  return device != nullptr ? device->RecordingDevices() : 0;
-}
-
-int fr_playout_device_count(void) {
-  auto device = AudioDevice();
-  return device != nullptr ? device->PlayoutDevices() : 0;
-}
-
-int fr_recording_device(int index, char* name, int name_size, char* guid, int guid_size) {
-  auto device = AudioDevice();
-  char device_name[RTCAudioDevice::kAdmMaxDeviceNameSize] = {};
-  char device_guid[RTCAudioDevice::kAdmMaxGuidSize] = {};
-
-  return device != nullptr
-             ? CopyDeviceName(device->RecordingDeviceName(index, device_name, device_guid), device_name,
-                              device_guid, name, name_size, guid, guid_size)
-             : 0;
-}
-
-int fr_playout_device(int index, char* name, int name_size, char* guid, int guid_size) {
-  auto device = AudioDevice();
-  char device_name[RTCAudioDevice::kAdmMaxDeviceNameSize] = {};
-  char device_guid[RTCAudioDevice::kAdmMaxGuidSize] = {};
-
-  return device != nullptr
-             ? CopyDeviceName(device->PlayoutDeviceName(index, device_name, device_guid), device_name,
-                              device_guid, name, name_size, guid, guid_size)
-             : 0;
-}
-
-int fr_set_recording_device(int index) {
-  auto device = AudioDevice();
-  return device != nullptr && device->SetRecordingDevice(index) == 0;
-}
-
-int fr_set_playout_device(int index) {
-  auto device = AudioDevice();
-  return device != nullptr && device->SetPlayoutDevice(index) == 0;
-}
-
-int fr_default_device(int is_recording, char* guid, int guid_size) {
-#if defined(_WIN32)
-  // Without an index libwebrtc opens the default device for communications, which may be another
-  // one than where the rest of the sound of the system goes. COM may be on already, in another mode.
-  const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-  IMMDeviceEnumerator* enumerator = nullptr;
-  IMMDevice* device = nullptr;
-  LPWSTR id = nullptr;
-  int result = 0;
-
-  if (SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator))) &&
-      SUCCEEDED(enumerator->GetDefaultAudioEndpoint(is_recording ? eCapture : eRender, eConsole, &device)) &&
-      SUCCEEDED(device->GetId(&id)))
-    result = WideCharToMultiByte(CP_UTF8, 0, id, -1, guid, guid_size, nullptr, nullptr) > 0;
-
-  CoTaskMemFree(id);
-
-  if (device != nullptr)
-    device->Release();
-
-  if (enumerator != nullptr)
-    enumerator->Release();
-
-  if (SUCCEEDED(com))
-    CoUninitialize();
-
-  return result;
-#else
-  (void)is_recording;
-  (void)guid;
-  (void)guid_size;
-  return 0;
-#endif
-}
-
-void fr_set_capture_volume(double volume) { g_capture.SetVolume(volume); }
-
-void fr_set_voice_gate(fr_level_callback on_level, void* context) { g_capture.SetGate(on_level, context); }
-
-fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context, int echo_cancellation,
-                        int noise_suppression, int auto_gain_control) {
+fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context) {
   auto factory = Factory();
 
   if (factory == nullptr || callbacks == nullptr)
@@ -662,8 +454,7 @@ fr_peer* fr_peer_create(const fr_peer_callbacks* callbacks, void* context, int e
 
   peer->connection->RegisterRTCPeerConnectionObserver(peer);
 
-  // Desktop capture is processed by GStreamer and injected into a custom source.
-  CreateMicrophone(factory, peer, true, 0, 0, 0, false);
+  CreateMicrophone(factory, peer);
 
   return peer;
 }
@@ -693,23 +484,6 @@ void fr_peer_negotiate(fr_peer* peer, const char* offer, const fr_send_section* 
 }
 
 void fr_peer_set_microphone_enabled(fr_peer* peer, int is_enabled) { peer->Microphone()->set_enabled(is_enabled != 0); }
-
-void fr_peer_set_audio_options(fr_peer* peer, int is_custom, int echo_cancellation, int noise_suppression,
-                               int auto_gain_control) {
-  auto factory = Factory();
-
-  if (factory == nullptr)
-    return;
-
-  auto previous = peer->Microphone();
-  CreateMicrophone(factory, peer, is_custom != 0, echo_cancellation, noise_suppression, auto_gain_control,
-                   previous->enabled());
-
-  for (auto& sender : peer->connection->senders().std_vector()) {
-    if (sender->track() != nullptr && sender->track()->id().std_string() == previous->id().std_string())
-      sender->set_track(peer->Microphone());
-  }
-}
 
 void fr_peer_capture(fr_peer* peer, const int16_t* samples, int frames, int sample_rate, int channels) {
   scoped_refptr<RTCAudioSource> source;
