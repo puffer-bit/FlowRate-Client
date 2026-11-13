@@ -266,6 +266,12 @@ foreach ($source in Get-ChildItem (Join-Path $native "flowrate_*") -Include "*.c
         Copy-Item $source.FullName $target -Force
     }
 }
+# and one removed or renamed here goes from there too
+foreach ($target in Get-ChildItem "src\libwebrtc\flowrate" -File) {
+    if (-not (Test-Path (Join-Path $native $target.Name))) {
+        Remove-Item $target.FullName -Force
+    }
+}
 
 Write-Step "Building"
 # The arguments go through args.gn: passing quotes through gn.bat and cmd.exe on a command line is fragile

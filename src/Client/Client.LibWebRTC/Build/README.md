@@ -35,7 +35,7 @@ Visual C++ redistributable).
 Both scripts keep the checkout outside the repository in `FLOWRATE_WEBRTC_DIR`, about 30 GB. The first
 run downloads it with depot_tools (Chromium's gclient, gn, ninja, clang) and builds about 4000 files.
 Later runs reuse it and rebuild only what changed: a few seconds after an edit of
-`flowrate_webrtc.cc`. Each script checks that every `FR_API` function of the header is exported and
+`flowrate_peer.cc`. Each script checks that every `FR_API` function of the header is exported and
 that no library beyond the system is needed.
 
 ## Linux (linux-x64)

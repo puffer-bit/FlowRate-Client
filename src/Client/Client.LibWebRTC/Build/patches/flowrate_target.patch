@@ -11,17 +11,38 @@ index 33a8a63..05ced80 100644
    libs = []
    cflags = []
    include_dirs = [
-@@ -287,6 +289,16 @@ rtc_shared_library("libwebrtc") {
+@@ -287,6 +289,37 @@ rtc_shared_library("libwebrtc") {
      "//third_party/libyuv",
    ]
  
 +  # FlowRate: the C interface of the client and its video codecs
 +  sources += [
++    "flowrate/flowrate_api.cc",
 +    "flowrate/flowrate_audio.cc",
 +    "flowrate/flowrate_audio.h",
++    "flowrate/flowrate_audio_source.cc",
++    "flowrate/flowrate_audio_source.h",
++    "flowrate/flowrate_callback_gate.h",
++    "flowrate/flowrate_encoded_frame.h",
++    "flowrate/flowrate_logging.cc",
++    "flowrate/flowrate_logging.h",
++    "flowrate/flowrate_peer.cc",
++    "flowrate/flowrate_peer.h",
++    "flowrate/flowrate_runtime.cc",
++    "flowrate/flowrate_runtime.h",
++    "flowrate/flowrate_sdp.cc",
++    "flowrate/flowrate_sdp.h",
++    "flowrate/flowrate_timing.h",
 +    "flowrate/flowrate_video.cc",
 +    "flowrate/flowrate_video.h",
-+    "flowrate/flowrate_webrtc.cc",
++    "flowrate/flowrate_video_decoder.cc",
++    "flowrate/flowrate_video_decoder.h",
++    "flowrate/flowrate_video_encoder.cc",
++    "flowrate/flowrate_video_encoder.h",
++    "flowrate/flowrate_video_source.cc",
++    "flowrate/flowrate_video_source.h",
++    "flowrate/flowrate_voices.cc",
++    "flowrate/flowrate_voices.h",
 +    "flowrate/flowrate_webrtc.h",
 +  ]
 +

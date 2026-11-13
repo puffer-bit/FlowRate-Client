@@ -15,7 +15,7 @@ Android watches them only, decoded by libwebrtc itself (see below).
 | `Voice/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
 | `Voice/OutgoingSound.cs` | The sound of the screen we show: captured by `IAudioMedia`, pushed into libwebrtc 10 ms at a time |
 | `Voice/OutgoingVideo.cs` | The screen we show: the capture of `IVideoMedia` encodes it, libwebrtc sends it and asks for keyframes and the bitrate |
-| `Native/` | The peer of the desktop: `flowrate_webrtc.h`/`.cc`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), `flowrate_video.cc`, the video codecs that pass the pictures through and the source of encoded ones, and the P/Invoke bindings |
+| `Native/` | The peer of the desktop: `flowrate_webrtc.h`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), the classes behind it (see [Native sources](#native-sources)), and the P/Invoke bindings |
 | `Build/` | The scripts that build libwebrtc with that interface into one library, the committed libraries (`prebuilt/<rid>/`) and `LibWebRTCRuntime.targets`, which copies them next to the executable |
 | `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidVoicePeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`VoicePeer.java`) |
 | `Client.Avalonia.Desktop/Services/Media/MediaEngineTransportFactory.cs` | Picks the engine of each session on the desktop |
@@ -28,14 +28,14 @@ alone. The format parameters of the sections we send in set FEC, DTX and the 64 
 
 libwebrtc carries the screens and codes none of them: `IVideoMedia` captures, encodes and decodes them,
 on the GPU, the same as for the GStreamer transport. Both video codec factories of libwebrtc are
-replaced (`Native/flowrate_video.cc`, put in place by `Build/patches/flowrate_target.patch`), which
+replaced (`Native/flowrate_video.h`, put in place by `Build/patches/flowrate_target.patch`), which
 also leaves the software codecs of WebRTC out of the library.
 
 ### Watched
 
 libwebrtc receives the screens we watch: the transport, the jitter buffer, the retransmissions and the
 keyframe requests. It does not decode them. Its video decoders are replaced by ones that pass the
-pictures through (`Native/flowrate_video.cc`, put in place by `Build/patches/flowrate_target.patch`):
+pictures through (`Native/flowrate_video_decoder.cc`, put in place by `Build/patches/flowrate_target.patch`):
 each hands its encoded picture to `fr_set_video_receiver`, and gives libwebrtc a blank 2×2 picture back
 so that it keeps its timing. The pictures go to the decoders of `IVideoMedia`, the same as for the
 GStreamer transport, which decode on the GPU. libwebrtc only hands on pictures it could decode, so a
@@ -141,6 +141,28 @@ prebuilt libraries after this change; older binaries advertise only H.264 and VP
 negotiation with `Client.Audio.SmokeChecks --video-negotiation` and encoding, requested keyframes,
 decoding and GStreamer RTP round trips with `--video-buffers`. Android viewing uses the codecs its
 Java libwebrtc decoder factory and device expose; Android does not originate screen shares.
+
+## Native sources
+
+The C interface stays plain C for P/Invoke; behind it each handle is one class with one job. Every
+`Native/flowrate_*` file is built into the library (`Build/patches/flowrate_target.patch` lists them).
+
+| File | Role |
+|---|---|
+| `flowrate_webrtc.h` | The C interface, and nothing else is exported |
+| `flowrate_api.cc` | Its `extern "C"` functions: each hands its call to the object behind the handle |
+| `flowrate_runtime.*` | `Runtime`: the field trials, the one factory of the process, the sender of WebRTC beneath one of the wrapper |
+| `flowrate_logging.*` | The log of WebRTC to `fr_set_log` and, by `FLOWRATE_WEBRTC_LOG`, to stderr |
+| `flowrate_callback_gate.h` | `CallbackGate`: lets callbacks of libwebrtc through until the peer or the source is closed |
+| `flowrate_peer.*` | `Peer`: the offer/answer rounds, what each section sends (`AttachTransceiver`), the statistics |
+| `flowrate_sdp.*` | `RewriteSsrcs`: the SSRCs of the SFU in the answer; a pure function, checked by `Native/tests/run.sh` |
+| `flowrate_voices.*` | `Voices`: the voices a peer plays, their volumes and levels |
+| `flowrate_audio.*` | The audio device without hardware, pulled by `fr_pull_playout` |
+| `flowrate_audio_source.*` | `AudioSource`: a custom source, the microphone of a peer or the sound of a screen |
+| `flowrate_video.*` | The video codec factories the patch puts in place of the built-in ones |
+| `flowrate_video_encoder.*`, `flowrate_video_decoder.*` | The passthrough encoder and decoders, the decoders known by their SSRC |
+| `flowrate_video_source.*`, `flowrate_encoded_frame.h` | `VideoSource`: encoded pictures carried as frames to the encoder of their stream |
+| `flowrate_timing.h` | The durations of the statistics of the media |
 
 ## Building
 

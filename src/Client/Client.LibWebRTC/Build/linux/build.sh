@@ -7,7 +7,7 @@
 # Usage: ./build.sh
 # The checkout lives in $FLOWRATE_WEBRTC_DIR (default ~/.cache/flowrate-libwebrtc) and takes about
 # 30 GB. The first run downloads it and builds everything (half an hour to a couple of hours); the
-# next ones only rebuild what changed, e.g. a few seconds after an edit of flowrate_webrtc.cc.
+# next ones only rebuild what changed, e.g. a few seconds after an edit of flowrate_peer.cc.
 # Needs git, curl and python3; depot_tools brings the rest (gn, ninja, clang, the sysroot).
 set -euo pipefail
 
@@ -131,6 +131,10 @@ mkdir -p src/libwebrtc/flowrate
 for source in "$native"/flowrate_*.{cc,h}; do
     file=$(basename "$source")
     cmp -s "$source" "src/libwebrtc/flowrate/$file" || cp "$source" "src/libwebrtc/flowrate/$file"
+done
+# and one removed or renamed here goes from there too
+for file in src/libwebrtc/flowrate/*; do
+    [[ -e "$native/$(basename "$file")" ]] || rm -f "$file"
 done
 
 step "Installing the sysroot"
