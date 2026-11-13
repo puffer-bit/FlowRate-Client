@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
@@ -52,7 +51,6 @@ public partial class SettingsView : UserControl
     private readonly SerialDisposable _title = new();
 
     private TopLevel? _topLevel;
-    private IInputPane? _inputPane;
 
     // How wide the search is while it stands beside the title
     private const double CompactSearchWidth = 150;
@@ -182,9 +180,11 @@ public partial class SettingsView : UserControl
             return true;
         }
 
-        // On the list of categories it first takes the search back
-        if (!string.IsNullOrEmpty(SearchBox.Text))
+        // Leave the search before closing settings. Keep focus while Android hides the IME:
+        // changing it during the predictive back animation can cancel its insets controller.
+        if (SearchBox.IsFocused || !string.IsNullOrEmpty(SearchBox.Text))
         {
+            BackButton.Focus();
             SearchBox.Text = string.Empty;
             return true;
         }
@@ -240,27 +240,13 @@ public partial class SettingsView : UserControl
         base.OnAttachedToVisualTree(e);
 
         _topLevel = TopLevel.GetTopLevel(this);
-        _inputPane = _topLevel?.InputPane;
-        if (_inputPane != null)
-            _inputPane.StateChanged += OnInputPaneStateChanged;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        if (_inputPane != null)
-            _inputPane.StateChanged -= OnInputPaneStateChanged;
-        _inputPane = null;
         _topLevel = null;
 
         base.OnDetachedFromVisualTree(e);
-    }
-
-    // Android leaves the focus in a field whose keyboard was put away. The search gives it up then,
-    // to the button next to it, which folds it back beside the title unless something is typed in it
-    private void OnInputPaneStateChanged(object? sender, InputPaneStateEventArgs e)
-    {
-        if (e.NewState == InputPaneState.Closed && SearchBox.IsFocused)
-            BackButton.Focus();
     }
 
     // A page has only its name in the header. The list of categories has the title and the search

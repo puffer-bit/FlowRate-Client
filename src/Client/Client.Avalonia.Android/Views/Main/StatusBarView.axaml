@@ -7,11 +7,8 @@
              x:Class="Client.Droid.Views.Main.StatusBarView"
              x:DataType="mainVm:MainWindowVM">
 
-    <!-- The status bar of the desktop: what the application is doing, behind a ring while it is busy
-         and a dot that is green once connected, and the ping on the right -->
-    <Border Height="28" Padding="12,0"
-            Background="{DynamicResource GeneralBrush}"
-            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0">
+    <!-- Connection state and ping below the server title in the navigation drawer. -->
+    <Border MinHeight="18">
         <Border.Styles>
             <Style Selector="Ellipse.connection">
                 <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/>

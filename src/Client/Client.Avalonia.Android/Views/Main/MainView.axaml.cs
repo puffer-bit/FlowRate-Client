@@ -60,9 +60,6 @@ public partial class MainView : UserControl
     private bool _readyForCallActions;
     private bool _handlingCallAction;
 
-    // Set while the menu is open because back led to it from a session: back pressed again then
-    // goes on to leaving the application instead of returning to the session
-    private bool _isDrawerOpenedByBack;
 
     public MainView()
     {
@@ -86,7 +83,7 @@ public partial class MainView : UserControl
         };
         AudioDevicesMenu.Dismissed += () => TryClose(AudioDevicesMenu);
 
-        // Shown from here and not from the chat, which ends above the status bar
+        // Shown over the session and navigation drawer
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
     }
 
@@ -99,6 +96,12 @@ public partial class MainView : UserControl
         _chatView.MenuRequested += OpenDrawer;
         Sessions.ServerMenuRequested += OpenServerMenu;
         Sessions.ChatMenuRequested += OpenChatMenu;
+        HomeChats.ChatMenuRequested += OpenChatMenu;
+        HomeChats.ChatRequested += chat =>
+        {
+            viewModel.SessionsList.SelectedSession = chat;
+            CloseDrawer();
+        };
         Sessions.SessionMoveMenuRequested += OpenSessionMoveMenu;
         Sessions.CategoryMenuRequested += OpenCategoryMenu;
         Sessions.SettingsRequested += _navigation.OpenSettings;
@@ -385,6 +388,9 @@ public partial class MainView : UserControl
             return;
         }
 
+        _chatView.DataContext = null;
+        _chatDialogs.Disposable = null;
+
         if (_viewModel?.CurrentContent is ActiveHybridSessionVM hybrid)
         {
             if (!ReferenceEquals(_hybridView.DataContext, hybrid))
@@ -414,7 +420,6 @@ public partial class MainView : UserControl
             return false;
 
         Drawer.Classes.Set("open", false);
-        _isDrawerOpenedByBack = false;
         return true;
     }
 
@@ -631,12 +636,7 @@ public partial class MainView : UserControl
         _viewModel?.ServerTitle.DisconnectCommand.Execute().Subscribe();
     }
 
-    // The system back button undoes the last step: closes a message box, then the connect form, the
-    // profile, the form of a new session, a page of the settings and the settings, the menu of the
-    // server, the menu with the sessions the user opened over a chat, the menu of a message. From a
-    // chat it then opens the menu with the sessions and keeps the chat under it. With nothing left
-    // to close it opens that menu if it is not open, then asks whether to leave the application,
-    // and pressed once more it leaves
+    // Back dismisses overlays first, then returns from a session to the personal chat list.
     private void OnBackRequested(object? sender, RoutedEventArgs e)
     {
         if (NativeTextMenu.TryDismissActive())
@@ -672,25 +672,21 @@ public partial class MainView : UserControl
             return;
         }
 
-        // Over a session the menu the user opened is closed to get back to it. The menu back itself
-        // led to stays, and so does the one without a session, see below
+        // Menus close before navigating away from the current screen.
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
             || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(PokeMenu) || TryClose(AfkMenu)
             || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu)
-            || (_viewModel?.CurrentContent != null && !_isDrawerOpenedByBack && CloseDrawer()))
+            || CloseDrawer())
         {
             e.Handled = true;
             return;
         }
 
-        if (_viewModel?.CurrentContent != null && !Drawer.Classes.Contains("open"))
+        if (_viewModel?.CurrentContent != null)
         {
-            if (!_chatView.TryCloseMenu() && !_chatView.TryClosePinnedMessages())
+            if (!_chatView.TryCloseMenu() && !_chatView.TryCloseViewers() && !_chatView.TryClosePinnedMessages())
             {
-                // Back from a session leads to the menu with the sessions. The session stays shown
-                // under it, so closing the menu returns to it
-                OpenDrawer();
-                _isDrawerOpenedByBack = true;
+                _viewModel.ShowHome();
             }
 
             e.Handled = true;
@@ -698,13 +694,6 @@ public partial class MainView : UserControl
         }
 
         e.Handled = true;
-
-        // With no session on screen the menu is the first screen of the application: back goes to it
-        if (!Drawer.Classes.Contains("open"))
-        {
-            OpenDrawer();
-            return;
-        }
 
         // Nothing is left but the application itself, which is asked about first
         _ = AskToExitAsync();

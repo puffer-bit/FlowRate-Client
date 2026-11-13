@@ -53,7 +53,7 @@
             <Setter Property="Width" Value="260"/>
         </Style>
 
-        <!-- Round buttons of the header and of the list, sized for a finger -->
+        <!-- Round buttons of the header, list and composer, sized for a finger -->
         <Style Selector="Button.chat-round">
             <Setter Property="Width" Value="44"/>
             <Setter Property="Height" Value="44"/>
@@ -165,7 +165,7 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="MaxHeight" Value="140"/>
-            <Setter Property="Padding" Value="12,8,6,8"/>
+            <Setter Property="Padding" Value="8,10,8,10"/>
             <Setter Property="FontSize" Value="15"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -194,12 +194,7 @@
 
         <!-- Send: an accent circle while there is something to send, a faint plane otherwise -->
         <Style Selector="Button.composer-send">
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="36"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="CornerRadius" Value="18"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="Button.composer-send /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
@@ -228,7 +223,7 @@
             <Setter Property="StrokeThickness" Value="1.75"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
             <Setter Property="StrokeJoin" Value="Round"/>
-            <Setter Property="Stretch" Value="None"/>
+            <Setter Property="Stretch" Value="Uniform"/>
         </Style>
         <Style Selector="Button.composer-send:disabled Path.composer-send-plane">
             <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
@@ -278,6 +273,11 @@
                 </Grid>
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.HasViewers}"
+                        Click="OnViewersClick" ToolTip.Tip="{l:Text chat.viewers.title}"
+                        AutomationProperties.Name="{l:Text chat.viewers.title}">
+                    <Image Width="24" Height="24" Source="{StaticResource BaseUsersIcon}"/>
+                </Button>
                 <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.IsDirect}"
                         Command="{Binding StatusBar.CallCommand}" ToolTip.Tip="{l:Text calls.start}">
                     <Image Width="24" Height="24" Source="{StaticResource ChatCallStartedIcon}"/>
@@ -523,10 +523,8 @@
                 <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="4">
                     <!-- Not focusable, like the send button: the keyboard stays as it was -->
                     <Button Grid.Column="0"
-                            Classes="borderless"
-                            Width="40" Height="40" Padding="0"
+                            Classes="borderless chat-round"
                             VerticalAlignment="Bottom"
-                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             Focusable="False"
                             IsVisible="{Binding Composer.IsAttachmentsAllowed}"
                             Command="{Binding Composer.AttachFilesCommand}">
@@ -555,20 +553,22 @@
 
                     <!-- Not focusable: a tap on it would take the focus from the input and fold the keyboard -->
                     <Button Grid.Column="3"
-                            Classes="composer-send"
+                            Classes="chat-round composer-send"
                             Classes.sending="{Binding Composer.IsMessageSending}"
                             VerticalAlignment="Bottom"
                             Focusable="False"
                             Command="{Binding Composer.SendMessageCommand}">
-                        <Panel>
-                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                        <Panel Width="20" Height="20">
+                            <loadingIndicators:ProgressRing Width="18" Height="18" MinWidth="0" MinHeight="0"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             IsIndeterminate="True" BorderThickness="2"
                                                             Foreground="{DynamicResource OnAccentTextBrush}"
                                                             IsVisible="{Binding Composer.IsMessageSending}"/>
                             <!-- Paper plane pointing right, drawn on an 18 px grid -->
                             <Path Classes="composer-send-plane"
                                   IsVisible="{Binding !Composer.IsMessageSending}"
-                                  Width="18" Height="18"
+                                  Width="20" Height="20"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                   Data="M3,3 L16.5,9 L3,15 L5.25,9 Z M5.25,9 H10.5"/>
                         </Panel>
                     </Button>
@@ -728,5 +728,8 @@
                                       Command="{Binding Delete}"/>
             </StackPanel>
         </common:BottomSheet>
+        <Border Grid.RowSpan="4" IsVisible="{Binding StatusBar.Viewers.IsOpen, FallbackValue=False}">
+            <views:ChatViewersPanel x:Name="ViewersPanel" DataContext="{Binding StatusBar.Viewers}"/>
+        </Border>
     </Grid>
 </UserControl>

@@ -53,6 +53,7 @@ public partial class ChatView : UserControl
         InitializeComponent();
 
         MessageMenu.Dismissed += () => TryCloseMenu();
+        ViewersPanel.CloseRequested += () => TryCloseViewers();
 
         // The mention list follows the word at the caret
         MessageInput.PropertyChanged += (_, e) =>
@@ -91,15 +92,31 @@ public partial class ChatView : UserControl
         return MessageMenu;
     }
 
-    private void OpenDirectChatProfile()
+    private void OpenChatDetails()
     {
-        if (Chat?.StatusBar is { IsDirect: true } statusBar)
-            statusBar.OpenInfoCommand.Execute().Subscribe();
+        if (Chat?.StatusBar is { } statusBar)
+        {
+            if (statusBar.IsDirect)
+                statusBar.OpenInfoCommand.Execute().Subscribe();
+            else
+                statusBar.Viewers?.Open();
+        }
     }
 
-    private void OnChatTitleClick(object? sender, RoutedEventArgs e) => OpenDirectChatProfile();
+    private void OnViewersClick(object? sender, RoutedEventArgs e) => Chat?.StatusBar.Viewers?.Open();
 
-    private void OnChatTitleTapped(object? sender, TappedEventArgs e) => OpenDirectChatProfile();
+    public bool TryCloseViewers()
+    {
+        if (Chat?.StatusBar.Viewers is not { IsOpen: true } viewers)
+            return false;
+
+        viewers.Close();
+        return true;
+    }
+
+    private void OnChatTitleClick(object? sender, RoutedEventArgs e) => OpenChatDetails();
+
+    private void OnChatTitleTapped(object? sender, TappedEventArgs e) => OpenChatDetails();
 
     private ActiveChatSessionVM? Chat => DataContext as ActiveChatSessionVM;
 
@@ -207,6 +224,7 @@ public partial class ChatView : UserControl
     {
         var subscriptions = new CompositeDisposable
         {
+            Disposable.Create(() => chat.StatusBar.Viewers?.Close()),
             chat.ScrollToEndInteraction.RegisterHandler(interaction =>
             {
                 ScrollToEnd();

@@ -89,9 +89,9 @@
 
     <!-- The padding of the view itself belongs to the system: it keeps the content out of the status
          bar and the gesture area. Room for the keyboard is made by the margin of this panel -->
-    <Grid x:Name="Root" RowDefinitions="*, Auto">
+    <Grid x:Name="Root">
 
-        <!-- Shown while no session is open, as the right side of the desktop window is -->
+        <!-- Personal conversations are the home screen on Android. -->
         <Grid Grid.Row="0" x:Name="Home" RowDefinitions="Auto, 1, *">
             <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, *" ColumnSpacing="8">
                 <Button Grid.Column="0"
@@ -115,11 +115,7 @@
 
             <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-            <emptyStates:EmptyState Grid.Row="2"
-                                    anim:Presence.Appear="Rise"
-                                    Icon="{StaticResource SelectSessionIcon}"
-                                    Title="{l:Text main.noSession.title}"
-                                    Text="{l:Text main.noSession.text.menu}"/>
+            <views:PrivateChatsView Grid.Row="2" x:Name="HomeChats" DataContext="{Binding SessionsList}"/>
         </Grid>
 
         <!-- The session that is open -->
@@ -147,11 +143,8 @@
             </TransitioningContentControl.PageTransition>
         </TransitioningContentControl>
 
-        <!-- Under every screen, as the status bar of the desktop is under the whole window -->
-        <main:StatusBarView Grid.Row="1" x:Name="StatusBar"/>
-
-        <!-- Sheets lie over the status bar too. The menu of a message is written in the chat view and joins this layer in code -->
-        <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="SheetLayer">
+        <!-- The menu of a message is written in the chat view and joins this layer in code -->
+        <Panel Grid.Row="0" x:Name="SheetLayer">
             <common:BottomSheet x:Name="AudioDevicesMenu">
                 <media:CallAudioDevicePicker Margin="12"/>
             </common:BottomSheet>
@@ -504,12 +497,12 @@
             </common:BottomSheet>
         </Panel>
 
-        <notifications:ToastHost Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding Notifications}"
+        <notifications:ToastHost Grid.Row="0" DataContext="{Binding Notifications}"
                          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,56,12,12"/>
 
-        <main:StartupScreen Grid.Row="0" Grid.RowSpan="2" x:Name="StartupOverlay"/>
+        <main:StartupScreen Grid.Row="0" x:Name="StartupOverlay"/>
 
         <!-- Message boxes lie over the startup screen too. -->
-        <Panel Grid.Row="0" Grid.RowSpan="2" x:Name="DialogLayer"/>
+        <Panel Grid.Row="0" x:Name="DialogLayer"/>
     </Grid>
 </UserControl>

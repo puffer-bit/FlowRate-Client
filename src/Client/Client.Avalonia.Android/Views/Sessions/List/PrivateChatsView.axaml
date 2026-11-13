@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:views="clr-namespace:Client.Droid.Views.Sessions.List"
+             x:Class="Client.Droid.Views.Sessions.List.PrivateChatsView"
+             x:DataType="listVm:SessionsListVM">
+    <UserControl.Styles>
+        <Style Selector="StackPanel.placeholder">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Spacing" Value="12"/>
+            <Setter Property="Margin" Value="24"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="anim:Presence.Appear" Value="Rise"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder > Image">
+            <Setter Property="Width" Value="56"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="TextWrapping" Value="WrapWithOverflow"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="StackPanel.placeholder TextBlock.title">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <!-- The list from before a lost connection stays, but takes no input until it is loaded again -->
+        <Style Selector="ListBox.sessionsList:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <Style Selector="ListBox.sessionsList">
+            <Setter Property="anim:Presence.Appear" Value="Fade"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,*">
+        <TextBlock Text="{l:Text privateChats.showPrivate}" FontSize="16" FontWeight="SemiBold" Margin="20,16,20,4"/>
+        <Grid Grid.Row="1">
+            <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
+                <Image Source="{StaticResource PlugIcon}"/>
+                <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
+                <TextBlock Text="{l:Text sessions.notConnected.text}"/>
+                <Button Classes="primary" Command="{Binding ConnectCommand}"
+                        HorizontalAlignment="Center" MinWidth="140" MinHeight="44" Margin="0,4,0,0"
+                        HorizontalContentAlignment="Center">
+                    <TextBlock Text="{l:Text connect.button}" Foreground="{DynamicResource OnAccentTextBrush}"/>
+                </Button>
+            </StackPanel>
+            <StackPanel Classes="placeholder" IsVisible="{Binding IsReconnecting}">
+                <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                                IsIndeterminate="True" BorderThickness="4"
+                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+                <TextBlock Classes="title" Text="{l:Text sessions.connectionLost.title}"/>
+                <TextBlock Text="{l:Text sessions.connectionLost.text}"/>
+            </StackPanel>
+            <StackPanel Classes="placeholder" IsVisible="{Binding IsLoading}">
+                <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                                IsIndeterminate="True" BorderThickness="4"
+                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+                <TextBlock Text="{l:Text sessions.retrieving}"/>
+            </StackPanel>
+            <StackPanel Classes="placeholder" IsVisible="{Binding IsFailed}">
+                <Image Source="{StaticResource DashInCircleIcon}"/>
+                <TextBlock Text="{Binding ErrorMessage}"/>
+            </StackPanel>
+            <StackPanel Classes="placeholder" IsVisible="{Binding IsPrivateChatsEmpty}">
+                <Image Source="{StaticResource TipIcon}"/>
+                <TextBlock Text="{l:Text privateChats.empty}"/>
+            </StackPanel>
+
+            <ListBox x:Name="Chats" Classes="sessionsList byContent" Margin="8"
+                     ItemsSource="{Binding PrivateChats}" IsVisible="{Binding HasPrivateChats}"
+                     IsEnabled="{Binding !IsStale}" Background="Transparent" Tapped="OnChatTapped">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="listVm:ChatSessionVM">
+                        <views:ChatListItemView/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Grid>
+</UserControl>
