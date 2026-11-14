@@ -186,10 +186,12 @@ public static class VideoEncoderSelector
 
     // In its low-latency usages AMF makes a keyframe only when asked for one: its GOP size gives
     // keyframes in the transcoding usage only. A GOP of 0, an IDR at the start alone, keeps it so
-    // where the element does not take the usage
+    // where the element does not take the usage. The AV1 encoder has no ultra low latency usage, and
+    // left without one it runs in the transcoding usage
     private static Candidate Amf(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps))],
-            [("usage", "ultra-low-latency"), ("rate-control", "cbr"), ("gop-size", "0")]);
+            [("usage", factory == "amfav1enc" ? "low-latency" : "ultra-low-latency"), ("rate-control", "cbr"),
+             ("gop-size", "0")]);
 
     // 1024 frames is the longest GOP VA-API takes
     private static Candidate Va(string factory) =>

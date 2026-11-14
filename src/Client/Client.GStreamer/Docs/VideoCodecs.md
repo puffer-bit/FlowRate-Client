@@ -159,7 +159,7 @@ the whole branch.
 |---|---|---|---|---|
 | NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr` / `rc-mode=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` / `zerolatency=true` (names depend on plugin version) | `gop-size=-1` | `vbv-buffer-size` |
 | NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` | `gop-size=-1` | `vbv-buffer-size` |
-| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
+| AMF | kbit/s | `usage=ultra-low-latency` (`usage=low-latency` for `amfav1enc`, which has no ultra low latency usage), `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
 | VA-API | kbit/s | `rate-control=cbr` | `key-int-max=1024` | `cpb-size` |
 | Quick Sync | kbit/s | `rate-control=cbr`, `low-latency=true` | `gop-size=65535` | `max-frame-size-i` |
 | Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` | the encoder's own | |
