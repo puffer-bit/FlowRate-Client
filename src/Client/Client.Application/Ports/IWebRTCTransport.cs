@@ -161,5 +161,11 @@ public interface IWebRTCTransport : IDisposable
     /// </summary>
     void SetOutboundPreviewShown(string outboundId, bool isShown);
 
+    /// <summary>
+    /// Tells the height the preview of a screen we show is shown at, see
+    /// <see cref="IScreenCapture.SetPreviewHeight"/>. Nothing happens for an outbound that is no screen.
+    /// </summary>
+    void SetOutboundPreviewHeight(string outboundId, int height);
+
     Task<bool> WaitUntilConnectedAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
 }

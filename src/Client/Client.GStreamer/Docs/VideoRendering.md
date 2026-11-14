@@ -24,7 +24,7 @@ drawn from a bitmap, the way they always were.
 | `Video/GstVideoMedia.cs` | `IVideoMedia`: what a transport asks for a capture or a decoder |
 | `Video/GstVideoDecoder.cs` | The decoding pipeline of a stream, rebuilt in memory when GPU frames fail |
 | `Video/GstScreenCapture.cs` | The capture pipeline of a shown screen: its source and `ScreenEncodingBranch` |
-| `Video/ScreenEncodingBranch.cs` | Scaling on the GPU for VA-API encoders, the encoder, the preview capped at 30 fps |
+| `Video/ScreenEncodingBranch.cs` | Scaling on the GPU for VA-API encoders, the encoder, the preview scaled to the height it is shown at on the Direct3D 11 path |
 | `Video/VideoEncoderSelector.cs` | The encoder, with the one picked in the settings first |
 | `Client.Core/Media/RawVideoFrame.cs` | A frame: pixels in memory, or `Gpu`; `Timestamp` in nanoseconds |
 | `Client.Core/Media/GpuVideoFrame.cs` | Reference-counted frames: `DmaBufVideoFrame`, `GlCopyVideoFrame`, `D3D11SharedVideoFrame`, and `MemoryYuvVideoFrame` (in memory, held the same way) |

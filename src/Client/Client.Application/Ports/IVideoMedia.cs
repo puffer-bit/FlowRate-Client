@@ -68,6 +68,12 @@ public interface IScreenCapture : IDisposable
     void SetPreviewShown(bool isShown);
 
     /// <summary>
+    /// Tells the height the preview is shown at, in pixels, so that no more of it is made than is seen;
+    /// 0 for the size of the capture. A capture that cannot scale its preview keeps it as it is. Any thread.
+    /// </summary>
+    void SetPreviewHeight(int height);
+
+    /// <summary>
     /// What the encoder did since the previous call, and starts the next window; null before it put
     /// anything out. Any thread.
     /// </summary>

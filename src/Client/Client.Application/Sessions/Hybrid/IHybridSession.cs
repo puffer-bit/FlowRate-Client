@@ -145,6 +145,12 @@ public interface IHybridSession : IDisposable
     bool IsWatchingScreen(int userId);
 
     /// <summary>
+    /// Tells the height our own screen is shown at, in pixels, so that its preview is made no larger;
+    /// 0 for the size of the capture. Kept for a screen that is shown later.
+    /// </summary>
+    void SetScreenPreviewHeight(int height);
+
+    /// <summary>
     /// The screen of the user is watched and comes with its sound.
     /// </summary>
     bool HasWatchedScreenAudio(int userId);

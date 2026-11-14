@@ -12,12 +12,23 @@ public partial class HybridScreenTile : UserControl
     // The stream whose frames are drawn here; the tile is reused for another one when the list changes
     private ScreenStreamVM? _stream;
 
+    private const int PictureHeightStep = 180;
+
+    // What the stream was last told, in pixels
+    private int _reportedHeight;
+
     public HybridScreenTile()
     {
         InitializeComponent();
 
         Perf.ReadFrames = () => Picture.Stats;
         Perf.ReadRoute = () => Picture.Route;
+
+        Picture.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == BoundsProperty)
+                ReportPictureHeight();
+        };
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -74,6 +85,7 @@ public partial class HybridScreenTile : UserControl
         }
 
         _stream = stream;
+        _reportedHeight = 0;
         Picture.Clear();
         Picture.SetDecoding(null);
         Perf.Reset();
@@ -88,12 +100,30 @@ public partial class HybridScreenTile : UserControl
         stream.ReadFrameStats = () => Picture.Stats;
         stream.PerfChanged += Perf.SetPerf;
         Perf.SetPerf(stream.Perf.Stream, stream.Perf.Network);
+        ReportPictureHeight();
     }
 
     private void OnPictureDoubleTapped(object? sender, TappedEventArgs e)
     {
         _stream?.ToggleExpandCommand.Execute().Subscribe();
         e.Handled = true;
+    }
+
+    // The preview of our own screen is made as high as it is drawn. Rounded up to a step, so that a
+    // window that is being resized does not have the preview made anew at every pixel
+    private void ReportPictureHeight()
+    {
+        if (_stream?.PictureHeightChanged is not { } report || Picture.Bounds.Height <= 0)
+            return;
+
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        var height = (int)Math.Ceiling(Picture.Bounds.Height * scaling / PictureHeightStep) * PictureHeightStep;
+
+        if (height == _reportedHeight)
+            return;
+
+        _reportedHeight = height;
+        report(height);
     }
 
     // Raised on a thread of the track, and the pixels are only valid during the call

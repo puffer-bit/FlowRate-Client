@@ -649,6 +649,16 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         video?.SetPreviewShown(isShown);
     }
 
+    public void SetOutboundPreviewHeight(string outboundId, int height)
+    {
+        OutgoingVideo? video;
+
+        lock (_lock)
+            _outgoingVideos.TryGetValue(outboundId, out video);
+
+        video?.SetPreviewHeight(height);
+    }
+
     public bool SetOutboundMuted(string outboundId, bool isMuted)
     {
         lock (_lock)

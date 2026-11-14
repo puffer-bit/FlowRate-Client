@@ -225,7 +225,9 @@ capture starts with.
 
 Both legs drop late frames instead of queueing them, except the sink of the encoded frames: a lost
 frame there would break every one up to the next keyframe, so it holds the encoder back instead.
-The preview leg keeps the size and rate of the capture. On the Linux VA capture path, when the
+The preview leg keeps the rate of the capture. On the Direct3D 11 path it is scaled on the GPU to the
+height the sharer sees it at (`IScreenCapture.SetPreviewHeight`, told by the tile that draws it), since
+its download and upload cost by the pixel; the other paths keep the size of the capture. On the Linux VA capture path, when the
 presenter supports DMA-BUF, it exports NV12 DMA-BUF to OpenGL without CPU readback. Local preview
 frames have no presentation timestamp (`-1`): the presenter uses the latest frame instead of
 retaining a network jitter queue. The preview sink retains at most one queued frame and no last
