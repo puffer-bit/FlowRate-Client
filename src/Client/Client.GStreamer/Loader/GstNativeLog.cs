@@ -23,6 +23,8 @@ public sealed unsafe partial class GstNativeLog(ILoggerFactory loggerFactory) : 
     private const int LevelDebug = 5;
     private const int LevelLog = 6;
 
+    private const string Direct3D11DebugLayerCategory = "d3d11debuglayer";
+
     private static readonly Lock Gate = new();
     private static ILogger? _logger;
     private static NativeLogLevel? _level;
@@ -31,6 +33,10 @@ public sealed unsafe partial class GstNativeLog(ILoggerFactory loggerFactory) : 
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern void gst_debug_set_default_threshold(int level);
+
+    [DllImport(NativeLibraries.GStreamer)]
+    private static extern void gst_debug_set_threshold_for_name(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int level);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern void gst_debug_add_log_function(
@@ -103,6 +109,12 @@ public sealed unsafe partial class GstNativeLog(ILoggerFactory loggerFactory) : 
             NativeLogLevel.Debug => LevelDebug,
             _ => LevelLog
         });
+
+        // Above the level of errors, this category makes every Direct3D 11 device with the debug layer of
+        // the SDK where that is installed, which checks each call and reports what is still alive when a
+        // device goes. A GST_DEBUG of the environment may still ask for it
+        if (!hasEnvironment)
+            gst_debug_set_threshold_for_name(Direct3D11DebugLayerCategory, LevelError);
     }
 
     // GstLogFunction; comes on any thread of GStreamer, often a streaming one
