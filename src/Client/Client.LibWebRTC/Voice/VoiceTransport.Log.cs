@@ -52,9 +52,11 @@ public sealed partial class VoiceTransport
     [LoggerMessage(LogLevel.Information,
         "[Session {SessionId}] Voice gate at {ThresholdDb:F0} dB, opening from {EffectiveThresholdDb:F0} dB over a " +
         "noise floor of {NoiseFloorDb:F0} dB (null: not adaptive): open {OpenPercent:F0}% of the time, opened " +
-        "{Openings} times, loudest peak {LoudestDb:F0} dB, average peak while open {AverageOpenPeakDb:F0} dB")]
+        "{Openings} times, loudest peak {LoudestDb:F0} dB, average peak while open {AverageOpenPeakDb:F0} dB, " +
+        "voice heard {VoicePercent:F0}% of the time (null: no voice detection)")]
     private partial void LogVoiceGateSummary(int sessionId, double thresholdDb, double effectiveThresholdDb,
-        double? noiseFloorDb, double openPercent, int openings, double loudestDb, double averageOpenPeakDb);
+        double? noiseFloorDb, double openPercent, int openings, double loudestDb, double averageOpenPeakDb,
+        double? voicePercent);
 
     [LoggerMessage(LogLevel.Debug,
         "[Session {SessionId}] Counters: available out {AvailableKbps:F0} kbit/s; sent {Sent}; received {Received}")]
