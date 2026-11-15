@@ -5,8 +5,6 @@
 #include <vector>
 
 #include "libwebrtc.h"
-#include "rtc_audio_processing.h"
-#include "src/rtc_audio_processing_impl.h"
 #include "src/rtc_peerconnection_factory_impl.h"
 #include "src/rtc_rtp_sender_impl.h"
 
@@ -20,15 +18,6 @@ namespace {
 std::mutex& g_mutex = *new std::mutex();
 libwebrtc::scoped_refptr<libwebrtc::RTCPeerConnectionFactory>& g_factory =
     *new libwebrtc::scoped_refptr<libwebrtc::RTCPeerConnectionFactory>();
-
-// The processing of the microphone, one for the process. The microphone comes processed by the media
-// engine into a custom source, so only its configuration of Initialize is left here
-webrtc::AudioProcessing* Processing(const libwebrtc::scoped_refptr<libwebrtc::RTCPeerConnectionFactory>& factory) {
-  auto processing = factory->GetAudioProcessing();
-  return processing != nullptr
-             ? static_cast<libwebrtc::RTCAudioProcessingImpl*>(processing.get())->GetAudioProcessing().get()
-             : nullptr;
-}
 
 }  // namespace
 
@@ -64,14 +53,6 @@ bool Runtime::Initialize() {
 
   if (factory == nullptr || !factory->Initialize())
     return false;
-
-  // The whole band of the voice, up to 24 kHz, as the processing of GStreamer keeps it: by default
-  // the processing runs at 32 kHz at most, and what is above 16 kHz is lost
-  if (auto processing = Processing(factory)) {
-    auto config = processing->GetConfig();
-    config.pipeline.maximum_internal_processing_rate = 48000;
-    processing->ApplyConfig(config);
-  }
 
   g_factory = factory;
   return true;

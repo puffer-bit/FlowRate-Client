@@ -1,8 +1,7 @@
 diff --git a/libwebrtc/BUILD.gn b/libwebrtc/BUILD.gn
-index 33a8a63..05ced80 100644
 --- a/libwebrtc/BUILD.gn
 +++ b/libwebrtc/BUILD.gn
-@@ -40,6 +40,8 @@ config("external_config") {
+@@ -40,6 +40,8 @@
  }
  
  rtc_shared_library("libwebrtc") {
@@ -11,7 +10,7 @@ index 33a8a63..05ced80 100644
    libs = []
    cflags = []
    include_dirs = [
-@@ -287,6 +289,37 @@ rtc_shared_library("libwebrtc") {
+@@ -287,6 +289,37 @@
      "//third_party/libyuv",
    ]
  
@@ -49,6 +48,21 @@ index 33a8a63..05ced80 100644
    # screen capture device
    if (libwebrtc_desktop_capture) {
      sources += [
+@@ -325,6 +358,9 @@
+   }
+ }
+ 
++# FlowRate: only with the tests of WebRTC, which the library is built without: some of them need
++# the audio devices of the platform, left out of it
++if (rtc_include_tests) {
+ rtc_test("libwebrtc_cpp_api_unittests") {
+   testonly = true
+ 
+@@ -347,3 +383,4 @@
+     "//test:test_main",
+   ]
+ }
++}  # rtc_include_tests
 diff --git a/libwebrtc/src/rtc_peerconnection_factory_impl.cc b/libwebrtc/src/rtc_peerconnection_factory_impl.cc
 index cf524b6..00d00db 100644
 --- a/libwebrtc/src/rtc_peerconnection_factory_impl.cc

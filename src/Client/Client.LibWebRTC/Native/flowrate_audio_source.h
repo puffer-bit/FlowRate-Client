@@ -1,5 +1,5 @@
-// A sound we send whose samples come from outside: the microphone of a peer, processed by the media
-// engine, or the sound of a shown screen, behind an fr_audio_source.
+// A sound we send whose samples come from outside: the microphone of a peer, processed by GStreamer,
+// or the sound of a shown screen, behind an fr_audio_source.
 
 #ifndef FLOWRATE_AUDIO_SOURCE_H
 #define FLOWRATE_AUDIO_SOURCE_H
@@ -15,9 +15,9 @@ namespace flowrate {
 class AudioSource {
  public:
   enum class Kind {
-    // Muted until a section sends it; leaves its processing options to the processing of the process
+    // Muted until a section sends it
     kMicrophone,
-    // Sent as it is: its sender must not change the processing the microphone shares
+    // Sent as soon as its section is
     kScreen,
   };
 

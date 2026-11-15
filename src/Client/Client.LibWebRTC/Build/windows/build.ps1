@@ -19,13 +19,13 @@ if ($env:OS -ne "Windows_NT" -or [IntPtr]::Size -ne 8) {
     throw "Run this script in 64-bit PowerShell on Windows"
 }
 
-# The sources, pinned as in ../linux/build.sh. The patches differ: the Linux one fixes the desktop
-# capture of Wayland, the Windows one lets the WASAPI devices of 176.4 and 192 kHz open in shared mode
+# The sources, pinned as in ../linux/build.sh. The patches of the wrapper differ by the one that fixes
+# the desktop capture of Wayland, which only Linux needs
 $wrapperTag = "libwebrtc.m150.7871.06"
 $webrtcCommit = "a545de45259b47dfac5f3635863e47cb601f1bb2" # webrtc-sdk/webrtc, m150_release
-$webrtcPatches = @("custom_audio_source_m150", "add_libwebrtc_build_target", "allow_176k4_192k_shared_mode_formats")
+$webrtcPatches = @("custom_audio_source_m150", "add_libwebrtc_build_target")
 # Our patches to WebRTC, in ..\patches
-$flowratePatches = @("flowrate_audio_processing", "flowrate_keep_sps", "flowrate_wasapi_autoconvert", "flowrate_no_builtin_aec", "flowrate_screen_audio_options")
+$flowratePatches = @("flowrate_keep_sps")
 # The Windows SDK this WebRTC builds with: SDK_VERSION of src\build\vs_toolchain.py, checked after the sync
 $sdkVersion = "10.0.26100.0"
 
@@ -38,9 +38,10 @@ $outBuild = Join-Path $work "out\win-x64"
 # Release, without the tests and the parts we do not use, as on Linux: the screens are captured and
 # encoded by GStreamer, so neither the desktop capture of the wrapper nor the H.265 coder of Media
 # Foundation is built (the latter would also tie the library to mfplat.dll, missing on the N editions
-# of Windows). The rest follows the releases of webrtc-sdk: clang-cl with the C++ library of MSVC.
-# A release build links the C runtime statically, so no Visual C++ redistributable is needed. The tests
-# stay declared, as the wrapper has a test target that needs them, but only the library is built.
+# of Windows), and GStreamer plays and records the sound, so neither are the audio devices of Windows
+# (WASAPI, the Voice Capture DMO): flowrate_audio.cc is the only one. The rest follows the releases of webrtc-sdk: clang-cl with the C++ library of MSVC.
+# A release build links the C runtime statically, so no Visual C++ redistributable is needed. No tests:
+# flowrate_target.patch declares the test target of the wrapper only with them.
 $gnArgs = @'
 target_os = "win"
 target_cpu = "x64"
@@ -51,11 +52,12 @@ symbol_level = 0
 enable_iterator_debugging = false
 treat_warnings_as_errors = false
 use_custom_libcxx = false
-rtc_include_tests = true
+rtc_include_tests = false
 rtc_build_tools = false
 rtc_build_examples = false
 rtc_enable_protobuf = false
 rtc_use_h265 = false
+rtc_include_internal_audio_device = false
 libwebrtc_desktop_capture = false
 '@
 

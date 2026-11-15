@@ -122,17 +122,10 @@ producer, and the stream goes on with the next sequence number when it is back.
 The sound of a shown screen is captured by `IAudioMedia` (GStreamer: the process loopback of Windows,
 the streams of an application on PipeWire), cut into 10 ms and pushed into an `fr_audio_source` of its
 own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX,
-as the GStreamer transport does; nothing of the processing of the microphone touches it.
-Its source leaves audio processing options unset through `flowrate_screen_audio_options.patch`:
-the legacy native capture processor is shared between senders. Desktop microphone processing now
-runs independently in GStreamer, so screen sender options cannot override the user's gain or echo
-cancellation settings.
-
-To check this regression on Windows, use two clients with libwebrtc and enable AGC and echo
-cancellation on the client sharing its screen. Compare its microphone volume before screen sharing,
-while sharing with audio, and after stopping. Repeat start/stop and test sharing without audio as a
-control. With speakers, check that the remote client's voice does not return through the sharing
-client's microphone. Repeat with headphones to distinguish acoustic echo from duplicate delivery.
+as the GStreamer transport does; nothing of the processing of the microphone touches it. The
+microphone is processed by GStreamer (`MicrophoneProcessing`) before its own `fr_audio_source`, and
+the samples of a custom source go to the senders past the processing of libwebrtc, so a screen that
+starts or stops with sound changes nothing of the gain or echo cancellation of the microphone.
 Also repeat with AGC and echo cancellation disabled: sharing must preserve these settings too.
 
 The native source advertises H.264, VP8 and AV1 in both directions. AV1 is single-layer passthrough:

@@ -16,14 +16,14 @@ std::unique_ptr<AudioSource> AudioSource::Create(Kind kind) {
   if (factory == nullptr)
     return nullptr;
 
+  // Both come processed or as they should sound: GStreamer processes the microphone, and the samples
+  // of a custom source go to the senders straight, past the processing of libwebrtc. Everything off,
+  // so that the options a sender applies leave that processing idle
   libwebrtc::RTCAudioOptions options;
   options.echo_cancellation = false;
   options.noise_suppression = false;
   options.auto_gain_control = false;
-  // The microphone keeps the high-pass filter of libwebrtc; screen audio bypasses capture processing,
-  // and its sender must not change the shared processing of the microphone
-  options.highpass_filter = kind == Kind::kMicrophone;
-  options.apply_processing_options = kind == Kind::kMicrophone;
+  options.highpass_filter = false;
 
   const std::string id = kind == Kind::kMicrophone ? "microphone" : "sound-" + std::to_string(++count);
   auto source = factory->CreateAudioSource(id.c_str(), libwebrtc::RTCAudioSource::SourceType::kCustom, options);
