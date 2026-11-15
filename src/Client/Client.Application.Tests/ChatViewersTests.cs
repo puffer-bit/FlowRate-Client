@@ -272,8 +272,7 @@ public sealed class ChatViewersTests
             Task? execution = null;
             await TestUiThread.RunAsync(() => execution = alice.ViewProfile.Execute().ToTask());
             await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            await alice.ViewProfile.CanExecute.FirstAsync(enabled => enabled).ToTask()
-                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await CommandWait.UntilCanExecuteAsync(alice.ViewProfile);
             Assert.Equal(1, Assert.Single(opened));
             Assert.False(closeProfile.Task.IsCompleted);
             Assert.False(((ICommand)sharedProfile).CanExecute(2));

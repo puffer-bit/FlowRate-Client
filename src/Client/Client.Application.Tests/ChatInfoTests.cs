@@ -70,8 +70,7 @@ public sealed class ChatInfoTests
             Task? execution = null;
             await TestUiThread.RunAsync(() => execution = status.OpenInfoCommand.Execute().ToTask());
             await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            await status.OpenInfoCommand.CanExecute.FirstAsync(enabled => enabled).ToTask()
-                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await CommandWait.UntilCanExecuteAsync(status.OpenInfoCommand);
         }
 
         await ClickHeader();
