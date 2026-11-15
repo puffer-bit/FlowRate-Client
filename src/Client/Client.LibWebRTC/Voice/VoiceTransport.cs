@@ -1151,7 +1151,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     {
         if (summary != null)
             LogVoiceGateSummary(_sessionId, summary.ThresholdDb, summary.EffectiveThresholdDb, summary.NoiseFloorDb,
-                summary.OpenPercent, summary.Openings, summary.LoudestDb, summary.AverageOpenPeakDb);
+                summary.OpenPercent, summary.Openings, summary.LoudestDb, summary.AverageOpenPeakDb, summary.VoicePercent);
     }
 
     /// <summary>Passes a picture the peer decoded on, as one of the screen its section carries now.</summary>

@@ -10,7 +10,7 @@ namespace Client.LibWebRTC.Native;
 /// The video streams of every peer of the process: flowrate_webrtc.h has one receiver for them all,
 /// and its pictures are told apart by their SSRC, which the SFU gives each consumer of its own.
 /// Two peers of different servers may in theory get the same one: the newest stream then takes the
-/// pictures, here as in flowrate_video.cc, and the log says so.
+/// pictures, here as in flowrate_video_decoder.cc, and the log says so.
 /// </summary>
 /// <remarks>Use only once <see cref="LibWebRTCRuntime.TryLoad"/> succeeded.</remarks>
 public sealed unsafe partial class NativeVideoReceiver(ILogger<NativeVideoReceiver>? logger = null) : IEncodedVideoReceiver

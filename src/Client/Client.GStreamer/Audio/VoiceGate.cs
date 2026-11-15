@@ -58,11 +58,13 @@ public sealed class VoiceGate
     /// <summary>
     /// The voice probability of RNNoise below which it silences a frame. Measured with synthetic
     /// speech and typing: at 0.5 a twentieth of the 10 ms intervals of the typing passed, enough
-    /// for some keys to open the gate; at 0.8 hardly any did, while the share of the speech
-    /// that passed fell only from 75 to 70 %, the gaps lying between syllables, which the hold
-    /// covers. Higher values cut into the speech without keeping out more.
+    /// for some keys to open the gate; at 0.8 hardly any did. A real microphone next to a loud
+    /// keyboard, the keys peaking above the voice, still had one in five seconds of typing open
+    /// the gate at 0.8 and none at 0.9. Human speech in Russian and English lost no more at 0.9
+    /// than at 0.8, under half a percent of its frames where it lost any, the gaps lying between
+    /// syllables, which the hold covers.
     /// </summary>
-    public const float VoiceActivityThreshold = 0.8f;
+    public const float VoiceActivityThreshold = 0.9f;
 
     private const string LevelMessageName = "level";
     private const string PeakField = "peak";

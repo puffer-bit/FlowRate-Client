@@ -25,7 +25,7 @@ internal sealed record MediaPerfSources(
 /// <remarks>Not thread-safe: the caller runs every call under one lock or on one thread.</remarks>
 internal sealed class MediaPerfSampler
 {
-    // Set by the passthrough decoder of flowrate_video.cc, whose decoding takes no time
+    // Set by the passthrough decoder of flowrate_video_decoder.cc, whose decoding takes no time
     private const string PassthroughDecoder = "FlowRatePassthrough";
 
     private Dictionary<string, StatsEntry> _previous = [];

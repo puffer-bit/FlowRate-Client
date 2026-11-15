@@ -1,5 +1,4 @@
 #include "flowrate_audio.h"
-#include "flowrate_webrtc.h"
 
 #include <algorithm>
 #include <atomic>
@@ -42,16 +41,12 @@ class AudioDevice : public webrtc::webrtc_impl::AudioDeviceModuleDefault<webrtc:
 }  // namespace
 
 namespace flowrate {
+
 webrtc::scoped_refptr<webrtc::AudioDeviceModule> CreateAudioDevice() {
   return webrtc::make_ref_counted<AudioDevice>();
 }
-}  // namespace flowrate
 
-extern "C" {
-
-int fr_audio_bridge_version(void) { return 1; }
-
-void fr_pull_playout(int16_t* samples) {
+void PullPlayout(int16_t* samples) {
   if (samples == nullptr)
     return;
 
@@ -68,4 +63,4 @@ void fr_pull_playout(int16_t* samples) {
   std::fill(samples + std::min<size_t>(frames, 960), samples + 960, 0);
 }
 
-}  // extern "C"
+}  // namespace flowrate

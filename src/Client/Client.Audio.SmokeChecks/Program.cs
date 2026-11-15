@@ -73,6 +73,11 @@ using (var capture = new GstAudioMedia(NullLoggerFactory.Instance)
         "Screen audio PCM reaches the transport");
 }
 using var devices = new GstAudioDeviceProvider(NullLogger<GstAudioDeviceProvider>.Instance);
+if (args.Contains("--voice-gate-recording"))
+{
+    await VoiceGateRecording.Run(devices, args);
+    return;
+}
 Require(MicrophoneProcessing.HasNeural, "Bundled RNNoise plugin is available");
 using var audio = new GstVoiceAudioDevice(devices, NullLogger<GstVoiceAudioDevice>.Instance)
 {

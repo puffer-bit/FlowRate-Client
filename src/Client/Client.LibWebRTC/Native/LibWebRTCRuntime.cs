@@ -48,14 +48,13 @@ public sealed partial class LibWebRTCRuntime(IVoiceAudioDevice audio, ILogger<Li
 
     public string? Load() => TryLoad() ? null : _loadError;
 
-    internal unsafe nint CreatePeer(NativeMethods.PeerCallbacks* callbacks, nint context, int echoCancellation,
-        int noiseSuppression, int autoGainControl)
+    internal unsafe nint CreatePeer(NativeMethods.PeerCallbacks* callbacks, nint context)
     {
         lock (_peerLock)
         {
             if (_peerCount == 0 && !audio.StartPlayback(ReadPlayout))
                 return 0;
-            var peer = NativeMethods.PeerCreate(callbacks, context, 0, 0, 0);
+            var peer = NativeMethods.PeerCreate(callbacks, context);
             if (peer != 0)
                 _peerCount++;
             else if (_peerCount == 0)
