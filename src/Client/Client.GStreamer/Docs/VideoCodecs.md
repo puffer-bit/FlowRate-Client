@@ -159,7 +159,7 @@ the whole branch.
 |---|---|---|---|---|
 | NVENC (`nvd3d11`, `nvcuda`) | kbit/s | `rate-control=cbr` / `rc-mode=cbr`, `tune=ultra-low-latency`, `zero-reorder-delay=true` / `zerolatency=true` (names depend on plugin version) | `gop-size=-1` | `vbv-buffer-size` |
 | NVENC, older (`nvh264enc`) | kbit/s | `preset=low-latency-hq`, `zerolatency=true`, `rc-mode=cbr` | `gop-size=-1` | `vbv-buffer-size` |
-| AMF | kbit/s | `usage=ultra-low-latency`, `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
+| AMF | kbit/s | `usage=ultra-low-latency` (`usage=low-latency` for `amfav1enc`, which has no ultra low latency usage), `rate-control=cbr` | only when asked in this usage; `gop-size=0` (an IDR at the start alone) where the usage is not taken | |
 | VA-API | kbit/s | `rate-control=cbr` | `key-int-max=1024` | `cpb-size` |
 | Quick Sync | kbit/s | `rate-control=cbr`, `low-latency=true` | `gop-size=65535` | `max-frame-size-i` |
 | Media Foundation | kbit/s | `low-latency=true`, `rc-mode=cbr` | the encoder's own | |
@@ -225,7 +225,9 @@ capture starts with.
 
 Both legs drop late frames instead of queueing them, except the sink of the encoded frames: a lost
 frame there would break every one up to the next keyframe, so it holds the encoder back instead.
-The preview leg keeps the size and rate of the capture. On the Linux VA capture path, when the
+The preview leg keeps the rate of the capture. On the Direct3D 11 path it is scaled on the GPU to the
+height the sharer sees it at (`IScreenCapture.SetPreviewHeight`, told by the tile that draws it), since
+its download and upload cost by the pixel; the other paths keep the size of the capture. On the Linux VA capture path, when the
 presenter supports DMA-BUF, it exports NV12 DMA-BUF to OpenGL without CPU readback. Local preview
 frames have no presentation timestamp (`-1`): the presenter uses the latest frame instead of
 retaining a network jitter queue. The preview sink retains at most one queued frame and no last

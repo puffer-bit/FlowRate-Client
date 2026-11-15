@@ -1,7 +1,5 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading;
-using System.Threading.Tasks;
 using Client.Core.Media;
 using Client.GStreamer.Video;
 using System.Globalization;
@@ -20,8 +18,6 @@ public partial class ChatVideoPlayer : UserControl
 {
     private readonly ChatVideoSession? _session;
     private readonly object _surfaceLock = new();
-    private CancellationTokenSource? _previewCancellation;
-    private Task? _previewTask;
     private volatile bool _attached;
     private volatile ChatFileVM? _file;
     private bool _updating;
@@ -104,12 +100,7 @@ public partial class ChatVideoPlayer : UserControl
 
     private async void OnPlay(object? sender, RoutedEventArgs e)
     {
-        if (_session == null || DataContext is not ChatFileVM file)
-            return;
-        _previewCancellation?.Cancel();
-        if (_previewTask != null)
-            await _previewTask;
-        if (_attached && ReferenceEquals(DataContext, file))
+        if (_session != null && _attached && DataContext is ChatFileVM file)
             await _session.ToggleAsync(file);
     }
 
@@ -236,7 +227,7 @@ public partial class ChatVideoPlayer : UserControl
             _ = _session.InitializeAsync();
         }
         Refresh();
-        EnsurePreview();
+        RedisplayCurrent();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -247,7 +238,6 @@ public partial class ChatVideoPlayer : UserControl
             _session.Changed -= Refresh;
             _session.FrameReady -= OnFrame;
         }
-        CancelPreview();
         _fullscreen?.Close();
         lock (_surfaceLock)
             VideoSurface.Clear();
@@ -266,7 +256,6 @@ public partial class ChatVideoPlayer : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         _fullscreen?.Close();
-        CancelPreview();
         _file = DataContext as ChatFileVM;
         if (_ready)
             lock (_surfaceLock)
@@ -274,14 +263,14 @@ public partial class ChatVideoPlayer : UserControl
         ResetInteraction();
         base.OnDataContextChanged(e);
         Refresh();
-        EnsurePreview();
+        RedisplayCurrent();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property == IsVisibleProperty)
-            EnsurePreview();
+            RedisplayCurrent();
     }
 
     private void OnFrame(RawVideoFrame frame)
@@ -293,59 +282,13 @@ public partial class ChatVideoPlayer : UserControl
         }
     }
 
-    private void EnsurePreview()
+    // Only the video being played has frames: its file is downloaded and decoded on Play, not on display.
+    private void RedisplayCurrent()
     {
-        if (!MediaRuntime.IsEnabled)
-            return;
-
         if (!_ready || !_attached || !IsEffectivelyVisible || DataContext is not ChatFileVM { IsVideo: true } file)
             return;
         _file = file;
         if (_session?.IsCurrent(file) == true)
-        {
             _session.RedisplayFrame();
-            return;
-        }
-        if (_previewTask != null)
-            return;
-        var cancellation = new CancellationTokenSource();
-        _previewCancellation = cancellation;
-        _previewTask = LoadPreviewAsync(file, cancellation);
-    }
-
-    private async Task LoadPreviewAsync(ChatFileVM file, CancellationTokenSource cancellation)
-    {
-        try
-        {
-            // A recycled card may still be finishing cancellation of its download.
-            while (file.IsDownloading)
-                await Task.Delay(25, cancellation.Token);
-            var path = await file.GetPlaybackPathAsync(cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (path == null)
-                return;
-            var preview = await ChatVideoPreview.LoadAsync(path, cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (_attached && ReferenceEquals(DataContext, file) && _session?.IsCurrent(file) != true)
-                preview.DeliverTo(VideoSurface.PushFrame);
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception)
-        {
-            // A missing preview must not prevent normal playback or leave an unobserved task.
-        }
-        finally
-        {
-            if (ReferenceEquals(_previewCancellation, cancellation))
-                _previewCancellation = null;
-            cancellation.Dispose();
-        }
-    }
-
-    private void CancelPreview()
-    {
-        _previewCancellation?.Cancel();
-        _previewCancellation = null;
-        _previewTask = null;
     }
 }

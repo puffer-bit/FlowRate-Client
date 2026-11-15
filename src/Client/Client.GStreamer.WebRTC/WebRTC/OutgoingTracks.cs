@@ -505,6 +505,13 @@ internal sealed partial class OutgoingTracks
             video.Capture.SetPreviewShown(isShown);
     }
 
+    /// <summary>Tells the height the preview of a screen we send is shown at.</summary>
+    public void SetPreviewHeight(string outboundId, int height)
+    {
+        if (_outgoingVideo.TryGetValue(outboundId, out var video))
+            video.Capture.SetPreviewHeight(height);
+    }
+
     /// <summary>
     /// Stops or resumes sending an outbound track without touching its section or its producer.
     /// The sound goes silent at once; the valve follows a few frames later, so the encoder ends on

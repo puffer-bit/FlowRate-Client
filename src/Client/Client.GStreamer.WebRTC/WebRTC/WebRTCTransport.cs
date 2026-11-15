@@ -340,6 +340,9 @@ public sealed partial class WebRTCTransport : IWebRTCTransport
     public void SetOutboundPreviewShown(string outboundId, bool isShown) =>
         _outgoing.SetPreviewShown(outboundId, isShown);
 
+    public void SetOutboundPreviewHeight(string outboundId, int height) =>
+        _outgoing.SetPreviewHeight(outboundId, height);
+
     public void SetOutboundVolume(string outboundId, double volume) => _outgoing.SetVolume(outboundId, volume);
 
     public void SetOutboundInput(string outboundId, AudioInput input, NoiseSuppressionLevel noiseSuppression,

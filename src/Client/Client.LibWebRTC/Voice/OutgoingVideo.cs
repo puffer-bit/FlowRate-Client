@@ -57,6 +57,8 @@ internal sealed class OutgoingVideo : IVideoSendListener, IDisposable
 
     public void SetPreviewShown(bool isShown) => _capture.SetPreviewShown(isShown);
 
+    public void SetPreviewHeight(int height) => _capture.SetPreviewHeight(height);
+
     public bool SwitchInput(VideoInput input) => _capture.SwitchInput(input);
 
     /// <summary>What the encoder and libwebrtc did with the pictures since the previous call.</summary>

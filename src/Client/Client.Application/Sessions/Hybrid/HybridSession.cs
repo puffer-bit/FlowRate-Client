@@ -77,6 +77,9 @@ public partial class HybridSession : IHybridSession
     // The producer our screen is sent to, or null while it is not shown
     private OutboundTrack? _screenOutbound;
 
+    // The height our own screen is shown at, 0 while unknown; a capture that starts later gets it too
+    private int _screenPreviewHeight;
+
     // The producer the sound of our screen is sent to, or null while it is not shown or shown silent
     private OutboundTrack? _screenAudioOutbound;
 
@@ -391,6 +394,7 @@ public partial class HybridSession : IHybridSession
         _screenOutbound = outbound;
         LogScreenShareStarted(Model.Id, outbound.SSRC);
         transport.SetOutboundPreviewShown(outbound.Id, IsWatchingScreen(outbound.UserId));
+        transport.SetOutboundPreviewHeight(outbound.Id, Volatile.Read(ref _screenPreviewHeight));
 
         // The picture goes out without the sound rather than not at all
         if (outbounds.Audio is { } audioOutbound && audioInput != null)
@@ -458,6 +462,7 @@ public partial class HybridSession : IHybridSession
 
         LogScreenShareChanged(Model.Id, outbound.SSRC);
         transport.SetOutboundPreviewShown(outbound.Id, IsWatchingScreen(outbound.UserId));
+        transport.SetOutboundPreviewHeight(outbound.Id, Volatile.Read(ref _screenPreviewHeight));
 
         // A sound that is dropped stays muted on its producer until the share ends
         if (audioOutbound != null)
@@ -494,6 +499,19 @@ public partial class HybridSession : IHybridSession
     }
 
     public bool IsWatchingScreen(int userId) => _watchedScreens.ContainsKey(userId);
+
+    /// <summary>
+    /// Tells the height our own screen is shown at, in pixels, so that its preview is made no larger;
+    /// 0 for the size of the capture.
+    /// </summary>
+    public void SetScreenPreviewHeight(int height)
+    {
+        if (Interlocked.Exchange(ref _screenPreviewHeight, height) == height)
+            return;
+
+        if (_screenOutbound is { } screen)
+            _webRTCService.SetOutboundPreviewHeight(screen.Id, height);
+    }
 
     public bool HasWatchedScreenAudio(int userId) => _watchedScreens.TryGetValue(userId, out var hasAudio) && hasAudio;
 

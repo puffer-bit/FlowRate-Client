@@ -103,6 +103,9 @@ internal sealed class AndroidCameraCapture : IPeerVideoCapture
 
     public void SetPreviewShown(bool isShown) => _camera.SetPreviewShown(isShown);
 
+    // The camera preview is drawn from the frames as they come, nothing to scale
+    public void SetPreviewHeight(int height) { }
+
     public bool SwitchInput(VideoInput input)
     {
         if (input is not CameraVideoInput camera || _isDisposed != 0)

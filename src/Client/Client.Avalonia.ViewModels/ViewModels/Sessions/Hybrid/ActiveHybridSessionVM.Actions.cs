@@ -357,6 +357,9 @@ public partial class ActiveHybridSessionVM
             IsWatched = _hybridSession.IsWatchingScreen(userId)
         };
 
+        if (stream.IsSelf)
+            stream.PictureHeightChanged = height => _hybridSession.SetScreenPreviewHeight(height);
+
         _screenStreamsByUser[userId] = stream;
 
         // After the stream is in the map, so that a report arriving now is not missed by both

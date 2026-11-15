@@ -385,6 +385,15 @@ internal sealed partial class GstScreenCapture : IScreenCapture
         }
     }
 
+    public void SetPreviewHeight(int height)
+    {
+        lock (_lock)
+        {
+            if (!_isDisposed)
+                ScreenEncodingBranch.SetPreviewHeight(_branch.Bin, height);
+        }
+    }
+
     private void OnMessage(Message message)
     {
         if (message.Type == MessageType.Error)

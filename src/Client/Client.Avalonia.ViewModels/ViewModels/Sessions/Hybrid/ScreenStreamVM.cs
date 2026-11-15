@@ -100,6 +100,12 @@ public sealed class ScreenStreamVM : ReactiveObject
     public Func<FrameStats?>? ReadFrameStats { get; set; }
 
     /// <summary>
+    /// Told the height the picture is drawn at, in pixels, by the view that draws the stream. Set for
+    /// our own screen, whose preview is then made no larger than it is seen.
+    /// </summary>
+    public Action<int>? PictureHeightChanged { get; set; }
+
+    /// <summary>
     /// The server was asked to start or stop the stream and has not answered yet.
     /// </summary>
     public bool IsBusy

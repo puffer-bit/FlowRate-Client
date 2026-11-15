@@ -14,10 +14,16 @@ internal static class ScreenEncodingBranch
     // The sharer sees the capture at its own size and rate
     private const int PreviewMaxHeight = 16384;
 
+    // A preview shown smaller than this is still made this high, so a tile stays readable
+    private const int PreviewMinHeight = 180;
+
     public const string PreviewSinkName = "preview";
 
     // Closed while nobody looks at the preview to avoid conversion and presentation work
     public const string PreviewValveName = "preview_valve";
+
+    // Where the Direct3D 11 preview is limited to the height it is shown at, see SetPreviewHeight
+    private const string PreviewSizeName = "preview_size";
     public const string EncodedSinkName = "encoded";
     public const string EncoderName = "encoder";
 
@@ -58,7 +64,9 @@ internal static class ScreenEncodingBranch
 
     // The same for a Direct3D 11 capture on Windows: the frames stay textures from the capture to the
     // encoder. d3d11convert scales and converts for the encoder, and the preview is scaled down on the
-    // GPU before it is downloaded
+    // GPU to the height it is shown at before it is downloaded: the download and the upload into the
+    // picture cost by the pixel, and a capture of 2560x1440 at 60 fps shown whole took a seventh of the
+    // GPU here and as much again to draw
     private const string D3D11Description =
         "queue max-size-buffers=2 leaky=downstream ! video/x-raw(memory:D3D11Memory) ! " +
         "videorate drop-only=true max-rate={0} ! tee name=split " +
@@ -69,7 +77,7 @@ internal static class ScreenEncodingBranch
         "{3} " +
 
         "split. ! valve name=" + PreviewValveName + " ! queue max-size-buffers=1 leaky=downstream ! " +
-        "d3d11convert ! video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{4}],pixel-aspect-ratio=1/1 ! " +
+        "d3d11convert ! capsfilter name=" + PreviewSizeName + " ! " +
         "d3d11download ! " + VideoFramePump.FrameCaps + " ! {5}";
 
     // Hardware encoders of Windows that take Direct3D 11 textures as they are
@@ -150,6 +158,23 @@ internal static class ScreenEncodingBranch
     }
 
     /// <summary>
+    /// Limits the preview of a running branch to the height it is shown at, in pixels; 0 leaves it the
+    /// size of the capture. Only the Direct3D 11 branch scales its preview, the others keep theirs.
+    /// </summary>
+    public static void SetPreviewHeight(Bin branch, int height)
+    {
+        using var filter = branch.GetByName(PreviewSizeName);
+
+        if (filter == null)
+            return;
+
+        var limit = height > 0 ? Math.Clamp(height, PreviewMinHeight, PreviewMaxHeight) : PreviewMaxHeight;
+
+        Global.UtilSetObjectArg(filter, "caps", string.Format(CultureInfo.InvariantCulture,
+            "video/x-raw(memory:D3D11Memory),format=BGRA,height=[2,{0}],pixel-aspect-ratio=1/1", limit));
+    }
+
+    /// <summary>
     /// Builds the branch the capture is linked to.
     /// </summary>
     /// <param name="settings">
@@ -188,6 +213,9 @@ internal static class ScreenEncodingBranch
         {
             branch = ParseBranch(Describe(codec, settings, encoder, CpuScale, D3D11Description));
             scaler = "GPU (Direct3D 11)";
+
+            if (branch != null)
+                SetPreviewHeight(branch, 0);
         }
         else
         {

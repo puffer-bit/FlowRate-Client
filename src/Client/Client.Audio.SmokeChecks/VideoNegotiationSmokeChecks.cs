@@ -128,6 +128,7 @@ internal static class VideoNegotiationSmokeChecks
         public void RequestKeyFrame(bool isUrgent = false) { }
         public void SetBitrate(int kbps) { }
         public void SetPreviewShown(bool isShown) { }
+        public void SetPreviewHeight(int height) { }
         public void Dispose() { }
     }
 
