@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
@@ -69,6 +70,8 @@ public partial class SessionsListVM : ReactiveObject
     /// Sessions and categories can be created from the list: it is loaded and connected.
     /// </summary>
     public bool CanCreate => State == SessionsListState.Loaded;
+    public bool HasPrivateChats => (IsStale || State == SessionsListState.Loaded) && PrivateChats.Count != 0;
+    public bool IsPrivateChatsEmpty => State == SessionsListState.Loaded && PrivateChats.Count == 0;
     public bool CanCreateSession => IsPrivateMode || Access.CanCreateSessions;
     public bool CanCreateCategory => !IsPrivateMode && Access.CanManageSessions;
     public bool IsPrivateMode
@@ -154,6 +157,13 @@ public partial class SessionsListVM : ReactiveObject
     /// The rows of the list in the order of the layout: sessions and category headers.
     /// </summary>
     public ObservableCollection<ISessionListRow> Rows { get; } = new();
+
+    /// <summary>Personal conversations in recent-message order, independent of the sidebar mode.</summary>
+    public IReadOnlyList<ChatSessionVM> PrivateChats
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
 
     // The hybrid session we are in, marked in the list; kept so that items added later are marked too
     private int? _enteredHybridSessionId;
@@ -261,6 +271,8 @@ public partial class SessionsListVM : ReactiveObject
         this.RaisePropertyChanged(nameof(IsEmpty));
         this.RaisePropertyChanged(nameof(HasSessions));
         this.RaisePropertyChanged(nameof(CanCreate));
+        this.RaisePropertyChanged(nameof(HasPrivateChats));
+        this.RaisePropertyChanged(nameof(IsPrivateChatsEmpty));
     }
 
     /// <summary>
@@ -282,7 +294,7 @@ public partial class SessionsListVM : ReactiveObject
         Unsubscribe();
         ErrorMessage = null;
 
-        _isListKept = State == SessionsListState.Loaded && Rows.Count != 0 || IsStale;
+        _isListKept = State == SessionsListState.Loaded && (Rows.Count != 0 || PrivateChats.Count != 0) || IsStale;
         if (!_isListKept)
             ClearList();
 

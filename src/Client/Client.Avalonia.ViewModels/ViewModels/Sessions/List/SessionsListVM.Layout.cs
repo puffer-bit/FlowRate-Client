@@ -55,6 +55,7 @@ public partial class SessionsListVM
         foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.Dispose();
         Sessions.Clear();
         Rows.Clear();
+        PrivateChats = [];
         _categories.Clear();
         _collapsedCategoryIds.Clear();
         _serverLayout = SessionLayout.Empty;
@@ -92,12 +93,16 @@ public partial class SessionsListVM
     private void RebuildRows()
     {
         SyncCategories();
+        var privateChats = Sessions.OfType<ChatSessionVM>().Where(chat => chat.IsPrivate)
+            .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTime.MinValue)
+            .ThenByDescending(chat => chat.Model.Id).ToArray();
+        if (!PrivateChats.SequenceEqual(privateChats))
+            PrivateChats = privateChats;
+        RaiseStateProperties();
 
         if (IsPrivateMode)
         {
-            ApplyRows(Sessions.OfType<ChatSessionVM>().Where(chat => chat.IsPrivate)
-                .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTime.MinValue)
-                .ThenByDescending(chat => chat.Model.Id).Cast<ISessionListRow>().ToList());
+            ApplyRows(PrivateChats.Cast<ISessionListRow>().ToList());
             RestoreSelection();
             RaiseStateProperties();
             return;

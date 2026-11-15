@@ -148,6 +148,10 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
         }
     }
 
+    // A direct chat names the time it was read; asked for only when someone looks
+    private void OnReceiptPointerEntered(object? sender, PointerEventArgs e) =>
+        (DataContext as ChatMessageVM)?.LoadReadTime();
+
     private void FlyoutBase_OnOpening(object? sender, EventArgs e)
     {
         // Most realized messages never open a menu. Build its controls and bindings only

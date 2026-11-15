@@ -84,6 +84,8 @@ public interface ICoordinatorSession : IDisposable
 
     event Action<int, int, bool>? ChatUserTyping;
     event Action<ChatReadState>? ChatReadStateChanged;
+    /// <summary>Another member of a direct chat or a group read further. Raised on the socket thread.</summary>
+    event Action<ChatPeerRead>? ChatPeerRead;
     event Action<ChatViewersChangedEvent>? ChatViewersChanged;
 
     /// <summary>
@@ -465,6 +467,11 @@ public interface ICoordinatorSession : IDisposable
     /// goes back. Every device of the user gets <see cref="ChatReadStateChanged"/>.
     /// </summary>
     Task<RequestResult<ChatReadState>> MarkChatRead(int chatId, int messageId);
+
+    /// <summary>
+    /// Who of the other members has read an own message of a direct chat or a group, and when.
+    /// </summary>
+    Task<RequestResult<IReadOnlyList<ChatMessageReader>>> RequestChatMessageReaders(int chatId, int messageId);
 
     /// <summary>
     /// Registers this device for the push notifications of the coordinator, encrypted with

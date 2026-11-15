@@ -46,7 +46,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         };
 
         // libwebrtc copies the callbacks, so they may live on the stack
-        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self), 0, 0, 0);
+        _peer = runtime.CreatePeer(&callbacks, GCHandle.ToIntPtr(_self));
 
         if (_peer == 0)
         {

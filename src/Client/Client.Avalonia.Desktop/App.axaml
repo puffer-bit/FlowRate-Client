@@ -61,7 +61,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Pickers/ColorPicker.axaml"/>
         <StyleInclude Source="/Views/Common/Styles/UiControls.axaml"/>
-        <StyleInclude Source="/Views/Common/Styles/ResponsiveSettings.axaml"/>
+        <StyleInclude Source="/Views/Settings/Styles/ResponsiveSettings.axaml"/>
     </Application.Styles>
              
 

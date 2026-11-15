@@ -41,6 +41,23 @@ public sealed class PushReplies
     }
 
     /// <summary>
+    /// The "Decline" button of an incoming call: the call ends for the caller at once instead of ringing out.
+    /// </summary>
+    public async Task<PushReplyResult> DeclineCallAsync(string coordinatorInstanceId, Guid callId,
+        CancellationToken cancellationToken = default)
+    {
+        if (callId == Guid.Empty)
+            return PushReplyResult.Rejected;
+
+        if (await _keys.GetReplyTargetAsync(coordinatorInstanceId) is not { } target)
+            return PushReplyResult.NotRegistered;
+
+        var certificate = await _certificates.GetAsync(target.Address, target.Port);
+
+        return await _transport.DeclineCallAsync(target, certificate?.Fingerprint, callId, cancellationToken);
+    }
+
+    /// <summary>
     /// The "Mark as read" button of a notification: the chat is read up to its newest message shown.
     /// </summary>
     public async Task<PushReplyResult> MarkReadAsync(string coordinatorInstanceId, int chatId, int messageId,

@@ -67,6 +67,10 @@ public interface IScreenCapture : IDisposable
     /// </summary>
     void SetPreviewShown(bool isShown);
 
+    /// <summary>Captures from another input while the picture goes on being sent. Any thread.</summary>
+    /// <returns>False when this capture cannot switch to it.</returns>
+    bool SwitchInput(VideoInput input) => false;
+
     /// <summary>
     /// Tells the height the preview is shown at, in pixels, so that no more of it is made than is seen;
     /// 0 for the size of the capture. A capture that cannot scale its preview keeps it as it is. Any thread.

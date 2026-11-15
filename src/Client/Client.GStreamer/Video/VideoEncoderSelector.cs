@@ -210,8 +210,10 @@ public static class VideoEncoderSelector
             [("low-latency", "true"), ("gop-size", "65535")],
             kbps => [("max-frame-size-i", Format(Math.Max(1, WindowKbits(kbps) / 8)))]);
 
+    // Left to the driver, the GOP of Media Foundation is a keyframe every second or two
     private static Candidate MediaFoundation(string factory) =>
-        new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")], [("rc-mode", "cbr")]);
+        new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")],
+            [("rc-mode", "cbr"), ("gop-size", "65535")]);
 
     // openh264 takes bit/s and has a mode tuned for screen content. Its scene change detection makes
     // a keyframe of a switch of windows, as big as the frame it replaces, but one more burst
@@ -219,14 +221,18 @@ public static class VideoEncoderSelector
         [("bitrate", Format(kbps * 1000)), ("usage-type", "screen"), ("rate-control", "bitrate"), ("complexity", "low")],
         [("gop-size", "2147483647"), ("scene-change-detection", "false")]);
 
-    // Presets 10 and above are the real-time ones
+    // Presets 10 and above are the real-time ones. An intra period of -1 is the keyframe at the start
+    // alone, where the automatic one put in more
     private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>
         [("target-bitrate", Format(kbps)), ("preset", "12"),
-         ("parameters-string", "pred-struct=1:rc=2:lookahead=0")]);
+         ("parameters-string", "pred-struct=1:rc=2:lookahead=0")],
+        [("intra-period-length", "-1")]);
 
-    // libvpx takes bit/s; deadline=1 is its real-time mode
+    // libvpx takes bit/s; deadline=1 is its real-time mode. Its own keyframes, one each 128 frames,
+    // would be a burst about every second at a high frame rate
     private static Candidate Vpx(string factory) => new(factory, false, kbps =>
-        [("target-bitrate", Format(kbps * 1000)), ("deadline", "1"), ("cpu-used", "8"), ("end-usage", "cbr")]);
+        [("target-bitrate", Format(kbps * 1000)), ("deadline", "1"), ("cpu-used", "8"), ("end-usage", "cbr")],
+        [("keyframe-mode", "disabled")]);
 
     private static string Format(int value) => value.ToString(CultureInfo.InvariantCulture);
 

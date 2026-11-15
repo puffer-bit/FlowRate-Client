@@ -288,7 +288,7 @@ failed before, with the reason when it is known.
   overlay or the journal of the media is on: the encoder and the decoder are timed from outside by
   `GstCodecTimer` (probes on their pads, matched by timestamp, or in order for the VA-API encoders,
   which count their own timestamps), libwebrtc adds the RTCStats of its streams and, on the desktop,
-  the timings of `flowrate_video.cc` (`fr_video_source_take_stats`, `fr_video_take_receive_stats`).
+  the timings of `flowrate_video_source.cc` and `flowrate_video_decoder.cc` (`fr_video_source_take_stats`, `fr_video_take_receive_stats`).
   `MediaPerfJournal` writes a summary of every stream and the anomalies into the journal, and every
   reading into `media-yyyyMMdd.jsonl` when asked.
 - **On this computer** (under "Show frames without copying"): the ways without copying the screen

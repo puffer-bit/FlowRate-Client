@@ -124,6 +124,13 @@ public interface IHybridSession : IDisposable
     event Action<int, bool>? CameraChanged;
     Task<RequestResult> StartCameraAsync(CameraVideoInput input, ScreenShareSettings settings);
     Task<RequestResult> StopCameraAsync();
+
+    /// <summary>
+    /// Sends another camera instead of the one sent now, such as the other side of a phone. Where the
+    /// capture cannot switch while it runs, the camera is stopped and started again with
+    /// <paramref name="settings"/>.
+    /// </summary>
+    Task<RequestResult> SwitchCameraAsync(CameraVideoInput input, ScreenShareSettings settings);
     bool IsWatchingCamera(int userId);
     void SetCameraWatch(int userId, bool isWatching);
 

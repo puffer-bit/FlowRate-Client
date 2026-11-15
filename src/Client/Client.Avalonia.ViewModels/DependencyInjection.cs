@@ -8,6 +8,7 @@ using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions;
@@ -34,13 +35,15 @@ public static class DependencyInjection
         services.AddSingleton<IAvatarService, AvatarService>();
         services.AddSingleton<IImagePreviewer>(provider => provider.GetRequiredService<IChatImageService>());
 
+        services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(
             provider.GetRequiredService<IChatCacheStore>(),
             provider.GetRequiredService<IChatMediaUploader>(),
             provider.GetRequiredService<IChatImageService>(),
             provider.GetRequiredService<IDismissedPromptsRepository>(),
             provider.GetRequiredService<IMediaCache>(),
-            provider.GetRequiredService<IAppearanceService>()));
+            provider.GetRequiredService<IAppearanceService>(),
+            provider.GetRequiredService<ChatReceipts>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),

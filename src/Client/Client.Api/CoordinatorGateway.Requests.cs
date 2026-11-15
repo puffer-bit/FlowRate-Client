@@ -324,6 +324,15 @@ internal partial class CoordinatorGateway
         return response.State.ToModel();
     }
 
+    public async Task<IReadOnlyList<ChatMessageReader>> RequestChatMessageReaders(int sessionId, int messageId)
+    {
+        var response = await SendRequestAsync<ChatMessageReadersResponse>(
+            new ChatMessageReadersRequest(sessionId, messageId));
+
+        return response.Readers.Select(reader => new ChatMessageReader(reader.UserId,
+            reader.ReadAt is { } at ? DateTime.SpecifyKind(at.ToUniversalTime(), DateTimeKind.Utc) : null)).ToList();
+    }
+
     public async Task<ChatMessageModel> RequestChatMessage(int sessionId, int messageId)
     {
         var request = new ChatSessionMessageRequest(sessionId, messageId);

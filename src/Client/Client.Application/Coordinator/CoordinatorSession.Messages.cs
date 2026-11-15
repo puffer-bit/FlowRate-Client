@@ -113,6 +113,10 @@ public partial class CoordinatorSession
             case ChatReadStateChangedEvent readChanged:
                 ChatReadStateChanged?.Invoke(readChanged.State);
                 break;
+
+            case ChatPeerReadEvent peerRead:
+                ChatPeerRead?.Invoke(peerRead.Read);
+                break;
         }
     }
 

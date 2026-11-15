@@ -194,6 +194,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly EventSubscriptions _subscriptions = new();
     private readonly int _currentUserId;
+    // Read receipts: own messages of direct chats and groups show whether someone read them
+    private readonly ChatReceipts? _receipts;
+    private readonly bool _hasReceipts;
     private const string OpenLinkPromptKey = "chat.openLink";
     // A longer address is cut in the question, so the box stays on the screen
     private const int OpenLinkPromptMaxLength = 300;
@@ -213,6 +216,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _viewProfileCommand = viewProfileCommand;
         _openDirectChatCommand = openDirectChatCommand;
         _model = sessionModel;
+        _receipts = services.Receipts;
+        _hasReceipts = _receipts != null && sessionModel.Kind != ChatKind.ServerChannel;
         Id = sessionModel.Id;
         Name = sessionModel.Name;
         var currentUser = coordinatorSession.GetCurrentUser();
@@ -268,6 +273,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             .Add(() => coordinatorSession.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => coordinatorSession.ChatSessionReconfigured -= OnChatSessionReconfigured)
             .Add(() => readTracker.StateChanged += OnReadStateChanged, () => readTracker.StateChanged -= OnReadStateChanged);
+        if (_hasReceipts)
+            _subscriptions.Add(() => _receipts!.PeerReadChanged += OnPeerReadChanged,
+                () => _receipts!.PeerReadChanged -= OnPeerReadChanged);
 
         _ = UpdateChatNameAsync(sessionModel);
         RestoreTyping();
@@ -438,8 +446,39 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             SetReaction = async (emoji, added) =>
                 (await _coordinatorSession.SetMessageReaction(model.ChatId, model.Id, emoji, added)).IsSuccess,
             IsNew = isNew,
-            CanManageMessages = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages)
+            CanManageMessages = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages),
+            DeliveryStatus = DeliveryStatusOf(model),
+            ShowsReadTime = _model.Kind == ChatKind.Direct,
+            CreateReaders = DeliveryStatusOf(model) == ChatDeliveryStatus.None
+                ? null
+                : () => new ChatMessageReadersVM(Id, model.Id, _receipts!, _senders)
         };
+
+    private ChatDeliveryStatus DeliveryStatusOf(ChatMessageModel model) =>
+        !_hasReceipts || model.IsSystem || model.SenderUserId != _currentUserId
+            ? ChatDeliveryStatus.None
+            : model.Id <= _receipts!.GetPeerRead(Id) ? ChatDeliveryStatus.Read : ChatDeliveryStatus.Sent;
+
+    // Raised on any thread. Positions only grow, so only messages still shown as sent can change
+    private void OnPeerReadChanged(int chatId, int position)
+    {
+        if (chatId != Id)
+            return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_isDisposed)
+                return;
+            foreach (var messageVm in _messageVms.Values)
+                if (messageVm.DeliveryStatus == ChatDeliveryStatus.Sent && messageVm.Message.Id <= position)
+                    messageVm.DeliveryStatus = ChatDeliveryStatus.Read;
+        });
+    }
+
+    private static void DisposeReaders(IEnumerable<ChatMessageVM> messages)
+    {
+        foreach (var messageVm in messages)
+            messageVm.DisposeReaders();
+    }
 
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
     {
@@ -490,7 +529,11 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         bool isReading = IsOnScreen && !IsScrolledUp && !IsInitialLoading && !HasNewerMessages;
         _readTracker.SetReading(Id, isReading);
         if (isReading && _messageVms.Count > 0)
+        {
             _readTracker.MarkRead(Id, _newestMessageId);
+            if (_hasReceipts)
+                _receipts!.ReportRead(Id, _newestMessageId);
+        }
     }
 
     // The counts came from the server, maybe with messages this chat shows already as read
@@ -542,6 +585,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     {
         if (!_messageVms.Remove(messageId, out var message))
             return false;
+        message.DisposeReaders();
 
         _timeline.Remove(message);
         if (messageId == _newestMessageId)
@@ -701,6 +745,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         ClearTyping();
         _subscriptions.Dispose();
         _senders.Dispose();
+        DisposeReaders(_messageVms.Values);
         _readTracker.SetReading(Id, false);
 
         Composer.Dispose();

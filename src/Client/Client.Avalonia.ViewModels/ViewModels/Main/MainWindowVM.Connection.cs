@@ -411,6 +411,8 @@ public partial class MainWindowVM
             await SessionsList.AttachCoordinator(session);
             if (!IsRestoreCurrent(session, restoreId))
                 return;
+            // Not awaited: the checks of the opened chats change once the positions of the others come
+            _ = _chatServices.Receipts?.AttachAsync(session);
 
             await ServerTitle.AttachCoordinator(session);
             AttachOpenedSessions(session);
@@ -446,6 +448,7 @@ public partial class MainWindowVM
     {
         DetachOpenedSessions();
         SessionsList.DetachCoordinator();
+        _chatServices.Receipts?.Detach();
         ServerTitle.DetachCoordinator();
     }
 

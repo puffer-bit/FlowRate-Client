@@ -2,6 +2,16 @@
 
 Views compose the Desktop UI. Application workflows and platform services remain in their existing layers. The controls and style includes in this directory apply only to Desktop; Android continues to use its own views and the existing shared presentation resources.
 
+## Directory structure
+
+Group views by feature in both Desktop and Android: `Main`, `Connections`, `Profile`, `Notifications`, `Dialogs`, `Settings`, and `Sessions`. Platform-specific views stay in their host project. Keep code-behind beside its XAML and match namespaces to directories.
+
+- `Common` contains reusable host UI infrastructure; Android video surfaces and shared audio device controls live in `Common/Media`.
+- `Dialogs` contains dialog views, layout components, and interaction helpers.
+- `Settings/Pages` contains complete settings pages; `Settings/Components` contains embedded controls and previews; `Settings/Styles` contains settings-specific styles and responsive layout rules.
+- `ServerSettings/Pages` contains server administration pages; the root contains their navigation host.
+- `Sessions/List`, `Sessions/Create`, `Sessions/Chat`, and `Sessions/Hybrid` contain session lists, creation, chat, and calls respectively. Desktop also has `Sessions/Permissions`.
+
 ## Shared presentation patterns
 
 - `Common/Styles/UiResources.axaml` defines spacing, typography, surface radii, navigation sizes, and session header/sidebar dimensions. Load these resources before the Desktop styles in `App.axaml`.
@@ -15,7 +25,7 @@ Views compose the Desktop UI. Application workflows and platform services remain
 
 ## Settings layout
 
-Desktop styles enable `SettingsRowLayout.IsAdaptive` on shared settings rows. Editors move below their labels when the row is narrower than 600 logical pixels. Checkboxes, switches, and toggle buttons stay beside their labels, and explicit `ContentPlacement="Below"` is preserved. Resizing or changing the row content re-evaluates placement.
+`Settings/Styles/ResponsiveSettings.axaml` enables `SettingsRowLayout.IsAdaptive` on shared settings rows. Editors move below their labels when the row is narrower than 600 logical pixels. Checkboxes, switches, and toggle buttons stay beside their labels, and explicit `ContentPlacement="Below"` is preserved. Resizing or changing the row content re-evaluates placement.
 
 Audio device selectors and volume sliders use `settingsDevice` and `settingsVolume` styles. Their preferred widths apply in wide rows; in stacked rows they fit the available width. Avoid fixed-width horizontal panels for editor/value pairs: use a grid with a flexible editor column and an automatic value column.
 

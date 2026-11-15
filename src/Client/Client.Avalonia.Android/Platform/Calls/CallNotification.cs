@@ -37,7 +37,7 @@ internal static class CallNotification
         EnsureChannel(context);
 
         var builder = new NotificationCompat.Builder(context, ChannelId);
-        builder.SetSmallIcon(Resource.Drawable.ic_call);
+        builder.SetSmallIcon(Resource.Drawable.ic_stat_flowrate);
         builder.SetContentTitle(state.SessionName);
         builder.SetContentText(GetText(state));
         builder.SetCategory(NotificationCompat.CategoryCall);

@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
-             xmlns:pages="clr-namespace:Client.Views.ServerSettings"
+             xmlns:pages="clr-namespace:Client.Views.ServerSettings.Pages"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              x:Class="Client.Views.ServerSettings.ServerSettingsView"
              x:DataType="serverSettingsVm:ServerSettingsVM"
@@ -46,7 +47,7 @@
     <Grid ColumnDefinitions="220, *" RowDefinitions="Auto, 1, *, Auto, 1, 44">
         <!-- Title: the icon on a tile, the name of the dialog and under it the server they belong to;
              the dialog can be closed from here as well as from the footer -->
-        <common:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
+        <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
                              Icon="{StaticResource ServerIcon}" Title="{l:Text main.server.settings}"
                              Subtitle="{Binding Server.DisplayName}" CloseCommand="{Binding CloseCommand}"/>
 

@@ -231,6 +231,7 @@ public partial class ActiveChatSessionVM
             if (_isDisposed) return;
             await UiThread.RunAsync(() =>
             {
+                DisposeReaders(_messageVms.Values);
                 _messageVms.Clear();
                 _newestMessageId = 0;
                 _pager.Reset();

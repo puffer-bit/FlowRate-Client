@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Android;
 using Android.App;
@@ -10,6 +11,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Avalonia.Android;
 using Client.Droid.Platform.Notifications;
+using Client.Droid.Platform;
 using Client.Tools.AppInfo;
 using Firebase;
 
@@ -27,14 +29,24 @@ namespace Client.Droid;
 public class MainActivity : AvaloniaMainActivity
 {
     private const int NotificationPermissionRequest = 1001;
-    private const int MicrophonePermissionRequest = 7001;
-    // Of the process, not of the activity: a request survives the activity recreated under its
-    // dialog, and its answer comes to the new one
-    private static TaskCompletionSource<bool>? _microphonePermission;
+    // A request of the media by the permission it asks for
+    private static readonly Dictionary<string, int> MediaPermissionRequests = new()
+    {
+        [Manifest.Permission.RecordAudio] = 7001,
+        [Manifest.Permission.Camera] = 7002
+    };
 
-    internal Task<bool> RequestMicrophonePermissionAsync()
+    // Of the process, not of the activity: a request survives the activity recreated under its
+    // dialog, and its answer comes to the new one. By request code
+    private static readonly Dictionary<int, TaskCompletionSource<bool>> _mediaPermissions = [];
+
+    internal Task<bool> RequestMicrophonePermissionAsync() => RequestPermissionAsync(Manifest.Permission.RecordAudio);
+
+    /// <summary>Asks for the microphone or the camera, or answers at once where it is allowed already.</summary>
+    internal Task<bool> RequestPermissionAsync(string permission)
     {
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var requestCode = MediaPermissionRequests[permission];
 
         RunOnUiThread(() =>
         {
@@ -44,20 +56,20 @@ public class MainActivity : AvaloniaMainActivity
                 return;
             }
 
-            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.RecordAudio) == Permission.Granted)
+            if (ContextCompat.CheckSelfPermission(this, permission) == Permission.Granted)
             {
                 completion.TrySetResult(true);
                 return;
             }
 
-            if (_microphonePermission is { } pending)
+            if (_mediaPermissions.TryGetValue(requestCode, out var pending))
             {
                 ForwardPermissionAsync(pending.Task, completion);
                 return;
             }
 
-            _microphonePermission = completion;
-            ActivityCompat.RequestPermissions(this, [Manifest.Permission.RecordAudio], MicrophonePermissionRequest);
+            _mediaPermissions[requestCode] = completion;
+            ActivityCompat.RequestPermissions(this, [permission], requestCode);
         });
 
         return completion.Task;
@@ -70,11 +82,10 @@ public class MainActivity : AvaloniaMainActivity
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode != MicrophonePermissionRequest)
+        if (!_mediaPermissions.Remove(requestCode, out var pending))
             return;
 
-        _microphonePermission?.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
-        _microphonePermission = null;
+        pending.TrySetResult(grantResults.Length > 0 && grantResults[0] == Permission.Granted);
     }
 
     /// <summary>
@@ -121,14 +132,45 @@ public class MainActivity : AvaloniaMainActivity
 
         // Created again by the system, the activity gets the intent it was first started with once more
         if (savedInstanceState == null)
+        {
+            ShowOverLockScreenForCall(Intent);
             RequestChat(Intent);
+        }
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
         base.OnNewIntent(intent);
+        ShowOverLockScreenForCall(intent);
         RequestChat(intent);
     }
+
+    /// <summary>
+    /// A call accepted on the lock screen goes on over it, as a phone call does.
+    /// </summary>
+    private void ShowOverLockScreenForCall(Intent? intent)
+    {
+        if (IncomingCallNotifications.ReadAction(this, intent) is { Action: "accept" })
+            SetOverLockScreen(true);
+    }
+
+    private void SetOverLockScreen(bool value)
+    {
+        if (_isOverLockScreen == value)
+            return;
+        _isOverLockScreen = value;
+        if (OperatingSystem.IsAndroidVersionAtLeast(27))
+        {
+            SetShowWhenLocked(value);
+            SetTurnScreenOn(value);
+        }
+        else if (value)
+            Window?.AddFlags(WindowManagerFlags.ShowWhenLocked | WindowManagerFlags.TurnScreenOn);
+        else
+            Window?.ClearFlags(WindowManagerFlags.ShowWhenLocked | WindowManagerFlags.TurnScreenOn);
+    }
+
+    private bool _isOverLockScreen;
 
     protected override void OnStart()
     {
@@ -138,6 +180,9 @@ public class MainActivity : AvaloniaMainActivity
 
     protected override void OnStop()
     {
+        NativeTextMenu.TryDismissActive();
+        // Once the user has left, the lock screen protects the application again
+        SetOverLockScreen(false);
         SetIsInFront(false);
         base.OnStop();
     }
@@ -147,8 +192,10 @@ public class MainActivity : AvaloniaMainActivity
         // A recreated activity still gets the answer; one closed for good never will
         if (IsFinishing && !IsChangingConfigurations)
         {
-            _microphonePermission?.TrySetResult(false);
-            _microphonePermission = null;
+            foreach (var pending in _mediaPermissions.Values)
+                pending.TrySetResult(false);
+
+            _mediaPermissions.Clear();
         }
 
         if (ReferenceEquals(Current, this))

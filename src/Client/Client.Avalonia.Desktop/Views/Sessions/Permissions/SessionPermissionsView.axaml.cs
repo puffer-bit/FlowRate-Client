@@ -1,3 +1,4 @@
+using Client.Views.Dialogs;
 using Client.Views.Common;
 using ReactiveUI;
 using ReactiveUI.Primitives;

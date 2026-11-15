@@ -105,12 +105,31 @@ internal static class VideoBufferSmokeChecks
                 if (Volatile.Read(ref waitingForKeyframe) != 0 && frame.IsKeyFrame)
                     requestedKeyframe.Set();
             };
-            decoder.KeyFrameNeeded += () => capture.RequestKeyFrame(isUrgent: true);
+            var decoderRequests = 0;
+            decoder.KeyFrameNeeded += () =>
+            {
+                Interlocked.Increment(ref decoderRequests);
+                capture.RequestKeyFrame(isUrgent: true);
+            };
             Require(capture.Start(), "Start software capture");
             Require(decoded.Wait(TimeSpan.FromSeconds(15)), $"Encode and decode {codec} screen through native buffers");
             Volatile.Write(ref waitingForKeyframe, 1);
             capture.RequestKeyFrame(isUrgent: true);
             Require(requestedKeyframe.Wait(TimeSpan.FromSeconds(2)), $"{codec} responds to a viewer's keyframe request");
+
+            // libvpx left to itself puts one in every 128 frames, 4.3 s at 30 fps. The decoder may ask
+            // for keyframes of its own, which are counted out
+            var keyFrames = 0;
+            capture.EncodedFrameReady += frame =>
+            {
+                if (frame.IsKeyFrame)
+                    Interlocked.Increment(ref keyFrames);
+            };
+            var requestsBefore = Volatile.Read(ref decoderRequests);
+            Thread.Sleep(TimeSpan.FromSeconds(5));
+            var requests = Volatile.Read(ref decoderRequests) - requestsBefore;
+            Require(Volatile.Read(ref keyFrames) <= requests,
+                $"{codec} makes no keyframe nobody asked for ({keyFrames} keyframes, {requests} asked for by the decoder)");
         }
         finally
         {
