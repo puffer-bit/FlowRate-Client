@@ -33,8 +33,14 @@ internal sealed partial class GstScreenCapture
     [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The compositor hands out {Rate:0.0} fps")]
     private static partial void LogCompositorRate(ILogger logger, string name, double rate);
 
-    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The encoder puts out {Rate:0.0} fps, {Keyframes} of them keyframes")]
-    private static partial void LogEncodedRate(ILogger logger, string name, double rate, int keyframes);
+    [LoggerMessage(LogLevel.Debug, "[Capture {Name}] The encoder puts out {Rate:0.0} fps, {Keyframes} of them keyframes " +
+        "({Unasked} not asked for); {Requests} keyframe requests, {Merged} of them merged into another")]
+    private static partial void LogEncodedRate(ILogger logger, string name, double rate, int keyframes, int unasked,
+        int requests, int merged);
+
+    [LoggerMessage(LogLevel.Information, "[Capture {Name}] The encoder made a keyframe nobody asked for, {Bytes} bytes, " +
+        "{SinceBitrateMs} ms after the last change of the bitrate (null: none)")]
+    private static partial void LogUnaskedKeyFrame(ILogger logger, string name, int bytes, long? sinceBitrateMs);
 
     [LoggerMessage(LogLevel.Debug, "[Capture {Name}] Encoder caps: {Caps}")]
     private static partial void LogEncodedCaps(ILogger logger, string name, string caps);
