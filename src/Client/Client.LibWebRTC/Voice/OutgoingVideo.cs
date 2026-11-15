@@ -57,13 +57,17 @@ internal sealed class OutgoingVideo : IVideoSendListener, IDisposable
 
     public void SetPreviewShown(bool isShown) => _capture.SetPreviewShown(isShown);
 
+    public bool SwitchInput(VideoInput input) => _capture.SwitchInput(input);
+
     /// <summary>What the encoder and libwebrtc did with the pictures since the previous call.</summary>
     public (EncoderPerf? Encoder, VideoSendTiming? Timing) TakePerf() => (_capture.TakePerf(), Source?.TakeTiming());
 
-    /// <summary>Stops the capture, then the source it pushed into.</summary>
+    /// <summary>Stops the capture, then the source it pushed into, where the peer did not capture it itself.</summary>
     public void Dispose()
     {
         _capture.Dispose();
-        Source?.Dispose();
+
+        if (!ReferenceEquals(Source, _capture))
+            Source?.Dispose();
     }
 }

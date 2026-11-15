@@ -106,7 +106,11 @@ internal static class ChatMessageMapper
         };
 
     private static ChatReaction MapReaction(ChatReactionDTO dto)
-        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji };
+        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji, ReactedAt = AsUtc(dto.ReactedAt) };
+
+    private static DateTime? AsUtc(DateTime? time) => time is { } value
+        ? value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime()
+        : null;
 
     // DTO mappers
     internal static ChatTextContentDTO MapTextContentDto(ChatTextContent model) => new() { Text = model.Text };

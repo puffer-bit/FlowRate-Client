@@ -21,6 +21,7 @@ public partial class ActiveChatSessionVM
 
     private void ClearHistory()
     {
+        DisposeReaders(_messageVms.Values);
         _messageVms.Clear();
         _newestMessageId = 0;
         _timeline.Clear();

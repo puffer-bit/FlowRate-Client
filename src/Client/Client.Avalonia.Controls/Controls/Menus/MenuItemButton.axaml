@@ -53,6 +53,7 @@
                                           HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         <ItemsControl Grid.Column="2" Margin="28,0,0,0"
+                                      IsVisible="{TemplateBinding ShowGesture}"
                                       VerticalAlignment="Center"
                                       ItemsSource="{TemplateBinding GestureKeys}">
                             <ItemsControl.ItemsPanel>

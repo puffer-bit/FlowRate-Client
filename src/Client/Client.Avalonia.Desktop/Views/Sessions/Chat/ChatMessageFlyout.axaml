@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              x:Class="Client.Views.Sessions.Chat.ChatMessageFlyout"
              x:DataType="chatVm:ChatMessageVM">
@@ -33,6 +34,42 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                </Flyout>
+            </menus:MenuItemButton.Flyout>
+        </menus:MenuItemButton>
+
+        <!-- Who read an own message and when; only its author sees it -->
+        <menus:MenuItemButton Icon="{StaticResource ReceiptReadIcon}" Content="{l:Text chat.menu.readers}"
+                              IsVisible="{Binding CanShowReaders}">
+            <menus:MenuItemButton.Flyout>
+                <Flyout Placement="RightEdgeAlignedTop">
+                    <StackPanel MinWidth="240" MaxWidth="320" Spacing="2" Margin="4">
+                        <TextBlock Text="{l:Text chat.readers.loading}" Margin="8,6"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
+                        <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" Margin="8,6" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
+                        <TextBlock Text="{l:Text chat.readers.empty}" Margin="8,6"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
+                        <ScrollViewer MaxHeight="320">
+                            <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="chatVm:ChatMessageReaderVM">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="6,4">
+                                            <avatars:UserAvatar Width="24" Height="24" UserName="{Binding Name}"
+                                                                AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                       FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
                 </Flyout>
             </menus:MenuItemButton.Flyout>
         </menus:MenuItemButton>

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -14,10 +15,10 @@
         MaxWidth="440" HorizontalAlignment="Stretch"
         MaxHeight="760">
 
-    <common:DialogLayout>
+    <dialogs:DialogLayout>
 
         <!-- Header -->
-        <common:DialogHeader Grid.Row="0" Icon="{StaticResource GearIcon}"
+        <dialogs:DialogHeader Grid.Row="0" Icon="{StaticResource GearIcon}"
                              Title="{l:Text sessionSettings.title}" Subtitle="{l:Text sessionSettings.hint}"/>
 
         <Border Grid.Row="1" Classes="dialogSeparator"/>
@@ -172,5 +173,5 @@
                 </Button>
             </StackPanel>
         </Grid>
-    </common:DialogLayout>
+    </dialogs:DialogLayout>
 </UserControl>

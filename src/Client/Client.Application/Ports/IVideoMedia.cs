@@ -67,6 +67,10 @@ public interface IScreenCapture : IDisposable
     /// </summary>
     void SetPreviewShown(bool isShown);
 
+    /// <summary>Captures from another input while the picture goes on being sent. Any thread.</summary>
+    /// <returns>False when this capture cannot switch to it.</returns>
+    bool SwitchInput(VideoInput input) => false;
+
     /// <summary>
     /// What the encoder did since the previous call, and starts the next window; null before it put
     /// anything out. Any thread.

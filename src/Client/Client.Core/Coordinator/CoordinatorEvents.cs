@@ -87,6 +87,9 @@ public sealed record ChatUserTypingEvent(int ChatId, int UserId, bool IsTyping) 
 /// </summary>
 public sealed record ChatReadStateChangedEvent(ChatReadState State) : CoordinatorEvent;
 
+/// <summary>Another member of a direct chat or a group read further.</summary>
+public sealed record ChatPeerReadEvent(ChatPeerRead Read) : CoordinatorEvent;
+
 /// <summary>
 /// A change of the SFU node a hybrid session runs on.
 /// </summary>

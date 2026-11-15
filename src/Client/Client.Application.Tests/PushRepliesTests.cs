@@ -34,6 +34,21 @@ public class PushRepliesTests
     }
 
     [Fact]
+    public async Task DeclineCall_GoesToTheKeptAddress()
+    {
+        var target = new PushReplyTarget("server", 1, "reply-token");
+        await _keys.SetReplyTargetAsync(Coordinator, target);
+        var callId = Guid.NewGuid();
+
+        var result = await _replies.DeclineCallAsync(Coordinator, callId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(PushReplyResult.Sent, result);
+        Assert.Equal((target, callId), Assert.Single(_transport.Declined));
+        Assert.Equal(PushReplyResult.NotRegistered,
+            await _replies.DeclineCallAsync("other", callId, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Send_WithoutAReplyToken_IsNotRegistered()
     {
         var result = await _replies.SendAsync(Coordinator, 7, "hi", TestContext.Current.CancellationToken);
@@ -89,6 +104,14 @@ public class PushRepliesTests
     {
         public List<(PushReplyTarget Target, int ChatId, string Text)> Sent { get; } = [];
         public List<(PushReplyTarget Target, int ChatId, int MessageId)> Read { get; } = [];
+        public List<(PushReplyTarget Target, Guid CallId)> Declined { get; } = [];
+
+        public Task<PushReplyResult> DeclineCallAsync(PushReplyTarget target, string? trustedFingerprint, Guid callId,
+            CancellationToken cancellationToken = default)
+        {
+            Declined.Add((target, callId));
+            return Task.FromResult(PushReplyResult.Sent);
+        }
 
         public Task<PushReplyResult> MarkReadAsync(PushReplyTarget target, string? trustedFingerprint, int chatId,
             int messageId, CancellationToken cancellationToken = default)

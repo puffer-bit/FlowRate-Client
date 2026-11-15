@@ -90,6 +90,15 @@ public sealed class VoicePeerWorker : IVoicePeer
         Enqueue(peer => peer.Negotiate(offer, copy));
     }
 
+    /// <summary>
+    /// Makes the pictures the platform captures and encodes itself, as the camera of a phone. Called at
+    /// once on the caller's thread: such a capture needs nothing of the peer that is not made yet.
+    /// </summary>
+    public Func<VideoInput, ScreenShareSettings, IPeerVideoCapture?>? VideoCaptures { get; init; }
+
+    public IPeerVideoCapture? CreateVideoCapture(VideoInput input, ScreenShareSettings settings) =>
+        Volatile.Read(ref _isClosed) == 0 ? VideoCaptures?.Invoke(input, settings) : null;
+
     public void SetMicrophoneEnabled(bool isEnabled) => Enqueue(peer => peer.SetMicrophoneEnabled(isEnabled));
 
     // This worker is for platforms where device selection is system-owned. A failure after a

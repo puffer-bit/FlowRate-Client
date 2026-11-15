@@ -40,6 +40,13 @@ internal sealed partial class GstScreenCapture : IScreenCapture
     private long _keyFrameAsked;
     private volatile bool _isKeyFrameDeferred;
 
+    // Why the keyframes came, for the log: a keyframe nobody asked for is one the encoder made by
+    // itself (its own GOP, a new bitrate, a new picture size), a burst no viewer needed. Under the lock.
+    private long _lastBitrateChange;
+    private int _keyFrameRequests;
+    private int _mergedKeyFrameRequests;
+    private int _unaskedKeyFrames;
+
     // What the encoder puts out, logged every few seconds next to what the capture delivers
     private static readonly TimeSpan RateInterval = TimeSpan.FromSeconds(5);
     private long _rateStart;
@@ -218,6 +225,14 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
             lock (_lock)
             {
+                // The first one starts the stream
+                if (_keyFrameAsked == 0 && _lastEncodedKeyFrame != 0)
+                {
+                    _unaskedKeyFrames++;
+                    LogUnaskedKeyFrame(_logger, _name, frame.Length,
+                        _lastBitrateChange == 0 ? null : (long)Stopwatch.GetElapsedTime(_lastBitrateChange).TotalMilliseconds);
+                }
+
                 _lastEncodedKeyFrame = Stopwatch.GetTimestamp();
                 _keyFrameAsked = 0;
             }
@@ -242,8 +257,16 @@ internal sealed partial class GstScreenCapture : IScreenCapture
 
         if (Stopwatch.GetElapsedTime(_rateStart) >= RateInterval)
         {
+            int requests, merged, unasked;
+
+            lock (_lock)
+            {
+                (requests, merged, unasked) = (_keyFrameRequests, _mergedKeyFrameRequests, _unaskedKeyFrames);
+                (_keyFrameRequests, _mergedKeyFrameRequests, _unaskedKeyFrames) = (0, 0, 0);
+            }
+
             LogEncodedRate(_logger, _name, _encodedFrames / Stopwatch.GetElapsedTime(_rateStart).TotalSeconds,
-                _encodedKeyFrames);
+                _encodedKeyFrames, unasked, requests, merged);
             _rateStart = Stopwatch.GetTimestamp();
             _encodedFrames = 0;
             _encodedKeyFrames = 0;
@@ -304,15 +327,23 @@ internal sealed partial class GstScreenCapture : IScreenCapture
             if (_isDisposed)
                 return;
 
+            _keyFrameRequests++;
+
             if (!isUrgent)
             {
                 // The one asked for answers this request too
                 if (_keyFrameAsked != 0 && Stopwatch.GetElapsedTime(_keyFrameAsked) < MinKeyFrameSpacing)
+                {
+                    _mergedKeyFrameRequests++;
                     return;
+                }
 
                 // Made by the next frame after the spacing, see OnEncodedFrame
                 if (_lastEncodedKeyFrame != 0 && Stopwatch.GetElapsedTime(_lastEncodedKeyFrame) < MinKeyFrameSpacing)
                 {
+                    if (_isKeyFrameDeferred)
+                        _mergedKeyFrameRequests++;
+
                     _isKeyFrameDeferred = true;
                     return;
                 }
@@ -337,6 +368,7 @@ internal sealed partial class GstScreenCapture : IScreenCapture
             if (!_isDisposed)
                 ScreenEncodingBranch.SetBitrate(_branch.Bin, _codec, _branch.Encoder, kbps);
 
+            _lastBitrateChange = Stopwatch.GetTimestamp();
             Volatile.Write(ref _targetKbps, kbps);
         }
     }

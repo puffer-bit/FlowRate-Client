@@ -7,7 +7,7 @@
 # Usage: ./build.sh
 # The checkout lives in $FLOWRATE_WEBRTC_DIR (default ~/.cache/flowrate-libwebrtc) and takes about
 # 30 GB. The first run downloads it and builds everything (half an hour to a couple of hours); the
-# next ones only rebuild what changed, e.g. a few seconds after an edit of flowrate_webrtc.cc.
+# next ones only rebuild what changed, e.g. a few seconds after an edit of flowrate_peer.cc.
 # Needs git, curl and python3; depot_tools brings the rest (gn, ninja, clang, the sysroot).
 set -euo pipefail
 
@@ -17,7 +17,7 @@ WRAPPER_TAG=libwebrtc.m150.7871.06
 WEBRTC_COMMIT=a545de45259b47dfac5f3635863e47cb601f1bb2 # webrtc-sdk/webrtc, m150_release
 WEBRTC_PATCHES=(custom_audio_source_m150 add_libwebrtc_build_target fix_desktop_capture_compile)
 # Our patches to WebRTC, in ../patches
-FLOWRATE_PATCHES=(flowrate_audio_processing flowrate_keep_sps flowrate_screen_audio_options)
+FLOWRATE_PATCHES=(flowrate_keep_sps)
 
 here=$(cd "$(dirname "$0")" && pwd)
 native="$here/../../Native"
@@ -27,9 +27,10 @@ prebuilt="$(dirname "$here")/prebuilt/linux-x64"
 
 # Release, without the tests and the parts we do not use: the screens are captured and encoded by
 # GStreamer, so neither the desktop capture of the wrapper (PipeWire, X11) nor H.264 of WebRTC is
-# built. The C++ library of Chromium is linked in statically and hidden, as in the releases of
-# webrtc-sdk, so the library needs only the C runtime of the system. The tests stay declared, as the
-# wrapper has a test target that needs them, but only the library is built.
+# built, and GStreamer plays and records the sound, so neither are the audio devices of the platform
+# (PulseAudio, ALSA): flowrate_audio.cc is the only one. The C++ library of Chromium is linked in statically and hidden, as in the releases of
+# webrtc-sdk, so the library needs only the C runtime of the system. No tests: flowrate_target.patch
+# declares the test target of the wrapper only with them.
 GN_ARGS='
 target_os="linux"
 target_cpu="x64"
@@ -44,12 +45,13 @@ use_custom_libcxx_for_host=true
 use_llvm_libatomic=false
 use_clang_modules=false
 use_rtti=true
-rtc_include_tests=true
+rtc_include_tests=false
 rtc_build_tools=false
 rtc_build_examples=false
 rtc_enable_protobuf=false
 rtc_use_x11=false
 rtc_use_pipewire=false
+rtc_include_internal_audio_device=false
 libwebrtc_desktop_capture=false
 '
 
@@ -131,6 +133,10 @@ mkdir -p src/libwebrtc/flowrate
 for source in "$native"/flowrate_*.{cc,h}; do
     file=$(basename "$source")
     cmp -s "$source" "src/libwebrtc/flowrate/$file" || cp "$source" "src/libwebrtc/flowrate/$file"
+done
+# and one removed or renamed here goes from there too
+for file in src/libwebrtc/flowrate/*; do
+    [[ -e "$native/$(basename "$file")" ]] || rm -f "$file"
 done
 
 step "Installing the sysroot"
