@@ -24,16 +24,6 @@ public static class GstTimingNative
     private static extern ulong gst_segment_to_running_time(IntPtr segment, Gst.Format format, ulong position);
 
     [DllImport(NativeLibraries.GStreamer)]
-    private static extern IntPtr gst_query_new_latency();
-
-    [DllImport(NativeLibraries.GStreamer)]
-    private static extern int gst_pad_query(IntPtr pad, IntPtr query);
-
-    [DllImport(NativeLibraries.GStreamer)]
-    private static extern void gst_query_parse_latency(IntPtr query, out int isLive, out ulong minLatency,
-        out ulong maxLatency);
-
-    [DllImport(NativeLibraries.GStreamer)]
     private static extern void gst_mini_object_unref(IntPtr miniObject);
 
     /// <summary>The running time of the clock of an element in nanoseconds, or null without a clock.</summary>
@@ -62,28 +52,6 @@ public static class GstTimingNative
         finally
         {
             gst_mini_object_unref(segmentEvent);
-        }
-    }
-
-    /// <summary>
-    /// The minimum latency a latency query of the pad answers, in nanoseconds: for the src pad of a
-    /// mixer, the time a buffer has between its running time and the moment the mixer gives up on it.
-    /// </summary>
-    public static long? QueryMinLatency(IntPtr pad)
-    {
-        var query = gst_query_new_latency();
-
-        try
-        {
-            if (gst_pad_query(pad, query) == 0)
-                return null;
-
-            gst_query_parse_latency(query, out _, out var minLatency, out _);
-            return AsNanoseconds(minLatency);
-        }
-        finally
-        {
-            gst_mini_object_unref(query);
         }
     }
 

@@ -10,8 +10,8 @@ The library is built by hand on a machine of its platform and **committed** into
 Neither CI nor the publish scripts build it, they only copy it. Each folder also holds `BUILD-INFO.txt`
 (what the library was built from, its SHA-256) and `LICENSE.libwebrtc`. Rebuild and commit it when a
 change of the C interface or of the pinned sources is done, not after every edit: each version stays in
-the history of the repository. Without the library of a platform the client still runs, and the voice
-there goes over GStreamer.
+the history of the repository. Without the library of a platform the client still runs, but its
+sessions cannot start their transport.
 
 What goes in, pinned by both scripts:
 
@@ -109,7 +109,7 @@ repository, a Windows build made on Linux carries `flowrate_webrtc.dll` too.
 After changing the PCM device boundary, rebuild both platform prebuilts before publishing. A matching
 library exports `fr_audio_bridge_version` (currently 1) and `fr_pull_playout` in addition to the peer
 interface. The managed loader rejects an older binary before it initializes any audio hardware.
-The desktop then falls back to the GStreamer transport. `windows/verify.ps1` deliberately rejects
-an older DLL, so a Windows publish cannot silently ship the fallback as the new native implementation.
+Sessions then fail to start their transport. `windows/verify.ps1` deliberately rejects an older DLL,
+so a Windows publish cannot ship a library the client would refuse.
 
 Run the headless `Client.Audio.SmokeChecks` executable after building; see `../README.md`.

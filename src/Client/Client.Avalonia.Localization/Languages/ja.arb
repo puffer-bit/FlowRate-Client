@@ -1057,10 +1057,6 @@
   "settings.experimental.section.window": "ウィンドウ",
   "settings.experimental.customTitleBar.title": "独自のタイトルバー",
   "settings.experimental.customTitleBar.description": "ウィンドウのボタンをアプリの上部バーに表示し、システムのタイトルバーを隠します。オフにするとシステムのタイトルバーに戻ります。すぐに適用されます",
-  "settings.experimental.section.voice": "音声",
-  "settings.experimental.gstreamer.title": "GStreamer配信エンジン",
-  "settings.experimental.gstreamer.description": "ネットワーク経由で音声と映像を送信する代替エンジンです。次に参加するセッションから適用されます",
-  "settings.experimental.libWebRTC.failed": "libwebrtc を読み込めませんでした。音声と画面は GStreamer のままです: {reason}",
 
   "settings.accounting.name": "プロファイル、サーバー、セキュリティ",
   "settings.accounting.section.database": "データベースと ID",

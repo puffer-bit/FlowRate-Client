@@ -64,8 +64,6 @@ internal sealed record BotOptions
                                    files of the journal, where there are files). Default: off.
           --listen                 Play what the bot hears. By default incoming audio is only
                                    received and decoded, so several bots do not fill the speakers.
-          --libwebrtc              Send and receive the voice over libwebrtc instead of GStreamer,
-                                   as the experimental setting of the client does. No screens.
           --create-session <name>  Join the voice session of that name, which the first bot
                                    creates when the server has none, e.g. a fresh local one.
           --verbose                Log everything, including the WebRTC negotiation.
@@ -114,7 +112,6 @@ internal sealed record BotOptions
     public TimeSpan StatsInterval { get; init; } = TimeSpan.FromSeconds(10);
     public bool Quiet { get; init; }
     public Client.Core.Settings.MediaPerfJournalMode PerfJournal { get; init; }
-    public bool LibWebRTC { get; init; }
     public string? CreateSession { get; init; }
 
     /// <returns>The options, or null when help was requested.</returns>
@@ -136,7 +133,6 @@ internal sealed record BotOptions
         var voice = true;
         var quiet = false;
         var perfJournal = Client.Core.Settings.MediaPerfJournalMode.Off;
-        var libWebRTC = false;
         string? createSession = null;
         string? chat = null;
         double? chatSeconds = null;
@@ -259,9 +255,6 @@ internal sealed record BotOptions
                         _ => throw new ArgumentException("--perf must be summary or detailed")
                     };
                     break;
-                case "--libwebrtc":
-                    libWebRTC = true;
-                    break;
                 case "--create-session":
                     createSession = Value();
                     break;
@@ -320,7 +313,6 @@ internal sealed record BotOptions
             StatsInterval = TimeSpan.FromSeconds(statsSeconds),
             Quiet = quiet,
             PerfJournal = perfJournal,
-            LibWebRTC = libWebRTC,
             CreateSession = createSession
         };
     }

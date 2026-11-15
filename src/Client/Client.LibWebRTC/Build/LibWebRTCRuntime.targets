@@ -4,8 +4,7 @@
          windows/build.ps1). Imported by the executable project for the same reason as
          GStreamerRuntime.targets: only it knows the RID.
 
-         Optional: without it the voice goes over GStreamer only, and the setting that picks libwebrtc
-         falls back to it. -->
+         Without it the application starts, but every session fails to start its transport. -->
     <PropertyGroup>
         <LibWebRTCRid>$(RuntimeIdentifier)</LibWebRTCRid>
         <LibWebRTCRid Condition="'$(LibWebRTCRid)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</LibWebRTCRid>

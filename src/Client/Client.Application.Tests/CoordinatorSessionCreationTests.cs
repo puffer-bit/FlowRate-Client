@@ -35,7 +35,7 @@ public sealed class CoordinatorSessionCreationTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        var hybrid = new NewSessionModel("Voice", 1, capacity, new NewHybridSessionOptions(WebRTCEngine.GStreamer));
+        var hybrid = new NewSessionModel("Voice", 1, capacity, new NewHybridSessionOptions(WebRTCEngine.Mediasoup));
 
         var result = await session.CreateSession(hybrid);
 

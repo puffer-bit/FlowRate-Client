@@ -2,8 +2,8 @@
 
 The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
 buffer (NetEq), codecs and the estimate of the network. GStreamer captures, processes and plays
-all desktop audio; Android keeps its platform audio processing. On the desktop it is an experimental setting next to GStreamer (Settings → Experimental features → Voice); Android
-has no other engine. On the desktop it also carries the screens, shown and watched, with their sound;
+all desktop audio; Android keeps its platform audio processing. It is the only transport on every
+platform. On the desktop it also carries the screens, shown and watched, with their sound;
 Android watches them only, decoded by libwebrtc itself (see below).
 
 ## Layout
@@ -20,14 +20,14 @@ Android watches them only, decoded by libwebrtc itself (see below).
 | `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidVoicePeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`VoicePeer.java`) |
 | `Client.Avalonia.Desktop/Services/Media/MediaEngineTransportFactory.cs` | Picks the engine of each session on the desktop |
 
-The SFU is described exactly as for webrtcbin (`Client.WebRTC/Sdp`); libwebrtc answers, and the SSRC
+The SFU is described as a remote peer (`Client.WebRTC/Sdp`); libwebrtc answers, and the SSRC
 the SFU created each producer with is written into the answer, since mediasoup knows our streams by it
 alone. The format parameters of the sections we send in set FEC, DTX and the 64 kbit/s of the voice.
 
 ## Screens
 
 libwebrtc carries the screens and codes none of them: `IVideoMedia` captures, encodes and decodes them,
-on the GPU, the same as for the GStreamer transport. Both video codec factories of libwebrtc are
+on the GPU. Both video codec factories of libwebrtc are
 replaced (`Native/flowrate_video.h`, put in place by `Build/patches/flowrate_target.patch`), which
 also leaves the software codecs of WebRTC out of the library.
 
@@ -37,8 +37,8 @@ libwebrtc receives the screens we watch: the transport, the jitter buffer, the r
 keyframe requests. It does not decode them. Its video decoders are replaced by ones that pass the
 pictures through (`Native/flowrate_video_decoder.cc`, put in place by `Build/patches/flowrate_target.patch`):
 each hands its encoded picture to `fr_set_video_receiver`, and gives libwebrtc a blank 2×2 picture back
-so that it keeps its timing. The pictures go to the decoders of `IVideoMedia`, the same as for the
-GStreamer transport, which decode on the GPU. libwebrtc only hands on pictures it could decode, so a
+so that it keeps its timing. The pictures go to the decoders of `IVideoMedia`, which decode on the
+GPU. libwebrtc only hands on pictures it could decode, so a
 stream starts at a keyframe and has no gaps. A decoder that needs a keyframe anyway asks for it through
 `fr_video_request_keyframe`: the next picture returns `WEBRTC_VIDEO_CODEC_OK_REQUEST_KEYFRAME`, and
 libwebrtc sends a PLI. The pictures are told apart by the SSRC of their packets, which the SFU gives
@@ -102,12 +102,12 @@ start bitrate: the field trial `WebRTC-Bwe-ProbingConfiguration/abort_further:tr
 The same trial skips a probe when the estimate already exceeds its maximum: otherwise the default
 5 Mbit/s probe limit can lower an estimate that is already higher, even on a fast connection.
 
-A received picture goes to the decoder as soon as it is whole (`WebRTC-ForcePlayoutDelay` of 0), as
-in the GStreamer transport: the timing of libwebrtc held pictures 10-20 ms longer on a clean network
+A received picture goes to the decoder as soon as it is whole (`WebRTC-ForcePlayoutDelay` of 0): the
+timing of libwebrtc held pictures 10-20 ms longer on a clean network
 and ran away to seconds on one that reorders packets. Every section the SFU sends in has a stream
 (`a=msid`) of its own, so libwebrtc keeps no screen in step with a voice. The SPS of H.264 goes as the
-encoder wrote it (`patches/flowrate_keep_sps.patch`). With all of it a screen arrives as fast as over
-GStreamer: 7 ms from drawing to decoding on one machine, measured with the stamped test picture of
+encoder wrote it (`patches/flowrate_keep_sps.patch`). With all of it a screen arrives in 7 ms from
+drawing to decoding on one machine, measured with the stamped test picture of
 `Client.TestBot`.
 
 The log of libwebrtc goes into the journal of the application through `fr_set_log`, as much of it as
@@ -121,8 +121,8 @@ producer, and the stream goes on with the next sequence number when it is back.
 
 The sound of a shown screen is captured by `IAudioMedia` (GStreamer: the process loopback of Windows,
 the streams of an application on PipeWire), cut into 10 ms and pushed into an `fr_audio_source` of its
-own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX,
-as the GStreamer transport does; nothing of the processing of the microphone touches it. The
+own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX;
+nothing of the processing of the microphone touches it. The
 microphone is processed by GStreamer (`MicrophoneProcessing`) before its own `fr_audio_source`, and
 the samples of a custom source go to the senders past the processing of libwebrtc, so a screen that
 starts or stops with sound changes nothing of the gain or echo cancellation of the microphone.

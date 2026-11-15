@@ -644,7 +644,7 @@ internal sealed partial class VoiceBot
             if (attempt == 0 && _index == 0)
             {
                 var result = await coordinator.CreateSession(new NewSessionModel(name, coordinator.GetCurrentUser().Id,
-                    Shared.Validation.Limits.SessionCapacityMax, new NewHybridSessionOptions(WebRTCEngine.GStreamer)));
+                    Shared.Validation.Limits.SessionCapacityMax, new NewHybridSessionOptions(WebRTCEngine.Mediasoup)));
 
                 if (!(result.IsSuccess || result.Error == ErrorCode.NameTaken))
                     throw new InvalidOperationException($"{Name}: failed to create the session \"{name}\": {result}");

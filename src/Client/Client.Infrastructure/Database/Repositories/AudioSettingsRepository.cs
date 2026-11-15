@@ -132,23 +132,6 @@ internal sealed class AudioSettingsRepository : IAudioSettingsRepository
             """, new { volume });
     }
 
-    public async Task<bool> GetUseGStreamerAsync()
-    {
-        await using var connection = await _database.OpenAsync();
-
-        return await connection.QueryFirstOrDefaultAsync<bool?>(
-            "SELECT UseGStreamer FROM AudioSettings WHERE Id = 1") ?? false;
-    }
-
-    public async Task UpdateUseGStreamerAsync(bool useGStreamer)
-    {
-        await using var connection = await _database.OpenAsync();
-
-        await connection.ExecuteAsync("""
-            INSERT INTO AudioSettings (Id, UseGStreamer) VALUES (1, @useGStreamer)
-            ON CONFLICT (Id) DO UPDATE SET UseGStreamer = excluded.UseGStreamer
-            """, new { useGStreamer });
-    }
 }
 
 internal sealed record AudioSettingsRow(double OutputVolume, string? OutputDeviceId, string? OutputDeviceName, string? InputDeviceId, string? InputDeviceName, double InputVolume,

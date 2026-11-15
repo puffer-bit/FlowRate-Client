@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ca-certificates git curl pkg-config python3 python3-pip \
         ninja-build cmake nasm flex bison patchelf file xz-utils zstd \
-        libmpg123-dev libglib2.0-dev libssl-dev libopus-dev libvpx-dev libsrtp2-dev \
+        libmpg123-dev libglib2.0-dev libopus-dev libvpx-dev \
         libjpeg-dev libva-dev libdrm-dev libpulse-dev libasound2-dev libffi-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,7 +55,7 @@ RUN for version in "$LIBVA_BASE_VERSION" "$LIBVA_MODERN_VERSION"; do \
         && ninja -C "libva-$version/build" install || exit 1; \
     done
 
-# GStreamer itself. libnice, openh264, orc and usrsctp come from the monorepo's own subprojects
+# GStreamer itself. openh264, orc and webrtc-audio-processing come from the monorepo's own subprojects
 ARG GST_VERSION=1.28.7
 RUN git clone --depth 1 --branch "${GST_VERSION}" https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
@@ -120,11 +120,11 @@ RUN git clone --depth 1 --branch "${PIPEWIRE_MODERN_VERSION}" https://gitlab.fre
     && mkdir -p "$PREFIX/lib/gstreamer-1.0-pipewire-modern" \
     && install -m 755 pipewire-modern/build/src/gst/libgstpipewire.so "$PREFIX/lib/gstreamer-1.0-pipewire-modern/"
 
-# dav1ddec, rtpav1pay/rtpav1depay and audiornnoise live in gst-plugins-rs only. audiornnoise (audiofx,
+# dav1ddec and audiornnoise live in gst-plugins-rs only. audiornnoise (audiofx,
 # MPL-2.0) is RNNoise in pure Rust (nnnoiseless): it links nothing beyond GStreamer itself.
 RUN git clone --depth 1 --branch "gstreamer-${GST_VERSION}" https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git \
     && cd gst-plugins-rs \
-    && cargo cinstall --release -p gst-plugin-dav1d -p gst-plugin-rtp -p gst-plugin-audiofx \
+    && cargo cinstall --release -p gst-plugin-dav1d -p gst-plugin-audiofx \
         --prefix="$PREFIX" --libdir=lib \
     && rm -rf target /root/.cargo/registry
 

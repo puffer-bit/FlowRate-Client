@@ -169,8 +169,8 @@ public partial class HybridSession : IHybridSession
     }
 
     /// <summary>
-    /// Every transport gets an epoch of its own: webrtcbin creates a new certificate with it, and
-    /// transport.connect of the SFU accepts a fingerprint only once.
+    /// Every transport gets an epoch of its own: the peer connection creates a new certificate with it,
+    /// and transport.connect of the SFU accepts a fingerprint only once.
     /// </summary>
     private IWebRTCTransport CreateTransport()
     {

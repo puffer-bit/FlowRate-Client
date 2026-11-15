@@ -13,27 +13,24 @@ internal static partial class GstElementCheck
 {
     private static readonly string[] Required =
     [
-        // Transport
-        "webrtcbin", "rtpbin", "nicesrc", "nicesink", "dtlssrtpenc", "dtlssrtpdec", "sctpenc", "sctpdec",
         // Voice
-        "opusenc", "opusdec", "rtpopuspay", "rtpopusdepay",
         "audioconvert", "audioresample", "audiomixer", "audiodynamic", "volume", "valve", "autoaudiosrc", "autoaudiosink",
         // Generic
         "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink", "clocksync",
         // Video
         "videoconvert", "videoscale", "videorate",
-        "h264parse", "openh264enc", "openh264dec", "rtph264pay", "rtph264depay",
-        "vp8enc", "vp8dec", "rtpvp8pay", "rtpvp8depay"
+        "h264parse", "openh264enc", "openh264dec",
+        "vp8enc", "vp8dec"
     ];
 
     // The bundle always has them; an installed runtime may lack the gst-plugins-rs part, and AV1 is then not offered
-    private static readonly string[] Av1 = ["av1parse", "svtav1enc", "dav1ddec", "rtpav1pay", "rtpav1depay"];
+    private static readonly string[] Av1 = ["av1parse", "svtav1enc", "dav1ddec"];
 
     private static readonly string[] RequiredWindows = ["d3d11screencapturesrc"];
 
     private static readonly string[] Optional =
     [
-        "vp9enc", "vp9dec", "rtpvp9pay", "rtpvp9depay",
+        "vp9enc", "vp9dec",
         // Required by the build scripts, but a runtime built before the voice gate lacks it, and the
         // microphone is then sent ungated
         "level",

@@ -7,8 +7,8 @@ namespace Client.LibWebRTC;
 public static class DependencyInjection
 {
     /// <summary>
-    /// The transports of the desktop over libwebrtc. Registered beside the ones of GStreamer, not over
-    /// them: the host picks the engine of each session. Needs the <see cref="IVideoMedia"/> of the host.
+    /// The transports of the desktop over libwebrtc, the only engine of the sessions. Needs the
+    /// <see cref="IVideoMedia"/> and <see cref="IAudioMedia"/> of the host.
     /// </summary>
     public static IServiceCollection AddLibWebRTC(this IServiceCollection services)
     {
@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<NativeVideoReceiver>();
         services.AddSingleton<INativeLog, LibWebRTCNativeLog>();
         services.AddSingleton<LibWebRTCTransportFactory>();
+        services.AddSingleton<IWebRTCTransportFactory>(provider => provider.GetRequiredService<LibWebRTCTransportFactory>());
 
         return services;
     }

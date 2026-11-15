@@ -5,8 +5,7 @@ namespace Client.LibWebRTC.Voice;
 
 /// <summary>
 /// One video stream we receive: its pictures, as libwebrtc hands them out encoded, go to a decoder,
-/// and the keyframes the decoder asks for back to the sender. The counterpart of IncomingVideo of
-/// the GStreamer transport.
+/// and the keyframes the decoder asks for back to the sender.
 /// </summary>
 /// <remarks>
 /// The decoder is made with the first picture, on the thread that delivers them: nothing is decoded

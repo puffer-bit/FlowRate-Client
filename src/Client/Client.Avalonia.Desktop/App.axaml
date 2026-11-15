@@ -43,7 +43,6 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBlocks/TextBlockStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageViewStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Notifications/NotificationStyle.axaml"/>
-        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Svg/SvgStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/FlyoutStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/PopupStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>

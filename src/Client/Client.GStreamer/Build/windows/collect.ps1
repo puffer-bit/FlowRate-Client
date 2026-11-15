@@ -42,8 +42,7 @@ $plugins = @(
     "isomp4", "matroska", "avi", "playback", "typefindfunctions", "id3demux", "audioparsers", "wavparse", "mpg123",
     "coreelements", "app", "audioconvert", "audioresample", "audiomixer", "audiofx", "audiotestsrc", "volume", "level", "rawparse",
     "audiobuffersplit", "webrtcdsp", "autodetect", "videoconvertscale", "videorate",
-    "opus", "rtp", "rtpmanager", "udp", "nice", "webrtc", "dtls", "srtp", "sctp", "sdpelem",
-    "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsrtp", "rsaudiofx",
+    "opus", "videoparsersbad", "openh264", "vpx", "svtav1", "dav1d", "rsaudiofx",
     # Media Foundation supplies mfaacdec for AAC in MP4 attachments; the installer has no fdkaac.
     "jpeg", "wasapi2", "d3d11", "nvcodec", "qsv", "amfcodec", "mediafoundation"
 )
@@ -53,7 +52,7 @@ $plugins = @(
 $licensePackages = @(
     "gstreamer-1.0", "gst-plugins-base-1.0", "gst-plugins-bad-1.0", "gst-plugins-rs",
     "libjpeg-turbo", "mpg123", "gst-plugins-good-1.0", "glib", "libffi", "proxy-libintl", "pcre2", "zlib", "orc",
-    "opus", "webrtc-audio-processing", "abseil-cpp", "openh264", "libvpx", "dav1d", "svt-av1", "libnice", "libsrtp", "openssl"
+    "opus", "webrtc-audio-processing", "abseil-cpp", "openh264", "libvpx", "dav1d", "svt-av1"
 )
 
 # Never allowed in the bundle
@@ -204,9 +203,9 @@ try {
     Copy-Item (Join-Path $bin "gst-inspect-1.0.exe") $tools
     # The binding imports these by name, even when no plugin needs them
     foreach ($library in @("gstreamer-1.0-0.dll", "gstbase-1.0-0.dll", "gstapp-1.0-0.dll", "gstvideo-1.0-0.dll",
-            "gstaudio-1.0-0.dll", "gstwebrtc-1.0-0.dll", "gstsdp-1.0-0.dll", "gstrtp-1.0-0.dll",
+            "gstaudio-1.0-0.dll", "gstrtp-1.0-0.dll",
             "gstpbutils-1.0-0.dll", "gstcontroller-1.0-0.dll", "gstnet-1.0-0.dll", "gsttag-1.0-0.dll",
-            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll", "nice-10.dll")) {
+            "glib-2.0-0.dll", "gobject-2.0-0.dll", "gmodule-2.0-0.dll", "gio-2.0-0.dll")) {
         Copy-Item (Join-Path $bin $library) $destBin
     }
 

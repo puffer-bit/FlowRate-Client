@@ -54,7 +54,7 @@ public interface IWebRTCTransport : IDisposable
 
     /// <summary>
     /// Raised with how the media fared since the previous reading of the statistics, every few
-    /// seconds while the transport runs. Raised on a thread of webrtcbin.
+    /// seconds while the transport runs. Raised on a thread of the transport.
     /// </summary>
     event Action<TransportStatsSample>? StatsSampled;
 

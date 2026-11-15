@@ -3,9 +3,8 @@
 How the encoder of a shown screen and the decoder of a watched one are chosen, what they are set
 to, and what the user sees of it. The way of the frames after the decoder is in `VideoRendering.md`.
 
-Both transports use the same elements: the screen is captured and encoded by `GstScreenCapture`
-and decoded by `GstVideoDecoder` (`IVideoMedia`), whether the packets travel through webrtcbin or
-libwebrtc.
+The screen is captured and encoded by `GstScreenCapture` and decoded by `GstVideoDecoder`
+(`IVideoMedia`); libwebrtc only carries the encoded pictures.
 
 Camera capture and its independent codec preferences are described in [CameraCapture.md](CameraCapture.md).
 
@@ -60,10 +59,9 @@ The session selects H.264 (the default), VP8 or AV1 for new screen tracks. The t
 the codec the SFU announces, rather than substituting H.264 for an unknown codec. VP9 has encoder
 and decoder candidates but is not offered in session settings.
 
-`VideoCodecPipeline` defines the encoded caps, parser, RTP payloader and depayloader together.
-Capture, decoding and the GStreamer transport use that description. AV1 travels as parsed
-OBU streams aligned to temporal units; `av1parse` assembles the depayloader's OBU output before
-decoding. The AV1 encoder candidates are NVIDIA, Intel and AMD hardware, then SVT-AV1; the
+`VideoCodecPipeline` defines the encoded caps and parser together. Capture and decoding use that
+description. AV1 travels as parsed OBU streams aligned to temporal units; `av1parse` assembles
+them before decoding. The AV1 encoder candidates are NVIDIA, Intel and AMD hardware, then SVT-AV1; the
 decoder candidates are platform hardware, NVIDIA and finally dav1d. SVT-AV1 uses low-delay CBR
 without lookahead, so it does not retain a random-access group before sending frames.
 
@@ -81,18 +79,14 @@ It verifies that individual keyframes and delta frames decode without future inp
 encoder/decoder throughput and queue depth for paced 1080p/144 input using DMA-BUF output.
 The measured rate depends on the device, driver and concurrent GPU load; it is not a 144 fps guarantee.
 
-Both senders attach a single-layer dependency descriptor, which mediasoup needs to recognize AV1
-keyframes. The SFU and the senders reserve extension id 6 for it. libwebrtc generates it from the
-passthrough encoder's generic frame information. The GStreamer transport adds it after packetization
-with `Av1RtpDependencyDescriptor` and `GstPacketTransform`; only RTP packets are copied, and buffer
-metadata is preserved. Buffers and buffer lists are both supported. The payloader reserves 16 bytes
-for the extension so packets stay within the existing 1200-byte MTU. This path requires GStreamer 1.28+.
-The SFU's `npm test` verifies an actual mediasoup worker forwards the client's AV1 keyframe fixture.
+The sender attaches a single-layer dependency descriptor, which mediasoup needs to recognize AV1
+keyframes. The SFU and the sender reserve extension id 6 for it. libwebrtc generates it from the
+passthrough encoder's generic frame information. The SFU's `npm test` verifies an actual mediasoup worker forwards the client's AV1 keyframe fixture.
 
 AV1 requires an updated coordinator and SFU, matching Shared definitions, and updated clients
 for every viewer. The desktop libwebrtc runtime must be rebuilt from the updated native sources
-on both Windows and Linux; older binaries advertise only H.264 and VP8. The GStreamer transport
-requires the AV1 runtime elements checked by `GstElementCheck`. Android viewing depends on the
+on both Windows and Linux; older binaries advertise only H.264 and VP8. Encoding and decoding
+require the AV1 runtime elements checked by `GstElementCheck`. Android viewing depends on the
 AV1 decoders exposed by its libwebrtc runtime and device; desktop remains the source of screen sharing.
 
 ### Decoders (H.264)

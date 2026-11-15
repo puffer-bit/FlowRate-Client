@@ -135,12 +135,6 @@ public static class VideoEncoderSelector
     public static bool HasHardwareEncoder(VideoCodec codec) =>
         GetCandidates(codec).Any(c => c.IsHardware && ElementFactory.Find(c.Factory) != null);
 
-    /// <summary>
-    /// All encoder elements considered for <paramref name="codec"/> on this system.
-    /// </summary>
-    public static IReadOnlyList<string> GetKnownEncoders(VideoCodec codec, bool hardware) =>
-        GetCandidates(codec).Where(c => c.IsHardware == hardware).Select(c => c.Factory).ToList();
-
     internal static bool IsKnownEncoder(string factory) =>
         Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Any(candidate => candidate.Factory == factory);
 

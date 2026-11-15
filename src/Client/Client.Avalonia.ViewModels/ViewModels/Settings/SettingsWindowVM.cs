@@ -178,7 +178,6 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         IThemeService themeService,
         ILanguageService languageService,
         ICollapsedSectionsRepository collapsedSectionsRepository,
-        ILibWebRTCLoader libWebRTCLoader,
         IReleaseNotesSource releaseNotes)
     {
         _collapsedSectionsRepository = collapsedSectionsRepository;
@@ -198,7 +197,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         SettingList.Add(new HotKeysControlVM(hotKeysService));
         SettingList.Add(new PlatformSpecificControlVM(platformSpecificService));
         SettingList.Add(new DebugAndLogsControlVM(debugAndLogService));
-        SettingList.Add(new ExperimentalControlVM(appearanceService, audioService, libWebRTCLoader));
+        SettingList.Add(new ExperimentalControlVM(appearanceService));
         SettingList.Add(new AboutControlVM(AppInformation.GetClientBuildVersion(), releaseNotes, updatePreferences: behavior));
 
         Strings.LanguageChanged += OnLanguageChanged;

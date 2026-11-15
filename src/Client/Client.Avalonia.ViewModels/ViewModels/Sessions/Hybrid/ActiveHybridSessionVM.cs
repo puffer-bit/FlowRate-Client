@@ -499,7 +499,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         }
     }
 
-    // The session reports its state and errors from GStreamer and thread pool threads, so both are
+    // The session reports its state and errors from libwebrtc and thread pool threads, so both are
     // marshalled to the UI thread before they touch any view model
     private void OnStatsSampled(TransportStatsSample sample) =>
         Dispatcher.UIThread.Post(() =>

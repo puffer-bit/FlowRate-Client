@@ -36,12 +36,12 @@ drawn from a bitmap, the way they always were.
 ## Path of a frame
 
 The transport gives the decoder encoded frames and nothing else (`IVideoDecoder`), so the decoding
-does not depend on how the stream arrived. With the GStreamer transport:
+does not depend on how the stream arrived. libwebrtc hands out each whole picture:
 
 ```
-webrtcbin pad ─ queue ─ rtph264depay ─ h264parse ─ appsink          (Client.GStreamer.WebRTC)
+libwebrtc passthrough decoder ─ fr_set_video_receiver              (Client.LibWebRTC)
                                                       │
-                     IncomingVideo (reader thread) ── EncodedVideoFrame
+                IncomingVideoStream (libwebrtc thread) ── EncodedVideoFrame
                                                       │
 appsrc ─ h264parse ─ <chain of VideoOutputSelector> ─ appsink        (GstVideoDecoder)
                                                          │
@@ -122,10 +122,9 @@ frames to exercise those branches.
 A pump that cannot make a GPU frame, or a presenter that cannot import one, calls
 `VideoSurfaceSupport.ReportFailure`. The kind is taken out of the supported ones for good, and every
 `GstVideoDecoder` of that kind builds its pipeline anew with the memory chain. The new decoder drops
-what comes until a keyframe and raises `KeyFrameNeeded`; the transport asks the sender for one (the
-GStreamer one sends the request upstream from its sink, and the RTP session turns it into a PLI), so
-the picture comes back after about a second. The pipeline of webrtcbin is not touched, so nothing has
-to hold its pad meanwhile. Streams opened later use the memory chain from the start.
+what comes until a keyframe and raises `KeyFrameNeeded`; the transport asks the sender for one
+(`fr_video_request_keyframe`, which libwebrtc turns into a PLI), so the picture comes back after
+about a second. The transport itself is not touched. Streams opened later use the memory chain from the start.
 `--gpu-frames-fail <sec>` of the test bot triggers this on purpose.
 
 When OpenGL breaks altogether, `GlVideoPresenter` reports every kind still supported, since all of
@@ -283,8 +282,8 @@ On an AMD RX 7700/7800 with a 165 Hz monitor, KDE:
 
 - Avalonia with EGL on X11 renders about 160 fps.
 - A 1080p144 stream through the DMA-BUF path: 144 of 144 frames shown after the first second.
-- Two test bots through a local SFU: 144 fps sent and received; the DMA-BUF branch inside webrtcbin
-  keeps 144 fps; a rebuild to memory recovers within a second.
+- Two test bots through a local SFU: 144 fps sent and received; the DMA-BUF branch keeps 144 fps;
+  a rebuild to memory recovers within a second. Measured with the GStreamer transport, since removed.
 
 ## Not done or not verified
 

@@ -116,8 +116,8 @@ public partial class HybridSession
                     break;
 
                 // A stopped screen is only paused on the SFU and comes back in the same track. Its
-                // section stays: every track that is released and registered again costs webrtcbin a
-                // new pad and jitter buffer, which it never gives back. The track goes with its peer.
+                // section stays, so the next show reuses it instead of growing the description. The
+                // track goes with its peer.
                 // Watching ends with the show, the next one has to be asked for again.
                 case PeerTrackStoppedEvent { SourceType: MediaSourceType.Screen } stopped:
                     if (stopped.UserId != _coordinatorSession.GetCurrentUser().Id)

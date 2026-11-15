@@ -128,8 +128,6 @@ Settings cover appearance, audio, video, screen sharing, hotkeys, behavior, stor
 
 Use appearance settings to adjust the theme and chat presentation. Audio settings separate voice devices and processing from interface sounds. Storage settings manage locally cached media; saved identities and database protection are managed separately from disposable media cache.
 
-Experimental settings include the desktop GStreamer transport fallback. When diagnosing a media problem, record which transport was selected and whether a fallback occurred; the journal records the engine used for a session.
-
 Options supplied on the command line apply to the current process. Affected settings are disabled in the interface for that launch. The settings header indicates safe mode, disabled media, and software rendering where applicable.
 
 ## Local data and protection

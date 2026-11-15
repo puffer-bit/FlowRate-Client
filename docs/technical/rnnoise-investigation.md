@@ -148,7 +148,7 @@ may delay or clip soft word onsets, and the wider scan includes longer false run
 indiscriminately is not justified. No additional production behavior was changed.
 
 Additional diagnostic limitation: `VoiceTransport.LogGateSummary` in the normal libwebrtc path
-does not log the already-available `VoicePercent`; the older GStreamer transport does. Existing
+does not log the already-available `VoicePercent`; the removed GStreamer transport did. Existing
 normal voice-gate summary logs alone cannot distinguish detector positives from a level-only
 fallback. This observation was not changed in production code.
 

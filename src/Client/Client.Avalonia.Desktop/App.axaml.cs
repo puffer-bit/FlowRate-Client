@@ -8,14 +8,12 @@ using Avalonia.Threading;
 using Client.Api;
 using Client.Application;
 using Client.GStreamer.Loader;
-using Client.GStreamer.WebRTC;
 using Client.Infrastructure;
 using Client.LibWebRTC;
 using Client.OpenAL;
 using Client.Services;
 using Client.Services.HotKeys;
 using Client.Services.Keyring;
-using Client.Services.Media;
 using Client.Services.Chat;
 using Client.Services.ScreenCast;
 using Client.Services.Tray;
@@ -139,12 +137,9 @@ public partial class App : global::Avalonia.Application
             .AddInfrastructure()
             .AddScreenCast()
             .AddGStreamer()
-            .AddGStreamerWebRTC()
             .AddLibWebRTC()
             .AddOpenAL();
 
-        // The engine of each session follows the experimental setting
-        services.AddSingleton<IWebRTCTransportFactory, MediaEngineTransportFactory>();
         services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();

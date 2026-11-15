@@ -41,7 +41,7 @@ The normal Docker setup runs the server and SFU as two containers with host netw
 | Separate media transport from capture and codecs | Use libwebrtc networking with desktop GStreamer media pipelines. | Native resource ownership and synchronization need explicit contracts. |
 | Use SQLite persistence | Keep local state and server data in embedded databases. | Capacity must be measured for the actual workload; this does not establish multi-host database scaling. |
 
-Desktop normally selects libwebrtc for transport, with an experimental GStreamer transport and fallback when the native library is unavailable. Android uses libwebrtc and platform media services, can watch screen shares, and does not originate them. Desktop GPU paths depend on OS, drivers, codecs, and capture support. See the [repository conventions](../../AGENTS.md) for platform boundaries.
+Desktop uses libwebrtc as its only transport; without the native library, sessions cannot start their media. Android uses libwebrtc and platform media services, can watch screen shares, and does not originate them. Desktop GPU paths depend on OS, drivers, codecs, and capture support. See the [repository conventions](../../AGENTS.md) for platform boundaries.
 
 ## Joining and recovering a voice session
 
