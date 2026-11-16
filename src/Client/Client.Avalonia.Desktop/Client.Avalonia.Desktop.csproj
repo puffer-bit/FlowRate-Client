@@ -14,7 +14,8 @@
              Only then: the trimmed single-file publish raises IL2104 for every library with trim warnings -->
         <WarningsAsErrors Condition="'$(PublishAot)' == 'true'">$(WarningsAsErrors);IL2104;IL3053</WarningsAsErrors>
         <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifier>
-        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT'">linux-x64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT' And $([MSBuild]::IsOSPlatform('OSX'))">osx-arm64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT' And !$([MSBuild]::IsOSPlatform('OSX'))">linux-x64</RuntimeIdentifier>
         <Version>0.7.1</Version>
         <AssemblyVersion>0.7.1.0</AssemblyVersion>
         <FileVersion>0.7.1.0</FileVersion>

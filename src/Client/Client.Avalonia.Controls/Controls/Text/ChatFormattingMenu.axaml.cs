@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Client.Core.Chat;
+using Client.Avalonia.Controls.Menus;
 using Client.Avalonia.Localization;
 
 namespace Client.Avalonia.Controls.Text;
@@ -62,7 +63,7 @@ public static class ChatInputFormatting
     private static void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (sender is not TextBox target || e.Handled) return;
-        ChatMarkdownFormat? format = (e.KeyModifiers, e.Key) switch
+        ChatMarkdownFormat? format = (CommandModifier.Normalize(e.KeyModifiers), e.Key) switch
         {
             (KeyModifiers.Control, Key.B) => ChatMarkdownFormat.Bold,
             (KeyModifiers.Control, Key.I) => ChatMarkdownFormat.Italic,

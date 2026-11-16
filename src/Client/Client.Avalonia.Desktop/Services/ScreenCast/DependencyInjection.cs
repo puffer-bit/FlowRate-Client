@@ -29,10 +29,11 @@ internal static class DependencyInjection
         {
             services.AddSingleton<IScreenSourceProvider, WindowsScreenSourceProvider>();
         }
-        else
+        else if (!OperatingSystem.IsMacOS())
         {
             throw new PlatformNotSupportedException("Unsupported OS platform");
         }
+        // Nothing on macOS yet: with no source provider and no portal client, sharing is not offered
 
         return services;
     }

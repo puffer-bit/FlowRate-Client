@@ -9,6 +9,7 @@
     <PropertyGroup>
         <GStreamerRid>$(RuntimeIdentifier)</GStreamerRid>
         <GStreamerRid Condition="'$(GStreamerRid)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</GStreamerRid>
+        <GStreamerRid Condition="'$(GStreamerRid)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">osx-arm64</GStreamerRid>
         <GStreamerRid Condition="'$(GStreamerRid)' == ''">linux-x64</GStreamerRid>
         <GStreamerRuntimeDir>$(MSBuildThisFileDirectory)artifacts\$(GStreamerRid)\</GStreamerRuntimeDir>
     </PropertyGroup>
@@ -25,9 +26,10 @@
               CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     </ItemGroup>
 
-    <!-- Every configuration, Debug included, runs only on its own runtime -->
+    <!-- Every configuration, Debug included, runs only on its own runtime. macOS has no runtime yet and
+         starts without media -->
     <Target Name="RequireGStreamerRuntime" BeforeTargets="Build"
-            Condition="!Exists('$(GStreamerRuntimeDir)gstreamer')">
+            Condition="!Exists('$(GStreamerRuntimeDir)gstreamer') And !$(GStreamerRid.StartsWith('osx-'))">
         <Error Text="The GStreamer runtime for $(GStreamerRid) is missing in $(GStreamerRuntimeDir). Build it with the script in $(MSBuildThisFileDirectory), see README.md there, or copy it from a machine that built it." />
     </Target>
 </Project>

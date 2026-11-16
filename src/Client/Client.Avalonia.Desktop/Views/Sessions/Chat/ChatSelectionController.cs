@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Client.Avalonia.Controls.Menus;
 using Client.ViewModels.Sessions.Chat;
 using Client.Views.Common;
 
@@ -238,7 +239,7 @@ internal sealed class ChatSelectionController
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.C || !e.KeyModifiers.HasFlag(KeyModifiers.Control) || !HasSelection)
+        if (e.Key != Key.C || !CommandModifier.Normalize(e.KeyModifiers).HasFlag(KeyModifiers.Control) || !HasSelection)
             return;
 
         e.Handled = true;
