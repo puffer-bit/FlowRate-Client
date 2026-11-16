@@ -28,6 +28,8 @@
   "settings.video.vp9Encoder.description": "Se usa al compartir tu pantalla con VP9; se aplica a la siguiente vez.",
   "settings.video.vp9Decoder.title": "Decodificador VP9",
   "settings.video.vp9Decoder.description": "Se usa para ver pantallas compartidas con VP9; se aplica a las pantallas abiertas después del cambio.",
+  "source.access.title": "La grabación de pantalla no está permitida",
+  "source.access.macOS": "Permite FlowRate en Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla y audio del sistema y reinícialo. El mismo permiso cubre el sonido de la transmisión.",
   "source.bitrate.encoderOverride.title": "El codificador controla la tasa de bits",
   "source.bitrate.encoderOverride.message": "La tasa de bits se controla en los ajustes de {encoder}. Para cambiar o desactivar esta configuración, abre Ajustes → Vídeo.",
   "settings.video.codecSettings.warning": "Cambiar los parámetros de codificadores y decodificadores requiere conocimientos especializados y entender cómo funcionan los códecs. Los valores incorrectos pueden reducir la calidad de imagen, causar retrasos o impedir compartir y ver pantallas. Continúa solo si comprendes los efectos de estos cambios.",

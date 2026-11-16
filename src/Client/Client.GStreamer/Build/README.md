@@ -116,6 +116,7 @@ gstreamer.freedesktop.org, installed in `/Library/Frameworks/GStreamer.framework
 |---|---|
 | `collect.sh` | copies the plugins listed in `plugins` together with the libraries they link through `@rpath`, keeps only their arm64 code, signs every file ad hoc, collects licenses and checks the bundle in isolation from the installed framework: elements from `required-elements.txt`, every plugin loads from the bundle, no library of the framework is loaded |
 | `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
+| `build-sck.sh` | builds `libflowrate_sck.dylib` from `Native/mac`: screens, windows and the sound of applications captured through ScreenCaptureKit for screen sharing, behind a C interface. The result in `prebuilt/osx-arm64/` is committed and copied next to the executable |
 
 Output: `artifacts/osx-arm64/`. The folders of the plugins and of the scanner are `lib/plugins` and
 `libexec/scanner`, not `gstreamer-1.0` as in the framework: `codesign` takes a folder with an extension

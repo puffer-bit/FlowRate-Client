@@ -27,5 +27,7 @@ public class GstMediaCapabilities : IMediaCapabilities
 
     public bool CanCaptureScreenAudio => MediaRuntime.IsEnabled && (OperatingSystem.IsWindows()
         ? ProcessLoopbackSource.IsAvailable
-        : PipeWireAppAudioSource.IsAvailable);
+        : OperatingSystem.IsMacOS()
+            ? ScreenCaptureKitAudioSource.IsAvailable
+            : PipeWireAppAudioSource.IsAvailable);
 }

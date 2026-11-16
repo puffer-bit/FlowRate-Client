@@ -239,6 +239,10 @@
                     </Grid>
                 </Grid>
 
+                <banners:WarningBanner IsVisible="{Binding IsScreenAccessDenied}"
+                                       Header="{l:Text source.access.title}"
+                                       Message="{l:Text source.access.macOS}"/>
+
                 <banners:WarningBanner IsVisible="{Binding IsBitrateOverridden}"
                                        Header="{l:Text source.bitrate.encoderOverride.title}"
                                        Message="{Binding EncoderBitrateWarning}"/>

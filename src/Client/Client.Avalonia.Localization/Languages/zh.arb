@@ -28,6 +28,8 @@
   "settings.video.vp9Encoder.description": "用于 VP9 屏幕共享；从下一次共享开始生效。",
   "settings.video.vp9Decoder.title": "VP9 解码器",
   "settings.video.vp9Decoder.description": "用于观看 VP9 屏幕共享；对更改后打开的屏幕生效。",
+  "source.access.title": "未允许屏幕录制",
+  "source.access.macOS": "请在 系统设置 → 隐私与安全性 → 录屏与系统录音 中允许 FlowRate，然后重新启动它。同一权限也用于共享的声音。",
   "source.bitrate.encoderOverride.title": "编码器已覆盖码率",
   "source.bitrate.encoderOverride.message": "码率由 {encoder} 的设置控制。要更改或取消覆盖，请打开“设置 → 视频”。",
   "settings.video.codecSettings.warning": "更改编码器和解码器参数需要专业知识并了解编解码器的工作原理。不正确的值可能导致画质下降、延迟，或无法共享和观看屏幕。请仅在了解这些更改的影响时继续。",

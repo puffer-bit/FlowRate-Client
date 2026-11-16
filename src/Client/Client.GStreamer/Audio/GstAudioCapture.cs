@@ -91,6 +91,10 @@ internal sealed partial class GstAudioCapture : IAudioCapture
     {
         switch (input)
         {
+            case ProcessLoopbackAudioInput loopback when OperatingSystem.IsMacOS():
+                var screenCaptureKit = ScreenCaptureKitAudioSource.Create(loopback,
+                    exception => LogScreenCaptureKitFailed(logger, exception, name));
+                return (screenCaptureKit?.Element, screenCaptureKit);
             case ProcessLoopbackAudioInput loopback:
                 return (ProcessLoopbackSource.Create(loopback), null);
             case PipeWireAppAudioInput app:
@@ -166,6 +170,9 @@ internal sealed partial class GstAudioCapture : IAudioCapture
 
         _pipeline.Dispose();
     }
+
+    [LoggerMessage(LogLevel.Warning, "[Sound {Name}] The capture of ScreenCaptureKit failed")]
+    private static partial void LogScreenCaptureKitFailed(ILogger logger, Exception exception, string name);
 
     [LoggerMessage(LogLevel.Error, "[Sound {Name}] Failed to create the audio source for {Input}")]
     private static partial void LogSourceCreateFailed(ILogger logger, string name, AudioInput input);

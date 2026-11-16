@@ -107,6 +107,10 @@ internal static class VideoSourceFactory
         Action<double>? onSourceRate = null, int maxHeight = 1080) => input switch
     {
         PipeWireVideoInput pipeWire => CreatePipeWire(pipeWire, framerate, onError, onRate, acceptDmaBuf, onSourceRate),
+        MonitorVideoInput monitor when OperatingSystem.IsMacOS() =>
+            CreateScreenCaptureKit(Mac.ScreenCaptureKitNative.KindDisplay, monitor.Handle, framerate, maxHeight, onError, onRate),
+        WindowVideoInput window when OperatingSystem.IsMacOS() =>
+            CreateScreenCaptureKit(Mac.ScreenCaptureKitNative.KindWindow, window.Handle, framerate, maxHeight, onError, onRate),
         MonitorVideoInput monitor => CreateScreenCapture("monitor-handle", monitor.Handle, isWindow: false, framerate, onRate),
         WindowVideoInput window => CreateScreenCapture("window-handle", window.Handle, isWindow: true, framerate, onRate),
         CameraVideoInput camera => CreateCamera(camera, maxHeight, framerate),
@@ -253,6 +257,59 @@ internal static class VideoSourceFactory
             WatchRate(source, onRate);
 
         return new VideoSource(bin);
+    }
+
+    private const string ScreenCaptureKitElementName = "capture";
+
+    // The pictures come in at the size the system scales them to, set on the appsrc with the first one.
+    // A late picture is worth nothing, so the oldest gives way rather than the queue growing
+    private const string ScreenCaptureKitDescription =
+        "appsrc name=" + ScreenCaptureKitElementName + " is-live=true do-timestamp=true format=time " +
+        "max-buffers=2 max-bytes=0 leaky-type=downstream";
+
+    [System.Runtime.Versioning.SupportedOSPlatform("macos")]
+    private static VideoSource? CreateScreenCaptureKit(int kind, IntPtr id, int framerate, int maxHeight,
+        Action<Exception> onError, Action<double, string>? onRate)
+    {
+        if (id == IntPtr.Zero || !Mac.ScreenCaptureKit.IsAvailable)
+            return null;
+
+        var bin = Global.ParseBinFromDescription(ScreenCaptureKitDescription, true);
+
+        if (bin?.GetByName(ScreenCaptureKitElementName) is not { } source)
+        {
+            bin?.Dispose();
+            return null;
+        }
+
+        Mac.ScreenCaptureKitCapture capture;
+
+        try
+        {
+            capture = Mac.ScreenCaptureKitCapture.Start(source, new Mac.ScreenCaptureKitNative.Config
+            {
+                Kind = kind,
+                Id = (ulong)id.ToInt64(),
+                Framerate = framerate,
+                MaxHeight = maxHeight,
+                ShowCursor = 1
+            }, onError);
+        }
+        catch (InvalidOperationException exception)
+        {
+            onError(exception);
+            source.Dispose();
+            bin.Dispose();
+            return null;
+        }
+
+        // The probe delegate is kept as long as the element is, so the wrapper stays undisposed
+        if (onRate != null)
+            WatchRate(source, onRate);
+        else
+            source.Dispose();
+
+        return new VideoSource(bin, capture);
     }
 
     // Keeps each probe delegate alive as long as the element it watches

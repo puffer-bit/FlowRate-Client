@@ -1,6 +1,7 @@
 using System;
 using Client.Application.Ports;
 using Client.Services.ScreenCast.Linux;
+using Client.Services.ScreenCast.Mac;
 using Client.Services.ScreenCast.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,7 @@ internal static class DependencyInjection
 {
     /// <summary>
     /// How the screen to share is chosen: through the desktop portal on Linux, from the list of
-    /// windows and monitors on Windows. Also where the sound of the share comes from.
+    /// windows and monitors on Windows and macOS. Also where the sound of the share comes from.
     /// </summary>
     public static IServiceCollection AddScreenCast(this IServiceCollection services)
     {
@@ -29,11 +30,15 @@ internal static class DependencyInjection
         {
             services.AddSingleton<IScreenSourceProvider, WindowsScreenSourceProvider>();
         }
-        else if (!OperatingSystem.IsMacOS())
+        else if (OperatingSystem.IsMacOS())
+        {
+            // ScreenCaptureKit, which also takes the sound of the shared application
+            services.AddSingleton<IScreenSourceProvider, MacScreenSourceProvider>();
+        }
+        else
         {
             throw new PlatformNotSupportedException("Unsupported OS platform");
         }
-        // Nothing on macOS yet: with no source provider and no portal client, sharing is not offered
 
         return services;
     }

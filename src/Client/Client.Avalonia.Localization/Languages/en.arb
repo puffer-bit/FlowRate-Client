@@ -28,6 +28,8 @@
   "settings.video.vp9Encoder.description": "Used when sharing your screen with VP9; applies to the next share.",
   "settings.video.vp9Decoder.title": "VP9 decoder",
   "settings.video.vp9Decoder.description": "Used for watching VP9 screen shares; applies to screens opened after the change.",
+  "source.access.title": "Screen recording is not allowed",
+  "source.access.macOS": "Allow FlowRate in System Settings → Privacy & Security → Screen & System Audio Recording and restart it. The same permission covers the sound of the share.",
   "source.bitrate.encoderOverride.title": "Bitrate overridden by the encoder",
   "source.bitrate.encoderOverride.message": "Bitrate is controlled by the settings of {encoder}. To change or disable the override, open Settings → Video.",
   "settings.video.codecSettings.warning": "Changing encoder and decoder parameters requires specialized knowledge and an understanding of how codecs work. Incorrect values can cause poor image quality, delays, or prevent screen sharing and playback. Continue only if you understand the effects of these changes.",

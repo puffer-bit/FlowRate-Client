@@ -26,6 +26,13 @@
               CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     </ItemGroup>
 
+    <!-- Native helpers of the captures, built by the scripts next to this file and committed:
+         libflowrate_sck.dylib (mac/build-sck.sh) captures screens, windows and their sound on macOS -->
+    <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)prebuilt\$(GStreamerRid)')">
+        <None Include="$(MSBuildThisFileDirectory)prebuilt\$(GStreamerRid)\*.dylib" Link="%(Filename)%(Extension)" Visible="false"
+              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+
     <!-- Every configuration, Debug included, runs only on its own runtime. macOS takes the installed
          GStreamer framework while the runtime is not collected -->
     <Target Name="RequireGStreamerRuntime" BeforeTargets="Build"
