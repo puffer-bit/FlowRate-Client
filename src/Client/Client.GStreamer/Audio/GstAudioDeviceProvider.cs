@@ -174,6 +174,9 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             }
 
             LogDevicesRefreshed(string.Join(", ", _inputDevices.Select(d => d.Name)));
+            
+            // On the thread pool an exception would end the process, a device change must not
+            ApplyOutputDevice();
         }
         catch (Exception exception)
         {
@@ -181,7 +184,6 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             return;
         }
         
-        ApplyOutputDevice();
         InputDevicesChanged?.Invoke();
         OutputDevicesChanged?.Invoke();
     }

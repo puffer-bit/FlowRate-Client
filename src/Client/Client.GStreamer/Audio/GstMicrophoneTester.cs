@@ -142,9 +142,6 @@ public sealed partial class GstMicrophoneTester : IMicrophoneTester
                 _outputBinding = VoicePlaybackSink.BindDevice(loopback);
                 pipeline.Add(loopback);
 
-                // The sound server may restore a mute an earlier version left for the client name
-                VoicePlaybackSink.SetMuted(loopback, false);
-
                 if (Track(MicrophoneChain.BuildMonitor(source, volume, applied, echoProbe, isAutoGainControlEnabled,
                         MeterDescription)) is not { } monitor)
                 {

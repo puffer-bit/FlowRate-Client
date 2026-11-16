@@ -46,7 +46,15 @@ public static class VoicePlaybackSink
         }
     }
 
-    /// <summary>The owner disposes this binding before disposing its pipeline.</summary>
+    /// <summary>
+    /// Routes the branch to the selected endpoint and clears a mute the sound server may restore
+    /// for the client name. The owner disposes this binding before disposing its pipeline.
+    /// </summary>
+    /// <remarks>
+    /// The binding owns the wrappers of the sink and the volume. GstSharp hands out one wrapper per
+    /// native object, so a lookup of the same element elsewhere returns these very wrappers, and
+    /// disposing it there leaves the binding with a disposed sink.
+    /// </remarks>
     public static IDisposable BindDevice(Bin branch)
     {
         lock (RoutingLock)
@@ -54,6 +62,7 @@ public static class VoicePlaybackSink
             var binding = new DeviceBinding(branch.GetByName(ElementName), branch.GetByName(VolumeElementName));
             binding.ApplyVolume();
             binding.Apply(false);
+            binding.Unmute();
             Bindings.Add(binding);
             return binding;
         }
@@ -62,6 +71,13 @@ public static class VoicePlaybackSink
     private sealed class DeviceBinding(Element? sink, Element? volume) : IDisposable
     {
         public void ApplyVolume() => volume?.SetProperty("volume", _volume);
+
+        // A sink without the property is silenced by the volume element alone
+        public void Unmute()
+        {
+            if (sink?.FindProperty("mute") != null)
+                sink.SetProperty("mute", false);
+        }
 
         public void Apply(bool running)
         {
@@ -133,18 +149,6 @@ public static class VoicePlaybackSink
 
     /// <summary>The sink fragment, ending the playback description.</summary>
     public static string Description => SinkDescription.Value;
-
-    /// <summary>
-    /// Mutes the sink on the sound server. Does nothing for a sink without that property, where
-    /// the volume element alone silences the voice.
-    /// </summary>
-    public static void SetMuted(Bin branch, bool isMuted)
-    {
-        using var sink = branch.GetByName(ElementName);
-
-        if (sink?.FindProperty("mute") != null)
-            sink.SetProperty("mute", isMuted);
-    }
 
     // A pulsesink only works with a sound server to talk to, which reaching READY proves
     private static string Choose()
