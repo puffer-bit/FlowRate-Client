@@ -148,7 +148,6 @@ public partial class ApplicationLoader
             var scale = await _appearanceService.GetInterfaceScaleAsync();
             var experimental = await _appearanceService.GetIsExperimentalEnabledAsync();
             var customTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
-            var useGStreamer = await _audioSettings.GetUseGStreamerAsync();
 
             // Apply the complete appearance together, without rendering intermediate settings.
             _languageService.Apply(language);
@@ -156,7 +155,7 @@ public partial class ApplicationLoader
             _themeService.ApplyTheme(theme);
             _themeService.ApplyCustomColors(colors);
             _themeService.ApplyInterfaceScale(scale);
-            ExperimentalFeatures.Apply(experimental, customTitleBar, useGStreamer);
+            ExperimentalFeatures.Apply(experimental, customTitleBar);
             await LetFrameThroughAsync();
         }
         catch (Exception exception)
@@ -164,8 +163,10 @@ public partial class ApplicationLoader
             LogThemeApplyFailed(exception);
         }
 
-        if (Client.Core.Media.MediaRuntime.IsEnabled && ExperimentalFeatures.UseLibWebRTC)
-            _ = LoadLibWebRTCAsync();
+        // Loaded at the start and not at the first session, as it opens the audio devices; a failure
+        // is logged by the loader and fails the transport of every session
+        if (Client.Core.Media.MediaRuntime.IsEnabled)
+            _ = Task.Run(_libWebRTCLoader.Load);
 
         try
         {
@@ -297,13 +298,5 @@ public partial class ApplicationLoader
             LogSettingsLoadFailed(exception);
             return DatabaseState.UnexpectedError;
         }
-    }
-
-    // Loaded at the start and not at the first session, so a libwebrtc that fails takes the voice to
-    // GStreamer before the audio settings show the options of libwebrtc. Back on the UI thread to tell it
-    private async Task LoadLibWebRTCAsync()
-    {
-        if (await Task.Run(_libWebRTCLoader.Load) is { } error)
-            ExperimentalFeatures.ReportLibWebRTCFailed(error);
     }
 }

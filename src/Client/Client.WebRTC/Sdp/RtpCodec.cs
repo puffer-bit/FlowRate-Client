@@ -152,8 +152,8 @@ public sealed record RtpCodec
             PayloadType = payloadType,
             EncodingName = encodingName,
             ClockRate = clockRate,
-            // The SFU does not pass the format parameters on, and without them webrtcbin would
-            // negotiate H.264 in packetization mode 0, which the payloader does not produce
+            // The SFU does not pass the format parameters on, and without them the peer would
+            // negotiate H.264 in packetization mode 0
             FormatParameters = encodingName.Equals("H264", StringComparison.OrdinalIgnoreCase)
                 ? H264().FormatParameters
                 : null,

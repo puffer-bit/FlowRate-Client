@@ -9,10 +9,8 @@ below, each under its own license.
 |---|---|
 | Avalonia (Avalonia.Desktop, .Skia, .Themes.Fluent, .Android, .Fonts.Inter) | MIT |
 | Inter font (bundled by Avalonia.Fonts.Inter) | SIL Open Font License 1.1 |
-| CommunityToolkit.Mvvm | MIT |
 | Dapper, Dapper.AOT | Apache-2.0 |
-| DynamicData | MIT |
-| GstSharp.Net (.App, .Sdp, .WebRTC) | LGPL-2.1-or-later |
+| GstSharp.Net (.App) | LGPL-2.1-or-later |
 | MessageFormat | MIT |
 | [Markdig](https://github.com/xoofx/markdig) | BSD-2-Clause |
 | Microsoft.Data.Sqlite.Core, Microsoft.Extensions.* | MIT |
@@ -22,12 +20,10 @@ below, each under its own license.
 | Silk.NET.OpenAL.Soft.Native (OpenAL Soft) | LGPL-2.0-or-later |
 | SkiaSharp | MIT |
 | SQLite3MC.PCLRaw.bundle (SQLite3 Multiple Ciphers) | MIT |
-| Svg.Controls.Skia.Avalonia | MIT |
 | System.Management | MIT |
 | Tmds.DBus.Protocol | MIT |
 | Velopack | MIT |
 | Xamarin.Firebase.Core, Xamarin.Firebase.Messaging (Android) | MIT and Apache-2.0 |
-| Xaml.Behaviors.Avalonia | MIT |
 
 ## Fonts
 

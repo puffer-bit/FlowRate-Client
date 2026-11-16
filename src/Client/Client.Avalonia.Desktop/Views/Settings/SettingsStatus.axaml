@@ -50,7 +50,12 @@
             <Border Classes="launchMode" IsVisible="{Binding IsSoftwareRendering}"
                     AutomationProperties.Name="{l:Text settings.mode.software.title}">
                 <ToolTip.Tip>
-                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.software.description}"/>
+                    <StackPanel>
+                        <TextBlock MaxWidth="320" TextWrapping="Wrap" IsVisible="{Binding IsSoftwareRenderingForced}"
+                                   Text="{l:Text settings.mode.software.description}"/>
+                        <TextBlock MaxWidth="320" TextWrapping="Wrap" IsVisible="{Binding !IsSoftwareRenderingForced}"
+                                   Text="{l:Text settings.mode.software.saved}"/>
+                    </StackPanel>
                 </ToolTip.Tip>
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Image Width="16" Height="16" Source="{StaticResource WarningIcon}"/>

@@ -18,6 +18,7 @@ using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.Services;
+using Client.Tools.AppInfo;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
 using Client.ViewModels.Notifications;
@@ -313,8 +314,9 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 if (IsClosed)
                     return;
 
-                // Without a hardware encoder screen sharing falls back to software
-                if (!_mediaCapabilities.HasHardwareScreenShareEncoder)
+                // Without a hardware encoder screen sharing falls back to software; turned off on
+                // purpose, that is no news
+                if (HardwareAcceleration.IsEnabled && !_mediaCapabilities.HasHardwareScreenShareEncoder)
                     ShowPopUp(NotificationPopUpVM.PopUpType.Warning, Strings.Get("hybrid.hardwareAccelerationUnavailable"),
                         "HardwareAccelerationUnavailable");
             }
@@ -499,7 +501,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         }
     }
 
-    // The session reports its state and errors from GStreamer and thread pool threads, so both are
+    // The session reports its state and errors from libwebrtc and thread pool threads, so both are
     // marshalled to the UI thread before they touch any view model
     private void OnStatsSampled(TransportStatsSample sample) =>
         Dispatcher.UIThread.Post(() =>
@@ -539,7 +541,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _cameraSettings = null;
                 StatusBar.IsCameraOn = false;
             }
-            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "GstWebRTCError");
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "MediaError");
         });
 
     private void ShowPopUp(NotificationPopUpVM.PopUpType type, string text, string tag) =>

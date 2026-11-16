@@ -5,14 +5,13 @@ namespace Client.LibWebRTC.Voice;
 
 /// <summary>
 /// Turns the counters of every few readings of the statistics into what happened since the
-/// previous sample, the way the GStreamer transport reports it in its TransportStats.
+/// previous sample.
 /// </summary>
 /// <remarks>Not thread-safe: the caller runs every call under one lock.</remarks>
 internal sealed class VoiceStatsSampler
 {
     // The transport passes a reading with the counters every second (see VoiceTransport.CountersInterval),
-    // while the ones for the speaking indicator come far more often: one in two is the 2 s of the
-    // GStreamer transport
+    // while the ones for the speaking indicator come far more often: a sample every 2 s
     public const int ReadingsPerSample = 2;
 
     private readonly Dictionary<uint, InboundCounters> _previousInbound = [];

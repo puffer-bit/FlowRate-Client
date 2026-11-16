@@ -141,7 +141,6 @@ The code separates domain concepts and application use cases from persistence, n
 | `Client/Client.WebRTC` | Shared WebRTC negotiation and protocol support. |
 | `Client/Client.LibWebRTC` | libwebrtc transport, native bridge, and runtime build resources. |
 | `Client/Client.GStreamer` | Desktop media capture, processing, codec pipelines, and runtime loading. |
-| `Client/Client.GStreamer.WebRTC` | GStreamer WebRTC transport implementation. |
 | `Client/Client.OpenAL` | Desktop interface and notification audio. |
 | `Client/Client.Avalonia.ViewModels` | Shared view models and presentation services. |
 | `Client/Client.Avalonia.Desktop` | Desktop entry point, views, platform services, and packaging profiles. |

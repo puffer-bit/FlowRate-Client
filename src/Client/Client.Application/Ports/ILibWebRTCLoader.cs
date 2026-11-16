@@ -1,8 +1,7 @@
 namespace Client.Application.Ports;
 
 /// <summary>
-/// The libwebrtc of this machine, which the voice and the screens go over unless the experimental
-/// fallback to GStreamer is chosen.
+/// The libwebrtc of this machine, which the voice and the screens of every session go over.
 /// </summary>
 public interface ILibWebRTCLoader
 {

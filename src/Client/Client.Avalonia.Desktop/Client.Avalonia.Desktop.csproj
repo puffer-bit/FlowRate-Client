@@ -40,17 +40,13 @@
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" Condition="'$(Configuration)' == 'Debug'" />
         <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-        <PackageReference Include="DynamicData" Version="9.4.33" />
         <PackageReference Include="System.Reactive" Version="6.1.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
         <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
-        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
         <!-- For the screen cast portal. The same version Avalonia.FreeDesktop brings; free of run-time
              code generation, unlike Tmds.DBus -->
         <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
         <PackageReference Include="Velopack" Version="1.2.161" />
-        <PackageReference Include="Xaml.Behaviors.Avalonia" Version="12.0.7" />
     </ItemGroup>
     
     <ItemGroup>
@@ -64,7 +60,6 @@
       <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
-      <ProjectReference Include="..\Client.GStreamer.WebRTC\Client.GStreamer.WebRTC.csproj" />
       <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
       <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
       <ProjectReference Include="..\Client.OpenAL\Client.OpenAL.csproj" />
@@ -83,7 +78,7 @@
     <!-- The LGPL libraries stay separate files next to the executable, so the user can replace them:
          the GStreamer binding (GstSharp.Net) and OpenAL Soft. The GStreamer runtime is content, never bundled. -->
     <PropertyGroup>
-        <LgplLibraries>;GstSharp.Net.dll;GstSharp.Net.Base.dll;GstSharp.Net.App.dll;GstSharp.Net.Sdp.dll;GstSharp.Net.WebRTC.dll;soft_oal.dll;libopenal.so;</LgplLibraries>
+        <LgplLibraries>;GstSharp.Net.dll;GstSharp.Net.Base.dll;GstSharp.Net.App.dll;soft_oal.dll;libopenal.so;</LgplLibraries>
     </PropertyGroup>
     <Target Name="ExcludeLgplFromSingleFile" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(PublishSingleFile)' == 'true'">
         <ItemGroup>

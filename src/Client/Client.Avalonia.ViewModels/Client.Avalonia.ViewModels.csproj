@@ -12,6 +12,9 @@
         <PackageReference Include="Avalonia" Version="12.1.2" />
         <PackageReference Include="ReactiveUI" Version="24.2.0" />
         <PackageReference Include="SkiaSharp" Version="4.148.0" />
+        <!-- SkiaSharp brings its Windows and macOS natives itself, not the Linux one, and Avalonia.Skia
+             asks only for an older one the managed library refuses -->
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.148.0" />
         <PackageReference Include="System.Reactive" Version="6.1.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />

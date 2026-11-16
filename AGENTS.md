@@ -1,6 +1,6 @@
 ﻿# FlowRate Client
 
-FlowRate Client is a Windows, Linux, and Android application for voice sessions, screen sharing, and chat on self-hosted FlowRate servers. The client is built with .NET 10 and Avalonia, with ReactiveUI and CommunityToolkit.Mvvm for presentation logic.
+FlowRate Client is a Windows, Linux, and Android application for voice sessions, screen sharing, and chat on self-hosted FlowRate servers. The client is built with .NET 10 and Avalonia, with ReactiveUI for presentation logic.
 
 This repository contains the client. Shared protocol definitions are maintained in the `src/Shared` Git submodule. The main solution is `src/FlowRateClient.sln`.
 
@@ -22,7 +22,7 @@ Project paths in this table are relative to `src/`.
 | Application | `Client/Client.Application` | Coordinator and session workflows, application state, and service interfaces in `Ports/`. |
 | Network | `Client/Client.Api`, `Client/Client.WebSockets`, `Client/Client.WebRTC` | Server API, WebSocket messaging, and shared WebRTC negotiation support. |
 | Persistence | `Client/Client.Infrastructure` | SQLite storage, repositories, migrations, media cache, and release-note retrieval. |
-| Media | `Client/Client.GStreamer`, `Client/Client.GStreamer.WebRTC`, `Client/Client.LibWebRTC`, `Client/Client.OpenAL` | Media pipelines, WebRTC transports, native integration, and interface sounds. |
+| Media | `Client/Client.GStreamer`, `Client/Client.LibWebRTC`, `Client/Client.OpenAL` | Media pipelines, the libwebrtc transport, native integration, and interface sounds. |
 | Presentation | `Client/Client.Avalonia.ViewModels`, `Client/Client.Avalonia.Controls`, `Client/Client.Avalonia.Styles`, `Client/Client.Avalonia.Assets`, `Client/Client.Avalonia.Localization`, `Client/Client.Avalonia.Video` | Shared presentation logic, controls, themes, resources, translations, and video rendering. |
 | Hosts | `Client/Client.Avalonia.Desktop`, `Client/Client.Avalonia.Android` | Application entry points, composition, views, and platform services. |
 | Utilities | `Client/Client.Tools` | Logging, launch options, application paths, and common helpers. |
@@ -42,8 +42,7 @@ Project paths in this table are relative to `src/`.
 
 ## Media and platform boundaries
 
-- Desktop normally uses libwebrtc for session transport, with GStreamer providing capture, processing, encoding, decoding, and playback.
-- The GStreamer WebRTC transport is available as an experimental alternative and as a fallback when the native libwebrtc library is unavailable.
+- Desktop uses libwebrtc for session transport, with GStreamer providing capture, processing, encoding, decoding, and playback. libwebrtc is the only transport: without the native library, sessions fail to start their transport.
 - `IWebRTCTransport`, `IVideoMedia`, and related application ports separate transport from media implementation. Preserve those boundaries when changing audio or video behavior.
 - `Client.OpenAL` provides desktop interface and notification sounds independently of voice and video media.
 - Android uses libwebrtc and platform media services, without the desktop GStreamer or OpenAL runtime. Android supports watching shared screens and cameras and sends its own camera (front or back, captured by Camera2 and encoded by libwebrtc); screen sharing originates from desktop.

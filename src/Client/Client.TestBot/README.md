@@ -5,7 +5,7 @@ into it: a file in a loop or a sine tone. It is the only way to put test audio i
 server has no built-in test peers.
 
 The bot uses the same code as the desktop client (`CoordinatorSession`, `HybridSession`,
-`WebRTCTransport`), so it also exercises the client send path and the real join protocol.
+the libwebrtc `VoiceTransport`), so it also exercises the client send path and the real join protocol.
 
 ## Requirements
 
@@ -13,6 +13,8 @@ The bot uses the same code as the desktop client (`CoordinatorSession`, `HybridS
 - GStreamer, loaded the same way as in the desktop client: the bundled runtime from the `gstreamer/`
   folder next to the executable (see `Client.GStreamer/Build/README.md`); Debug builds fall back to
   an installed one.
+- libwebrtc, the transport of the client: the library of `Client.LibWebRTC`, copied next to the
+  executable (committed for linux-x64, see `Client.LibWebRTC/Build/README.md`).
 
 ## Running
 
@@ -50,7 +52,6 @@ disconnects.
 | `--stats-interval <sec>` | Report the counters of all bots every given number of seconds. Default: 10. |
 | `--quiet` | Log only failures and the counters, nothing per bot. |
 | `--listen` | Play what the bot hears. By default incoming audio is only received and decoded. |
-| `--libwebrtc` | Send and receive the voice over libwebrtc instead of GStreamer, as the experimental setting of the client does; needs the libwebrtc runtime of `Client.LibWebRTC` (committed for linux-x64). Screens are shared and watched as well. |
 | `--verbose` | Log everything, including the WebRTC negotiation. |
 | `--help` | Show the usage text. |
 
@@ -73,7 +74,7 @@ Client.TestBot --server 127.0.0.1:26666 --count 200 --ramp 300 --speakers 10 --s
 
 # Latency of a screen over libwebrtc: two bots share and watch each other, the screens start after
 # the voice, as a user who talks first starts one
-Client.TestBot --server 127.0.0.1:26666 --count 2 --screen-delay 5 --watch --libwebrtc
+Client.TestBot --server 127.0.0.1:26666 --count 2 --screen-delay 5 --watch
 
 # Chat only: 300 users writing every 2 seconds
 Client.TestBot --server 127.0.0.1:26666 --count 300 --ramp 100 --no-voice --chat-interval 2 --quiet

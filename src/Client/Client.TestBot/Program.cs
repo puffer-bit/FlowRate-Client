@@ -3,7 +3,6 @@ using Client.Application.Coordinator.Users;
 using Client.GStreamer.Loader;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Video;
-using Client.GStreamer.WebRTC;
 using Client.LibWebRTC.Native;
 using Client.TestBot;
 using Client.Tools.Logging;
@@ -93,24 +92,17 @@ if (options.PerfJournal != Client.Core.Settings.MediaPerfJournalMode.Off)
 
 using var devices = new GstAudioDeviceProvider(services.GetRequiredService<ILogger<GstAudioDeviceProvider>>());
 var video = new GstVideoMedia(services.GetRequiredService<ILoggerFactory>());
-IWebRTCTransportFactory transports = new WebRTCTransportFactory(devices, video, services.GetRequiredService<ILogger<WebRTCTransport>>());
+var transports = new LibWebRTCTransportFactory(
+    new LibWebRTCRuntime(new GstVoiceAudioDevice(devices,
+        services.GetRequiredService<ILogger<GstVoiceAudioDevice>>()),
+        services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
+    new GstAudioMedia(services.GetRequiredService<ILoggerFactory>()), new NativeVideoReceiver(),
+    services.GetRequiredService<ILoggerFactory>());
 
-if (options.LibWebRTC)
+if (!transports.IsAvailable)
 {
-    var libWebRTC = new LibWebRTCTransportFactory(
-        new LibWebRTCRuntime(new GstVoiceAudioDevice(devices,
-            services.GetRequiredService<ILogger<GstVoiceAudioDevice>>()),
-            services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
-        new GstAudioMedia(services.GetRequiredService<ILoggerFactory>()), new NativeVideoReceiver(),
-        services.GetRequiredService<ILoggerFactory>());
-
-    if (!libWebRTC.IsAvailable)
-    {
-        ProgramLog.LibWebRTCMissing(logger);
-        return 1;
-    }
-
-    transports = libWebRTC;
+    ProgramLog.LibWebRTCMissing(logger);
+    return 1;
 }
 using var stop = new CancellationTokenSource();
 

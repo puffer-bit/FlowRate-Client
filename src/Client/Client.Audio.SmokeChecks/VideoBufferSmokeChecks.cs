@@ -24,46 +24,7 @@ internal static class VideoBufferSmokeChecks
         CheckEncodingAndDecoding(VideoCodec.VP8, "vp8enc");
         CheckEncodingAndDecoding(VideoCodec.VP9, "vp9enc");
         CheckEncodingAndDecoding(VideoCodec.AV1, "svtav1enc");
-        CheckRtpRoundTrip(VideoCodec.H264, "openh264enc bitrate=1000000", "openh264dec");
-        CheckRtpRoundTrip(VideoCodec.AV1,
-            "svtav1enc target-bitrate=1000 preset=12 parameters-string=pred-struct=1:rc=2:lookahead=0", "dav1ddec");
         Console.WriteLine("Video buffer smoke checks passed.");
-    }
-
-    private static void CheckRtpRoundTrip(VideoCodec codec, string encoder, string decoder)
-    {
-        Console.WriteLine($"Checking {codec} RTP round trip...");
-        var format = VideoCodecPipeline.For(codec);
-        using var pipeline = (Pipeline)Global.ParseLaunch(
-            "appsrc name=raw is-live=true format=time do-timestamp=true " +
-            "caps=\"video/x-raw,format=BGRx,width=320,height=240,framerate=30/1\" ! videoconvert ! " +
-            encoder + " ! " + format.Capture + " ! " + format.Payloader + " name=packetizer pt=104 ssrc=1234 " +
-            "seqnum-offset=42 timestamp-offset=1234 mtu=1200 " + format.PayloaderOptions + " ! " +
-            format.Depayloader + " request-keyframe=true wait-for-keyframe=true ! " + format.Parse +
-            format.Caps + " ! " + decoder + " ! appsink name=decoded sync=false");
-        using var sink = pipeline.GetByName("decoded")!;
-        using var source = pipeline.GetByName("raw")!;
-        if (codec == VideoCodec.AV1)
-        {
-            using var payloader = pipeline.GetByName("packetizer")!;
-            Require(GstPacketTransform.Attach(payloader, "src", new Av1RtpDependencyDescriptor().Rewrite),
-                "Attach AV1 dependency descriptors");
-        }
-        try
-        {
-            Require(pipeline.SetState(State.Playing) != StateChangeReturn.Failure, $"Start {codec} RTP pipeline");
-            for (var index = 0; index < 30; index++)
-            {
-                using var buffer = Gst.Buffer.NewMemdup(new byte[320 * 240 * 4]);
-                GstApp.PushBuffer(source, buffer);
-            }
-            using var sample = GstApp.TryPullSample(sink, 15_000_000_000);
-            Require(sample != null, $"Decode {codec} after RTP packetization and reassembly");
-        }
-        finally
-        {
-            pipeline.SetState(State.Null);
-        }
     }
 
     private static void CheckEncodingAndDecoding(VideoCodec codec, string encoder)

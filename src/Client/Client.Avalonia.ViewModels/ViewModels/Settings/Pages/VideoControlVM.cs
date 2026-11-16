@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Client.Avalonia.Localization;
 using Client.Core.Media;
 using Client.Core.Settings;
 using Client.Services;
+using Client.Tools.AppInfo;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
 
@@ -30,9 +32,65 @@ public class VideoControlVM : ReactiveObject, ISettingVM
     public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("video",
+        ("acceleration", ["hardwareAcceleration"]),
         ("decoding", ["decoder", "av1Decoder", "vp8Decoder", "vp9Decoder", "zeroCopy"]),
         ("presentation", ["timedPresentation", "presentationBuffer"]),
         ("encoding", ["encoder", "av1Encoder", "vp8Encoder", "vp9Encoder"]));
+
+    /// <summary>
+    /// The saved choice of hardware acceleration, which applies after a restart. Changing it asks
+    /// to restart and puts it back when the user declines.
+    /// </summary>
+    public bool IsHardwareAccelerationEnabled
+    {
+        get;
+        set
+        {
+            if (field == value || IsHardwareAccelerationForcedOff)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (!_isRevertingAcceleration)
+                _ = ConfirmHardwareAccelerationAsync(value);
+        }
+    } = !HardwareAcceleration.IsForcedOff && !HardwareAcceleration.IsTurnedOffSaved();
+
+    /// <summary>Turned off for this launch by --software-rendering; the switch cannot change that.</summary>
+    public bool IsHardwareAccelerationForcedOff => HardwareAcceleration.IsForcedOff;
+
+    /// <summary>Restarts the application, so that a changed acceleration takes effect.</summary>
+    public Interaction<RxVoid, RxVoid> RestartApplication { get; } = new();
+
+    private bool _isRevertingAcceleration;
+
+    private async Task ConfirmHardwareAccelerationAsync(bool isEnabled)
+    {
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.OkCancel,
+            Strings.Get(isEnabled ? "settings.video.hardwareAcceleration.enableWarning"
+                : "settings.video.hardwareAcceleration.disableWarning"),
+            Strings.Get("settings.video.hardwareAcceleration.title")));
+
+        if (answer == Result.Ok)
+        {
+            try
+            {
+                HardwareAcceleration.Save(isEnabled);
+                await RestartApplication.Handle(default);
+                return;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                                  or InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                await ShowMessageBox.Handle(new MessageBoxVM(Icon.Error, Buttons.Ok,
+                    Strings.Format("settings.video.hardwareAcceleration.failed", ("error", exception.Message)),
+                    Strings.Get("settings.video.hardwareAcceleration.title")));
+            }
+        }
+
+        // Declined or failed: the switch shows the choice that is still saved
+        _isRevertingAcceleration = true;
+        IsHardwareAccelerationEnabled = !HardwareAcceleration.IsTurnedOffSaved();
+        _isRevertingAcceleration = false;
+    }
 
     private VideoSettings _profiles = new();
     public int VideoTargetIndex

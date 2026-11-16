@@ -1,19 +1,18 @@
 using System.Globalization;
 using Gst;
 using Client.Core.Settings;
-using Client.GStreamer.Interop;
 
 namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// What a captured sound goes through before it is encoded: the capture with its processing, the input
-/// gain, and for a microphone the gate with its voice detection. A transport puts its encoder behind it;
-/// the microphone test plays it back, so the user hears what the others would.
+/// What a microphone goes through before it is sent: the capture with its processing, the input gain,
+/// and the gate with its voice detection. The transport takes its 10 ms of PCM
+/// (<see cref="GstProcessedMicrophone"/>); the microphone test plays it back, so the user hears what
+/// the others would.
 /// </summary>
 /// <remarks>
 /// A chain is a bin of two parts: the capture part, named <see cref="CaptureName"/>, and the part after
-/// it, named <see cref="TailName"/>. The capture part is the only one that depends on the device and on
-/// the noise suppression, so it is replaced when either changes, see <see cref="ReplaceCapture"/>.
+/// it, named <see cref="TailName"/>. A change of the device or of the processing builds a new chain.
 /// </remarks>
 public static class MicrophoneChain
 {
@@ -50,10 +49,9 @@ public static class MicrophoneChain
     private const string CaptureName = "capture";
 
     /// <summary>
-    /// Name of the part that stays for the whole life of a chain, which a new capture part is linked to.
-    /// A bin that runs a chain gives this name to what follows the capture.
+    /// Name of the part that follows the capture.
     /// </summary>
-    public const string TailName = "tail";
+    private const string TailName = "tail";
 
     /// <summary>
     /// Name of the queue that holds the audio back by <see cref="VoiceGate.PreRoll"/> between the
@@ -70,9 +68,6 @@ public static class MicrophoneChain
     // rather than blocking the source and moving the backlog into its hardware ringbuffer.
     private const string CaptureDescription =
         "queue leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=100000000 ! audioconvert ! audioresample ! capsfilter caps=\"{1}\" ! {0}";
-
-    // The sound of a screen is music and films as often as speech, so it keeps both channels
-    private const string ScreenCaps = "audio/x-raw,rate=48000,channels=2";
 
     // The voice detection, beside the delay. RNNoise silences every 10 ms frame it takes for no voice,
     // and the level after it tells the gate what is left; nothing of it is sent. Its queue is leaky,
@@ -106,19 +101,16 @@ public static class MicrophoneChain
         "volume name=" + GateValveName + " mute=true ! ";
 
     /// <summary>
-    /// The gate of a microphone and the voice detection beside it, as fragments of a launch description,
-    /// empty when the chain has none. The gate goes in line after the input gain and ends with a link;
-    /// the voice detection is a separate branch, appended to the description.
+    /// The gate and the voice detection beside it, as fragments of a launch description, empty when the
+    /// runtime lacks their elements. The gate goes in line after the input gain and ends with a link;
+    /// the voice detection is a separate branch, appended to the description. The gate is closed until
+    /// a <see cref="VoiceGate"/> opens it, and stays even while it is turned off, so it can be turned on
+    /// again without rebuilding.
     /// </summary>
-    /// <param name="isMicrophone">
-    /// Whether the chain is the one of a microphone. Its gate is closed until a <see cref="VoiceGate"/>
-    /// opens it, and stays even while it is turned off, so it can be turned on again without rebuilding.
-    /// Each is left out when the runtime lacks its element.
-    /// </param>
-    public static (string Gate, string VoiceDetection) DescribeGate(bool isMicrophone)
+    private static (string Gate, string VoiceDetection) DescribeGate()
     {
         // A runtime built before the gate has no level element; the voice still goes out, just ungated
-        if (!isMicrophone || ElementFactory.Find("level") == null)
+        if (ElementFactory.Find("level") == null)
             return ("", "");
 
         // Built along with the gate even while voice detection is off, so it can be turned on in a call
@@ -150,7 +142,7 @@ public static class MicrophoneChain
     public static Bin? BuildMonitor(Element source, double volume, NoiseSuppressionLevel noiseSuppression,
         string? echoProbe, bool isAutoGainControlEnabled, string meter)
     {
-        var (gate, voiceDetection) = DescribeGate(true);
+        var (gate, voiceDetection) = DescribeGate();
 
         var processing = Global.ParseBinFromDescription(string.Format(CultureInfo.InvariantCulture,
             MonitorDescription, volume, gate, voiceDetection, meter), true);
@@ -180,7 +172,7 @@ public static class MicrophoneChain
 
         processing.Dispose();
 
-        if (!ReplaceCapture(branch, source, true, false, noiseSuppression, echoProbe, isAutoGainControlEnabled))
+        if (!AddCapture(branch, source, noiseSuppression, echoProbe, isAutoGainControlEnabled))
         {
             branch.Dispose();
             return null;
@@ -191,23 +183,13 @@ public static class MicrophoneChain
 
     /// <summary>
     /// Puts a capture part around <paramref name="source"/>, which it takes ownership of, in front
-    /// of the <see cref="TailName"/> part of <paramref name="branch"/>, in place of the one it has.
-    /// The branch may be running.
+    /// of the <see cref="TailName"/> part of <paramref name="branch"/>.
     /// </summary>
-    /// <remarks>
-    /// The previous part is stopped before it is taken out, and with it the thread that pushed into
-    /// the rest of the branch, so nothing flows there in between and no pad has to be blocked.
-    /// </remarks>
-    /// <param name="isMicrophone">The sound is a voice, which gets the <see cref="MicrophoneProcessing"/>.</param>
-    /// <param name="isStereo">The capture keeps two channels, as the sound of a screen does.</param>
-    /// <param name="noiseSuppression">How much background noise is taken out of a microphone.</param>
-    /// <param name="echoProbe">The echo probe a microphone cancels the played voices with, if any.</param>
-    /// <param name="isAutoGainControlEnabled">Whether a quiet microphone is brought up to the level of speech.</param>
-    /// <returns>False when the part could not be built or linked; the branch is then left without one.</returns>
-    public static bool ReplaceCapture(Bin branch, Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
+    /// <returns>False when the part could not be built or linked.</returns>
+    private static bool AddCapture(Bin branch, Element source, NoiseSuppressionLevel noiseSuppression,
+        string? echoProbe, bool isAutoGainControlEnabled)
     {
-        var capture = BuildCapture(source, isMicrophone, isStereo, noiseSuppression, echoProbe, isAutoGainControlEnabled);
+        var capture = BuildCapture(source, noiseSuppression, echoProbe, isAutoGainControlEnabled);
 
         if (capture == null)
             return false;
@@ -220,15 +202,6 @@ public static class MicrophoneChain
             return false;
         }
 
-        using (var previous = branch.GetByName(CaptureName))
-        {
-            if (previous != null)
-            {
-                GstBranch.Shutdown(previous);
-                branch.Remove(previous);
-            }
-        }
-
         branch.Add(capture);
 
         if (!capture.Link(tail))
@@ -238,20 +211,19 @@ public static class MicrophoneChain
             return false;
         }
 
-        capture.SyncStateWithParent();
         capture.Dispose();
 
         return true;
     }
 
-    private static Bin? BuildCapture(Element source, bool isMicrophone, bool isStereo,
-        NoiseSuppressionLevel noiseSuppression, string? echoProbe, bool isAutoGainControlEnabled)
+    private static Bin? BuildCapture(Element source, NoiseSuppressionLevel noiseSuppression, string? echoProbe,
+        bool isAutoGainControlEnabled)
     {
-        // The fragment ends with a link, and without it the description would
+        // The processing fragment ends with a link, which must not end the description
         var description = string.Format(CaptureDescription,
-            isMicrophone ? "audiobuffersplit output-buffer-duration=1/100 ! " +
-                           MicrophoneProcessing.Fragment(noiseSuppression, echoProbe, isAutoGainControlEnabled) : "",
-            isStereo ? ScreenCaps : MicrophoneProcessing.Caps).TrimEnd(' ', '!');
+            "audiobuffersplit output-buffer-duration=1/100 ! " +
+            MicrophoneProcessing.Fragment(noiseSuppression, echoProbe, isAutoGainControlEnabled),
+            MicrophoneProcessing.Caps).TrimEnd(' ', '!');
 
         var processing = Global.ParseBinFromDescription(description, true);
 

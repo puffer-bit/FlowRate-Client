@@ -14,16 +14,15 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
     </ItemGroup>
     
     <ItemGroup>
       <AvaloniaResource Include="Icons\**" />
       <AvaloniaResource Include="Sounds\*.wav" />
       <AvaloniaResource Include="Fonts\*.ttf" />
-      <AvaloniaResource Include="AppIcons\**\svg\*.svg" />
-      <AvaloniaResource Include="AppIcons\**\png\*.png" />
-      <AvaloniaResource Include="AppIcons\**\*.ico" />
+      <!-- Only the icons the client shows; the rest of the kits stay in the repository for packaging and design -->
+      <AvaloniaResource Include="AppIcons\Headphones\flowrate.ico" />
+      <AvaloniaResource Include="AppIcons\Headphones\png\tray-purple-48.png" />
     </ItemGroup>
     
     <ItemGroup>

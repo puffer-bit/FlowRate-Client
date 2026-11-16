@@ -25,8 +25,8 @@ camera capture is not implemented here. Direct calls retain their existing media
 
 The Video settings page selects Screen or Camera. Encoder, decoder, and codec property overrides
 are stored independently in database profiles 1 and 2. Existing screen preferences survive the
-migration. Presentation settings remain shared. Both libwebrtc and GStreamer transports choose
-the profile from the track source, not its codec or user ID.
+migration. Presentation settings remain shared. The transport chooses the profile from the track
+source, not its codec or user ID.
 
 ## Runtime and checks
 

@@ -4,12 +4,12 @@ using Gst.Interop;
 namespace Client.GStreamer.Interop;
 
 /// <summary>
-/// Object properties read and written with exact reference counting.
+/// Object properties read with exact reference counting.
 /// </summary>
 /// <remarks>
-/// A leaked reference to an object of webrtcbin keeps its ICE agent, its sockets and its threads
-/// after the session is left, so these reads go to GObject directly, where a getter hands over
-/// exactly one reference, and the caller decides whether a wrapper is made for it at all.
+/// A leaked reference keeps a native object, and whatever it holds, until the wrapper is collected,
+/// so these reads go to GObject directly, where a getter hands over exactly one reference, and the
+/// caller decides whether a wrapper is made for it at all.
 /// </remarks>
 public static class GstNative
 {
@@ -26,28 +26,13 @@ public static class GstNative
         [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out long value, IntPtr terminator);
 
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_set(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, int value, IntPtr terminator);
-
-    [DllImport(NativeLibraries.GObject)]
     private static extern void g_object_unref(IntPtr instance);
-
-    [DllImport(NativeLibraries.GObject)]
-    private static extern void g_signal_emit_by_name(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string signal, int argument, out IntPtr result);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern IntPtr gst_object_get_path_string(IntPtr instance);
 
     [DllImport(NativeLibraries.GLib)]
     private static extern void g_free(IntPtr memory);
-
-    [DllImport(NativeLibraries.GStreamer)]
-    private static extern IntPtr gst_structure_get_value(IntPtr structure,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldName);
-
-    [DllImport(NativeLibraries.GObject)]
-    private static extern IntPtr g_value_get_boxed(IntPtr value);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern int gst_mini_object_is_writable(IntPtr miniObject);
@@ -86,17 +71,6 @@ public static class GstNative
         var handle = GetObject(owner.Handle, property);
 
         return handle == IntPtr.Zero ? null : Wrap<T>(handle);
-    }
-
-    /// <summary>
-    /// Emits an action signal that takes an index and returns an object, such as get-transceiver of
-    /// webrtcbin. The wrapper owns the returned reference and gives it back when disposed.
-    /// </summary>
-    public static T? EmitGetObject<T>(Gst.GObject.Object target, string signal, int index) where T : Gst.GObject.Object
-    {
-        g_signal_emit_by_name(target.Handle, signal, index, out var result);
-
-        return result == IntPtr.Zero ? null : Wrap<T>(result);
     }
 
     // Takes over the reference in the handle, also when the object turns out to be of another type
@@ -141,9 +115,6 @@ public static class GstNative
 
         return (ulong)value;
     }
-
-    public static void SetBoolean(IntPtr instance, string property, bool value) =>
-        g_object_set(instance, property, value ? 1 : 0, IntPtr.Zero);
 
     /// <summary>
     /// The object that posted a message, without a wrapper and without a reference.
@@ -191,33 +162,6 @@ public static class GstNative
     {
         if (instance != IntPtr.Zero)
             g_object_unref(instance);
-    }
-
-    /// <summary>
-    /// Reads the message of the GError in a promise reply. GStreamer cannot serialize a GError, so
-    /// the message is read from the native struct
-    /// <c>{ GQuark domain; gint code; gchar *message; }</c>.
-    /// </summary>
-    public static string? ReadErrorMessage(Gst.Structure reply)
-    {
-        try
-        {
-            var value = gst_structure_get_value(reply.Handle, "error");
-
-            if (value == IntPtr.Zero)
-                return null;
-
-            var error = g_value_get_boxed(value);
-
-            if (error == IntPtr.Zero)
-                return null;
-
-            return Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(error, 8));
-        }
-        catch (Exception)
-        {
-            return null;
-        }
     }
 
     /// <summary>

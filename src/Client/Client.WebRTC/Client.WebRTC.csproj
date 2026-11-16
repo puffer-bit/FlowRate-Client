@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- What every WebRTC transport shares, whatever engine it runs on: the description of the SFU
-         side built out of its ORTC style parameters -->
+    <!-- The description of the SFU side built out of its ORTC style parameters, which the libwebrtc
+         transport of every platform answers -->
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>

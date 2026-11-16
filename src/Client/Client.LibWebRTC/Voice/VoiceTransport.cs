@@ -12,7 +12,7 @@ namespace Client.LibWebRTC.Voice;
 
 /// <summary>
 /// Voice of a hybrid session over libwebrtc, through the <see cref="IVoicePeer"/> of the platform.
-/// The description of the SFU is built the way the GStreamer transport builds it for webrtcbin;
+/// The description of the SFU is built out of its parameters (<see cref="SdpBuilder"/>);
 /// libwebrtc answers it; the platform peer supplies capture and playback. Screens are watched and shown
 /// where the platform hands the video out (<see cref="IEncodedVideoReceiver"/>) and takes it in
 /// encoded (<see cref="IVoicePeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
@@ -39,10 +39,10 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private const double SpeakingLevel = 0.02;
     private static readonly TimeSpan SpeakingHold = TimeSpan.FromMilliseconds(400);
 
-    // The bitrate of the voice, the same as the one of the GStreamer transport
+    // The bitrate of the voice
     private const int VoiceBitrate = 64000;
 
-    // The sound of a screen, stereo at the bitrate of the GStreamer transport, which keeps music clean
+    // The sound of a screen, stereo at a bitrate that keeps music clean
     private const int ScreenSoundBitrate = 128000;
 
     private const string TransportCcFeedback = "transport-cc";

@@ -44,7 +44,7 @@ public static class StatsReader
                         levels.Add(new VoiceLevel(mid, Math.Min(1, peak / short.MaxValue)));
                     break;
 
-                // The voices and the screens alike, as the GStreamer transport reports them
+                // The voices and the screens alike
                 case "inbound-rtp":
                     if (Number(stats, "ssrc") is { } ssrc)
                         inbound.Add(new InboundCounters((uint)ssrc, (long)(Number(stats, "packetsReceived") ?? 0),

@@ -4,9 +4,9 @@ using Client.Core.Sessions.Hybrid;
 namespace Client.WebRTC.Sdp;
 
 /// <summary>
-/// Builds the remote session description for webrtcbin out of the ORTC style parameters the SFU
+/// Builds the remote session description for libwebrtc out of the ORTC style parameters the SFU
 /// reports. mediasoup itself never sees this text: SDP only exists between this code and
-/// webrtcbin, so the description describes the SFU as the remote peer.
+/// libwebrtc, so the description describes the SFU as the remote peer.
 /// </summary>
 public static class SdpBuilder
 {
@@ -162,8 +162,8 @@ public static class SdpBuilder
                 value = $"candidate:{value}";
 
             // The SFU may report candidates as structured objects rather than attribute lines.
-            // Anything that is not a well formed line is dropped here, because webrtcbin would
-            // otherwise silently ignore the whole m-section and ICE would never start.
+            // Anything that is not a well formed line is dropped here, because the peer could
+            // otherwise reject the whole m-section and ICE would never start.
             if (!IsWellFormedCandidate(value))
                 continue;
 

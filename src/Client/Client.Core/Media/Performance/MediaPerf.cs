@@ -177,7 +177,7 @@ public sealed record StreamPerf(
     AudioReceivePerf? Audio = null);
 
 /// <summary>Everything the transport measured of its media over a window.</summary>
-/// <param name="Engine">The engine of the transport, libwebrtc or GStreamer.</param>
+/// <param name="Engine">The engine of the transport, "libwebrtc"; kept in the journal for its readers.</param>
 /// <param name="Window">How long the window was.</param>
 /// <param name="Voices">The voices we receive, by user.</param>
 public sealed record MediaPerfReport(

@@ -54,6 +54,16 @@
         </Style>
     </UserControl.Styles>
     <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="video.acceleration"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="video.hardwareAcceleration">
+                <CheckBox IsChecked="{Binding IsHardwareAccelerationEnabled}"
+                          IsEnabled="{Binding !IsHardwareAccelerationForcedOff}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="video.hardwareAccelerationForced" IndentLevel="1"
+                            IsExpanded="{Binding IsHardwareAccelerationForcedOff}"/>
+        </ui:SettingsCard>
+
         <ui:SettingsCard>
             <ui:SettingsRow Title="{l:Text video.target}">
                 <ComboBox MinWidth="180" SelectedIndex="{Binding VideoTargetIndex}">

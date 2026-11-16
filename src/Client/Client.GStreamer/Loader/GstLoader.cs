@@ -9,8 +9,7 @@ namespace Client.GStreamer.Loader;
 public partial class GstLoader
 {
     /// <summary>
-    /// What the binding was initialized with, once the runtime is loaded. A module of the binding that
-    /// only another project uses, such as the one of webrtcbin, is initialized there with it.
+    /// What the binding was initialized with, once the runtime is loaded.
     /// </summary>
     public static Gst.GstSharpOptions? Options { get; private set; }
 
@@ -31,9 +30,6 @@ public partial class GstLoader
 
         try
         {
-            INativeEnvironment.Set("NICE_DISABLE_IPV6", "1");
-            INativeEnvironment.Set("NICE_DISABLE_UPNP", "1");
-
             // The installed runtime keeps its own plugins and registry
             if (GstNativeLibraryResolver.BundledRoot is { } bundledRoot)
                 IsolateFromSystem(bundledRoot, logger);

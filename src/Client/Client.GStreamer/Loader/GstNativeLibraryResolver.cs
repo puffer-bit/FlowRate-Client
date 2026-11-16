@@ -121,14 +121,10 @@ public static partial class GstNativeLibraryResolver
     }
 
     /// <summary>
-    /// Maps a Windows name like gstwebrtc-1.0-0.dll to its shared object libgstwebrtc-1.0.so.0.
+    /// Maps a Windows name like gstvideo-1.0-0.dll to its shared object libgstvideo-1.0.so.0.
     /// </summary>
     private static string? ToLinuxName(string libraryName)
     {
-        // libnice is versioned on its own
-        if (libraryName == "nice-10.dll")
-            return "libnice.so.10";
-
         var match = WindowsLibraryName().Match(libraryName);
         return match.Success ? $"lib{match.Groups["name"].Value}-{match.Groups["api"].Value}.so.0" : null;
     }

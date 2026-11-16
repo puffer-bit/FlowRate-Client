@@ -305,7 +305,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         {
             SessionType.Chat => new NewChatSessionOptions(
                 Description: string.IsNullOrWhiteSpace(Description) ? null : Description.Trim()),
-            _ => new NewHybridSessionOptions(WebRTCEngine.GStreamer)
+            _ => new NewHybridSessionOptions(WebRTCEngine.Mediasoup)
         };
 
         var session = new NewSessionModel(Name.Trim(), _coordinatorSession.GetCurrentUser().Id,

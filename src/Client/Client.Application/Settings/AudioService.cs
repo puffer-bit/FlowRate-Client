@@ -75,16 +75,6 @@ public class AudioService : IAudioService
         SettingsChanged?.Invoke(settings);
     }
 
-    public async Task<bool> GetUseGStreamerAsync()
-    {
-        return await _audioSettingsRepository.GetUseGStreamerAsync();
-    }
-
-    public async Task UpdateUseGStreamerAsync(bool useGStreamer)
-    {
-        await _audioSettingsRepository.UpdateUseGStreamerAsync(useGStreamer);
-    }
-
     public async Task<AudioDeviceInfo?> ResolveInputDeviceAsync()
     {
         var settings = await _audioSettingsRepository.GetAsync();

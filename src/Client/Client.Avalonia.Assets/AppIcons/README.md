@@ -10,15 +10,13 @@ Two separate identity kits share the application accent color `#6C63FF`:
 
 Each kit contains SVG artwork, PNG exports, Windows and browser ICO files, horizontal wordmarks, previews and an independent build script. See each kit's README for sizes and intended uses.
 
-Files under `svg/`, `png/` and the ICO files are embedded as Avalonia resources. Documentation, build scripts and comparison previews are not embedded.
+Only the files the client shows are embedded as Avalonia resources: `Headphones/flowrate.ico` (window icon) and `Headphones/png/tray-purple-48.png` (tray). To load another file by URI, add it to `Client.Avalonia.Assets.csproj` first.
 
 Example resource URIs:
 
 ```text
-avares://Client.Avalonia.Assets/AppIcons/Headphones/png/app-icon-256.png
 avares://Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico
-avares://Client.Avalonia.Assets/AppIcons/Monitor/svg/mark-purple.svg
-avares://Client.Avalonia.Assets/AppIcons/Monitor/png/tray-white-24.png
+avares://Client.Avalonia.Assets/AppIcons/Headphones/png/tray-purple-48.png
 ```
 
 SVG resources require an SVG-capable image loader. PNG files can be used directly with Avalonia images; ICO files can be loaded as window icons.
