@@ -28,7 +28,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
 {
     public bool IsSafeMode => LaunchOptions.Current.SafeMode;
     public bool IsMediaDisabled => !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
-    public bool IsSoftwareRendering => LaunchOptions.Current.SoftwareRendering;
+    public bool IsSoftwareRendering => !HardwareAcceleration.IsEnabled;
+    public bool IsSoftwareRenderingForced => HardwareAcceleration.IsForcedOff;
 
     public bool IsLoaded
     {

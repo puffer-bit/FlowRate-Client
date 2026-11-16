@@ -26,6 +26,19 @@ public static class AppRestart
 
     public static void WithoutMedia()
     {
+        StartNewProcess("--no-media");
+
+        // Failed native initialization can leave DLL shutdown handlers stuck. Recovery must not
+        // run those handlers: the OS releases the process's database handles and instance mutex.
+        ExitAfterNativeFailure();
+    }
+
+    /// <summary>
+    /// Starts the application again with the arguments of this process, plus <paramref name="extraArgument"/>
+    /// when it is not among them. The new process waits for this one to exit, see <see cref="WaitForPreviousProcess"/>.
+    /// </summary>
+    public static void StartNewProcess(string? extraArgument = null)
+    {
         var executable = System.Environment.ProcessPath
             ?? throw new InvalidOperationException("Cannot determine the application executable.");
         var start = new ProcessStartInfo(executable) { UseShellExecute = false };
@@ -34,15 +47,11 @@ public static class AppRestart
             start.ArgumentList.Add(arguments[0]);
         foreach (var argument in arguments[1..])
             start.ArgumentList.Add(argument);
-        if (!arguments.Skip(1).Contains("--no-media"))
-            start.ArgumentList.Add("--no-media");
+        if (extraArgument != null && !arguments.Skip(1).Contains(extraArgument))
+            start.ArgumentList.Add(extraArgument);
         start.Environment[ParentVariable] = System.Environment.ProcessId.ToString();
         using var child = Process.Start(start)
             ?? throw new InvalidOperationException("Cannot start the application.");
-
-        // Failed native initialization can leave DLL shutdown handlers stuck. Recovery must not
-        // run those handlers: the OS releases the process's database handles and instance mutex.
-        ExitAfterNativeFailure();
     }
 
     public static void ExitAfterNativeFailure()

@@ -4,6 +4,7 @@ using Gst;
 using Client.Core.Media;
 using Client.Core.Settings;
 using Client.GStreamer.Interop;
+using Client.Tools.AppInfo;
 
 namespace Client.GStreamer.Video;
 
@@ -135,8 +136,9 @@ public static class VideoEncoderSelector
     public static bool HasHardwareEncoder(VideoCodec codec) =>
         GetCandidates(codec).Any(c => c.IsHardware && ElementFactory.Find(c.Factory) != null);
 
+    // Saved parameters of a hardware encoder stay known while acceleration is off
     internal static bool IsKnownEncoder(string factory) =>
-        Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Any(candidate => candidate.Factory == factory);
+        Enum.GetValues<VideoCodec>().SelectMany(GetAllCandidates).Any(candidate => candidate.Factory == factory);
 
     /// <summary>
     /// Whether the value of the property follows the bitrate the encoder was made for.
@@ -144,7 +146,11 @@ public static class VideoEncoderSelector
     public static bool DependsOnBitrate(string name) =>
         name.Contains("bitrate", StringComparison.Ordinal) || LimitProperties.Contains(name);
 
-    private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) => codec switch
+    // Without hardware acceleration only the software encoders are offered
+    private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) =>
+        GetAllCandidates(codec).Where(candidate => HardwareAcceleration.IsEnabled || !candidate.IsHardware);
+
+    private static IEnumerable<Candidate> GetAllCandidates(VideoCodec codec) => codec switch
     {
         VideoCodec.H264 => OperatingSystem.IsWindows()
             ? [Nvidia("nvd3d11h264enc"), NvidiaLegacy("nvh264enc"), Qsv("qsvh264enc"), Amf("amfh264enc"),

@@ -78,6 +78,10 @@ sealed class Program
 
         try
         {
+            HardwareAcceleration.Load();
+            if (!HardwareAcceleration.IsEnabled)
+                Log.Information("Hardware acceleration is off ({Reason}): software rendering and video codecs",
+                    HardwareAcceleration.IsForcedOff ? "--software-rendering" : "settings");
             MediaRuntime.Configure(LaunchOptions.Current.DisableMedia ? ["--no-media"] : []);
             if (!MediaRuntime.IsEnabled)
             {
@@ -101,6 +105,14 @@ sealed class Program
 
     internal static void RestartWithoutMedia() => AppRestart.WithoutMedia();
 
+    /// <summary>Starts a new process with the same arguments and closes this one the usual way.</summary>
+    internal static void Restart()
+    {
+        AppRestart.StartNewProcess();
+        (global::Avalonia.Application.Current?.ApplicationLifetime as
+            global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+    }
+
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
@@ -116,7 +128,7 @@ sealed class Program
                 EnableDrawnDecorations = true,
                 // EGL first: only an EGL context imports the DMA-BUF frames of hardware decoders, see
                 // VideoSurfaceProbe. GLX and the framebuffer remain where EGL does not start
-                RenderingMode = LaunchOptions.Current.SoftwareRendering ? [X11RenderingMode.Software]
+                RenderingMode = !HardwareAcceleration.IsEnabled ? [X11RenderingMode.Software]
                     : [X11RenderingMode.Egl, X11RenderingMode.Glx, X11RenderingMode.Software]
             })
 #pragma warning restore AVALONIA_X11_CSD
@@ -124,7 +136,7 @@ sealed class Program
             // D3D11 frames, see VideoSurfaceProbe
             .With(new Win32PlatformOptions
             {
-                RenderingMode = LaunchOptions.Current.SoftwareRendering ? [Win32RenderingMode.Software]
+                RenderingMode = !HardwareAcceleration.IsEnabled ? [Win32RenderingMode.Software]
                     : [Win32RenderingMode.AngleEgl, Win32RenderingMode.Software]
             })
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256 * 1024 * 1024 })

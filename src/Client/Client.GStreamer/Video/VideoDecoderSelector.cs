@@ -1,4 +1,5 @@
 using Client.Core.Media;
+using Client.Tools.AppInfo;
 using Gst;
 
 namespace Client.GStreamer.Video;
@@ -20,9 +21,13 @@ public static class VideoDecoderSelector
         GetCandidates(codec).Where(factory => ElementFactory.Find(factory) != null).ToList();
 
     internal static bool IsKnownDecoder(string factory) =>
-        Enum.GetValues<VideoCodec>().SelectMany(GetCandidates).Contains(factory);
+        Enum.GetValues<VideoCodec>().SelectMany(GetAllCandidates).Contains(factory);
 
-    private static string[] GetCandidates(VideoCodec codec) => codec switch
+    // Without hardware acceleration only the software decoders are offered
+    private static IEnumerable<string> GetCandidates(VideoCodec codec) =>
+        GetAllCandidates(codec).Where(factory => HardwareAcceleration.IsEnabled || VideoElementNames.IsSoftware(factory));
+
+    private static string[] GetAllCandidates(VideoCodec codec) => codec switch
     {
         VideoCodec.H264 => OperatingSystem.IsWindows()
             ? ["d3d11h264dec", "nvh264dec", "openh264dec"]
