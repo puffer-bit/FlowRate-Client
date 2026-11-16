@@ -25,7 +25,9 @@ internal sealed class SingleInstance : IDisposable
     public SingleInstance(bool allowMultipleInstances = false)
     {
         _allowMultipleInstances = allowMultipleInstances;
-        var user = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.UserName)));
+        // A pipe is a domain socket in $TMPDIR on Unix, and a socket path has at most 104 characters on
+        // macOS, whose $TMPDIR alone takes about 50: the full hash of the user makes it too long
+        var user = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.UserName)))[..16];
         _pipeName = $"FlowRate.Desktop.{user}";
         _mutex = new Mutex(false, _pipeName);
         try
