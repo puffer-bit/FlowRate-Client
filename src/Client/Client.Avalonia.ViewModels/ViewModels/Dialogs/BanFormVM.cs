@@ -1,6 +1,7 @@
 using System;
 using System.Reactive.Linq;
 using Client.Avalonia.Localization;
+using Client.Services;
 using ReactiveUI;
 using Shared.Enums.User;
 
@@ -23,6 +24,6 @@ public sealed class BanFormVM : ReactiveObject
         1 => DateTime.UtcNow.AddHours(1), 2 => DateTime.UtcNow.AddDays(1),
         3 => DateTime.UtcNow.AddDays(7), 4 => DateTime.UtcNow.AddDays(30), _ => null
     };
-    public IObservable<bool> CanSubmit => this.WhenAnyValue(vm => vm.Reason)
+    public IObservable<bool> CanSubmit => this.WatchProperty(nameof(Reason), vm => vm.Reason)
         .Select(value => (value?.Trim().Length ?? 0) <= 1000);
 }
