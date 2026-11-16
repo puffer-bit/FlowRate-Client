@@ -68,10 +68,12 @@ public partial class GstLoader
         var emptyGioModules = Path.Combine(cacheDirectory, "gio-modules");
         Directory.CreateDirectory(emptyGioModules);
 
-        var scanner = Path.Combine(bundledRoot, "libexec", "gstreamer-1.0",
+        // The macOS runtime names its folders without a dot: codesign takes a folder with an
+        // extension inside an app bundle for a bundle of its own and refuses to sign the application
+        var scanner = Path.Combine(bundledRoot, "libexec", OperatingSystem.IsMacOS() ? "scanner" : "gstreamer-1.0",
             OperatingSystem.IsWindows() ? "gst-plugin-scanner.exe" : "gst-plugin-scanner");
 
-        var pluginPath = Path.Combine(bundledRoot, "lib", "gstreamer-1.0");
+        var pluginPath = Path.Combine(bundledRoot, "lib", OperatingSystem.IsMacOS() ? "plugins" : "gstreamer-1.0");
         if (OperatingSystem.IsLinux())
         {
             pluginPath += Path.PathSeparator + Path.Combine(bundledRoot, "lib", SelectVaPluginFolder(logger));

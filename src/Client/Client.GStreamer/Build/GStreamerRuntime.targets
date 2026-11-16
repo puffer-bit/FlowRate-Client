@@ -26,8 +26,8 @@
               CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     </ItemGroup>
 
-    <!-- Every configuration, Debug included, runs only on its own runtime. macOS has no runtime yet and
-         starts without media -->
+    <!-- Every configuration, Debug included, runs only on its own runtime. macOS takes the installed
+         GStreamer framework while the runtime is not collected -->
     <Target Name="RequireGStreamerRuntime" BeforeTargets="Build"
             Condition="!Exists('$(GStreamerRuntimeDir)gstreamer') And !$(GStreamerRid.StartsWith('osx-'))">
         <Error Text="The GStreamer runtime for $(GStreamerRid) is missing in $(GStreamerRuntimeDir). Build it with the script in $(MSBuildThisFileDirectory), see README.md there, or copy it from a machine that built it." />

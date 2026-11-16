@@ -9,7 +9,8 @@ namespace Client.Services.Platform;
 
 /// <summary>
 /// Gives the application its icon in the macOS Dock. A process started outside of an app bundle has
-/// no Info.plist naming an icon, so the Dock shows the generic one of an executable.
+/// no Info.plist naming an icon, so the Dock shows the generic one of an executable. FlowRate.app
+/// names its own.
 /// </summary>
 internal static partial class MacDockIcon
 {
@@ -24,7 +25,7 @@ internal static partial class MacDockIcon
     /// <summary>Sets the icon; call once the platform has created the application, on the UI thread.</summary>
     public static void Apply()
     {
-        if (!OperatingSystem.IsMacOS())
+        if (!OperatingSystem.IsMacOS() || AppContext.BaseDirectory.Contains(".app/Contents/MacOS/", StringComparison.Ordinal))
             return;
 
         var png = RenderWithMargin();

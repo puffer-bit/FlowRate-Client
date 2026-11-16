@@ -1,0 +1,57 @@
+# Elements collect.sh expects in the bundle. Mirrors the lists in Loader/GstElementCheck.cs,
+# keep both in sync. Lines starting with '?' are optional: reported, but not fatal.
+
+# Voice
+audioconvert
+audioresample
+audiomixer
+audiodynamic
+volume
+valve
+level
+?webrtcdsp
+?audiornnoise
+autoaudiosrc
+autoaudiosink
+osxaudiosrc
+osxaudiosink
+
+# Generic
+queue
+tee
+capsfilter
+appsrc
+appsink
+fakesink
+clocksync
+
+# Video
+videoconvert
+videoscale
+videorate
+h264parse
+openh264enc
+openh264dec
+av1parse
+svtav1enc
+dav1ddec
+vp8enc
+vp8dec
+?vp9enc
+?vp9dec
+?vtdec
+
+# Camera capture
+?avfvideosrc
+jpegdec
+
+# Chat media
+playbin
+qtdemux
+matroskademux
+avidemux
+decodebin
+id3demux
+mpegaudioparse
+mpg123audiodec
+wavparse

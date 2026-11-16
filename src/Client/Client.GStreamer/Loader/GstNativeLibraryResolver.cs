@@ -64,7 +64,7 @@ public static partial class GstNativeLibraryResolver
         if (!useInstalledRuntime)
             FindBundledRuntime();
 
-        // Until macOS has a runtime of its own, the installed framework stands in for it
+        // A macOS build without the collected runtime (Build/mac/collect.sh) takes the installed framework
         if (LibraryDirectory == null && OperatingSystem.IsMacOS())
             useInstalledRuntime = true;
 
