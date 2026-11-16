@@ -16,6 +16,10 @@ public static class VoicePlaybackSink
     private static double _volume = 1;
     private const string VolumeElementName = "output_volume";
 
+    // The endpoint of the sink: a string on every system, but osxaudiosink takes its persistent
+    // unique-id there, "device" being a number CoreAudio gives anew on each start
+    private static string DeviceProperty => OperatingSystem.IsMacOS() ? "unique-id" : "device";
+
     /// <summary>Applies playback gain before compression and echo-reference capture.</summary>
     public static void SetVolume(double volume)
     {
@@ -61,11 +65,11 @@ public static class VoicePlaybackSink
 
         public void Apply(bool running)
         {
-            if (sink?.FindProperty("device") == null)
+            if (sink?.FindProperty(DeviceProperty) == null)
                 return;
             if (!running)
             {
-                sink.SetProperty("device", _selectedDevice);
+                sink.SetProperty(DeviceProperty, _selectedDevice);
                 return;
             }
 
@@ -87,7 +91,7 @@ public static class VoicePlaybackSink
                 if (!idle.Wait(TimeSpan.FromSeconds(2)))
                     return;
                 sink.SetState(State.Null);
-                sink.SetProperty("device", _selectedDevice);
+                sink.SetProperty(DeviceProperty, _selectedDevice);
                 sink.SyncStateWithParent();
             }
             finally
@@ -149,6 +153,10 @@ public static class VoicePlaybackSink
         // clock pacing in the native bridge bounds read-ahead independently of buffer capacity.
         if (OperatingSystem.IsWindows())
             return $"wasapi2sink name={ElementName} low-latency=false buffer-time={BufferTime} latency-time={LatencyTime}";
+
+        // autoaudiosink would hide the osxaudiosink behind it, and with it the endpoint to route to
+        if (OperatingSystem.IsMacOS())
+            return $"osxaudiosink name={ElementName} buffer-time={BufferTime} latency-time={LatencyTime}";
 
         using var probe = ElementFactory.Make("pulsesink", null);
 

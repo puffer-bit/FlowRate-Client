@@ -15,7 +15,7 @@ public partial class GstLoader
 
     public static bool LoadGstreamer(ILogger logger)
     {
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return false;
 
         // Without a runtime the first call below fails with DllNotFoundException, so say why up front
