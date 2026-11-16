@@ -13,17 +13,29 @@ namespace Client.GStreamer.Interop;
 /// </remarks>
 public static class GstNative
 {
+    // Not g_object_get: a variadic function cannot be bound as a fixed signature. Apple arm64 passes
+    // variadic arguments on the stack rather than in registers, so GObject reads garbage there
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_get(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out IntPtr value, IntPtr terminator);
+    private static extern void g_object_get_property(IntPtr instance,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, IntPtr value);
 
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_get(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out int value, IntPtr terminator);
+    private static extern IntPtr g_value_init(IntPtr value, nint type);
 
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_get(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out long value, IntPtr terminator);
+    private static extern void g_value_unset(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern int g_value_get_int(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern uint g_value_get_uint(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern ulong g_value_get_uint64(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern IntPtr g_value_dup_object(IntPtr value);
 
     [DllImport(NativeLibraries.GObject)]
     private static extern void g_object_unref(IntPtr instance);
@@ -43,8 +55,12 @@ public static class GstNative
     [DllImport(NativeLibraries.GStreamer)]
     private static extern void gst_buffer_unmap(IntPtr buffer, ref Gst.MapInfo info);
 
-    // G_TYPE_DOUBLE, and the size of a GValue: { GType g_type; 16 bytes of data }
+    // Fundamental GTypes, and the size of a GValue: { GType g_type; 16 bytes of data }
+    private const nint IntType = 6 << 2;
+    private const nint UIntType = 7 << 2;
+    private const nint UInt64Type = 11 << 2;
     private const nint DoubleType = 15 << 2;
+    private const nint ObjectType = 20 << 2;
     private const int ValueSize = 24;
 
     // GstMessage on a 64-bit system: the mini object (64 bytes), the type with its padding (8) and
@@ -57,9 +73,7 @@ public static class GstNative
     /// <returns>Zero when the property holds no object.</returns>
     public static IntPtr GetObject(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out IntPtr value, IntPtr.Zero);
-
-        return value;
+        return Read(instance, property, ObjectType, g_value_dup_object);
     }
 
     /// <summary>
@@ -90,30 +104,42 @@ public static class GstNative
     /// </summary>
     public static int GetInt32(Gst.GObject.Object owner, string property)
     {
-        g_object_get(owner.Handle, property, out int value, IntPtr.Zero);
-
-        return value;
+        return GetInt32(owner.Handle, property);
     }
 
     public static int GetInt32(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out int value, IntPtr.Zero);
-
-        return value;
+        return Read(instance, property, IntType, g_value_get_int);
     }
 
     public static uint GetUInt32(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out int value, IntPtr.Zero);
-
-        return (uint)value;
+        return Read(instance, property, UIntType, g_value_get_uint);
     }
 
     public static ulong GetUInt64(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out long value, IntPtr.Zero);
+        return Read(instance, property, UInt64Type, g_value_get_uint64);
+    }
 
-        return (ulong)value;
+    // GObject converts the property into the requested type, an enumeration into an integer as well
+    private static unsafe T Read<T>(IntPtr instance, string property, nint type, Func<IntPtr, T> get)
+    {
+        var storage = stackalloc byte[ValueSize];
+        new Span<byte>(storage, ValueSize).Clear();
+        var value = (IntPtr)storage;
+        g_value_init(value, type);
+
+        try
+        {
+            g_object_get_property(instance, property, value);
+
+            return get(value);
+        }
+        finally
+        {
+            g_value_unset(value);
+        }
     }
 
     /// <summary>
