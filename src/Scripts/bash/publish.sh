@@ -222,11 +222,11 @@ PY
 release() {
     local rid=$1 publish_dir=$2 os directive=() exe icon channel platform output last token=() release_notes=() pre=() portable=()
     case "$rid" in
-        linux-x64) os=linux exe=Client.Avalonia.Desktop ;;
+        linux-x64) os=linux exe=FlowRate ;;
         # Packed here for Windows: vpk builds the installer on Linux as well
         # No portable bundle of vpk there: the standalone archive is the form that is not installed;
         # on Linux the AppImage is the only bundle
-        win-x64) os=win exe=Client.Avalonia.Desktop.exe directive=("[win]") portable=(--noPortable) ;;
+        win-x64) os=win exe=FlowRate.exe directive=("[win]") portable=(--noPortable) ;;
     esac
     channel=$os$suffix
     platform=$rid$suffix

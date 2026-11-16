@@ -14,6 +14,7 @@ using Client.OpenAL;
 using Client.Services;
 using Client.Services.HotKeys;
 using Client.Services.Keyring;
+using Client.Services.Platform;
 using Client.Services.Chat;
 using Client.Services.ScreenCast;
 using Client.Services.Tray;
@@ -60,6 +61,8 @@ public partial class App : global::Avalonia.Application
         {
             // Subscribe before startup applies the saved window chrome.
             ExperimentalFeatures.Changed += () => WindowChrome.Apply(ExperimentalFeatures.UseCustomTitleBar);
+
+            MacDockIcon.Apply();
 
             var mainWindow = new MainWindow
             {

@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
+        <!-- The executable, and so the process name in the task manager and the Dock -->
+        <AssemblyName>FlowRate</AssemblyName>
         <TargetFramework>net10.0</TargetFramework>
         <IsAotCompatible>true</IsAotCompatible>
         <Nullable>enable</Nullable>
