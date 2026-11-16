@@ -57,6 +57,11 @@ if (args.Contains("--screen-capture-kit") && OperatingSystem.IsMacOS())
     ScreenCaptureKitSmokeChecks.Run();
     return;
 }
+if (args.Contains("--video-decoder-latency"))
+{
+    VideoDecoderLatencySmokeChecks.Run();
+    return;
+}
 if (args.Contains("--video-av1"))
 {
     VideoAv1SmokeChecks.Run();
