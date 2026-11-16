@@ -155,6 +155,8 @@ public static class VideoEncoderSelector
         VideoCodec.H264 => OperatingSystem.IsWindows()
             ? [Nvidia("nvd3d11h264enc"), NvidiaLegacy("nvh264enc"), Qsv("qsvh264enc"), Amf("amfh264enc"),
                MediaFoundation("mfh264enc"), OpenH264]
+            : OperatingSystem.IsMacOS()
+            ? [VideoToolbox("vtenc_h264_hw"), OpenH264]
             : [Nvidia("nvcudah264enc"), NvidiaLegacy("nvh264enc"), Va("vah264enc"), Va("vah264lpenc"), OpenH264],
         VideoCodec.AV1 => OperatingSystem.IsWindows()
             ? [Nvidia("nvd3d11av1enc"), Qsv("qsvav1enc"), Amf("amfav1enc"), SvtAv1]
@@ -214,6 +216,13 @@ public static class VideoEncoderSelector
     private static Candidate MediaFoundation(string factory) =>
         new(factory, true, kbps => [("bitrate", Format(kbps)), ("low-latency", "true")],
             [("rc-mode", "cbr"), ("gop-size", "65535")]);
+
+    // VideoToolbox takes kbit/s. The _hw variant fails where the chip has no encoder rather than falling
+    // back to the software one of the system. Its own keyframes come every couple of seconds
+    private static Candidate VideoToolbox(string factory) =>
+        new(factory, true, kbps => [("bitrate", Format(kbps))],
+            [("realtime", "true"), ("allow-frame-reordering", "false"), ("rate-control", "cbr"),
+             ("max-keyframe-interval", "2147483647")]);
 
     // openh264 takes bit/s and has a mode tuned for screen content. Its scene change detection makes
     // a keyframe of a switch of windows, as big as the frame it replaces, but one more burst
