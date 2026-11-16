@@ -149,14 +149,14 @@ prepare_gstreamer() {
     fi
 }
 
-# Checks the libwebrtc runtime of <rid>: the voice of the experimental setting. Optional, the client
-# falls back to GStreamer without it. It is committed (Client.LibWebRTC/Build builds it by hand), so
-# nothing is built here
+# Checks the libwebrtc runtime of <rid>: the only transport of the sessions, so a build without it
+# cannot join one. It is committed (Client.LibWebRTC/Build builds it by hand), so nothing is built here
 prepare_libwebrtc() {
     local rid=$1
 
     if [[ ! -d "$LIBWEBRTC_DIR/Build/prebuilt/$rid" ]]; then
-        echo "Note: no libwebrtc runtime for $rid, its voice goes over GStreamer only"
+        echo "error: no libwebrtc runtime for $rid in $LIBWEBRTC_DIR/Build/prebuilt/$rid" >&2
+        exit 1
     fi
 }
 

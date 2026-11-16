@@ -18,7 +18,6 @@ Android watches them only, decoded by libwebrtc itself (see below).
 | `Native/` | The peer of the desktop: `flowrate_webrtc.h`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), the classes behind it (see [Native sources](#native-sources)), and the P/Invoke bindings |
 | `Build/` | The scripts that build libwebrtc with that interface into one library, the committed libraries (`prebuilt/<rid>/`) and `LibWebRTCRuntime.targets`, which copies them next to the executable |
 | `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidVoicePeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`VoicePeer.java`) |
-| `Client.Avalonia.Desktop/Services/Media/MediaEngineTransportFactory.cs` | Picks the engine of each session on the desktop |
 
 The SFU is described as a remote peer (`Client.WebRTC/Sdp`); libwebrtc answers, and the SSRC
 the SFU created each producer with is written into the answer, since mediasoup knows our streams by it
@@ -196,8 +195,8 @@ network -> libwebrtc / NetEq / PLC -> decode and mix, including track volumes ->
 - Speaking indicators use processed capture peaks and remote levels before playback volume.
   Voice-gate summaries come from the shared GStreamer gate.
 - The native ABI is checked before initialization. An old DLL/SO without external audio support is
-  rejected, so the desktop factory falls back to GStreamer rather than opening a second audio device.
-  **Both platform prebuilts must be rebuilt before release.** The external audio bridge does not
+  rejected, and the session fails to start rather than opening a second audio device.
+  The external audio bridge does not
   change Android's Java peer.
 
 ## Audio bridge checks

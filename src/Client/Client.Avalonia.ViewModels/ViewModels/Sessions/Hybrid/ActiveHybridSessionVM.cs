@@ -541,7 +541,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 _cameraSettings = null;
                 StatusBar.IsCameraOn = false;
             }
-            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "GstWebRTCError");
+            ShowPopUp(NotificationPopUpVM.PopUpType.Error, HybridSessionMessages.Get(error), "MediaError");
         });
 
     private void ShowPopUp(NotificationPopUpVM.PopUpType type, string text, string tag) =>

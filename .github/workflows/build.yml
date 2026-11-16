@@ -162,9 +162,7 @@ jobs:
           path: ${{ runner.temp }}/flowrate-gstreamer-*/install.log
           if-no-files-found: warn
 
-      # Only once the Windows library is committed: until then the client falls back to GStreamer
       - name: Check published libwebrtc runtime
-        if: hashFiles('src/Client/Client.LibWebRTC/Build/prebuilt/win-x64/flowrate_webrtc.dll') != ''
         shell: powershell
         run: |
           $suffix = if ("${{ inputs.aot }}" -eq "true") { "-aot" } else { "" }

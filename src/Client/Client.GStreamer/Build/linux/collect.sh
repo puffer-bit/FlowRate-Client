@@ -36,9 +36,11 @@ echo "== Copying GStreamer"
 for plugin in "$PREFIX"/lib/gstreamer-1.0/*.so; do
     install -m 644 "$plugin" "$DEST/lib/gstreamer-1.0/"
 done
+# The libraries the bindings of the client (GstSharp.Net, GstSharp.Net.App) call into; the rest of
+# libgst*-1.0 comes only as a dependency of a bundled plugin, below
+BOUND='^libgst(reamer|base|allocators|app|audio|net|pbutils|play|rtp|rtsp|sdp|tag|transcoder|video|webrtc)-1\.0\.so\.0$'
 for library in "$PREFIX"/lib/libgst*-1.0.so.0; do
-    # The unit test library, built only to satisfy the docs setup of the plugin modules
-    [[ "$(basename "$library")" == libgstcheck-1.0.so.0 ]] && continue
+    [[ "$(basename "$library")" =~ $BOUND ]] || continue
     cp -L "$library" "$DEST/lib/"
     ORIGIN[$(basename "$library")]=gstreamer
 done
