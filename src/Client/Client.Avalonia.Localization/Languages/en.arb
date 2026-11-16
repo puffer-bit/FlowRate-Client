@@ -1531,6 +1531,8 @@
   "settings.hotKeys.typingWarning": "This key types a character: the action is also toggled while you type.",
   "settings.hotKeys.waylandHint": "On Wayland an application hears only the keys of its own windows. In other applications the hotkeys work only if the system allows it or the application can read the input devices; otherwise they work only in the window.",
   "settings.hotKeys.waylandTitle": "Wayland limits hotkeys",
+  "settings.hotKeys.macOSHint": "To hear the hotkeys in other applications, allow FlowRate in System Settings → Privacy & Security → Input Monitoring and restart it. Without it the hotkeys work only in the window.",
+  "settings.hotKeys.macOSTitle": "macOS asks permission for global hotkeys",
   "settings.hotKeys.recordTip": "Click and press the keys",
   "settings.debug.name": "Logging and debug",
   "settings.debug.section.journal": "Journal",

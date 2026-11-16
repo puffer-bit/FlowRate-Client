@@ -49,10 +49,13 @@
     </UserControl.Styles>
 
     <ui:SettingsPage>
-        <!-- On top, before the settings it limits; shown on Wayland whether the keys are heard or not -->
+        <!-- On top, before the settings they limit; shown on Wayland and macOS whether the keys are heard or not -->
         <banners:WarningBanner IsVisible="{Binding IsWayland}" Margin="0,0,0,8"
                                Header="{l:Text settings.hotKeys.waylandTitle}"
                                Message="{l:Text settings.hotKeys.waylandHint}"/>
+        <banners:WarningBanner IsVisible="{Binding IsMacOS}" Margin="0,0,0,8"
+                               Header="{l:Text settings.hotKeys.macOSTitle}"
+                               Message="{l:Text settings.hotKeys.macOSHint}"/>
 
         <controls:SettingsHeader services:SettingText.Section="hotKeys.general"/>
         <ui:SettingsCard>

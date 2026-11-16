@@ -974,6 +974,8 @@
   "settings.hotKeys.typingWarning": "Esta tecla escribe un carácter: la acción también se activa mientras escribe.",
   "settings.hotKeys.waylandHint": "En Wayland una aplicación solo oye las teclas de sus propias ventanas. En otras aplicaciones los atajos funcionan solo si el sistema lo permite o la aplicación puede leer los dispositivos de entrada; si no, solo funcionan en la ventana.",
   "settings.hotKeys.waylandTitle": "Wayland limita los atajos",
+  "settings.hotKeys.macOSHint": "Para que los atajos funcionen en otras aplicaciones, permite FlowRate en Ajustes del Sistema → Privacidad y seguridad → Monitorización de entrada y reinícialo. Sin ello, los atajos solo funcionan en la ventana.",
+  "settings.hotKeys.macOSTitle": "macOS pide permiso para los atajos globales",
   "settings.hotKeys.recordTip": "Haga clic y pulse las teclas",
   "settings.debug.name": "Registro y depuración",
   "settings.debug.section.journal": "Registro",
