@@ -57,6 +57,7 @@ ANDROID_PUBLISH_DIR=src/Client/Client.Avalonia.Android/bin/publish/android
 ICON=src/Client/Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico
 MAC_ICON=src/Client/Client.Avalonia.Assets/AppIcons/Headphones/png/app-icon-1024.png
 MAC_PLIST=src/Client/Client.Avalonia.Desktop/macOS/Info.plist
+MAC_ENTITLEMENTS=src/Client/Client.Avalonia.Desktop/macOS/FlowRate.entitlements
 FEED_DIR=dist/.feed
 REPO_URL=https://github.com/puffer-bit/FlowRate-Client
 # The installed application goes to %LocalAppData%\FlowRateClient on Windows; the data of the user
@@ -286,8 +287,9 @@ PY
         publish_dir="$PUBLISH_ROOT/$platform-app/FlowRate.app"
         icon="$publish_dir/Contents/Resources/FlowRate.icns"
         # Signed ad hoc: no Apple certificate, but the bundle is sealed, which the privacy settings
-        # of macOS go by
-        bundle=(--signAppIdentity -)
+        # of macOS go by. The hardened runtime vpk signs with needs the entitlements of the microphone
+        # and the camera, or macOS denies them without asking
+        bundle=(--signAppIdentity - --signEntitlements "$MAC_ENTITLEMENTS")
     else
         icon=$ICON
     fi
