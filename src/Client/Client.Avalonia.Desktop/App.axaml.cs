@@ -156,6 +156,8 @@ public partial class App : global::Avalonia.Application
             services.AddSingleton<ISecureStorage, SecretServiceStorage>();
         else if (OperatingSystem.IsWindows())
             services.AddSingleton<ISecureStorage, DpapiStorage>();
+        else if (OperatingSystem.IsMacOS())
+            services.AddSingleton<ISecureStorage, KeychainStorage>();
 
         services.AddViewModels();
 
