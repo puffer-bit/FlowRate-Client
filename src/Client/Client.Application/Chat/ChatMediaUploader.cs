@@ -9,7 +9,8 @@ namespace Client.Application.Chat;
 /// A picked file as the platform hands it over.
 /// </summary>
 /// <param name="Open">Opens the bytes from their start; may be called several times.</param>
-public record ChatMediaSource(string FileName, long Size, Func<Task<Stream>> Open);
+/// <param name="LocalPath">The file on this disk, where the platform gives one: read in place by what cannot take a stream.</param>
+public record ChatMediaSource(string FileName, long Size, Func<Task<Stream>> Open, string? LocalPath = null);
 
 /// <summary>
 /// What is known about an image being uploaded. Kept by the caller between attempts, so a retry

@@ -252,7 +252,7 @@ public static class VideoEncoderSelector
     /// Whether the element of <paramref name="factory"/> takes <paramref name="value"/> for
     /// <paramref name="name"/>, tried on an element of its own the way the branch will set it.
     /// </summary>
-    private static bool Accepts(string factory, string name, string value) =>
+    internal static bool Accepts(string factory, string name, string value) =>
         Accepted.GetOrAdd((factory, name, value), key =>
         {
             try

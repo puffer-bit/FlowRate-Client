@@ -227,7 +227,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
-            services.MediaUploader, services.Images, _senders, JumpToMessage);
+            services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions);
 
         ApplyAccess(coordinatorSession.Permissions);
         IsConnected = coordinatorSession.ConnectionStatus == CoordinatorState.Connected;

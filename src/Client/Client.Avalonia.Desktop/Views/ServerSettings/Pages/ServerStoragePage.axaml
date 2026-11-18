@@ -20,6 +20,37 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
+        <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.images}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.imageMaxSide}"
+                            Description="{l:Text serverSettings.storage.imageMaxSide.description}">
+                <NumericUpDown MinWidth="140" Minimum="320" Maximum="16384" Increment="160" FormatString="0"
+                               Value="{Binding Form.ImageMaxSide}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.imageQuality}"
+                            Description="{l:Text serverSettings.storage.imageQuality.description}">
+                <NumericUpDown MinWidth="140" Minimum="30" Maximum="100" Increment="5" FormatString="0"
+                               Value="{Binding Form.ImageQuality}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.allowOriginalImages}"
+                            Description="{l:Text serverSettings.storage.allowOriginalImages.description}">
+                <CheckBox IsChecked="{Binding Form.AllowOriginalImages}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
+        <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.videos}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.videoMaxSide}"
+                            Description="{l:Text serverSettings.storage.videoMaxSide.description}">
+                <NumericUpDown MinWidth="140" Minimum="240" Maximum="2160" Increment="120" FormatString="0"
+                               Value="{Binding Form.VideoMaxSide}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.allowOriginalVideos}"
+                            Description="{l:Text serverSettings.storage.allowOriginalVideos.description}">
+                <CheckBox IsChecked="{Binding Form.AllowOriginalVideos}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
         <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.uploads}"/>
         <ui:SettingsCard>
             <ui:SettingsRow Title="{l:Text serverSettings.storage.unattachedUploads}"

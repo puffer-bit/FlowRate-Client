@@ -1,4 +1,5 @@
 using Shared.Models.DataTransferObjects;
+using Client.Core.Chat;
 using Client.Core.Coordinator;
 
 namespace Client.Api.Mappers;
@@ -27,7 +28,9 @@ internal static class CoordinatorMapper
             MaxUsers = dto.MaxUsers,
 
             IsMOTDEnabled = dto.IsMOTDEnabled,
-            SettingsRevision = dto.SettingsRevision
+            SettingsRevision = dto.SettingsRevision,
+            ImagePolicy = ImageCompressionPolicy.From(dto.ImageMaxSide, dto.ImageQuality, dto.AllowOriginalImages),
+            VideoPolicy = VideoCompressionPolicy.From(dto.VideoMaxSide, dto.AllowOriginalVideos)
         };
     }
 }

@@ -511,8 +511,28 @@
                 </Grid>
 
                 <!-- The images of the message being typed, each showing how far it got and why it did not go -->
-                <ScrollViewer IsVisible="{Binding Composer.HasAttachments}" Margin="10,8,10,0"
+                <!-- A long press on the empty space chooses what is done to files attached from now on -->
+                <ScrollViewer IsVisible="{Binding Composer.HasAttachments}" Margin="10,8,10,0" Background="Transparent"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <ScrollViewer.ContextFlyout>
+                        <Flyout Placement="Top">
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
+                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}">
+                                    <menus:MenuItemButton.IconContent>
+                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultCompressImages}"/>
+                                    </menus:MenuItemButton.IconContent>
+                                </menus:MenuItemButton>
+                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}">
+                                    <menus:MenuItemButton.IconContent>
+                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultStripMetadata}"/>
+                                    </menus:MenuItemButton.IconContent>
+                                </menus:MenuItemButton>
+                                <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
+                                           IsVisible="{Binding Composer.IsImageCompressionForced}"/>
+                            </StackPanel>
+                        </Flyout>
+                    </ScrollViewer.ContextFlyout>
                     <ItemsControl ItemsSource="{Binding Composer.Attachments}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -521,7 +541,32 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="chatVm:ChatAttachmentVM">
-                                <Border Classes="chat-attachment" Classes.error="{Binding HasError}">
+                                <!-- A tap opens what is done to this file -->
+                                <Border Classes="chat-attachment" Classes.error="{Binding HasError}" Tapped="OnAttachmentTapped">
+                                    <Border.ContextFlyout>
+                                        <Flyout Placement="Top">
+                                            <StackPanel Spacing="2">
+                                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" IsVisible="{Binding IsImage}"
+                                                                      Command="{Binding ToggleCompressionCommand}">
+                                                    <menus:MenuItemButton.IconContent>
+                                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsCompressed}"/>
+                                                    </menus:MenuItemButton.IconContent>
+                                                </menus:MenuItemButton>
+                                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" IsVisible="{Binding IsImage}"
+                                                                      Command="{Binding ToggleMetadataCommand}">
+                                                    <menus:MenuItemButton.IconContent>
+                                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMetadataStripped}"/>
+                                                    </menus:MenuItemButton.IconContent>
+                                                </menus:MenuItemButton>
+                                                <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
+                                                           MaxWidth="260" IsVisible="{Binding IsCompressionForced}"/>
+                                                <Separator IsVisible="{Binding IsImage}"/>
+                                                <menus:MenuItemButton Focusable="False" Classes="danger" Icon="{StaticResource CloseIcon}"
+                                                                      Content="{l:Text chat.attach.detach}"
+                                                                      menus:FlyoutMenu.CloseOnClick="True" Click="OnDetachClick"/>
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Border.ContextFlyout>
                                     <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                                         <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
                                             <Panel>
@@ -566,6 +611,26 @@
                             IsVisible="{Binding Composer.IsAttachmentsAllowed}"
                             Command="{Binding Composer.AttachFilesCommand}">
                         <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
+                        <!-- A long press chooses what is done to files attached from now on -->
+                        <Button.ContextFlyout>
+                            <Flyout Placement="Top">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
+                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}">
+                                        <menus:MenuItemButton.IconContent>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultCompressImages}"/>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}">
+                                        <menus:MenuItemButton.IconContent>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultStripMetadata}"/>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                    <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
+                                               IsVisible="{Binding Composer.IsImageCompressionForced}"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.ContextFlyout>
                     </Button>
 
                     <TextBox Grid.Column="1"

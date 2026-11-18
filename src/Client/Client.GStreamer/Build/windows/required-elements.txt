@@ -65,3 +65,12 @@ avidemux
 
 # AAC audio in MP4 attachments, supplied by the Windows Media Foundation plugin
 mfaacdec
+
+# Compressing chat videos before sending (Video/Transcoding); AAC by Media Foundation
+uridecodebin
+parsebin
+videoconvertscale
+mp4mux
+aacparse
+mfaacenc
+opusenc

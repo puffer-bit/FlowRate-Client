@@ -4,6 +4,7 @@ using Client.Application.Ports;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Video;
+using Client.GStreamer.Video.Transcoding;
 
 namespace Client.GStreamer.Loader;
 
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddSingleton<ICameraDeviceProvider, GstCameraDeviceProvider>();
         services.AddSingleton<IAudioMedia, GstAudioMedia>();
         services.AddSingleton<IVoiceAudioDevice, GstVoiceAudioDevice>();
+        services.AddSingleton<IVideoPreparer, GstVideoPreparer>();
 
         return services;
     }

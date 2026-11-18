@@ -34,6 +34,10 @@ public static class DependencyInjection
         services.AddSingleton<IChatImageService, ChatImageService>();
         services.AddSingleton<IAvatarService, AvatarService>();
         services.AddSingleton<IImagePreviewer>(provider => provider.GetRequiredService<IChatImageService>());
+        services.AddSingleton<IImagePreparer, SkiaImagePreparer>();
+        services.AddSingleton(provider => new ChatAttachmentOptions(provider.GetRequiredService<IImagePreparer>(),
+            provider.GetService<IChatAttachmentPreferencesRepository>(), provider.GetService<ILogger<ChatAttachmentOptions>>(),
+            provider.GetService<IVideoPreparer>()));
 
         services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(
@@ -43,7 +47,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IDismissedPromptsRepository>(),
             provider.GetRequiredService<IMediaCache>(),
             provider.GetRequiredService<IAppearanceService>(),
-            provider.GetRequiredService<ChatReceipts>()));
+            provider.GetRequiredService<ChatReceipts>(),
+            provider.GetRequiredService<ChatAttachmentOptions>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),
