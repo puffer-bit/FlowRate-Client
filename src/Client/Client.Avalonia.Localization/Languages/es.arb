@@ -700,6 +700,8 @@
   "chat.empty.text": "Escribe el primero: aparecerá aquí.",
   "chat.scrollToLatest": "Ir a lo más reciente",
   "chat.cancelReply": "Cancelar respuesta (Esc)",
+  "chat.linkPreview.loading": "Cargando la vista previa del enlace…",
+  "chat.linkPreview.close": "Enviar sin vista previa del enlace",
   "chat.input.watermark": "Escribir en {chat}",
   "chat.send": "Enviar (Intro)",
   "chat.replyTo": "Respuesta a {name}",

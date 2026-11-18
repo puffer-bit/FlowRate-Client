@@ -700,6 +700,8 @@
   "chat.empty.text": "发送第一条消息，它会显示在这里。",
   "chat.scrollToLatest": "跳转到最新消息",
   "chat.cancelReply": "取消回复 (Esc)",
+  "chat.linkPreview.loading": "正在加载链接预览…",
+  "chat.linkPreview.close": "发送时不附带链接预览",
   "chat.input.watermark": "在 {chat} 中发消息",
   "chat.send": "发送 (Enter)",
   "chat.replyTo": "回复 {name}",

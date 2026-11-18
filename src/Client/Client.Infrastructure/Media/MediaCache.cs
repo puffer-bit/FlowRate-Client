@@ -93,6 +93,13 @@ public sealed partial class MediaCache : IMediaCache
         Func<Stream, Task<bool>> write) =>
         StoreAsync(PathOfAvatar(coordinatorInstanceId, avatarId), write);
 
+    public string? FindLinkPreviewImage(string coordinatorInstanceId, int previewId) =>
+        Find(PathOfLinkPreview(coordinatorInstanceId, previewId));
+
+    public Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId,
+        Func<Stream, Task<bool>> write) =>
+        StoreAsync(PathOfLinkPreview(coordinatorInstanceId, previewId), write);
+
     public string? FindFile(string coordinatorInstanceId, int fileId, string fileName) =>
         Find(PathOfFile(coordinatorInstanceId, fileId, fileName));
 
@@ -213,6 +220,9 @@ public sealed partial class MediaCache : IMediaCache
     private string? PathOf(string coordinatorInstanceId, int imageId, bool preview) =>
         PathOf(coordinatorInstanceId,
             imageId.ToString(CultureInfo.InvariantCulture) + (preview ? ".preview" : ".original"));
+
+    private string? PathOfLinkPreview(string coordinatorInstanceId, int previewId) =>
+        PathOf(coordinatorInstanceId, previewId.ToString(CultureInfo.InvariantCulture) + ".link");
 
     private string? PathOfAvatar(string coordinatorInstanceId, string avatarId) =>
         avatarId.Length > 0 && avatarId.All(char.IsAsciiLetterOrDigit)

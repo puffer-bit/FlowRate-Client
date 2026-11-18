@@ -55,8 +55,26 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(HasText));
             this.RaisePropertyChanged(nameof(HasPlainText));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
+            // The card is made anew only for another preview: the same one keeps its loaded picture
+            if (_linkPreview != null && _linkPreview.Preview.Id != value.LinkPreview?.Id)
+                _linkPreview = null;
+            this.RaisePropertyChanged(nameof(LinkPreview));
+            this.RaisePropertyChanged(nameof(HasLinkPreview));
         }
     }
+
+    private ChatLinkPreviewVM? _linkPreview;
+
+    /// <summary>Makes the card of a link preview; without it a message shows none.</summary>
+    public Func<ChatLinkPreview, ChatLinkPreviewVM>? CreateLinkPreview { get; init; }
+
+    /// <summary>The card of the link of the text, once the server has put its preview into the message.</summary>
+    public ChatLinkPreviewVM? LinkPreview =>
+        _linkPreview ??= Message.LinkPreview is { } preview && CreateLinkPreview != null && !Message.IsDeleted
+            ? CreateLinkPreview(preview)
+            : null;
+
+    public bool HasLinkPreview => LinkPreview != null;
 
     public bool IsSystem => Message.IsSystem;
     public ChatSystemEventKind SystemEventKind => Message.IsSystem && Message.SystemContent?.IsValid() == true

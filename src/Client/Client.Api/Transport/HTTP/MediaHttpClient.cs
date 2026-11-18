@@ -113,6 +113,11 @@ internal sealed partial class MediaHttpClient : IDisposable
         DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.Files}/{fileId}"),
             destination, progress, cancellationToken);
 
+    public Task<MediaTransferResult> DownloadLinkPreviewImageAsync(int previewId, Stream destination,
+        CancellationToken cancellationToken) =>
+        DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.LinkPreviewImages}/{previewId}"),
+            destination, null, cancellationToken);
+
     public Task<MediaTransferResult> DownloadAvatarAsync(string avatarId, Stream destination,
         CancellationToken cancellationToken) =>
         DownloadAsync($"{MediaEndpoints.Avatars}/{Uri.EscapeDataString(avatarId)}", destination, null,

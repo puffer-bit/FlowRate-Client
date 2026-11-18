@@ -27,6 +27,12 @@ public interface IMediaCache
     /// <returns>The file of the image, or null when it was not kept.</returns>
     Task<string?> StoreAsync(string coordinatorInstanceId, int imageId, bool preview, Func<Stream, Task<bool>> write);
 
+    /// <returns>The image of a link preview, or null when it is not kept.</returns>
+    string? FindLinkPreviewImage(string coordinatorInstanceId, int previewId);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write);
+
     /// <returns>The file of the avatar, or null when it is not kept.</returns>
     string? FindAvatar(string coordinatorInstanceId, string avatarId);
 

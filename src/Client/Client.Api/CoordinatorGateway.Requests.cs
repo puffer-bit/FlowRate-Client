@@ -352,8 +352,11 @@ internal partial class CoordinatorGateway
     public Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded) =>
         SendRequestAsync<SetMessageReactionResponse>(new SetMessageReactionRequest(sessionId, messageId, emoji, isAdded));
 
-    public Task EditChatMessage(int sessionId, int messageId, string text) =>
-        SendRequestAsync<EditMessageResponse>(new EditMessageRequest(sessionId, messageId, text));
+    public Task EditChatMessage(int sessionId, int messageId, string text, bool? isLinkPreviewDisabled) =>
+        SendRequestAsync<EditMessageResponse>(new EditMessageRequest(sessionId, messageId, text, isLinkPreviewDisabled));
+
+    public async Task<ChatLinkPreview?> RequestLinkPreview(int sessionId, string url) =>
+        (await SendRequestAsync<ChatLinkPreviewResponse>(new ChatLinkPreviewRequest(sessionId, url))).Preview?.ToModel();
 
     public Task LeaveSession(int sessionId) =>
         SendRequestAsync<LeaveSessionResponse>(new LeaveSessionRequest(sessionId, SessionType.Hybrid));

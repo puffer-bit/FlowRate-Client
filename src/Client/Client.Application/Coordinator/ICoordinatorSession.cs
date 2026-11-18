@@ -435,6 +435,10 @@ public interface ICoordinatorSession : IDisposable
     Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress = null,
         CancellationToken cancellationToken = default);
 
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadLinkPreviewImage"/>
+    Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
+        CancellationToken cancellationToken = default);
+
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatImage"/>
     Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
@@ -447,7 +451,11 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>
     /// Replaces the text of the user's own message. On success <see cref="TextMessageEdited"/> is raised.
     /// </summary>
-    Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text);
+    /// <param name="isLinkPreviewDisabled">Turns the preview of the link off or on; null leaves it as it was.</param>
+    Task<RequestResult> EditChatMessage(int chatId, int messageId, ChatTextContent text, bool? isLinkPreviewDisabled = null);
+
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.RequestLinkPreview"/>
+    Task<RequestResult<ChatLinkPreview?>> RequestLinkPreview(int chatId, string url);
 
     /// <summary>Sets the current user's reaction; updates arrive through TextMessageEdited.</summary>
     Task<RequestResult<ChatHistoryPage>> RequestChatPinnedMessages(int chatId);

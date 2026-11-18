@@ -34,6 +34,12 @@ internal partial class CoordinatorGateway
             ? media.DownloadFileAsync(fileId, destination, progress, cancellationToken)
             : Task.FromResult(MediaTransferResult.ConnectionFailed);
 
+    public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadLinkPreviewImageAsync(previewId, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
     public Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination,
         CancellationToken cancellationToken) =>
         _media is { } media

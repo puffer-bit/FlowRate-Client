@@ -1,0 +1,30 @@
+<!-- The card of a link preview, under the text of a message and above the input of the composer:
+     an accent bar, the site, the title and the description, with a small picture beside them or a
+     wide one under them. A click opens the link when the card is given ConfirmOpen. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Views.Shared.Chat.ChatLinkPreviewCard"
+             x:CompileBindings="True" x:DataType="vm:ChatLinkPreviewVM">
+    <Border Classes="msg-link"
+            vm:ChatImagePresence.Image="{Binding}"
+            ToolTip.Tip="{Binding Preview.Url}">
+        <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
+            <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Top">
+                <TextBlock Classes="msg-link-site" Text="{Binding SiteName}"/>
+                <TextBlock Classes="msg-link-title" Text="{Binding Title}" IsVisible="{Binding HasTitle}"/>
+                <TextBlock Classes="msg-link-description" Text="{Binding Description}"
+                           IsVisible="{Binding HasDescription}"/>
+            </StackPanel>
+
+            <Border Grid.Column="1" Classes="msg-link-thumbnail" IsVisible="{Binding HasSmallImage}">
+                <Image Source="{Binding Image}" Stretch="UniformToFill"/>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="msg-link-picture"
+                    Height="{Binding LargeImageHeight}" IsVisible="{Binding HasLargeImage}">
+                <Image Source="{Binding Image}" Stretch="UniformToFill"/>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

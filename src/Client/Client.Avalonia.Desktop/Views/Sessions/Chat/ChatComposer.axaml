@@ -6,6 +6,7 @@
              xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
@@ -39,6 +40,41 @@
                     <!-- The reply bar unfolds when a reply is attached and folds back when it is
                          detached; the part that is folded is cut off, not drawn over the input -->
                     <chatViews:ChatReplyBar/>
+
+                    <!-- The preview of the link being typed, as the message will show it; closing it
+                         sends the message without one -->
+                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="10,8,6,0"
+                          IsVisible="{Binding IsLinkPreviewBarVisible}">
+                        <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                               VerticalAlignment="Center" Opacity="0.8"
+                               Source="{StaticResource FormatLinkIcon}"/>
+                        <ContentControl Grid.Column="1" Content="{Binding ComposerLinkPreview}"
+                                        IsVisible="{Binding ComposerLinkPreview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <ContentControl.ContentTemplate>
+                                <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
+                                    <sharedChat:ChatLinkPreviewCard/>
+                                </DataTemplate>
+                            </ContentControl.ContentTemplate>
+                        </ContentControl>
+                        <Border Grid.Column="1" Classes="msg-link" HorizontalAlignment="Stretch"
+                                IsVisible="{Binding IsLinkPreviewLoading}">
+                            <StackPanel Spacing="1">
+                                <TextBlock Classes="msg-link-site" Text="{Binding LinkPreviewLoadingHost}"/>
+                                <TextBlock Classes="msg-link-description" Text="{l:Text chat.linkPreview.loading}"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Grid.Column="2"
+                                Classes="borderless composer-icon"
+                                Width="28" Height="28"
+                                Margin="6,0,0,0"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="{l:Text chat.linkPreview.close}"
+                                Command="{Binding CloseLinkPreviewCommand}"
+                                AutomationProperties.Name="{l:Text chat.linkPreview.close}">
+                            <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                        </Button>
+                    </Grid>
 
                     <chatViews:ChatAttachmentList/>
 

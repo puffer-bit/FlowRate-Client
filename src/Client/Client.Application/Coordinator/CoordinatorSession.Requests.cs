@@ -230,8 +230,12 @@ public partial class CoordinatorSession
     public Task<RequestResult> SetMessageReaction(int chatId, int messageId, string emoji, bool isAdded) =>
         SendAsync(() => _gateway.SetMessageReaction(chatId, messageId, emoji, isAdded));
 
-    public Task<RequestResult> EditChatMessage(int sessionId, int messageId, ChatTextContent text) =>
-        SendAsync(() => _gateway.EditChatMessage(sessionId, messageId, text.Text));
+    public Task<RequestResult> EditChatMessage(int sessionId, int messageId, ChatTextContent text,
+        bool? isLinkPreviewDisabled = null) =>
+        SendAsync(() => _gateway.EditChatMessage(sessionId, messageId, text.Text, isLinkPreviewDisabled));
+
+    public Task<RequestResult<ChatLinkPreview?>> RequestLinkPreview(int chatId, string url) =>
+        SendAsync(() => _gateway.RequestLinkPreview(chatId, url));
 
     public Task<RequestResult<IReadOnlyList<ChatReadState>>> RequestChatReadStates() =>
         SendAsync(_gateway.RequestChatReadStates);
@@ -249,6 +253,10 @@ public partial class CoordinatorSession
     public Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination,
         CancellationToken cancellationToken = default) =>
         _gateway.DownloadAvatar(avatarId, destination, cancellationToken);
+
+    public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
+        CancellationToken cancellationToken = default) =>
+        _gateway.DownloadLinkPreviewImage(previewId, destination, cancellationToken);
 
     public Task<MediaTransferResult> DownloadChatImage(int imageId, bool preview, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
