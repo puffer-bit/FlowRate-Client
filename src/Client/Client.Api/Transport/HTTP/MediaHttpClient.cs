@@ -44,6 +44,7 @@ internal sealed partial class MediaHttpClient : IDisposable
         : this(new SocketsHttpHandler
         {
             ConnectTimeout = TimeSpan.FromSeconds(10),
+            Proxy = WebSocketRouteProxy.Instance,
             SslOptions =
             {
                 RemoteCertificateValidationCallback = (_, certificate, _, errors) =>

@@ -8,12 +8,30 @@ namespace Client.ViewModels.Settings.Pages;
 
 public sealed class ReleaseNote(PublishedRelease release)
 {
+    // A collapsed release names this many of its sections; the rest are seen when it is expanded
+    private const int MaxHighlights = 4;
+
     public string Version => release.Tag;
     public string Title => release.Name;
     public string Date => release.PublishedAt.UtcDateTime.ToString("yyyy-MM-dd");
     public Uri Url => release.Url;
-    public bool IsExpanded { get; init; }
+    public bool IsLatest { get; init; }
+
+    // Kept by the view, so a release stays open while more are shown below it
+    public bool IsExpanded { get; set; }
+
     public IReadOnlyList<ReleaseNoteSection> Sections { get; } = Parse(release.Markdown);
+
+    /// <summary>The listed changes of all the sections.</summary>
+    public int ChangeCount => Sections.Sum(section => section.ChangeCount);
+
+    public bool HasChanges => ChangeCount > 0;
+
+    /// <summary>The sections a collapsed release shows as chips: those with a heading and changes in them.</summary>
+    public IReadOnlyList<ReleaseNoteSection> Highlights => field ??=
+        Sections.Where(section => section.HasHeading && section.HasChanges).Take(MaxHighlights).ToArray();
+
+    public bool HasHighlights => Highlights.Count > 0;
 
     private static IReadOnlyList<ReleaseNoteSection> Parse(string markdown)
     {
@@ -96,6 +114,8 @@ public sealed record ReleaseNoteSection(string Heading, string Body, string Mark
         }
     }
 
+    public int ChangeCount => Blocks.Count(block => block.IsListItem);
+    public bool HasChanges => ChangeCount > 0;
     public bool HasHeading => Heading.Length > 0;
     public bool HasBody => Body.Length > 0;
 }

@@ -20,7 +20,10 @@ public enum GlobalHotKeysBackend
     XInput,
 
     /// <summary>A low level keyboard hook of Windows.</summary>
-    WindowsHook
+    WindowsHook,
+
+    /// <summary>A listening event tap of macOS, allowed under Input Monitoring.</summary>
+    MacEventTap
 }
 
 /// <summary>

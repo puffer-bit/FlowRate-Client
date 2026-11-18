@@ -47,6 +47,7 @@ internal sealed partial class PushReplyHttpTransport : IPushReplyTransport
         using var handler = new SocketsHttpHandler
         {
             ConnectTimeout = Timeout,
+            Proxy = WebSocketRouteProxy.Instance,
             SslOptions =
             {
                 RemoteCertificateValidationCallback = (_, certificate, _, errors) =>

@@ -194,7 +194,7 @@ function ConvertTo-MtreeName([string]$value) {
 }
 
 # Linux binaries (the executable, createdump, gst-plugin-scanner, shared objects) start with the ELF
-# magic; the file extension says nothing, "Client.Avalonia.Desktop" has ".Desktop" as one
+# magic; the file extension says nothing: the executable has none
 function Test-ElfFile([string]$path) {
     $stream = [System.IO.File]::OpenRead($path)
     try {
@@ -299,7 +299,7 @@ function New-Release([string]$rid, [string]$publishDir) {
     New-Item -ItemType Directory -Force -Path $output, $last | Out-Null
     # Packed here for Linux: vpk builds the AppImage on Windows as well
     $directive = if ($os -eq "linux") { @("[linux]") } else { @() }
-    $exe = if ($os -eq "linux") { "Client.Avalonia.Desktop" } else { "Client.Avalonia.Desktop.exe" }
+    $exe = if ($os -eq "linux") { "FlowRate" } else { "FlowRate.exe" }
     $packIcon = $icon
     if ($os -eq "linux") {
         $packIcon = Join-Path $publishRoot "icon.png"

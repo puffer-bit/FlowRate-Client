@@ -167,6 +167,15 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     }
 
     /// <summary>
+    /// The system does not let the application capture the screen, so the lists stay empty.
+    /// </summary>
+    public bool IsScreenAccessDenied
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// The heights a large picture can be scaled down to.
     /// </summary>
     public IReadOnlyList<ScreenShareOptionVM> Resolutions { get; }
@@ -405,6 +414,8 @@ public class VideoSourceSelectWindowVM : ReactiveObject
     {
         if (_screenSourceProvider == null)
             return;
+
+        IsScreenAccessDenied = !_screenSourceProvider.RequestAccess();
 
         Windows.Clear();
         Monitors.Clear();

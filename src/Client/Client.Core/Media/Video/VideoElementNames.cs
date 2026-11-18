@@ -22,6 +22,7 @@ public static class VideoElementNames
         _ when element.StartsWith("qsv", StringComparison.Ordinal) => "Intel Quick Sync",
         _ when element.StartsWith("amf", StringComparison.Ordinal) => "AMD AMF",
         _ when element.StartsWith("mf", StringComparison.Ordinal) => "Media Foundation",
+        _ when element.StartsWith("vt", StringComparison.Ordinal) => "VideoToolbox",
         _ when element.StartsWith("openh264", StringComparison.Ordinal) => "OpenH264",
         _ when element.StartsWith("dav1d", StringComparison.Ordinal) => "dav1d",
         _ when element.StartsWith("svtav1", StringComparison.Ordinal) => "SVT-AV1",

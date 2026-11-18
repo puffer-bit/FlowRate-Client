@@ -1900,6 +1900,40 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Apple with a green leaf (macOS settings). Source: Icons/Settings/MacOSIcon.svg -->
+    <DrawingImage x:Key="MacOSIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="#34C759" Geometry="M12.4 6.4 C12.4 4.6 13.6 3.4 15.6 3.3 C15.5 5.2 14.3 6.3 12.4 6.4 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#34C759" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M12 8.2 C10.6 7.2 8.9 7.1 7.6 7.8 C5.5 9 4.7 11.7 5.3 14.4 C6 17.4 7.9 20.5 9.9 20.5 C10.8 20.5 11.2 20.1 12 20.1 C12.8 20.1 13.2 20.5 14.1 20.5 C16.1 20.5 18 17.4 18.7 14.4 C19.3 11.7 18.5 9 16.4 7.8 C15.1 7.1 13.4 7.2 12 8.2 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Phone with a blue island at the top (iPhone settings). Source: Icons/Settings/IPhoneIcon.svg -->
+    <DrawingImage x:Key="IPhoneIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="#0A84FF" Geometry="M10.6 4.9 H13.4 A0.8 0.8 0 0 1 13.4 6.5 H10.6 A0.8 0.8 0 0 1 10.6 4.9 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#0A84FF" Thickness="1" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 2.5 H16 A2.5 2.5 0 0 1 18.5 5 V19 A2.5 2.5 0 0 1 16 21.5 H8 A2.5 2.5 0 0 1 5.5 19 V5 A2.5 2.5 0 0 1 8 2.5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Yellow coin with a rim and a notch (support the project). Source: Icons/Settings/CoinIcon.svg -->
     <DrawingImage x:Key="CoinIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

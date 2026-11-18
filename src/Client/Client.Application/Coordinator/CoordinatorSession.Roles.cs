@@ -31,9 +31,17 @@ public partial class CoordinatorSession
         IReadOnlyList<int> roleIds) =>
         SendAsync(() => _gateway.ReorderRoles(roleIds));
 
-    public Task<RequestResult<IReadOnlyList<int>>> SetUserRole(int userId, int roleId,
-        bool has) =>
-        SendAsync(() => _gateway.SetUserRole(userId, roleId, has));
+    public async Task<RequestResult<IReadOnlyList<int>>> SetUserRole(int userId, int roleId,
+        bool has)
+    {
+        var response = await SendAsync(() => _gateway.SetUserRole(userId, roleId, has));
+
+        // The cached user has the roles it had; it is asked again next time, should its update not come
+        if (response.Result.IsSuccess)
+            _usersDirectory.Invalidate(userId);
+
+        return response;
+    }
 
     /// <summary>Loads the roles on login; without them nothing is allowed, which the server agrees with.</summary>
     private async Task LoadRolesAsync(CancellationToken cancellationToken)

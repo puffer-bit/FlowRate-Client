@@ -107,6 +107,22 @@ and the `windows` folder into Windows Sandbox and run there:
 powershell -ExecutionPolicy Bypass -File verify.ps1 -Bundle <path to win-x64>
 ```
 
+## macOS (osx-arm64)
+
+Collected on macOS from the official GStreamer framework (the runtime `.pkg` of
+gstreamer.freedesktop.org, installed in `/Library/Frameworks/GStreamer.framework`). Nothing is built.
+
+| File | Purpose |
+|---|---|
+| `collect.sh` | copies the plugins listed in `plugins` together with the libraries they link through `@rpath`, keeps only their arm64 code, signs every file ad hoc, collects licenses and checks the bundle in isolation from the installed framework: elements from `required-elements.txt`, every plugin loads from the bundle, no library of the framework is loaded |
+| `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
+| `build-sck.sh` | builds `libflowrate_sck.dylib` from `Native/mac`: screens, windows and the sound of applications captured through ScreenCaptureKit for screen sharing, behind a C interface. The result in `prebuilt/osx-arm64/` is committed and copied next to the executable |
+
+Output: `artifacts/osx-arm64/`. The folders of the plugins and of the scanner are `lib/plugins` and
+`libexec/scanner`, not `gstreamer-1.0` as in the framework: `codesign` takes a folder with an extension
+inside `FlowRate.app` for a nested bundle and refuses to sign the application. Without the collected
+runtime, a macOS build of the client loads the installed framework instead.
+
 ## Publishing the client
 
 `Build/GStreamerRuntime.targets` is imported by `Client.Avalonia.Desktop.csproj` and copies
@@ -141,6 +157,7 @@ nor GStreamer on the target machine.
 ./src/Scripts/bash/publish.sh --target win-x64         # on Linux: Windows build
 ./src/Scripts/bash/publish.sh --target all             # on Linux: both and the Android .apk
 ./src/Scripts/bash/publish.sh --aot                    # on Linux: linux-x64 compiled ahead of time
+./src/Scripts/bash/publish.sh --target osx-arm64       # on macOS: FlowRate.app, .pkg and update packages
 ```
 
 ```powershell

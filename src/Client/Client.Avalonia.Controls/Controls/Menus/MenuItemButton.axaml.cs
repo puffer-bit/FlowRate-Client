@@ -185,14 +185,15 @@ public class MenuItemButton : Button
 
         var keys = new List<string>();
         var modifiers = gesture.KeyModifiers;
+        // Ctrl in a written shortcut is the command key, Cmd on macOS (see CommandModifier)
         if (modifiers.HasFlag(KeyModifiers.Control))
-            keys.Add("Ctrl");
+            keys.Add(OperatingSystem.IsMacOS() ? "Cmd" : "Ctrl");
         if (modifiers.HasFlag(KeyModifiers.Shift))
             keys.Add("Shift");
         if (modifiers.HasFlag(KeyModifiers.Alt))
             keys.Add("Alt");
         if (modifiers.HasFlag(KeyModifiers.Meta))
-            keys.Add(OperatingSystem.IsMacOS() ? "Cmd" : "Win");
+            keys.Add(OperatingSystem.IsMacOS() ? "Ctrl" : "Win");
         if (gesture.Key != Key.None)
             keys.Add(KeyLabel(gesture.Key));
         return keys.Select((label, i) => new GestureKey(label, i == 0)).ToList();

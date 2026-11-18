@@ -1,4 +1,5 @@
 using System.Management;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 
@@ -20,6 +21,7 @@ public partial class GpuInfo
     {
         var gpus = OperatingSystem.IsWindows() ? GetWindowsGpuInfo()
             : OperatingSystem.IsLinux() ? GetLinuxGpuInfo()
+            : OperatingSystem.IsMacOS() ? GetMacGpuInfo()
             : new List<GpuInfo>();
 
         if (gpus.Count == 0)
@@ -102,6 +104,27 @@ public partial class GpuInfo
     }
 
     // The files hold values like "0x10de"
+    // The GPU of Apple silicon is part of the chip, so the chip names it: "Apple M2 Pro"
+    [SupportedOSPlatform("macos")]
+    private static List<GpuInfo> GetMacGpuInfo()
+    {
+        nint size = 0;
+        if (sysctlbyname("machdep.cpu.brand_string", null, ref size, IntPtr.Zero, 0) != 0 || size <= 1)
+            return [];
+
+        var buffer = new byte[size];
+        if (sysctlbyname("machdep.cpu.brand_string", buffer, ref size, IntPtr.Zero, 0) != 0)
+            return [];
+
+        var name = System.Text.Encoding.UTF8.GetString(buffer, 0, (int)size).TrimEnd('\0').Trim();
+        return name.StartsWith("Apple", StringComparison.Ordinal)
+            ? [new GpuInfo { Name = name, Vendor = "Apple" }]
+            : [];
+    }
+
+    [LibraryImport("/usr/lib/libSystem.dylib", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int sysctlbyname(string name, [Out] byte[]? value, ref nint size, IntPtr newValue, nint newSize);
+
     private static string? ReadPciId(string path)
     {
         if (!File.Exists(path))

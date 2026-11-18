@@ -99,6 +99,15 @@ internal sealed partial class TrayService : IDisposable
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
 
+        // A click on the Dock icon brings back the window hidden to the menu bar
+        if (OperatingSystem.IsMacOS() && global::Avalonia.Application.Current?.TryGetFeature(typeof(IActivatableLifetime))
+                is IActivatableLifetime activatable)
+            activatable.Activated += (_, args) =>
+            {
+                if (args.Kind == ActivationKind.Reopen)
+                    ShowWindow();
+            };
+
         if (OperatingSystem.IsWindows())
             _trayMenuSubscription = Window.WindowOpenedEvent.AddClassHandler<Window>(OnTrayMenuOpened);
 
@@ -218,7 +227,7 @@ internal sealed partial class TrayService : IDisposable
 
     public void HideToTray()
     {
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
         {
             _window.Hide();
         }
@@ -233,7 +242,7 @@ internal sealed partial class TrayService : IDisposable
 
     public void ShowWindow()
     {
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
             _window.Show();
 
         _window.ShowInTaskbar = true;

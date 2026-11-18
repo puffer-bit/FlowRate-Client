@@ -14,6 +14,10 @@ public interface INativeEnvironment
         {
             LinuxEnvironment.SetVariable(name, value);
         }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            MacEnvironment.SetVariable(name, value);
+        }
         else
         {
             throw new PlatformNotSupportedException("Failed to find native environment implementation");

@@ -109,7 +109,6 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
                     return null;
                 });
                 _outputBinding = VoicePlaybackSink.BindDevice(_pipeline);
-                VoicePlaybackSink.SetMuted(_pipeline, false);
                 _bus = new GstBusWatcher(_pipeline.GetBus(),
                     MessageType.Element | MessageType.Error | MessageType.Warning | MessageType.Latency,
                     OnMessage, "native audio", logger);
@@ -136,10 +135,9 @@ public sealed class GstVoiceAudioDevice(GstAudioDeviceProvider devices, ILogger<
             if (pipeline != null)
             {
                 pipeline.RecalculateLatency();
-                using var output = pipeline.GetByName(VoicePlaybackSink.ElementName);
-                using var factory = output?.GetFactory();
+                // Not looked up by name: the device binding owns the wrapper of the sink
                 logger.LogDebug("Audio output latency {LatencyMs} ms (sink: {Sink})",
-                    pipeline.GetConfiguredLatency().TotalMilliseconds, factory?.GetName());
+                    pipeline.GetConfiguredLatency().TotalMilliseconds, VoicePlaybackSink.Description);
             }
         }
         else if (message.Type == MessageType.Element)

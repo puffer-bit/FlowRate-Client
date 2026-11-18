@@ -11,7 +11,7 @@ public class GitHubReleaseNotesSourceTests
     private static object Release(int day, bool dev = false, bool draft = false) => new
     {
         tag_name = $"v1.0.{day}", name = $"Version {day}", body = "## Fixes\n- Voice", prerelease = dev, draft,
-        published_at = $"2026-10-{day:00}T12:00:00Z", html_url = $"https://github.com/puffer-bit/FlowRate-Client/releases/tag/v1.0.{day}"
+        published_at = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero).AddHours(day).ToString("O"), html_url = $"https://github.com/puffer-bit/FlowRate-Client/releases/tag/v1.0.{day}"
     };
 
     private static HttpResponseMessage Page(params object[] releases) => new(HttpStatusCode.OK)
@@ -22,19 +22,19 @@ public class GitHubReleaseNotesSourceTests
     [Theory]
     [InlineData(UpdateChannel.Release)]
     [InlineData(UpdateChannel.Dev)]
-    public async Task FiltersChannelAndDraftsOrdersByPublishedDateAndLimitsToSix(UpdateChannel channel)
+    public async Task FiltersChannelAndDraftsOrdersByPublishedDateAndLimitsCount(UpdateChannel channel)
     {
         using var source = new GitHubReleaseNotesSource(new HttpClient(new Handler(request =>
         {
             Assert.Equal("api.github.com", request.RequestUri!.Host);
             Assert.NotEmpty(request.Headers.UserAgent);
-            return Page(Enumerable.Range(1, 9).Select(day => Release(day, channel == UpdateChannel.Dev))
-                .Append(Release(30, channel != UpdateChannel.Dev)).Append(Release(31, channel == UpdateChannel.Dev, true)).ToArray());
+            return Page(Enumerable.Range(1, 60).Select(day => Release(day, channel == UpdateChannel.Dev))
+                .Append(Release(70, channel != UpdateChannel.Dev)).Append(Release(71, channel == UpdateChannel.Dev, true)).ToArray());
         })));
         var notes = await source.GetAsync(channel, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(6, notes.Count);
-        Assert.Equal("v1.0.9", notes[0].Tag);
-        Assert.Equal("v1.0.4", notes[^1].Tag);
+        Assert.Equal(GitHubReleaseNotesSource.MaxReleases, notes.Count);
+        Assert.Equal("v1.0.60", notes[0].Tag);
+        Assert.Equal("v1.0.11", notes[^1].Tag);
     }
 
     [Fact]

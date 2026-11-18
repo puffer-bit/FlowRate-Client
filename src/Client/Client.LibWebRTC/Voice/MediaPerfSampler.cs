@@ -141,10 +141,21 @@ internal sealed class MediaPerfSampler
         private double? AverageMs(StatsEntry entry, string total, string count) =>
             Delta(entry, count) is > 0 and var counted ? Delta(entry, total) / counted * 1000 : null;
 
+        // packetsLost is the expected packets minus the received ones, so it goes back whenever a packet
+        // counted as lost arrives late or is resent. Only packetsReceived going back means the stream
+        // restarted; packetsLost going back alone means no loss in the window, not a restart, or the
+        // whole total of the stream would count as lost in one window.
         private double LossPercent(StatsEntry entry)
         {
-            var received = Delta(entry, "packetsReceived");
-            var lost = Math.Max(0, Delta(entry, "packetsLost"));
+            var nowReceived = entry.Number("packetsReceived") ?? 0;
+            var nowLost = entry.Number("packetsLost") ?? 0;
+            var last = previous.GetValueOrDefault(entry.Id);
+            var beforeReceived = last?.Number("packetsReceived") ?? 0;
+            var beforeLost = last?.Number("packetsLost") ?? 0;
+
+            var restarted = nowReceived < beforeReceived;
+            var received = restarted ? nowReceived : nowReceived - beforeReceived;
+            var lost = Math.Max(0, restarted ? nowLost : nowLost - beforeLost);
 
             return received + lost > 0 ? 100 * lost / (received + lost) : 0;
         }

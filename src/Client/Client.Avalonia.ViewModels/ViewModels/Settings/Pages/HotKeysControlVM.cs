@@ -49,6 +49,12 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
     public bool IsWayland { get; } = OperatingSystem.IsLinux()
                                      && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
 
+    /// <summary>
+    /// macOS lets an application hear other applications only under Input Monitoring; the hint says
+    /// where to allow it. Shown always there, whether the keys are heard or not.
+    /// </summary>
+    public bool IsMacOS { get; } = OperatingSystem.IsMacOS();
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IHotKeysService _hotKeysService;

@@ -144,7 +144,7 @@ The desktop data directory contains `client.db`, logs, media cache, sound packs,
 Choose another directory with `--data-dir`:
 
 ```powershell
-.\Client.Avalonia.Desktop.exe --data-dir "D:\FlowRateData"
+.\FlowRate.exe --data-dir "D:\FlowRateData"
 ```
 
 Relative paths resolve against the working directory. Missing directories are created, and startup checks that the directory is writable. An invalid or unwritable path stops startup with exit code `1`.
@@ -184,11 +184,11 @@ For independent test clients, give each process a separate `--data-dir`. Allowin
 Value options also accept `--name=value`. Options can be combined. Run the examples below from the extracted application directory:
 
 ```powershell
-.\Client.Avalonia.Desktop.exe --safe-mode --lang en --log-level debug
+.\FlowRate.exe --safe-mode --lang en --log-level debug
 ```
 
 ```bash
-./Client.Avalonia.Desktop --no-auto-connect --software-rendering
+./FlowRate --no-auto-connect --software-rendering
 ```
 
 Unknown arguments, repeated options, and invalid or missing values stop startup with exit code `1`. Overrides do not overwrite saved preferences. An application-triggered restart after an update preserves launch options and the absolute data path.

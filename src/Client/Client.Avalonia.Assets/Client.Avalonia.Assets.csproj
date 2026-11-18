@@ -23,6 +23,8 @@
       <!-- Only the icons the client shows; the rest of the kits stay in the repository for packaging and design -->
       <AvaloniaResource Include="AppIcons\Headphones\flowrate.ico" />
       <AvaloniaResource Include="AppIcons\Headphones\png\tray-purple-48.png" />
+      <!-- The macOS Dock icon -->
+      <AvaloniaResource Include="AppIcons\Headphones\png\app-icon-512.png" />
     </ItemGroup>
     
     <ItemGroup>

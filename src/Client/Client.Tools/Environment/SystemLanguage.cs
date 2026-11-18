@@ -20,6 +20,10 @@ public static partial class SystemLanguage
             return length > 1 ? ParseLocale(new string(buffer, 0, length - 1)) : null;
         }
 
+        // An application started from Finder or the Dock gets no locale variables at all
+        if (OperatingSystem.IsMacOS() && GetMacPreferredLanguage() is { } preferred)
+            return preferred;
+
         // The order gettext looks the variables up in
         foreach (var variable in (string[])["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"])
         {
@@ -54,6 +58,50 @@ public static partial class SystemLanguage
 
         return language;
     }
+
+    /// <returns>The first language of System Settings → Language &amp; Region, "ru-RU" giving "ru".</returns>
+    private static string? GetMacPreferredLanguage()
+    {
+        var languages = CFLocaleCopyPreferredLanguages();
+        if (languages == IntPtr.Zero)
+            return null;
+
+        try
+        {
+            if (CFArrayGetCount(languages) == 0)
+                return null;
+
+            // Owned by the array, not released here
+            var first = CFArrayGetValueAtIndex(languages, 0);
+            var buffer = new byte[64];
+            return CFStringGetCString(first, buffer, buffer.Length, CFStringEncodingUtf8)
+                ? ParseLocale(System.Text.Encoding.UTF8.GetString(buffer, 0, Array.IndexOf(buffer, (byte)0)))
+                : null;
+        }
+        finally
+        {
+            CFRelease(languages);
+        }
+    }
+
+    private const string CoreFoundation = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
+    private const uint CFStringEncodingUtf8 = 0x08000100;
+
+    [LibraryImport(CoreFoundation)]
+    private static partial IntPtr CFLocaleCopyPreferredLanguages();
+
+    [LibraryImport(CoreFoundation)]
+    private static partial nint CFArrayGetCount(IntPtr array);
+
+    [LibraryImport(CoreFoundation)]
+    private static partial IntPtr CFArrayGetValueAtIndex(IntPtr array, nint index);
+
+    [LibraryImport(CoreFoundation)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    private static partial bool CFStringGetCString(IntPtr text, [Out] byte[] buffer, nint size, uint encoding);
+
+    [LibraryImport(CoreFoundation)]
+    private static partial void CFRelease(IntPtr value);
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     private static partial int GetUserDefaultLocaleName([Out] char[] localeName, int size);

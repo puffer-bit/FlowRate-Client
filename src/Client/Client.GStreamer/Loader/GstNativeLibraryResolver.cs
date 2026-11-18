@@ -13,6 +13,8 @@ namespace Client.GStreamer.Loader;
 /// both systems: libraries in bin (Windows) or lib (Linux), plugins in lib/gstreamer-1.0 and the plugin
 /// scanner in libexec/gstreamer-1.0. Every configuration, Debug included, uses only this runtime and
 /// never an installed one. Only the test bot asks for the installed runtime instead.
+/// macOS has no shipped runtime yet: there the official GStreamer.framework is used when none is
+/// next to the application. Its libraries find each other and their plugins relative to themselves.
 /// </summary>
 public static partial class GstNativeLibraryResolver
 {
@@ -20,11 +22,13 @@ public static partial class GstNativeLibraryResolver
 
     private const string WindowsCoreLibrary = "gstreamer-1.0-0.dll";
     private const string LinuxCoreLibrary = "libgstreamer-1.0.so.0";
+    private const string MacCoreLibrary = "libgstreamer-1.0.0.dylib";
 
     // Set by the official MSVC runtime installer
     private const string WindowsRootVariable = "GSTREAMER_1_0_ROOT_MSVC_X86_64";
     private const string WindowsDefaultRoot = @"C:\Program Files\gstreamer\1.0\msvc_x86_64";
     private const string LinuxSystemLibraryDirectory = "/usr/lib/x86_64-linux-gnu";
+    private const string MacFrameworkLibraryDirectory = "/Library/Frameworks/GStreamer.framework/Versions/1.0/lib";
 
     private static int _registered;
 
@@ -54,14 +58,21 @@ public static partial class GstNativeLibraryResolver
         if (Interlocked.Exchange(ref _registered, 1) == 1)
             return;
 
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
+
+        if (!useInstalledRuntime)
+            FindBundledRuntime();
+
+        // A macOS build without the collected runtime (Build/mac/collect.sh) takes the installed framework
+        if (LibraryDirectory == null && OperatingSystem.IsMacOS())
+            useInstalledRuntime = true;
 
         UsesInstalledRuntime = useInstalledRuntime;
         if (useInstalledRuntime)
-            LibraryDirectory = OperatingSystem.IsWindows() ? FindInstalledWindowsRuntime() : FindSystemLinuxRuntime();
-        else
-            FindBundledRuntime();
+            LibraryDirectory = OperatingSystem.IsWindows() ? FindInstalledWindowsRuntime()
+                : OperatingSystem.IsMacOS() ? FindMacFramework()
+                : FindSystemLinuxRuntime();
 
         if (LibraryDirectory == null)
             return;
@@ -88,7 +99,9 @@ public static partial class GstNativeLibraryResolver
         }
     }
 
-    private static string CoreLibrary => OperatingSystem.IsWindows() ? WindowsCoreLibrary : LinuxCoreLibrary;
+    private static string CoreLibrary => OperatingSystem.IsWindows() ? WindowsCoreLibrary
+        : OperatingSystem.IsMacOS() ? MacCoreLibrary
+        : LinuxCoreLibrary;
 
     private static string? FindInstalledWindowsRuntime()
     {
@@ -110,9 +123,12 @@ public static partial class GstNativeLibraryResolver
     private static string? FindSystemLinuxRuntime() =>
         File.Exists(Path.Combine(LinuxSystemLibraryDirectory, LinuxCoreLibrary)) ? LinuxSystemLibraryDirectory : null;
 
+    private static string? FindMacFramework() =>
+        File.Exists(Path.Combine(MacFrameworkLibraryDirectory, MacCoreLibrary)) ? MacFrameworkLibraryDirectory : null;
+
     private static IntPtr Resolve(string libraryName)
     {
-        var fileName = OperatingSystem.IsWindows() ? libraryName : ToLinuxName(libraryName);
+        var fileName = OperatingSystem.IsWindows() ? libraryName : ToUnixName(libraryName);
         if (fileName == null || LibraryDirectory == null)
             return IntPtr.Zero;
 
@@ -121,12 +137,17 @@ public static partial class GstNativeLibraryResolver
     }
 
     /// <summary>
-    /// Maps a Windows name like gstvideo-1.0-0.dll to its shared object libgstvideo-1.0.so.0.
+    /// Maps a Windows name like gstvideo-1.0-0.dll to its shared object libgstvideo-1.0.so.0, or to
+    /// libgstvideo-1.0.0.dylib on macOS.
     /// </summary>
-    private static string? ToLinuxName(string libraryName)
+    private static string? ToUnixName(string libraryName)
     {
         var match = WindowsLibraryName().Match(libraryName);
-        return match.Success ? $"lib{match.Groups["name"].Value}-{match.Groups["api"].Value}.so.0" : null;
+        if (!match.Success)
+            return null;
+
+        var name = $"lib{match.Groups["name"].Value}-{match.Groups["api"].Value}";
+        return OperatingSystem.IsMacOS() ? name + ".0.dylib" : name + ".so.0";
     }
 
     [GeneratedRegex(@"^(?<name>[a-z0-9]+)-(?<api>\d+\.\d+)-0\.dll$")]

@@ -16,11 +16,13 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
 {
     
     // Properties that stay the same across reboots and replugging, in order of preference:
-    // PipeWire node name, WASAPI endpoint id, PulseAudio/ALSA names. The order matters: PipeWire
-    // also sets "device.id", but there it is a runtime object number that changes between runs.
+    // PipeWire node name, WASAPI endpoint id, PulseAudio/ALSA names, CoreAudio unique id. The order
+    // matters: PipeWire also sets "device.id", but there it is a runtime object number that changes
+    // between runs.
     private static readonly string[] StableIdProperties =
     [
         "node.name",
+        "unique-id",
         "device.id",
         "device.strid",
         "device.name",
@@ -96,7 +98,8 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             var device = devices.FirstOrDefault(d => GetStableId(d) == _outputId)
                 ?? devices.FirstOrDefault(d => d.DisplayName == _outputName);
             using var properties = device?.GetProperties();
-            var target = OperatingSystem.IsWindows() ? device == null ? null : GetStableId(device)
+            // osxaudiosink is routed by the CoreAudio unique id, which is the stable id there
+            var target = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? device == null ? null : GetStableId(device)
                 : properties?.GetString("node.name") ?? properties?.GetString("device.name");
             VoicePlaybackSink.SelectDevice(target);
         }
@@ -171,6 +174,9 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             }
 
             LogDevicesRefreshed(string.Join(", ", _inputDevices.Select(d => d.Name)));
+            
+            // On the thread pool an exception would end the process, a device change must not
+            ApplyOutputDevice();
         }
         catch (Exception exception)
         {
@@ -178,7 +184,6 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             return;
         }
         
-        ApplyOutputDevice();
         InputDevicesChanged?.Invoke();
         OutputDevicesChanged?.Invoke();
     }

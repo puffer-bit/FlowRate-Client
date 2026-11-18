@@ -9,6 +9,9 @@ namespace Client.Infrastructure.Updates;
 
 public sealed class GitHubReleaseNotesSource : IReleaseNotesSource, IDisposable
 {
+    // Enough for the history of a busy development channel, which publishes a build a day or more
+    public const int MaxReleases = 50;
+
     private readonly HttpClient _client;
     private readonly Dictionary<UpdateChannel, (DateTimeOffset Time, IReadOnlyList<PublishedRelease> Releases)> _cache = [];
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -29,7 +32,7 @@ public sealed class GitHubReleaseNotesSource : IReleaseNotesSource, IDisposable
             var releases = new List<PublishedRelease>();
             var repository = new Uri(AppInformation.RepositoryUrl).AbsolutePath;
             string? next = $"https://api.github.com/repos{repository}/releases?per_page=100";
-            while (next != null && releases.Count < 6)
+            while (next != null && releases.Count < MaxReleases)
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, next);
                 request.Headers.UserAgent.ParseAdd("FlowRate/1.0");
@@ -55,7 +58,7 @@ public sealed class GitHubReleaseNotesSource : IReleaseNotesSource, IDisposable
                 next = NextPage(response);
             }
 
-            var result = releases.OrderByDescending(release => release.PublishedAt).Take(6).ToArray();
+            var result = releases.OrderByDescending(release => release.PublishedAt).Take(MaxReleases).ToArray();
             _cache[channel] = (DateTimeOffset.UtcNow, result);
             return result;
         }

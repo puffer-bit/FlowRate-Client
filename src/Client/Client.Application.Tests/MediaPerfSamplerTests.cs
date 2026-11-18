@@ -87,6 +87,34 @@ public class MediaPerfSamplerTests
     }
 
     [Fact]
+    public void LostPacketsThatArrivedLateAreNoLoss()
+    {
+        var sampler = new MediaPerfSampler();
+        sampler.Read(WithLoss(received: 576_000, lost: 5285), NoCodecs);
+        Thread.Sleep(5);
+
+        // Resent and late packets brought the total of lost ones back down while 3400 more arrived
+        var receive = sampler.Read(WithLoss(received: 579_400, lost: 5264), NoCodecs)!
+            .Find(Screen.UserId, MediaSourceType.Screen)!.Receive!;
+
+        Assert.Equal(0, receive.LossPercent, 3);
+        Assert.Equal(3400, receive.Packets);
+    }
+
+    [Fact]
+    public void LossOfARestartedStreamCountsFromZero()
+    {
+        var sampler = new MediaPerfSampler();
+        sampler.Read(WithLoss(received: 576_000, lost: 5285), NoCodecs);
+        Thread.Sleep(5);
+
+        var receive = sampler.Read(WithLoss(received: 90, lost: 10), NoCodecs)!
+            .Find(Screen.UserId, MediaSourceType.Screen)!.Receive!;
+
+        Assert.Equal(10, receive.LossPercent, 3);
+    }
+
+    [Fact]
     public void DecoderOfLibWebRTCIsReported()
     {
         var sampler = new MediaPerfSampler();
@@ -123,6 +151,14 @@ public class MediaPerfSamplerTests
             new() { ["localCandidateId"] = "L", ["remoteCandidateId"] = "R" }),
         Entry("local-candidate", "L", [], new() { ["protocol"] = "tcp", ["candidateType"] = "relay" }),
         Entry("remote-candidate", "R", [], new() { ["protocol"] = "udp", ["candidateType"] = "host" })
+    ];
+
+    private static List<StatsEntry> WithLoss(double received, double lost) =>
+    [
+        Entry("inbound-rtp", "IT", new()
+        {
+            ["ssrc"] = ScreenSsrc, ["packetsReceived"] = received, ["packetsLost"] = lost
+        }, new() { ["kind"] = "video" })
     ];
 
     private static StatsEntry Entry(string type, string id, Dictionary<string, double> numbers,

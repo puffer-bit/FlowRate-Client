@@ -63,17 +63,40 @@ public class ReleaseNotesTests
     }
 
     [Fact]
-    public async Task ShowsOnlySixNewestAndExpandsFirstCard()
+    public async Task ShowsNewestPageFirstAndMoreOnRequestKeepingWhatIsOpen()
     {
         using var vm = new ReleaseHistoryVM(new Source((_, _, _) => Task.FromResult<IReadOnlyList<PublishedRelease>>(
-            Enumerable.Range(1, 9).Select(day => Release(day)).ToArray())));
+            Enumerable.Range(1, 25).Select(day => Release(day)).ToArray())));
         await vm.EnsureLoadedAsync();
-        Assert.Equal(6, vm.Releases.Count);
-        Assert.Equal("v1.0.9", vm.Releases[0].Version);
+        Assert.Equal(ReleaseHistoryVM.PageSize, vm.Releases.Count);
+        Assert.Equal(15, vm.HiddenCount);
+        Assert.True(vm.HasMore);
+        Assert.Equal("v1.0.25", vm.Releases[0].Version);
+        Assert.True(vm.Releases[0].IsLatest);
         Assert.True(vm.Releases[0].IsExpanded);
-        Assert.All(vm.Releases.Skip(1), note => Assert.False(note.IsExpanded));
+        Assert.All(vm.Releases.Skip(1), note => Assert.False(note.IsExpanded || note.IsLatest));
         Assert.False(vm.IsLoading);
         Assert.False(vm.HasError);
+
+        var opened = vm.Releases[3];
+        opened.IsExpanded = true;
+        vm.ShowMore();
+        Assert.Equal(20, vm.Releases.Count);
+        Assert.Same(opened, vm.Releases[3]);
+        Assert.True(opened.IsExpanded);
+        vm.ShowMore();
+        Assert.Equal(25, vm.Releases.Count);
+        Assert.Equal("v1.0.1", vm.Releases[^1].Version);
+        Assert.False(vm.HasMore);
+    }
+
+    [Fact]
+    public void CountsListedChangesAndNamesHeadedSectionsAsHighlights()
+    {
+        var note = new ReleaseNote(Release(1, "Intro line\n\n## Chats\n- One\n- Two\n\n## Notes\nJust text\n\n## Fixes\n1. Three\n\n## A\n- a\n## B\n- b\n## C\n- c"));
+        Assert.Equal(6, note.ChangeCount);
+        Assert.Equal(new[] { "Chats", "Fixes", "A", "B" }, note.Highlights.Select(section => section.Heading));
+        Assert.Equal(new[] { 2, 1, 1, 1 }, note.Highlights.Select(section => section.ChangeCount));
     }
 
     [Fact]

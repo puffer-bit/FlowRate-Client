@@ -19,9 +19,13 @@ public sealed record VideoCodecPipeline(string Caps, string? Parser, string? Enc
     };
 
     // The SFU announces constrained baseline; parameter sets accompany every keyframe for late viewers.
+    // VideoToolbox names no constrained baseline, only a baseline that uses none of what the
+    // constrained one leaves out, so on macOS it is taken where the encoder offers nothing else
     private static readonly VideoCodecPipeline H264 = new(
         "video/x-h264,stream-format=byte-stream,alignment=au", "h264parse config-interval=-1",
-        "video/x-h264,profile=constrained-baseline");
+        OperatingSystem.IsMacOS()
+            ? "video/x-h264,profile=(string){constrained-baseline,baseline}"
+            : "video/x-h264,profile=constrained-baseline");
     private static readonly VideoCodecPipeline Vp8 = new("video/x-vp8", null);
     private static readonly VideoCodecPipeline Av1 = new(
         "video/x-av1,parsed=true,stream-format=obu-stream,alignment=tu", "av1parse");

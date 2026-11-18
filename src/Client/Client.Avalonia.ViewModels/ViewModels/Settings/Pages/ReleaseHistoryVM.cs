@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Net.Http;
@@ -15,7 +16,12 @@ namespace Client.ViewModels.Settings.Pages;
 
 public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
 {
+    // Shown at first and added by each Show more: a page that opens fast and still reaches far back
+    public const int PageSize = 10;
+
     private readonly IReleaseNotesSource _source;
+    private readonly ObservableCollection<ReleaseNote> _shown = [];
+    private IReadOnlyList<ReleaseNote> _all = [];
     private readonly BehaviorControlVM? _updatePreferences;
     private bool _activated;
     private CancellationTokenSource? _request;
@@ -43,11 +49,23 @@ public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
         set { if (value is 0 or 1) IsDev = value == 1; }
     }
 
-    public IReadOnlyList<ReleaseNote> Releases
+    /// <summary>The newest releases, a page more after each <see cref="ShowMoreCommand"/>.</summary>
+    public IReadOnlyList<ReleaseNote> Releases => _shown;
+
+    /// <summary>Releases loaded but not shown yet.</summary>
+    public int HiddenCount
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+        private set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasMore));
+        }
+    }
+
+    public bool HasMore => HiddenCount > 0;
 
     public bool IsLoading
     {
@@ -69,6 +87,8 @@ public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
 
     public ReactiveCommand<RxVoid, RxVoid> RefreshCommand { get; }
 
+    public ReactiveCommand<RxVoid, RxVoid> ShowMoreCommand { get; }
+
     public ReleaseHistoryVM(IReleaseNotesSource source, BehaviorControlVM? updatePreferences = null)
     {
         _source = source;
@@ -79,6 +99,22 @@ public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
             _updatePreferences.PropertyChanged += OnUpdatePreferencesChanged;
         }
         RefreshCommand = ReactiveCommand.CreateFromTask(ReloadAsync);
+        ShowMoreCommand = ReactiveCommand.Create(ShowMore);
+    }
+
+    public void ShowMore()
+    {
+        // Added to the end, so the releases already shown keep their views and what is expanded in them
+        foreach (var release in _all.Skip(_shown.Count).Take(PageSize))
+            _shown.Add(release);
+        HiddenCount = _all.Count - _shown.Count;
+    }
+
+    private void Show(IReadOnlyList<ReleaseNote> releases)
+    {
+        _all = releases;
+        _shown.Clear();
+        ShowMore();
     }
 
     private void OnUpdatePreferencesChanged(object? sender, PropertyChangedEventArgs e)
@@ -109,16 +145,17 @@ public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
         IsLoading = true;
         HasError = false;
         IsEmpty = false;
-        Releases = [];
+        Show([]);
         try
         {
             var releases = await _source.GetAsync(IsDev ? UpdateChannel.Dev : UpdateChannel.Release, forceRefresh, request.Token);
             if (request.IsCancellationRequested)
                 return;
-            Releases = releases.OrderByDescending(release => release.PublishedAt).Take(6)
-                .Select((release, index) => new ReleaseNote(release) { IsExpanded = index == 0 }).ToArray();
+            Show(releases.OrderByDescending(release => release.PublishedAt)
+                .Select((release, index) => new ReleaseNote(release) { IsLatest = index == 0, IsExpanded = index == 0 })
+                .ToArray());
             _loaded = true;
-            IsEmpty = Releases.Count == 0;
+            IsEmpty = _all.Count == 0;
         }
         catch (OperationCanceledException) when (request.IsCancellationRequested) { }
         catch (Exception e) when (e is HttpRequestException or OperationCanceledException or JsonException or InvalidOperationException or FormatException)
@@ -143,5 +180,6 @@ public sealed class ReleaseHistoryVM : ReactiveObject, IDisposable
             _updatePreferences.PropertyChanged -= OnUpdatePreferencesChanged;
         _request?.Cancel();
         RefreshCommand.Dispose();
+        ShowMoreCommand.Dispose();
     }
 }
