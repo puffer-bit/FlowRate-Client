@@ -121,7 +121,7 @@
 
                 <!-- The preview of the first link, put into the message by the server a moment after it -->
                 <ContentControl Content="{Binding LinkPreview}" IsVisible="{Binding HasLinkPreview}"
-                                HorizontalAlignment="Left">
+                                HorizontalAlignment="Left" HorizontalContentAlignment="Left">
                     <ContentControl.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
                             <sharedChat:ChatLinkPreviewCard/>

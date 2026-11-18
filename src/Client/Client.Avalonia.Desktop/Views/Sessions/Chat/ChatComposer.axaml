@@ -48,7 +48,7 @@
                         <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
                                VerticalAlignment="Center" Opacity="0.8"
                                Source="{StaticResource FormatLinkIcon}"/>
-                        <ContentControl Grid.Column="1" Content="{Binding ComposerLinkPreview}"
+                        <ContentControl Grid.Column="1" Content="{Binding ComposerLinkPreview}" HorizontalAlignment="Left" HorizontalContentAlignment="Left"
                                         IsVisible="{Binding ComposerLinkPreview, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <ContentControl.ContentTemplate>
                                 <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
@@ -56,7 +56,7 @@
                                 </DataTemplate>
                             </ContentControl.ContentTemplate>
                         </ContentControl>
-                        <Border Grid.Column="1" Classes="msg-link" HorizontalAlignment="Stretch"
+                        <Border Grid.Column="1" Classes="msg-link" HorizontalAlignment="Left"
                                 IsVisible="{Binding IsLinkPreviewLoading}">
                             <StackPanel Spacing="1">
                                 <TextBlock Classes="msg-link-site" Text="{Binding LinkPreviewLoadingHost}"/>

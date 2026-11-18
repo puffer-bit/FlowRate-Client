@@ -266,6 +266,10 @@
     <Style Selector=":is(UserControl).openable Border.msg-link:pointerover">
         <Setter Property="Background" Value="{DynamicResource MsgReplyHoverBrush}"/>
     </Style>
+    <Style Selector="TextBlock.msg-link-site, TextBlock.msg-link-title, TextBlock.msg-link-description">
+        <Setter Property="TextAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
     <Style Selector="TextBlock.msg-link-site">
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
