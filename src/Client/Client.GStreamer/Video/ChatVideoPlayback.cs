@@ -18,23 +18,41 @@ public sealed class ChatVideoPlayback : IDisposable
     private readonly VideoFramePump _pump;
     private bool _disposed;
 
-    public ChatVideoPlayback(string path, Action<RawVideoFrame> onFrame, double volume = 1)
+    // A position to go to once the stream knows its duration, for a pipeline rebuilt mid-playback
+    private double _pendingSeek;
+
+    /// <summary>
+    /// The frames are YUV planes as decoded, uploaded and converted by the OpenGL presenter;
+    /// otherwise BGRA converted on the CPU.
+    /// </summary>
+    public bool DeliversYuv { get; }
+
+    /// <param name="startAt">Seconds to start from; the picture starts paused there unless <paramref name="play"/>.</param>
+    public ChatVideoPlayback(string path, Action<RawVideoFrame> onFrame, double volume = 1, double startAt = 0,
+        bool play = true)
     {
+        DeliversYuv = VideoSurfaceSupport.Supports(VideoSurfaceKinds.YuvMemory);
         _pipeline = (Pipeline)Global.ParseLaunch("playbin");
+        // Decoders output NV12 or I420 anyway, so videoconvert passes them through and only converts
+        // other formats (10-bit, 4:4:4). qos lets a decoder that falls behind skip late frames.
+        var caps = DeliversYuv ? "video/x-raw,format=(string){NV12,I420}" : VideoFramePump.FrameCaps;
         using var output = Global.ParseBinFromDescription(
-            "videoconvert ! video/x-raw,format=BGRA ! " +
-            "appsink name=frames max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=true", true);
+            $"videoconvert n-threads=0 ! {caps} ! " +
+            "appsink name=frames max-buffers=1 drop=true enable-last-sample=false wait-on-eos=false sync=true qos=true",
+            true);
         _pipeline.SetProperty("video-sink", output);
         // The pump owns the sink wrapper until it stops.
         var sink = output.GetByName("frames")!;
-        _pump = new VideoFramePump(sink, VideoOutputKind.Memory, "chat_video", onFrame,
-            exception => Interlocked.Exchange(ref _frameError, exception));
+        _pump = new VideoFramePump(sink, DeliversYuv ? VideoOutputKind.MemoryYuv : VideoOutputKind.Memory, "chat_video",
+            onFrame, exception => Interlocked.Exchange(ref _frameError, exception));
         _bus = _pipeline.GetBus();
         try
         {
             _pipeline.SetProperty("uri", new System.Uri(Path.GetFullPath(path)).AbsoluteUri);
             SetVolume(volume);
-            SetPlaying(true);
+            _pendingSeek = startAt;
+            Position = startAt;
+            SetPlaying(play);
         }
         catch
         {
@@ -86,6 +104,15 @@ public sealed class ChatVideoPlayback : IDisposable
         }
         if (_pipeline.QueryDuration(Format.Time, out var duration) && duration > 0)
             Duration = duration / 1_000_000_000d;
+        if (_pendingSeek > 0 && Duration > 0)
+        {
+            var target = _pendingSeek;
+            _pendingSeek = 0;
+            Seek(target);
+            return;
+        }
+        if (_pendingSeek > 0)
+            return;
         if (_pipeline.QueryPosition(Format.Time, out var position) && position >= 0)
             Position = position / 1_000_000_000d;
         if (message?.Type == MessageType.Eos)

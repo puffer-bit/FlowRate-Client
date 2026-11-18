@@ -36,17 +36,31 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
 
     public event Action<RawVideoFrame>? FrameReady;
     private readonly object _frameLock = new();
+    // The last picture, for redisplay after the presenter moves: a reference to a YUV frame, or a copy of BGRA pixels
+    private GpuVideoFrame? _lastGpu;
     private byte[]? _lastPixels;
     private RawVideoFrame _lastFrame;
+    private string? _path;
 
     private void DeliverFrame(RawVideoFrame frame)
     {
         lock (_frameLock)
         {
-            var length = checked(frame.Stride * frame.Height);
-            if (_lastPixels?.Length != length)
-                _lastPixels = new byte[length];
-            Marshal.Copy(frame.DataPtr, _lastPixels, 0, length);
+            if (frame.Gpu != null)
+            {
+                _lastGpu?.Dispose();
+                _lastGpu = frame.Gpu.Retain();
+                _lastPixels = null;
+            }
+            else
+            {
+                _lastGpu?.Dispose();
+                _lastGpu = null;
+                var length = checked(frame.Stride * frame.Height);
+                if (_lastPixels?.Length != length)
+                    _lastPixels = new byte[length];
+                Marshal.Copy(frame.DataPtr, _lastPixels, 0, length);
+            }
             _lastFrame = frame;
             FrameReady?.Invoke(frame);
         }
@@ -57,12 +71,49 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     {
         lock (_frameLock)
         {
+            if (_lastGpu != null)
+            {
+                FrameReady?.Invoke(_lastFrame with { DataPtr = IntPtr.Zero, Gpu = _lastGpu });
+                return;
+            }
             if (_lastPixels == null)
                 return;
             var pinned = GCHandle.Alloc(_lastPixels, GCHandleType.Pinned);
             try { FrameReady?.Invoke(_lastFrame with { DataPtr = pinned.AddrOfPinnedObject() }); }
             finally { pinned.Free(); }
         }
+    }
+
+    private void ClearLastFrame()
+    {
+        lock (_frameLock)
+        {
+            _lastGpu?.Dispose();
+            _lastGpu = null;
+            _lastPixels = null;
+        }
+    }
+
+    // The OpenGL presenter could not show YUV frames after all: the same video continues as BGRA.
+    private void OnSurfaceFailed(VideoSurfaceKinds kinds)
+    {
+        if ((kinds & VideoSurfaceKinds.YuvMemory) == 0)
+            return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed || _playback is not { DeliversYuv: true } playback || _path == null)
+                return;
+            var (position, playing) = (playback.Position, playback.IsPlaying);
+            _playback = null;
+            playback.Dispose();
+            ClearLastFrame();
+            try
+            {
+                _playback = new ChatVideoPlayback(_path, DeliverFrame, Volume, position, playing);
+                Refresh();
+            }
+            catch (Exception exception) { Fail(exception); }
+        });
     }
 
     public ChatVideoSession(IAudioSettingsRepository? settings, ILogger<ChatVideoSession>? logger = null, ChatMediaPlayback? global = null)
@@ -72,6 +123,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         _logger = logger;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _timer.Tick += (_, _) => Refresh();
+        VideoSurfaceSupport.Failed += OnSurfaceFailed;
     }
 
     public bool IsCurrent(ChatFileVM? file) => file != null && _key == file.PlaybackKey;
@@ -153,6 +205,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
                 Stop();
                 return;
             }
+            _path = path;
             _playback = new ChatVideoPlayback(path, DeliverFrame, Volume);
             _timer.Start();
             Refresh();
@@ -207,8 +260,8 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         _timer.Stop();
         _playback?.Dispose();
         _playback = null;
-        lock (_frameLock)
-            _lastPixels = null;
+        _path = null;
+        ClearLastFrame();
     }
 
     public void Stop()
@@ -223,6 +276,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     public void Dispose()
     {
         _disposed = true;
+        VideoSurfaceSupport.Failed -= OnSurfaceFailed;
         Stop();
     }
 }
