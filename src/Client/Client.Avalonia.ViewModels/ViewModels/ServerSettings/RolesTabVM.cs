@@ -35,6 +35,13 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
     private readonly Interaction<MessageBoxVM, Result> _showMessageBox;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
+    // Set while the list is rebuilt: the list box drops its selection when the list is cleared, which is not a
+    // choice of the user and must not drop the edits; the editor follows the rebuilt list instead
+    private bool _isRebuilding;
+
+    // A role just created, to be chosen once the list has it; the list may come after the answer to the request
+    private int? _pendingSelectionId;
+
     public ObservableCollection<RoleRowVM> Roles { get; } = new();
 
     public RoleRowVM? SelectedRole
@@ -45,10 +52,12 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
             var previousId = field?.Role.Id;
             this.RaiseAndSetIfChanged(ref field, value);
 
-            // The list is rebuilt on every change; the same role chosen again keeps its edits
-            if (value?.Role.Id == previousId)
+            // The same role chosen again keeps its edits
+            if (_isRebuilding || value?.Role.Id == previousId)
                 return;
 
+            // Chosen by the user: a role created before no longer has to be chosen
+            _pendingSelectionId = null;
             Editor.Load(value?.Role, _coordinatorSession.Permissions);
             Error = null;
         }
@@ -109,25 +118,44 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
     /// <summary>Shows the roles as they are now, keeping the chosen one and the edits made to it.</summary>
     private void Rebuild(CoordinatorPermissions permissions)
     {
-        var selectedId = SelectedRole?.Role.Id;
+        // The editor, not the list box, knows which role was chosen: the list box may have dropped it already
+        var selectedId = Editor.Role?.Id;
         var highestFirst = permissions.Roles.Reverse().ToList();
         var movable = highestFirst.Where(role => !role.IsEveryone).ToList();
 
-        Roles.Clear();
-        foreach (var role in highestFirst)
+        RoleRowVM? selected;
+        _isRebuilding = true;
+        try
         {
-            var index = movable.IndexOf(role);
-            var canManage = permissions.CanManage(role);
-            Roles.Add(new RoleRowVM(role, canManage,
-                canMoveUp: !role.IsEveryone && canManage && index > 0 && permissions.CanManage(movable[index - 1]),
-                canMoveDown: !role.IsEveryone && canManage && index >= 0 && index < movable.Count - 1));
+            Roles.Clear();
+            foreach (var role in highestFirst)
+            {
+                var index = movable.IndexOf(role);
+                var canManage = permissions.CanManage(role);
+                Roles.Add(new RoleRowVM(role, canManage,
+                    canMoveUp: !role.IsEveryone && canManage && index > 0 && permissions.CanManage(movable[index - 1]),
+                    canMoveDown: !role.IsEveryone && canManage && index >= 0 && index < movable.Count - 1));
+            }
+
+            var pending = Roles.FirstOrDefault(row => row.Role.Id == _pendingSelectionId);
+            if (pending != null)
+                _pendingSelectionId = null;
+
+            selected = pending
+                       ?? Roles.FirstOrDefault(row => row.Role.Id == selectedId)
+                       ?? Roles.FirstOrDefault();
+            SelectedRole = selected;
+        }
+        finally
+        {
+            _isRebuilding = false;
         }
 
         this.RaisePropertyChanged(nameof(CanCreate));
 
-        var selected = Roles.FirstOrDefault(row => row.Role.Id == selectedId) ?? Roles.FirstOrDefault();
-        SelectedRole = selected;
-        // Its edits stay; it is told when its role changed elsewhere meanwhile
+        // Its edits stay; it is told when its role changed elsewhere meanwhile. Another role is loaded afresh
+        if (selected?.Role.Id != selectedId)
+            Error = null;
         Editor.Follow(selected?.Role, permissions);
     }
 
@@ -138,8 +166,12 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
         var (result, role) = await _coordinatorSession.CreateRole(new RoleChange(name, null, Permission.None));
         Error = RoleResultMessages.Describe(result);
 
-        if (role != null)
-            Select(role.Id);
+        if (role == null)
+            return;
+
+        // Chosen now if the list has it already, otherwise when it comes
+        _pendingSelectionId = role.Id;
+        Select(role.Id);
     }
 
     private async Task SaveAsync()
