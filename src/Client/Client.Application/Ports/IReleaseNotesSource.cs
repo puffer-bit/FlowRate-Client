@@ -5,7 +5,7 @@ namespace Client.Application.Ports;
 
 public interface IReleaseNotesSource
 {
-    /// <summary>Up to six published releases of the selected kind, newest first.</summary>
+    /// <summary>The published releases of the selected kind, newest first; the oldest may be left out.</summary>
     Task<IReadOnlyList<PublishedRelease>> GetAsync(UpdateChannel channel, bool forceRefresh = false,
         CancellationToken cancellationToken = default);
 }
