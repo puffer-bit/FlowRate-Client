@@ -118,6 +118,9 @@ public sealed partial class UsersDirectory
     /// </summary>
     public void Invalidate() => _cache.Clear();
 
+    /// <summary>Forgets one cached user, so the next request asks the server again.</summary>
+    public void Invalidate(int userId) => _cache.TryRemove(userId, out _);
+
     private async Task<List<UserModel>> FetchAsync(List<int> userIds)
     {
         var users = new List<UserModel>();
