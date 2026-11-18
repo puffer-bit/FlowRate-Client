@@ -32,6 +32,22 @@ namespace Client.Droid.Views.Sessions.Chat;
 /// </summary>
 public partial class ChatView : UserControl
 {
+    // A tap on an attachment opens what is done to it; its remove button does its own
+    private void OnAttachmentTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Control card || e.Source is Visual source && source.FindAncestorOfType<Button>(includeSelf: true) != null)
+            return;
+
+        e.Handled = true;
+        card.ContextFlyout?.ShowAt(card);
+    }
+
+    private void OnDetachClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: ChatAttachmentVM attachment } && DataContext is ActiveChatSessionVM chat)
+            chat.Composer.RemoveAttachmentCommand.Execute(attachment).Subscribe();
+    }
+
     // Older messages are requested while the viewport is within this many screens of the top,
     // so the next page is usually in place before the user reaches it
     private const double PrefetchScreens = 1.5;

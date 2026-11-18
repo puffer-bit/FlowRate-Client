@@ -25,4 +25,7 @@ public class CoordinatorSessionModel
 
     /// <summary>The revision of the stored settings these values come from.</summary>
     public long SettingsRevision { get; init; }
+
+    /// <summary>How images are compressed before they are sent, and whether they may go uncompressed.</summary>
+    public Chat.ImageCompressionPolicy ImagePolicy { get; init; } = Chat.ImageCompressionPolicy.Default;
 }

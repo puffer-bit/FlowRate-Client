@@ -2,9 +2,34 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              x:DataType="chatVm:ChatComposerVM"
              x:Class="Client.Views.Sessions.Chat.ChatAttachmentList">
-    <StackPanel IsVisible="{Binding HasAttachments}" Margin="10,8,10,0">
+    <!-- The empty space around the cards opens what is done to files attached from now on -->
+    <StackPanel IsVisible="{Binding HasAttachments}" Margin="10,8,10,0" Background="Transparent">
+        <StackPanel.ContextFlyout>
+            <Flyout Placement="TopEdgeAlignedLeft">
+                <StackPanel Spacing="2" x:DataType="chatVm:ChatComposerVM">
+                    <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
+                    <menus:MenuItemButton Content="{l:Text chat.attach.compress}"
+                                          ToolTip.Tip="{l:Text chat.attach.compress.tooltip}"
+                                          Command="{Binding ToggleDefaultCompressionCommand}">
+                        <menus:MenuItemButton.IconContent>
+                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressImages}"/>
+                        </menus:MenuItemButton.IconContent>
+                    </menus:MenuItemButton>
+                    <menus:MenuItemButton Content="{l:Text chat.attach.stripMetadata}"
+                                          ToolTip.Tip="{l:Text chat.attach.stripMetadata.tooltip}"
+                                          Command="{Binding ToggleDefaultMetadataCommand}">
+                        <menus:MenuItemButton.IconContent>
+                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultStripMetadata}"/>
+                        </menus:MenuItemButton.IconContent>
+                    </menus:MenuItemButton>
+                    <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
+                               IsVisible="{Binding IsImageCompressionForced}"/>
+                </StackPanel>
+            </Flyout>
+        </StackPanel.ContextFlyout>
         <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,0,0,-6">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -14,8 +39,38 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="chatVm:ChatAttachmentVM">
                     <!-- The card shows how far the file got, and why it did not go -->
+                    <!-- A click or a right click opens what is done to this file -->
                     <Border Classes="chat-attachment" Classes.error="{Binding HasError}"
-                            ToolTip.Tip="{Binding Key}">
+                            ToolTip.Tip="{Binding Key}" Tapped="OnAttachmentTapped">
+                        <Border.ContextFlyout>
+                            <Flyout Placement="TopEdgeAlignedLeft">
+                                <StackPanel Spacing="2" x:DataType="chatVm:ChatAttachmentVM">
+                                    <menus:MenuItemButton Content="{l:Text chat.attach.compress}"
+                                                          ToolTip.Tip="{l:Text chat.attach.compress.tooltip}"
+                                                          IsVisible="{Binding IsImage}"
+                                                          Command="{Binding ToggleCompressionCommand}">
+                                        <menus:MenuItemButton.IconContent>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsCompressed}"/>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                    <menus:MenuItemButton Content="{l:Text chat.attach.stripMetadata}"
+                                                          ToolTip.Tip="{l:Text chat.attach.stripMetadata.tooltip}"
+                                                          IsVisible="{Binding IsImage}"
+                                                          Command="{Binding ToggleMetadataCommand}">
+                                        <menus:MenuItemButton.IconContent>
+                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMetadataStripped}"/>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                    <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
+                                               MaxWidth="260" IsVisible="{Binding IsCompressionForced}"/>
+                                    <Separator IsVisible="{Binding IsImage}"/>
+                                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource CloseIcon}"
+                                                          Content="{l:Text chat.attach.detach}"
+                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                          Click="OnDetachClick"/>
+                                </StackPanel>
+                            </Flyout>
+                        </Border.ContextFlyout>
                         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                             <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
                                 <Panel>
@@ -29,6 +84,8 @@
                                 <TextBlock Classes="chat-attachment-name" Text="{Binding FileName}"/>
                                 <TextBlock Classes="chat-attachment-size" Text="{Binding SizeText}"
                                            IsVisible="{Binding !HasError}"/>
+                                <TextBlock Classes="chat-attachment-size" Text="{l:Text chat.attach.preparing}"
+                                           IsVisible="{Binding IsPreparing}"/>
                                 <TextBlock Classes="chat-attachment-error" Text="{Binding Error}"
                                            ToolTip.Tip="{Binding Error}"
                                            IsVisible="{Binding HasError}"/>

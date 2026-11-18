@@ -261,8 +261,41 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> JumpToReplyTargetCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> AttachFilesCommand { get; }
     public ReactiveCommand<ChatAttachmentVM, RxVoid> RemoveAttachmentCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleDefaultCompressionCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleDefaultMetadataCommand { get; }
 
     public static IReadOnlyList<string> ImageFilePatterns { get; } = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"];
+
+    /// <summary>What is done to images attached from now on can be chosen.</summary>
+    public bool CanChooseAttachmentDefaults => _attachmentOptions != null;
+
+    /// <summary>Images attached from now on are compressed.</summary>
+    public bool DefaultCompressImages
+    {
+        get => _attachmentOptions?.Defaults.CompressImages == true || IsImageCompressionForced;
+        set
+        {
+            if (_attachmentOptions is { } options && !IsImageCompressionForced)
+                _ = options.SetDefaultsAsync(options.Defaults with { CompressImages = value });
+        }
+    }
+
+    /// <summary>Images attached from now on are sent without their metadata.</summary>
+    public bool DefaultStripMetadata
+    {
+        get => _attachmentOptions?.Defaults.StripMetadata == true;
+        set
+        {
+            if (_attachmentOptions is { } options)
+                _ = options.SetDefaultsAsync(options.Defaults with { StripMetadata = value });
+        }
+    }
+
+    /// <summary>The server takes only compressed images.</summary>
+    public bool IsImageCompressionForced => !ImagePolicy.AllowOriginals;
+    public bool CanToggleDefaultCompression => CanChooseAttachmentDefaults && !IsImageCompressionForced;
+
+    private ImageCompressionPolicy ImagePolicy => _session?.CoordinatorModel?.ImagePolicy ?? ImageCompressionPolicy.Default;
 
     private readonly int _chatId;
     private readonly string _chatName;
@@ -270,14 +303,23 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     private readonly IChatMediaUploader _mediaUploader;
     private readonly IChatImageService _images;
     private readonly ChatSenderDirectory _senders;
+    private readonly ChatAttachmentOptions? _attachmentOptions;
     // Ends the uploads of the message being sent
     private CancellationTokenSource? _sendCancellation;
 
     /// <param name="jumpToMessage">Shows a message of the chat, for the reply bar.</param>
     public ChatComposerVM(int chatId, string chatName, bool isAttachmentsAllowed, ICoordinatorSession session,
         int currentUserId, IChatMediaUploader mediaUploader, IChatImageService images, ChatSenderDirectory senders,
-        Func<int, Task> jumpToMessage)
+        Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null)
     {
+        _attachmentOptions = attachmentOptions;
+        if (attachmentOptions != null)
+        {
+            attachmentOptions.DefaultsChanged += OnAttachmentDefaultsChanged;
+            _ = attachmentOptions.LoadAsync();
+        }
+        if (session != null)
+            session.CoordinatorReconfigured += OnCoordinatorReconfigured;
         _chatId = chatId;
         _session = session;
         _mediaUploader = mediaUploader;
@@ -321,6 +363,10 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         AttachFilesCommand = ReactiveCommand.CreateFromTask(
             async () => AddAttachments(await PickAttachmentFiles.Handle(RxVoid.Default)), canAttach);
         RemoveAttachmentCommand = ReactiveCommand.Create<ChatAttachmentVM>(RemoveAttachment);
+        ToggleDefaultCompressionCommand = ReactiveCommand.Create(() => { DefaultCompressImages = !DefaultCompressImages; },
+            this.WatchProperties(nameof(CanToggleDefaultCompression)).Select(vm => vm.CanToggleDefaultCompression));
+        ToggleDefaultMetadataCommand = ReactiveCommand.Create(() => { DefaultStripMetadata = !DefaultStripMetadata; },
+            this.WatchProperties(nameof(CanChooseAttachmentDefaults)).Select(vm => vm.CanChooseAttachmentDefaults));
     }
 
     /// <summary>
@@ -347,13 +393,30 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             // A picture by its name goes as an image; whether it is one is known when the file is read
             var isImage = ImageFilePatterns.Any(pattern =>
                 file.Name.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase));
-            Attachments.Add(new ChatAttachmentVM(file, isImage, _images));
+            Attachments.Add(new ChatAttachmentVM(file, isImage, _images, _attachmentOptions?.Preparer,
+                _attachmentOptions?.Defaults, ImagePolicy));
         }
 
         // After the collection has changed, which clears the notice of the draft before it
         if (notice != null)
             AttachNotice = notice;
     }
+
+    private void OnAttachmentDefaultsChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        this.RaisePropertyChanged(nameof(DefaultCompressImages));
+        this.RaisePropertyChanged(nameof(DefaultStripMetadata));
+    });
+
+    // The server may now take only compressed images, or uncompressed ones again
+    private void OnCoordinatorReconfigured(CoordinatorSessionModel coordinator) => Dispatcher.UIThread.Post(() =>
+    {
+        foreach (var attachment in Attachments)
+            attachment.ApplyPolicy(coordinator.ImagePolicy);
+        this.RaisePropertyChanged(nameof(IsImageCompressionForced));
+        this.RaisePropertyChanged(nameof(CanToggleDefaultCompression));
+        this.RaisePropertyChanged(nameof(DefaultCompressImages));
+    });
 
     /// <summary>
     /// Taking a file off the message being sent stops the sending: the message would go without it.
@@ -508,6 +571,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         {
             // The same attachments the message is built from: the list may change while they upload
             var attachments = Attachments.ToList();
+            foreach (var attachment in attachments)
+                attachment.IsLocked = true;
             if (!await UploadAttachments(attachments, cancellation.Token))
                 return;
 
@@ -519,6 +584,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         {
             _sendCancellation = null;
             IsMessageSending = false;
+            foreach (var attachment in Attachments)
+                attachment.IsLocked = false;
         }
     }
 
@@ -549,6 +616,15 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 break;
             // A rejection is reported by the main window
             case { IsRejected: true }:
+                break;
+            // The server takes only compressed images, which the cards now are, so the next try sends them anew
+            case { Error: ErrorCode.ImageNotCompressed }:
+                foreach (var attachment in attachments)
+                {
+                    attachment.ApplyPolicy(ImagePolicy);
+                    attachment.ResetUpload();
+                }
+                SendError = Strings.Get("chat.send.imageNotCompressed");
                 break;
             // The server does not hold the uploads anymore, so the next try sends the files again
             case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
@@ -582,8 +658,13 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             try
             {
                 var progress = new Progress<double>(share => attachment.Progress = share);
-                result = attachment.IsImage
-                    ? await _mediaUploader.UploadImageAsync(_session, _chatId, attachment.Source, attachment.Upload,
+                // A compressed copy may still be in the making
+                ChatMediaSource? source;
+                try { source = attachment.IsImage ? await attachment.GetUploadSourceAsync(cancellationToken) : null; }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
+
+                result = source != null
+                    ? await _mediaUploader.UploadImageAsync(_session, _chatId, source, attachment.Upload,
                         progress, cancellationToken)
                     : ChatMediaUploadResult.NotAnImage;
 
@@ -675,5 +756,9 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         _typingDisposed = true;
         _sendCancellation?.Cancel();
         DisposeLinkPreview();
+        if (_attachmentOptions != null)
+            _attachmentOptions.DefaultsChanged -= OnAttachmentDefaultsChanged;
+        if (_session != null)
+            _session.CoordinatorReconfigured -= OnCoordinatorReconfigured;
     }
 }

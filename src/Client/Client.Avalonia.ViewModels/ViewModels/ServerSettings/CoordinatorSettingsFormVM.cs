@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using Client.Core.Chat;
 using Client.Core.Coordinator;
 using ReactiveUI;
 
@@ -140,6 +141,27 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The longest side clients reduce images to when they compress them.</summary>
+    public decimal? ImageMaxSide
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The JPEG or WebP quality of compressed images.</summary>
+    public decimal? ImageQuality
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Off: images larger than <see cref="ImageMaxSide"/> are refused, so they can only go compressed.</summary>
+    public bool AllowOriginalImages
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public decimal? MaxUnattachedUploadsPerUser
     {
         get;
@@ -193,6 +215,12 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         HeartbeatTimeoutSeconds = settings.HeartbeatTimeoutSeconds;
         MaxFileSizeMegabytes = Math.Round(settings.MaxFileSizeBytes / Megabyte);
         StorageQuotaMegabytes = Math.Round(settings.StorageQuotaBytes / Megabyte);
+        // A server without these settings sends zeros
+        var imagePolicy = ImageCompressionPolicy.From(settings.ImageMaxSide, settings.ImageQuality,
+            settings.AllowOriginalImages);
+        ImageMaxSide = imagePolicy.MaxSide;
+        ImageQuality = imagePolicy.Quality;
+        AllowOriginalImages = imagePolicy.AllowOriginals;
         MaxUnattachedUploadsPerUser = settings.MaxUnattachedUploadsPerUser;
         UnattachedUploadLifetimeHours = settings.UnattachedUploadLifetimeHours;
         MediaTokenLifetimeMinutes = settings.MediaTokenLifetimeMinutes;
@@ -229,6 +257,9 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         HeartbeatTimeoutSeconds = ToInt(HeartbeatTimeoutSeconds),
         MaxFileSizeBytes = (long)((MaxFileSizeMegabytes ?? 0) * Megabyte),
         StorageQuotaBytes = (long)((StorageQuotaMegabytes ?? 0) * Megabyte),
+        ImageMaxSide = ToInt(ImageMaxSide),
+        ImageQuality = ToInt(ImageQuality),
+        AllowOriginalImages = AllowOriginalImages,
         MaxUnattachedUploadsPerUser = ToInt(MaxUnattachedUploadsPerUser),
         UnattachedUploadLifetimeHours = ToInt(UnattachedUploadLifetimeHours),
         MediaTokenLifetimeMinutes = ToInt(MediaTokenLifetimeMinutes),

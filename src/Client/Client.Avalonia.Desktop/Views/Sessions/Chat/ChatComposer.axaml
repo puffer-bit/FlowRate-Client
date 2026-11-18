@@ -88,6 +88,30 @@
                                 ToolTip.ShowOnDisabled="True"
                                 AutomationProperties.Name="{Binding AttachToolTip}">
                             <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
+                            <!-- What is done to images attached from now on, also before any is attached -->
+                            <Button.ContextFlyout>
+                                <Flyout Placement="TopEdgeAlignedLeft">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
+                                        <menus:MenuItemButton Content="{l:Text chat.attach.compress}"
+                                                              ToolTip.Tip="{l:Text chat.attach.compress.tooltip}"
+                                                              Command="{Binding ToggleDefaultCompressionCommand}">
+                                            <menus:MenuItemButton.IconContent>
+                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressImages}"/>
+                                            </menus:MenuItemButton.IconContent>
+                                        </menus:MenuItemButton>
+                                        <menus:MenuItemButton Content="{l:Text chat.attach.stripMetadata}"
+                                                              ToolTip.Tip="{l:Text chat.attach.stripMetadata.tooltip}"
+                                                              Command="{Binding ToggleDefaultMetadataCommand}">
+                                            <menus:MenuItemButton.IconContent>
+                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultStripMetadata}"/>
+                                            </menus:MenuItemButton.IconContent>
+                                        </menus:MenuItemButton>
+                                        <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
+                                                   MaxWidth="260" IsVisible="{Binding IsImageCompressionForced}"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.ContextFlyout>
                         </Button>
 
                         <TextBox Grid.Column="1"

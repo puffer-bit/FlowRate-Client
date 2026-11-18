@@ -33,6 +33,15 @@ public sealed record CoordinatorSettingsModel
     /// <summary>0 when the media storage is not limited.</summary>
     public long StorageQuotaBytes { get; init; }
 
+    /// <summary>The longest side clients reduce images to when they compress them.</summary>
+    public int ImageMaxSide { get; init; }
+
+    /// <summary>The JPEG or WebP quality of compressed images.</summary>
+    public int ImageQuality { get; init; }
+
+    /// <summary>Images may go uncompressed; otherwise one larger than <see cref="ImageMaxSide"/> is refused.</summary>
+    public bool AllowOriginalImages { get; init; }
+
     /// <summary>How many uploads one user may keep before attaching them to a message.</summary>
     public int MaxUnattachedUploadsPerUser { get; init; }
 
@@ -76,6 +85,15 @@ public sealed record CoordinatorSettingsUpdate
 
     public long MaxFileSizeBytes { get; init; }
     public long StorageQuotaBytes { get; init; }
+
+    /// <summary>The longest side clients reduce images to when they compress them.</summary>
+    public int ImageMaxSide { get; init; }
+
+    /// <summary>The JPEG or WebP quality of compressed images.</summary>
+    public int ImageQuality { get; init; }
+
+    /// <summary>Images may go uncompressed; otherwise one larger than <see cref="ImageMaxSide"/> is refused.</summary>
+    public bool AllowOriginalImages { get; init; }
 
     public int MaxUnattachedUploadsPerUser { get; init; }
     public int UnattachedUploadLifetimeHours { get; init; }
