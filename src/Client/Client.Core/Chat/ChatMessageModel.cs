@@ -28,6 +28,12 @@ public class ChatMessageModel
     public required List<ChatVideoContent> Video { get; init; }
     public required List<ChatFileContent> Files { get; init; }
 
+    /// <summary>The preview of the first link of the text, once the server has fetched its page.</summary>
+    public ChatLinkPreview? LinkPreview { get; init; }
+
+    /// <summary>The author sent the message without a preview of its link.</summary>
+    public bool IsLinkPreviewDisabled { get; init; }
+
     public required List<ChatReaction> Reactions { get; init; }
     public required List<string> UsersIds { get; init; }
 

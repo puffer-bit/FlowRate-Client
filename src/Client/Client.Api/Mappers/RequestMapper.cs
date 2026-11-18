@@ -58,6 +58,7 @@ internal static class RequestMapper
         }).ToList(),
 
         IsDelayed = model.IsDelayed,
-        IsDisposable = model.IsDisposable
+        IsDisposable = model.IsDisposable,
+        IsLinkPreviewDisabled = model.IsLinkPreviewDisabled
     };
 }

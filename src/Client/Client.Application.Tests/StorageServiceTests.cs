@@ -113,6 +113,9 @@ public class StorageServiceTests
             Task.FromResult<string?>(null);
         public Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
+        public string? FindLinkPreviewImage(string coordinatorInstanceId, int previewId) => null;
+        public Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write) =>
+            Task.FromResult<string?>(null);
     }
 
     /// <summary>Keeps what it is given, without the rules of a tail; a message counts as ten bytes.</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,6 +59,41 @@ public sealed partial class ChatImageService : IChatImageService
     public async Task<Bitmap?> LoadPreviewAsync(ICoordinatorSession session, int imageId)
     {
         var (_, path) = await FetchAsync(session, imageId, preview: true, null, CancellationToken.None);
+        return path == null ? null : await DecodeStillAsync(path);
+    }
+
+    // One download per preview at a time; a preview never changes, so a kept file stays good
+    private readonly ConcurrentDictionary<(string Coordinator, int PreviewId), Task<string?>> _linkImageFetches = new();
+
+    public async Task<Bitmap?> LoadLinkPreviewImageAsync(ICoordinatorSession session, int previewId)
+    {
+        var coordinator = session.GetCurrentUser().CoordinatorInstanceId;
+        var path = await Task.Run(() => _cache.FindLinkPreviewImage(coordinator, previewId));
+        if (path == null)
+        {
+            var key = (coordinator, previewId);
+            var created = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var fetch = _linkImageFetches.GetOrAdd(key, created.Task);
+            if (fetch == created.Task)
+            {
+                try
+                {
+                    created.SetResult(await _cache.StoreLinkPreviewImageAsync(coordinator, previewId, async stream =>
+                        await session.DownloadLinkPreviewImage(previewId, stream) == MediaTransferResult.NoError));
+                }
+                catch (Exception exception)
+                {
+                    LogDecodeFailed(exception);
+                    created.SetResult(null);
+                }
+                finally
+                {
+                    _linkImageFetches.TryRemove(KeyValuePair.Create(key, created.Task));
+                }
+            }
+            path = await fetch;
+        }
+
         return path == null ? null : await DecodeStillAsync(path);
     }
 

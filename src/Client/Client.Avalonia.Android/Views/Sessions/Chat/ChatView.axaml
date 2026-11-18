@@ -13,6 +13,7 @@
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
+             xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:common="clr-namespace:Client.Droid.Views.Common"
              x:Class="Client.Droid.Views.Sessions.Chat.ChatView"
              x:DataType="chatVm:ActiveChatSessionVM"
@@ -469,6 +470,42 @@
                             HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             Focusable="False"
                             Command="{Binding Composer.ResetReplyMessageCommand}">
+                        <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                    </Button>
+                </Grid>
+
+                <!-- The preview of the link being typed, as the message will show it; closing it
+                     sends the message without one -->
+                <Grid ColumnDefinitions="Auto, *, Auto" Margin="14,8,6,0"
+                      IsVisible="{Binding Composer.IsLinkPreviewBarVisible}">
+                    <Image Grid.Column="0" Width="18" Height="18" Margin="0,0,8,0"
+                           VerticalAlignment="Center" Opacity="0.8"
+                           Source="{StaticResource FormatLinkIcon}"/>
+                    <ContentControl Grid.Column="1" Content="{Binding Composer.ComposerLinkPreview}" HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                                    IsVisible="{Binding Composer.ComposerLinkPreview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
+                                <sharedChat:ChatLinkPreviewCard/>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                    <Border Grid.Column="1" Classes="msg-link" HorizontalAlignment="Left"
+                            IsVisible="{Binding Composer.IsLinkPreviewLoading}">
+                        <StackPanel Spacing="1">
+                            <TextBlock Classes="msg-link-site" Text="{Binding Composer.LinkPreviewLoadingHost}"/>
+                            <TextBlock Classes="msg-link-description" Text="{l:Text chat.linkPreview.loading}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        </StackPanel>
+                    </Border>
+                    <Button Grid.Column="2"
+                            Classes="borderless"
+                            Width="36" Height="36" Padding="0"
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Focusable="False"
+                            AutomationProperties.Name="{l:Text chat.linkPreview.close}"
+                            Command="{Binding Composer.CloseLinkPreviewCommand}">
                         <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
                     </Button>
                 </Grid>

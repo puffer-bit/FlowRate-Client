@@ -7,6 +7,7 @@
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
+             xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Droid.Views.Sessions.Chat.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
@@ -117,6 +118,16 @@
                     </Grid>
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
+
+                <!-- The preview of the first link, put into the message by the server a moment after it -->
+                <ContentControl Content="{Binding LinkPreview}" IsVisible="{Binding HasLinkPreview}"
+                                HorizontalAlignment="Left" HorizontalContentAlignment="Left">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
+                            <sharedChat:ChatLinkPreviewCard/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
 
                 <!-- The reduced copies; a tap opens the image itself over the chat -->
                 <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">

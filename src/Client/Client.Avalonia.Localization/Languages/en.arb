@@ -1346,6 +1346,8 @@
   "chat.empty.text": "Write the first one — it will show up here.",
   "chat.scrollToLatest": "Scroll to latest",
   "chat.cancelReply": "Cancel reply (Esc)",
+  "chat.linkPreview.loading": "Loading link preview…",
+  "chat.linkPreview.close": "Send without link preview",
   "chat.input.watermark": "Message {chat}",
   "@chat.input.watermark": {
     "placeholders": {

@@ -221,9 +221,14 @@ public interface ICoordinatorGateway : IDisposable
     Task SetMessagePinned(int chatId, int messageId, bool pinned);
 
     Task SetMessageReaction(int sessionId, int messageId, string emoji, bool isAdded);
+    /// <param name="isLinkPreviewDisabled">Turns the preview of the link off or on; null leaves it as it was.</param>
     Task EditChatMessage(int sessionId,
         int messageId,
-        string text);
+        string text,
+        bool? isLinkPreviewDisabled);
+
+    /// <summary>The preview of an address being typed, or null when its page has nothing to show.</summary>
+    Task<ChatLinkPreview?> RequestLinkPreview(int sessionId, string url);
     Task<IReadOnlyList<ChatReadState>> RequestChatReadStates();
     Task<ChatReadState> MarkChatRead(int sessionId,
         int messageId);
@@ -266,4 +271,10 @@ public interface ICoordinatorGateway : IDisposable
     /// <paramref name="destination"/>. Failures come back as a result, never as an exception.
     /// </summary>
     Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes the image of a link preview into <paramref name="destination"/>. Failures come back as a
+    /// result, never as an exception.
+    /// </summary>
+    Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination, CancellationToken cancellationToken);
 }

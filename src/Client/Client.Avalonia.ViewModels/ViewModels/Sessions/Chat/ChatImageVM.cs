@@ -14,7 +14,7 @@ namespace Client.ViewModels.Sessions.Chat;
 /// <summary>
 /// An image of a message: its reduced copy in a tile, opened in full by a click.
 /// </summary>
-public class ChatImageVM : ReactiveObject
+public class ChatImageVM : ReactiveObject, IShownImage
 {
     // The box an only image of a message is fitted into, and the side of a tile among several
     private const double SingleMaxSide = 320;

@@ -247,6 +247,68 @@
         <Setter Property="Height" Value="20"/>
     </Style>
 
+    <!-- ====== The preview of a link: a tinted card with an accent bar, as a reply quote ====== -->
+    <Style Selector="Border.msg-link">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ColorPrimary}"/>
+        <Setter Property="BorderThickness" Value="3,0,0,0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,5,10,7"/>
+        <Setter Property="Margin" Value="0,4,0,2"/>
+        <Setter Property="MaxWidth" Value="420"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=":is(UserControl).openable Border.msg-link:pointerover">
+        <Setter Property="Background" Value="{DynamicResource MsgReplyHoverBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.msg-link-site, TextBlock.msg-link-title, TextBlock.msg-link-description">
+        <Setter Property="TextAlignment" Value="Left"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TextBlock.msg-link-site">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorPrimaryLight}"/>
+        <Setter Property="MaxLines" Value="1"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.msg-link-title">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="MaxLines" Value="2"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.msg-link-description">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="MaxLines" Value="4"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <!-- Until the picture is loaded its place is a plain plate of its size, so the card does not jump -->
+    <Style Selector="Border.msg-link-thumbnail">
+        <Setter Property="Width" Value="56"/>
+        <Setter Property="Height" Value="56"/>
+        <Setter Property="Margin" Value="10,2,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+    <Style Selector="Border.msg-link-picture">
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+    </Style>
+
     <!-- ====== Files of a message, saved rather than shown ====== -->
     <Style Selector="ItemsControl.msg-files">
         <Setter Property="Margin" Value="0,4,0,0"/>

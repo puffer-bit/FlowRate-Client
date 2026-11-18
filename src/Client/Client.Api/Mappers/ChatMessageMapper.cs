@@ -31,6 +31,8 @@ internal static class ChatMessageMapper
             Images = dto.Images?.Select(MapImageContent).ToList() ?? new List<ChatImageContent>(),
             Video = dto.Video?.Select(MapVideoContent).ToList() ?? new List<ChatVideoContent>(),
             Files = dto.Files?.Select(MapFileContent).ToList() ?? new List<ChatFileContent>(),
+            LinkPreview = dto.LinkPreview?.ToModel(),
+            IsLinkPreviewDisabled = dto.IsLinkPreviewDisabled,
 
             Reactions = dto.Reactions?.Select(MapReaction).ToList() ?? new List<ChatReaction>(),
             UsersIds = dto.UsersIds?.ToList() ?? new List<string>(),
@@ -49,6 +51,19 @@ internal static class ChatMessageMapper
             IsDisposable = dto.IsDisposable,
         };
     }
+
+    public static ChatLinkPreview ToModel(this ChatLinkPreviewDTO dto) => new()
+    {
+        Id = dto.Id,
+        Url = dto.Url,
+        SiteName = dto.SiteName,
+        Title = dto.Title,
+        Description = dto.Description,
+        HasImage = dto.HasImage,
+        ImageWidth = dto.ImageWidth,
+        ImageHeight = dto.ImageHeight,
+        IsLargeImage = dto.IsLargeImage
+    };
 
     private static ChatTextContent? MapTextContent(ChatTextContentDTO? dto)
         => dto == null ? null : new ChatTextContent { Text = dto.Text, CommandResult = dto.CommandResult };

@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Links;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Markdig;

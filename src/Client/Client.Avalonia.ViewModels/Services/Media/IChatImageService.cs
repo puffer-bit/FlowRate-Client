@@ -25,6 +25,9 @@ public interface IChatImageService : IImagePreviewer
     /// </summary>
     Task<IImage?> LoadAnimationAsync(ICoordinatorSession session, int imageId);
 
+    /// <summary>The image of a link preview, or null when it cannot be had now.</summary>
+    Task<Bitmap?> LoadLinkPreviewImageAsync(ICoordinatorSession session, int previewId);
+
     /// <summary>The file of the image itself, downloaded when it is not kept yet.</summary>
     /// <param name="progress">Reports how many bytes were received.</param>
     Task<(MediaTransferResult Result, string? Path)> FetchOriginalAsync(ICoordinatorSession session, int imageId,

@@ -917,6 +917,8 @@
   "chat.empty.text": "Напишите первое — оно появится здесь.",
   "chat.scrollToLatest": "К последним сообщениям",
   "chat.cancelReply": "Отменить ответ (Esc)",
+  "chat.linkPreview.loading": "Загрузка превью ссылки…",
+  "chat.linkPreview.close": "Отправить без превью ссылки",
   "chat.input.watermark": "Написать в {chat}",
   "chat.send": "Отправить (Enter)",
   "hybrid.participants": "Участники:",

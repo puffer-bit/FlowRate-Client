@@ -10,6 +10,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="chatVm:ChatMessageVM"
              x:Class="Client.Views.Sessions.Chat.ChatMessageControl"
@@ -121,6 +122,16 @@
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"
                           ToolTip.Tip="{l:Text chat.edited}"/>
                 </text:TrailingMarkPanel>
+
+                <!-- The preview of the first link, put into the message by the server a moment after it -->
+                <ContentControl Content="{Binding LinkPreview}" IsVisible="{Binding HasLinkPreview}"
+                                HorizontalAlignment="Left" HorizontalContentAlignment="Left">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
+                            <sharedChat:ChatLinkPreviewCard/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
 
                 <!-- The reduced copies; a click opens the image itself over the chat -->
                 <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">

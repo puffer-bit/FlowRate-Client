@@ -20,4 +20,7 @@ public class NewChatMessage
 
     public bool IsDelayed { get; init; }
     public bool IsDisposable { get; init; }
+
+    /// <summary>The author closed the preview of the link in the composer.</summary>
+    public bool IsLinkPreviewDisabled { get; init; }
 }

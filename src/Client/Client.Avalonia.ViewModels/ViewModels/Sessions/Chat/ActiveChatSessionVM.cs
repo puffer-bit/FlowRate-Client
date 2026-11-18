@@ -446,6 +446,10 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             SetReaction = async (emoji, added) =>
                 (await _coordinatorSession.SetMessageReaction(model.ChatId, model.Id, emoji, added)).IsSuccess,
             IsNew = isNew,
+            CreateLinkPreview = preview => new ChatLinkPreviewVM(preview, _coordinatorSession, _images)
+            {
+                ConfirmOpen = ConfirmOpenLinkAsync
+            },
             CanManageMessages = _coordinatorSession.Permissions.HasIn(_model, Permission.ManageMessages),
             DeliveryStatus = DeliveryStatusOf(model),
             ShowsReadTime = _model.Kind == ChatKind.Direct,

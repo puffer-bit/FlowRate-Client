@@ -40,6 +40,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(InputWatermark));
+            RaiseLinkPreviewBar();
             if (!value) StopTyping();
         }
     } = true;
@@ -53,6 +54,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 return;
             this.RaiseAndSetIfChanged(ref field, value);
             OnTypingInputChanged();
+            OnLinkInputChanged();
             this.RaisePropertyChanged(nameof(RemainingCharacters));
             this.RaisePropertyChanged(nameof(IsLengthCounterVisible));
             // A failed send is about the text that was there; editing it starts over
@@ -378,6 +380,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             return;
 
         // Going from one edit to another keeps the draft that was put aside first
+        BeginLinkPreviewEdit(messageModel, keepsDraft: IsEditingMessage);
         if (!IsEditingMessage)
             _draftText = InputtedText;
 
@@ -394,6 +397,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
 
         EditMessage = null;
         EditPreview = null;
+        EndLinkPreviewEdit();
         SetRestoredText(_draftText ?? string.Empty);
         _draftText = null;
     }
@@ -528,7 +532,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         Images = attachments.Where(attachment => attachment.IsImage)
             .Select(attachment => attachment.Upload.Image!).ToList(),
         Files = attachments.Where(attachment => attachment.IsFile)
-            .Select(attachment => attachment.FileUpload.File!).ToList()
+            .Select(attachment => attachment.FileUpload.File!).ToList(),
+        IsLinkPreviewDisabled = IsLinkPreviewDisabledForSend()
     };
 
     private void ApplySendResult(RequestResult result, IReadOnlyList<ChatAttachmentVM> attachments)
@@ -536,6 +541,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         switch (result)
         {
             case { IsSuccess: true }:
+                ResetLinkPreview();
                 InputtedText = string.Empty;
                 MentionPicker.Reset();
                 Attachments.Clear();
@@ -628,7 +634,10 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     /// </summary>
     private async Task SendEdit(ChatMessageModel edited, ChatTextContent textContent)
     {
-        if (textContent.Text == edited.TextContent?.Text)
+        // Sent only when it changes, so an edit from an older client never turns a preview back on
+        var linkPreviewDisabled = IsLinkPreviewDisabledForSend();
+        bool? linkPreviewChange = linkPreviewDisabled != edited.IsLinkPreviewDisabled ? linkPreviewDisabled : null;
+        if (textContent.Text == edited.TextContent?.Text && linkPreviewChange == null)
         {
             EndEdit();
             return;
@@ -638,7 +647,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         IsMessageSending = true;
         try
         {
-            var result = await _session.EditChatMessage(edited.ChatId, edited.Id, textContent);
+            var result = await _session.EditChatMessage(edited.ChatId, edited.Id, textContent, linkPreviewChange);
             switch (result)
             {
                 // The message may have been deleted while the request was on its way, which ended the edit already
@@ -665,5 +674,6 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         StopTyping();
         _typingDisposed = true;
         _sendCancellation?.Cancel();
+        DisposeLinkPreview();
     }
 }
