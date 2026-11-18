@@ -29,7 +29,8 @@ internal static class CoordinatorMapper
 
             IsMOTDEnabled = dto.IsMOTDEnabled,
             SettingsRevision = dto.SettingsRevision,
-            ImagePolicy = ImageCompressionPolicy.From(dto.ImageMaxSide, dto.ImageQuality, dto.AllowOriginalImages)
+            ImagePolicy = ImageCompressionPolicy.From(dto.ImageMaxSide, dto.ImageQuality, dto.AllowOriginalImages),
+            VideoPolicy = VideoCompressionPolicy.From(dto.VideoMaxSide, dto.AllowOriginalVideos)
         };
     }
 }

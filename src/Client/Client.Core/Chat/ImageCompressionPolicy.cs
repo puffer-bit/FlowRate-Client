@@ -18,6 +18,9 @@ public sealed record ImageCompressionPolicy(int MaxSide, int Quality, bool Allow
 }
 
 /// <summary>
-/// What is done to images attached from now on, as the user chose it.
+/// What is done to images and videos attached from now on, as the user chose it.
 /// </summary>
-public sealed record ChatAttachmentPreferences(bool CompressImages = true, bool StripMetadata = true);
+/// <param name="CompressVideos">Videos are compressed too, which takes a while before they go.</param>
+/// <param name="VideoSide">The shorter side videos are compressed to; null for the one of the server.</param>
+public sealed record ChatAttachmentPreferences(bool CompressImages = true, bool StripMetadata = true,
+    bool CompressVideos = true, int? VideoSide = null);

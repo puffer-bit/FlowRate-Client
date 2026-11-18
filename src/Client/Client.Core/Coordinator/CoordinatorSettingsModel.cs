@@ -42,6 +42,12 @@ public sealed record CoordinatorSettingsModel
     /// <summary>Images may go uncompressed; otherwise one larger than <see cref="ImageMaxSide"/> is refused.</summary>
     public bool AllowOriginalImages { get; init; }
 
+    /// <summary>The shorter side videos are reduced to when compressed, like 720 for 720p.</summary>
+    public int VideoMaxSide { get; init; }
+
+    /// <summary>Videos may go uncompressed; otherwise only an MP4 within <see cref="VideoMaxSide"/> and its bitrate is taken.</summary>
+    public bool AllowOriginalVideos { get; init; }
+
     /// <summary>How many uploads one user may keep before attaching them to a message.</summary>
     public int MaxUnattachedUploadsPerUser { get; init; }
 
@@ -94,6 +100,12 @@ public sealed record CoordinatorSettingsUpdate
 
     /// <summary>Images may go uncompressed; otherwise one larger than <see cref="ImageMaxSide"/> is refused.</summary>
     public bool AllowOriginalImages { get; init; }
+
+    /// <summary>The shorter side videos are reduced to when compressed, like 720 for 720p.</summary>
+    public int VideoMaxSide { get; init; }
+
+    /// <summary>Videos may go uncompressed; otherwise only an MP4 within <see cref="VideoMaxSide"/> and its bitrate is taken.</summary>
+    public bool AllowOriginalVideos { get; init; }
 
     public int MaxUnattachedUploadsPerUser { get; init; }
     public int UnattachedUploadLifetimeHours { get; init; }

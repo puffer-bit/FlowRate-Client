@@ -263,6 +263,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     public ReactiveCommand<ChatAttachmentVM, RxVoid> RemoveAttachmentCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleDefaultCompressionCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleDefaultMetadataCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleDefaultVideoCompressionCommand { get; }
+    public ReactiveCommand<int, RxVoid> ChooseDefaultVideoSideCommand { get; }
 
     public static IReadOnlyList<string> ImageFilePatterns { get; } = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"];
 
@@ -296,6 +298,36 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     public bool CanToggleDefaultCompression => CanChooseAttachmentDefaults && !IsImageCompressionForced;
 
     private ImageCompressionPolicy ImagePolicy => _session?.CoordinatorModel?.ImagePolicy ?? ImageCompressionPolicy.Default;
+
+    /// <summary>What is done to videos attached from now on can be chosen: this client compresses them.</summary>
+    public bool CanChooseVideoDefaults => _attachmentOptions?.CanPrepareVideos == true;
+
+    /// <summary>Videos attached from now on are compressed.</summary>
+    public bool DefaultCompressVideos
+    {
+        get => _attachmentOptions?.Defaults.CompressVideos == true || IsVideoCompressionForced;
+        set
+        {
+            if (_attachmentOptions is { } options && !IsVideoCompressionForced)
+                _ = options.SetDefaultsAsync(options.Defaults with { CompressVideos = value });
+        }
+    }
+
+    /// <summary>The server takes only compressed videos.</summary>
+    public bool IsVideoCompressionForced => !VideoPolicy.AllowOriginals;
+    public bool CanToggleDefaultVideoCompression => CanChooseVideoDefaults && !IsVideoCompressionForced;
+
+    /// <summary>The resolutions videos attached from now on may be compressed to, the chosen one selected.</summary>
+    public IReadOnlyList<ChatVideoSideOptionVM> DefaultVideoSides
+    {
+        get
+        {
+            var chosen = VideoPolicy.SideFor(_attachmentOptions?.Defaults.VideoSide);
+            return VideoPolicy.Sides.Select(side => new ChatVideoSideOptionVM(side) { IsSelected = side == chosen }).ToList();
+        }
+    }
+
+    private VideoCompressionPolicy VideoPolicy => _session?.CoordinatorModel?.VideoPolicy ?? VideoCompressionPolicy.Default;
 
     private readonly int _chatId;
     private readonly string _chatName;
@@ -367,6 +399,14 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             this.WatchProperties(nameof(CanToggleDefaultCompression)).Select(vm => vm.CanToggleDefaultCompression));
         ToggleDefaultMetadataCommand = ReactiveCommand.Create(() => { DefaultStripMetadata = !DefaultStripMetadata; },
             this.WatchProperties(nameof(CanChooseAttachmentDefaults)).Select(vm => vm.CanChooseAttachmentDefaults));
+        ToggleDefaultVideoCompressionCommand = ReactiveCommand.Create(() => { DefaultCompressVideos = !DefaultCompressVideos; },
+            this.WatchProperties(nameof(CanToggleDefaultVideoCompression)).Select(vm => vm.CanToggleDefaultVideoCompression));
+        ChooseDefaultVideoSideCommand = ReactiveCommand.Create<int>(side =>
+            {
+                if (_attachmentOptions is { } options)
+                    _ = options.SetDefaultsAsync(options.Defaults with { VideoSide = side });
+            },
+            this.WatchProperties(nameof(CanChooseVideoDefaults)).Select(vm => vm.CanChooseVideoDefaults));
     }
 
     /// <summary>
@@ -394,7 +434,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             var isImage = ImageFilePatterns.Any(pattern =>
                 file.Name.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase));
             Attachments.Add(new ChatAttachmentVM(file, isImage, _images, _attachmentOptions?.Preparer,
-                _attachmentOptions?.Defaults, ImagePolicy));
+                _attachmentOptions?.Defaults, ImagePolicy, _attachmentOptions?.VideoPreparer, VideoPolicy));
         }
 
         // After the collection has changed, which clears the notice of the draft before it
@@ -406,16 +446,25 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     {
         this.RaisePropertyChanged(nameof(DefaultCompressImages));
         this.RaisePropertyChanged(nameof(DefaultStripMetadata));
+        this.RaisePropertyChanged(nameof(DefaultCompressVideos));
+        this.RaisePropertyChanged(nameof(DefaultVideoSides));
     });
 
     // The server may now take only compressed images, or uncompressed ones again
     private void OnCoordinatorReconfigured(CoordinatorSessionModel coordinator) => Dispatcher.UIThread.Post(() =>
     {
         foreach (var attachment in Attachments)
+        {
             attachment.ApplyPolicy(coordinator.ImagePolicy);
+            attachment.ApplyVideoPolicy(coordinator.VideoPolicy);
+        }
         this.RaisePropertyChanged(nameof(IsImageCompressionForced));
         this.RaisePropertyChanged(nameof(CanToggleDefaultCompression));
         this.RaisePropertyChanged(nameof(DefaultCompressImages));
+        this.RaisePropertyChanged(nameof(IsVideoCompressionForced));
+        this.RaisePropertyChanged(nameof(CanToggleDefaultVideoCompression));
+        this.RaisePropertyChanged(nameof(DefaultCompressVideos));
+        this.RaisePropertyChanged(nameof(DefaultVideoSides));
     });
 
     /// <summary>
@@ -427,6 +476,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             _sendCancellation?.Cancel();
 
         Attachments.Remove(attachment);
+        attachment.Dispose();
     }
 
     public void SetReply(ChatMessageModel messageModel)
@@ -611,6 +661,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 ResetLinkPreview();
                 InputtedText = string.Empty;
                 MentionPicker.Reset();
+                foreach (var attachment in Attachments)
+                    attachment.Dispose();
                 Attachments.Clear();
                 ResetReply();
                 break;
@@ -625,6 +677,15 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                     attachment.ResetUpload();
                 }
                 SendError = Strings.Get("chat.send.imageNotCompressed");
+                break;
+            // The server takes only compressed videos, and this one could not be compressed here
+            case { Error: ErrorCode.VideoNotCompressed }:
+                foreach (var attachment in attachments)
+                {
+                    attachment.ApplyVideoPolicy(VideoPolicy);
+                    attachment.ResetUpload();
+                }
+                SendError = Strings.Get("chat.send.videoNotCompressed");
                 break;
             // The server does not hold the uploads anymore, so the next try sends the files again
             case { Error: ErrorCode.AttachmentNotReady } or { Error: ErrorCode.AttachmentInvalid }:
@@ -660,10 +721,10 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 var progress = new Progress<double>(share => attachment.Progress = share);
                 // A compressed copy may still be in the making
                 ChatMediaSource? source;
-                try { source = attachment.IsImage ? await attachment.GetUploadSourceAsync(cancellationToken) : null; }
+                try { source = attachment.IsImage || attachment.IsVideo ? await attachment.GetUploadSourceAsync(cancellationToken) : null; }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
 
-                result = source != null
+                result = source != null && attachment.IsImage
                     ? await _mediaUploader.UploadImageAsync(_session, _chatId, source, attachment.Upload,
                         progress, cancellationToken)
                     : ChatMediaUploadResult.NotAnImage;
@@ -671,8 +732,11 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 // Named like a picture but not one the chat can show: it is still a file to send
                 if (result == ChatMediaUploadResult.NotAnImage)
                 {
-                    attachment.SendAsFile();
-                    result = await _mediaUploader.UploadFileAsync(_session, _chatId, attachment.Source,
+                    // A video goes as the file it was compressed to, and its card keeps showing the sizes
+                    if (!attachment.IsVideo)
+                        attachment.SendAsFile();
+                    result = await _mediaUploader.UploadFileAsync(_session, _chatId,
+                        attachment.IsVideo ? source ?? attachment.Source : attachment.Source,
                         attachment.FileUpload, progress, cancellationToken);
                 }
             }
@@ -758,6 +822,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         DisposeLinkPreview();
         if (_attachmentOptions != null)
             _attachmentOptions.DefaultsChanged -= OnAttachmentDefaultsChanged;
+        foreach (var attachment in Attachments)
+            attachment.Dispose();
         if (_session != null)
             _session.CoordinatorReconfigured -= OnCoordinatorReconfigured;
     }

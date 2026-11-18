@@ -93,14 +93,14 @@
                                 <Flyout Placement="TopEdgeAlignedLeft">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
-                                        <menus:MenuItemButton Content="{l:Text chat.attach.compress}"
+                                        <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}"
                                                               ToolTip.Tip="{l:Text chat.attach.compress.tooltip}"
                                                               Command="{Binding ToggleDefaultCompressionCommand}">
                                             <menus:MenuItemButton.IconContent>
                                                 <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressImages}"/>
                                             </menus:MenuItemButton.IconContent>
                                         </menus:MenuItemButton>
-                                        <menus:MenuItemButton Content="{l:Text chat.attach.stripMetadata}"
+                                        <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}"
                                                               ToolTip.Tip="{l:Text chat.attach.stripMetadata.tooltip}"
                                                               Command="{Binding ToggleDefaultMetadataCommand}">
                                             <menus:MenuItemButton.IconContent>
@@ -109,6 +109,31 @@
                                         </menus:MenuItemButton>
                                         <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
                                                    MaxWidth="260" IsVisible="{Binding IsImageCompressionForced}"/>
+                                        <StackPanel Spacing="2" IsVisible="{Binding CanChooseVideoDefaults}">
+                                            <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.video.defaults}"/>
+                                            <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.video.compress}"
+                                                                  ToolTip.Tip="{l:Text chat.attach.video.compress.tooltip}"
+                                                                  Command="{Binding ToggleDefaultVideoCompressionCommand}">
+                                                <menus:MenuItemButton.IconContent>
+                                                    <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressVideos}"/>
+                                                </menus:MenuItemButton.IconContent>
+                                            </menus:MenuItemButton>
+                                            <ItemsControl ItemsSource="{Binding DefaultVideoSides}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="chatVm:ChatVideoSideOptionVM">
+                                                        <menus:MenuItemButton Focusable="False" Content="{Binding Label}"
+                                                                              Command="{Binding $parent[ItemsControl].((chatVm:ChatComposerVM)DataContext).ChooseDefaultVideoSideCommand}"
+                                                                              CommandParameter="{Binding Side}">
+                                                            <menus:MenuItemButton.IconContent>
+                                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsSelected}"/>
+                                                            </menus:MenuItemButton.IconContent>
+                                                        </menus:MenuItemButton>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.video.compressForced}" TextWrapping="Wrap" MaxWidth="260"
+                                                       IsVisible="{Binding IsVideoCompressionForced}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Flyout>
                             </Button.ContextFlyout>

@@ -67,3 +67,12 @@ fdkaacdec
 # Camera capture
 v4l2src
 jpegdec
+
+# Compressing chat videos before sending (Video/Transcoding)
+uridecodebin
+parsebin
+videoconvertscale
+mp4mux
+aacparse
+fdkaacenc
+opusenc

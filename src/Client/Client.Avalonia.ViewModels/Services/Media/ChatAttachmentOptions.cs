@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Client.Services;
 
 /// <summary>
-/// What is done to images attached from now on, shared by every chat and kept between launches, and the
+/// What is done to images and videos attached from now on, shared by every chat and kept between launches, and the
 /// preparer that does it.
 /// </summary>
 public sealed partial class ChatAttachmentOptions
@@ -21,15 +21,22 @@ public sealed partial class ChatAttachmentOptions
 
     public IImagePreparer Preparer { get; }
 
+    /// <summary>Null where this client cannot compress videos, as without the media runtime.</summary>
+    public IVideoPreparer? VideoPreparer { get; }
+
+    /// <summary>Videos can be compressed and stripped here.</summary>
+    public bool CanPrepareVideos => VideoPreparer?.IsAvailable == true;
+
     public ChatAttachmentPreferences Defaults { get; private set; } = new();
 
     /// <summary>Raised on the thread that changed or loaded them.</summary>
     public event Action? DefaultsChanged;
 
     public ChatAttachmentOptions(IImagePreparer preparer, IChatAttachmentPreferencesRepository? repository = null,
-        ILogger<ChatAttachmentOptions>? logger = null)
+        ILogger<ChatAttachmentOptions>? logger = null, IVideoPreparer? videoPreparer = null)
     {
         Preparer = preparer;
+        VideoPreparer = videoPreparer;
         _repository = repository;
         _logger = logger;
     }

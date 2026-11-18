@@ -162,6 +162,20 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The shorter side clients reduce videos to when they compress them, like 720 for 720p.</summary>
+    public decimal? VideoMaxSide
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Off: only MP4 videos within <see cref="VideoMaxSide"/> and its bitrate are taken.</summary>
+    public bool AllowOriginalVideos
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public decimal? MaxUnattachedUploadsPerUser
     {
         get;
@@ -221,6 +235,9 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         ImageMaxSide = imagePolicy.MaxSide;
         ImageQuality = imagePolicy.Quality;
         AllowOriginalImages = imagePolicy.AllowOriginals;
+        var videoPolicy = VideoCompressionPolicy.From(settings.VideoMaxSide, settings.AllowOriginalVideos);
+        VideoMaxSide = videoPolicy.MaxSide;
+        AllowOriginalVideos = videoPolicy.AllowOriginals;
         MaxUnattachedUploadsPerUser = settings.MaxUnattachedUploadsPerUser;
         UnattachedUploadLifetimeHours = settings.UnattachedUploadLifetimeHours;
         MediaTokenLifetimeMinutes = settings.MediaTokenLifetimeMinutes;
@@ -260,6 +277,8 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         ImageMaxSide = ToInt(ImageMaxSide),
         ImageQuality = ToInt(ImageQuality),
         AllowOriginalImages = AllowOriginalImages,
+        VideoMaxSide = ToInt(VideoMaxSide),
+        AllowOriginalVideos = AllowOriginalVideos,
         MaxUnattachedUploadsPerUser = ToInt(MaxUnattachedUploadsPerUser),
         UnattachedUploadLifetimeHours = ToInt(UnattachedUploadLifetimeHours),
         MediaTokenLifetimeMinutes = ToInt(MediaTokenLifetimeMinutes),

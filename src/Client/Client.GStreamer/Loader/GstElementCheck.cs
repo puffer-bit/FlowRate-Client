@@ -41,13 +41,15 @@ internal static partial class GstElementCheck
         // the moderate one of webrtcdsp and the voice gate goes by the level alone
         "audiornnoise",
         // Older runtimes can still join calls; the chat player reports unavailable decoders.
-        "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse"
+        "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse",
+        // Videos are sent as they are without them; Opus stands in for an AAC encoder the runtime lacks
+        "uridecodebin", "parsebin", "videoconvertscale", "mp4mux", "opusenc"
     ];
 
-    private static readonly string[] OptionalWindows = ["mfaacdec", "mfvideosrc", "jpegdec"];
+    private static readonly string[] OptionalWindows = ["mfaacdec", "mfaacenc", "mfvideosrc", "jpegdec"];
 
     // PipeWire needs system support; older Linux runtimes may also lack the chat AAC decoder.
-    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec", "v4l2src", "jpegdec"];
+    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec", "fdkaacenc", "v4l2src", "jpegdec"];
 
     /// <summary>
     /// Logs what is missing and what encoders and decoders are available.

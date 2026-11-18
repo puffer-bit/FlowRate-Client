@@ -38,6 +38,19 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
+        <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.videos}"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.videoMaxSide}"
+                            Description="{l:Text serverSettings.storage.videoMaxSide.description}">
+                <NumericUpDown MinWidth="140" Minimum="240" Maximum="2160" Increment="120" FormatString="0"
+                               Value="{Binding Form.VideoMaxSide}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.storage.allowOriginalVideos}"
+                            Description="{l:Text serverSettings.storage.allowOriginalVideos.description}">
+                <CheckBox IsChecked="{Binding Form.AllowOriginalVideos}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
         <controls:SettingsHeader Text="{l:Text serverSettings.storage.section.uploads}"/>
         <ui:SettingsCard>
             <ui:SettingsRow Title="{l:Text serverSettings.storage.unattachedUploads}"

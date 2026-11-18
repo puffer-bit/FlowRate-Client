@@ -55,3 +55,13 @@ id3demux
 mpegaudioparse
 mpg123audiodec
 wavparse
+
+# Compressing chat videos before sending (Video/Transcoding); AAC and H.264 by AudioToolbox and VideoToolbox
+uridecodebin
+parsebin
+videoconvertscale
+mp4mux
+aacparse
+atenc
+?vtenc_h264_hw
+opusenc

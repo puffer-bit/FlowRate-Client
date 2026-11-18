@@ -38,6 +38,11 @@ if (args.Contains("--video-decoder-latency"))
     VideoDecoderLatencySmokeChecks.Run();
     return;
 }
+if (args.Contains("--video-transcode"))
+{
+    await VideoTranscodeSmokeChecks.Run(args);
+    return;
+}
 if (args.Contains("--video-av1"))
 {
     VideoAv1SmokeChecks.Run();

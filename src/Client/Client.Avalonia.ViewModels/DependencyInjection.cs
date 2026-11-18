@@ -36,7 +36,8 @@ public static class DependencyInjection
         services.AddSingleton<IImagePreviewer>(provider => provider.GetRequiredService<IChatImageService>());
         services.AddSingleton<IImagePreparer, SkiaImagePreparer>();
         services.AddSingleton(provider => new ChatAttachmentOptions(provider.GetRequiredService<IImagePreparer>(),
-            provider.GetService<IChatAttachmentPreferencesRepository>(), provider.GetService<ILogger<ChatAttachmentOptions>>()));
+            provider.GetService<IChatAttachmentPreferencesRepository>(), provider.GetService<ILogger<ChatAttachmentOptions>>(),
+            provider.GetService<IVideoPreparer>()));
 
         services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(

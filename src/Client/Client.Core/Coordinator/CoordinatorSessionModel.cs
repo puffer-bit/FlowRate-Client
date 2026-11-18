@@ -28,4 +28,7 @@ public class CoordinatorSessionModel
 
     /// <summary>How images are compressed before they are sent, and whether they may go uncompressed.</summary>
     public Chat.ImageCompressionPolicy ImagePolicy { get; init; } = Chat.ImageCompressionPolicy.Default;
+
+    /// <summary>How videos are compressed before they are sent, and whether they may go uncompressed.</summary>
+    public Chat.VideoCompressionPolicy VideoPolicy { get; init; } = Chat.VideoCompressionPolicy.Default;
 }
