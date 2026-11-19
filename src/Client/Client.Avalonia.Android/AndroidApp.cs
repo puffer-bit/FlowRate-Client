@@ -27,6 +27,6 @@ public class AndroidApp : AvaloniaAndroidApplication<App>
 
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
-        return base.CustomizeAppBuilder(builder).WithInterFont().WithEmojiFont().LogToJournal().UseReactiveUI(_ => { });
+        return base.CustomizeAppBuilder(builder).WithAppFonts().LogToJournal().UseReactiveUI(_ => { });
     }
 }

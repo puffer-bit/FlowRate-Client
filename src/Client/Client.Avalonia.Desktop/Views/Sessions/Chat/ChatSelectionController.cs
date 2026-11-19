@@ -53,6 +53,7 @@ internal sealed class ChatSelectionController
         _list.AddHandler(InputElement.PointerMovedEvent, OnPointerMoved, RoutingStrategies.Tunnel);
         _list.AddHandler(InputElement.PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel);
         _list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        _list.AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheel, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         // Rows are recycled while scrolling, so each one gets its part of the selection when it is shown
         _list.ContainerPrepared += (_, _) => Dispatcher.UIThread.Post(Apply, DispatcherPriority.Background);
@@ -179,6 +180,27 @@ internal sealed class ChatSelectionController
             _scrollTimer.Start();
         else
             _scrollTimer.Stop();
+    }
+
+    private void OnPointerWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!_isDragging || _list.FindDescendantOfType<ScrollViewer>() is not { } scroller)
+            return;
+
+        _pointer = e.GetPosition(_list);
+        scroller.Offset = scroller.Offset.WithY(System.Math.Clamp(scroller.Offset.Y - e.Delta.Y * 48,
+            0, System.Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height)));
+        e.Handled = true;
+        // Capture may still belong to a single SelectableTextBlock. Route the rest of the
+        // drag through the list so the selection follows the text revealed by scrolling.
+        e.Pointer.Capture(_list);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_isDragging || HitTest(_pointer) is not { } focus)
+                return;
+            _focus = focus;
+            Apply();
+        }, DispatcherPriority.Background);
     }
 
     // Pixels to scroll per tick for the pointer position: negative up, positive down

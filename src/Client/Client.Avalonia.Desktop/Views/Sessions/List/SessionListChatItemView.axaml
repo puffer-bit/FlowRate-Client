@@ -34,7 +34,7 @@
                                               IsVisible="{Binding !DataContext.IsShown, ElementName=Root}"
                                               Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
-                        <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leaveChat}"
+                        <menus:MenuItemButton Icon="{StaticResource CollapseChatIcon}" Content="{l:Text sessions.collapseChat}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.IsShown, ElementName=Root}"
                                               Command="{Binding DataContext.LeaveChatCommand, ElementName=Root}"

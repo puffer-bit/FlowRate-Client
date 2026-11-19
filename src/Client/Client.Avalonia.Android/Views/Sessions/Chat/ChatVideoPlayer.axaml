@@ -1,4 +1,6 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:volumeIcons="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -9,13 +11,15 @@
             Background="{DynamicResource ColorOverlayMedium}"
             vm:ChatImagePresence.Image="{Binding}">
         <StackPanel Spacing="2">
-            <Border Background="Transparent" Tapped="OnVideoTapped" Margin="0,0,0,2">
-                <Panel x:Name="PicturePanel" Height="180">
-                    <views:PictureView x:Name="VideoSurface" ClipToBounds="True" IsHitTestVisible="False"/>
-                    <!-- The frame the sender's client took, until the video shows its own -->
-                    <Image x:Name="PosterImage" Source="{Binding Poster}" Stretch="Uniform" IsHitTestVisible="False"/>
-                </Panel>
-            </Border>
+            <images:MediaFrame MediaWidth="{Binding PlayerWidth}" MediaHeight="{Binding PlayerHeight}">
+                <Border Background="Transparent" Tapped="OnVideoTapped" Margin="0,0,0,2">
+                    <Panel x:Name="PicturePanel">
+                        <views:PictureView x:Name="VideoSurface" ClipToBounds="True" IsHitTestVisible="False"/>
+                        <!-- The frame the sender's client took, until the video shows its own -->
+                        <Image x:Name="PosterImage" Source="{Binding Poster}" Stretch="Uniform" IsHitTestVisible="False"/>
+                    </Panel>
+                </Border>
+            </images:MediaFrame>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
                            ToolTip.Tip="{Binding FileName}" VerticalAlignment="Center"/>
@@ -38,7 +42,7 @@
                            VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
                 <Button x:Name="VolumeButton" Grid.Column="3" Classes="ghost" Width="28" Height="28" Padding="0"
                         ToolTip.Tip="{l:Text peer.volume}">
-                    <Image Source="{StaticResource HighVolumeIcon}" Width="16" Height="16"/>
+                    <Image Source="{Binding #VolumeSlider.Value, Converter={x:Static volumeIcons:VolumeIconConverter.Instance}}" Width="16" Height="16"/>
                     <Button.Flyout>
                         <Flyout Placement="BottomEdgeAlignedRight">
                             <StackPanel Spacing="2">

@@ -73,6 +73,13 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CopyCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> RotateCommand { get; }
+
+    public int QuarterTurns
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     private readonly ChatImageVM _tile;
     private readonly ChatImageContent _image;
@@ -95,6 +102,7 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
         SaveCommand = ReactiveCommand.CreateFromTask(Save, this.WatchProperty(nameof(CanSave), viewer => viewer.CanSave));
         CopyCommand = ReactiveCommand.CreateFromTask(Copy, this.WatchProperty(nameof(CanSave), viewer => viewer.CanSave));
         CloseCommand = ReactiveCommand.Create(close);
+        RotateCommand = ReactiveCommand.Create(() => { QuarterTurns = (QuarterTurns + 1) % 4; });
 
         _ = Load();
     }

@@ -33,7 +33,7 @@
                                 <Border.ContextFlyout>
                                     <Flyout Placement="BottomEdgeAlignedRight">
                                         <StackPanel Spacing="2">
-                                            <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                                            <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
                                                                   IsEnabled="{Binding Content.CanPin}" Command="{Binding Unpin}"
                                                                   menus:FlyoutMenu.CloseOnClick="True"/>
                                             <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"

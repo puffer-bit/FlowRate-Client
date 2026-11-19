@@ -17,6 +17,14 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("behavior");
     public SettingTabType Type => SettingTabType.AppBehavior;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("behavior.autoConnection", "settings.behavior.section.autoConnection"),
+        new("behavior.manualConnection", "settings.behavior.section.manualConnection"),
+        new("behavior.tray", "settings.behavior.section.tray"),
+        new("behavior.updates", "settings.behavior.section.updates")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("behavior",

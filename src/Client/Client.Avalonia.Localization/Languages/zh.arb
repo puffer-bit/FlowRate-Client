@@ -1462,5 +1462,15 @@
   "broadcast.toggle": "开启或停止直播",
   "broadcast.choose": "选择直播内容",
   "broadcast.screen.start": "共享屏幕",
-  "video.target": "视频设置对象"
+  "video.target": "视频设置对象",
+  "serverSettings.info.database": "数据库系统",
+  "sessions.collapseChat": "折叠聊天",
+  "chat.image.rotate": "旋转图片",
+  "chat.reaction.more": "更多表情",
+  "settings.appearance.section.window": "窗口",
+  "serverSettings.roles.unsaved": "有未保存的更改",
+  "serverSettings.roles.searchPermissions": "搜索权限",
+  "serverSettings.roles.hierarchyHint": "列表中较高的角色可以管理较低的角色。",
+  "settings.appearance.customTitleBar.title": "自绘标题栏",
+  "settings.appearance.customTitleBar.description": "窗口按钮位于应用的顶部栏中，系统标题栏被隐藏。关闭后恢复系统标题栏。立即生效"
 }

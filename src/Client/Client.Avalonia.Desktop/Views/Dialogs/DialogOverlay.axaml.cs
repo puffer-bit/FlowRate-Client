@@ -48,7 +48,7 @@ internal partial class DialogOverlay : UserControl
         if (!fillWindow)
         {
             // Forms declare a preferred maximum width, but can shrink with the host window.
-            if (double.IsNaN(content.Width) && double.IsFinite(content.MaxWidth))
+            if (content is not MessageBoxView && double.IsNaN(content.Width) && double.IsFinite(content.MaxWidth))
             {
                 Card.HorizontalAlignment = HorizontalAlignment.Stretch;
                 Card.MaxWidth = content.MaxWidth + border.Left + border.Right;

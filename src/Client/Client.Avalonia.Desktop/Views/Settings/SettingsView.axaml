@@ -53,7 +53,7 @@
         </DataTemplate>
     </UserControl.DataTemplates>
     
-    <Grid ColumnDefinitions="220, *" RowDefinitions="Auto, 1, *, 1, 44">
+    <Grid Classes="settingsFrame" ColumnDefinitions="Auto, *" RowDefinitions="Auto, 1, *, 1, 44">
         <!-- Title: the icon on a tile, the name of the dialog and under it the section that is open;
              the dialog can be closed from here as well as from the footer -->
         <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"

@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
@@ -170,10 +171,7 @@
                                          MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
                                     <chatViews:ChatAudioPlayer/>
                                 </Viewbox>
-                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                         MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsVideo}">
-                                    <chatViews:ChatVideoPlayer/>
-                                </Viewbox>
+                                <chatViews:ChatVideoPlayer IsVisible="{Binding IsVideo}"/>
                                 <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
                                         MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
                                         Command="{Binding OpenCommand}"
@@ -210,7 +208,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatReactionVM">
-                            <Button Classes="msg-reaction" Classes.mine="{Binding IsMine}"
+                            <Button anim:Presence.Appear="Grow" Classes="msg-reaction" Classes.mine="{Binding IsMine}"
                                     Command="{Binding Toggle}" ToolTip.Tip="{Binding Details}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>

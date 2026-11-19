@@ -51,6 +51,10 @@
                     </Button>
                 </StackPanel>
             </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.info.database}"
+                            IsVisible="{Binding DatabaseProvider, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Classes="value" Text="{Binding DatabaseProvider}"/>
+            </ui:SettingsRow>
             <ui:SettingsRow Title="{l:Text main.server.info.version}">
                 <TextBlock Classes="value" Text="{Binding Version}"/>
             </ui:SettingsRow>

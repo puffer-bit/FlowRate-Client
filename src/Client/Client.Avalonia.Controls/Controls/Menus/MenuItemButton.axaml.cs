@@ -30,6 +30,11 @@ public class MenuItemButton : Button
 
     private IDisposable? _submenuTimer;
 
+    public static readonly StyledProperty<bool> IsCheckedProperty =
+        AvaloniaProperty.Register<MenuItemButton, bool>(nameof(IsChecked));
+
+    public bool IsChecked { get => GetValue(IsCheckedProperty); set => SetValue(IsCheckedProperty, value); }
+
     public static readonly StyledProperty<IImage?> IconProperty =
         AvaloniaProperty.Register<MenuItemButton, IImage?>(nameof(Icon));
 

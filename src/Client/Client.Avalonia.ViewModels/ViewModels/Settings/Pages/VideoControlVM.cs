@@ -28,6 +28,14 @@ public class VideoControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("video");
     public SettingTabType Type => SettingTabType.Video;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("video.acceleration", "settings.video.section.acceleration"),
+        new("video.decoding", "settings.video.section.decoding"),
+        new("video.presentation", "settings.video.section.presentation"),
+        new("video.encoding", "settings.video.section.encoding")
+    ];
+
     public bool IsEnabled => true;
     public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 

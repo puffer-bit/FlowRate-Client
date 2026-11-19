@@ -169,4 +169,5 @@ public sealed record SfuNodeModel(int Id, string Name, string Host, int Port, bo
 public sealed record SfuNodeConnection(SFUNodeConnectionState State, TimeSpan? RoundTrip, string? Error);
 
 /// <summary>The settings together with the SFU nodes they may name.</summary>
-public sealed record CoordinatorSettingsSnapshot(CoordinatorSettingsModel Settings, IReadOnlyList<SfuNodeModel> SfuNodes);
+public sealed record CoordinatorSettingsSnapshot(CoordinatorSettingsModel Settings, IReadOnlyList<SfuNodeModel> SfuNodes,
+    string? DatabaseProvider = null);

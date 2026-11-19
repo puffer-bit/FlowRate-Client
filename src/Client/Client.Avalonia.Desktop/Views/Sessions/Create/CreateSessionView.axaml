@@ -171,8 +171,8 @@
                                                         <TextBlock Classes="hint" Text="{Binding Username}" IsVisible="{Binding HasUsername}"
                                                                    TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
-                                                    <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected, Mode=OneWay}"
-                                                              IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center"/>
+                                                    <Image Grid.Column="2" Width="16" Height="16" Source="{StaticResource MenuCheckIcon}"
+                                                           IsVisible="{Binding IsSelected}" VerticalAlignment="Center"/>
                                                 </Grid>
                                             </Button>
                                         </DataTemplate>

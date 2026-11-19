@@ -252,6 +252,7 @@ public sealed class ServerSettingsVM : ReactiveObject, IDisposable
             return;
         }
 
+        ((ServerInfoTabVM)_tabs[0]).DatabaseProvider = snapshot.DatabaseProvider;
         _sfuNodes = snapshot.SfuNodes;
         Form.Load(snapshot.Settings, snapshot.SfuNodes);
         IsChangedElsewhere = false;

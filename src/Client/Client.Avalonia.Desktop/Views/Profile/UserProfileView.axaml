@@ -96,10 +96,8 @@
                                                         <DataTemplate x:DataType="profileVm:UserRoleVM">
                                                             <menus:MenuItemButton
                                                                 Command="{Binding $parent[ItemsControl].((profileVm:UserProfileWindowVM)DataContext).ToggleRoleCommand}"
-                                                                CommandParameter="{Binding}">
-                                                                <menus:MenuItemButton.IconContent>
-                                                                    <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsAssigned}"/>
-                                                                </menus:MenuItemButton.IconContent>
+                                                                CommandParameter="{Binding}" IsChecked="{Binding IsAssigned}">
+
                                                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                                                     <Ellipse Width="8" Height="8" VerticalAlignment="Center"
                                                                              Fill="{DynamicResource PrimaryTextBrush}"

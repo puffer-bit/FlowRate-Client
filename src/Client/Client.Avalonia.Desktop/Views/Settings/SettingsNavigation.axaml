@@ -5,7 +5,14 @@
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              x:DataType="settingsVm:SettingsWindowVM"
-             x:Class="Client.Views.Settings.SettingsNavigation">
+             x:Class="Client.Views.Settings.SettingsNavigation"
+             Width="220" ClipToBounds="True">
+
+    <UserControl.Transitions>
+        <Transitions>
+            <DoubleTransition Property="Width" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+        </Transitions>
+    </UserControl.Transitions>
 
     <UserControl.Resources>
         <services:SettingTypeToIconConverter x:Key="SettingIconConverter"/>
@@ -67,6 +74,7 @@
                  x:Name="TabList"
                  ItemsSource="{Binding NavigationItems}"
                  Tapped="TabList_OnTapped"
+                 DoubleTapped="TabList_OnDoubleTapped"
                  SelectedItem="{Binding SelectedNavigationItem}"
                  IsVisible="{Binding !IsSearching}"
                  Margin="12,8,12,12"
@@ -141,6 +149,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="settingsVm:SettingNavItemVM">
                     <Grid Classes="tab navigationRow" Classes.sub="{Binding IsSubItem}"
+                          ToolTip.Tip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
                           ColumnDefinitions="Auto, Auto, *, Auto" VerticalAlignment="Center">
                         <!-- The line the sub-items are set in by -->
                         <Path Grid.Column="0" Classes="guide"
@@ -162,16 +171,17 @@
                                    TextTrimming="CharacterEllipsis"
                                    TextWrapping="Wrap"/>
 
-                        <Path Grid.Column="3" Classes="subItemsMark"
-                              Classes.expanded="{Binding IsExpanded}"
-                              IsVisible="{Binding HasSubItems}"
-                              Width="10" Height="6" Stretch="None"
-                              Margin="4,0,4,0"
-                              VerticalAlignment="Center"
-                              Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
-                              StrokeThickness="1.5"
-                              StrokeLineCap="Round"
-                              StrokeJoin="Round"/>
+                        <Panel Grid.Column="3" IsVisible="{Binding HasSubItems}">
+                            <Path Classes="subItemsMark"
+                                  Classes.expanded="{Binding IsExpanded}"
+                                  Width="10" Height="6" Stretch="None"
+                                  Margin="4,0,4,0"
+                                  VerticalAlignment="Center"
+                                  Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                  StrokeThickness="1.5"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"/>
+                        </Panel>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

@@ -42,6 +42,13 @@ public class AudioControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public string Name => SettingText.TabName("audio");
     public SettingTabType Type => SettingTabType.Audio;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("audio.microphone", "settings.audio.section.microphone"),
+        new("audio.output", "settings.audio.section.output"),
+        new("audio.sounds", "settings.audio.section.sounds")
+    ];
+
     public bool IsEnabled => true;
     public bool IsMediaEnabled => MediaRuntime.IsEnabled;
 

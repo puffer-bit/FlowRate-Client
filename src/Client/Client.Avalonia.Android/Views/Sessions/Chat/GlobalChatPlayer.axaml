@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns:volumeIcons="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns="https://github.com/avaloniaui"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
@@ -34,7 +35,7 @@
                         ValueChanged="OnSeek" ToolTip.Tip="{l:Text chat.audio.seek}"/>
                 <Button x:Name="VolumeButton" Grid.Column="2" Classes="ghost" Width="28" Height="28" Padding="0"
                         ToolTip.Tip="{l:Text peer.volume}">
-                    <Image Source="{StaticResource HighVolumeIcon}" Width="16" Height="16"/>
+                    <Image Source="{Binding #VolumeSlider.Value, Converter={x:Static volumeIcons:VolumeIconConverter.Instance}}" Width="16" Height="16"/>
                     <Button.Flyout>
                         <Flyout Placement="BottomEdgeAlignedRight">
                             <StackPanel Spacing="2">

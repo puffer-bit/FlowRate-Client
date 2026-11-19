@@ -48,6 +48,7 @@ public partial class App : global::Avalonia.Application
         new LanguageService().Apply(null);
 
         AvaloniaXamlLoader.Load(this);
+        ApplicationFontResources.Initialize(this);
     }
 
     public override void OnFrameworkInitializationCompleted()

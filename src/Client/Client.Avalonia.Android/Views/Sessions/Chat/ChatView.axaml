@@ -518,15 +518,11 @@
                         <Flyout Placement="Top">
                             <StackPanel Spacing="2">
                                 <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
-                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}">
-                                    <menus:MenuItemButton.IconContent>
-                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultCompressImages}"/>
-                                    </menus:MenuItemButton.IconContent>
+                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}" IsChecked="{Binding Composer.DefaultCompressImages}">
+
                                 </menus:MenuItemButton>
-                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}">
-                                    <menus:MenuItemButton.IconContent>
-                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultStripMetadata}"/>
-                                    </menus:MenuItemButton.IconContent>
+                                <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}" IsChecked="{Binding Composer.DefaultStripMetadata}">
+
                                 </menus:MenuItemButton>
                                 <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
                                            IsVisible="{Binding Composer.IsImageCompressionForced}"/>
@@ -547,16 +543,12 @@
                                         <Flyout Placement="Top">
                                             <StackPanel Spacing="2">
                                                 <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" IsVisible="{Binding IsImage}"
-                                                                      Command="{Binding ToggleCompressionCommand}">
-                                                    <menus:MenuItemButton.IconContent>
-                                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsCompressed}"/>
-                                                    </menus:MenuItemButton.IconContent>
+                                                                      Command="{Binding ToggleCompressionCommand}" IsChecked="{Binding IsCompressed}">
+
                                                 </menus:MenuItemButton>
                                                 <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" IsVisible="{Binding IsImage}"
-                                                                      Command="{Binding ToggleMetadataCommand}">
-                                                    <menus:MenuItemButton.IconContent>
-                                                        <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMetadataStripped}"/>
-                                                    </menus:MenuItemButton.IconContent>
+                                                                      Command="{Binding ToggleMetadataCommand}" IsChecked="{Binding IsMetadataStripped}">
+
                                                 </menus:MenuItemButton>
                                                 <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
                                                            MaxWidth="260" IsVisible="{Binding IsCompressionForced}"/>
@@ -616,15 +608,11 @@
                             <Flyout Placement="Top">
                                 <StackPanel Spacing="2">
                                     <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
-                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}">
-                                        <menus:MenuItemButton.IconContent>
-                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultCompressImages}"/>
-                                        </menus:MenuItemButton.IconContent>
+                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}" IsChecked="{Binding Composer.DefaultCompressImages}">
+
                                     </menus:MenuItemButton>
-                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}">
-                                        <menus:MenuItemButton.IconContent>
-                                            <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding Composer.DefaultStripMetadata}"/>
-                                        </menus:MenuItemButton.IconContent>
+                                    <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}" Command="{Binding Composer.ToggleDefaultMetadataCommand}" IsChecked="{Binding Composer.DefaultStripMetadata}">
+
                                     </menus:MenuItemButton>
                                     <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
                                                IsVisible="{Binding Composer.IsImageCompressionForced}"/>
@@ -710,26 +698,30 @@
                                 Focusable="False"
                                 Command="{Binding CloseCommand}"/>
 
-                        <images:ZoomableImage Grid.Row="1" Padding="8"
+                        <images:ZoomableImage Grid.Row="1" Padding="8" QuarterTurns="{Binding QuarterTurns}"
                                               Source="{Binding Picture}"/>
 
                         <Border Grid.Row="0" Classes="image-viewer-bar">
-                            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
+                            <Grid ColumnDefinitions="*, Auto, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                     <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Classes="image-viewer-error" Text="{Binding Error}"
                                                TextWrapping="Wrap"
                                                IsVisible="{Binding HasError}"/>
                                 </StackPanel>
-                                <Button Grid.Column="1" Classes="borderless chat-round" Focusable="False"
+                                <Button Grid.Column="1" Classes="borderless chat-round" Command="{Binding RotateCommand}"
+                                        ToolTip.Tip="{l:Text chat.image.rotate}" AutomationProperties.Name="{l:Text chat.image.rotate}">
+                                    <Image Width="20" Height="20" Source="{StaticResource RotateImageIcon}"/>
+                                </Button>
+                                <Button Grid.Column="2" Classes="borderless chat-round" Focusable="False"
                                         Command="{Binding SaveCommand}">
                                     <Image Width="20" Height="20" Source="{StaticResource DownloadIcon}"/>
                                 </Button>
-                                <Button Grid.Column="2" Classes="borderless chat-round" Focusable="False"
+                                <Button Grid.Column="3" Classes="borderless chat-round" Focusable="False"
                                         Command="{Binding CloseCommand}">
                                     <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
                                 </Button>
-                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,6,6,0"
+                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,6,0"
                                              Value="{Binding Progress}" IsVisible="{Binding IsLoading}"/>
                             </Grid>
                         </Border>
@@ -818,24 +810,7 @@
                     <menus:MenuItemButton.Flyout>
                         <Flyout Placement="Top" FlyoutPresenterClasses="reaction-picker">
                             <ScrollViewer MaxHeight="288" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding ReactionChoices}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="chatVm:ChatReactionVM">
-                                        <menus:MenuItemButton Command="{Binding Choose}" menus:FlyoutMenu.CloseOnClick="True">
-                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Count}" IsVisible="{Binding HasCount}" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <menus:MenuItemButton.IconContent>
-                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsMine}"/>
-                                            </menus:MenuItemButton.IconContent>
-                                        </menus:MenuItemButton>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <sharedChat:ChatReactionPicker/>
                             </ScrollViewer>
                         </Flyout>
                     </menus:MenuItemButton.Flyout>
@@ -845,7 +820,7 @@
                 <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
                               IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
                               Command="{Binding TogglePinned}"/>
-                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.unpin}"
+                <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
                               IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
                               Command="{Binding TogglePinned}"/>
                 <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"

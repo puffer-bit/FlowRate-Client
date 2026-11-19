@@ -70,7 +70,9 @@ public partial class ChatVideoPlayer : UserControl
         Height = Bounds.Height;
         // Move the complete player so all controls keep the same playback session.
         Content = null;
-        PlayerBorder.Width = double.NaN;
+        PlayerBorder.MaxWidth = double.PositiveInfinity;
+        PlayerBorder.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
+        VideoFrame.IsExpanded = true;
         PlayerLayout.RowDefinitions = new RowDefinitions("*,Auto");
         window.Content = PlayerBorder;
         window.AddHandler(KeyDownEvent, (_, args) =>
@@ -86,7 +88,9 @@ public partial class ChatVideoPlayer : UserControl
             _fullscreen = null;
             Width = inlineWidth;
             Height = inlineHeight;
-            PlayerBorder.Width = 400;
+            PlayerBorder.MaxWidth = (DataContext as ChatFileVM)?.PlayerCardWidth ?? 400;
+            PlayerBorder.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
+            VideoFrame.IsExpanded = false;
             PlayerLayout.RowDefinitions = InlineRows();
             Content = PlayerBorder;
             _session?.RedisplayFrame();
@@ -95,8 +99,7 @@ public partial class ChatVideoPlayer : UserControl
         _session?.RedisplayFrame();
     }
 
-    private RowDefinitions InlineRows() => new(
-        string.Create(CultureInfo.InvariantCulture, $"{(DataContext as ChatFileVM)?.PlayerHeight ?? 225},Auto"));
+    private RowDefinitions InlineRows() => new("Auto,Auto");
 
     private void OnVideoTapped(object? sender, TappedEventArgs e)
     {
@@ -282,7 +285,10 @@ public partial class ChatVideoPlayer : UserControl
             lock (_surfaceLock)
                 VideoSurface.Clear();
             if (_fullscreen == null)
+            {
+                PlayerBorder.MaxWidth = _file?.PlayerCardWidth ?? 400;
                 PlayerLayout.RowDefinitions = InlineRows();
+            }
         }
         ResetInteraction();
         base.OnDataContextChanged(e);

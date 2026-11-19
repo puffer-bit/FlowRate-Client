@@ -18,6 +18,7 @@
              xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              x:Class="Client.Droid.Views.Main.MainView"
              x:DataType="mainVm:MainWindowVM"
+             FontFamily="{DynamicResource ContentControlThemeFontFamily}"
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
@@ -319,6 +320,12 @@
                     </menus:MenuItemButton>
 
                     <StackPanel Spacing="2" IsVisible="{Binding SelfSession, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <menus:MenuItemButton Icon="{StaticResource VideoCameraIcon}" Content="{l:Text camera.start}"
+                                              Command="{Binding SelfSession.ToggleCameraCommand}" menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding !SelfSession.IsCameraOn}" IsEnabled="{Binding SelfSession.CanUseCamera}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CrossedVideoCameraIcon}" Content="{l:Text camera.stop}"
+                                              Command="{Binding SelfSession.ToggleCameraCommand}" menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding SelfSession.IsCameraOn}"/>
                         <menus:MenuItemButton Icon="{StaticResource CrossedMicrophoneIcon}" Content="{l:Text call.microphoneOff}"
                                               Command="{Binding SelfSession.ToggleMicrophoneCommand}"
                                               IsVisible="{Binding SelfSession.IsMicrophoneOn}"/>
