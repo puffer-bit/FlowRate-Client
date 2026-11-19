@@ -93,6 +93,8 @@ The Linux GStreamer bundle is built against glibc 2.35. Its documented baseline 
 
 Standalone archives do not update themselves. Replace them manually with a newer archive. Application files and user data are stored separately, including when using an installed package.
 
+On Linux, `flowrate-linux.sh` adds FlowRate to the application menu with its icon, so the window groups under it in the dock. For the AppImage, download `FlowRateClient-<platform>-install.sh` next to it and run it; for the standalone archive, run `flowrate-linux.sh` from the unpacked folder. It installs for the current user into `~/.local/opt/flowrate` without root. `--autostart` starts FlowRate minimized at login, and `~/.local/opt/flowrate/flowrate-linux.sh --uninstall` removes it again (`--purge` also removes the user data).
+
 ## Getting started
 
 1. Download and install or extract the package for your platform.

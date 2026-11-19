@@ -23,6 +23,8 @@
 #    plus the packages and the releases.<channel>.json its updater takes;
 #  - the standalone one, FlowRateClient-<version>-<platform>-standalone.tar.gz or .zip: unpacked and run
 #    as is, it does not update itself. On macOS it is FlowRate.app in a .zip.
+# On Linux both get flowrate-linux.sh, which adds the client to the application menu: inside the archive,
+# and as FlowRateClient-<platform>-install.sh next to the AppImage.
 # Every file of the folder goes to the GitHub release v<version> as it is; a dev build is published as a
 # pre-release, which only clients set to the dev builds take.
 # Every variant has an update channel of its own (linux, linux-aot, win, win-aot, osx, osx-aot), so a client updates to
@@ -56,6 +58,8 @@ ANDROID_PROJECT=src/Client/Client.Avalonia.Android/Client.Avalonia.Android.cspro
 ANDROID_PUBLISH_DIR=src/Client/Client.Avalonia.Android/bin/publish/android
 ICON=src/Client/Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico
 MAC_ICON=src/Client/Client.Avalonia.Assets/AppIcons/Headphones/png/app-icon-1024.png
+APP_ICONS=src/Client/Client.Avalonia.Assets/AppIcons/Headphones
+LINUX_SCRIPT=src/Client/Client.Avalonia.Desktop/Linux/flowrate-linux.sh
 MAC_PLIST=src/Client/Client.Avalonia.Desktop/macOS/Info.plist
 MAC_ENTITLEMENTS=src/Client/Client.Avalonia.Desktop/macOS/FlowRate.entitlements
 FEED_DIR=dist/.feed
@@ -226,11 +230,30 @@ elif command == "take":
 PY
 }
 
+# flowrate-linux.sh at <file> with the icons appended after its line ICONS_PAYLOAD, in the hicolor sizes
+linux_script() {
+    local file=$1 icons size
+    icons=$(mktemp -d)
+    for size in 16 24 32 48 64 128 256 512; do
+        mkdir -p "$icons/hicolor/${size}x$size/apps"
+        cp "$APP_ICONS/png/app-icon-$size.png" "$icons/hicolor/${size}x$size/apps/flowrate.png"
+    done
+    mkdir -p "$icons/hicolor/scalable/apps"
+    cp "$APP_ICONS/svg/app-icon.svg" "$icons/hicolor/scalable/apps/flowrate.svg"
+    { cat "$LINUX_SCRIPT"; echo ICONS_PAYLOAD; tar -C "$icons" -cz --owner=0 --group=0 hicolor | base64 -w 76; } > "$file"
+    chmod 755 "$file"
+    rm -rf "$icons"
+}
+
 # The standalone form: the published folder in an archive with a single FlowRateClient-<version> folder
 pack_standalone() {
-    local rid=$1 publish_dir=$2 archive=$3 name="FlowRateClient-$version"
+    local rid=$1 publish_dir=$2 archive=$3 name="FlowRateClient-$version" extra
     if [[ "$rid" == linux-x64 ]]; then
-        tar -C "$publish_dir" -czf "$archive" --transform "s,^\.,$name," .
+        # The script goes into the archive only, the published folder stays as vpk packed it
+        extra=$(mktemp -d)
+        linux_script "$extra/flowrate-linux.sh"
+        tar -czf "$archive" --transform "s,^\.,$name," -C "$publish_dir" . -C "$extra" ./flowrate-linux.sh
+        rm -rf "$extra"
     else
         python3 - "$publish_dir" "$archive" "$name" <<'PY'
 import os, sys, zipfile
@@ -332,6 +355,8 @@ PY
         echo "######## Packing the standalone $platform"
         pack_standalone "$rid" "$publish_dir" "$standalone"
     fi
+    # Downloaded next to the AppImage, it installs that one
+    [[ "$os" == linux ]] && linux_script "$output/FlowRateClient-$platform-install.sh"
 }
 
 # FlowRate.app in <folder> of a published folder. Contents/MacOS holds the published files, except the
