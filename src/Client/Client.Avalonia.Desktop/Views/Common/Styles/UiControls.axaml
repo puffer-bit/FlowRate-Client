@@ -122,6 +122,23 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         <Setter Property="MaxLines" Value="2"/>
     </Style>
+    <Style Selector="ListBox.collapsedNavigation">
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+    </Style>
+    <Style Selector="ListBox.collapsedNavigation Grid.navigationRow > TextBlock">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="ListBox.collapsedNavigation Path.subItemsMark">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="ListBox.collapsedNavigation Grid.navigationRow">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="Width" Value="{StaticResource NavigationIconSize}"/>
+    </Style>
+    <Style Selector="Grid.settingsFrame.collapsedNavigation TextBox#SearchBox">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
     <Style Selector="common|StatePanel">
         <Setter Property="Margin" Value="16"/>
         <Setter Property="VerticalAlignment" Value="Center"/>

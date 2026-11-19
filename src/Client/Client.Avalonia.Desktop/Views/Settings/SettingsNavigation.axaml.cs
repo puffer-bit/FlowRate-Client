@@ -33,7 +33,8 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         {
             var line = TabList.Items[e.Index] as SettingNavItemVM;
             e.Container.Classes.Set("sub", line is { IsSubItem: true });
-            e.Container.IsVisible = line?.IsShown ?? true;
+            e.Container.IsVisible = line?.IsShown != false &&
+                                    !(line is { IsSubItem: true } && SettingsNavigationLayout.IsCollapsed(TabList));
         };
 
         this.WhenActivated(disposables =>
@@ -59,7 +60,7 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         foreach (var subItem in ViewModel!.NavigationItems.Where(line => line.Parent == tab))
         {
             if (TabList.ContainerFromItem(subItem) is { } container)
-                Fold(container, !tab.IsExpanded);
+                Fold(container, !tab.IsExpanded || SettingsNavigationLayout.IsCollapsed(TabList));
         }
     }
 
@@ -80,7 +81,7 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         container.ClearValue(Layoutable.MaxHeightProperty);
         container.ClearValue(Visual.OpacityProperty);
 
-        if (!Motion.IsEnabled)
+        if (!Motion.IsEnabled || SettingsNavigationLayout.IsCollapsed(TabList))
         {
             container.IsVisible = !isFolded;
             return;
@@ -120,6 +121,28 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         Cue = new Cue(cue),
         Setters = { new Setter(Layoutable.MaxHeightProperty, height), new Setter(Visual.OpacityProperty, opacity) }
     };
+
+    private void TabList_OnDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (!SettingsNavigationLayout.Toggle(TabList, e) || ViewModel is not { } vm)
+            return;
+
+        foreach (var run in _folds.Values)
+        {
+            run.Cancel();
+            run.Dispose();
+        }
+        _folds.Clear();
+
+        foreach (var item in vm.NavigationItems.Where(item => item.IsSubItem))
+        {
+            if (TabList.ContainerFromItem(item) is not { } container)
+                continue;
+            container.ClearValue(Layoutable.MaxHeightProperty);
+            container.ClearValue(Visual.OpacityProperty);
+            container.IsVisible = item.IsShown && !SettingsNavigationLayout.IsCollapsed(TabList);
+        }
+    }
 
     // A sub-item that is picked already leads to its section again, as the page may have been scrolled since
     private void TabList_OnTapped(object? sender, TappedEventArgs e)

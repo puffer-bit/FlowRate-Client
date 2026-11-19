@@ -3,6 +3,7 @@
              xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
              xmlns:pages="clr-namespace:Client.Views.ServerSettings.Pages"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
@@ -44,7 +45,7 @@
     </UserControl.Styles>
 
     <!-- The same frame as the settings of the application: a title, tabs and a page, a footer -->
-    <Grid ColumnDefinitions="220, *" RowDefinitions="Auto, 1, *, Auto, 1, 44">
+    <Grid Classes="settingsFrame" ColumnDefinitions="Auto, *" RowDefinitions="Auto, 1, *, Auto, 1, 44">
         <!-- Title: the icon on a tile, the name of the dialog and under it the server they belong to;
              the dialog can be closed from here as well as from the footer -->
         <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
@@ -54,49 +55,55 @@
         <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Height="1" Classes="dialogSeparator"/>
 
         <!-- Items are in the order of the tabs of ServerSettingsVM -->
-        <ListBox Grid.Column="0" Grid.Row="2" Classes="tabs"
+        <ListBox Grid.Column="0" Grid.Row="2" Classes="tabs" DoubleTapped="Tabs_OnDoubleTapped"
+                 Width="196" ClipToBounds="True"
                  SelectedIndex="{Binding SelectedTabIndex}"
                  Margin="12"
                  Background="Transparent"
                  BorderThickness="0">
+            <ListBox.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </ListBox.Transitions>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.info}" AutomationProperties.Name="{l:Text serverSettings.tab.info}">
                     <Image Source="{StaticResource ServerIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.info}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.network}" AutomationProperties.Name="{l:Text serverSettings.tab.network}">
                     <Image Source="{StaticResource PlugIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.network}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.sfu}" AutomationProperties.Name="{l:Text serverSettings.tab.sfu}">
                     <Image Source="{StaticResource NetIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.sfu}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.users}" AutomationProperties.Name="{l:Text serverSettings.tab.users}">
                     <Image Source="{StaticResource BaseUsersIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.users}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.security}" AutomationProperties.Name="{l:Text serverSettings.tab.security}">
                     <Image Source="{StaticResource BlueShieldIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.security}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanViewSettings}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.storage}" AutomationProperties.Name="{l:Text serverSettings.tab.storage}">
                     <Image Source="{StaticResource BucketIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.storage}"/>
                 </Grid>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding CanManageRoles}">
-                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *">
+                <Grid Classes="navigationRow" ColumnDefinitions="Auto, *" ToolTip.Tip="{l:Text serverSettings.tab.roles}" AutomationProperties.Name="{l:Text serverSettings.tab.roles}">
                     <Image Source="{StaticResource GreenShieldIcon}"/>
                     <TextBlock Grid.Column="1" Text="{l:Text serverSettings.tab.roles}"/>
                 </Grid>
