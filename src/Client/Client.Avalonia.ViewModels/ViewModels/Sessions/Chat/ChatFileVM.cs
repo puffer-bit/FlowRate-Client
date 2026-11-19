@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Avalonia.Localization;
@@ -128,6 +129,51 @@ public class ChatFileVM : ReactiveObject
             IsDownloaded = path != null;
     }
 
+    /// <summary>
+    /// Opens the attachment for a player: the cached file when it is all there, otherwise as it downloads, so it
+    /// plays before it has arrived. Called on the UI thread.
+    /// </summary>
+    /// <returns>Null when it could not be opened; <see cref="Error"/> then says why.</returns>
+    public async Task<ChatPlaybackSource?> OpenPlaybackAsync(CancellationToken cancellationToken)
+    {
+        Error = null;
+        if (await FindCachedFileAsync() is { } kept)
+        {
+            IsDownloaded = true;
+            return ChatPlaybackSource.FromFile(kept, FileName);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var partial = await Task.Run(() => _cache.OpenPartialFile(_coordinator, File.Id, FileName, File.Size));
+        if (partial == null)
+            return await GetPlaybackPathAsync(cancellationToken) is { } path ? ChatPlaybackSource.FromFile(path, FileName) : null;
+        if (cancellationToken.IsCancellationRequested)
+        {
+            partial.Dispose();
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        Progress = (double)partial.ChunksPresent / partial.ChunkCount;
+        return ChatPlaybackSource.FromDownload(new StreamingDownload(partial, FetchRangeAsync,
+            new Progress<double>(ReportStreamed)), FileName);
+    }
+
+    /// <summary>Tells why a download opened by <see cref="OpenPlaybackAsync"/> stopped.</summary>
+    public void ReportPlaybackFailure(MediaTransferResult result) =>
+        Error = Strings.Get(result == MediaTransferResult.NotFound ? "chat.file.gone" : "chat.file.downloadFailed");
+
+    private void ReportStreamed(double share)
+    {
+        if (_download == null)
+            Progress = share;
+        if (share >= 1)
+            IsDownloaded = true;
+    }
+
+    private Task<MediaTransferResult> FetchRangeAsync(long offset, long length, Stream destination,
+        CancellationToken cancellationToken) =>
+        _session.DownloadChatFileRange(File.Id, offset, length, destination, cancellationToken);
+
     /// <summary>Downloads media into the same cache used by file attachments.</summary>
     public async Task<string?> GetPlaybackPathAsync(CancellationToken cancellationToken)
     {
@@ -248,6 +294,19 @@ public class ChatFileVM : ReactiveObject
         }
 
         IsDownloaded = false;
+
+        // Chunk by chunk, so what was played or downloaded before is not fetched again
+        if (await Task.Run(() => _cache.OpenPartialFile(_coordinator, File.Id, FileName, File.Size)) is { } partial)
+        {
+            using var download = new StreamingDownload(partial, FetchRangeAsync,
+                new Progress<double>(share => Progress = share), wholeFile: true);
+            Progress = download.Progress;
+            var outcome = await download.WaitCompleteAsync(cancellationToken);
+            var complete = download.CompletePath;
+            IsDownloaded = complete != null;
+            return (complete != null ? MediaTransferResult.NoError
+                : outcome == MediaTransferResult.NoError ? MediaTransferResult.Failed : outcome, complete);
+        }
 
         var result = MediaTransferResult.Failed;
         var size = Math.Max(File.Size, 1);

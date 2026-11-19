@@ -22,6 +22,8 @@ public sealed partial class MediaCache : IMediaCache
     private long _sizeLimit;
     private readonly ILogger<MediaCache> _logger;
     private readonly Lock _trimLock = new();
+    // Attachments being downloaded piece by piece, by their data file; trimming leaves them alone
+    private readonly Dictionary<string, PartialMediaFile> _partials = new(StringComparer.Ordinal);
     private long _writtenSinceTrim;
 
     public MediaCache(string directory, ILogger<MediaCache> logger, long sizeLimit = DefaultSizeLimit)
@@ -70,7 +72,7 @@ public sealed partial class MediaCache : IMediaCache
         {
             // A download in progress keeps its unfinished file and is kept when it ends
             foreach (var file in new DirectoryInfo(_directory).EnumerateFiles("*", SearchOption.AllDirectories)
-                         .Where(file => !IsTemporary(file)))
+                         .Where(file => !IsTemporary(file) && !IsOpenPartial(file)))
                 TryDelete(file.FullName);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -106,6 +108,57 @@ public sealed partial class MediaCache : IMediaCache
     public Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName,
         Func<Stream, Task<bool>> write) =>
         StoreAsync(PathOfFile(coordinatorInstanceId, fileId, fileName), write, namedFile: true);
+
+    public IPartialMediaFile? OpenPartialFile(string coordinatorInstanceId, int fileId, string fileName, long length)
+    {
+        var complete = PathOfFile(coordinatorInstanceId, fileId, fileName);
+        var data = PathOf(coordinatorInstanceId, fileId.ToString(CultureInfo.InvariantCulture) + ".stream");
+        if (complete == null || data == null || length <= 0)
+            return null;
+
+        lock (_partials)
+        {
+            if (_partials.TryGetValue(data, out var open) && open.TryAddUser())
+                return new PartialMediaFile.Lease(open, ClosePartial);
+
+            try
+            {
+                var file = new PartialMediaFile(data, complete, length, AddWritten);
+                _partials[data] = file;
+                return new PartialMediaFile.Lease(file, ClosePartial);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                LogStoreFailed(exception, data);
+                return null;
+            }
+        }
+    }
+
+    private void ClosePartial(PartialMediaFile file)
+    {
+        lock (_partials)
+        {
+            if (_partials.TryGetValue(file.DataPath, out var open) && ReferenceEquals(open, file))
+                _partials.Remove(file.DataPath);
+        }
+    }
+
+    private void AddWritten(long written)
+    {
+        if (Interlocked.Add(ref _writtenSinceTrim, written) >= TrimInterval)
+            _ = Task.Run(Trim);
+    }
+
+    private bool IsOpenPartial(FileInfo file)
+    {
+        lock (_partials)
+        {
+            var path = file.FullName;
+            return _partials.ContainsKey(path)
+                || path.EndsWith(".map", StringComparison.Ordinal) && _partials.ContainsKey(path[..^4]);
+        }
+    }
 
     private static string? Find(string? path)
     {
@@ -156,8 +209,7 @@ public sealed partial class MediaCache : IMediaCache
 
             await Task.Run(() => File.Move(temporary, path, overwrite: true));
 
-            if (Interlocked.Add(ref _writtenSinceTrim, written) >= TrimInterval)
-                _ = Task.Run(Trim);
+            AddWritten(written);
 
             return path;
         }
@@ -202,9 +254,17 @@ public sealed partial class MediaCache : IMediaCache
             {
                 if (total <= SizeLimit)
                     break;
+                // Being played: it goes once it is closed
+                if (IsOpenPartial(file))
+                    continue;
 
                 total -= file.Length;
                 TryDelete(file.FullName);
+                // A map without its data, or data without its map, is of no use
+                if (file.Extension == ".map")
+                    TryDelete(file.FullName[..^4]);
+                else if (file.Extension == ".stream")
+                    TryDelete(file.FullName + ".map");
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

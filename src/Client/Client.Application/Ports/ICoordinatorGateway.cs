@@ -267,6 +267,14 @@ public interface ICoordinatorGateway : IDisposable
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Writes <paramref name="length"/> bytes of a file of a message from <paramref name="offset"/> on into
+    /// <paramref name="destination"/>, or fewer when the file ends first. Failures come back as a result, never as
+    /// an exception.
+    /// </summary>
+    Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Writes the avatar with the id from <see cref="Client.Core.Users.AvatarAddress.IdOf"/> into
     /// <paramref name="destination"/>. Failures come back as a result, never as an exception.
     /// </summary>

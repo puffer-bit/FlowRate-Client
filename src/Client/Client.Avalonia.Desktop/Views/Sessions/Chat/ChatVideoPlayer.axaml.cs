@@ -134,6 +134,12 @@ public partial class ChatVideoPlayer : UserControl
         PlayImage.IsVisible = !playing && !loading;
         PauseImage.IsVisible = playing;
         PlaybackError.IsVisible = current && _session!.HasError;
+        // A video that plays as it downloads: how much is there, and moving while it waits for more
+        var streamed = current ? _session!.StreamProgress : null;
+        StreamBar.IsVisible = streamed is < 1;
+        StreamBar.IsIndeterminate = current && _session!.IsBuffering;
+        if (streamed is { } share)
+            StreamBar.Value = share;
         ToolTip.SetTip(PlayButton, Strings.Get(loading ? "chat.file.cancel"
             : playing ? "chat.video.pause" : "chat.video.play"));
     }

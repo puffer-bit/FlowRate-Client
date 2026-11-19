@@ -266,6 +266,10 @@ public partial class CoordinatorSession
         IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
         _gateway.DownloadChatFile(fileId, destination, progress, cancellationToken);
 
+    public Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken = default) =>
+        _gateway.DownloadChatFileRange(fileId, offset, length, destination, cancellationToken);
+
     public Task<RequestResult<string?>> RegisterPushToken(string token, PushPlatform platform,
         PushKey key) =>
         SendAsync(() => _gateway.RegisterPushToken(token, platform, key));

@@ -44,4 +44,12 @@ public interface IMediaCache
 
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write);
+
+    /// <summary>
+    /// Opens what is kept of an attachment downloaded piece by piece, or starts keeping it. Several callers of the
+    /// same attachment share it; it is closed when the last one disposes it.
+    /// </summary>
+    /// <param name="length">The size of the whole attachment.</param>
+    /// <returns>Null when the attachment cannot be kept.</returns>
+    IPartialMediaFile? OpenPartialFile(string coordinatorInstanceId, int fileId, string fileName, long length);
 }

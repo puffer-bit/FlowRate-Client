@@ -59,6 +59,7 @@
             </Grid>
             <TextBlock Text="{l:Text chat.file.saved}" IsVisible="{Binding IsSaved}" FontSize="11"
                        Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <ProgressBar x:Name="StreamBar" Minimum="0" Maximum="1" Height="3" IsVisible="False"/>
             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="3"
                          IsVisible="{Binding IsDownloading}"/>
             <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" FontSize="11"

@@ -113,6 +113,19 @@ internal sealed partial class MediaHttpClient : IDisposable
         DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.Files}/{fileId}"),
             destination, progress, cancellationToken);
 
+    /// <summary>
+    /// Writes <paramref name="length"/> bytes of a message file from <paramref name="offset"/> on, or fewer
+    /// when the file ends first.
+    /// </summary>
+    public Task<MediaTransferResult> DownloadFileRangeAsync(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
+        return DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.Files}/{fileId}"),
+            destination, null, cancellationToken, (offset, length));
+    }
+
     public Task<MediaTransferResult> DownloadLinkPreviewImageAsync(int previewId, Stream destination,
         CancellationToken cancellationToken) =>
         DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.LinkPreviewImages}/{previewId}"),
@@ -124,14 +137,22 @@ internal sealed partial class MediaHttpClient : IDisposable
             cancellationToken);
 
     private async Task<MediaTransferResult> DownloadAsync(string path, Stream destination,
-        IProgress<long>? progress, CancellationToken cancellationToken)
+        IProgress<long>? progress, CancellationToken cancellationToken, (long Offset, long Length)? range = null)
     {
         try
         {
-            using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Get, path), RequestTimeout,
-                cancellationToken, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await SendAsync(() =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, path);
+                if (range is { } wanted)
+                    request.Headers.Range = new RangeHeaderValue(wanted.Offset, wanted.Offset + wanted.Length - 1);
+                return request;
+            }, RequestTimeout, cancellationToken, HttpCompletionOption.ResponseHeadersRead);
             if (response == null)
                 return MediaTransferResult.ConnectionFailed;
+            // A range that starts past the end has nothing in it
+            if (range != null && response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+                return MediaTransferResult.NoError;
             if (!response.IsSuccessStatusCode)
                 return ResultOf(response.StatusCode);
 
@@ -139,21 +160,37 @@ internal sealed partial class MediaHttpClient : IDisposable
             var buffer = ArrayPool<byte>.Shared.Rent(81920);
             try
             {
+                var remaining = long.MaxValue;
+                if (range is { } part)
+                {
+                    remaining = part.Length;
+                    // A server that ignores Range sends the whole file
+                    if (response.StatusCode != HttpStatusCode.PartialContent
+                        && await SkipAsync(content, part.Offset, buffer, cancellationToken) < part.Offset)
+                        return MediaTransferResult.NoError;
+                    if (response.StatusCode == HttpStatusCode.PartialContent
+                        && response.Content.Headers.ContentRange?.From is { } start && start != part.Offset)
+                        return MediaTransferResult.Failed;
+                }
+
                 long received = 0;
-                while (true)
+                while (remaining > 0)
                 {
                     // The limit is on each read, so a stalled download ends while a long one goes on
                     using var stalled = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     stalled.CancelAfter(RequestTimeout);
 
-                    var read = await content.ReadAsync(buffer, stalled.Token);
+                    var read = await content.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)),
+                        stalled.Token);
                     if (read == 0)
                         return MediaTransferResult.NoError;
 
                     await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                     received += read;
+                    remaining -= read;
                     progress?.Report(received);
                 }
+                return MediaTransferResult.NoError;
             }
             finally
             {

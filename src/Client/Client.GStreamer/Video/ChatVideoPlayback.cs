@@ -1,5 +1,6 @@
 using Gst;
 
+using Client.Application.Chat;
 using Client.Core.Media;
 
 namespace Client.GStreamer.Video;
@@ -27,10 +28,32 @@ public sealed class ChatVideoPlayback : IDisposable
     /// </summary>
     public bool DeliversYuv { get; }
 
+    // Set when the video plays while it downloads
+    private readonly StreamingSource? _streaming;
+
+    /// <summary>True while the video waits for bytes that have not arrived yet.</summary>
+    public bool IsWaiting => _streaming?.IsWaiting == true;
+
     /// <param name="startAt">Seconds to start from; the picture starts paused there unless <paramref name="play"/>.</param>
     public ChatVideoPlayback(string path, Action<RawVideoFrame> onFrame, double volume = 1, double startAt = 0,
         bool play = true)
+        : this(path, null, onFrame, volume, startAt, play)
     {
+    }
+
+    /// <summary>Plays an attachment while it downloads, which the caller keeps until this is disposed.</summary>
+    /// <inheritdoc cref="ChatVideoPlayback(string, Action{RawVideoFrame}, double, double, bool)"/>
+    /// <param name="fileName">The name of the attachment, whose extension tells its container.</param>
+    public ChatVideoPlayback(StreamingDownload download, string? fileName, Action<RawVideoFrame> onFrame,
+        double volume = 1, double startAt = 0, bool play = true)
+        : this(null, new StreamingSource(download, fileName), onFrame, volume, startAt, play)
+    {
+    }
+
+    private ChatVideoPlayback(string? path, StreamingSource? streaming, Action<RawVideoFrame> onFrame, double volume,
+        double startAt, bool play)
+    {
+        _streaming = streaming;
         DeliversYuv = VideoSurfaceSupport.Supports(VideoSurfaceKinds.YuvMemory);
         _pipeline = (Pipeline)Global.ParseLaunch("playbin");
         // Decoders output NV12 or I420 anyway, so videoconvert passes them through and only converts
@@ -48,7 +71,19 @@ public sealed class ChatVideoPlayback : IDisposable
         _bus = _pipeline.GetBus();
         try
         {
-            _pipeline.SetProperty("uri", new System.Uri(Path.GetFullPath(path)).AbsoluteUri);
+            if (streaming != null)
+            {
+                _pipeline.ConnectSignal("source-setup", (_, args) =>
+                {
+                    if (args.Length > 0 && args[0] is Element source)
+                        streaming.Attach(source);
+                    return null;
+                }, false);
+                streaming.ForceType(_pipeline);
+                _pipeline.SetProperty("uri", StreamingSource.Uri);
+            }
+            else
+                _pipeline.SetProperty("uri", new System.Uri(Path.GetFullPath(path!)).AbsoluteUri);
             SetVolume(volume);
             _pendingSeek = startAt;
             Position = startAt;
@@ -83,6 +118,8 @@ public sealed class ChatVideoPlayback : IDisposable
     public void Seek(double seconds)
     {
         seconds = Math.Clamp(seconds, 0, Duration);
+        // A read waiting for bytes elsewhere would hold the seek until they arrive
+        _streaming?.InterruptReads();
         if (!_pipeline.SeekSimple(Format.Time, SeekFlags.Flush | SeekFlags.Accurate,
                 (long)(seconds * 1_000_000_000)))
             return;
@@ -96,6 +133,8 @@ public sealed class ChatVideoPlayback : IDisposable
     {
         if (Interlocked.Exchange(ref _frameError, null) is { } error)
             throw new InvalidOperationException("Video frame delivery failed.", error);
+        if (_streaming?.Failure is { } failure)
+            throw new IOException("The video stopped downloading.", failure);
         using var message = _bus.PopFiltered(MessageType.Error | MessageType.Eos);
         if (message?.Type == MessageType.Error)
         {
@@ -130,6 +169,7 @@ public sealed class ChatVideoPlayback : IDisposable
             return;
         _disposed = true;
         _pump.Dispose();
+        _streaming?.Stop();
         _pipeline.SetState(State.Null);
         _bus.Dispose();
         _pipeline.Dispose();

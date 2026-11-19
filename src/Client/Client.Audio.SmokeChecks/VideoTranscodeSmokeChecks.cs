@@ -198,7 +198,7 @@ internal static class VideoTranscodeSmokeChecks
     /// runtime has no videotestsrc.
     /// </summary>
     /// <param name="interleaveAtEnd">The index at the end, as a phone writes it.</param>
-    private static void Generate(string path, int width, int height, int framerate, int seconds, string encoder,
+    internal static void Generate(string path, int width, int height, int framerate, int seconds, string encoder,
         string mux, string? audioEncoder, bool rotate, bool tagged, bool interleaveAtEnd = false)
     {
         File.Delete(path);

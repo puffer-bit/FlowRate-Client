@@ -113,6 +113,7 @@ public class StorageServiceTests
             Task.FromResult<string?>(null);
         public Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);
+        public IPartialMediaFile? OpenPartialFile(string coordinatorInstanceId, int fileId, string fileName, long length) => null;
         public string? FindLinkPreviewImage(string coordinatorInstanceId, int previewId) => null;
         public Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write) =>
             Task.FromResult<string?>(null);

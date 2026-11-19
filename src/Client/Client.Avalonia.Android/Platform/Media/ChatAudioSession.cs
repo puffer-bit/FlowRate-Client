@@ -18,6 +18,8 @@ public sealed class ChatAudioSession : IDisposable, IChatAudioSession
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private Task? _initialization;
     private ChatAudioPlayback? _playback;
+    private ChatPlaybackSource? _source;
+    private ChatFileVM? _file;
     private CancellationTokenSource? _loading;
     private (string Coordinator, int FileId)? _key;
     private bool _disposed;
@@ -105,14 +107,22 @@ public sealed class ChatAudioSession : IDisposable, IChatAudioSession
         {
             await InitializeAsync();
             cancellation.Token.ThrowIfCancellationRequested();
-            var path = await file.GetPlaybackPathAsync(cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (path == null)
+            var source = await file.OpenPlaybackAsync(cancellation.Token);
+            if (cancellation.IsCancellationRequested)
+            {
+                source?.Dispose();
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+            if (source == null)
             {
                 Stop();
                 return;
             }
-            _playback = new ChatAudioPlayback(path, Volume);
+            _source = source;
+            _file = file;
+            _playback = source.Download is { } download
+                ? new ChatAudioPlayback(download, Volume)
+                : new ChatAudioPlayback(source.Path!, Volume);
             _timer.Start();
             Refresh();
         }
@@ -154,6 +164,8 @@ public sealed class ChatAudioSession : IDisposable, IChatAudioSession
     private void Fail(Exception exception)
     {
         _logger.LogWarning(exception, "Chat audio playback failed.");
+        if (_source?.Download?.Failure is { } failure)
+            _file?.ReportPlaybackFailure(failure);
         ReleasePlayback();
         HasError = true;
         Changed?.Invoke();
@@ -166,6 +178,10 @@ public sealed class ChatAudioSession : IDisposable, IChatAudioSession
         _timer.Stop();
         _playback?.Dispose();
         _playback = null;
+        // After the player, which may still be reading from it
+        _source?.Dispose();
+        _source = null;
+        _file = null;
     }
 
     public void Stop()
