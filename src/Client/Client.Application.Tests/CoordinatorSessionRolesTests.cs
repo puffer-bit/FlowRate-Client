@@ -1,7 +1,6 @@
 using Client.Application.Coordinator;
 using Client.Application.Tests.Fakes;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shared.Enums;

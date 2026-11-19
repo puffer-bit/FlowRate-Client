@@ -2,7 +2,8 @@ using Client.Api;
 using Client.Application.Coordinator.Users;
 using Client.GStreamer.Loader;
 using Client.GStreamer.Audio;
-using Client.GStreamer.WebRTC;
+using Client.GStreamer.Video;
+using Client.LibWebRTC.Native;
 using Client.TestBot;
 using Client.Tools.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,8 +82,28 @@ catch (Exception exception) when (exception is IOException or InvalidOperationEx
     return 1;
 }
 
+// The statistics of the media are read only while something shows or writes them
+if (options.PerfJournal != Client.Core.Settings.MediaPerfJournalMode.Off)
+    Client.Core.Settings.DebugSettings.Apply(Client.Core.Settings.DebugSettings.Current with
+    {
+        MediaPerfJournal = options.PerfJournal,
+        MediaPerfSummarySeconds = 5
+    });
+
 using var devices = new GstAudioDeviceProvider(services.GetRequiredService<ILogger<GstAudioDeviceProvider>>());
-var transports = new WebRTCTransportFactory(devices, services.GetRequiredService<ILogger<WebRTCTransport>>());
+var video = new GstVideoMedia(services.GetRequiredService<ILoggerFactory>());
+var transports = new LibWebRTCTransportFactory(
+    new LibWebRTCRuntime(new GstVoiceAudioDevice(devices,
+        services.GetRequiredService<ILogger<GstVoiceAudioDevice>>()),
+        services.GetRequiredService<ILogger<LibWebRTCRuntime>>()), video,
+    new GstAudioMedia(services.GetRequiredService<ILoggerFactory>()), new NativeVideoReceiver(),
+    services.GetRequiredService<ILoggerFactory>());
+
+if (!transports.IsAvailable)
+{
+    ProgramLog.LibWebRTCMissing(logger);
+    return 1;
+}
 using var stop = new CancellationTokenSource();
 
 Console.CancelKeyPress += (_, eventArgs) =>

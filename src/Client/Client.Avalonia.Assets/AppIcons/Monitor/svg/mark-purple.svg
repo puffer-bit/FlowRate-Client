@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="FlowRate monitor mark"><title>FlowRate monitor mark</title><g color="#6C63FF"><g fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+<rect x="85" y="114" width="342" height="228" rx="38"/>
+<path d="M256 342V418M180 418H332"/></g>
+<g fill="currentColor" transform="translate(88 64) scale(.64)">
+<path d="M127 369V143H239V183H171V235H227V275H171V369Z"/>
+<path fill-rule="evenodd" d="M260 369V143H313C364 143 391 167 391 208C391 238 377 258 353 269L397 369H347L310 281H304V369ZM304 183V242H313C336 242 347 231 347 212C347 193 336 183 313 183Z"/></g></g></svg>

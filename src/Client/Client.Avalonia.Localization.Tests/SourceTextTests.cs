@@ -11,7 +11,7 @@ public partial class SourceTextTests
     // Texts that are the same in every language
     private static readonly string[] AllowedLiterals =
     [
-        "Client.Avalonia.Desktop", "TestServer", "Welcome to Avalonia!", "ID: {0}"
+        "Client.Avalonia.Desktop", "FlowRate", "TestServer", "Welcome to Avalonia!", "ID: {0}"
     ];
 
     // Elements whose content is a value and not a text
@@ -159,7 +159,8 @@ public partial class SourceTextTests
     [GeneratedRegex(@"\{l:Text\s+(?:Key=)?([A-Za-z0-9_.]+)\}")]
     private static partial Regex MarkupKeyPattern();
 
-    [GeneratedRegex(@"SettingText\.Key=""([^""]+)""")]
+    // Only literal keys are checked here; bindings supply their keys at run time.
+    [GeneratedRegex(@"SettingText\.Key=""([A-Za-z0-9_.]+)""")]
     private static partial Regex SettingKeyPattern();
 
     // A key put together at run time has no closing quote right after it and is skipped

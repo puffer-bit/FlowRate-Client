@@ -1,22 +1,64 @@
-using Client.Core.Coordinator;
-using Shared.Enums;
+using System;
+using System.Linq;
+using Client.Avalonia.Localization;
 using System.Collections.Generic;
-using ReactiveUI;
-using ReactiveUI.Primitives;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.ViewModels.Dialogs;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
 
-public class ChatSessionVM : ReactiveObject, ISessionVM
+public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
 {
     // Session data
     public SessionModel Model
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            DisplayName = value.Name;
+            this.RaisePropertyChanged(nameof(IsPrivate));
+            this.RaisePropertyChanged(nameof(IsDirect));
+            this.RaisePropertyChanged(nameof(IsGroup));
+            this.RaisePropertyChanged(nameof(LastMessagePreview));
+            this.RaisePropertyChanged(nameof(LastMessageTime));
+        }
+    }
+
+    public string? AvatarUrl { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public Shared.Enums.User.UserStatus? PeerStatus { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public string DisplayName { get; set { this.RaiseAndSetIfChanged(ref field, value); } } = string.Empty;
+    public ReactiveCommand<RxVoid, RxVoid>? EditGroupCommand { get; set; }
+    public ReactiveCommand<RxVoid, RxVoid>? LeaveGroupCommand { get; set; }
+    public bool CanEditGroup => Model is ChatSessionModel { Kind: ChatKind.Group } && CanManage;
+    public bool CanLeaveGroup => Model is ChatSessionModel { Kind: ChatKind.Group } && !CanManage;
+    public bool IsDirect => Model is ChatSessionModel { Kind: ChatKind.Direct };
+    public bool IsGroup => Model is ChatSessionModel { Kind: ChatKind.Group };
+    public bool IsPrivate => Model is ChatSessionModel { IsPrivate: true };
+    public string LastMessageTime => (Model as ChatSessionModel)?.LastMessage?.SentTime.ToLocalTime().ToString("HH:mm") ?? "";
+    public string LastMessagePreview
+    {
+        get
+        {
+            if ((Model as ChatSessionModel)?.LastMessage is not { } message) return Strings.Get("privateChats.empty");
+            if (message.IsSystem && message.SystemContent?.Kind == Shared.Models.DataTransferObjects.ChatSession.Messages.ChatSystemEventKind.CallEnded)
+                return Client.ViewModels.Sessions.Chat.ChatSystemMessageText.Format(message, _ => null);
+            if (!string.IsNullOrWhiteSpace(message.TextContent?.Text))
+                return message.TextContent.Text.Replace('\n', ' ').Replace('\r', ' ');
+            if (message.Images.Count > 0) return Strings.Get("privateChats.photo");
+            if (message.Video.Count > 0) return Strings.Get("privateChats.video");
+            if (message.Files.Any(file => file.MimeType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)))
+                return Strings.Get("privateChats.audio");
+            if (message.Files.Count > 0) return Strings.Get("privateChats.file");
+            return Strings.Get("privateChats.message");
+        }
     }
 
     // UI
@@ -64,7 +106,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
     }
 
     /// <summary>The roles of the current user let it move the chat to another category.</summary>
-    public bool CanArrange => CanManage;
+    public bool CanArrange => !IsPrivate && CanManage;
 
     // Chats have no host
     public bool IsHost => false;
@@ -85,10 +127,12 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
 
     public void ApplyAccess(CoordinatorPermissions permissions)
     {
-        CanManage = permissions.Has(Permission.ManageSessions);
+        CanManage = IsPrivate ? permissions.HasIn(Model, Permission.ManageSessions) : permissions.Has(Permission.ManageSessions);
         CanView = permissions.HasIn(Model, Permission.ViewSessions);
-        CanEditPermissions = permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
+        CanEditPermissions = !IsPrivate && permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
         this.RaisePropertyChanged(nameof(CanArrange));
+        this.RaisePropertyChanged(nameof(CanEditGroup));
+        this.RaisePropertyChanged(nameof(CanLeaveGroup));
     }
 
     /// <summary>
@@ -153,30 +197,43 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
 
     public string UnreadCountText => CountText(UnreadCount);
     public string MentionCountText => "@" + CountText(MentionCount);
-    
+
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
-    
+
     // Reactive commands
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> ToggleMuteCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
-    
-    
-    public ChatSessionVM(SessionModel model, 
-        ReactiveCommand<SessionModel, RxVoid> showSessionCommand, 
+    public ReactiveCommand<int, RxVoid> LeaveChatCommand { get; }
+
+    public ChatSessionVM(SessionModel model,
+        ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> deleteSessionCommand,
         ReactiveCommand<int, RxVoid> toggleMuteCommand,
-        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand)
+        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand)
     {
         Model = model;
-        
+        Strings.LanguageChanged += OnLanguageChanged;
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
 
         ShowSessionCommand = showSessionCommand;
         DeleteSessionCommand = deleteSessionCommand;
         ToggleMuteCommand = toggleMuteCommand;
         EditPermissionsCommand = editPermissionsCommand;
+        LeaveChatCommand = leaveChatCommand;
+    }
+
+    private void OnLanguageChanged() => global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        this.RaisePropertyChanged(nameof(LastMessagePreview)));
+
+    public void Dispose()
+    {
+        Strings.LanguageChanged -= OnLanguageChanged;
+        EditGroupCommand?.Dispose();
+        LeaveGroupCommand?.Dispose();
     }
 
     public void ApplyReadState(ChatReadState state)

@@ -15,7 +15,6 @@
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <PackageReference Include="QRCoder" Version="1.8.1" />
-      <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
     </ItemGroup>
 
     <ItemGroup>
@@ -34,6 +33,8 @@
     <ItemGroup>
       <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
       <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
     </ItemGroup>
 
 </Project>

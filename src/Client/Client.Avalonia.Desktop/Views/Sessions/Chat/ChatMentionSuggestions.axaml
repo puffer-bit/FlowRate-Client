@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:DataType="chatVm:ChatMentionPickerVM"
+             x:Class="Client.Views.Sessions.Chat.ChatMentionSuggestions">
+    <Border Classes="mention-list">
+        <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <ItemsControl x:Name="MentionItems" ItemsSource="{Binding Suggestions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="chatVm:ChatMentionSuggestionVM">
+                            <Button Classes="mention-item" Classes.selected="{Binding IsSelected}"
+                                    Click="OnMentionClick" PointerEntered="OnMentionPointerEntered">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                                    <avatars:UserAvatar Grid.Column="0" Width="24" Height="24"
+                                                        IsVisible="{Binding !IsGroup}"
+                                                        UserName="{Binding Name}"
+                                                        AvatarUrl="{Binding AvatarUrl}"
+                                                        Status="{Binding Status}"/>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                               Text="{Binding DisplayName}"/>
+                                    <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
+                                               IsVisible="{Binding HasHint}" Text="{Binding Hint}"/>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <hints:HintBlock IsVisible="{Binding ShowRollHint}"
+                                 Text="{l:Text chat.command.roll.hint}" Margin="10,6"/>
+                <hints:HintBlock IsVisible="{Binding ShowFlipHint}"
+                                 Text="{l:Text chat.command.flip.hint}" Margin="10,6"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

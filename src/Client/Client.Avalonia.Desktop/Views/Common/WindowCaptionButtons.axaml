@@ -49,22 +49,26 @@
     <StackPanel Orientation="Horizontal" Spacing="2">
         <Button Classes="caption" Click="OnMinimizeClick"
                 WindowDecorationProperties.ElementRole="MinimizeButton"
-                ToolTip.Tip="{l:Text window.minimize}">
+                ToolTip.Tip="{l:Text window.minimize}"
+                AutomationProperties.Name="{l:Text window.minimize}">
             <Path Data="M 0,0.5 H 10"/>
         </Button>
         <Button x:Name="MaximizeButton" Classes="caption" Click="OnMaximizeClick"
                 WindowDecorationProperties.ElementRole="MaximizeButton"
-                ToolTip.Tip="{l:Text window.maximize}">
+                ToolTip.Tip="{l:Text window.maximize}"
+                AutomationProperties.Name="{l:Text window.maximize}">
             <Path Data="M 0.5,0.5 H 9.5 V 9.5 H 0.5 Z"/>
         </Button>
         <Button x:Name="RestoreButton" Classes="caption" Click="OnMaximizeClick"
                 WindowDecorationProperties.ElementRole="MaximizeButton"
-                ToolTip.Tip="{l:Text window.restore}">
+                ToolTip.Tip="{l:Text window.restore}"
+                AutomationProperties.Name="{l:Text window.restore}">
             <Path Data="M 0.5,2.5 H 7.5 V 9.5 H 0.5 Z M 2.5,2.5 V 0.5 H 9.5 V 7.5 H 7.5"/>
         </Button>
         <Button Classes="caption close" Click="OnCloseClick"
                 WindowDecorationProperties.ElementRole="CloseButton"
-                ToolTip.Tip="{l:Text common.close}">
+                ToolTip.Tip="{l:Text common.close}"
+                AutomationProperties.Name="{l:Text common.close}">
             <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
         </Button>
     </StackPanel>

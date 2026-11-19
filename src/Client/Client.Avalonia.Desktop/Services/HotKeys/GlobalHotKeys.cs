@@ -75,6 +75,8 @@ public sealed partial class GlobalHotKeys : IDisposable
                 listener = EvdevKeyListener.TryStart(OnKey) ?? (IGlobalKeyListener?)XInputKeyListener.TryStart(OnKey, OnModifierSync);
             else if (OperatingSystem.IsWindows())
                 listener = WindowsKeyListener.TryStart(OnKey);
+            else if (OperatingSystem.IsMacOS())
+                listener = MacKeyListener.TryStart(OnKey);
         }
         catch (Exception exception)
         {

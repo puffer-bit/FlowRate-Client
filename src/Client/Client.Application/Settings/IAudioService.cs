@@ -11,6 +11,8 @@ public interface IAudioService
     event Action? InputDevicesChanged;
     
     IReadOnlyList<AudioDeviceInfo> GetInputDevices();
+    IReadOnlyList<AudioDeviceInfo> GetOutputDevices();
+    event Action? OutputDevicesChanged;
     
     /// <summary>
     /// Raised after the settings are saved, with the values as stored. Running sessions apply them

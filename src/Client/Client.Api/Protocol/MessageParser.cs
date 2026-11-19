@@ -14,11 +14,11 @@ internal partial class MessageParser : IMessageParser
         _logger = logger;
     }
 
-    public string EncodeBaseMessage(BaseMessage message)
+    public byte[] EncodeBaseMessage(BaseMessage message)
     {
         try
         {
-            return JsonSerializer.Serialize(message, ProtocolJsonContext.Default.BaseMessage);
+            return JsonSerializer.SerializeToUtf8Bytes(message, ProtocolJsonContext.Default.BaseMessage);
         }
         catch (Exception ex)
         {
@@ -27,7 +27,7 @@ internal partial class MessageParser : IMessageParser
         }
     }
 
-    public BaseMessage DecodeBaseMessage(string rawMessage)
+    public BaseMessage DecodeBaseMessage(ReadOnlySpan<byte> rawMessage)
     {
         try
         {

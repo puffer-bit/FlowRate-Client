@@ -43,6 +43,12 @@
                         <Image Grid.Column="0" Width="16" Height="16"
                                VerticalAlignment="Center"
                                Source="{TemplateBinding Icon}"/>
+                        <ContentPresenter Grid.Column="0" Width="16" Height="16"
+                                          VerticalAlignment="Center"
+                                          Content="{TemplateBinding IconContent}"
+                                          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                        <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
+                               Source="{DynamicResource MenuCheckIcon}" IsVisible="{TemplateBinding IsChecked}"/>
                         <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1"
                                           Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"
@@ -50,6 +56,7 @@
                                           HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         <ItemsControl Grid.Column="2" Margin="28,0,0,0"
+                                      IsVisible="{TemplateBinding ShowGesture}"
                                       VerticalAlignment="Center"
                                       ItemsSource="{TemplateBinding GestureKeys}">
                             <ItemsControl.ItemsPanel>

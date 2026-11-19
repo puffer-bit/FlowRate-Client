@@ -11,10 +11,13 @@ public sealed class WebSocketConnectionOptions
     public int MaxReceiveMessageSize { get; init; } = 4 * 1024 * 1024;
 
     /// <summary>
-    /// Messages waiting to be sent. <see cref="WebSocketConnection.Send"/> refuses new ones once
+    /// Messages waiting to be sent. <see cref="WebSocketConnection.SendText(string)"/> refuses new ones once
     /// the queue is full, so a stalled connection cannot grow memory without bound.
     /// </summary>
     public int MaxSendQueueLength { get; init; } = 1024;
+
+    /// <summary>Maximum pooled buffer bytes held by queued and in-flight sends.</summary>
+    public long MaxSendQueueBytes { get; init; } = 8 * 1024 * 1024;
 
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(10);
 

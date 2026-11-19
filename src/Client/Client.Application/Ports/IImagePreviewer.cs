@@ -12,4 +12,8 @@ public interface IImagePreviewer
 {
     /// <returns>Null when the content is not an image the chat can carry.</returns>
     Task<ImagePreview?> CreateAsync(Func<Task<Stream>> openContent, CancellationToken cancellationToken = default);
+
+    /// <summary>The reduced copy a video is shown with, made of one of its frames turned as it is shown.</summary>
+    /// <returns>Null when it could not be encoded.</returns>
+    Task<ImagePreview?> CreateAsync(VideoFrameImage frame, CancellationToken cancellationToken = default);
 }

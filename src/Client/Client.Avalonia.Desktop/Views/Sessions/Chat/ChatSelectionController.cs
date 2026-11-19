@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Client.Avalonia.Controls.Menus;
 using Client.ViewModels.Sessions.Chat;
 using Client.Views.Common;
 
@@ -52,6 +53,7 @@ internal sealed class ChatSelectionController
         _list.AddHandler(InputElement.PointerMovedEvent, OnPointerMoved, RoutingStrategies.Tunnel);
         _list.AddHandler(InputElement.PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel);
         _list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        _list.AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheel, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         // Rows are recycled while scrolling, so each one gets its part of the selection when it is shown
         _list.ContainerPrepared += (_, _) => Dispatcher.UIThread.Post(Apply, DispatcherPriority.Background);
@@ -112,7 +114,7 @@ internal sealed class ChatSelectionController
                     text.Append('\n');
                 text.Append(partText, from, to - from);
                 if (part == NamePart && from == 0 && to == partText.Length)
-                    text.Append(" — ").Append(vm.Message.SentTime.ToString("HH:mm"));
+                    text.Append(" — ").Append(vm.LocalSentTime.ToString("HH:mm"));
             }
         }
         return text.ToString();
@@ -122,15 +124,16 @@ internal sealed class ChatSelectionController
     {
         if (vm.IsSequenceStart && !string.IsNullOrEmpty(vm.SenderName))
             yield return (NamePart, vm.SenderName);
-        if (vm.HasText && vm.Body?.Text is { Length: > 0 } body)
+        if (vm.HasText && vm.Body is { } messageBody && Client.Core.Chat.ChatMarkdown.Render(messageBody).Text is { Length: > 0 } body)
             yield return (BodyPart, body);
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // The scroll bar is dragged, not selected through; taking the pointer from its thumb would stop the drag
+        // Buttons and range controls own their pointer gesture; text selection must not steal it.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
-            || (e.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) != null)
+            || (e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) != null
+            || (e.Source as Visual)?.FindAncestorOfType<RangeBase>(includeSelf: true) != null)
             return;
 
         Clear();
@@ -177,6 +180,27 @@ internal sealed class ChatSelectionController
             _scrollTimer.Start();
         else
             _scrollTimer.Stop();
+    }
+
+    private void OnPointerWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!_isDragging || _list.FindDescendantOfType<ScrollViewer>() is not { } scroller)
+            return;
+
+        _pointer = e.GetPosition(_list);
+        scroller.Offset = scroller.Offset.WithY(System.Math.Clamp(scroller.Offset.Y - e.Delta.Y * 48,
+            0, System.Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height)));
+        e.Handled = true;
+        // Capture may still belong to a single SelectableTextBlock. Route the rest of the
+        // drag through the list so the selection follows the text revealed by scrolling.
+        e.Pointer.Capture(_list);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_isDragging || HitTest(_pointer) is not { } focus)
+                return;
+            _focus = focus;
+            Apply();
+        }, DispatcherPriority.Background);
     }
 
     // Pixels to scroll per tick for the pointer position: negative up, positive down
@@ -237,7 +261,7 @@ internal sealed class ChatSelectionController
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.C || !e.KeyModifiers.HasFlag(KeyModifiers.Control) || !HasSelection)
+        if (e.Key != Key.C || !CommandModifier.Normalize(e.KeyModifiers).HasFlag(KeyModifiers.Control) || !HasSelection)
             return;
 
         e.Handled = true;

@@ -5,6 +5,9 @@ namespace Client.Application.Settings;
 
 public interface IAppearanceService
 {
+    Task<bool> GetGroupOnlineChatUsersAsync();
+    Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers);
+
     Task<ThemeType> GetCurrentThemeTypeAsync();
     Task UpdateCurrentThemeTypeAsync(ThemeType themeType);
 

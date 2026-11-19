@@ -87,9 +87,14 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
     public double DistanceToStart => _offset;
     public double DistanceToEnd => Math.Max(0, _extent - _viewport - _offset);
 
-    /// <summary>
-    /// Shows the last row and keeps the list at its end until the user scrolls away.
-    /// </summary>
+    /// <summary>Keeps the visible anchor when another historical page is appended at the bottom.</summary>
+    public void HoldScrollPosition()
+    {
+        _stickToEnd = false;
+        _alignment = Alignment.Keep;
+    }
+
+    /// <summary>Shows the last row and keeps the list at its end until the user scrolls away.</summary>
     public void ScrollToEnd()
     {
         _stickToEnd = true;

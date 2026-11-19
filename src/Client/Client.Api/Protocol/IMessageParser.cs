@@ -4,6 +4,6 @@ namespace Client.Api.Protocol;
 
 internal interface IMessageParser
 {
-    string EncodeBaseMessage(BaseMessage message);
-    BaseMessage DecodeBaseMessage(string rawMessage);
+    byte[] EncodeBaseMessage(BaseMessage message);
+    BaseMessage DecodeBaseMessage(ReadOnlySpan<byte> rawMessage);
 }

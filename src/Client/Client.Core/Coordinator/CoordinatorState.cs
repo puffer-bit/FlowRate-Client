@@ -34,5 +34,8 @@ public enum CoordinatorState
     ServerOutdated = 19,
 
     /// <summary>The account logs in with passkeys alone, which this client cannot use.</summary>
-    PasskeyRequired = 20
+    PasskeyRequired = 20,
+
+    OnlineLimitReached = 21,
+    UserLimitReached = 22
 }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Info.plist of FlowRate.app, made by publish.sh; @VERSION@ is the version of the build,
+     @SHORT_VERSION@ its numbers alone -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.flowrate.client</string>
+    <key>CFBundleName</key>
+    <string>FlowRate</string>
+    <key>CFBundleDisplayName</key>
+    <string>FlowRate</string>
+    <key>CFBundleExecutable</key>
+    <string>FlowRate</string>
+    <key>CFBundleIconFile</key>
+    <string>FlowRate.icns</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@SHORT_VERSION@</string>
+    <key>CFBundleVersion</key>
+    <string>@VERSION@</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.social-networking</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!-- Without these the system gives the application neither the microphone nor the camera -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>FlowRate sends your voice in voice sessions.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>FlowRate shows your camera in voice sessions.</string>
+</dict>
+</plist>

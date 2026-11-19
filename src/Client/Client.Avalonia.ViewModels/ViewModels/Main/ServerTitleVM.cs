@@ -90,6 +90,8 @@ public class ServerTitleVM : ReactiveObject
 
     /// <summary>What the current user may do; the menu offers only that.</summary>
     public AccessVM Access { get; }
+    public Client.ViewModels.Sessions.List.SessionsListVM? SessionList { get; set; }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleListModeCommand { get; }
 
     public ReactiveCommand<RxVoid, RxVoid> CreateSessionCommand { get; }
 
@@ -108,6 +110,7 @@ public class ServerTitleVM : ReactiveObject
         ReactiveCommand<RxVoid, RxVoid> disconnectCommand,
         ReactiveCommand<RxVoid, RxVoid> manageSecurityCommand, AccessVM access)
     {
+        ToggleListModeCommand = ReactiveCommand.Create(() => SessionList?.ToggleListMode());
         ManageSecurityCommand = manageSecurityCommand;
         Access = access;
         OpenSettingsCommand = openSettingsCommand;

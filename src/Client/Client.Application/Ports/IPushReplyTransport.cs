@@ -17,4 +17,11 @@ public interface IPushReplyTransport
     /// <inheritdoc cref="SendAsync"/>
     Task<PushReplyResult> MarkReadAsync(PushReplyTarget target, string? trustedFingerprint, int chatId,
         int messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Declines the direct call <paramref name="callId"/> that rings for the user.
+    /// </summary>
+    /// <inheritdoc cref="SendAsync"/>
+    Task<PushReplyResult> DeclineCallAsync(PushReplyTarget target, string? trustedFingerprint, Guid callId,
+        CancellationToken cancellationToken = default);
 }

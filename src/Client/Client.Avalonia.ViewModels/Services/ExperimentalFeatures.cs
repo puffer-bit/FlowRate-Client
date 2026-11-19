@@ -3,8 +3,7 @@ using System;
 namespace Client.Services;
 
 /// <summary>
-/// The experimental features in effect. A feature works only while the experimental features as a
-/// whole are enabled; its own choice is kept meanwhile.
+/// Runtime appearance choices. The custom title bar is independent of experimental features.
 /// </summary>
 public static class ExperimentalFeatures
 {
@@ -20,8 +19,6 @@ public static class ExperimentalFeatures
 
     public static void Apply(bool isEnabled, bool useCustomTitleBar)
     {
-        useCustomTitleBar = isEnabled && useCustomTitleBar;
-
         if (IsEnabled == isEnabled && UseCustomTitleBar == useCustomTitleBar)
             return;
 

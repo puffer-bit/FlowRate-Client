@@ -32,13 +32,26 @@ public sealed unsafe class OpenALSoundPlayer : ISoundPlayer, IDisposable
 
         lock (_lock)
         {
+            // OpenAL reports failures through its error flag, not managed exceptions.
+            // Discard an earlier operation's error before checking this playback.
+            al.GetError();
             if (!_buffers.TryGetValue(clip, out var buffer))
             {
                 buffer = al.GenBuffer();
-                fixed (byte* pcm = clip.Pcm)
+                CheckError(al, "create sound buffer");
+                try
                 {
-                    al.BufferData(buffer, clip.Channels == 1 ? BufferFormat.Mono16 : BufferFormat.Stereo16,
-                        pcm, clip.Pcm.Length, clip.SampleRate);
+                    fixed (byte* pcm = clip.Pcm)
+                    {
+                        al.BufferData(buffer, clip.Channels == 1 ? BufferFormat.Mono16 : BufferFormat.Stereo16,
+                            pcm, clip.Pcm.Length, clip.SampleRate);
+                    }
+                    CheckError(al, "upload sound buffer");
+                }
+                catch
+                {
+                    al.DeleteBuffer(buffer);
+                    throw;
                 }
 
                 _buffers.Add(clip, buffer);
@@ -48,7 +61,23 @@ public sealed unsafe class OpenALSoundPlayer : ISoundPlayer, IDisposable
             al.SourceStop(source);
             al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
             al.SetSourceProperty(source, SourceFloat.Gain, volume);
+            CheckError(al, "configure sound source");
             al.SourcePlay(source);
+            CheckError(al, "play sound");
+        }
+    }
+
+    public void Stop(SoundClip clip)
+    {
+        if (_device.Api is not { } al) return;
+        lock (_lock)
+        {
+            if (!_buffers.TryGetValue(clip, out var buffer)) return;
+            foreach (var source in _sources)
+            {
+                al.GetSourceProperty(source, GetSourceInteger.Buffer, out int attached);
+                if (attached == (int)buffer) al.SourceStop(source);
+            }
         }
     }
 
@@ -82,6 +111,7 @@ public sealed unsafe class OpenALSoundPlayer : ISoundPlayer, IDisposable
         foreach (var source in _sources)
         {
             al.GetSourceProperty(source, GetSourceInteger.SourceState, out int state);
+            CheckError(al, "read sound source state");
             if (state != (int)SourceState.Playing)
                 return source;
         }
@@ -89,12 +119,20 @@ public sealed unsafe class OpenALSoundPlayer : ISoundPlayer, IDisposable
         if (_sources.Count < MaxSources)
         {
             var source = al.GenSource();
+            CheckError(al, "create sound source");
             _sources.Add(source);
             return source;
         }
 
         _nextSource = (_nextSource + 1) % _sources.Count;
         return _sources[_nextSource];
+    }
+
+    private static void CheckError(AL al, string operation)
+    {
+        var error = al.GetError();
+        if ((int)error != 0)
+            throw new InvalidOperationException($"OpenAL failed to {operation}: {error}.");
     }
 
     public void Dispose()

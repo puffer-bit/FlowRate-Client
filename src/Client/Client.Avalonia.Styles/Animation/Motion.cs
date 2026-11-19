@@ -21,7 +21,10 @@ public enum MotionDuration
     Long,
 
     /// <summary>A slow fade that is meant to be noticed.</summary>
-    ExtraLong
+    ExtraLong,
+
+    /// <summary>The startup screen dissolves into the main window.</summary>
+    Startup
 }
 
 /// <summary>
@@ -93,6 +96,7 @@ public static class Motion
             MotionDuration.Medium => 200,
             MotionDuration.Long => 250,
             MotionDuration.ExtraLong => 400,
+            MotionDuration.Startup => 250,
             _ => 150
         };
 

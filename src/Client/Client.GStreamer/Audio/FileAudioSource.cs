@@ -7,7 +7,8 @@ using Client.Application.Ports;
 namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// Plays audio files as a live source that loops forever.
+/// Plays audio files as a live source that loops forever, or plays them once where the runtime
+/// cannot loop them.
 /// </summary>
 /// <remarks>
 /// A file is decoded once into raw 48 kHz mono PCM. Looping a raw file is the only way that keeps the
@@ -20,10 +21,14 @@ public static class FileAudioSource
 {
     public const int SampleRate = 48000;
 
+    // {0} is the source: multifilesrc where the runtime has it, see FileSource
     private const string PlaybackDescription =
-        "multifilesrc name=file loop=true ! " +
+        "{0} name=file ! " +
         "rawaudioparse use-sink-caps=false format=pcm pcm-format=s16le sample-rate=48000 num-channels=1 ! " +
         "audiobuffersplit output-buffer-duration=1/50 ! clocksync";
+
+    // The bundled runtime leaves out the multifile plugin, and the file is then played once
+    private static string FileSource => ElementFactory.Find("multifilesrc") != null ? "multifilesrc loop=true" : "filesrc";
 
     private const string ToneDescription = "audiotestsrc is-live=true wave=sine freq={0} volume=0.25";
 
@@ -102,13 +107,13 @@ public static class FileAudioSource
     /// Creates the source element for an input that is not a capture device.
     /// </summary>
     /// <returns>An element with a single src pad of raw audio, or null when an element is missing.</returns>
-    internal static Element? CreateElement(AudioInput input)
+    public static Element? CreateElement(AudioInput input)
     {
         switch (input)
         {
             case FileAudioInput file:
             {
-                var bin = Global.ParseBinFromDescription(PlaybackDescription, true);
+                var bin = Global.ParseBinFromDescription(string.Format(PlaybackDescription, FileSource), true);
 
                 if (bin == null)
                     return null;

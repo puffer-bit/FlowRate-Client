@@ -127,10 +127,32 @@ internal sealed partial class DatabaseInitializer : IDatabaseInitializer
                 return;
         }
 
+        var backupPath = _database.FilePath + ".ef-backup";
+        MoveAside(backupPath);
+
+        LogEntityFrameworkDatabaseMoved(backupPath);
+    }
+
+    /// <remarks>
+    /// The keyring keeps the password of an encrypted file, so the copy stays readable until the
+    /// user encrypts the new database.
+    /// </remarks>
+    public string ResetDatabase()
+    {
+        var backupPath = $"{_database.FilePath}.broken-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
+        MoveAside(backupPath);
+
+        // The new file is plain and not locked until its settings say otherwise
+        _database.Configure(password: null, isFileLocked: false);
+
+        LogReset(backupPath);
+        return backupPath;
+    }
+
+    private void MoveAside(string backupPath)
+    {
         // Pooled connections keep the file open
         SqliteConnection.ClearAllPools();
-
-        var backupPath = _database.FilePath + ".ef-backup";
 
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
@@ -139,8 +161,6 @@ internal sealed partial class DatabaseInitializer : IDatabaseInitializer
             if (File.Exists(source))
                 File.Move(source, backupPath + suffix, overwrite: true);
         }
-
-        LogEntityFrameworkDatabaseMoved(backupPath);
     }
 
     /// <summary>

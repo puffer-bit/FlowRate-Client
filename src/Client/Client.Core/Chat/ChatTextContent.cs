@@ -1,3 +1,4 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Commands;
 using System.Text;
 using Shared.Validation;
 
@@ -14,6 +15,7 @@ public class ChatTextContent
     private const int MaxConsecutiveLineBreaks = 2;
 
     public required string Text { get; init; }
+    public ChatCommandResult? CommandResult { get; init; }
 
     /// <summary>
     /// Builds the content of an outgoing message from what the user typed: the text is normalized

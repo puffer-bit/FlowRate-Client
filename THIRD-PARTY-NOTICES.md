@@ -9,11 +9,10 @@ below, each under its own license.
 |---|---|
 | Avalonia (Avalonia.Desktop, .Skia, .Themes.Fluent, .Android, .Fonts.Inter) | MIT |
 | Inter font (bundled by Avalonia.Fonts.Inter) | SIL Open Font License 1.1 |
-| CommunityToolkit.Mvvm | MIT |
 | Dapper, Dapper.AOT | Apache-2.0 |
-| DynamicData | MIT |
-| GstSharp.Net (.App, .Sdp, .WebRTC) | LGPL-2.1-or-later |
+| GstSharp.Net (.App) | LGPL-2.1-or-later |
 | MessageFormat | MIT |
+| [Markdig](https://github.com/xoofx/markdig) | BSD-2-Clause |
 | Microsoft.Data.Sqlite.Core, Microsoft.Extensions.* | MIT |
 | ReactiveUI, ReactiveUI.Avalonia, System.Reactive | MIT |
 | Serilog, Serilog.Extensions.Logging, Serilog.Sinks.Console, Serilog.Sinks.File | Apache-2.0 |
@@ -21,18 +20,22 @@ below, each under its own license.
 | Silk.NET.OpenAL.Soft.Native (OpenAL Soft) | LGPL-2.0-or-later |
 | SkiaSharp | MIT |
 | SQLite3MC.PCLRaw.bundle (SQLite3 Multiple Ciphers) | MIT |
-| Svg.Controls.Skia.Avalonia | MIT |
 | System.Management | MIT |
 | Tmds.DBus.Protocol | MIT |
 | Velopack | MIT |
 | Xamarin.Firebase.Core, Xamarin.Firebase.Messaging (Android) | MIT and Apache-2.0 |
-| Xaml.Behaviors.Avalonia | MIT |
 
 ## Fonts
 
 | Component | License |
 |---|---|
-| [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (`src/Client/Client.Avalonia.Assets/Fonts/NotoColorEmoji.ttf`) | SIL Open Font License 1.1, text in `NotoColorEmoji-LICENSE.txt` next to the font |
+| [Noto Sans](https://github.com/google/fonts/tree/main/ofl/notosans) | SIL Open Font License 1.1, text in `src/Client/Client.Avalonia.Assets/Fonts/NotoSans/LICENSE.txt` |
+| [Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp), [Noto Sans SC](https://github.com/google/fonts/tree/main/ofl/notosanssc) | SIL Open Font License 1.1, license text in each font folder under `src/Client/Client.Avalonia.Assets/Fonts/` |
+| [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLRv1 and Windows-compatible CBDT/CBLC builds) | SIL Open Font License 1.1, text in `src/Client/Client.Avalonia.Assets/Fonts/NotoColorEmoji-LICENSE.txt` |
+
+Font files and their licenses are embedded in the client. The text faces are static instances of
+the upstream variable fonts; the emoji builds are unmodified. Versions, source files and
+generation details are documented in [Fonts/README.md](src/Client/Client.Avalonia.Assets/Fonts/README.md).
 
 ## GStreamer runtime
 

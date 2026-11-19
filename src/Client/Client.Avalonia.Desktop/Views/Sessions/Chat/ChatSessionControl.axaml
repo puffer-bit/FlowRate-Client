@@ -3,7 +3,9 @@
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
              xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -19,11 +21,25 @@
         </DataTemplate>
     </Control.DataTemplates>
     
-    <Grid RowDefinitions="Auto, *, Auto">
+    <UserControl.Styles>
+        <Style Selector="Border.chat-viewers-panel">
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.chat-viewers-panel.open">
+            <Setter Property="Width" Value="{StaticResource ChatSidePanelWidth}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto" ColumnDefinitions="*, Auto">
         <ContentControl
-            Grid.Row="0"
+            Grid.Row="0" Grid.ColumnSpan="2"
             Content="{Binding StatusBar}"
-            Height="56"/>
+            Height="{StaticResource SessionHeaderHeight}"/>
         
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
              only the text inside a message can be selected for copying -->
@@ -65,6 +81,19 @@
             </ItemsControl.Styles>
         </ItemsControl>
         
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Stretch"
+                                        IsVisible="{Binding IsInitialLoading}"/>
+
+        <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Top"
+                                        Background="{DynamicResource GeneralBrush}"
+                                        IsCompact="True"
+                                        IsVisible="{Binding IsLoadingOlder}"/>
+
         <!-- Shown while the chat has no messages; laid out like the placeholder of the main window -->
         <emptyStates:EmptyState Grid.Row="1"
                                 anim:Presence.Appear="Rise"
@@ -81,52 +110,33 @@
 
         <!-- Composer: one rounded box holds the reply bar, the attachments and the input row,
              floating over the bottom of the chat; its outline lights up while the input has focus -->
-        <Panel Grid.Row="2" IsVisible="{Binding !IsInitialLoading}">
+        <Panel Grid.Row="2" IsEnabled="{Binding !IsInitialLoading}">
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 
+        <!-- Both lists use the same column beside the timeline and composer. -->
+        <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="2"
+                Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.IsSidePanelOpen}"
+                ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsSidePanelOpen}">
+            <Grid Width="{StaticResource ChatSidePanelWidth}" HorizontalAlignment="Left">
+                <Panel IsVisible="{Binding StatusBar.Viewers.IsOpen}">
+                    <chatViews:ChatViewersPanel DataContext="{Binding StatusBar.Viewers}"/>
+                </Panel>
+                <chatViews:ChatPinnedMessagesPanel IsVisible="{Binding StatusBar.IsPinsOpen}"/>
+            </Grid>
+        </Border>
+
         <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag
              moves the zoomed one, a click beside it or Esc closes it -->
-        <ContentControl Grid.Row="0" Grid.RowSpan="3"
+        <ContentControl Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="2"
                         x:Name="ImageViewerHost"
                         Focusable="True"
+                        KeyboardNavigation.IsTabStop="False"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
             <ContentControl.ContentTemplate>
                 <DataTemplate DataType="chatVm:ChatImageViewerVM">
-                    <Grid Classes="image-viewer" RowDefinitions="Auto, *" anim:Presence.Appear="Fade">
-                        <Button Grid.Row="0" Grid.RowSpan="2" Classes="image-viewer-backdrop"
-                                Command="{Binding CloseCommand}"/>
-
-                        <images:ZoomableImage Grid.Row="1" Padding="24"
-                                              Source="{Binding Picture}"/>
-
-                        <Border Grid.Row="0" Classes="image-viewer-bar">
-                            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="4">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Classes="image-viewer-error" Text="{Binding Error}"
-                                               IsVisible="{Binding HasError}"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Classes="borderless"
-                                        Width="32" Height="32" Padding="0"
-                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                        Command="{Binding SaveCommand}"
-                                        ToolTip.Tip="{l:Text common.save}">
-                                    <Image Width="18" Height="18" Source="{StaticResource DownloadIcon}"/>
-                                </Button>
-                                <Button Grid.Column="2" Classes="borderless"
-                                        Width="32" Height="32" Padding="0"
-                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                        Command="{Binding CloseCommand}"
-                                        ToolTip.Tip="{l:Text common.close}">
-                                    <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
-                                </Button>
-                                <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,6,6,0"
-                                             Value="{Binding Progress}" IsVisible="{Binding IsLoading}"/>
-                            </Grid>
-                        </Border>
-                    </Grid>
+                    <chatViews:ChatImageViewer/>
                 </DataTemplate>
             </ContentControl.ContentTemplate>
         </ContentControl>

@@ -256,6 +256,8 @@ internal sealed class ChatCacheRepository : IChatCacheRepository
                 continue;
 
             quote[nameof(ChatReplyContent.IsDeleted)] = quoted == null;
+            quote[nameof(ChatReplyContent.HasAttachments)] = quoted != null && !quoted.IsDeleted &&
+                (quoted.Images.Count > 0 || quoted.Video.Count > 0 || quoted.Files.Count > 0);
             if (quoted != null)
             {
                 quote[nameof(ChatReplyContent.TextContent)] = quoted.TextContent == null

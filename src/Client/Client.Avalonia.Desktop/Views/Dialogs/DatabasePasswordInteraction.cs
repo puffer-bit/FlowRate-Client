@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
@@ -16,12 +17,15 @@ internal static class DatabasePasswordInteraction
         Visual owner)
     {
         return interaction.RegisterHandler(async context =>
-        {
-            var view = new DatabasePasswordDialog { DataContext = context.Input };
+            context.SetOutput(await ShowAsync(context.Input, owner)));
+    }
 
-            using var answers = context.Input.Answers.Subscribe(accepted => InWindowDialog.Close(view, accepted));
+    public static async Task<bool> ShowAsync(DatabasePasswordVM password, Visual owner)
+    {
+        var view = new DatabasePasswordDialog { DataContext = password };
 
-            context.SetOutput(await InWindowDialog.ShowAsync(view, owner, false));
-        });
+        using var answers = password.Answers.Subscribe(accepted => InWindowDialog.Close(view, accepted));
+
+        return await InWindowDialog.ShowAsync(view, owner, false);
     }
 }

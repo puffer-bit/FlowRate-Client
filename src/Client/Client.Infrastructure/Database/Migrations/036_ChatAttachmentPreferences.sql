@@ -1,0 +1,5 @@
+CREATE TABLE ChatAttachmentPreferences (
+    Id INTEGER NOT NULL PRIMARY KEY CHECK (Id = 1),
+    CompressImages INTEGER NOT NULL DEFAULT 1,
+    StripMetadata INTEGER NOT NULL DEFAULT 1
+) STRICT;

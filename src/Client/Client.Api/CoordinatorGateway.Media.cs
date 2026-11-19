@@ -34,6 +34,24 @@ internal partial class CoordinatorGateway
             ? media.DownloadFileAsync(fileId, destination, progress, cancellationToken)
             : Task.FromResult(MediaTransferResult.ConnectionFailed);
 
+    public Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadFileRangeAsync(fileId, offset, length, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
+    public Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadFilePreviewAsync(fileId, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
+    public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadLinkPreviewImageAsync(previewId, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
     public Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination,
         CancellationToken cancellationToken) =>
         _media is { } media
@@ -64,11 +82,9 @@ internal partial class CoordinatorGateway
                 return _mediaToken;
 
             var response = await SendRequestAsync<MediaTokenResponse>(new MediaTokenRequest());
-            if (response is not { Result: MediaTokenResult.NoError, Token: { } token, ExpiresAt: { } expiresAt })
-                return _mediaToken = null;
 
-            _mediaTokenExpiresAt = expiresAt.ToUniversalTime();
-            return _mediaToken = token;
+            _mediaTokenExpiresAt = response.ExpiresAt.ToUniversalTime();
+            return _mediaToken = response.Token;
         }
         // No answer, a rejection or a lost connection: there is no token, and the transfer reports it
         catch (Exception exception) when (exception is not OperationCanceledException)

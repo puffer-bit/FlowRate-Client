@@ -40,7 +40,7 @@
 
         <!-- The sound of the user who shows the screen, the same settings as in the lists of peers.
              There is nothing to adjust about ourselves -->
-        <StackPanel Spacing="2" IsVisible="{Binding !IsSelf}">
+        <StackPanel Spacing="2" IsVisible="{Binding HasSoundControls}">
 
             <Separator/>
 

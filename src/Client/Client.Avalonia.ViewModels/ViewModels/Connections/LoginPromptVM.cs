@@ -10,6 +10,7 @@ using Client.Avalonia.Localization;
 using Client.Services;
 using ReactiveUI;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Connections;
@@ -102,7 +103,7 @@ public sealed class LoginPromptVM : ReactiveObject
 
     private static Task<LoginAnswer?> AskAsync(Interaction<LoginPromptVM, LoginAnswer?> ask, LoginPrompt prompt,
         CancellationToken cancellationToken) =>
-        Dispatcher.UIThread.InvokeAsync(async () =>
+        Dispatcher.UIThread.InvokeAsync<LoginAnswer?>(async () =>
         {
             var vm = new LoginPromptVM(prompt);
             await using var dismiss = cancellationToken.Register(() => Dispatcher.UIThread.Post(vm.Dismiss));

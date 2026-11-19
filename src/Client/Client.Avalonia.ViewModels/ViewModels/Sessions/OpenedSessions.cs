@@ -8,6 +8,7 @@ using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Core.Coordinator;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
@@ -63,11 +64,20 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     /// </summary>
     public event Action<IMainWindowContentVM>? SessionClosed;
 
+    /// <summary>
+    /// Someone moved us out of the hybrid session we were in. Whoever handles it joins the target with
+    /// <see cref="Open"/>, or the session just closes.
+    /// </summary>
+    public event Action<ActiveHybridSessionVM, PeerMovedOutEvent>? HybridSessionMovedOut;
+
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly ChatSessionServices _chatServices;
     private readonly ChatReadTracker _readTracker;
     private readonly Func<HybridSessionModel, ActiveHybridSessionVM> _createHybridSession;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _openDirectChatCommand;
+    private readonly ReactiveCommand<(int UserId, string Name), RxVoid>? _banUserCommand;
+    private readonly ReactiveCommand<int, RxVoid>? _unbanUserCommand;
 
     // The most recently opened chat is the last one
     private readonly List<ActiveChatSessionVM> _chats = new();
@@ -76,13 +86,19 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
         ChatSessionServices chatServices,
         ChatReadTracker readTracker,
         Func<HybridSessionModel, ActiveHybridSessionVM> createHybridSession,
-        ReactiveCommand<int, RxVoid> viewProfileCommand)
+        ReactiveCommand<int, RxVoid> viewProfileCommand,
+        ReactiveCommand<(int UserId, string Name), RxVoid>? banUserCommand = null,
+        ReactiveCommand<int, RxVoid>? unbanUserCommand = null,
+        ReactiveCommand<int, RxVoid>? openDirectChatCommand = null)
     {
         _coordinatorSession = coordinatorSession;
         _chatServices = chatServices;
         _readTracker = readTracker;
         _createHybridSession = createHybridSession;
         _viewProfileCommand = viewProfileCommand;
+        _openDirectChatCommand = openDirectChatCommand;
+        _banUserCommand = banUserCommand;
+        _unbanUserCommand = unbanUserCommand;
 
         _coordinatorSession.ChatSessionDeleted += OnChatSessionDeleted;
         _coordinatorSession.HybridSessionDeleted += OnHybridSessionDeleted;
@@ -94,7 +110,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     public IMainWindowContentVM? Open(SessionModel sessionModel) => sessionModel switch
     {
         ChatSessionModel chatModel => OpenChat(chatModel),
-        HybridSessionModel hybridModel => OpenHybridSession(hybridModel),
+        HybridSessionModel hybridModel when Client.Core.Media.MediaRuntime.IsEnabled => OpenHybridSession(hybridModel),
         _ => null
     };
 
@@ -105,6 +121,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
             return;
 
         session.Closed -= OnHybridSessionClosed;
+        session.MovedOut -= OnHybridSessionMovedOut;
         HybridSession = null;
         SessionClosed?.Invoke(session);
         session.Dispose();
@@ -142,7 +159,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
             _chats.Remove(chat);
         else
             chat = new ActiveChatSessionVM(chatModel, _coordinatorSession, _chatServices, _readTracker,
-                _viewProfileCommand);
+                _viewProfileCommand, _banUserCommand, _unbanUserCommand, _openDirectChatCommand);
 
         _chats.Add(chat);
 
@@ -184,6 +201,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
 
         var session = _createHybridSession(hybridModel);
         session.Closed += OnHybridSessionClosed;
+        session.MovedOut += OnHybridSessionMovedOut;
         HybridSession = session;
 
         return session;
@@ -194,6 +212,12 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     {
         if (session == HybridSession)
             LeaveHybridSession();
+    }
+
+    private void OnHybridSessionMovedOut(ActiveHybridSessionVM session, PeerMovedOutEvent moved)
+    {
+        if (session == HybridSession)
+            HybridSessionMovedOut?.Invoke(session, moved);
     }
 
     // Deletions arrive on the socket thread

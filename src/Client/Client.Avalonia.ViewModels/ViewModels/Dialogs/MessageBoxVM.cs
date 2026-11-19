@@ -29,6 +29,9 @@ public class MessageBoxVM : ReactiveObject
     /// <summary>
     /// What the text is about, such as an address, shown under it on a background of its own.
     /// </summary>
+    public BanFormVM? BanForm { get; }
+    public bool HasBanForm => BanForm != null;
+
     public string? Detail { get; init; }
     public bool HasDetail => Detail != null;
 
@@ -43,12 +46,13 @@ public class MessageBoxVM : ReactiveObject
     /// </summary>
     public bool IsChecked { get; set; }
 
-    public MessageBoxVM(MessageBoxIcon icon, Buttons buttons, string text, string title)
+    public MessageBoxVM(MessageBoxIcon icon, Buttons buttons, string text, string title, BanFormVM? banForm = null)
     {
+        BanForm = banForm;
         CancelCommand = ReactiveCommand.Create<Unit, Result>(_ => Result.Cancel);
         
         OkCommand = ReactiveCommand.Create<Unit, Result>(_ =>
-            Buttons is Buttons.YesNo ? Result.Yes : Result.Ok);
+            Buttons is Buttons.YesNo ? Result.Yes : Result.Ok, banForm?.CanSubmit);
         
         NoCommand = ReactiveCommand.Create<Unit, Result>(_ => Result.No);
 

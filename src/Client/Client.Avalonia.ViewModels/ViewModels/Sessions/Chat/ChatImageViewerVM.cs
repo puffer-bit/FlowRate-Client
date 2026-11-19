@@ -68,9 +68,18 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
     /// to write into, or null when the user changed their mind.
     /// </summary>
     public Interaction<string, Stream?> PickSaveTarget { get; } = new();
+    public Interaction<ChatImageVM, bool> CopyImageInteraction { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> CopyCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> RotateCommand { get; }
+
+    public int QuarterTurns
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     private readonly ChatImageVM _tile;
     private readonly ChatImageContent _image;
@@ -91,7 +100,9 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
         Picture = image.Preview;
 
         SaveCommand = ReactiveCommand.CreateFromTask(Save, this.WatchProperty(nameof(CanSave), viewer => viewer.CanSave));
+        CopyCommand = ReactiveCommand.CreateFromTask(Copy, this.WatchProperty(nameof(CanSave), viewer => viewer.CanSave));
         CloseCommand = ReactiveCommand.Create(close);
+        RotateCommand = ReactiveCommand.Create(() => { QuarterTurns = (QuarterTurns + 1) % 4; });
 
         _ = Load();
     }
@@ -148,6 +159,12 @@ public class ChatImageViewerVM : ReactiveObject, IDisposable
         {
             IsLoading = false;
         }
+    }
+
+    private async Task Copy()
+    {
+        if (!await CopyImageInteraction.Handle(_tile))
+            Error = Strings.Get("chat.image.copyFailed");
     }
 
     private async Task Save()

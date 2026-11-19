@@ -16,6 +16,12 @@ public class ServerInfoTabVM : ReactiveObject
 
     public string? Version { get; }
 
+    public string? DatabaseProvider
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public string OnlineText { get; }
 
     public string? FirstStartedText { get; }

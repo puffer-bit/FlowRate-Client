@@ -66,13 +66,20 @@
             </Grid>
         </Border>
 
+        <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text privateChats.showChannels}"
+                              IsVisible="{Binding SessionList.IsPrivateMode}"
+                              menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
+        <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.showPrivate}"
+                              IsVisible="{Binding !SessionList.IsPrivateMode}"
+                              menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
+        <Separator/>
         <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                               menus:FlyoutMenu.CloseOnClick="True"
-                              IsVisible="{Binding Access.CanCreateSessions}"
+                              IsVisible="{Binding SessionList.CanCreateSession}"
                               Command="{Binding CreateSessionCommand}"/>
         <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
                               menus:FlyoutMenu.CloseOnClick="True"
-                              IsVisible="{Binding Access.CanManageSessions}"
+                              IsVisible="{Binding SessionList.CanCreateCategory}"
                               Command="{Binding CreateCategoryCommand}"/>
 
         <Separator/>

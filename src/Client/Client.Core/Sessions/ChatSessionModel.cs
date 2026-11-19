@@ -2,6 +2,11 @@ namespace Client.Core.Sessions;
 
 public class ChatSessionModel : SessionModel
 {
+    public Shared.Enums.ChatKind Kind { get; init; }
+    public int[] MemberIds { get; init; } = [];
+    public Client.Core.Chat.ChatMessageModel? LastMessage { get; init; }
+    public bool IsPrivate => Kind != Shared.Enums.ChatKind.ServerChannel;
+
     public required int CreatorUserId { get; init; }
     public int? AdminUserId { get; init; }
     public string? Description { get; init; }

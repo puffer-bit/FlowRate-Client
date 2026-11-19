@@ -37,7 +37,12 @@ public sealed partial class DatabaseSecurityService : IDatabaseSecurityService
     public async Task<DatabaseUnlockResult> UnlockWithStoredPasswordAsync()
     {
         if (!_protection.IsEncrypted)
+        {
+            // A file reset after an earlier attempt leaves the password of the old one behind
+            _password = null;
+            _isUnlockedFromKeyring = false;
             return DatabaseUnlockResult.Unlocked;
+        }
 
         if (!_keyring.IsAvailable)
             return DatabaseUnlockResult.PasswordNeeded;

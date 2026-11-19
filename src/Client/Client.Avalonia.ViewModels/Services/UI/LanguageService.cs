@@ -8,7 +8,7 @@ public class LanguageService : ILanguageService
 {
     public void Apply(string? code)
     {
-        code ??= SystemLanguage.GetCode();
+        code = Client.Tools.AppInfo.LaunchOptions.Current.Language ?? code ?? SystemLanguage.GetCode();
 
         // The texts are bound to controls, which are updated on the UI thread only
         if (Dispatcher.UIThread.CheckAccess())

@@ -10,37 +10,15 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using ReactiveUI;
-using Shared.Enums.User;
 using Shared.Models.DataTransferObjects.ChatSession.Messages.Mentions;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
-/// One line of the mention list: a user, or everyone / those online.
-/// </summary>
-public class ChatMentionSuggestionVM : ReactiveObject
-{
-    /// <summary>The name written after "@".</summary>
-    public required string Name { get; init; }
-    public int? UserId { get; init; }
-    public string? AvatarUrl { get; init; }
-    public UserStatus? Status { get; init; }
-    public string? Hint { get; init; }
-    public bool HasHint => Hint != null;
-    public bool IsGroup => UserId == null;
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-}
-
-/// <summary>
 /// Mentions in the input of a chat. The input holds them as "@name", the way they are shown; the
 /// names picked from the list are remembered with their users, and on sending they become the
-/// tokens the server reads. Typing "@" opens the list of users matching what follows it.
+/// tokens the server reads. Typing "@" opens the user list; "/" at the start offers commands.
 /// </summary>
 public class ChatMentionPickerVM : ReactiveObject
 {
@@ -53,9 +31,10 @@ public class ChatMentionPickerVM : ReactiveObject
     // Names that stand for users in the input, as they were picked
     private readonly Dictionary<string, int> _pickedNames = new(StringComparer.Ordinal);
 
-    // Where the "@" of the mention being typed is, or -1
+    // Where the mention or command being typed starts, or -1
     private int _queryStart = -1;
     private string? _query;
+    private bool _isCommandQuery;
     private CancellationTokenSource? _search;
 
     public AvaloniaList<ChatMentionSuggestionVM> Suggestions { get; } = new();
@@ -66,16 +45,37 @@ public class ChatMentionPickerVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool ShowRollHint
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool ShowFlipHint
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsSearching
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public int SelectedIndex
     {
         get;
         private set
         {
+            if (field == value)
+                return;
             if (field >= 0 && field < Suggestions.Count)
                 Suggestions[field].IsSelected = false;
             this.RaiseAndSetIfChanged(ref field, value);
             if (value >= 0 && value < Suggestions.Count)
                 Suggestions[value].IsSelected = true;
+            UpdateCommandHint();
         }
     } = -1;
 
@@ -97,17 +97,60 @@ public class ChatMentionPickerVM : ReactiveObject
             return;
         }
 
-        if (start == _queryStart && query == _query)
+        bool isCommand = text![start] == '/';
+        if (start == _queryStart && query == _query && isCommand == _isCommandQuery)
             return;
 
         _queryStart = start;
         _query = query;
+        _isCommandQuery = isCommand;
+        if (isCommand)
+        {
+            _search?.Cancel();
+            _search = null;
+            IsSearching = false;
+            int separator = query.IndexOfAny([' ', '\t']);
+            var commands = new[]
+            {
+                new ChatMentionSuggestionVM { Name = "roll", IsCommand = true, CommandArguments = "1-100" },
+                new ChatMentionSuggestionVM { Name = "flip", IsCommand = true }
+            };
+            var matches = commands.Where(command => separator < 0
+                && command.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase)).ToList();
+            ApplySuggestions(matches);
+            IsOpen = ShowRollHint || ShowFlipHint;
+            return;
+        }
+
+        ShowRollHint = false;
+        ShowFlipHint = false;
+        // Keep the popup in place while refreshing, but prevent picking an outdated result.
+        IsSearching = true;
         _ = SearchAsync(query);
+    }
+
+    public void SelectSuggestion(ChatMentionSuggestionVM suggestion)
+    {
+        int index = Suggestions.IndexOf(suggestion);
+        if (!IsSearching && index >= 0)
+            SelectedIndex = index;
+    }
+
+    private void UpdateCommandHint()
+    {
+        string? command = null;
+        if (_isCommandQuery && _queryStart >= 0)
+        {
+            command = SelectedIndex >= 0 && SelectedIndex < Suggestions.Count
+                ? Suggestions[SelectedIndex].Name : _query?.Split([' ', '\t'])[0];
+        }
+        ShowRollHint = string.Equals(command, "roll", StringComparison.OrdinalIgnoreCase);
+        ShowFlipHint = string.Equals(command, "flip", StringComparison.OrdinalIgnoreCase);
     }
 
     public void MoveSelection(int step)
     {
-        if (Suggestions.Count == 0)
+        if (IsSearching || Suggestions.Count == 0)
             return;
 
         SelectedIndex = ((SelectedIndex + step) % Suggestions.Count + Suggestions.Count) % Suggestions.Count;
@@ -120,7 +163,10 @@ public class ChatMentionPickerVM : ReactiveObject
     public (string Text, int CaretIndex)? Complete(string? text, int caretIndex, ChatMentionSuggestionVM? suggestion = null)
     {
         suggestion ??= SelectedIndex >= 0 && SelectedIndex < Suggestions.Count ? Suggestions[SelectedIndex] : null;
-        if (suggestion == null || text == null || _queryStart < 0 || _queryStart >= text.Length)
+        var (start, query) = FindQuery(text, caretIndex);
+        if (suggestion == null || text == null || !IsOpen || IsSearching || !Suggestions.Contains(suggestion)
+            || start < 0 || start != _queryStart || query != _query
+            || (text[start] == '/') != suggestion.IsCommand)
             return null;
 
         int end = Math.Clamp(caretIndex, _queryStart, text.Length);
@@ -128,7 +174,10 @@ public class ChatMentionPickerVM : ReactiveObject
         while (end < text.Length && !char.IsWhiteSpace(text[end]))
             end++;
 
-        string inserted = "@" + suggestion.Name + " ";
+        string inserted = suggestion.IsCommand
+            ? "/" + suggestion.Name + (string.IsNullOrWhiteSpace(text[end..]) && suggestion.CommandArguments != null
+                ? " " + suggestion.CommandArguments : " ")
+            : "@" + suggestion.Name + " ";
         if (suggestion.UserId is { } userId)
             _pickedNames[suggestion.Name] = userId;
 
@@ -144,9 +193,22 @@ public class ChatMentionPickerVM : ReactiveObject
         _search = null;
         _queryStart = -1;
         _query = null;
+        IsSearching = false;
         SelectedIndex = -1;
         Suggestions.Clear();
         IsOpen = false;
+        ShowRollHint = false;
+        ShowFlipHint = false;
+    }
+
+    public string AppendUser(string? text, int userId, string name)
+    {
+        _pickedNames[name] = userId;
+        Close();
+        string prefix = text ?? string.Empty;
+        if (prefix.Length > 0 && !char.IsWhiteSpace(prefix[^1]))
+            prefix += " ";
+        return prefix + "@" + name + " ";
     }
 
     /// <summary>
@@ -242,7 +304,8 @@ public class ChatMentionPickerVM : ReactiveObject
 
         try
         {
-            await Task.Delay(SearchDelay, search.Token);
+            var cancellationToken = search.Token;
+            await Task.Delay(SearchDelay, cancellationToken);
             var users = await _session.SearchUsers(query, SuggestionsCount + 1);
             if (search.IsCancellationRequested)
                 return;
@@ -274,23 +337,83 @@ public class ChatMentionPickerVM : ReactiveObject
                 if (search != _search)
                     return;
 
-                SelectedIndex = -1;
-                Suggestions.Clear();
-                Suggestions.AddRange(suggestions);
+                _search = null;
+                ApplySuggestions(suggestions);
+                IsSearching = false;
                 IsOpen = suggestions.Count > 0;
-                SelectedIndex = suggestions.Count > 0 ? 0 : -1;
             });
         }
         catch (OperationCanceledException)
         {
         }
+        finally
+        {
+            // Close cancels a search, but the asynchronous operation owns its lifetime.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (search == _search)
+                {
+                    _search = null;
+                    IsSearching = false;
+                }
+            });
+            search.Dispose();
+        }
     }
 
-    // The "@" before the caret that starts the word being typed, and what follows it
+    private void ApplySuggestions(IReadOnlyList<ChatMentionSuggestionVM> results)
+    {
+        var selected = SelectedIndex >= 0 && SelectedIndex < Suggestions.Count ? Suggestions[SelectedIndex] : null;
+        var updated = new List<ChatMentionSuggestionVM>(results.Count);
+        foreach (var result in results)
+        {
+            var existing = Suggestions.FirstOrDefault(item => item.IsCommand == result.IsCommand && item.UserId == result.UserId
+                && (item.UserId != null || item.Name == result.Name));
+            if (existing == null)
+            {
+                updated.Add(result);
+                continue;
+            }
+
+            existing.Name = result.Name;
+            existing.AvatarUrl = result.AvatarUrl;
+            existing.Status = result.Status;
+            existing.Hint = result.Hint;
+            updated.Add(existing);
+        }
+
+        // Preserve controls, avatar loads and hover state for users still in the results.
+        for (int i = Suggestions.Count - 1; i >= 0; i--)
+            if (!updated.Contains(Suggestions[i]))
+                Suggestions.RemoveAt(i);
+        for (int i = 0; i < updated.Count; i++)
+        {
+            int previous = Suggestions.IndexOf(updated[i]);
+            if (previous < 0)
+                Suggestions.Insert(i, updated[i]);
+            else if (previous != i)
+                Suggestions.Move(previous, i);
+        }
+
+        int selectedIndex = selected == null ? -1 : Suggestions.IndexOf(selected);
+        // An index may now refer to a different row after a removal or move.
+        if (selected != null && selectedIndex < 0)
+            selected.IsSelected = false;
+        SelectedIndex = selectedIndex >= 0 ? selectedIndex : Suggestions.Count > 0 ? 0 : -1;
+        if (SelectedIndex >= 0)
+            Suggestions[SelectedIndex].IsSelected = true;
+        UpdateCommandHint();
+    }
+
+    // A leading command, or the "@" before the caret, and what follows it
     private static (int Start, string Query) FindQuery(string? text, int caretIndex)
     {
         if (string.IsNullOrEmpty(text) || caretIndex <= 0 || caretIndex > text.Length)
             return (-1, "");
+
+        // Commands belong at the start of a message; keep their argument help while editing the line.
+        if (text[0] == '/' && !text.AsSpan(0, caretIndex).ContainsAny('\r', '\n'))
+            return (0, text[1..caretIndex]);
 
         for (int i = caretIndex - 1; i >= 0 && caretIndex - i <= Limits.UsernameMaxLength + 1; i--)
         {

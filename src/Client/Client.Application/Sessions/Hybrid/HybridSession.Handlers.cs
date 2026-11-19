@@ -1,4 +1,4 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Shared.Models.Media;
 using Client.Core.Users;
 using Shared.Enums;
@@ -46,7 +46,7 @@ public partial class HybridSession
 
         switch (nodeEvent)
         {
-            case SessionNodeStateChangedEvent { State: HybridSessionNodeState.WaitingForSfuNode }:
+            case SessionNodeStateChangedEvent { State: HybridSessionNodeState.WaitingForSFUNode }:
                 _isWaitingForNode = true;
                 _isRejoinRequired = true;
                 ScheduleReconnect("the session waits for an SFU node");
@@ -95,6 +95,8 @@ public partial class HybridSession
             {
                 case PeerTrackStartedEvent started:
                     // Given with the track, so it never plays at the default volume
+                    if (started.Track.SourceType == MediaSourceType.Camera)
+                        SetCameraActive(started.UserId, true);
                     var channel = ChannelOf(started.Track.SourceType);
                     _webRTCService.RegisterInbound(started.Track, await GetPeerVolumeAsync(started.UserId, channel));
 
@@ -114,8 +116,8 @@ public partial class HybridSession
                     break;
 
                 // A stopped screen is only paused on the SFU and comes back in the same track. Its
-                // section stays: every track that is released and registered again costs webrtcbin a
-                // new pad and jitter buffer, which it never gives back. The track goes with its peer.
+                // section stays, so the next show reuses it instead of growing the description. The
+                // track goes with its peer.
                 // Watching ends with the show, the next one has to be asked for again.
                 case PeerTrackStoppedEvent { SourceType: MediaSourceType.Screen } stopped:
                     if (stopped.UserId != _coordinatorSession.GetCurrentUser().Id)
@@ -128,11 +130,14 @@ public partial class HybridSession
 
                 case PeerLeftEvent left:
                     _webRTCService.UnregisterAllUserInbounds(left.UserId);
+                    SetCameraActive(left.UserId, false);
                     SetScreenWatched(left.UserId, false);
 
                     break;
 
                 case PeerTrackStoppedEvent stopped:
+                    if (stopped.SourceType == MediaSourceType.Camera)
+                        SetCameraActive(stopped.UserId, false);
                     _webRTCService.UnregisterInbound(stopped.UserId, stopped.MediaType, stopped.SourceType);
 
                     break;

@@ -5,6 +5,9 @@ namespace Client.Application.Ports.Repositories;
 
 public interface IAppearanceSettingsRepository
 {
+    Task<bool> GetGroupOnlineChatUsersAsync();
+    Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers);
+
     Task<ThemeType> GetCurrentThemeTypeAsync();
     Task UpdateCurrentThemeTypeAsync(ThemeType themeType);
 

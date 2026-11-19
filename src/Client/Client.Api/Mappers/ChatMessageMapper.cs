@@ -22,6 +22,8 @@ internal static class ChatMessageMapper
             DelayedSentTime = dto.DelayedSentTime,
             DisposeTime = dto.DisposeTime,
             EditTime = dto.EditTime,
+            PinnedAt = dto.PinnedAt,
+            PinnedByUserId = dto.PinnedByUserId,
 
             TextContent = MapTextContent(dto.TextContent),
             ReplyContent = MapReplyContent(dto.ReplyContent),
@@ -29,6 +31,8 @@ internal static class ChatMessageMapper
             Images = dto.Images?.Select(MapImageContent).ToList() ?? new List<ChatImageContent>(),
             Video = dto.Video?.Select(MapVideoContent).ToList() ?? new List<ChatVideoContent>(),
             Files = dto.Files?.Select(MapFileContent).ToList() ?? new List<ChatFileContent>(),
+            LinkPreview = dto.LinkPreview?.ToModel(),
+            IsLinkPreviewDisabled = dto.IsLinkPreviewDisabled,
 
             Reactions = dto.Reactions?.Select(MapReaction).ToList() ?? new List<ChatReaction>(),
             UsersIds = dto.UsersIds?.ToList() ?? new List<string>(),
@@ -43,12 +47,26 @@ internal static class ChatMessageMapper
             IsDeleted = dto.IsDeleted,
             IsReadOnly = dto.IsReadOnly,
             IsSystem = dto.IsSystem,
+            SystemContent = dto.SystemContent,
             IsDisposable = dto.IsDisposable,
         };
     }
 
+    public static ChatLinkPreview ToModel(this ChatLinkPreviewDTO dto) => new()
+    {
+        Id = dto.Id,
+        Url = dto.Url,
+        SiteName = dto.SiteName,
+        Title = dto.Title,
+        Description = dto.Description,
+        HasImage = dto.HasImage,
+        ImageWidth = dto.ImageWidth,
+        ImageHeight = dto.ImageHeight,
+        IsLargeImage = dto.IsLargeImage
+    };
+
     private static ChatTextContent? MapTextContent(ChatTextContentDTO? dto)
-        => dto == null ? null : new ChatTextContent { Text = dto.Text };
+        => dto == null ? null : new ChatTextContent { Text = dto.Text, CommandResult = dto.CommandResult };
     
     private static ChatReplyContent? MapReplyContent(ChatReplyContentDTO? dto)
     {
@@ -58,6 +76,7 @@ internal static class ChatMessageMapper
         return new ChatReplyContent
         {
             MessageId = dto.MessageId,
+            HasAttachments = dto.HasAttachments,
             IsDeleted = dto.IsDeleted,
             SenderUserId = dto.SenderUserId,
             SentTime = dto.SentTime,
@@ -98,11 +117,19 @@ internal static class ChatMessageMapper
             Id = dto.Id,
             FileName = dto.FileName,
             Size = dto.Size,
-            MimeType = dto.MimeType
+            MimeType = dto.MimeType,
+            Video = dto.Video is { } video
+                ? new ChatFileVideo(Math.Max(0, video.Width), Math.Max(0, video.Height),
+                    video.Duration is { } duration && duration > TimeSpan.Zero ? duration : null, video.HasPreview)
+                : null
         };
 
     private static ChatReaction MapReaction(ChatReactionDTO dto)
-        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji };
+        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji, ReactedAt = AsUtc(dto.ReactedAt) };
+
+    private static DateTime? AsUtc(DateTime? time) => time is { } value
+        ? value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime()
+        : null;
 
     // DTO mappers
     internal static ChatTextContentDTO MapTextContentDto(ChatTextContent model) => new() { Text = model.Text };

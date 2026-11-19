@@ -37,6 +37,14 @@ public class AudioService : IAudioService
         return _audioDeviceProvider.GetInputDevices();
     }
 
+    public event Action? OutputDevicesChanged
+    {
+        add => _audioDeviceProvider.OutputDevicesChanged += value;
+        remove => _audioDeviceProvider.OutputDevicesChanged -= value;
+    }
+
+    public IReadOnlyList<AudioDeviceInfo> GetOutputDevices() => _audioDeviceProvider.GetOutputDevices();
+
     public async Task<AudioSettings> GetSettingsAsync()
     {
         return await _audioSettingsRepository.GetAsync();
@@ -44,6 +52,8 @@ public class AudioService : IAudioService
 
     public async Task SaveSettingsAsync(AudioSettings settings)
     {
+        settings.OutputVolume = double.IsFinite(settings.OutputVolume)
+            ? Math.Clamp(settings.OutputVolume, AudioSettings.MinOutputVolume, AudioSettings.MaxOutputVolume) : 1;
         settings.InputVolume = Math.Clamp(settings.InputVolume, AudioSettings.MinInputVolume, 
             AudioSettings.MaxInputVolume);
         settings.VoiceGateThresholdDb = Math.Clamp(settings.VoiceGateThresholdDb, AudioSettings.MinVoiceGateThresholdDb,
@@ -59,6 +69,8 @@ public class AudioService : IAudioService
             settings.NoiseSuppression = new AudioSettings().NoiseSuppression;
         
         await _audioSettingsRepository.SaveAsync(settings);
+        await Task.Run(() => _audioDeviceProvider.SetOutputDevice(settings.OutputDeviceId, settings.OutputDeviceName));
+        _audioDeviceProvider.SetOutputVolume(settings.OutputVolume);
         _soundService.Apply(settings);
         SettingsChanged?.Invoke(settings);
     }

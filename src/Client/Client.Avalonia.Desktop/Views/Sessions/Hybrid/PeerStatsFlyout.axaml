@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Hybrid.PeerStatsFlyout"
+             x:DataType="hybridVm:PeerStatsVM"
+             Width="320">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="TextBlock.figure">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="indicators|LineChart">
+            <Setter Property="Height" Value="72"/>
+            <Setter Property="Capacity" Value="{x:Static hybridVm:HybridSessionStatsVM.HistoryLength}"/>
+            <Setter Property="GridBrush" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="10" Margin="4">
+
+        <!-- The verdict, then the figures it comes from -->
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <indicators:SignalIndicator Grid.Column="0" Width="28" Height="28" Level="{Binding SignalLevel}"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.peer.title}" Classes="caption"/>
+                <TextBlock Text="{Binding QualityText}" Classes="figure"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+            <StackPanel Grid.Column="0" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.peer.loss}" Classes="caption"/>
+                <TextBlock Text="{Binding LossText}" Classes="figure"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{l:Text hybrid.stats.peer.jitter}" Classes="caption"/>
+                <TextBlock Text="{Binding JitterText}" Classes="figure"/>
+            </StackPanel>
+        </Grid>
+
+        <Separator/>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{l:Text hybrid.stats.peer.lossGraph}" Classes="caption"/>
+            <indicators:LineChart Values="{Binding LossHistory}"
+                                  Stroke="{DynamicResource WarningBrush}"
+                                  MinimumMaximum="5" Unit="%"/>
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{l:Text hybrid.stats.peer.jitterGraph}" Classes="caption"/>
+            <indicators:LineChart Values="{Binding JitterHistory}"
+                                  Stroke="{DynamicResource ButtonMainBrush}"
+                                  MinimumMaximum="50" Unit="ms"/>
+        </StackPanel>
+
+        <TextBlock Text="{l:Text hybrid.stats.peer.hint}" Classes="caption" TextWrapping="Wrap"/>
+    </StackPanel>
+</UserControl>

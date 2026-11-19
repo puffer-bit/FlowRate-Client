@@ -22,6 +22,9 @@ internal sealed partial class DatabaseInitializer
     [LoggerMessage(LogLevel.Warning, "The Entity Framework database was moved to {BackupPath}, a new one is created")]
     private partial void LogEntityFrameworkDatabaseMoved(string backupPath);
 
+    [LoggerMessage(LogLevel.Warning, "The database was moved to {BackupPath} at the user's request, a new one is created")]
+    private partial void LogReset(string backupPath);
+
     [LoggerMessage(LogLevel.Information, "Database backed up to {BackupPath} before the upgrade")]
     private partial void LogBackedUp(string backupPath);
 

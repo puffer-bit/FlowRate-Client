@@ -10,6 +10,41 @@ namespace Client.ViewModels.Sessions.Hybrid;
 
 public class HybridSessionStatusBarVM : ReactiveObject
 {
+    public int SessionId { get; init; }
+    public bool CanUseCamera { get; init; }
+    public bool IsBroadcastBusy
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleBroadcastCommand { get; init; } = null!;
+    public ReactiveCommand<RxVoid, RxVoid> ToggleCameraCommand { get; init; } = null!;
+
+    /// <summary>Sends the next camera instead of the one sent now, such as the other side of a phone.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SwitchCameraCommand { get; init; } = null!;
+    public bool LastWasCamera
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+            this.RaisePropertyChanged(nameof(BroadcastIconKey));
+        }
+    }
+    public bool IsCameraOn
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+        }
+    }
+    public bool IsBroadcastOn => LastWasCamera ? IsCameraOn : IsScreenShareOn;
+    public string BroadcastIconKey => LastWasCamera ? "VideoCameraIcon" : "ScreenShareIcon";
+
+
     public string StatusBarText
     {
         get;
@@ -77,8 +112,30 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public bool IsMicrophoneOn
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+        }
     }
+
+    public bool CanSpeak
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+        }
+    }
+
+    public string MicrophoneIconKey => !CanSpeak
+        ? "ForbiddenMicrophoneIcon"
+        : IsMicrophoneOn ? "MicrophoneIcon" : "CrossedMicrophoneIcon";
     
     /// <summary>
     /// Our own voice is heard by the session right now.
@@ -165,7 +222,11 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public bool IsScreenShareOn
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+        }
     }
 
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }

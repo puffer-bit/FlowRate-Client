@@ -4,7 +4,8 @@ using Shared.Models.Notifications.CoordinatorInfo;
 using Shared.Models.Notifications.Heartbeat;
 using Shared.Models.Notifications.SessionInfo;
 using Shared.Models.Media;
-using Client.Core.Events;
+using Client.Core.Chat;
+using Client.Core.Coordinator;
 
 namespace Client.Api.Mappers;
 
@@ -16,11 +17,14 @@ internal static class CoordinatorEventMapper
     /// <returns>The event, or null for a message the client does not react to yet.</returns>
     public static CoordinatorEvent? ToEvent(this BaseMessage message) => message switch
     {
+        DirectCallChangedNotification call => new DirectCallChangedEvent(call.Call),
         HeartbeatServerClosingNotification closing => new ServerClosingEvent(closing.Message),
         HeartbeatServerRestartingNotification restarting => new ServerRestartingEvent(restarting.Message),
+        CoordinatorUserBannedNotification banned => new BannedEvent(banned.Reason),
+        CoordinatorUserSessionEndedNotification ended => new SessionEndedEvent(ended.Reason),
 
         CoordinatorReconfiguredNotification reconfigured =>
-            new CoordinatorReconfiguredEvent(reconfigured.CoordinatorSessionDTO.ToModel()),
+            new CoordinatorReconfiguredEvent(reconfigured.Coordinator.ToModel()),
         CoordinatorUserUpdatedNotification updated => new UserUpdatedEvent(updated.User.ToModel()),
         // Brings the status of the user; the client knows of users only by their updates
         CoordinatorUserConnectedNotification connected => new UserUpdatedEvent(connected.User.ToModel()),
@@ -41,14 +45,25 @@ internal static class CoordinatorEventMapper
         ChatSessionMessageAddedNotification added => new ChatMessageAddedEvent(added.ChatId, added.Message.ToModel()),
         ChatSessionMessageEditedNotification edited => new ChatMessageEditedEvent(edited.ChatId, edited.Message.ToModel()),
         ChatSessionMessageDeletedNotification deleted => new ChatMessageDeletedEvent(deleted.ChatId, deleted.MessageId, deleted.Revision),
+        ChatSessionUserTypingNotification typing => new ChatUserTypingEvent(typing.ChatId, typing.UserId, typing.IsTyping),
+        ChatViewersChangedNotification changed => new ChatViewersChangedEvent(changed.ChatId,
+            changed.SubscriptionId, changed.Upserted.Select(user => user.ToModel()).ToList(), changed.Removed),
         ChatReadStateChangedNotification readChanged => new ChatReadStateChangedEvent(readChanged.State.ToModel()),
+        ChatPeerReadNotification peerRead => new ChatPeerReadEvent(new ChatPeerRead(peerRead.ChatId,
+            peerRead.ReaderUserId, peerRead.LastReadMessageId,
+            DateTime.SpecifyKind(peerRead.ReadAt.ToUniversalTime(), DateTimeKind.Utc))),
 
         HybridSessionStateChangedNotification changed => new SessionNodeStateChangedEvent(changed.SessionId, changed.State),
         HybridSessionSFUNodeChangedNotification changed => new SessionNodeReplacedEvent(changed.SessionId),
-        HybridSessionSFUNodeConnectedNotification connected => new SessionNodeReplacedEvent(connected.SessionId),
+        HybridSessionSFUNodeConnectionChangedNotification { IsConnected: true } connected =>
+            new SessionNodeReplacedEvent(connected.SessionId),
 
         HybridSessionPeerJoinedNotification joined =>new PeerJoinedEvent(joined.SessionId, joined.Peer.ToModel()),
         HybridSessionPeerLeftNotification left => new PeerLeftEvent(left.SessionId, left.UserId),
+        HybridSessionPeerMovedOutNotification moved =>
+            new PeerMovedOutEvent(moved.SessionId, moved.UserId, moved.TargetSessionId, moved.InitiatorUserId),
+        HybridSessionPeerMovedInNotification moved =>
+            new PeerJoinedEvent(moved.SessionId, moved.Peer.ToModel(), moved.SourceSessionId),
         // Without an initiator and a reason the server deleted the session, which is announced on its own;
         // with a reason the server removed the peer itself
         HybridSessionPeerKickedNotification { InitiatorUserId: null, Reason: null } kicked =>
@@ -60,20 +75,13 @@ internal static class CoordinatorEventMapper
         HybridSessionPeerStateChangedNotification changed =>
             new PeerStateChangedEvent(changed.SessionId, changed.UserId, changed.State),
 
-        HybridSessionPeerMuteMicrophoneNotification muted =>
-            new PeerMicrophoneMuteChangedEvent(muted.SessionId, muted.UserId, true),
-        HybridSessionPeerUnmuteMicrophoneNotification unmuted =>
-            new PeerMicrophoneMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
-
-        HybridSessionPeerMuteSoundNotification muted =>
-            new PeerSoundMuteChangedEvent(muted.SessionId, muted.UserId, true),
-        HybridSessionPeerUnmuteSoundNotification unmuted =>
-            new PeerSoundMuteChangedEvent(unmuted.SessionId, unmuted.UserId, false),
-
-        HybridSessionPeerAfkNotification afk =>
-            new PeerAfkChangedEvent(afk.SessionId, afk.UserId, true, afk.Reason),
-        HybridSessionPeerNotAfkNotification back =>
-            new PeerAfkChangedEvent(back.SessionId, back.UserId, false, null),
+        HybridSessionPeerMicrophoneMuteChangedNotification changed =>
+            new PeerMicrophoneMuteChangedEvent(changed.SessionId, changed.UserId, changed.IsMuted),
+        HybridSessionPeerSoundMuteChangedNotification changed =>
+            new PeerSoundMuteChangedEvent(changed.SessionId, changed.UserId, changed.IsMuted),
+        HybridSessionPeerAfkChangedNotification changed =>
+            new PeerAfkChangedEvent(changed.SessionId, changed.UserId, changed.IsAfk,
+                changed.IsAfk ? changed.Reason : null),
         HybridSessionPeerPokedNotification poked =>
             new PeerPokedEvent(poked.SessionId, poked.UserId, poked.InitiatorUserId, poked.Message),
 
@@ -85,6 +93,9 @@ internal static class CoordinatorEventMapper
             new PeerScreenShareStartedEvent(started.SessionId, started.UserId, started.HasAudio),
         HybridSessionPeerStartedScreenShareNotification started =>
             new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
+        HybridSessionPeerScreenShareWatchChangedNotification changed =>
+            new PeerScreenShareWatchChangedEvent(changed.SessionId, changed.UserId, changed.SharerUserId,
+                changed.IsWatching),
 
         HybridSessionPeerStoppedVoiceShareNotification stopped =>
             new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId, MediaType.Audio, MediaSourceType.Microphone),

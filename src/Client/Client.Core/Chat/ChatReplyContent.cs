@@ -7,5 +7,6 @@ public class ChatReplyContent
     public int? SenderUserId { get; init; }
     public DateTime SentTime { get; init; }
     public ChatTextContent? TextContent { get; init; }
+    public bool HasAttachments { get; init; }
     public bool IsDeleted { get; init; }
 }

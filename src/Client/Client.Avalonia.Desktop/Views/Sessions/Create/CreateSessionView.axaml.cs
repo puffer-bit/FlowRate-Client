@@ -1,3 +1,4 @@
+using Client.Views.Dialogs;
 using Client.Views.Common;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -16,7 +17,12 @@ internal partial class CreateSessionView : ViewControl<CreateSessionWindowVM>
             ViewModel!.CloseWindow.RegisterCloseHandler(this).DisposeWith(disposables);
 
             // The dialog opens straight into typing the name
-            NameInput.FocusWhenLoaded();
+            if (ViewModel.IsPrivateMode)
+            {
+                MemberSearchInput.FocusWhenLoaded();
+                _ = ViewModel.InitializeMembersAsync();
+            }
+            else NameInput.FocusWhenLoaded();
         });
     }
 }

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using Client.Avalonia.Styles.Animation;
@@ -66,6 +67,19 @@ public class SettingsRow : ContentControl
     private static readonly TimeSpan HighlightTime = TimeSpan.FromSeconds(1.5);
     private IDisposable? _highlightTimer;
 
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        // The inherited disabled state and its foreground have settled before transitions start.
+        PseudoClasses.Set(":transitions-ready", true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        PseudoClasses.Set(":transitions-ready", false);
+        base.OnDetachedFromVisualTree(e);
+    }
+
     public IImage? Icon
     {
         get => GetValue(IconProperty);
@@ -92,7 +106,7 @@ public class SettingsRow : ContentControl
 
     /// <summary>
     /// How deep the setting is nested under the rows above it: 0 for an independent setting,
-    /// 1 or 2 for one that refines the setting above. Nested rows are shifted to the right.
+    /// 1 or 2 for one that refines the setting above. Nested rows use the same alignment as other rows.
     /// </summary>
     public int IndentLevel
     {

@@ -13,7 +13,7 @@ namespace Client.GStreamer.Interop;
 /// the breakpoint the runtime sets on a new thread's first managed instruction kills the process with
 /// SIGTRAP, and without one a NullReferenceException (a SIGSEGV underneath) does the same.
 /// </remarks>
-internal sealed partial class GstBusWatcher : IDisposable
+public sealed partial class GstBusWatcher : IDisposable
 {
     // Also how long disposing may wait for the thread to notice
     private static readonly ClockTime PollTimeout = ClockTime.FromNanoseconds(100_000_000);

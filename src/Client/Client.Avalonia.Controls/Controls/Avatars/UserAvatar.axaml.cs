@@ -45,6 +45,9 @@ public class UserAvatar : TemplatedControl
     public static readonly StyledProperty<string?> CoordinatorProperty =
         AvaloniaProperty.Register<UserAvatar, string?>(nameof(Coordinator));
 
+    public static readonly StyledProperty<Control?> OverlayProperty =
+        AvaloniaProperty.Register<UserAvatar, Control?>(nameof(Overlay));
+
     public static readonly StyledProperty<Enum?> StatusProperty =
         AvaloniaProperty.Register<UserAvatar, Enum?>(nameof(Status));
 
@@ -150,6 +153,13 @@ public class UserAvatar : TemplatedControl
     {
         get => GetValue(IsWaitingProperty);
         set => SetValue(IsWaitingProperty, value);
+    }
+
+    /// <summary>Optional avatar actions, drawn over the photo and below the status badge.</summary>
+    public Control? Overlay
+    {
+        get => GetValue(OverlayProperty);
+        set => SetValue(OverlayProperty, value);
     }
 
     /// <summary>

@@ -1,16 +1,17 @@
-using Client.Application.Settings.Search;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Subjects;
-using Avalonia.Media;
-using Client.Avalonia.Localization;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
+using Avalonia.Media;
+using Client.Application.Settings;
+using Client.Application.Settings.Search;
+using Client.Avalonia.Localization;
+using Client.Core.Settings.Themes;
 using Client.Services;
 using ReactiveUI;
-using Client.Core.Settings.Themes;
-using Client.Application.Settings;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -19,12 +20,24 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("appearance");
     public SettingTabType Type => SettingTabType.AppAppearance;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("appearance.language", "settings.appearance.section.language"),
+        new("appearance.theme", "settings.appearance.section.theme"),
+        new("appearance.buttonColors", "settings.appearance.section.buttonColors"),
+        new("appearance.preview", "settings.appearance.section.preview"),
+        new("appearance.scale", "settings.appearance.section.scale"),
+        new("appearance.animations", "settings.appearance.section.animations"),
+        new("appearance.window", "settings.appearance.section.window")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("appearance",
         ("language", ["language"]),
         ("theme", ["theme"]),
         ("scale", ["scale"]),
+        ("window", ["customTitleBar"]),
         ("buttonColors", ["primaryColor", "secondaryColor", "dangerColor", "saveColor", "successColor", "warningColor",
             "errorColor", "resetColors"]),
         ("animations", ["animations", "animationSpeed"]));
@@ -101,6 +114,12 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool UseCustomTitleBar
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public bool IsAnimationEnabled
     {
         get;
@@ -124,38 +143,75 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ResetColorsCommand { get; init; }
-    
+
     private readonly IAppearanceService _appearanceService;
     private readonly IThemeService _themeService;
     private readonly ILanguageService _languageService;
-    
+
     private bool _isLoaded;
 
     private readonly Subject<CustomColors> _customColorsToSave = new();
     private CustomColors _customColors = new();
     // Set while the pickers are filled by the view model, which is not a choice of the user
     private bool _isShowingColors;
-    
+
     public AppearanceControlVM(IAppearanceService appearanceService, IThemeService themeService,
         ILanguageService languageService)
     {
         _appearanceService = appearanceService;
         _themeService = themeService;
         _languageService = languageService;
-        
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
 
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
+
+        ResetColorsCommand = ReactiveCommand.CreateFromTask(ResetColorsAsync,
+            this.WatchProperty(nameof(HasCustomColors), vm => vm.HasCustomColors));
+
+        SelectedLanguage = Languages[0];
+        ObserveThemeChanges();
+        ObserveSystemThemeChanges();
+        ObserveColorChanges();
+        ObserveInterfaceChanges();
+        this.WatchProperty(nameof(UseCustomTitleBar), vm => vm.UseCustomTitleBar)
+            .Where(_ => _isLoaded)
+            .Select(value => Observable.FromAsync(() => ChangeTitleBarAsync(value)))
+            .Concat().Subscribe();
+    }
+
+    private void ObserveThemeChanges()
+    {
         // Apply and persist the preset only on user changes, not on initial load
         this.WatchProperty(nameof(SelectedThemeType), x => x.SelectedThemeType)
             .Where(_ => _isLoaded)
             .Select(themeType => Observable.FromAsync(() => ChangeThemeAsync(themeType)))
             .Concat()
             .Subscribe();
+    }
 
-        ResetColorsCommand = ReactiveCommand
-            .CreateFromTask(ResetColorsAsync, this.WatchProperty(nameof(HasCustomColors), x => x.HasCustomColors));
+    private void ObserveSystemThemeChanges()
+    {
+        if (global::Avalonia.Application.Current is not { } app)
+            return;
 
+        // Closing settings must not leave the view model retained by the application.
+        var reference = new WeakReference<AppearanceControlVM>(this);
+        EventHandler? handler = null;
+        handler = (_, _) =>
+        {
+            if (!reference.TryGetTarget(out var viewModel))
+            {
+                app.ActualThemeVariantChanged -= handler;
+                return;
+            }
+
+            if (viewModel._isLoaded && viewModel.SelectedThemeType == ThemeType.System)
+                viewModel.ShowColors();
+        };
+        app.ActualThemeVariantChanged += handler;
+    }
+
+    private void ObserveColorChanges()
+    {
         ObserveColor(this.WatchProperty(nameof(PrimaryColor), x => x.PrimaryColor),
             (colors, color) => colors with { Primary = color }, colors => colors.Primary);
         ObserveColor(this.WatchProperty(nameof(SecondaryColor), x => x.SecondaryColor),
@@ -177,7 +233,10 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
             .Select(colors => Observable.FromAsync(() => _appearanceService.UpdateCustomColorsAsync(colors)))
             .Concat()
             .Subscribe();
+    }
 
+    private void ObserveInterfaceChanges()
+    {
         // A combo box reports no selection while its items are rebuilt
         this.WatchProperties(nameof(IsAnimationEnabled), nameof(AnimationSpeedIndex))
             .Select(vm => (IsEnabled: vm.IsAnimationEnabled, SpeedIndex: vm.AnimationSpeedIndex))
@@ -194,8 +253,6 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
             .Concat()
             .Subscribe();
 
-        SelectedLanguage = Languages[0];
-
         this.WatchProperty(nameof(SelectedLanguage), x => x.SelectedLanguage)
             .Where(language => _isLoaded && language != null)
             .Select(language => Observable.FromAsync(() => ChangeLanguageAsync(language.Code)))
@@ -205,6 +262,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
     private async Task LoadAsync()
     {
+        UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
         SelectedThemeType = await _appearanceService.GetCurrentThemeTypeAsync();
         var language = await _appearanceService.GetLanguageAsync();
         // A saved language the application has no translation for any more follows the system
@@ -216,6 +274,12 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = await _appearanceService.GetInterfaceScaleAsync();
         _isLoaded = true;
+    }
+
+    private async Task ChangeTitleBarAsync(bool value)
+    {
+        ExperimentalFeatures.Apply(ExperimentalFeatures.IsEnabled, value);
+        await _appearanceService.UpdateUseCustomTitleBarAsync(value);
     }
 
     private async Task ChangeThemeAsync(ThemeType themeType)
@@ -293,9 +357,10 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
     public async Task ResetAllAsync()
     {
         const ThemeType defaultTheme = ThemeType.Dark;
-        
+
         // Applied here directly, so the change handler must not apply and save it a second time
         _isLoaded = false;
+        UseCustomTitleBar = false;
         SelectedThemeType = defaultTheme;
         SelectedLanguage = Languages[0];
         var animations = new AnimationSettings();
@@ -303,7 +368,8 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = InterfaceScale.Default;
         _isLoaded = true;
-        
+
+        await ChangeTitleBarAsync(false);
         await ChangeThemeAsync(defaultTheme);
         await ChangeLanguageAsync(null);
         await ResetColorsAsync();

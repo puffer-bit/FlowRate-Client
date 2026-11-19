@@ -5,6 +5,7 @@
              xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              x:DataType="listVm:PeerVM"
+             menus:FlyoutMenu.SubmitButton="{Binding #ConfirmButton}"
              x:Class="Client.Views.Sessions.List.PokeCard">
 
     <!-- Poking a peer, laid out as going away from the keyboard is: who, an optional message and the send -->
@@ -43,7 +44,7 @@
             <TextBlock Classes="pokeCaption" HorizontalAlignment="Right" Text="{Binding PokeMessageCounter}"/>
         </StackPanel>
 
-        <Button Classes="primary"
+        <Button x:Name="ConfirmButton" Classes="primary"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
                 Padding="10,8"

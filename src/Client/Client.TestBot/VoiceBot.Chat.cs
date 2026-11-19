@@ -1,3 +1,4 @@
+using Client.Core.Coordinator;
 using System.Globalization;
 using Client.Application.Coordinator;
 using Client.Core.Chat;
@@ -78,7 +79,7 @@ internal sealed partial class VoiceBot
         var text = $"{ChatMarker} {DateTime.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture)} " +
                    $"{Name} #{sequence}: {ChatPhrases[random.Next(ChatPhrases.Length)]}";
 
-        AddMessageResult result;
+        RequestResult result;
 
         try
         {
@@ -97,9 +98,9 @@ internal sealed partial class VoiceBot
             return;
         }
 
-        _stats.ChatSent(result == AddMessageResult.NoError);
+        _stats.ChatSent(result.IsSuccess);
 
-        if (result != AddMessageResult.NoError)
+        if (!result.IsSuccess)
             Log($"failed to send a chat message: {result}");
     }
 
@@ -119,9 +120,9 @@ internal sealed partial class VoiceBot
 
     private async Task<SessionModel> FindChatAsync(ICoordinatorSession coordinator)
     {
-        var (result, sessions, _) = await coordinator.GetAllSessions();
+        var (result, (sessions, _)) = await coordinator.GetAllSessions();
 
-        if (result != SessionRequestResult.NoError || sessions == null)
+        if (!result.IsSuccess || sessions == null)
             throw new InvalidOperationException($"{Name}: failed to get the session list: {result}");
 
         var chats = sessions.Values.OfType<ChatSessionModel>().Where(chat => !chat.IsReadOnly).ToList();

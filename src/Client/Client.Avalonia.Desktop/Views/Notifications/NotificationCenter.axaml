@@ -45,13 +45,15 @@
                 <Button Classes="borderless" Width="26" Height="26"
                         IsVisible="{Binding !IsSoundMuted}"
                         ToolTip.Tip="{l:Text notification.center.mute}"
-                        Command="{Binding ToggleSoundCommand}">
+                        Command="{Binding ToggleSoundCommand}"
+                        AutomationProperties.Name="{l:Text notification.center.mute}">
                     <Image Width="16" Height="16" Source="{StaticResource HighVolumeIcon}"/>
                 </Button>
                 <Button Classes="borderless" Width="26" Height="26"
                         IsVisible="{Binding IsSoundMuted}"
                         ToolTip.Tip="{l:Text notification.center.unmute}"
-                        Command="{Binding ToggleSoundCommand}">
+                        Command="{Binding ToggleSoundCommand}"
+                        AutomationProperties.Name="{l:Text notification.center.unmute}">
                     <Image Width="16" Height="16" Source="{StaticResource CrossedNoVolumeIcon}"/>
                 </Button>
             </Panel>
@@ -59,7 +61,8 @@
             <Button Grid.Column="2" Classes="borderless" Width="26" Height="26"
                     IsVisible="{Binding HasHistory}"
                     ToolTip.Tip="{l:Text notification.center.clear}"
-                    Command="{Binding ClearHistoryCommand}">
+                    Command="{Binding ClearHistoryCommand}"
+                    AutomationProperties.Name="{l:Text notification.center.clear}">
                 <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
             </Button>
         </Grid>

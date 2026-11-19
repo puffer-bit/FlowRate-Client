@@ -7,22 +7,10 @@ using Client.Avalonia.Localization;
 using Client.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
-
-public enum UpdaterState
-{
-    /// <summary>Nothing has been asked yet.</summary>
-    Idle,
-    Checking,
-    UpToDate,
-    Available,
-    Downloading,
-    /// <summary>Downloaded: a restart applies it, and so does the next start of the application.</summary>
-    ReadyToRestart,
-    Failed
-}
 
 /// <summary>
 /// The updater menu of the top bar: looks for a newer release, downloads it and restarts the

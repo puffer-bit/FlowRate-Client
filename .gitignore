@@ -25,6 +25,7 @@ Thumbs.db
 # GStreamer runtime produced by Client.GStreamer/Build scripts
 src/Client/Client.GStreamer/Build/artifacts/
 
+
 # Release archives produced by the publish scripts in src/Scripts
 dist/
 

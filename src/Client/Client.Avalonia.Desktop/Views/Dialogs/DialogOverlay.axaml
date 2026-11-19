@@ -12,7 +12,7 @@
              anim:Presence.Leave="Fade"
              anim:Presence.Duration="Short">
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, *, Auto">
     <!-- The backdrop covers the title bar of the window too, so the dialog brings its own: the strip
          drags the window and carries the window buttons. Gone where the system draws the title bar -->
     <Border Grid.Row="0" Height="36" Padding="6,0" Background="Transparent"
@@ -33,7 +33,7 @@
            anim:Presence.Duration="Short">
 
         <Border Background="{DynamicResource GeneralBrush}"
-                CornerRadius="8"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
                 Padding="1"
                 BoxShadow="{DynamicResource DialogShadow}"
                 ClipToBounds="True">
@@ -44,8 +44,13 @@
         <Border x:Name="Outline"
                 BorderBrush="{DynamicResource DialogBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="8"
+                CornerRadius="{StaticResource SurfaceCornerRadius}"
                 IsHitTestVisible="False"/>
     </Panel>
+
+    <!-- Match the caption strip below the card so it stays centered in the whole window. -->
+    <Border Grid.Row="2" Height="36"
+            IsVisible="{Binding #CaptionButtons.IsVisible}"
+            IsHitTestVisible="False"/>
     </Grid>
 </UserControl>

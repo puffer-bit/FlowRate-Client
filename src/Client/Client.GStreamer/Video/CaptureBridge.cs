@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Gst;
 using Client.GStreamer.Interop;
 
@@ -23,6 +24,11 @@ internal sealed class CaptureBridge : IDisposable
     private readonly Action<double, string>? _onRate;
     private readonly System.Diagnostics.Stopwatch _rateClock = System.Diagnostics.Stopwatch.StartNew();
     private int _frames;
+    private readonly double _frameInterval;
+    private double _nextFrame;
+    private readonly int? _encoderFramerate;
+    private Caps? _captureCaps;
+    private Caps? _encoderCaps;
 
     /// <param name="sink">The appsink the capture chain ends in.</param>
     /// <param name="source">The appsrc the rest of the branch starts from. The bridge takes over the wrapper.</param>
@@ -30,10 +36,19 @@ internal sealed class CaptureBridge : IDisposable
     /// <param name="onRate">
     /// Receives every few seconds how many frames per second the capture delivers and their caps.
     /// </param>
-    public CaptureBridge(Element sink, Element source, Action<Exception> onError, Action<double, string>? onRate = null)
+    /// <param name="maxFramerate">Ceiling for forwarding frames; skipped samples are released immediately.</param>
+    /// <param name="setEncoderFramerate">
+    /// Advertises that ceiling downstream for encoder rate control, while preserving capture timestamps.
+    /// </param>
+    public CaptureBridge(Element sink, Element source, Action<Exception> onError, Action<double, string>? onRate = null,
+        int? maxFramerate = null, bool setEncoderFramerate = false)
     {
         _source = source;
         _onRate = onRate;
+        if (maxFramerate is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxFramerate));
+        _frameInterval = maxFramerate is { } rate ? (double)Stopwatch.Frequency / rate : 0;
+        _encoderFramerate = setEncoderFramerate ? maxFramerate : null;
 
         // A push is refused while the branch is not running; the next frame is tried again
         _reader = new AppSinkReader(sink, "capture_bridge", Forward, onError);
@@ -41,7 +56,49 @@ internal sealed class CaptureBridge : IDisposable
 
     private void Forward(Sample sample)
     {
-        GstApp.PushSample(_source, sample);
+        // VFR capture negotiates framerate=0/1. Enforce the configured ceiling here,
+        // independent of videorate negotiation, without sleeping or retaining a sample.
+        // Carry the fractional remainder so 165 Hz -> 144 Hz does not become 82.5 Hz.
+        if (_frameInterval > 0)
+        {
+            var now = Stopwatch.GetTimestamp();
+            if (now < _nextFrame)
+                return;
+            _nextFrame = _nextFrame == 0
+                ? now + _frameInterval
+                : Math.Max(_nextFrame + _frameInterval, now);
+        }
+
+        if (_encoderFramerate is { } framerate)
+        {
+            // PipeWire's VFR caps say 0/1. VA H.264 substitutes 30 fps for that,
+            // including in the driver's rate control, even when we forward 144 fps.
+            // Advertise the ceiling already enforced above on the encoder side only.
+            // Keep the original timestamps, GPU buffer, caps features and segment.
+            using var inputCaps = sample.GetCaps();
+            if (inputCaps != null)
+            {
+                if (_captureCaps == null || !_captureCaps.IsEqual(inputCaps))
+                {
+                    _captureCaps?.Dispose();
+                    _encoderCaps?.Dispose();
+                    _captureCaps = inputCaps.Copy();
+                    _encoderCaps = inputCaps.Copy()!;
+                    using var rateCaps = Caps.FromString(FormattableString.Invariant($"video/x-raw,framerate={framerate}/1"))!;
+                    using var rateStructure = rateCaps.GetStructure(0);
+                    using var value = rateStructure.GetValue("framerate");
+                    _encoderCaps.SetValue("framerate", in value);
+                }
+
+                using var forwarded = sample.Copy()!;
+                forwarded.SetCaps(_encoderCaps!);
+                GstApp.PushSample(_source, forwarded);
+            }
+            else
+                GstApp.PushSample(_source, sample);
+        }
+        else
+            GstApp.PushSample(_source, sample);
 
         _frames++;
 
@@ -60,6 +117,8 @@ internal sealed class CaptureBridge : IDisposable
     public void Dispose()
     {
         _reader.Dispose();
+        _captureCaps?.Dispose();
+        _encoderCaps?.Dispose();
         _source.Dispose();
     }
 }

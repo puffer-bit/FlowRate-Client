@@ -11,19 +11,19 @@ public static class RequestRejectionMessages
 {
     public static string Title => Strings.Get("rejection.title");
 
-    public static string Get(RequestRejectReason reason) => reason switch
+    public static string Get(ErrorCode code) => code switch
     {
-        RequestRejectReason.RateLimited => Strings.Get("rejection.rateLimited"),
-        RequestRejectReason.InvalidRequest => Strings.Get("rejection.invalidRequest"),
-        RequestRejectReason.InsufficientPermissions => Strings.Get("rejection.insufficientPermissions"),
-        RequestRejectReason.UserFrozen => Strings.Get("rejection.userFrozen"),
+        ErrorCode.RateLimited => Strings.Get("rejection.rateLimited"),
+        ErrorCode.InvalidRequest => Strings.Get("rejection.invalidRequest"),
+        ErrorCode.InsufficientPermissions => Strings.Get("rejection.insufficientPermissions"),
+        ErrorCode.UserFrozen => Strings.Get("rejection.userFrozen"),
         _ => Strings.Get("rejection.refused")
     };
 
-    public static string GetForConnection(RequestRejectReason reason) => reason switch
+    public static string GetForConnection(ErrorCode code) => code switch
     {
-        RequestRejectReason.RateLimited => Strings.Get("connect.failed.rateLimited"),
-        RequestRejectReason.InvalidRequest => Strings.Get("connect.failed.invalidRequest"),
+        ErrorCode.RateLimited => Strings.Get("connect.failed.rateLimited"),
+        ErrorCode.InvalidRequest => Strings.Get("connect.failed.invalidRequest"),
         _ => Strings.Get("connect.failed.refused")
     };
 }

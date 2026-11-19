@@ -1,22 +1,24 @@
 using System.Threading.Tasks;
-using Shared.Enums;
-using Client.Core.Chat;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Core.Chat;
 
 namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
-/// Pages a chat's history from newest to oldest. A page is asked for by the id of the oldest
-/// message already held, so messages that arrive or disappear meanwhile cannot shift it.
-/// Pages come from the local cache as far as it goes and from the server below that; what the
-/// server sends is put into the cache.
+/// Pages the live tail from the contiguous local cache, and historical windows in either direction
+/// from the server. Exclusive message ID cursors remain stable across insertions and deletions.
+/// Historical pages never replace or extend the cached tail across a gap.
 /// </summary>
 public class ChatHistoryPager
 {
     public const int PageSize = 30;
 
     public bool IsFullyLoaded { get; private set; }
+    public bool HasNewer { get; private set; }
+    public bool IsHistoricalWindow { get; private set; }
+    public int? OldestMessageId { get; private set; }
+    public int? NewestMessageId { get; private set; }
     public bool IsBusy { get; private set; }
 
     private readonly ICoordinatorSession _coordinatorSession;
@@ -67,6 +69,15 @@ public class ChatHistoryPager
         IsBusy = true;
         try
         {
+            if (IsHistoricalWindow && beforeMessageId is { } boundary)
+            {
+                var (windowResult, window) = await _coordinatorSession.RequestChatHistoryWindow(_chatId,
+                    boundary, Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection.Before, PageSize);
+                if (!windowResult.IsSuccess || window == null) return null;
+                IsFullyLoaded = !window.HasOlder;
+                if (window.Messages.Count > 0) OldestMessageId = window.Messages[0].Id;
+                return new ChatHistoryPage(window.Messages, window.Revision);
+            }
             if (beforeMessageId is { } beforeId)
             {
                 var cached = await _cache.LoadBeforeAsync(beforeId, PageSize);
@@ -78,7 +89,7 @@ public class ChatHistoryPager
             }
 
             var (result, page) = await _coordinatorSession.RequestChatHistoryPage(_chatId, beforeMessageId, PageSize);
-            if (result != FetchMessagesResult.NoError || page == null)
+            if (!result.IsSuccess || page == null)
                 return null;
 
             if (page.Messages.Count < PageSize)
@@ -100,5 +111,47 @@ public class ChatHistoryPager
     /// <summary>
     /// Forgets that the history was exhausted, for loading it anew.
     /// </summary>
-    public void Reset() => IsFullyLoaded = false;
+    public void Reset()
+    {
+        IsFullyLoaded = false;
+        HasNewer = false;
+        IsHistoricalWindow = false;
+        OldestMessageId = null;
+        NewestMessageId = null;
+    }
+
+    public async Task<ChatHistoryWindow?> LoadAroundAsync(int messageId)
+    {
+        if (IsBusy) return null;
+        IsBusy = true;
+        try
+        {
+            var (result, window) = await _coordinatorSession.RequestChatHistoryWindow(_chatId, messageId,
+                Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection.Around, PageSize);
+            if (!result.IsSuccess || window == null) return null;
+            IsHistoricalWindow = true;
+            OldestMessageId = window.Messages.Count > 0 ? window.Messages[0].Id : messageId;
+            NewestMessageId = window.Messages.Count > 0 ? window.Messages[^1].Id : messageId;
+            IsFullyLoaded = !window.HasOlder;
+            HasNewer = window.HasNewer;
+            return window;
+        }
+        finally { IsBusy = false; }
+    }
+
+    public async Task<ChatHistoryWindow?> LoadNewerAsync(int afterMessageId)
+    {
+        if (IsBusy || !HasNewer) return null;
+        IsBusy = true;
+        try
+        {
+            var (result, window) = await _coordinatorSession.RequestChatHistoryWindow(_chatId, afterMessageId,
+                Shared.Models.Requests.SessionActions.ChatSession.ChatHistoryDirection.After, PageSize);
+            if (!result.IsSuccess || window == null) return null;
+            HasNewer = window.HasNewer;
+            if (window.Messages.Count > 0) NewestMessageId = window.Messages[^1].Id;
+            return window;
+        }
+        finally { IsBusy = false; }
+    }
 }

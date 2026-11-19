@@ -8,9 +8,11 @@ using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions;
+using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Settings;
 
@@ -32,12 +34,21 @@ public static class DependencyInjection
         services.AddSingleton<IChatImageService, ChatImageService>();
         services.AddSingleton<IAvatarService, AvatarService>();
         services.AddSingleton<IImagePreviewer>(provider => provider.GetRequiredService<IChatImageService>());
+        services.AddSingleton<IImagePreparer, SkiaImagePreparer>();
+        services.AddSingleton(provider => new ChatAttachmentOptions(provider.GetRequiredService<IImagePreparer>(),
+            provider.GetService<IChatAttachmentPreferencesRepository>(), provider.GetService<ILogger<ChatAttachmentOptions>>(),
+            provider.GetService<IVideoPreparer>()));
 
+        services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(
             provider.GetRequiredService<IChatCacheStore>(),
             provider.GetRequiredService<IChatMediaUploader>(),
             provider.GetRequiredService<IChatImageService>(),
-            provider.GetRequiredService<IDismissedPromptsRepository>()));
+            provider.GetRequiredService<IDismissedPromptsRepository>(),
+            provider.GetRequiredService<IMediaCache>(),
+            provider.GetRequiredService<IAppearanceService>(),
+            provider.GetRequiredService<ChatReceipts>(),
+            provider.GetRequiredService<ChatAttachmentOptions>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),
@@ -46,6 +57,7 @@ public static class DependencyInjection
             provider.GetRequiredService<INotificationService>(),
             provider.GetRequiredService<IVoiceActivityService>(),
             provider.GetRequiredService<IScreenWatchService>(),
+            provider.GetRequiredService<PeerStatsService>(),
             provider.GetRequiredService<IPeerPlaybackService>(),
             provider.GetRequiredService<IHybridSessionFactory>(),
             provider.GetService<IScreenSourceProvider>(),
@@ -53,10 +65,13 @@ public static class DependencyInjection
             provider.GetRequiredService<IMediaCapabilities>(),
             provider.GetRequiredService<IScreenShareSettingsRepository>(),
             provider.GetRequiredService<IDismissedPromptsRepository>(),
-            provider.GetRequiredService<ICoordinatorStateRepository>()));
+            provider.GetRequiredService<ICoordinatorStateRepository>(),
+            provider.GetService<ICameraDeviceProvider>(),
+            provider.GetRequiredService<ICameraPreferencesRepository>()));
         // Resolved when a hybrid session is entered, see HybridSessionServices
         services.AddSingleton<Func<HybridSessionServices>>(provider => provider.GetRequiredService<HybridSessionServices>);
         services.AddSingleton<LastSessionKeeper>();
+        services.AddSingleton<PeerStatsService>();
         services.AddSingleton<SessionListPreferences>();
         services.AddSingleton<UpdaterVM>();
 
@@ -82,7 +97,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IHotKeysService>(),
             provider.GetRequiredService<IThemeService>(),
             provider.GetRequiredService<ILanguageService>(),
-            provider.GetRequiredService<ICollapsedSectionsRepository>()));
+            provider.GetRequiredService<ICollapsedSectionsRepository>(),
+            provider.GetRequiredService<IReleaseNotesSource>()));
 
         return services;
     }

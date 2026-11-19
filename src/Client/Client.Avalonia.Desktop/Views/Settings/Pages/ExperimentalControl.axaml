@@ -8,18 +8,12 @@
              x:Class="Client.Views.Settings.Pages.ExperimentalControl"
              x:DataType="pagesVm:ExperimentalControlVM">
     <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="experimental.general"/>
         <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="experimental.enable">
                 <CheckBox IsChecked="{Binding IsExperimentalEnabled}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
 
-        <controls:SettingsHeader services:SettingText.Section="experimental.window"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="experimental.customTitleBar"
-                            IsEnabled="{Binding IsExperimentalEnabled}">
-                <CheckBox IsChecked="{Binding UseCustomTitleBar}"/>
-            </ui:SettingsRow>
-        </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

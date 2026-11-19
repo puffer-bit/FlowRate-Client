@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 
@@ -78,6 +79,9 @@ public class TrailingMarkPanel : Panel
     // Where the last line of the text ends, from the left edge of the text block, and how tall that line is
     private static (double End, double Height) GetLastLine(Control text)
     {
+        // Message backgrounds share a grid with the text without changing its selection.
+        if (text is Grid grid && grid.Children.OfType<TextBlock>().FirstOrDefault() is { } child)
+            text = child;
         if (text is not TextBlock textBlock || textBlock.TextLayout.TextLines.Count == 0)
             return (text.DesiredSize.Width, text.DesiredSize.Height);
 

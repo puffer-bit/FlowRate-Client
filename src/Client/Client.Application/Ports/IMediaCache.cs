@@ -1,20 +1,20 @@
 namespace Client.Application.Ports;
 
 /// <summary>
-/// Images of messages and avatars kept as files between runs, so they are downloaded once. The oldest unused
+/// Message attachments and avatars kept as files between runs, so they are downloaded once. The oldest unused
 /// files go when the cache outgrows its limit.
 /// </summary>
 public interface IMediaCache
 {
     /// <summary>
-    /// How many bytes the kept images may take. Lowering it removes the images used longest ago.
+    /// How many bytes the cached media may take. Lowering it removes the files used longest ago.
     /// </summary>
     long SizeLimit { get; set; }
 
-    /// <summary>How many bytes the kept images take.</summary>
+    /// <summary>How many bytes the cached media take.</summary>
     Task<long> GetSizeAsync();
 
-    /// <summary>Removes every kept image.</summary>
+    /// <summary>Removes every cached media file.</summary>
     Task ClearAsync();
 
     /// <returns>The file of the image, or null when it is not kept.</returns>
@@ -27,9 +27,35 @@ public interface IMediaCache
     /// <returns>The file of the image, or null when it was not kept.</returns>
     Task<string?> StoreAsync(string coordinatorInstanceId, int imageId, bool preview, Func<Stream, Task<bool>> write);
 
+    /// <returns>The image of a link preview, or null when it is not kept.</returns>
+    string? FindLinkPreviewImage(string coordinatorInstanceId, int previewId);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write);
+
+    /// <returns>The frame a video of a message is shown with, or null when it is not kept.</returns>
+    string? FindFilePreview(string coordinatorInstanceId, int fileId);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreFilePreviewAsync(string coordinatorInstanceId, int fileId, Func<Stream, Task<bool>> write);
+
     /// <returns>The file of the avatar, or null when it is not kept.</returns>
     string? FindAvatar(string coordinatorInstanceId, string avatarId);
 
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreAvatarAsync(string coordinatorInstanceId, string avatarId, Func<Stream, Task<bool>> write);
+
+    /// <returns>The attachment with its original name, or null when it is not kept.</returns>
+    string? FindFile(string coordinatorInstanceId, int fileId, string fileName);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write);
+
+    /// <summary>
+    /// Opens what is kept of an attachment downloaded piece by piece, or starts keeping it. Several callers of the
+    /// same attachment share it; it is closed when the last one disposes it.
+    /// </summary>
+    /// <param name="length">The size of the whole attachment.</param>
+    /// <returns>Null when the attachment cannot be kept.</returns>
+    IPartialMediaFile? OpenPartialFile(string coordinatorInstanceId, int fileId, string fileName, long length);
 }

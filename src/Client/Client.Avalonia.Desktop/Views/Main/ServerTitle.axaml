@@ -43,7 +43,8 @@
             HorizontalContentAlignment="Stretch"
             VerticalAlignment="Center"
             IsEnabled="{Binding IsReady}"
-            ToolTip.Tip="{Binding Address}">
+            ToolTip.Tip="{Binding Address}"
+            AutomationProperties.Name="{Binding Address}">
 
         <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
@@ -54,7 +55,7 @@
         <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
 
             <!-- Takes the place the avatar has in the user card -->
-            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8"
+            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="{StaticResource SurfaceCornerRadius}"
                     Background="{DynamicResource DarkBackgroundBrush}"
                     VerticalAlignment="Center">
                 <Panel>

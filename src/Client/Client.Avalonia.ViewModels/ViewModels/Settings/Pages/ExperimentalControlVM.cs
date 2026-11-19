@@ -1,13 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Services;
-using System;
-using System.Collections.Generic;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
 using ReactiveUI;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Settings.Pages;
@@ -16,11 +17,15 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => Strings.Get("settings.experimental.name");
     public SettingTabType Type => SettingTabType.Experimental;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("experimental.general", "settings.experimental.section.general")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("experimental",
-        ("general", ["enable"]),
-        ("window", ["customTitleBar"]));
+        ("general", ["enable"]));
 
     /// <summary>
     /// The experimental features as a whole: while off, none of them works and their settings cannot
@@ -38,15 +43,6 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public bool IsIconAgitated => IsExperimentalEnabled && Motion.IsEnabled;
 
-    /// <summary>
-    /// Whether the main window draws its own title bar instead of the one of the system.
-    /// </summary>
-    public bool UseCustomTitleBar
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
     private readonly IAppearanceService _appearanceService;
@@ -57,14 +53,12 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     {
         _appearanceService = appearanceService;
 
-        LoadCommand = ReactiveCommand
-            .CreateFromTask(LoadAsync);
+        LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
 
         // Apply and persist only on user changes, not on initial load
-        this.WatchProperties(nameof(IsExperimentalEnabled), nameof(UseCustomTitleBar))
+        this.WatchProperty(nameof(IsExperimentalEnabled), vm => vm.IsExperimentalEnabled)
             .Where(_ => _isLoaded)
-            .Select(vm => (vm.IsExperimentalEnabled, vm.UseCustomTitleBar))
-            .Select(values => Observable.FromAsync(() => ChangeAsync(values.Item1, values.Item2)))
+            .Select(values => Observable.FromAsync(() => ChangeAsync(values)))
             .Concat()
             .Subscribe();
 
@@ -80,15 +74,13 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     private async Task LoadAsync()
     {
         IsExperimentalEnabled = await _appearanceService.GetIsExperimentalEnabledAsync();
-        UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
         _isLoaded = true;
     }
 
-    private async Task ChangeAsync(bool isEnabled, bool useCustomTitleBar)
+    private async Task ChangeAsync(bool isEnabled)
     {
-        ExperimentalFeatures.Apply(isEnabled, useCustomTitleBar);
+        ExperimentalFeatures.Apply(isEnabled, ExperimentalFeatures.UseCustomTitleBar);
         await _appearanceService.UpdateIsExperimentalEnabledAsync(isEnabled);
-        await _appearanceService.UpdateUseCustomTitleBarAsync(useCustomTitleBar);
     }
 
     public async Task ResetAllAsync()
@@ -96,9 +88,8 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         // Applied here directly, so the change handler must not apply and save it a second time
         _isLoaded = false;
         IsExperimentalEnabled = false;
-        UseCustomTitleBar = false;
         _isLoaded = true;
 
-        await ChangeAsync(false, false);
+        await ChangeAsync(false);
     }
 }

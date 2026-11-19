@@ -4,6 +4,7 @@ using Client.Infrastructure.Database.Repositories;
 
 namespace Client.Infrastructure.Tests;
 
+[Collection(DatabaseTestCollection.Name)]
 public class TrustedCertificatesRepositoryTests
 {
     private static readonly DateTime NotAfter = new(2027, 1, 2, 3, 4, 5, DateTimeKind.Utc);

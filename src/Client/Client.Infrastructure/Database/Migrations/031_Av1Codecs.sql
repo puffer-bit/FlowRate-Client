@@ -1,0 +1,2 @@
+ALTER TABLE VideoSettings ADD COLUMN Av1Encoder TEXT;
+ALTER TABLE VideoSettings ADD COLUMN Av1Decoder TEXT;

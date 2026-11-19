@@ -2,22 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using ReactiveUI;
-using Client.Avalonia.Localization;
+using Client.Core.Chat;
 using Client.Core.Coordinator;
-using Shared.Enums;
+using ReactiveUI;
 
 namespace Client.ViewModels.ServerSettings;
-
-/// <summary>
-/// What the server password becomes on saving; the index of the choice in the combo box of the view.
-/// </summary>
-public enum PasswordChange
-{
-    Keep = 0,
-    Set = 1,
-    Remove = 2
-}
 
 /// <summary>
 /// The settings of the coordinator being edited, shared by the tabs that show them. Numbers are decimals because
@@ -152,6 +141,41 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The longest side clients reduce images to when they compress them.</summary>
+    public decimal? ImageMaxSide
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The JPEG or WebP quality of compressed images.</summary>
+    public decimal? ImageQuality
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Off: images larger than <see cref="ImageMaxSide"/> are refused, so they can only go compressed.</summary>
+    public bool AllowOriginalImages
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The shorter side clients reduce videos to when they compress them, like 720 for 720p.</summary>
+    public decimal? VideoMaxSide
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Off: only MP4 videos within <see cref="VideoMaxSide"/> and its bitrate are taken.</summary>
+    public bool AllowOriginalVideos
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public decimal? MaxUnattachedUploadsPerUser
     {
         get;
@@ -205,6 +229,15 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         HeartbeatTimeoutSeconds = settings.HeartbeatTimeoutSeconds;
         MaxFileSizeMegabytes = Math.Round(settings.MaxFileSizeBytes / Megabyte);
         StorageQuotaMegabytes = Math.Round(settings.StorageQuotaBytes / Megabyte);
+        // A server without these settings sends zeros
+        var imagePolicy = ImageCompressionPolicy.From(settings.ImageMaxSide, settings.ImageQuality,
+            settings.AllowOriginalImages);
+        ImageMaxSide = imagePolicy.MaxSide;
+        ImageQuality = imagePolicy.Quality;
+        AllowOriginalImages = imagePolicy.AllowOriginals;
+        var videoPolicy = VideoCompressionPolicy.From(settings.VideoMaxSide, settings.AllowOriginalVideos);
+        VideoMaxSide = videoPolicy.MaxSide;
+        AllowOriginalVideos = videoPolicy.AllowOriginals;
         MaxUnattachedUploadsPerUser = settings.MaxUnattachedUploadsPerUser;
         UnattachedUploadLifetimeHours = settings.UnattachedUploadLifetimeHours;
         MediaTokenLifetimeMinutes = settings.MediaTokenLifetimeMinutes;
@@ -241,6 +274,11 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         HeartbeatTimeoutSeconds = ToInt(HeartbeatTimeoutSeconds),
         MaxFileSizeBytes = (long)((MaxFileSizeMegabytes ?? 0) * Megabyte),
         StorageQuotaBytes = (long)((StorageQuotaMegabytes ?? 0) * Megabyte),
+        ImageMaxSide = ToInt(ImageMaxSide),
+        ImageQuality = ToInt(ImageQuality),
+        AllowOriginalImages = AllowOriginalImages,
+        VideoMaxSide = ToInt(VideoMaxSide),
+        AllowOriginalVideos = AllowOriginalVideos,
         MaxUnattachedUploadsPerUser = ToInt(MaxUnattachedUploadsPerUser),
         UnattachedUploadLifetimeHours = ToInt(UnattachedUploadLifetimeHours),
         MediaTokenLifetimeMinutes = ToInt(MediaTokenLifetimeMinutes),
@@ -269,63 +307,4 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
     private static string Fingerprint(CoordinatorSettingsUpdate update) => string.Join('\u001f',
         update with { AllowedIps = [], BannedIps = [], SfuNodeIds = [] },
         string.Join(',', update.AllowedIps), string.Join(',', update.BannedIps), string.Join(',', update.SfuNodeIds));
-}
-
-/// <summary>A node the coordinator can be given, checked when it is.</summary>
-public sealed class SfuNodeOptionVM : ReactiveObject
-{
-    public int Id { get; }
-    public string Name { get; }
-    public string Address { get; }
-
-    /// <summary>The server keeps the node but sends no sessions through it.</summary>
-    public bool IsDisabled { get; }
-
-    /// <summary>
-    /// The server's ping to the node when the settings were loaded. It is not refreshed while the page is open,
-    /// so it reads as the state of the moment of opening.
-    /// </summary>
-    public TimeSpan? RoundTrip { get; }
-
-    /// <summary>Whether the server had the node's connection state; not for a disabled or unknown node.</summary>
-    public bool HasConnection { get; }
-
-    /// <summary>The server cannot send sessions through the node right now.</summary>
-    public bool IsConnectionProblem { get; }
-
-    public string ConnectionText { get; } = string.Empty;
-
-    /// <summary>Why the node is not connected, as the server told it; null when there is nothing to tell.</summary>
-    public string? ConnectionError { get; }
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public SfuNodeOptionVM(SfuNodeModel node, bool isSelected)
-    {
-        Id = node.Id;
-        Name = node.Name;
-        Address = node.Port > 0 ? $"{node.Host}:{node.Port}" : node.Host;
-        IsDisabled = !node.IsEnabled;
-        IsSelected = isSelected;
-
-        if (node.Connection is { } connection && node.IsEnabled)
-        {
-            HasConnection = true;
-            RoundTrip = connection.State == SfuNodeConnectionState.Connected ? connection.RoundTrip : null;
-            IsConnectionProblem = connection.State is SfuNodeConnectionState.Unresponsive
-                or SfuNodeConnectionState.Disconnected;
-            ConnectionText = Strings.Get(connection.State switch
-            {
-                SfuNodeConnectionState.Connected => "serverSettings.sfu.state.connected",
-                SfuNodeConnectionState.Unresponsive => "serverSettings.sfu.state.unresponsive",
-                SfuNodeConnectionState.Disconnected => "serverSettings.sfu.state.disconnected",
-                _ => "serverSettings.sfu.state.connecting"
-            });
-            ConnectionError = string.IsNullOrWhiteSpace(connection.Error) ? null : connection.Error;
-        }
-    }
 }

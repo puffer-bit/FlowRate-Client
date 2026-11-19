@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
+             x:Class="Client.Avalonia.Controls.Emoji.EmojiPickerView">
+    <UserControl.Styles>
+        <Style Selector="Button.emoji-cell, Button.emoji-category">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.emoji-cell:pointerover, Button.emoji-cell.selected, Button.emoji-cell:focus-visible, Button.emoji-category:pointerover, Button.emoji-category.selected, Button.emoji-category:focus-visible">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.emoji-cell:pressed, Button.emoji-category:pressed">
+            <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+        </Style>
+        <Style Selector="ListBox.emoji-rows">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.emoji-rows ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+        <Style Selector="ListBox.emoji-rows ListBoxItem /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="4" RowSpacing="6">
+        <TextBox x:Name="SearchInput" Classes="search" PlaceholderText="{l:Text chat.emoji.search}"
+                 AutomationProperties.Name="{l:Text chat.emoji.search}"
+                 TextChanged="OnSearchChanged"/>
+        <TextBlock Grid.Row="1" x:Name="SelectionNotice" IsVisible="False" TextWrapping="Wrap"
+                   FontSize="12" Foreground="{DynamicResource WarningBrush}"/>
+        <TextBlock Grid.Row="2" x:Name="CategoryTitle" FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}" Margin="4,0"/>
+        <Panel Grid.Row="3">
+            <!-- Only visible rows are realized. Each row has a small, width-dependent set of cells. -->
+            <ListBox x:Name="EmojiRows" Classes="emoji-rows" Focusable="False"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="emoji:EmojiRow">
+                        <ItemsControl ItemsSource="{Binding Cells}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="emoji:EmojiCell">
+                                    <Button Classes="emoji-cell" Classes.selected="{Binding IsSelected}"
+                                            Width="36" Height="36" Click="OnEmojiClick" GotFocus="OnEmojiFocused"
+                                            ToolTip.Tip="{Binding Name}" AutomationProperties.Name="{Binding Name}">
+                                        <TextBlock Text="{Binding Entry.Text}" FontSize="23"
+                                                   FontFamily="{x:Static icons:EmojiFont.Family}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="EmptyMessage" Text="{l:Text chat.emoji.empty}"
+                       IsVisible="False" TextWrapping="Wrap" Margin="8"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </Panel>
+        <ScrollViewer Grid.Row="4" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="Categories" Orientation="Horizontal" Spacing="1"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

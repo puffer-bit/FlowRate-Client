@@ -34,3 +34,6 @@ public sealed record WindowVideoInput(IntPtr Handle) : VideoInput;
 /// A moving test picture.
 /// </summary>
 public sealed record TestPatternVideoInput : VideoInput;
+
+/// <summary>A camera selected by its device provider identifier.</summary>
+public sealed record CameraVideoInput(string DeviceId) : VideoInput;

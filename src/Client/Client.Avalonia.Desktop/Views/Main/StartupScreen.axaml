@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:DataType="mainVm:MainWindowVM"
+             x:Class="Client.Views.Main.StartupScreen"
+             Background="{DynamicResource GeneralBrush}"
+             IsVisible="{Binding IsStartupScreenShown}"
+             IsHitTestVisible="{Binding !IsStartupScreenLeaving}">
+
+    <UserControl.Styles>
+        <Style Selector="StackPanel.warningLeaving">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Rises into its place when the window opens -->
+        <StackPanel x:Name="StartupContent"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20"
+                    anim:Presence.Appear="Rise"
+                    anim:Presence.Duration="ExtraLong">
+            <Image Source="{StaticResource FlowRateLogo}"
+                   Width="320" Height="96"
+                   Margin="0,0,0,12"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   AutomationProperties.Name="FlowRate"/>
+
+            <!-- Turned by the compositor: the end of the start holds the UI thread for a while -->
+            <loadingIndicators:SpinnerRing IsVisible="{Binding !IsDevelopmentWarningShown}" Width="32" Height="32"
+                                           HorizontalAlignment="Center"
+                                           Thickness="3"
+                                           TrackBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                           Foreground="{DynamicResource ProgressRingBrush}"/>
+
+            <!-- The stage the start is at; a line of its own height even before the first one is told -->
+            <TextBlock IsVisible="{Binding !IsDevelopmentWarningShown}" Text="{Binding StartupStage}"
+                       MinHeight="18"
+                       FontSize="13"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <StackPanel IsVisible="{Binding IsDevelopmentWarningShown}" MaxWidth="460" Margin="24,0" Spacing="16"
+                        Classes.warningLeaving="{Binding IsDevelopmentWarningLeaving}"
+                        IsHitTestVisible="{Binding !IsDevelopmentWarningLeaving}">
+                <StackPanel.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Exit}"/>
+                    </Transitions>
+                </StackPanel.Transitions>
+                <TextBlock Text="{l:Text main.startup.development.title}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+                <TextBlock Text="{l:Text main.startup.development.message}" TextWrapping="Wrap" TextAlignment="Center"/>
+                <CheckBox Content="{l:Text main.startup.development.hide}" IsChecked="{Binding DoNotShowDevelopmentWarning, Mode=TwoWay}" HorizontalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                    <Button Content="{l:Text tray.exit}" Click="OnExitClick" MinWidth="110"/>
+                    <Button Content="{l:Text main.startup.development.continue}" Classes="primary" Click="OnContinueClick" MinWidth="110"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="{Binding Version}"
+                   Margin="0,0,0,16"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+    </Grid>
+</UserControl>

@@ -1,9 +1,9 @@
-# Builds the desktop client for Linux and Windows, run by hand from the Actions tab.
+# Builds the desktop client for Linux, Windows and macOS (Apple silicon), run by hand from the Actions tab.
 #
 # Each platform is built on its own system with the publish script of that system: NativeAOT does not
 # compile for another one, and the Windows GStreamer runtime comes from the official installer, which
-# runs on Windows only. The results (dist/<version>/<platform>: installer, update packages, standalone
-# archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
+# runs on Windows only, as the macOS one comes from the official framework on macOS. The results
+# (dist/<version>/<platform>: installer, update packages, standalone archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
 # calls this workflow and publishes them.
 #
 # The GStreamer runtimes are cached: the Linux one takes 30-60 minutes in Docker. A change to the build
@@ -38,8 +38,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 env:
   DOTNET_NOLOGO: true
@@ -56,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # One stamp for both platforms: they are one release and share the version
+      # One stamp for every platform: they are one release and share the version
       - name: Version
         id: version
         run: |
@@ -150,9 +154,78 @@ jobs:
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
 
+      - name: Upload GStreamer installer log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gstreamer-win-x64-installer-log
+          path: ${{ runner.temp }}/flowrate-gstreamer-*/install.log
+          if-no-files-found: warn
+
+      - name: Check published libwebrtc runtime
+        shell: powershell
+        run: |
+          $suffix = if ("${{ inputs.aot }}" -eq "true") { "-aot" } else { "" }
+          & src\Client\Client.LibWebRTC\Build\windows\verify.ps1 `
+              -RuntimeDirectory "src\Client\Client.Avalonia.Desktop\bin\publish\win-x64$suffix"
+
       - uses: actions/upload-artifact@v7
         with:
           name: FlowRateClient-${{ needs.version.outputs.version }}-win-x64${{ inputs.aot && '-aot' || '' }}
           path: dist/${{ needs.version.outputs.version }}/win-x64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          compression-level: 0
+
+  macos:
+    name: osx-arm64
+    needs: version
+    # Apple silicon, with the clang of Xcode that NativeAOT links with
+    runs-on: macos-15
+    env:
+      # The official framework the runtime is collected from (Build/mac/collect.sh); a new version
+      # here collects it again
+      GSTREAMER_VERSION: 1.28.7
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
+          dotnet-version: 10.0.402
+
+      - name: GStreamer runtime cache
+        id: gstreamer-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GSTREAMER_DIR }}/artifacts/osx-arm64
+          key: gstreamer-osx-arm64-${{ env.GSTREAMER_VERSION }}-${{ hashFiles('src/Client/Client.GStreamer/Build/mac/**') }}
+
+      # The runtime .pkg of gstreamer.freedesktop.org into /Library/Frameworks, which collect.sh copies
+      # the runtime from; publish.sh collects it when the cache had none
+      - name: GStreamer framework
+        if: steps.gstreamer-cache.outputs.cache-hit != 'true'
+        run: |
+          pkg="$RUNNER_TEMP/gstreamer.pkg"
+          curl -fsSL --retry 3 -o "$pkg" \
+              "https://gstreamer.freedesktop.org/data/pkg/osx/$GSTREAMER_VERSION/gstreamer-1.0-$GSTREAMER_VERSION-universal.pkg"
+          sudo installer -pkg "$pkg" -target /
+          rm "$pkg"
+          /Library/Frameworks/GStreamer.framework/Versions/1.0/bin/gst-inspect-1.0 --version
+
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          arguments=(--target osx-arm64)
+          [[ "${{ inputs.aot }}" == true ]] && arguments+=(--aot)
+          [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
+          src/Scripts/bash/publish.sh "${arguments[@]}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-osx-arm64${{ inputs.aot && '-aot' || '' }}
+          path: dist/${{ needs.version.outputs.version }}/osx-arm64${{ inputs.aot && '-aot' || '' }}
           if-no-files-found: error
           compression-level: 0

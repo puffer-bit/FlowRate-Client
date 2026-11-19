@@ -21,10 +21,10 @@ internal sealed partial class ChatCacheStore : IChatCacheStore
             () => IsEnabled);
 
     public void Remove(string coordinatorInstanceId, int chatId) =>
-        _ = RunAsync(() => _repository.RemoveAsync(new ChatCacheKey(coordinatorInstanceId, chatId)));
+        _ = Task.Run(() => RunAsync(() => _repository.RemoveAsync(new ChatCacheKey(coordinatorInstanceId, chatId))));
 
     public void RemoveExcept(string coordinatorInstanceId, IReadOnlyCollection<int> existingChatIds) =>
-        _ = RunAsync(() => _repository.RemoveExceptAsync(coordinatorInstanceId, existingChatIds));
+        _ = Task.Run(() => RunAsync(() => _repository.RemoveExceptAsync(coordinatorInstanceId, existingChatIds)));
 
     private async Task RunAsync(Func<Task> operation)
     {

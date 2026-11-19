@@ -40,6 +40,9 @@
         <Style Selector="Button.barAction.sharing /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
         </Style>
+        <Style Selector="Button.barAction.afk /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AfkActiveBackgroundBrush}"/>
+        </Style>
         <Style Selector=":is(Button).barAction Image">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
@@ -52,10 +55,12 @@
         <Grid Grid.Column="0" ColumnDefinitions="Auto, *" ColumnSpacing="6" Margin="8,0,0,0">
             <!-- Opens the statistics of the connection -->
             <Button Grid.Column="0" Classes="ghost" Padding="4" VerticalAlignment="Center"
-                    ToolTip.Tip="{l:Text hybrid.stats.open}">
+                    ToolTip.Tip="{l:Text hybrid.stats.open}"
+                    AutomationProperties.Name="{l:Text hybrid.stats.open}">
                 <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedLeft">
-                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding Stats}"/>
+                        <hybrid:HybridSessionStatsFlyout DataContext="{Binding}"
+                                                          SessionLogsRequested="OnSessionLogs"/>
                     </Flyout>
                 </Button.Flyout>
                 <Panel Width="24" Height="24">
@@ -93,17 +98,16 @@
             <!-- What we send -->
             <Button Classes="barAction"
                     Command="{Binding ToggleMicrophoneCommand}"
-                    ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
-                <Panel>
-                    <Image Source="{StaticResource MicrophoneIcon}" IsVisible="{Binding IsMicrophoneOn}"/>
-                    <Image Source="{StaticResource CrossedMicrophoneIcon}" IsVisible="{Binding !IsMicrophoneOn}"/>
-                </Panel>
+                    ToolTip.Tip="{l:Text main.voice.toggleMicrophone}"
+                    AutomationProperties.Name="{l:Text main.voice.toggleMicrophone}">
+                <Image Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
             </Button>
 
             <!-- What we hear -->
             <Button Classes="barAction"
                     Command="{Binding ToggleSoundCommand}"
-                    ToolTip.Tip="{l:Text main.voice.toggleSound}">
+                    ToolTip.Tip="{l:Text main.voice.toggleSound}"
+                    AutomationProperties.Name="{l:Text main.voice.toggleSound}">
                 <Panel>
                     <Image Source="{StaticResource HeadphonesIcon}" IsVisible="{Binding IsSoundOn}"/>
                     <Image Source="{StaticResource CrossedHeadphonesIcon}" IsVisible="{Binding !IsSoundOn}"/>
@@ -113,7 +117,8 @@
             <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
             <Button Classes="barAction"
                     IsVisible="{Binding !IsAfk}"
-                    ToolTip.Tip="{l:Text hybrid.afk.go}">
+                    ToolTip.Tip="{l:Text hybrid.afk.go}"
+                    AutomationProperties.Name="{l:Text hybrid.afk.go}">
                 <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedRight">
                         <hybrid:AfkReasonCard/>
@@ -121,47 +126,23 @@
                 </Button.Flyout>
                 <Image Source="{StaticResource AfkIcon}"/>
             </Button>
-            <Button Classes="barAction sharing"
+            <Button Classes="barAction afk"
                     IsVisible="{Binding IsAfk}"
                     Command="{Binding ToggleAfkCommand}"
-                    ToolTip.Tip="{Binding AfkHint}">
+                    ToolTip.Tip="{Binding AfkHint}"
+                    AutomationProperties.Name="{Binding AfkHint}">
                 <Image Source="{StaticResource AfkIcon}"/>
             </Button>
 
-            <Button Classes="barAction"
-                    IsVisible="{Binding !IsScreenShareOn}"
-                    Command="{Binding ToggleScreenShareCommand}"
-                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
-                <Image Source="{StaticResource ScreenShareIcon}"/>
-            </Button>
-
-            <!-- A running share is changed or stopped from a menu -->
-            <Button Classes="barAction sharing"
-                    IsVisible="{Binding IsScreenShareOn}"
-                    ToolTip.Tip="{l:Text main.voice.toggleScreenShare}">
-                <Button.Flyout>
-                    <Flyout Placement="BottomEdgeAlignedRight">
-                        <StackPanel Spacing="2">
-                            <menus:MenuItemButton Icon="{StaticResource GearIcon}"
-                                                  Content="{l:Text hybrid.screen.change}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"
-                                                  Command="{Binding ChangeScreenShareCommand}"/>
-                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}"
-                                                  Content="{l:Text hybrid.screen.stop}"
-                                                  menus:FlyoutMenu.CloseOnClick="True"
-                                                  Command="{Binding ToggleScreenShareCommand}"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-                <Image Source="{StaticResource ScreenShareIcon}"/>
-            </Button>
+            <hybrid:HybridBroadcastButton/>
 
             <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
 
             <!-- How the session is shown -->
             <Button Classes="barAction"
                     Command="{Binding ToggleFullscreenCommand}"
-                    ToolTip.Tip="{l:Text hybrid.fullscreen}">
+                    ToolTip.Tip="{l:Text hybrid.fullscreen}"
+                    AutomationProperties.Name="{l:Text hybrid.fullscreen}">
                 <Image Source="{StaticResource FullscreenIcon}"/>
             </Button>
         </StackPanel>

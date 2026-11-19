@@ -7,7 +7,9 @@
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Settings.Pages.AudioControl"
              x:DataType="pagesVm:AudioControlVM">
@@ -16,17 +18,20 @@
         <Style Selector="TextBlock.unavailable">
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
+        <Style Selector="indicators|VoiceGateMeter">
+            <Setter Property="LevelBrush" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
         <!-- The voice gate would send what the microphone hears -->
-        <Style Selector="ProgressBar.voiceDetected">
-            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+        <Style Selector="indicators|VoiceGateMeter.voiceDetected">
+            <Setter Property="LevelBrush" Value="{DynamicResource SuccessBrush}"/>
         </Style>
     </UserControl.Styles>
 
     <ui:SettingsPage>
         <controls:SettingsHeader services:SettingText.Section="audio.microphone"/>
-        <ui:SettingsCard>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
             <ui:SettingsRow services:SettingText.Key="audio.inputDevice">
-                <ComboBox Width="300"
+                <ComboBox Classes="settingsDevice"
                           ItemsSource="{Binding InputDevices}"
                           SelectedItem="{Binding SelectedInputDevice}">
                     <ComboBox.ItemTemplate>
@@ -38,15 +43,15 @@
                 </ComboBox>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.inputVolume">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Slider Width="240" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
                             Minimum="{Binding MinInputVolumePercent}"
                             Maximum="{Binding MaxInputVolumePercent}"
                             Value="{Binding InputVolumePercent}"
                             TickFrequency="5" IsSnapToTickEnabled="True"/>
-                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
                                Text="{Binding InputVolumePercent, StringFormat={}{0:0}%}"/>
-                </StackPanel>
+                </Grid>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.noiseSuppression">
                 <ComboBox MinWidth="180" SelectedIndex="{Binding NoiseSuppressionIndex}">
@@ -62,14 +67,106 @@
             <ui:SettingsRow services:SettingText.Key="audio.echoCancellation">
                 <CheckBox IsChecked="{Binding IsEchoCancellationEnabled}"/>
             </ui:SettingsRow>
-        </ui:SettingsCard>
-
-        <controls:SettingsHeader services:SettingText.Section="audio.voiceActivity"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
-                <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"/>
+            <ui:SettingsRow services:SettingText.Key="audio.autoGainControl">
+                <CheckBox IsChecked="{Binding IsAutoGainControlEnabled}"/>
             </ui:SettingsRow>
-            <!-- Both only refine the gate, so they mean nothing while it is off -->
+            <ui:SettingsRow services:SettingText.Key="audio.voiceGate">
+                <CheckBox IsChecked="{Binding IsVoiceGateEnabled}"
+                          AutomationProperties.Name="{l:Text settings.audio.voiceGate.title}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.testMicrophone">
+                <Button MinWidth="140" HorizontalContentAlignment="Center"
+                        Content="{Binding TestButtonText}"
+                        Command="{Binding ToggleTestCommand}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
+                <StackPanel Spacing="10">
+                    <Border Background="{DynamicResource BackgroundGeneralBrush}" CornerRadius="{StaticResource SurfaceCornerRadius}" Padding="14">
+                        <StackPanel Spacing="12">
+                            <StackPanel IsVisible="{Binding !IsTestRunning}" Spacing="4">
+                                <TextBlock FontWeight="Medium" TextWrapping="Wrap"
+                                           Text="{l:Text settings.audio.gatePreview.idle}"/>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           TextWrapping="Wrap" Text="{l:Text settings.audio.gatePreview.startHint}"/>
+                            </StackPanel>
+                            <StackPanel IsVisible="{Binding IsTestRunning}">
+                                <StackPanel IsVisible="{Binding IsVoiceGateEnabled}">
+                                    <TextBlock IsVisible="{Binding IsVoiceDetected}" FontWeight="Medium"
+                                               Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap"
+                                               Text="{l:Text settings.audio.gatePreview.open}"/>
+                                    <TextBlock IsVisible="{Binding !IsVoiceDetected}" FontWeight="Medium" TextWrapping="Wrap"
+                                               Text="{l:Text settings.audio.gatePreview.closed}"/>
+                                </StackPanel>
+                                <TextBlock IsVisible="{Binding !IsVoiceGateEnabled}" FontWeight="Medium" TextWrapping="Wrap"
+                                           Text="{l:Text settings.audio.gatePreview.disabled}"/>
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16"
+                                  ui:SettingsPage.SearchKey="audio.hearMyself">
+                                <StackPanel Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="Medium" TextWrapping="Wrap"
+                                               Text="{l:Text settings.audio.hearMyself.title}"/>
+                                    <TextBlock FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{l:Text settings.audio.hearMyself.description}"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding IsLoopbackEnabled}"
+                                          AutomationProperties.Name="{l:Text settings.audio.hearMyself.title}"/>
+                            </Grid>
+                            <indicators:VoiceGateMeter Height="32" Level="{Binding InputLevel}"
+                                                      ThresholdDb="{Binding VoiceGateThresholdDb}"
+                                                      ShowThreshold="{Binding IsVoiceGateEnabled}"
+                                                      Classes.voiceDetected="{Binding IsVoiceDetected}"
+                                                      TrackBrush="{DynamicResource SettingsCardBorderBrush}"
+                                                      MarkerBrush="{DynamicResource PrimaryTextBrush}"
+                                                      AutomationProperties.Name="{l:Text settings.audio.inputLevel.title}"/>
+                            <Grid ColumnDefinitions="*,*,*" Margin="10,-4,10,0">
+                                <TextBlock FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Text="−60"/>
+                                <TextBlock Grid.Column="1" FontSize="11" HorizontalAlignment="Left"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="−40"/>
+                                <TextBlock Grid.Column="2" FontSize="11" HorizontalAlignment="Left"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="−20"/>
+                                <TextBlock Grid.Column="2" FontSize="11" HorizontalAlignment="Right"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" Text="{l:Text settings.audio.gatePreview.scaleMax}"/>
+                            </Grid>
+                            <StackPanel Spacing="6" IsVisible="{Binding IsVoiceGateEnabled}"
+                                        ui:SettingsPage.SearchKey="audio.voiceThreshold">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock VerticalAlignment="Center" FontWeight="Medium" TextWrapping="Wrap"
+                                               Text="{l:Text settings.audio.voiceThreshold.title}"/>
+                                    <Border Grid.Column="1" CornerRadius="5" Padding="8,4" Margin="8,0,0,0"
+                                            Background="{DynamicResource SettingsCardBackgroundBrush}">
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Text="{Binding VoiceGateThresholdDb, StringFormat={}{0:0} dB}"/>
+                                    </Border>
+                                </Grid>
+                                <Slider Minimum="{Binding MinVoiceGateThresholdDb}"
+                                        Maximum="{Binding MaxVoiceGateThresholdDb}"
+                                        Value="{Binding VoiceGateThresholdDb}"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        AutomationProperties.Name="{l:Text settings.audio.voiceThreshold.title}"/>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                                    <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{l:Text settings.audio.gatePreview.moreSensitive}"/>
+                                    <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap" TextAlignment="Right"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{l:Text settings.audio.gatePreview.lessSensitive}"/>
+                                </Grid>
+                                <TextBlock Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="{l:Text settings.audio.gatePreview.tuneHint}"/>
+                                <TextBlock IsVisible="{Binding IsAdaptiveThresholdEnabled}" FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="{l:Text settings.audio.gatePreview.adaptiveHint}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                               Text="{Binding TestError}"
+                               IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+            </ui:SettingsRow>
+            <!-- These options refine the gate and apply while it is enabled. -->
             <ui:SettingsRow services:SettingText.Key="audio.voiceDetection" IsEnabled="{Binding IsVoiceGateEnabled}">
                 <CheckBox IsChecked="{Binding IsVoiceDetectionEnabled}"/>
             </ui:SettingsRow>
@@ -78,43 +175,32 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
-        <controls:SettingsHeader services:SettingText.Section="audio.microphoneTest"/>
-        <ui:SettingsCard>
-            <ui:SettingsRow services:SettingText.Key="audio.testMicrophone">
-                <Button MinWidth="140" HorizontalContentAlignment="Center"
-                        Content="{Binding TestButtonText}"
-                        Command="{Binding ToggleTestCommand}"/>
+        <controls:SettingsHeader services:SettingText.Section="audio.output"/>
+        <ui:SettingsCard IsEnabled="{Binding IsMediaEnabled}">
+            <ui:SettingsRow services:SettingText.Key="audio.outputDevice">
+                <ComboBox Classes="settingsDevice"
+                          ItemsSource="{Binding OutputDevices}"
+                          SelectedItem="{Binding SelectedOutputDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
+                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                       Classes.unavailable="{Binding !IsAvailable}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.inputLevel" ContentPlacement="Below">
-                <StackPanel Spacing="6">
-                    <ProgressBar Height="10" MinHeight="10" MinWidth="0"
-                                 Minimum="0" Maximum="1"
-                                 Value="{Binding InputLevel}"
-                                 IsEnabled="{Binding IsTestRunning}"
-                                 Classes.voiceDetected="{Binding IsVoiceDetected}"/>
-                    <!-- The threshold slider is as wide as the meter, so both use one scale -->
-                    <StackPanel Spacing="0" Margin="0,6,0,0" IsVisible="{Binding IsVoiceGateEnabled}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" FontSize="12"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="{l:Text settings.audio.voiceThreshold.title}"/>
-                            <TextBlock Grid.Column="1" FontSize="12"
-                                       Text="{Binding VoiceGateThresholdDb, StringFormat={}{0:0} dB}"/>
-                        </Grid>
-                        <Slider Minimum="{Binding MinVoiceGateThresholdDb}"
-                                Maximum="{Binding MaxVoiceGateThresholdDb}"
-                                Value="{Binding VoiceGateThresholdDb}"
-                                TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    </StackPanel>
-                </StackPanel>
-            </ui:SettingsRow>
-            <ui:SettingsRow services:SettingText.Key="audio.hearMyself">
-                <CheckBox IsChecked="{Binding IsLoopbackEnabled}"/>
+            <ui:SettingsRow services:SettingText.Key="audio.outputVolume">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
+                            Minimum="{Binding MinOutputVolumePercent}"
+                            Maximum="{Binding MaxOutputVolumePercent}"
+                            Value="{Binding OutputVolumePercent}"
+                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                               Text="{Binding OutputVolumePercent, StringFormat={}{0:0}%}"/>
+                </Grid>
             </ui:SettingsRow>
         </ui:SettingsCard>
-        <TextBlock Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
-                   Text="{Binding TestError}"
-                   IsVisible="{Binding TestError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
         <controls:SettingsHeader services:SettingText.Section="audio.sounds"/>
         <ui:SettingsCard>
@@ -122,15 +208,15 @@
                 <CheckBox IsChecked="{Binding AreSoundsEnabled}"/>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.soundsVolume" IsExpanded="{Binding AreSoundsEnabled}">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Slider Width="240" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" MaxWidth="300">
+                    <Slider Classes="settingsVolume" VerticalAlignment="Center"
                             Minimum="{Binding MinSoundsVolumePercent}"
                             Maximum="{Binding MaxSoundsVolumePercent}"
                             Value="{Binding SoundsVolumePercent}"
                             TickFrequency="5" IsSnapToTickEnabled="True"/>
-                    <TextBlock VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" MinWidth="48" TextAlignment="Right"
                                Text="{Binding SoundsVolumePercent, StringFormat={}{0:0}%}"/>
-                </StackPanel>
+                </Grid>
             </ui:SettingsRow>
             <ui:SettingsRow services:SettingText.Key="audio.soundPack" IsExpanded="{Binding AreSoundsEnabled}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -163,7 +249,7 @@
                                            TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
                                 <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Center"
                                         Command="{Binding PlayCommand}"
-                                        ToolTip.Tip="{l:Text settings.audio.soundEvents.listen}">
+                                        ToolTip.Tip="{l:Text settings.audio.soundEvents.listen}" AutomationProperties.Name="{l:Text settings.audio.soundEvents.listen}">
                                     <Image Width="16" Height="16" Source="{StaticResource PlayIcon}"/>
                                 </Button>
                                 <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"/>
