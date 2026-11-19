@@ -8,6 +8,7 @@ using Client.Avalonia.Localization;
 using Client.Droid.Platform;
 using Client.Droid.Views.Main;
 using Client.Infrastructure;
+using Client.Services;
 using Client.Tools.Logging;
 using Client.ViewModels.Main;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,7 @@ public partial class App : global::Avalonia.Application
         Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
 
         AvaloniaXamlLoader.Load(this);
+        ApplicationFontResources.Initialize(this);
     }
 
     public override void OnFrameworkInitializationCompleted()

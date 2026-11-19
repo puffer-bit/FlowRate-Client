@@ -18,6 +18,7 @@
              xmlns:validation="clr-namespace:Shared.Validation;assembly=Shared.Core"
              x:Class="Client.Droid.Views.Main.MainView"
              x:DataType="mainVm:MainWindowVM"
+             FontFamily="{DynamicResource ContentControlThemeFontFamily}"
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>

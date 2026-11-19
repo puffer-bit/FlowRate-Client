@@ -117,8 +117,7 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()
-            .WithEmojiFont()
+            .WithAppFonts()
             .LogToJournal()
             // The main window draws its own title bar; on X11 that needs the frame drawn by Avalonia too.
             // Avalonia 12.1 marks the option experimental

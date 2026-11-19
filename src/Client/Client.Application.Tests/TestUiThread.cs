@@ -23,7 +23,7 @@ internal static class TestUiThread
                     .UseStandardRuntimePlatformSubsystem()
                     .UseWindowingSubsystem(() => { }, "Tests")
                     .UseRenderingSubsystem(global::Avalonia.Skia.SkiaPlatform.Initialize, "Skia")
-                    .UseTextShapingSubsystem(() => { }, "Tests")
+                    .UseHarfBuzz()
                     .SetupWithoutStarting();
                 Dispatcher.UIThread.VerifyAccess();
                 Ready.SetResult();

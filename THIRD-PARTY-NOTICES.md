@@ -29,7 +29,13 @@ below, each under its own license.
 
 | Component | License |
 |---|---|
-| [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (`src/Client/Client.Avalonia.Assets/Fonts/NotoColorEmoji.ttf`) | SIL Open Font License 1.1, text in `NotoColorEmoji-LICENSE.txt` next to the font |
+| [Noto Sans](https://github.com/google/fonts/tree/main/ofl/notosans) | SIL Open Font License 1.1, text in `src/Client/Client.Avalonia.Assets/Fonts/NotoSans/LICENSE.txt` |
+| [Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp), [Noto Sans SC](https://github.com/google/fonts/tree/main/ofl/notosanssc) | SIL Open Font License 1.1, license text in each font folder under `src/Client/Client.Avalonia.Assets/Fonts/` |
+| [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLRv1 and Windows-compatible CBDT/CBLC builds) | SIL Open Font License 1.1, text in `src/Client/Client.Avalonia.Assets/Fonts/NotoColorEmoji-LICENSE.txt` |
+
+Font files and their licenses are embedded in the client. The text faces are static instances of
+the upstream variable fonts; the emoji builds are unmodified. Versions, source files and
+generation details are documented in [Fonts/README.md](src/Client/Client.Avalonia.Assets/Fonts/README.md).
 
 ## GStreamer runtime
 

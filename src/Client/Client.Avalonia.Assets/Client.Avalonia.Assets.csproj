@@ -19,7 +19,8 @@
     <ItemGroup>
       <AvaloniaResource Include="Icons\**" />
       <AvaloniaResource Include="Sounds\*.wav" />
-      <AvaloniaResource Include="Fonts\*.ttf" />
+      <AvaloniaResource Include="Fonts\**\*.ttf" />
+      <AvaloniaResource Include="Fonts\**\*.txt" />
       <!-- Only the icons the client shows; the rest of the kits stay in the repository for packaging and design -->
       <AvaloniaResource Include="AppIcons\Headphones\flowrate.ico" />
       <AvaloniaResource Include="AppIcons\Headphones\png\tray-purple-48.png" />
