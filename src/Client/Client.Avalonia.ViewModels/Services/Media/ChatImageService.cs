@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media;
@@ -56,30 +57,70 @@ public sealed partial class ChatImageService : IChatImageService
             }
         }, cancellationToken);
 
+    public Task<ImagePreview?> CreateAsync(VideoFrameImage frame, CancellationToken cancellationToken = default) =>
+        ImageDecoding.RunAsync(() =>
+        {
+            try
+            {
+                var bitmap = new SKBitmap(new SKImageInfo(frame.Width, frame.Height, SKColorType.Bgra8888,
+                    SKAlphaType.Opaque));
+                Marshal.Copy(frame.Bgra, 0, bitmap.GetPixels(), Math.Min(frame.Bgra.Length, bitmap.ByteCount));
+                using var turned = SkiaImages.Turn(bitmap, frame.Rotation switch
+                {
+                    90 => SKEncodedOrigin.RightTop,
+                    180 => SKEncodedOrigin.BottomRight,
+                    270 => SKEncodedOrigin.LeftBottom,
+                    _ => SKEncodedOrigin.TopLeft
+                });
+                using var encoded = turned.Encode(SKEncodedImageFormat.Webp, PreviewQuality);
+                return encoded == null
+                    ? null
+                    : new ImagePreview("image/webp", turned.Width, turned.Height, encoded.ToArray(), "image/webp");
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                LogDecodeFailed(exception);
+                return null;
+            }
+        }, cancellationToken);
+
     public async Task<Bitmap?> LoadPreviewAsync(ICoordinatorSession session, int imageId)
     {
         var (_, path) = await FetchAsync(session, imageId, preview: true, null, CancellationToken.None);
         return path == null ? null : await DecodeStillAsync(path);
     }
 
-    // One download per preview at a time; a preview never changes, so a kept file stays good
-    private readonly ConcurrentDictionary<(string Coordinator, int PreviewId), Task<string?>> _linkImageFetches = new();
+    // One download per picture at a time; neither a link preview nor the frame of a video ever changes,
+    // so a kept file stays good
+    private readonly ConcurrentDictionary<(string Coordinator, bool Video, int Id), Task<string?>> _pictureFetches = new();
 
-    public async Task<Bitmap?> LoadLinkPreviewImageAsync(ICoordinatorSession session, int previewId)
+    public Task<Bitmap?> LoadLinkPreviewImageAsync(ICoordinatorSession session, int previewId) =>
+        LoadPictureAsync(session, false, previewId,
+            coordinator => _cache.FindLinkPreviewImage(coordinator, previewId),
+            coordinator => _cache.StoreLinkPreviewImageAsync(coordinator, previewId, async stream =>
+                await session.DownloadLinkPreviewImage(previewId, stream) == MediaTransferResult.NoError));
+
+    public Task<Bitmap?> LoadVideoPreviewAsync(ICoordinatorSession session, int fileId) =>
+        LoadPictureAsync(session, true, fileId,
+            coordinator => _cache.FindFilePreview(coordinator, fileId),
+            coordinator => _cache.StoreFilePreviewAsync(coordinator, fileId, async stream =>
+                await session.DownloadChatFilePreview(fileId, stream) == MediaTransferResult.NoError));
+
+    private async Task<Bitmap?> LoadPictureAsync(ICoordinatorSession session, bool video, int id,
+        Func<string, string?> find, Func<string, Task<string?>> store)
     {
         var coordinator = session.GetCurrentUser().CoordinatorInstanceId;
-        var path = await Task.Run(() => _cache.FindLinkPreviewImage(coordinator, previewId));
+        var path = await Task.Run(() => find(coordinator));
         if (path == null)
         {
-            var key = (coordinator, previewId);
+            var key = (coordinator, video, id);
             var created = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var fetch = _linkImageFetches.GetOrAdd(key, created.Task);
+            var fetch = _pictureFetches.GetOrAdd(key, created.Task);
             if (fetch == created.Task)
             {
                 try
                 {
-                    created.SetResult(await _cache.StoreLinkPreviewImageAsync(coordinator, previewId, async stream =>
-                        await session.DownloadLinkPreviewImage(previewId, stream) == MediaTransferResult.NoError));
+                    created.SetResult(await store(coordinator));
                 }
                 catch (Exception exception)
                 {
@@ -88,7 +129,7 @@ public sealed partial class ChatImageService : IChatImageService
                 }
                 finally
                 {
-                    _linkImageFetches.TryRemove(KeyValuePair.Create(key, created.Task));
+                    _pictureFetches.TryRemove(KeyValuePair.Create(key, created.Task));
                 }
             }
             path = await fetch;

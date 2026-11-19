@@ -126,6 +126,13 @@ internal sealed partial class MediaHttpClient : IDisposable
             destination, null, cancellationToken, (offset, length));
     }
 
+    /// <summary>The frame a video of a message is shown with.</summary>
+    public Task<MediaTransferResult> DownloadFilePreviewAsync(int fileId, Stream destination,
+        CancellationToken cancellationToken) =>
+        DownloadAsync(string.Create(CultureInfo.InvariantCulture,
+                $"{MediaEndpoints.Files}/{fileId}?{MediaEndpoints.VariantParameter}={MediaEndpoints.VariantPreview}"),
+            destination, null, cancellationToken);
+
     public Task<MediaTransferResult> DownloadLinkPreviewImageAsync(int previewId, Stream destination,
         CancellationToken cancellationToken) =>
         DownloadAsync(string.Create(CultureInfo.InvariantCulture, $"{MediaEndpoints.LinkPreviewImages}/{previewId}"),

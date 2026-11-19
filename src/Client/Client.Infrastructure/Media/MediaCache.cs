@@ -102,6 +102,13 @@ public sealed partial class MediaCache : IMediaCache
         Func<Stream, Task<bool>> write) =>
         StoreAsync(PathOfLinkPreview(coordinatorInstanceId, previewId), write);
 
+    public string? FindFilePreview(string coordinatorInstanceId, int fileId) =>
+        Find(PathOfFilePreview(coordinatorInstanceId, fileId));
+
+    public Task<string?> StoreFilePreviewAsync(string coordinatorInstanceId, int fileId,
+        Func<Stream, Task<bool>> write) =>
+        StoreAsync(PathOfFilePreview(coordinatorInstanceId, fileId), write);
+
     public string? FindFile(string coordinatorInstanceId, int fileId, string fileName) =>
         Find(PathOfFile(coordinatorInstanceId, fileId, fileName));
 
@@ -280,6 +287,10 @@ public sealed partial class MediaCache : IMediaCache
     private string? PathOf(string coordinatorInstanceId, int imageId, bool preview) =>
         PathOf(coordinatorInstanceId,
             imageId.ToString(CultureInfo.InvariantCulture) + (preview ? ".preview" : ".original"));
+
+    // Files are numbered apart from images, so their frames do not share the ".preview" of images
+    private string? PathOfFilePreview(string coordinatorInstanceId, int fileId) =>
+        PathOf(coordinatorInstanceId, fileId.ToString(CultureInfo.InvariantCulture) + ".poster");
 
     private string? PathOfLinkPreview(string coordinatorInstanceId, int previewId) =>
         PathOf(coordinatorInstanceId, previewId.ToString(CultureInfo.InvariantCulture) + ".link");

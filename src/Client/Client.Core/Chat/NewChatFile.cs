@@ -7,4 +7,7 @@ public class NewChatFile
 {
     public required string UploadId { get; init; }
     public required string FileName { get; init; }
+
+    /// <summary>The upload of the frame a video is shown with; null for other files, or a video without one.</summary>
+    public string? PreviewUploadId { get; init; }
 }

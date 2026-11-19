@@ -6,10 +6,15 @@
              x:Class="Client.Views.Sessions.Chat.ChatVideoPlayer"
              x:DataType="vm:ChatFileVM">
     <Border x:Name="PlayerBorder" Width="400" Padding="6" Margin="0,0,0,4" CornerRadius="6"
-            Background="{DynamicResource ColorOverlayMedium}">
+            Background="{DynamicResource ColorOverlayMedium}"
+            vm:ChatImagePresence.Image="{Binding}">
         <Grid x:Name="PlayerLayout" RowDefinitions="225,Auto" RowSpacing="4">
             <Border Background="Transparent" Tapped="OnVideoTapped">
-                <video:VideoView x:Name="VideoSurface" IsHitTestVisible="False"/>
+                <Panel>
+                    <video:VideoView x:Name="VideoSurface" IsHitTestVisible="False"/>
+                    <!-- The frame the sender's client took, until the video shows its own -->
+                    <Image x:Name="PosterImage" Source="{Binding Poster}" Stretch="Uniform" IsHitTestVisible="False"/>
+                </Panel>
             </Border>
             <StackPanel Grid.Row="1" Spacing="2">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">

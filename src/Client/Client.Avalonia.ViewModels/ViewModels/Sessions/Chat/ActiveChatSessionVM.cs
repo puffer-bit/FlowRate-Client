@@ -306,7 +306,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             ? []
             : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
                 async fileName => await PickFileSaveTarget.Handle(fileName), _mediaCache,
-                async path => await OpenFileInteraction.Handle(path))).ToList();
+                async path => await OpenFileInteraction.Handle(path), _images)).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.
