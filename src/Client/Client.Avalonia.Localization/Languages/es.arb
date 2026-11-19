@@ -1462,5 +1462,15 @@
   "broadcast.toggle": "Activar o detener transmisión",
   "broadcast.choose": "Elegir qué transmitir",
   "broadcast.screen.start": "Compartir pantalla",
-  "video.target": "Ajustes de vídeo para"
+  "video.target": "Ajustes de vídeo para",
+  "serverSettings.info.database": "Sistema de base de datos",
+  "sessions.collapseChat": "Contraer chat",
+  "chat.image.rotate": "Girar imagen",
+  "chat.reaction.more": "Más emojis",
+  "settings.appearance.section.window": "Ventana",
+  "serverSettings.roles.unsaved": "Cambios sin guardar",
+  "serverSettings.roles.searchPermissions": "Buscar permisos",
+  "serverSettings.roles.hierarchyHint": "Las funciones superiores en la lista pueden administrar las inferiores.",
+  "settings.appearance.customTitleBar.title": "Barra de título propia",
+  "settings.appearance.customTitleBar.description": "Los botones de la ventana están en la barra superior de la aplicación y la barra de título del sistema se oculta. Desactívalo para recuperar la barra de título del sistema. Se aplica al instante"
 }

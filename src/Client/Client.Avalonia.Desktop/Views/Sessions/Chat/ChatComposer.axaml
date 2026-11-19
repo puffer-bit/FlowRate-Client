@@ -95,17 +95,13 @@
                                         <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
                                         <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}"
                                                               ToolTip.Tip="{l:Text chat.attach.compress.tooltip}"
-                                                              Command="{Binding ToggleDefaultCompressionCommand}">
-                                            <menus:MenuItemButton.IconContent>
-                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressImages}"/>
-                                            </menus:MenuItemButton.IconContent>
+                                                              Command="{Binding ToggleDefaultCompressionCommand}" IsChecked="{Binding DefaultCompressImages}">
+
                                         </menus:MenuItemButton>
                                         <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.stripMetadata}"
                                                               ToolTip.Tip="{l:Text chat.attach.stripMetadata.tooltip}"
-                                                              Command="{Binding ToggleDefaultMetadataCommand}">
-                                            <menus:MenuItemButton.IconContent>
-                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultStripMetadata}"/>
-                                            </menus:MenuItemButton.IconContent>
+                                                              Command="{Binding ToggleDefaultMetadataCommand}" IsChecked="{Binding DefaultStripMetadata}">
+
                                         </menus:MenuItemButton>
                                         <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap"
                                                    MaxWidth="260" IsVisible="{Binding IsImageCompressionForced}"/>
@@ -113,20 +109,16 @@
                                             <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.video.defaults}"/>
                                             <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.video.compress}"
                                                                   ToolTip.Tip="{l:Text chat.attach.video.compress.tooltip}"
-                                                                  Command="{Binding ToggleDefaultVideoCompressionCommand}">
-                                                <menus:MenuItemButton.IconContent>
-                                                    <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding DefaultCompressVideos}"/>
-                                                </menus:MenuItemButton.IconContent>
+                                                                  Command="{Binding ToggleDefaultVideoCompressionCommand}" IsChecked="{Binding DefaultCompressVideos}">
+
                                             </menus:MenuItemButton>
                                             <ItemsControl ItemsSource="{Binding DefaultVideoSides}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="chatVm:ChatVideoSideOptionVM">
                                                         <menus:MenuItemButton Focusable="False" Content="{Binding Label}"
                                                                               Command="{Binding $parent[ItemsControl].((chatVm:ChatComposerVM)DataContext).ChooseDefaultVideoSideCommand}"
-                                                                              CommandParameter="{Binding Side}">
-                                                            <menus:MenuItemButton.IconContent>
-                                                                <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding IsSelected}"/>
-                                                            </menus:MenuItemButton.IconContent>
+                                                                              CommandParameter="{Binding Side}" IsChecked="{Binding IsSelected}">
+
                                                         </menus:MenuItemButton>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

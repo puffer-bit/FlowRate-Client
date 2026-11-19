@@ -8,15 +8,16 @@
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="180"
              x:Class="Client.Views.Dialogs.MessageBoxView"
              x:DataType="dialogVm:MessageBoxVM"
-             MinWidth="350"
-             MaxWidth="700">
+             MinWidth="240"
+             MaxWidth="640"
+             HorizontalAlignment="Center">
     
     <Grid RowDefinitions="Auto, Auto, Auto">
         <!-- The title bar of a window is not there when shown inside another window -->
         <TextBlock Grid.Row="0" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="20, 16, 20, 0"/>
         
         <Grid Grid.Row="1" ColumnDefinitions="Auto, *" Margin="20, 12, 20, 10">
-            <Image Grid.Column="0" Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Top" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+            <Image Grid.Column="0" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Top" Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
             <StackPanel Grid.Column="1" Margin="20, 0, 0, 0" Spacing="10" VerticalAlignment="Top">
                 <SelectableTextBlock Text="{Binding Text}"
                            TextWrapping="Wrap"/>
@@ -29,7 +30,7 @@
                 <ContentControl IsVisible="{Binding HasBanForm}" Content="{Binding BanForm}">
                     <ContentControl.ContentTemplate>
                         <DataTemplate x:DataType="dialogVm:BanFormVM">
-                            <StackPanel Spacing="8" MinWidth="300">
+                            <StackPanel Spacing="8" MinWidth="220">
                                 <TextBlock Text="{l:Text ban.kind}"/>
                                 <ComboBox ItemsSource="{Binding Kinds}" SelectedIndex="{Binding KindIndex}" HorizontalAlignment="Stretch"/>
                                 <TextBlock Text="{l:Text ban.ip.description}" TextWrapping="Wrap" IsVisible="{Binding IsIp}"/>

@@ -26,8 +26,8 @@ public class ZoomableImage : Control, ICustomHitTest
     private const double MinMaxZoom = 4;
     private const double MaxPixelScale = 8;
 
-    private static readonly Cursor GrabCursor = new(StandardCursorType.Hand);
-    private static readonly Cursor DragCursor = new(StandardCursorType.SizeAll);
+    private static readonly Lazy<Cursor> GrabCursor = new(() => new(StandardCursorType.Hand));
+    private static readonly Lazy<Cursor> DragCursor = new(() => new(StandardCursorType.SizeAll));
 
     public static readonly StyledProperty<IImage?> SourceProperty =
         AvaloniaProperty.Register<ZoomableImage, IImage?>(nameof(Source));
@@ -35,6 +35,14 @@ public class ZoomableImage : Control, ICustomHitTest
     /// <summary>Kept clear around the fitted picture; a zoomed one goes up to the edges.</summary>
     public static readonly StyledProperty<Thickness> PaddingProperty =
         Decorator.PaddingProperty.AddOwner<ZoomableImage>();
+
+    public static readonly StyledProperty<int> QuarterTurnsProperty =
+        AvaloniaProperty.Register<ZoomableImage, int>(nameof(QuarterTurns));
+
+    public int QuarterTurns { get => GetValue(QuarterTurnsProperty); set => SetValue(QuarterTurnsProperty, value); }
+    private Size OrientedSize => Source is { } image
+        ? QuarterTurns % 2 == 0 ? image.Size : new Size(image.Size.Height, image.Size.Width)
+        : default;
 
     // The pointers pressed on the picture, where they are now
     private readonly Dictionary<IPointer, Point> _pointers = new();
@@ -81,6 +89,8 @@ public class ZoomableImage : Control, ICustomHitTest
         base.OnPropertyChanged(change);
 
         // Another picture, the image itself in place of its reduced copy, starts fitted again
+        if (change.Property == QuarterTurnsProperty)
+            ResetZoom();
         if (change.Property == SourceProperty)
             ResetZoom();
     }
@@ -108,7 +118,14 @@ public class ZoomableImage : Control, ICustomHitTest
         if (Source is not { } source || source.Size.Width <= 0 || source.Size.Height <= 0)
             return;
 
-        context.DrawImage(source, new Rect(source.Size), ShownRect());
+        var rect = ShownRect();
+        var center = rect.Center;
+        double scale = FitScale(Bounds.Size) * _zoom;
+        using (context.PushTransform(Matrix.CreateTranslation(-source.Size.Width / 2, -source.Size.Height / 2)
+                   * Matrix.CreateScale(scale, scale)
+                   * Matrix.CreateRotation(QuarterTurns * Math.PI / 2)
+                   * Matrix.CreateTranslation(center.X, center.Y)))
+            context.DrawImage(source, new Rect(source.Size), new Rect(source.Size));
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
@@ -240,7 +257,7 @@ public class ZoomableImage : Control, ICustomHitTest
     }
 
     private Size ShownSize(Size size) =>
-        Source is { } source ? source.Size * (FitScale(size) * _zoom) : default;
+        Source is { } source ? OrientedSize * (FitScale(size) * _zoom) : default;
 
     // Of the fitted picture to the picture itself, at most 1
     private double FitScale(Size size)
@@ -249,14 +266,14 @@ public class ZoomableImage : Control, ICustomHitTest
             return 1;
 
         var room = size.Deflate(Padding);
-        var scale = Math.Min(room.Width / source.Size.Width, room.Height / source.Size.Height);
+        var scale = Math.Min(room.Width / OrientedSize.Width, room.Height / OrientedSize.Height);
         return scale > 0 ? Math.Min(scale, 1) : 1;
     }
 
     private double MaxZoom() => Math.Max(MinMaxZoom, MaxPixelScale / FitScale(Bounds.Size));
 
     private void UpdateCursor() =>
-        Cursor = IsZoomed ? _pointers.Count > 0 ? DragCursor : GrabCursor : null;
+        Cursor = IsZoomed ? _pointers.Count > 0 ? DragCursor.Value : GrabCursor.Value : null;
 
     private static Point Center(Size size) => new(size.Width / 2, size.Height / 2);
 }

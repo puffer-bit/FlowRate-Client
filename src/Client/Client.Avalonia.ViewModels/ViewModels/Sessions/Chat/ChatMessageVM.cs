@@ -490,6 +490,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public bool HasReactionError => ReactionError != null;
     private bool _isSettingReaction;
 
+    public Task ChooseReactionAsync(string emoji) => ReactAsync(emoji, true);
+
     private async Task ReactAsync(string emoji, bool closeMenu)
     {
         if (closeMenu)

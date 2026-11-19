@@ -48,6 +48,14 @@
             <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
                                   Command="{Binding SelfSession.ToggleSoundCommand}"
                                   IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource VideoCameraIcon}" Content="{l:Text camera.start}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleCameraCommand}"
+                                  IsVisible="{Binding !SelfSession.IsCameraOn}" IsEnabled="{Binding SelfSession.CanUseCamera}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedVideoCameraIcon}" Content="{l:Text camera.stop}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleCameraCommand}"
+                                  IsVisible="{Binding SelfSession.IsCameraOn}"/>
             <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
                                   menus:FlyoutMenu.CloseOnClick="True"
                                   Click="OnAfkClick"

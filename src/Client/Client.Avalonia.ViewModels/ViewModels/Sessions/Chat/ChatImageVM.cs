@@ -18,7 +18,6 @@ public class ChatImageVM : ReactiveObject, IShownImage
 {
     // The box an only image of a message is fitted into, and the side of a tile among several
     private const double SingleMaxSide = 320;
-    private const double SingleMinSide = 96;
     private const double TileSide = 152;
 
     // A GIF moves only in the file itself, which is downloaded for the tile up to this size
@@ -169,7 +168,6 @@ public class ChatImageVM : ReactiveObject, IShownImage
             return (SingleMaxSide, SingleMaxSide);
 
         var scale = Math.Min(1, Math.Min(SingleMaxSide / width, SingleMaxSide / height));
-        // A very long or very narrow picture still gets a tile that can be seen and clicked
-        return (Math.Max(SingleMinSide, Math.Round(width * scale)), Math.Max(SingleMinSide, Math.Round(height * scale)));
+        return (Math.Max(1, Math.Round(width * scale)), Math.Max(1, Math.Round(height * scale)));
     }
 }

@@ -1462,5 +1462,15 @@
   "broadcast.toggle": "配信を開始・停止",
   "broadcast.choose": "配信する内容を選択",
   "broadcast.screen.start": "画面を共有",
-  "video.target": "動画設定の対象"
+  "video.target": "動画設定の対象",
+  "serverSettings.info.database": "データベースシステム",
+  "sessions.collapseChat": "チャットを折りたたむ",
+  "chat.image.rotate": "画像を回転",
+  "chat.reaction.more": "その他の絵文字",
+  "settings.appearance.section.window": "ウィンドウ",
+  "serverSettings.roles.unsaved": "未保存の変更",
+  "serverSettings.roles.searchPermissions": "権限を検索",
+  "serverSettings.roles.hierarchyHint": "リストの上位のロールは下位のロールを管理できます。",
+  "settings.appearance.customTitleBar.title": "独自のタイトルバー",
+  "settings.appearance.customTitleBar.description": "ウィンドウのボタンをアプリの上部バーに表示し、システムのタイトルバーを隠します。オフにするとシステムのタイトルバーに戻ります。すぐに適用されます"
 }

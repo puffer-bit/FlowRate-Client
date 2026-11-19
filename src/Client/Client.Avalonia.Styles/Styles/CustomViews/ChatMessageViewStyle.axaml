@@ -240,7 +240,7 @@
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style Selector="Button.msg-image Image.msg-image-picture">
-        <Setter Property="Stretch" Value="UniformToFill"/>
+        <Setter Property="Stretch" Value="Uniform"/>
     </Style>
     <Style Selector="Button.msg-image Image.msg-image-failed">
         <Setter Property="Width" Value="20"/>

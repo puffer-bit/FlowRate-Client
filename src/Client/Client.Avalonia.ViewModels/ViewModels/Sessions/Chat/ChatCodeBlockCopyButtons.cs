@@ -87,7 +87,8 @@ public sealed class ChatCodeBlockCopyButtons : Canvas
                     Content = icon,
                     Width = ButtonSize,
                     Height = ButtonSize,
-                    Padding = new Thickness(4),
+                    Padding = new Thickness(0),
+                    MinWidth = 0, MinHeight = 0,
                     CornerRadius = new CornerRadius(4),
                     Classes = { "ghost" }
                 };
@@ -119,7 +120,11 @@ public sealed class ChatCodeBlockCopyButtons : Canvas
             if (!Equals(button.Tag, text) && button.Content is Image image)
                 image.Bind(Image.SourceProperty, new DynamicResourceExtension("CopyIcon"));
             button.Tag = text;
-            SetLeft(button, Math.Max(0, bounds.Right - ButtonSize - ButtonInset));
+            double size = Math.Min(ButtonSize, Math.Max(12, bounds.Height - 2 * ButtonInset));
+            button.Width = button.Height = size;
+            if (button.Content is Image copyImage)
+                copyImage.Width = copyImage.Height = Math.Min(14, size - 4);
+            SetLeft(button, Math.Max(0, bounds.Right - size - ButtonInset));
             SetTop(button, Math.Max(0, bounds.Top + ButtonInset));
             index++;
         }

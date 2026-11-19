@@ -110,7 +110,24 @@ public static class ChatMarkdown
                 case FencedCodeBlock fenced:
                     if (string.IsNullOrWhiteSpace(_source[..node.Span.Start]))
                         Hide(0, node.Span.Start - 1);
-                    Replace(node, RestoreMentions(fenced.Lines.ToString(), node.Span), ChatTextStyle.Code | ChatTextStyle.CodeBlock);
+                    // An unclosed Markdig fence keeps only its opening line in Span. Its
+                    // content lines still belong to this replacement, otherwise they appear twice.
+                    int end = fenced.Span.End;
+                    if (fenced.Lines.Count > 0)
+                        end = Math.Max(end, fenced.Lines.Lines[fenced.Lines.Count - 1].Slice.End);
+                    var sourceSpan = new SourceSpan(fenced.Span.Start, end);
+                    string codeText = RestoreMentions(fenced.Lines.ToString(), sourceSpan);
+                    if (fenced.ClosingFencedCharCount == 0)
+                    {
+                        // Chat also accepts a final fence immediately after the last code line.
+                        int last = codeText.Length;
+                        while (last > 0 && codeText[last - 1] == fenced.FencedChar)
+                            last--;
+                        if (codeText.Length - last >= fenced.OpeningFencedCharCount)
+                            codeText = codeText[..last];
+                    }
+                    _replacements[fenced.Span.Start] = new SourceReplacement(end, codeText,
+                        ChatTextStyle.Code | ChatTextStyle.CodeBlock);
                     return;
                 case CodeInline code:
                     Replace(node, RestoreMentions(code.Content, node.Span), ChatTextStyle.Code);

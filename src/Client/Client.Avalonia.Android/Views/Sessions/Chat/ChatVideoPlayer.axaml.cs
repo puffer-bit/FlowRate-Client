@@ -28,7 +28,6 @@ public partial class ChatVideoPlayer : UserControl
     private volatile bool _framed;
 
     // The inline player of the desktop is 400 wide, this one at most 320
-    private const double Scale = 320d / 400;
 
     private void OnFrame(RawVideoFrame frame)
     {
@@ -248,8 +247,6 @@ public partial class ChatVideoPlayer : UserControl
             _framed = false;
             if (_ready) VideoSurface.Clear();
         }
-        if (_ready)
-            PicturePanel.Height = Math.Round((_file?.PlayerHeight ?? 225) * Scale);
         ResetInteraction();
         base.OnDataContextChanged(e);
         Refresh();

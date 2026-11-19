@@ -29,19 +29,9 @@
                         <Button.Flyout>
                             <Flyout Placement="BottomEdgeAlignedRight">
                                 <StackPanel Spacing="2">
-                                    <menus:MenuItemButton Command="{Binding ToggleGroupOnlineUsers}">
-                                        <TextBlock Text="{l:Text chat.viewers.groupOnline}" Margin="-6,0,0,0"/>
-                                        <menus:MenuItemButton.IconContent>
-                                            <Viewbox Width="16" Height="16" RenderTransformOrigin="50%,50%">
-                                                <Viewbox.RenderTransform>
-                                                    <ScaleTransform ScaleX="1.5" ScaleY="1.5"/>
-                                                </Viewbox.RenderTransform>
-                                                <CheckBox IsChecked="{Binding GroupOnlineUsers, Mode=OneWay}" IsHitTestVisible="False"
-                                                          Focusable="False" MinWidth="0" MinHeight="0"
-                                                          AutomationProperties.Name="{l:Text chat.viewers.groupOnline}"/>
-                                            </Viewbox>
-                                        </menus:MenuItemButton.IconContent>
-                                    </menus:MenuItemButton>
+                                    <menus:MenuItemButton Command="{Binding ToggleGroupOnlineUsers}"
+                                                          Content="{l:Text chat.viewers.groupOnline}"
+                                                          IsChecked="{Binding GroupOnlineUsers}"/>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>

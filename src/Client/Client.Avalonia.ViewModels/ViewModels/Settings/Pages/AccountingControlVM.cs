@@ -22,6 +22,13 @@ public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
     public string Name => SettingText.TabName("accounting");
     public SettingTabType Type => SettingTabType.Accounting;
 
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("accounting.database", "settings.accounting.section.database"),
+        new("accounting.savedServers", "settings.accounting.section.savedServers"),
+        new("accounting.trustedCertificates", "settings.accounting.section.trustedCertificates")
+    ];
+
     public bool IsEnabled
     {
         get;

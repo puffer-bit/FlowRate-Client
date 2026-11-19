@@ -21,8 +21,7 @@ namespace Client.ViewModels.Sessions.Chat;
 public class ChatFileVM : ReactiveObject, IShownImage
 {
     // The width of the inline player and the bounds of its picture's height
-    private const double PlayerWidth = 400;
-    private const double PlayerMinHeight = 120;
+    private const double PlayerMaxWidth = 400;
     private const double PlayerMaxHeight = 400;
 
     public ICoordinatorSession CoordinatorSession => _session;
@@ -39,6 +38,8 @@ public class ChatFileVM : ReactiveObject, IShownImage
     /// so the player keeps its size while the frame loads and once it plays.
     /// </summary>
     public double PlayerHeight { get; }
+    public double PlayerWidth { get; }
+    public double PlayerCardWidth => Math.Clamp(PlayerWidth + 12, 240, PlayerMaxWidth);
 
     /// <summary>The length of the video as the server read it, in seconds; 0 when unknown.</summary>
     public double KnownDuration => File.Video?.Duration?.TotalSeconds ?? 0;
@@ -139,9 +140,11 @@ public class ChatFileVM : ReactiveObject, IShownImage
     {
         File = file;
         _images = images;
-        PlayerHeight = file.Video is { Width: > 0, Height: > 0 } video
-            ? Math.Clamp(Math.Round(PlayerWidth * video.Height / video.Width), PlayerMinHeight, PlayerMaxHeight)
-            : 225;
+        var width = file.Video is { Width: > 0 } ? file.Video.Width : 400;
+        var height = file.Video is { Height: > 0 } ? file.Video.Height : 225;
+        var scale = Math.Min(1, Math.Min(PlayerMaxWidth / width, PlayerMaxHeight / height));
+        PlayerWidth = Math.Round(width * scale);
+        PlayerHeight = Math.Round(height * scale);
         _session = session;
         _pickSaveTarget = pickSaveTarget;
         _cache = cache;

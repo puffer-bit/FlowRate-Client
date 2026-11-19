@@ -27,6 +27,13 @@ public class StorageControlVM : ReactiveObject, ISettingVM
 
     public string Name => SettingText.TabName("storage");
     public SettingTabType Type => SettingTabType.Storage;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("storage.messages", "settings.storage.section.messages"),
+        new("storage.media", "settings.storage.section.media"),
+        new("storage.logs", "settings.storage.section.logs")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("storage",

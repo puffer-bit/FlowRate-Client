@@ -2091,5 +2091,15 @@
   "broadcast.toggle": "Toggle broadcast",
   "broadcast.choose": "Choose what to broadcast",
   "broadcast.screen.start": "Share screen",
-  "video.target": "Video settings for"
+  "video.target": "Video settings for",
+  "serverSettings.info.database": "Database system",
+  "sessions.collapseChat": "Collapse chat",
+  "chat.image.rotate": "Rotate image",
+  "chat.reaction.more": "More emoji",
+  "settings.appearance.section.window": "Window",
+  "serverSettings.roles.unsaved": "Unsaved changes",
+  "serverSettings.roles.searchPermissions": "Search permissions",
+  "serverSettings.roles.hierarchyHint": "Roles higher in the list can manage roles below them.",
+  "settings.appearance.customTitleBar.title": "Own window title bar",
+  "settings.appearance.customTitleBar.description": "The window buttons sit in the top bar of the application and the title bar of the system is hidden. Turn off to get the title bar of the system back. Applies at once"
 }

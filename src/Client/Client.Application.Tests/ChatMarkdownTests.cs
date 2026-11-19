@@ -113,6 +113,20 @@ public class ChatMarkdownTests
         Assert.Equal(expected, document.Text);
     }
 
+    [Theory]
+    [InlineData("```\none```", "one")]
+    [InlineData("```cs\r\none```", "one")]
+    [InlineData("```\none", "one")]
+    [InlineData("before\n```cs\none\ntwo", "before\none\ntwo")]
+    [InlineData("```\n**literal** https://example.com```", "**literal** https://example.com")]
+    public void UnclosedOrInlineClosedFence_ConsumesItsContentExactlyOnce(string source, string expected)
+    {
+        var result = Parse(source);
+        Assert.Equal(expected, result.Text);
+        Assert.Empty(result.Links);
+        Assert.Contains(result.Styles, span => span.Style.HasFlag(ChatTextStyle.CodeBlock));
+    }
+
     [Fact]
     public void SeparateCodeBlocksKeepTheirOwnCopyContent()
     {

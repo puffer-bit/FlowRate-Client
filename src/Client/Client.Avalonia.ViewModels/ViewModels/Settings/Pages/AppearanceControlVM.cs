@@ -20,12 +20,24 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("appearance");
     public SettingTabType Type => SettingTabType.AppAppearance;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("appearance.language", "settings.appearance.section.language"),
+        new("appearance.theme", "settings.appearance.section.theme"),
+        new("appearance.buttonColors", "settings.appearance.section.buttonColors"),
+        new("appearance.preview", "settings.appearance.section.preview"),
+        new("appearance.scale", "settings.appearance.section.scale"),
+        new("appearance.animations", "settings.appearance.section.animations"),
+        new("appearance.window", "settings.appearance.section.window")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("appearance",
         ("language", ["language"]),
         ("theme", ["theme"]),
         ("scale", ["scale"]),
+        ("window", ["customTitleBar"]),
         ("buttonColors", ["primaryColor", "secondaryColor", "dangerColor", "saveColor", "successColor", "warningColor",
             "errorColor", "resetColors"]),
         ("animations", ["animations", "animationSpeed"]));
@@ -102,6 +114,12 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    public bool UseCustomTitleBar
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public bool IsAnimationEnabled
     {
         get;
@@ -154,6 +172,10 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         ObserveSystemThemeChanges();
         ObserveColorChanges();
         ObserveInterfaceChanges();
+        this.WatchProperty(nameof(UseCustomTitleBar), vm => vm.UseCustomTitleBar)
+            .Where(_ => _isLoaded)
+            .Select(value => Observable.FromAsync(() => ChangeTitleBarAsync(value)))
+            .Concat().Subscribe();
     }
 
     private void ObserveThemeChanges()
@@ -240,6 +262,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
     private async Task LoadAsync()
     {
+        UseCustomTitleBar = await _appearanceService.GetUseCustomTitleBarAsync();
         SelectedThemeType = await _appearanceService.GetCurrentThemeTypeAsync();
         var language = await _appearanceService.GetLanguageAsync();
         // A saved language the application has no translation for any more follows the system
@@ -251,6 +274,12 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = await _appearanceService.GetInterfaceScaleAsync();
         _isLoaded = true;
+    }
+
+    private async Task ChangeTitleBarAsync(bool value)
+    {
+        ExperimentalFeatures.Apply(ExperimentalFeatures.IsEnabled, value);
+        await _appearanceService.UpdateUseCustomTitleBarAsync(value);
     }
 
     private async Task ChangeThemeAsync(ThemeType themeType)
@@ -331,6 +360,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
         // Applied here directly, so the change handler must not apply and save it a second time
         _isLoaded = false;
+        UseCustomTitleBar = false;
         SelectedThemeType = defaultTheme;
         SelectedLanguage = Languages[0];
         var animations = new AnimationSettings();
@@ -339,6 +369,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         SelectedInterfaceScale = InterfaceScale.Default;
         _isLoaded = true;
 
+        await ChangeTitleBarAsync(false);
         await ChangeThemeAsync(defaultTheme);
         await ChangeLanguageAsync(null);
         await ResetColorsAsync();

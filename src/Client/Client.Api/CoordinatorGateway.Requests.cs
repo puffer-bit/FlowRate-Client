@@ -77,7 +77,7 @@ internal partial class CoordinatorGateway
         var response = await SendRequestAsync<CoordinatorSettingsResponse>(new CoordinatorSettingsRequest());
 
         return new CoordinatorSettingsSnapshot(response.Settings.ToModel(),
-            response.SFUNodes.Select(node => node.ToModel()).ToList());
+            response.SFUNodes.Select(node => node.ToModel()).ToList(), response.DatabaseProvider);
     }
 
     public async Task<CoordinatorSettingsModel> UpdateCoordinatorSettings(CoordinatorSettingsUpdate update,

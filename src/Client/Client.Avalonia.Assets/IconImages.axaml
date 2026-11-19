@@ -73,7 +73,51 @@
     <DrawingImage x:Key="FormatLinkIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
-            <GeometryDrawing Geometry="M10 14 L14 10 M9 16 L7 18 A4 4 0 0 1 1 12 L6 7 A4 4 0 0 1 12 7 M15 8 L17 6 A4 4 0 0 1 23 12 L18 17 A4 4 0 0 1 12 17">
+            <GeometryDrawing Geometry="M9 15 L15 9 M8 13 L6 15 A3.5 3.5 0 0 0 11 20 L15 16 A3.5 3.5 0 0 0 15 11 M16 11 L18 9 A3.5 3.5 0 0 0 13 4 L9 8 A3.5 3.5 0 0 0 9 13">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="UnpinIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8 3 H16 M9 3 V7 M15 3 V9 L18 13 V15 H13 M12 18 V22 M6 15 V13 L8 10 M3 3 L21 21">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="CollapseChatIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M4 4 H20 V16 H10 L6 20 V16 H4 Z M8 10 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="RotateImageIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M20 7 V2 M20 7 H15 M20 7 A9 9 0 1 0 21 15">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <DrawingImage x:Key="MenuCheckIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 12 L10 17 L19 7">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>

@@ -22,6 +22,12 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => SettingText.TabName("hotKeys");
     public SettingTabType Type => SettingTabType.HotKeys;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("hotKeys.general", "settings.hotKeys.section.general"),
+        new("hotKeys.actions", "settings.hotKeys.section.actions")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("hotKeys",

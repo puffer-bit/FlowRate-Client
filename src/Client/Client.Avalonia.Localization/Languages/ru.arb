@@ -1533,5 +1533,15 @@
   "broadcast.toggle": "Включить или выключить трансляцию",
   "broadcast.choose": "Выбрать источник трансляции",
   "broadcast.screen.start": "Транслировать экран",
-  "video.target": "Настройки видео для"
+  "video.target": "Настройки видео для",
+  "serverSettings.info.database": "СУБД",
+  "sessions.collapseChat": "Свернуть чат",
+  "chat.image.rotate": "Повернуть изображение",
+  "chat.reaction.more": "Другие эмодзи",
+  "settings.appearance.section.window": "Окно",
+  "serverSettings.roles.unsaved": "Есть несохранённые изменения",
+  "serverSettings.roles.searchPermissions": "Поиск разрешений",
+  "serverSettings.roles.hierarchyHint": "Роли выше в списке могут управлять ролями ниже.",
+  "settings.appearance.customTitleBar.title": "Свой заголовок окна",
+  "settings.appearance.customTitleBar.description": "Кнопки управления окном находятся в верхней панели приложения, системный заголовок скрыт. Выключите, чтобы вернуть системный заголовок. Применяется сразу"
 }

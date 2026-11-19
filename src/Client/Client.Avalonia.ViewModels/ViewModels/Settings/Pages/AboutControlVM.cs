@@ -22,6 +22,14 @@ public class AboutControlVM : ReactiveObject, ISettingVM, IDisposable
 {
     public string Name => Strings.Get("settings.about.name");
     public SettingTabType Type => SettingTabType.About;
+    public IReadOnlyList<SettingAnchor> Anchors =>
+    [
+        new("about.application", "settings.about.section.application"),
+        new("about.project", "settings.about.section.project"),
+        new("about.releaseNotes", "settings.about.section.releaseNotes"),
+        new("about.libraries", "settings.about.section.libraries")
+    ];
+
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("about",
