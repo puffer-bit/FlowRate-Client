@@ -356,7 +356,9 @@ PY
         pack_standalone "$rid" "$publish_dir" "$standalone"
     fi
     # Downloaded next to the AppImage, it installs that one
-    [[ "$os" == linux ]] && linux_script "$output/FlowRateClient-$platform-install.sh"
+    if [[ "$os" == linux ]]; then
+        linux_script "$output/FlowRateClient-$platform-install.sh"
+    fi
 }
 
 # FlowRate.app in <folder> of a published folder. Contents/MacOS holds the published files, except the
