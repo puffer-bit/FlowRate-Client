@@ -254,6 +254,10 @@ public partial class CoordinatorSession
         CancellationToken cancellationToken = default) =>
         _gateway.DownloadAvatar(avatarId, destination, cancellationToken);
 
+    public Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken = default) =>
+        _gateway.DownloadChatFilePreview(fileId, destination, cancellationToken);
+
     public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
         CancellationToken cancellationToken = default) =>
         _gateway.DownloadLinkPreviewImage(previewId, destination, cancellationToken);
@@ -265,6 +269,10 @@ public partial class CoordinatorSession
     public Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
         _gateway.DownloadChatFile(fileId, destination, progress, cancellationToken);
+
+    public Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken = default) =>
+        _gateway.DownloadChatFileRange(fileId, offset, length, destination, cancellationToken);
 
     public Task<RequestResult<string?>> RegisterPushToken(string token, PushPlatform platform,
         PushKey key) =>

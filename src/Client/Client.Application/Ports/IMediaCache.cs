@@ -33,6 +33,12 @@ public interface IMediaCache
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write);
 
+    /// <returns>The frame a video of a message is shown with, or null when it is not kept.</returns>
+    string? FindFilePreview(string coordinatorInstanceId, int fileId);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreFilePreviewAsync(string coordinatorInstanceId, int fileId, Func<Stream, Task<bool>> write);
+
     /// <returns>The file of the avatar, or null when it is not kept.</returns>
     string? FindAvatar(string coordinatorInstanceId, string avatarId);
 
@@ -44,4 +50,12 @@ public interface IMediaCache
 
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreFileAsync(string coordinatorInstanceId, int fileId, string fileName, Func<Stream, Task<bool>> write);
+
+    /// <summary>
+    /// Opens what is kept of an attachment downloaded piece by piece, or starts keeping it. Several callers of the
+    /// same attachment share it; it is closed when the last one disposes it.
+    /// </summary>
+    /// <param name="length">The size of the whole attachment.</param>
+    /// <returns>Null when the attachment cannot be kept.</returns>
+    IPartialMediaFile? OpenPartialFile(string coordinatorInstanceId, int fileId, string fileName, long length);
 }

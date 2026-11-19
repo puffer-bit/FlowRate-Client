@@ -267,6 +267,14 @@ public interface ICoordinatorGateway : IDisposable
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Writes <paramref name="length"/> bytes of a file of a message from <paramref name="offset"/> on into
+    /// <paramref name="destination"/>, or fewer when the file ends first. Failures come back as a result, never as
+    /// an exception.
+    /// </summary>
+    Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Writes the avatar with the id from <see cref="Client.Core.Users.AvatarAddress.IdOf"/> into
     /// <paramref name="destination"/>. Failures come back as a result, never as an exception.
     /// </summary>
@@ -277,4 +285,10 @@ public interface ICoordinatorGateway : IDisposable
     /// result, never as an exception.
     /// </summary>
     Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes the frame a video of a message is shown with, when <see cref="Client.Core.Chat.ChatFileVideo.HasPreview"/>
+    /// says it has one. Failures come back as the result, never as an exception.
+    /// </summary>
+    Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination, CancellationToken cancellationToken);
 }

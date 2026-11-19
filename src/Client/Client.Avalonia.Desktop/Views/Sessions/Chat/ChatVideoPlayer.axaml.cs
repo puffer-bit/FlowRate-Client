@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Services.Chat;
 using Client.ViewModels.Sessions.Chat;
@@ -25,6 +26,8 @@ public partial class ChatVideoPlayer : UserControl
     private bool _changingVolume;
     private bool _ready;
     private Window? _fullscreen;
+    // The video being played has shown a frame of its own, which hides the frame it was sent with
+    private volatile bool _framed;
 
     public ChatVideoPlayer() : this(App.Services?.GetService<ChatVideoSession>()) { }
 
@@ -84,13 +87,16 @@ public partial class ChatVideoPlayer : UserControl
             Width = inlineWidth;
             Height = inlineHeight;
             PlayerBorder.Width = 400;
-            PlayerLayout.RowDefinitions = new RowDefinitions("225,Auto");
+            PlayerLayout.RowDefinitions = InlineRows();
             Content = PlayerBorder;
             _session?.RedisplayFrame();
         };
         window.Show(owner);
         _session?.RedisplayFrame();
     }
+
+    private RowDefinitions InlineRows() => new(
+        string.Create(CultureInfo.InvariantCulture, $"{(DataContext as ChatFileVM)?.PlayerHeight ?? 225},Auto"));
 
     private void OnVideoTapped(object? sender, TappedEventArgs e)
     {
@@ -130,10 +136,19 @@ public partial class ChatVideoPlayer : UserControl
         UpdateTime(_seeking ? SeekSlider.Value : position);
         var playing = current && _session!.IsPlaying;
         var loading = current && _session!.IsLoading;
+        if (!current)
+            _framed = false;
+        PosterImage.IsVisible = !_framed;
         CancelImage.IsVisible = loading;
         PlayImage.IsVisible = !playing && !loading;
         PauseImage.IsVisible = playing;
         PlaybackError.IsVisible = current && _session!.HasError;
+        // A video that plays as it downloads: how much is there, and moving while it waits for more
+        var streamed = current ? _session!.StreamProgress : null;
+        StreamBar.IsVisible = streamed is < 1;
+        StreamBar.IsIndeterminate = current && _session!.IsBuffering;
+        if (streamed is { } share)
+            StreamBar.Value = share;
         ToolTip.SetTip(PlayButton, Strings.Get(loading ? "chat.file.cancel"
             : playing ? "chat.video.pause" : "chat.video.play"));
     }
@@ -143,7 +158,11 @@ public partial class ChatVideoPlayer : UserControl
 
     private void UpdateTime(double position)
     {
-        var duration = _session?.IsCurrent(DataContext as ChatFileVM) == true ? _session.Duration : 0;
+        var file = DataContext as ChatFileVM;
+        var duration = _session?.IsCurrent(file) == true ? _session.Duration : 0;
+        // Known from the server before the video is opened
+        if (duration <= 0)
+            duration = file?.KnownDuration ?? 0;
         TimeText.Text = $"{FormatTime(position)} / {FormatTime(duration)}";
     }
 
@@ -257,9 +276,14 @@ public partial class ChatVideoPlayer : UserControl
     {
         _fullscreen?.Close();
         _file = DataContext as ChatFileVM;
+        _framed = false;
         if (_ready)
+        {
             lock (_surfaceLock)
-            VideoSurface.Clear();
+                VideoSurface.Clear();
+            if (_fullscreen == null)
+                PlayerLayout.RowDefinitions = InlineRows();
+        }
         ResetInteraction();
         base.OnDataContextChanged(e);
         Refresh();
@@ -278,7 +302,14 @@ public partial class ChatVideoPlayer : UserControl
         lock (_surfaceLock)
         {
             if (_attached && _session?.IsCurrent(_file) == true)
+            {
                 VideoSurface.PushFrame(frame);
+                if (!_framed)
+                {
+                    _framed = true;
+                    Dispatcher.UIThread.Post(Refresh);
+                }
+            }
         }
     }
 

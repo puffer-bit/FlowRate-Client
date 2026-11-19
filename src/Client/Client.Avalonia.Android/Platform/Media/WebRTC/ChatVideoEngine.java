@@ -1,6 +1,7 @@
 package com.flowrate.rtc;
 
 import android.media.AudioAttributes;
+import android.media.MediaDataSource;
 import android.media.MediaPlayer;
 import android.view.Surface;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,7 +25,23 @@ public final class ChatVideoEngine {
     private volatile String error;
     private float volume;
 
+    /** The bytes of a video that plays while it downloads. */
+    public interface Source {
+        long getSize();
+
+        /** Waits until the bytes are there; answers -1 at the end of the video or when it cannot go on. */
+        int readAt(long position, byte[] buffer, int offset, int size);
+    }
+
     public ChatVideoEngine(String path, float volume, Listener listener) {
+        this(path, null, volume, listener);
+    }
+
+    public ChatVideoEngine(Source source, float volume, Listener listener) {
+        this(null, source, volume, listener);
+    }
+
+    private ChatVideoEngine(String path, Source source, float volume, Listener listener) {
         System.loadLibrary("jingle_peerconnection_so");
         this.volume = volume;
         helper = SurfaceTextureHelper.create("ChatVideoDecoder", null);
@@ -69,10 +86,25 @@ public final class ChatVideoEngine {
                     playing = false;
                     return true;
                 });
-                player.setDataSource(path);
+                if (source != null) player.setDataSource(new SourceAdapter(source));
+                else player.setDataSource(path);
                 player.prepareAsync();
             } catch (Exception exception) { fail(exception); }
         });
+    }
+
+    private static final class SourceAdapter extends MediaDataSource {
+        private final Source source;
+
+        SourceAdapter(Source source) { this.source = source; }
+
+        @Override public int readAt(long position, byte[] buffer, int offset, int size) {
+            return size == 0 ? 0 : source.readAt(position, buffer, offset, size);
+        }
+
+        @Override public long getSize() { return source.getSize(); }
+
+        @Override public void close() { }
     }
 
     private void poll() {

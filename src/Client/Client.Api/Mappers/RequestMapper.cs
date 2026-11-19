@@ -54,7 +54,8 @@ internal static class RequestMapper
         Files = model.Files.Select(file => new NewChatFileModel
         {
             UploadId = file.UploadId,
-            FileName = file.FileName
+            FileName = file.FileName,
+            PreviewUploadId = file.PreviewUploadId
         }).ToList(),
 
         IsDelayed = model.IsDelayed,

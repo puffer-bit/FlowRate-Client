@@ -6,10 +6,15 @@
              x:Class="Client.Droid.Views.Sessions.Chat.ChatVideoPlayer"
              x:DataType="vm:ChatFileVM">
     <Border MaxWidth="320" HorizontalAlignment="Stretch" Padding="6" Margin="0,0,0,4" CornerRadius="6"
-            Background="{DynamicResource ColorOverlayMedium}">
+            Background="{DynamicResource ColorOverlayMedium}"
+            vm:ChatImagePresence.Image="{Binding}">
         <StackPanel Spacing="2">
             <Border Background="Transparent" Tapped="OnVideoTapped" Margin="0,0,0,2">
-                <views:PictureView x:Name="VideoSurface" Height="180" ClipToBounds="True" IsHitTestVisible="False"/>
+                <Panel x:Name="PicturePanel" Height="180">
+                    <views:PictureView x:Name="VideoSurface" ClipToBounds="True" IsHitTestVisible="False"/>
+                    <!-- The frame the sender's client took, until the video shows its own -->
+                    <Image x:Name="PosterImage" Source="{Binding Poster}" Stretch="Uniform" IsHitTestVisible="False"/>
+                </Panel>
             </Border>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
@@ -52,6 +57,7 @@
             </Grid>
             <TextBlock Text="{l:Text chat.file.saved}" IsVisible="{Binding IsSaved}" FontSize="11"
                        Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <ProgressBar x:Name="StreamBar" Minimum="0" Maximum="1" Height="3" IsVisible="False"/>
             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="3"
                          IsVisible="{Binding IsDownloading}"/>
             <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" FontSize="11"

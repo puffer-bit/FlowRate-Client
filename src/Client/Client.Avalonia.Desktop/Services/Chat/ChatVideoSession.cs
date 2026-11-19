@@ -29,6 +29,10 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     public event Action? Changed;
     public double Volume { get; private set; } = 1;
     public bool IsLoading => _loading != null;
+    /// <summary>True while a video that plays as it downloads waits for its bytes.</summary>
+    public bool IsBuffering => _playback?.IsWaiting == true;
+    /// <summary>The share of a video that plays as it downloads kept so far, or null for a cached one.</summary>
+    public double? StreamProgress => _playback != null ? _source?.Download?.Progress : null;
     public bool IsPlaying => _playback?.IsPlaying == true;
     public bool HasError { get; private set; }
     public double Position => _playback?.Position ?? 0;
@@ -40,7 +44,8 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     private GpuVideoFrame? _lastGpu;
     private byte[]? _lastPixels;
     private RawVideoFrame _lastFrame;
-    private string? _path;
+    private ChatPlaybackSource? _source;
+    private ChatFileVM? _file;
 
     private void DeliverFrame(RawVideoFrame frame)
     {
@@ -101,7 +106,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
             return;
         Dispatcher.UIThread.Post(() =>
         {
-            if (_disposed || _playback is not { DeliversYuv: true } playback || _path == null)
+            if (_disposed || _playback is not { DeliversYuv: true } playback || _source == null)
                 return;
             var (position, playing) = (playback.Position, playback.IsPlaying);
             _playback = null;
@@ -109,7 +114,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
             ClearLastFrame();
             try
             {
-                _playback = new ChatVideoPlayback(_path, DeliverFrame, Volume, position, playing);
+                _playback = Open(_source, Volume, position, playing);
                 Refresh();
             }
             catch (Exception exception) { Fail(exception); }
@@ -198,15 +203,20 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
             // Another video card may have changed the saved volume since this one was attached.
             await LoadVolumeAsync();
             cancellation.Token.ThrowIfCancellationRequested();
-            var path = await file.GetPlaybackPathAsync(cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (path == null)
+            var source = await file.OpenPlaybackAsync(cancellation.Token);
+            if (cancellation.IsCancellationRequested)
+            {
+                source?.Dispose();
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+            if (source == null)
             {
                 Stop();
                 return;
             }
-            _path = path;
-            _playback = new ChatVideoPlayback(path, DeliverFrame, Volume);
+            _source = source;
+            _file = file;
+            _playback = Open(source, Volume);
             _timer.Start();
             Refresh();
         }
@@ -245,9 +255,16 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         Changed?.Invoke();
     }
 
+    private ChatVideoPlayback Open(ChatPlaybackSource source, double volume, double startAt = 0, bool play = true) =>
+        source.Download is { } download
+            ? new ChatVideoPlayback(download, source.FileName, DeliverFrame, volume, startAt, play)
+            : new ChatVideoPlayback(source.Path!, DeliverFrame, volume, startAt, play);
+
     private void Fail(Exception exception)
     {
         _logger?.LogWarning(exception, "Chat video playback failed.");
+        if (_source?.Download?.Failure is { } failure)
+            _file?.ReportPlaybackFailure(failure);
         ReleasePlayback();
         HasError = true;
         Changed?.Invoke();
@@ -260,7 +277,10 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         _timer.Stop();
         _playback?.Dispose();
         _playback = null;
-        _path = null;
+        // After the player, which may still be reading from it
+        _source?.Dispose();
+        _source = null;
+        _file = null;
         ClearLastFrame();
     }
 

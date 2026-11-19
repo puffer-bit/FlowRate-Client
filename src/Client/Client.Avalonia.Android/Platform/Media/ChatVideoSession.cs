@@ -19,6 +19,8 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private Task? _initialization;
     private ChatVideoPlayback? _playback;
+    private ChatPlaybackSource? _source;
+    private ChatFileVM? _file;
     private CancellationTokenSource? _loading;
     private (string Coordinator, int FileId)? _key;
     private bool _disposed;
@@ -50,6 +52,10 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     public event Action? Changed;
     public double Volume { get; private set; } = 1;
     public bool IsLoading => _loading != null;
+    /// <summary>True while a video that plays as it downloads waits for its bytes.</summary>
+    public bool IsBuffering => _playback?.IsWaiting == true;
+    /// <summary>The share of a video that plays as it downloads kept so far, or null for a cached one.</summary>
+    public double? StreamProgress => _playback != null ? _source?.Download?.Progress : null;
     public bool IsPlaying => _playback?.IsPlaying == true;
     public bool HasError { get; private set; }
     public double Position => _playback?.Position ?? 0;
@@ -129,14 +135,22 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         {
             await InitializeAsync();
             cancellation.Token.ThrowIfCancellationRequested();
-            var path = await file.GetPlaybackPathAsync(cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (path == null)
+            var source = await file.OpenPlaybackAsync(cancellation.Token);
+            if (cancellation.IsCancellationRequested)
+            {
+                source?.Dispose();
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+            if (source == null)
             {
                 Stop();
                 return;
             }
-            _playback = new ChatVideoPlayback(path, Volume, OnFrame);
+            _source = source;
+            _file = file;
+            _playback = source.Download is { } download
+                ? new ChatVideoPlayback(download, Volume, OnFrame)
+                : new ChatVideoPlayback(source.Path!, Volume, OnFrame);
             _timer.Start();
             Refresh();
         }
@@ -178,6 +192,8 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     private void Fail(Exception exception)
     {
         _logger.LogWarning(exception, "Chat video playback failed.");
+        if (_source?.Download?.Failure is { } failure)
+            _file?.ReportPlaybackFailure(failure);
         ReleasePlayback();
         HasError = true;
         Changed?.Invoke();
@@ -190,6 +206,10 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
         _timer.Stop();
         _playback?.Dispose();
         _playback = null;
+        // After the player, which may still be reading from it
+        _source?.Dispose();
+        _source = null;
+        _file = null;
         lock (_frameLock)
         {
             _lastFrame?.Dispose();

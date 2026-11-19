@@ -435,6 +435,10 @@ public interface ICoordinatorSession : IDisposable
     Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress = null,
         CancellationToken cancellationToken = default);
 
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFilePreview"/>
+    Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken = default);
+
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadLinkPreviewImage"/>
     Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
         CancellationToken cancellationToken = default);
@@ -446,6 +450,10 @@ public interface ICoordinatorSession : IDisposable
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFile"/>
     Task<MediaTransferResult> DownloadChatFile(int fileId, Stream destination,
         IProgress<long>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFileRange"/>
+    Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken = default);
     Task<RequestResult> DeleteChatMessage(int chatId, int messageId);
 
     /// <summary>

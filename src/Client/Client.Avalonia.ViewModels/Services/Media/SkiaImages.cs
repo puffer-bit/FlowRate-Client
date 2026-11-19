@@ -224,7 +224,7 @@ internal static class SkiaImages
     /// <summary>
     /// Puts the stored pixels where the origin says they are shown.
     /// </summary>
-    private static SKBitmap Turn(SKBitmap bitmap, SKEncodedOrigin origin)
+    internal static SKBitmap Turn(SKBitmap bitmap, SKEncodedOrigin origin)
     {
         float w = bitmap.Width, h = bitmap.Height;
 

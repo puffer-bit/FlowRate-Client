@@ -1,3 +1,5 @@
+using Client.Application.Chat;
+using Client.GStreamer.Video;
 using Gst;
 
 namespace Client.GStreamer.Audio;
@@ -13,19 +15,48 @@ public sealed class ChatAudioPlayback : IDisposable
     public double Duration { get; private set; }
     public double Volume { get; private set; }
 
-    public ChatAudioPlayback(string path, double volume = 1) : this(path, "autoaudiosink", volume)
+    // Set when the audio plays while it downloads
+    private readonly StreamingSource? _streaming;
+
+    /// <summary>True while the audio waits for bytes that have not arrived yet.</summary>
+    public bool IsWaiting => _streaming?.IsWaiting == true;
+
+    public ChatAudioPlayback(string path, double volume = 1) : this(path, null, "autoaudiosink", volume)
     {
     }
 
-    internal ChatAudioPlayback(string path, string output, double volume = 1)
+    /// <summary>Plays an attachment while it downloads, which the caller keeps until this is disposed.</summary>
+    /// <param name="fileName">The name of the attachment, whose extension tells its container.</param>
+    public ChatAudioPlayback(StreamingDownload download, string? fileName, double volume = 1)
+        : this(null, new StreamingSource(download, fileName), "autoaudiosink", volume)
     {
+    }
+
+    internal ChatAudioPlayback(string path, string output, double volume = 1) : this(path, null, output, volume)
+    {
+    }
+
+    internal ChatAudioPlayback(StreamingDownload download, string? fileName, string output, double volume = 1)
+        : this(null, new StreamingSource(download, fileName), output, volume)
+    {
+    }
+
+    private ChatAudioPlayback(string? path, StreamingSource? streaming, string output, double volume)
+    {
+        _streaming = streaming;
         _pipeline = (Pipeline)Global.ParseLaunch(
-            "filesrc name=file ! decodebin ! audioconvert ! audioresample ! volume name=level ! " + output);
+            (streaming != null ? "appsrc name=file" : "filesrc name=file") +
+            " ! decodebin ! audioconvert ! audioresample ! volume name=level ! " + output);
         _bus = _pipeline.GetBus();
         try
         {
+            // decodebin adds its type finder once it starts
+            streaming?.ForceType(_pipeline);
             using var source = _pipeline.GetByName("file");
-            source!.SetProperty("location", Path.GetFullPath(path));
+            if (streaming != null)
+                streaming.Attach(source!);
+            else
+                source!.SetProperty("location", Path.GetFullPath(path!));
             SetVolume(volume);
             SetPlaying(true);
         }
@@ -59,6 +90,8 @@ public sealed class ChatAudioPlayback : IDisposable
     public void Seek(double seconds)
     {
         seconds = Math.Clamp(seconds, 0, Duration);
+        // A read waiting for bytes elsewhere would hold the seek until they arrive
+        _streaming?.InterruptReads();
         if (!_pipeline.SeekSimple(Format.Time, SeekFlags.Flush | SeekFlags.Accurate,
                 (long)(seconds * 1_000_000_000)))
             return;
@@ -69,6 +102,8 @@ public sealed class ChatAudioPlayback : IDisposable
     public void Update()
     {
         using var message = _bus.PopFiltered(MessageType.Error | MessageType.Eos);
+        if (_streaming?.Failure is { } failure)
+            throw new IOException("The audio stopped downloading.", failure);
         if (message?.Type == MessageType.Error)
             throw new InvalidOperationException("Audio decoding or output failed.");
         if (_pipeline.QueryDuration(Format.Time, out var duration) && duration > 0)
@@ -86,6 +121,7 @@ public sealed class ChatAudioPlayback : IDisposable
 
     public void Dispose()
     {
+        _streaming?.Stop();
         _pipeline.SetState(State.Null);
         _bus.Dispose();
         _pipeline.Dispose();

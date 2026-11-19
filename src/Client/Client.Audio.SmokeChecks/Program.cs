@@ -43,6 +43,16 @@ if (args.Contains("--video-transcode"))
     await VideoTranscodeSmokeChecks.Run(args);
     return;
 }
+if (args.Contains("--video-frame"))
+{
+    VideoFrameSmokeChecks.Run();
+    return;
+}
+if (args.Contains("--chat-video-stream"))
+{
+    ChatVideoStreamSmokeChecks.Run();
+    return;
+}
 if (args.Contains("--video-av1"))
 {
     VideoAv1SmokeChecks.Run();
