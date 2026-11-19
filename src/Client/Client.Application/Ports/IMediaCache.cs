@@ -33,6 +33,12 @@ public interface IMediaCache
     /// <inheritdoc cref="StoreAsync"/>
     Task<string?> StoreLinkPreviewImageAsync(string coordinatorInstanceId, int previewId, Func<Stream, Task<bool>> write);
 
+    /// <returns>The frame a video of a message is shown with, or null when it is not kept.</returns>
+    string? FindFilePreview(string coordinatorInstanceId, int fileId);
+
+    /// <inheritdoc cref="StoreAsync"/>
+    Task<string?> StoreFilePreviewAsync(string coordinatorInstanceId, int fileId, Func<Stream, Task<bool>> write);
+
     /// <returns>The file of the avatar, or null when it is not kept.</returns>
     string? FindAvatar(string coordinatorInstanceId, string avatarId);
 

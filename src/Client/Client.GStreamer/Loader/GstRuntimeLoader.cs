@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddSingleton<IAudioMedia, GstAudioMedia>();
         services.AddSingleton<IVoiceAudioDevice, GstVoiceAudioDevice>();
         services.AddSingleton<IVideoPreparer, GstVideoPreparer>();
+        services.AddSingleton<IVideoFrameGrabber, GstVideoFrameGrabber>();
 
         return services;
     }

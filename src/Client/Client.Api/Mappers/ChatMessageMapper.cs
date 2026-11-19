@@ -117,7 +117,11 @@ internal static class ChatMessageMapper
             Id = dto.Id,
             FileName = dto.FileName,
             Size = dto.Size,
-            MimeType = dto.MimeType
+            MimeType = dto.MimeType,
+            Video = dto.Video is { } video
+                ? new ChatFileVideo(Math.Max(0, video.Width), Math.Max(0, video.Height),
+                    video.Duration is { } duration && duration > TimeSpan.Zero ? duration : null, video.HasPreview)
+                : null
         };
 
     private static ChatReaction MapReaction(ChatReactionDTO dto)

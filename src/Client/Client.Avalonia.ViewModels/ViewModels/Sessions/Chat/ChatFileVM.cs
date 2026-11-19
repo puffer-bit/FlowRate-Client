@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Avalonia.Media;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
+using Client.Services;
 using ReactiveUI;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -16,8 +18,13 @@ namespace Client.ViewModels.Sessions.Chat;
 /// <summary>
 /// A file of a message: the first click caches it, a later click opens it, and its menu offers Save as.
 /// </summary>
-public class ChatFileVM : ReactiveObject
+public class ChatFileVM : ReactiveObject, IShownImage
 {
+    // The width of the inline player and the bounds of its picture's height
+    private const double PlayerWidth = 400;
+    private const double PlayerMinHeight = 120;
+    private const double PlayerMaxHeight = 400;
+
     public ICoordinatorSession CoordinatorSession => _session;
     public ChatFileContent File { get; }
     public string FileName => File.FileName;
@@ -26,6 +33,28 @@ public class ChatFileVM : ReactiveObject
     public bool IsMedia => IsAudio || IsVideo;
     public bool IsAudio => Client.Core.Media.MediaRuntime.IsEnabled && Path.GetExtension(FileName).ToLowerInvariant() is ".mp3" or ".wav";
     public (string Coordinator, int FileId) PlaybackKey => (_coordinator, File.Id);
+
+    /// <summary>
+    /// The height of the picture of the inline player, by the shape of the video where the server knows it,
+    /// so the player keeps its size while the frame loads and once it plays.
+    /// </summary>
+    public double PlayerHeight { get; }
+
+    /// <summary>The length of the video as the server read it, in seconds; 0 when unknown.</summary>
+    public double KnownDuration => File.Video?.Duration?.TotalSeconds ?? 0;
+
+    /// <summary>The frame the video is shown with until it plays; null until loaded, and again once no view shows it.</summary>
+    public IImage? Poster
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasPoster));
+        }
+    }
+
+    public bool HasPoster => Poster != null;
 
     public bool IsDownloading
     {
@@ -96,15 +125,23 @@ public class ChatFileVM : ReactiveObject
     private readonly string _coordinator;
     private CancellationTokenSource? _download;
     private bool _isFindingFile;
+    private readonly IChatImageService? _images;
+    private int _viewers;
+    private bool _isLoadingPoster;
 
     /// <param name="pickSaveTarget">
     /// Asks where to save: it is given the suggested file name and returns the stream to write into,
     /// or null when the user changed their mind.
     /// </param>
+    /// <param name="images">Loads the frame of a video; without it a video shows none.</param>
     public ChatFileVM(ChatFileContent file, ICoordinatorSession session, Func<string, Task<Stream?>> pickSaveTarget,
-        IMediaCache cache, Func<string, Task<bool>> openFile)
+        IMediaCache cache, Func<string, Task<bool>> openFile, IChatImageService? images = null)
     {
         File = file;
+        _images = images;
+        PlayerHeight = file.Video is { Width: > 0, Height: > 0 } video
+            ? Math.Clamp(Math.Round(PlayerWidth * video.Height / video.Width), PlayerMinHeight, PlayerMaxHeight)
+            : 225;
         _session = session;
         _pickSaveTarget = pickSaveTarget;
         _cache = cache;
@@ -116,6 +153,47 @@ public class ChatFileVM : ReactiveObject
         // The command finishes immediately so another click can cancel the ongoing download.
         OpenCommand = ReactiveCommand.Create(() => { _ = OpenOrCancel(); });
         _ = CheckDownloadedAsync();
+    }
+
+    public void Show()
+    {
+        if (++_viewers == 1 && Poster == null && IsVideo && File.Video?.HasPreview == true)
+            _ = LoadPosterAsync();
+    }
+
+    public void Hide()
+    {
+        if (_viewers > 0 && --_viewers == 0)
+            ReleasePoster(Poster);
+    }
+
+    private void ReleasePoster(IImage? picture)
+    {
+        if (Poster == picture)
+            Poster = null;
+        (picture as IDisposable)?.Dispose();
+    }
+
+    private async Task LoadPosterAsync()
+    {
+        if (_isLoadingPoster || _images == null)
+            return;
+
+        _isLoadingPoster = true;
+        try
+        {
+            var bitmap = await _images.LoadVideoPreviewAsync(_session, File.Id);
+            if (_viewers == 0)
+            {
+                ReleasePoster(bitmap);
+                return;
+            }
+            Poster = bitmap;
+        }
+        finally
+        {
+            _isLoadingPoster = false;
+        }
     }
 
     private Task<string?> FindCachedFileAsync() =>

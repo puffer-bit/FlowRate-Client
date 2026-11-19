@@ -285,4 +285,10 @@ public interface ICoordinatorGateway : IDisposable
     /// result, never as an exception.
     /// </summary>
     Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes the frame a video of a message is shown with, when <see cref="Client.Core.Chat.ChatFileVideo.HasPreview"/>
+    /// says it has one. Failures come back as the result, never as an exception.
+    /// </summary>
+    Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination, CancellationToken cancellationToken);
 }

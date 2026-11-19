@@ -435,6 +435,10 @@ public interface ICoordinatorSession : IDisposable
     Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress = null,
         CancellationToken cancellationToken = default);
 
+    /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadChatFilePreview"/>
+    Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken = default);
+
     /// <inheritdoc cref="Client.Application.Ports.ICoordinatorGateway.DownloadLinkPreviewImage"/>
     Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
         CancellationToken cancellationToken = default);

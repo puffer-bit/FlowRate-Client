@@ -254,6 +254,10 @@ public partial class CoordinatorSession
         CancellationToken cancellationToken = default) =>
         _gateway.DownloadAvatar(avatarId, destination, cancellationToken);
 
+    public Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken = default) =>
+        _gateway.DownloadChatFilePreview(fileId, destination, cancellationToken);
+
     public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
         CancellationToken cancellationToken = default) =>
         _gateway.DownloadLinkPreviewImage(previewId, destination, cancellationToken);
