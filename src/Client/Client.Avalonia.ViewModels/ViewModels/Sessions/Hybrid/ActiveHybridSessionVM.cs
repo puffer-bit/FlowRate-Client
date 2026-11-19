@@ -111,6 +111,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     /// </summary>
     public event Action<ActiveHybridSessionVM>? Closed;
 
+    /// <summary>
+    /// Someone moved us into another session. The server has already taken us out of this one and keeps a place
+    /// for us there, which whoever holds the session joins in its stead.
+    /// </summary>
+    public event Action<ActiveHybridSessionVM, PeerMovedOutEvent>? MovedOut;
+
     private readonly CompositeDisposable _disposables = new();
     private readonly EventSubscriptions _subscriptions = new();
 
@@ -558,8 +564,12 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             var peer = notification.Peer;
 
             // We are announced again after every rejoin, with the admission the server kept
+            // A moved peer is heard once its client joins, which announces it again
             if (peer.UserId != _coordinatorSession.GetCurrentUser().Id)
-                _sounds.Play(SoundEvent.Join);
+            {
+                if (notification.MovedFromSessionId == null)
+                    _sounds.Play(SoundEvent.Join);
+            }
             else
                 await UpdateAdmissionAsync(peer.State);
 
@@ -624,6 +634,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         {
             if (notification is PeerKickedEvent kicked)
                 Dispatcher.UIThread.Post(() => _ = OnKicked(kicked));
+            else if (notification is PeerMovedOutEvent moved)
+                Dispatcher.UIThread.Post(() => OnMovedOut(moved));
             else if (notification is PeerRejectedEvent rejected)
                 Dispatcher.UIThread.Post(() => _ = OnRejected(rejected));
             else
@@ -635,7 +647,9 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             return;
         }
 
-        _sounds.Play(notification is PeerKickedEvent or PeerRejectedEvent ? SoundEvent.UserKicked : SoundEvent.Leave);
+        _sounds.Play(notification is PeerKickedEvent or PeerRejectedEvent or PeerMovedOutEvent
+            ? SoundEvent.UserKicked
+            : SoundEvent.Leave);
 
         Dispatcher.UIThread.Post(() =>
         {
@@ -668,6 +682,19 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _notifications.Show(NotificationType.Warning, Strings.Get("hybrid.kicked.title"),
             Strings.Format("hybrid.kicked.text", ("session", Model.Name),
                 ("user", initiator?.Username ?? initiatorId.ToString())));
+    }
+
+    // The server has already taken us out, so the session is closed without leaving it and the target is joined
+    private void OnMovedOut(PeerMovedOutEvent moved)
+    {
+        if (IsClosed)
+            return;
+
+        _isJoined = false;
+        _sounds.Play(SoundEvent.UserKicked);
+        MovedOut?.Invoke(this, moved);
+        // Nobody joined the target in our stead
+        CloseSession();
     }
 
     // The server took us out while we waited, so the session is closed without leaving it

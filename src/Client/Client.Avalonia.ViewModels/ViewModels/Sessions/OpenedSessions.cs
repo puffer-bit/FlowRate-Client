@@ -8,6 +8,7 @@ using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Core.Coordinator;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
@@ -63,6 +64,12 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     /// </summary>
     public event Action<IMainWindowContentVM>? SessionClosed;
 
+    /// <summary>
+    /// Someone moved us out of the hybrid session we were in. Whoever handles it joins the target with
+    /// <see cref="Open"/>, or the session just closes.
+    /// </summary>
+    public event Action<ActiveHybridSessionVM, PeerMovedOutEvent>? HybridSessionMovedOut;
+
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly ChatSessionServices _chatServices;
     private readonly ChatReadTracker _readTracker;
@@ -114,6 +121,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
             return;
 
         session.Closed -= OnHybridSessionClosed;
+        session.MovedOut -= OnHybridSessionMovedOut;
         HybridSession = null;
         SessionClosed?.Invoke(session);
         session.Dispose();
@@ -193,6 +201,7 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
 
         var session = _createHybridSession(hybridModel);
         session.Closed += OnHybridSessionClosed;
+        session.MovedOut += OnHybridSessionMovedOut;
         HybridSession = session;
 
         return session;
@@ -203,6 +212,12 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
     {
         if (session == HybridSession)
             LeaveHybridSession();
+    }
+
+    private void OnHybridSessionMovedOut(ActiveHybridSessionVM session, PeerMovedOutEvent moved)
+    {
+        if (session == HybridSession)
+            HybridSessionMovedOut?.Invoke(session, moved);
     }
 
     // Deletions arrive on the socket thread

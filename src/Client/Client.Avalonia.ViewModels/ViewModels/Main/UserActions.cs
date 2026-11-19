@@ -35,6 +35,9 @@ public sealed class UserActions
     public ReactiveCommand<UserStatus, RxVoid> SetStatusCommand { get; }
     public ReactiveCommand<(int SessionId, int UserId), RxVoid> KickPeerCommand { get; }
 
+    /// <summary>Moves a peer of one hybrid session into another.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, int TargetSessionId), RxVoid> MovePeerCommand { get; }
+
     /// <summary>Bans a user from the coordinator, once the user agrees to it.</summary>
     public ReactiveCommand<(int UserId, string Name), RxVoid> BanUserCommand { get; }
     public ReactiveCommand<int, RxVoid> UnbanUserCommand { get; }
@@ -92,6 +95,8 @@ public sealed class UserActions
         }, isConnected);
         SetStatusCommand = ReactiveCommand.CreateFromTask<UserStatus>(SetStatus, isConnected);
         KickPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId)>(KickPeer, isConnected);
+        MovePeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, int TargetSessionId)>(MovePeer,
+            isConnected);
         BanUserCommand = ReactiveCommand.CreateFromTask<(int UserId, string Name)>(BanUser, isConnected);
         UnbanUserCommand = ReactiveCommand.CreateFromTask<int>(UnbanUser, isConnected);
         AdmitPeerCommand = ReactiveCommand.CreateFromTask<(int SessionId, int UserId, bool IsApproved)>(AdmitPeer,
@@ -180,6 +185,18 @@ public sealed class UserActions
             return;
 
         _notifications.Show(NotificationType.Error, Strings.Get("peer.kick.failed.title"),
+            Strings.Format("peer.kick.failed.text", ("code", (int?)result.Error)));
+    }
+
+    private async Task MovePeer((int SessionId, int UserId, int TargetSessionId) move)
+    {
+        var result = await Session.MoveHybridSessionPeer(move.SessionId, move.UserId, move.TargetSessionId);
+
+        // A rejection is reported on its own; a peer that is already gone needs no word
+        if (result.IsSuccess || result.IsRejected || result.Error == ErrorCode.PeerNotFound)
+            return;
+
+        _notifications.Show(NotificationType.Error, Strings.Get("peer.move.failed.title"),
             Strings.Format("peer.kick.failed.text", ("code", (int?)result.Error)));
     }
 

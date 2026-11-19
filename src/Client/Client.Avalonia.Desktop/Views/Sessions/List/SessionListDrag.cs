@@ -23,6 +23,8 @@ namespace Client.Views.Sessions.List;
 /// sessions, or onto a category header to go first into that category; a category goes between
 /// categories. The row stays in place as an empty slot while a copy of its name follows the pointer,
 /// and a line shows where it will land.
+/// A peer of a hybrid session is dragged the same way onto another hybrid session, which moves the user there;
+/// the session it would land in lights up instead of a line.
 /// </summary>
 internal sealed class SessionListDrag
 {
@@ -45,7 +47,10 @@ internal sealed class SessionListDrag
     private readonly DispatcherTimer _scrollTimer;
 
     private ISessionListRow? _pressedRow;
-    private Border? _sourceHeader;
+    private Control? _sourceHeader;
+    private (PeerVM Peer, HybridSessionVM Session)? _pressedPeer;
+    private (PeerVM Peer, HybridSessionVM Session)? _draggedPeer;
+    private HybridSessionVM? _peerTarget;
     private Point _pressPoint;
     private IPointer? _pointer;
     private ISessionListRow? _draggedRow;
@@ -108,15 +113,34 @@ internal sealed class SessionListDrag
         _list.DetachedFromVisualTree += (_, _) => Cancel();
     }
 
-    public bool IsDragging => _draggedRow != null;
+    public bool IsDragging => _draggedRow != null || _draggedPeer != null;
 
     private void OnPressed(object? sender, PointerPressedEventArgs e)
     {
         Cancel();
 
-        // Private chats follow recent activity; only the server channel list can be arranged.
         if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
-            || _viewModel() is not { IsStale: false, IsPrivateMode: false, Access.CanManageSessions: true })
+            || _viewModel() is not { IsStale: false, IsPrivateMode: false } viewModel)
+            return;
+
+        if (e.Source is Visual peerSource && FindPeer(peerSource) is { } peerItem)
+        {
+            if (peerSource.FindAncestorOfType<Button>(true) == null
+                && peerSource.FindAncestorOfType<Slider>(true) == null
+                && peerItem.DataContext is PeerVM peer && viewModel.CanDragPeer(peer)
+                && RowOf(peerSource) is HybridSessionVM session)
+            {
+                _pressedPeer = (peer, session);
+                _sourceHeader = peerItem;
+                _pressPoint = e.GetPosition(_list);
+                _pointer = e.Pointer;
+            }
+
+            return;
+        }
+
+        // Private chats follow recent activity; only the server channel list can be arranged.
+        if (!viewModel.Access.CanManageSessions)
             return;
 
         // Only the header of a row is a handle: the peers below a session and the controls in a
@@ -138,12 +162,12 @@ internal sealed class SessionListDrag
 
     private void OnMoved(object? sender, PointerEventArgs e)
     {
-        if (_pressedRow == null || e.Pointer != _pointer)
+        if ((_pressedRow == null && _pressedPeer == null) || e.Pointer != _pointer)
             return;
 
         _lastPoint = e.GetPosition(_list);
 
-        if (_draggedRow == null)
+        if (!IsDragging)
         {
             var moved = _lastPoint - _pressPoint;
             if (Math.Sqrt(moved.X * moved.X + moved.Y * moved.Y) < StartDistance)
@@ -158,9 +182,22 @@ internal sealed class SessionListDrag
 
     private void OnReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_draggedPeer is { } dragged)
+        {
+            var targetSession = _peerTarget;
+            _pressedPeer = null;
+            End();
+            e.Handled = true;
+
+            if (targetSession != null)
+                _viewModel()?.MovePeer(dragged.Session, dragged.Peer, targetSession);
+            return;
+        }
+
         if (_draggedRow == null)
         {
             _pressedRow = null;
+            _pressedPeer = null;
             _sourceHeader = null;
             return;
         }
@@ -196,22 +233,32 @@ internal sealed class SessionListDrag
 
     private void Begin(IPointer pointer)
     {
-        _draggedRow = _pressedRow;
-        _draggedRow!.IsDragged = true;
         pointer.Capture(_list);
 
-        _ghostText.Text = _draggedRow switch
+        if (_pressedPeer is { } pressedPeer)
         {
-            ISessionVM session => session.Model.Name,
-            SessionCategoryVM category => category.Name,
-            _ => ""
-        };
-        _ghostIcon.Bind(Image.SourceProperty, new DynamicResourceExtension(_draggedRow switch
+            _draggedPeer = pressedPeer;
+            _ghostText.Text = pressedPeer.Peer.DisplayedName;
+            _ghostIcon.Bind(Image.SourceProperty, new DynamicResourceExtension("BaseUserIcon"));
+        }
+        else
         {
-            ChatSessionVM => "HashIcon",
-            ISessionVM => "HybridSessionIcon",
-            _ => "ExpandIcon"
-        }));
+            _draggedRow = _pressedRow;
+            _draggedRow!.IsDragged = true;
+
+            _ghostText.Text = _draggedRow switch
+            {
+                ISessionVM session => session.Model.Name,
+                SessionCategoryVM category => category.Name,
+                _ => ""
+            };
+            _ghostIcon.Bind(Image.SourceProperty, new DynamicResourceExtension(_draggedRow switch
+            {
+                ChatSessionVM => "HashIcon",
+                ISessionVM => "HybridSessionIcon",
+                _ => "ExpandIcon"
+            }));
+        }
         _ghost.IsVisible = true;
         _dragClock.Restart();
         _sourceOutline.StrokeDashOffset = 0;
@@ -223,7 +270,8 @@ internal sealed class SessionListDrag
     private void Cancel()
     {
         _pressedRow = null;
-        if (_draggedRow != null)
+        _pressedPeer = null;
+        if (IsDragging)
             End();
         _sourceHeader = null;
     }
@@ -235,8 +283,10 @@ internal sealed class SessionListDrag
         if (_draggedRow != null)
             _draggedRow.IsDragged = false;
         _draggedRow = null;
+        _draggedPeer = null;
         _target = null;
         Highlight(null);
+        HighlightSession(null);
         _ghost.IsVisible = false;
         _sourceOutline.IsVisible = false;
         _sourceHeader = null;
@@ -254,6 +304,14 @@ internal sealed class SessionListDrag
         var point = _list.TranslatePoint(_lastPoint, _layer) ?? _lastPoint;
         Canvas.SetLeft(_ghost, Math.Clamp(point.X + 16, 0, Math.Max(0, _layer.Bounds.Width - _ghost.DesiredSize.Width - 8)));
         Canvas.SetTop(_ghost, Math.Clamp(point.Y + 12, 0, Math.Max(0, _layer.Bounds.Height - _ghost.DesiredSize.Height - 8)));
+
+        if (_draggedPeer is { } dragged)
+        {
+            _target = null;
+            HighlightSession(FindPeerTarget(dragged.Peer, dragged.Session));
+            _indicator.IsVisible = false;
+            return;
+        }
 
         _target = _draggedRow is SessionCategoryVM ? FindCategoryTarget() : FindSessionTarget();
 
@@ -323,6 +381,35 @@ internal sealed class SessionListDrag
         return new Target(viewModel.CategoryOf(lastRow), null, lastTop + lastHeight);
     }
 
+    /// <summary>The hybrid session under the pointer, header or peers, when the peer may be moved into it.</summary>
+    private HybridSessionVM? FindPeerTarget(PeerVM peer, HybridSessionVM source)
+    {
+        if (_viewModel() is not { } viewModel)
+            return null;
+
+        foreach (var (row, top, height) in VisibleRows())
+        {
+            if (_lastPoint.Y < top || _lastPoint.Y >= top + height)
+                continue;
+
+            return row is HybridSessionVM session && viewModel.CanMovePeer(source, peer, session) ? session : null;
+        }
+
+        return null;
+    }
+
+    private void HighlightSession(HybridSessionVM? session)
+    {
+        if (_peerTarget == session)
+            return;
+
+        if (_peerTarget != null)
+            _peerTarget.IsDropTarget = false;
+        _peerTarget = session;
+        if (session != null)
+            session.IsDropTarget = true;
+    }
+
     private Target? FindCategoryTarget()
     {
         Highlight(null);
@@ -379,7 +466,7 @@ internal sealed class SessionListDrag
 
     private void AutoScroll()
     {
-        if (_draggedRow == null || _list.FindDescendantOfType<ScrollViewer>() is not { } scroll)
+        if (!IsDragging || _list.FindDescendantOfType<ScrollViewer>() is not { } scroll)
             return;
 
         var height = _list.Bounds.Height;
@@ -412,8 +499,10 @@ internal sealed class SessionListDrag
 
     private void UpdateSourceOutline()
     {
-        // Follow the original header through scrolling and layout changes, excluding its peers.
-        if (_sourceHeader is not { } header || header.DataContext != _draggedRow
+        // Follow the original header through scrolling and layout changes, excluding its peers;
+        // a dragged peer is outlined on its own row
+        var dragged = (object?)_draggedPeer?.Peer ?? _draggedRow;
+        if (_sourceHeader is not { } header || dragged == null || header.DataContext != dragged
             || header.TranslatePoint(default, _layer) is not { } origin
             || _list.TranslatePoint(default, _layer) is not { } listOrigin)
         {
@@ -432,6 +521,10 @@ internal sealed class SessionListDrag
             listOrigin.X - left, listOrigin.Y - top, _list.Bounds.Width, _list.Bounds.Height));
         _sourceOutline.IsVisible = true;
     }
+
+    // The row of a peer in the list of peers under a hybrid session
+    private static ListBoxItem? FindPeer(Visual source) =>
+        source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault(item => item.DataContext is PeerVM);
 
     private static Border? FindHeader(Visual source) =>
         source.GetSelfAndVisualAncestors().OfType<Border>()

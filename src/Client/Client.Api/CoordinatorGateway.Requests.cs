@@ -12,12 +12,14 @@ using Shared.Models.Requests.Coordinator;
 using Shared.Models.Requests.Heartbeat;
 using Shared.Models.Requests.SessionActions.ChatSession;
 using Shared.Models.Requests.SessionActions.Generic;
+using Shared.Models.Requests.SessionActions.HybridSession;
 using Shared.Models.Responses;
 using Shared.Models.Responses.Auth;
 using Shared.Models.Responses.Coordinator;
 using Shared.Models.Responses.Heartbeat;
 using Shared.Models.Responses.SessionActions.ChatSession;
 using Shared.Models.Responses.SessionActions.Generic;
+using Shared.Models.Responses.SessionActions.HybridSession;
 using Shared.Validation;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
@@ -363,6 +365,10 @@ internal partial class CoordinatorGateway
 
     public Task KickFromHybridSession(int sessionId, int userId) =>
         SendRequestAsync<KickFromSessionResponse>(new KickFromSessionRequest(sessionId, userId, SessionType.Hybrid, null));
+
+    public Task MoveHybridSessionPeer(int sessionId, int userId, int targetSessionId) =>
+        SendRequestAsync<HybridSessionMovePeerResponse>(
+            new HybridSessionMovePeerRequest(sessionId, userId, targetSessionId));
 
     public Task ApproveInHybridSession(int sessionId, int userId) =>
         SendRequestAsync<ApproveUserResponse>(new ApproveUserRequest(sessionId, userId, SessionType.Hybrid));

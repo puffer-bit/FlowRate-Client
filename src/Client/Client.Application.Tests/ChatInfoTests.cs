@@ -67,10 +67,16 @@ public sealed class ChatInfoTests
 
         async Task ClickHeader()
         {
+            // Observe the full busy/ready cycle: Execute can complete before the scheduler
+            // delivers either CanExecute change, leaving the previous true value visible.
+            var ready = status.OpenInfoCommand.CanExecute
+                .SkipWhile(enabled => enabled)
+                .FirstAsync(enabled => enabled)
+                .ToTask(TestContext.Current.CancellationToken);
             Task? execution = null;
             await TestUiThread.RunAsync(() => execution = status.OpenInfoCommand.Execute().ToTask());
             await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            await CommandWait.UntilCanExecuteAsync(status.OpenInfoCommand);
+            await ready.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         }
 
         await ClickHeader();

@@ -331,6 +331,12 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     Task<RequestResult> KickFromHybridSession(int sessionId, int userId);
 
+    /// <summary>
+    /// Moves another user from one hybrid session to another; the server keeps a place for them there
+    /// and their client joins it.
+    /// </summary>
+    Task<RequestResult> MoveHybridSessionPeer(int sessionId, int userId, int targetSessionId);
+
     /// <summary>Lets a user waiting for the host into the hybrid session.</summary>
     Task<RequestResult> ApproveInHybridSession(int sessionId, int userId);
 

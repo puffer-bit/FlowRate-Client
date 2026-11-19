@@ -288,6 +288,15 @@ public class PeerVM : ReactiveObject
     }
 
     /// <summary>
+    /// The roles of the current user let it move this user into another session. Never ourselves.
+    /// </summary>
+    public bool CanMove
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// Removes the user from the session. Offered only when <see cref="CanKick"/>.
     /// </summary>
     public void Kick()

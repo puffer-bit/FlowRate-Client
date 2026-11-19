@@ -283,6 +283,14 @@
     <Style Selector="Border.categoryHeader.dropTarget Path.categoryChevron">
         <Setter Property="Stroke" Value="{DynamicResource SessionDropIndicatorBrush}"/>
     </Style>
+    <!-- A peer dragged over a hybrid session would be moved into it -->
+    <Style Selector="Border.sessionHeader.dropTarget">
+        <Setter Property="Background" Value="{DynamicResource SessionDropTargetBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SessionDropIndicatorBrush}"/>
+    </Style>
+    <Style Selector="Border.sessionHeader.dropTarget TextBlock.sessionName">
+        <Setter Property="Foreground" Value="{DynamicResource SessionDropIndicatorBrush}"/>
+    </Style>
     <!-- The row being dragged stays in place as an empty slot until it is dropped -->
     <Style Selector="Border.sessionHeader.dragged, Border.categoryHeader.dragged">
         <Setter Property="Background" Value="{DynamicResource SessionDragSourceBrush}"/>

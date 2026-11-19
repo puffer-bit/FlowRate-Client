@@ -81,6 +81,13 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
 
     public IReadOnlyList<MoveTargetVM> MoveTargets { get; set; } = [];
 
+    /// <summary>A peer of another session is dragged over this one and would be moved here.</summary>
+    public bool IsDropTarget
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>The current user hosts the session.</summary>
     public bool IsHost
     {
@@ -299,6 +306,9 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
                 .HasFlag(Permission.Speak);
         peer.CanKick = !peer.IsCurrentUser
                        && _permissions.CanInSessionOn(Permission.KickMembers, IsHost, peer.UserData?.RoleIds ?? []);
+        // As the server checks it: a role moves only users below it
+        peer.CanMove = !peer.IsCurrentUser && _permissions.HasIn(Model, Permission.MoveMembers)
+                       && _permissions.Outranks(peer.UserData?.RoleIds ?? []);
         peer.CanApprove = !peer.IsCurrentUser && peer.IsWaiting
                           && _permissions.CanInSession(Permission.ApproveMembers, IsHost);
         peer.IsPokeAllowed = !peer.IsCurrentUser && _permissions.HasIn(Model, Permission.PokeMembers);

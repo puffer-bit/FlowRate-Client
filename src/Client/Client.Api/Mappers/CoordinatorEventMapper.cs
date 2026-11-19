@@ -60,6 +60,10 @@ internal static class CoordinatorEventMapper
 
         HybridSessionPeerJoinedNotification joined =>new PeerJoinedEvent(joined.SessionId, joined.Peer.ToModel()),
         HybridSessionPeerLeftNotification left => new PeerLeftEvent(left.SessionId, left.UserId),
+        HybridSessionPeerMovedOutNotification moved =>
+            new PeerMovedOutEvent(moved.SessionId, moved.UserId, moved.TargetSessionId, moved.InitiatorUserId),
+        HybridSessionPeerMovedInNotification moved =>
+            new PeerJoinedEvent(moved.SessionId, moved.Peer.ToModel(), moved.SourceSessionId),
         // Without an initiator and a reason the server deleted the session, which is announced on its own;
         // with a reason the server removed the peer itself
         HybridSessionPeerKickedNotification { InitiatorUserId: null, Reason: null } kicked =>
