@@ -112,7 +112,12 @@ public sealed record SessionNodeReplacedEvent(int SessionId) : HybridSessionNode
 /// </summary>
 public abstract record HybridSessionPeerEvent(int SessionId, int UserId) : CoordinatorEvent;
 
-public sealed record PeerJoinedEvent(int SessionId, PeerModel Peer) : HybridSessionPeerEvent(SessionId, Peer.UserId);
+/// <param name="MovedFromSessionId">
+/// Set when someone moved the peer here from another session: the server keeps its place, and the peer is
+/// announced again once its client actually joins.
+/// </param>
+public sealed record PeerJoinedEvent(int SessionId, PeerModel Peer, int? MovedFromSessionId = null)
+    : HybridSessionPeerEvent(SessionId, Peer.UserId);
 
 public record PeerLeftEvent(int SessionId, int UserId) : HybridSessionPeerEvent(SessionId, UserId);
 
@@ -121,6 +126,13 @@ public record PeerLeftEvent(int SessionId, int UserId) : HybridSessionPeerEvent(
 /// Everything that handles a peer leaving handles it too.
 /// </summary>
 public sealed record PeerKickedEvent(int SessionId, int UserId, int? InitiatorUserId, string? Reason)
+    : PeerLeftEvent(SessionId, UserId);
+
+/// <summary>
+/// Another user moved the peer out of the session into <paramref name="TargetSessionId"/>, where the server keeps a
+/// place for it. Everything that handles a peer leaving handles it too.
+/// </summary>
+public sealed record PeerMovedOutEvent(int SessionId, int UserId, int TargetSessionId, int? InitiatorUserId)
     : PeerLeftEvent(SessionId, UserId);
 
 /// <summary>

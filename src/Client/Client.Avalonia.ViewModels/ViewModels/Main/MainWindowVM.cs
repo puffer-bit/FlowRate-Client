@@ -365,6 +365,7 @@ public partial class MainWindowVM : ReactiveObject
             OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access)
         { SessionList = SessionsList };
         SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
+        SessionsList.MovePeerCommand = _users.MovePeerCommand;
         _users.OpenDirectChat = async user =>
         {
             if (_coordinatorSession is not { } coordinator) return;
@@ -585,6 +586,34 @@ public partial class MainWindowVM : ReactiveObject
     {
         if (CurrentContent == session)
             ChangeContent(null);
+    }
+
+    /// <summary>
+    /// Someone moved us into another session: the server keeps a place for us there, so it is joined at once,
+    /// and shown when the one we left was.
+    /// </summary>
+    private void OnHybridSessionMovedOut(ActiveHybridSessionVM session, PeerMovedOutEvent moved)
+    {
+        var target = SessionsList.Sessions.FirstOrDefault(item =>
+            item is HybridSessionVM && item.Model.Id == moved.TargetSessionId);
+        if (target != null && OpenedSessions is { } sessions)
+        {
+            var wasShown = CurrentContent == session;
+            var joined = sessions.Open(target.Model);
+            if (wasShown && joined != null)
+                ChangeContent(joined);
+        }
+
+        _ = ShowMovedAsync(moved, target?.Model.Name ?? moved.TargetSessionId.ToString());
+    }
+
+    private async Task ShowMovedAsync(PeerMovedOutEvent moved, string target)
+    {
+        var initiator = moved.InitiatorUserId is { } initiatorId && _coordinatorSession is { } coordinator
+            ? (await coordinator.GetUser(initiatorId))?.Username ?? initiatorId.ToString()
+            : "";
+        _notifications.Show(NotificationType.Info, Strings.Get("hybrid.moved.title"),
+            Strings.Format("hybrid.moved.text", ("session", target), ("user", initiator)));
     }
 
     private void OnHybridSessionChanged(ActiveHybridSessionVM? session)

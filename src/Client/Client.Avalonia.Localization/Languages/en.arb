@@ -1189,6 +1189,15 @@
       "session": {}
     }
   },
+  "hybrid.moved.title": "Moved to another session",
+  "hybrid.moved.text": "{user} moved you to the session \"{session}\"",
+  "@hybrid.moved.text": {
+    "placeholders": {
+      "user": {},
+      "session": {}
+    }
+  },
+  "peer.move.failed.title": "Could not move the user",
   "hybrid.kickedByServer.text": "The server removed you from the session \"{session}\": {reason}",
   "@hybrid.kickedByServer.text": {
     "placeholders": {

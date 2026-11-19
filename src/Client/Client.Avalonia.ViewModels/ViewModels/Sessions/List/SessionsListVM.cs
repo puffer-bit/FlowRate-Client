@@ -201,6 +201,33 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ChatReadTracker _readTracker;
     private readonly ILogger<SessionsListVM> _logger;
 
+    /// <summary>Moves a peer of one hybrid session into another; dragging peers is off without it.</summary>
+    public ReactiveCommand<(int SessionId, int UserId, int TargetSessionId), RxVoid>? MovePeerCommand { get; set; }
+
+    /// <summary>The peer may be picked up and dragged into another hybrid session.</summary>
+    public bool CanDragPeer(PeerVM peer) => MovePeerCommand != null && !IsStale && peer is { CanMove: true, IsLeaving: false };
+
+    /// <summary>
+    /// Whether the peer may be moved from one session into the other, as far as the list knows: the target must
+    /// be another session the current user may move peers into and the moved user may see.
+    /// </summary>
+    public bool CanMovePeer(HybridSessionVM source, PeerVM peer, HybridSessionVM target)
+    {
+        if (target == source || !target.CanView || target.Model is not HybridSessionModel
+            || target.Peers.Any(other => other.PeerData.UserId == peer.PeerData.UserId && !other.IsLeaving))
+            return false;
+
+        var permissions = Access.Permissions;
+        return permissions.HasIn(target.Model, Permission.ViewSessions | Permission.MoveMembers)
+               && permissions.InSession(target.Model, peer.UserData?.RoleIds ?? []).HasFlag(Permission.ViewSessions);
+    }
+
+    public void MovePeer(HybridSessionVM source, PeerVM peer, HybridSessionVM target)
+    {
+        if (MovePeerCommand != null && CanMovePeer(source, peer, target))
+            MovePeerCommand.Execute((source.Model.Id, peer.PeerData.UserId, target.Model.Id)).Subscribe();
+    }
+
     public SessionsListVM(ReactiveCommand<RxVoid, RxVoid> connectCommand,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> leaveChatCommand,

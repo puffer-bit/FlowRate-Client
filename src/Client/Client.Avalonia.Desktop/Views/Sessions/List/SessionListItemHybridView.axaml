@@ -27,6 +27,7 @@
             Classes.entered="{Binding IsEntered}"
             Classes.shown="{Binding IsShown}"
             Classes.dragged="{Binding IsDragged}"
+            Classes.dropTarget="{Binding IsDropTarget}"
             Tag="{Binding}"
             Tapped="OnHeaderTapped">
             <Border.ContextFlyout>

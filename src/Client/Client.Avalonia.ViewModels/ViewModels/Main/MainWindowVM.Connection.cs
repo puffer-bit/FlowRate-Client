@@ -461,6 +461,7 @@ public partial class MainWindowVM
                 _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
+            sessions.HybridSessionMovedOut += OnHybridSessionMovedOut;
             OpenedSessions = sessions;
         }
 
@@ -494,6 +495,7 @@ public partial class MainWindowVM
         sessions.Dispose();
         sessions.SessionClosed -= OnSessionClosed;
         sessions.HybridSessionChanged -= OnHybridSessionChanged;
+        sessions.HybridSessionMovedOut -= OnHybridSessionMovedOut;
     }
 
     /// <summary>

@@ -82,6 +82,11 @@ public partial class CoordinatorSession
             ? Task.FromResult<RequestResult>(ErrorCode.CannotTargetSelf)
             : SendAsync(() => _gateway.KickFromHybridSession(sessionId, userId));
 
+    public Task<RequestResult> MoveHybridSessionPeer(int sessionId, int userId, int targetSessionId) =>
+        userId == _currentUser?.Id
+            ? Task.FromResult<RequestResult>(ErrorCode.CannotTargetSelf)
+            : SendAsync(() => _gateway.MoveHybridSessionPeer(sessionId, userId, targetSessionId));
+
     public Task<RequestResult> ApproveInHybridSession(int sessionId, int userId) =>
         SendAsync(() => _gateway.ApproveInHybridSession(sessionId, userId));
 
