@@ -15,11 +15,25 @@
              Padding="4">
 
     <UserControl.Styles>
+        <!-- The bar slides in from the top edge as the pointer comes near it, not only onto it -->
         <Style Selector="Border.streamBar">
             <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="translateY(-40px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
         </Style>
-        <Style Selector="Border.streamBar:pointerover, hybridViews|HybridScreenTile.keyboardControls Border.streamBar">
+        <Style Selector="Panel.streamBarZone:pointerover Border.streamBar, hybridViews|HybridScreenTile.keyboardControls Border.streamBar">
             <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+        </Style>
+        <!-- Over the picture the reach is the upper part of the tile; on the card it stays the bar
+             itself, so the zone does not cover the watch button -->
+        <Style Selector="Panel.streamBarZone.watched">
+            <Setter Property="Height" Value="120"/>
         </Style>
         <Style Selector="Button.streamBarAction">
             <Setter Property="Width" Value="28"/>
@@ -112,10 +126,15 @@
                                            Margin="8"/>
             </Panel>
 
-            <!-- Keep the transparent bar hit-testable so hovering the top edge reveals its controls.
+            <!-- The transparent zone around the bar is hit-testable so nearing the top edge reveals its controls.
                  The controls are the same on the card and on the picture; only the eye
                  changes with what it does. The bar is opaque: its icons and the name are in the
                  text color of the theme, which the picture can match -->
+            <Panel Classes="streamBarZone"
+                   Classes.watched="{Binding IsWatched}"
+                   VerticalAlignment="Top"
+                   Background="Transparent"
+                   DoubleTapped="OnBarZoneDoubleTapped">
             <Border Classes="streamBar"
                     VerticalAlignment="Top"
                     Padding="8,4"
@@ -173,6 +192,7 @@
                     </Panel>
                 </Grid>
             </Border>
+            </Panel>
         </Panel>
     </Border>
 </UserControl>

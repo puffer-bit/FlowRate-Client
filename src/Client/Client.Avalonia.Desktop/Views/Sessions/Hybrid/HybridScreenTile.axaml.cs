@@ -109,6 +109,16 @@ public partial class HybridScreenTile : UserControl
         e.Handled = true;
     }
 
+    // The zone of the bar lies over the top of the picture: a double click there, off the bar's
+    // controls, expands the picture just as on the rest of it
+    private void OnBarZoneDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (!ReferenceEquals(e.Source, sender) || _stream is not { IsWatched: true })
+            return;
+
+        OnPictureDoubleTapped(sender, e);
+    }
+
     // The preview of our own screen is made as high as it is drawn. Rounded up to a step, so that a
     // window that is being resized does not have the preview made anew at every pixel
     private void ReportPictureHeight()
