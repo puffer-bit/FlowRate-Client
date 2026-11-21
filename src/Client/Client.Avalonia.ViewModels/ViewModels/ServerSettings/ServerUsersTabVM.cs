@@ -14,6 +14,7 @@ using Client.ViewModels.Dialogs;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Enums.User;
+using Shared.Models.DataTransferObjects;
 
 using Result = Client.ViewModels.Dialogs.Result;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -28,23 +29,37 @@ namespace Client.ViewModels.ServerSettings;
 public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
 {
     public const int PageSize = 20;
-    public ObservableCollection<BanRowVM> Bans { get; } = new();
-    public ReactiveCommand<BanRowVM, RxVoid> RevokeBanCommand { get; }
-    public bool CanManageBans => _coordinatorSession.Permissions.Has(Permission.BanMembers);
+    // The active bans by the user they were made for, shown in the rows; only users who may ban get them
+    private readonly Dictionary<int, List<BanDTO>> _bans = new();
+    private bool CanManageBans => _coordinatorSession.Permissions.Has(Permission.BanMembers);
 
     private async Task LoadBansAsync()
     {
+        _bans.Clear();
         if (!CanManageBans) return;
         var response = await _coordinatorSession.GetBans();
-        if (!response.IsSuccess || response.Value == null) return;
-        Bans.Clear();
-        foreach (var ban in response.Value) Bans.Add(new BanRowVM(ban));
+        if (response.Value == null) return;
+        foreach (var ban in response.Value)
+            if (ban.UserId is { } userId)
+                (_bans.TryGetValue(userId, out var list) ? list : _bans[userId] = []).Add(ban);
     }
 
-    private async Task RevokeBanAsync(BanRowVM row)
+    /// <summary>One line per ban: by what, until when, by whom, and the reason when there is one.</summary>
+    private string? DescribeBans(int userId)
     {
-        await TellFailureAsync(await _coordinatorSession.RevokeBan(row.Ban.Id), "serverSettings.users.action.unban");
-        await LoadBansAsync();
+        if (!_bans.TryGetValue(userId, out var bans) || bans.Count == 0) return null;
+        return string.Join(Environment.NewLine, bans.Select(ban =>
+        {
+            var kind = ban.Kind == BanKind.Ip
+                ? $"{Strings.Get("ban.kind.ip")} {ban.Address}"
+                : Strings.Get("ban.kind.account");
+            var until = ban.ExpiresAt is { } expires
+                ? $"{Strings.Get("ban.expires")} {expires.ToLocalTime():g}"
+                : Strings.Get("ban.duration.permanent");
+            var author = _users.TryGetValue(ban.CreatedBy, out var user) ? user.Username : $"#{ban.CreatedBy}";
+            var line = $"{kind} · {until} · {Strings.Format("ban.by", ("name", author))}";
+            return string.IsNullOrWhiteSpace(ban.Reason) ? line : $"{line}{Environment.NewLine}{ban.Reason}";
+        }));
     }
 
 
@@ -129,7 +144,6 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     public ServerUsersTabVM(CoordinatorSettingsFormVM form, ICoordinatorSession coordinatorSession,
         Interaction<MessageBoxVM, Result> showMessageBox, ReactiveCommand<int, RxVoid> viewProfileCommand)
     {
-        RevokeBanCommand = ReactiveCommand.CreateFromTask<BanRowVM>(RevokeBanAsync);
         Form = form;
         _coordinatorSession = coordinatorSession;
         _showMessageBox = showMessageBox;
@@ -192,8 +206,9 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     {
         if (row.IsBanned)
         {
-            await SetStateAsync(row, UserState.Normal, "serverSettings.users.action.unban");
+            await TellFailureAsync(await _coordinatorSession.UnbanUser(row.User.Id), "serverSettings.users.action.unban");
             await LoadBansAsync();
+            Rebuild();
             return;
         }
 
@@ -203,9 +218,10 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
                 Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        await TellFailureAsync(await _coordinatorSession.SetUserState(row.User.Id, UserState.Banned,
+        await TellFailureAsync(await _coordinatorSession.BanUser(row.User.Id,
             form.Kind, form.Reason, form.ExpiresAt, form.Address), "serverSettings.users.action.ban");
         await LoadBansAsync();
+        Rebuild();
     }
 
     // The new state comes back as an update of the user
@@ -260,8 +276,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private void OnPermissionsChanged(CoordinatorPermissions permissions) => Dispatcher.UIThread.Post(() =>
     {
         CanEditLimits = permissions.Has(Permission.ManageCoordinatorSettings);
-        this.RaisePropertyChanged(nameof(CanManageBans));
-        if (!CanManageBans) Bans.Clear();
+        if (!CanManageBans) _bans.Clear();
         Rebuild();
     });
 
@@ -306,7 +321,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
             // As the server decides: the current user acts only on users below its highest role, never on itself
             var isSelf = user.Id == currentUserId;
             var outranks = !isSelf && permissions.Outranks(user.RoleIds);
-            Users.Add(new ServerUserRowVM(user, userRoles, isSelf,
+            Users.Add(new ServerUserRowVM(user, userRoles, DescribeBans(user.Id), isSelf,
                 canEditProfile: outranks && permissions.Has(Permission.ManageUsers),
                 canModerate: outranks && permissions.Has(Permission.BanMembers),
                 this));
@@ -337,7 +352,6 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         _loadingChanged.Dispose();
         _isLoading.Dispose();
         _isBusy.Dispose();
-        RevokeBanCommand.Dispose();
         LoadCommand.Dispose();
         EditProfileCommand.Dispose();
         ToggleFreezeCommand.Dispose();

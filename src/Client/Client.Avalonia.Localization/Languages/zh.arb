@@ -487,7 +487,6 @@
   "serverSettings.security.serverPassword.new": "新密码",
   "serverSettings.security.allowedIps": "允许的地址",
   "serverSettings.security.allowedIps.description": "列表不为空时，只有这些地址可以连接。",
-  "serverSettings.security.bannedIps": "封禁的地址",
   "serverSettings.security.ips.placeholder": "每行一个 IP 地址",
   "serverSettings.storage.section.limits": "文件限制",
   "serverSettings.storage.maxFileSize": "最大文件（MB）",

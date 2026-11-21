@@ -9,7 +9,7 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 namespace Client.ViewModels.ServerSettings;
 
 /// <summary>A user in the list of the users tab, with the commands of the tab for its menu.</summary>
-public sealed class ServerUserRowVM(UserModel user, IReadOnlyList<RoleModel> roles, bool isSelf,
+public sealed class ServerUserRowVM(UserModel user, IReadOnlyList<RoleModel> roles, string? banDetails, bool isSelf,
     bool canEditProfile, bool canModerate, ServerUsersTabVM tab)
 {
     // The menu opens in a popup, out of reach of the tab; each command takes the row
@@ -22,7 +22,11 @@ public sealed class ServerUserRowVM(UserModel user, IReadOnlyList<RoleModel> rol
     public string Username => User.Username;
     public string? AvatarUrl => User.AvatarUrl;
     public UserStatus Status => User.Status;
-    public bool IsBanned => User.State == UserState.Banned;
+    /// <summary>Banned by account, or by IP for this user.</summary>
+    public bool IsBanned => User.State == UserState.Banned || BanDetails != null;
+
+    /// <summary>What the bans made for the user are, for users who may ban; null when there are none.</summary>
+    public string? BanDetails { get; } = banDetails;
     public bool IsFrozen => User.State == UserState.Suspended;
 
     /// <summary>Highest first, without the everyone role.</summary>

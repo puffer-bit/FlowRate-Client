@@ -23,7 +23,6 @@ public sealed record CoordinatorSettingsModel
     public string? MotdText { get; init; }
 
     public IReadOnlyList<string> AllowedIps { get; init; } = [];
-    public IReadOnlyList<string> BannedIps { get; init; } = [];
 
     public int HeartbeatIntervalSeconds { get; init; }
     public int HeartbeatTimeoutSeconds { get; init; }
@@ -84,7 +83,6 @@ public sealed record CoordinatorSettingsUpdate
     public string? MotdText { get; init; }
 
     public IReadOnlyList<string> AllowedIps { get; init; } = [];
-    public IReadOnlyList<string> BannedIps { get; init; } = [];
 
     public int HeartbeatIntervalSeconds { get; init; }
     public int HeartbeatTimeoutSeconds { get; init; }

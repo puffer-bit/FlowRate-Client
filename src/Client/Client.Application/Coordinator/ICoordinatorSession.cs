@@ -401,7 +401,13 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>
     /// Bans, freezes or reinstates another user. On success <see cref="UserUpdated"/> is raised with the new state.
     /// </summary>
-    Task<RequestResult> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null);
+    /// <summary>Freezes (<see cref="UserState.Suspended"/>) or reinstates (<see cref="UserState.Normal"/>) a user.</summary>
+    Task<RequestResult> SetUserState(int userId, UserState state);
+
+    Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTime? expiresAt = null, string? address = null);
+
+    /// <summary>Lifts every ban made for the user, by account and by IP.</summary>
+    Task<RequestResult> UnbanUser(int userId);
 
     /// <summary>Deletes another user. On success <see cref="UserDeleted"/> is raised.</summary>
     Task<RequestResult<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans();

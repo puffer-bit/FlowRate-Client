@@ -184,12 +184,13 @@ internal partial class CoordinatorGateway
     public async Task RevokeBan(Guid banId) =>
         await SendRequestAsync<CoordinatorRevokeBanResponse>(new CoordinatorRevokeBanRequest(banId));
 
-    public async Task<UserModel> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null)
-    {
-        var request = new CoordinatorSetUserStateRequest(userId, state, kind, reason, expiresAt, address);
+    public async Task<UserModel> SetUserState(int userId, UserState state) =>
+        (await SendRequestAsync<CoordinatorSetUserStateResponse>(new CoordinatorSetUserStateRequest(userId, state))).User.ToModel();
 
-        return (await SendRequestAsync<CoordinatorSetUserStateResponse>(request)).User.ToModel();
-    }
+    public async Task<UserModel> BanUser(int userId, BanKind kind, string? reason = null, DateTime? expiresAt = null,
+        string? address = null) =>
+        (await SendRequestAsync<CoordinatorBanResponse>(
+            new CoordinatorBanRequest(userId, kind, reason, expiresAt, address))).User.ToModel();
 
     public Task DeleteUser(int userId) =>
         SendRequestAsync<CoordinatorDeleteUserResponse>(new CoordinatorDeleteUserRequest(userId));

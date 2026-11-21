@@ -53,6 +53,8 @@ public class FakeGateway : DispatchProxy
 
     /// <summary>The users banned, frozen, reinstated or deleted, with the state asked; null for a deletion.</summary>
     public List<(int UserId, UserState? State)> ModerationRequests { get; } = [];
+    public List<Shared.Models.DataTransferObjects.BanDTO> Bans { get; } = [];
+    public List<Guid> RevokedBans { get; } = [];
 
     /// <summary>What the server asks for after the identity; null lets the user in at once.</summary>
     public LoginChallenge? Challenge { get; set; }
@@ -290,6 +292,11 @@ public class FakeGateway : DispatchProxy
             case nameof(ICoordinatorGateway.SetUserState):
                 ModerationRequests.Add(((int)args![0]!, (UserState)args[1]!));
                 return Task.FromResult(new UserModel { Id = (int)args[0]!, CoordinatorInstanceId = CoordinatorId, Username = "bob" });
+            case nameof(ICoordinatorGateway.GetBans):
+                return Task.FromResult<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>(Bans.ToList());
+            case nameof(ICoordinatorGateway.RevokeBan):
+                RevokedBans.Add((Guid)args![0]!);
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.DeleteUser):
                 ModerationRequests.Add(((int)args![0]!, null));
                 return Task.CompletedTask;
