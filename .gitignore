@@ -3,6 +3,9 @@ bin/
 obj/
 TestResults/
 *.nupkg
+*.snupkg
+# Packages of Scripts/bash/pack.sh
+/artifacts/
 
 # IDE and editor state
 .idea/

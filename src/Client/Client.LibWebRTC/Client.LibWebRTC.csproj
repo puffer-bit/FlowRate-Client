@@ -22,4 +22,14 @@
       <InternalsVisibleTo Include="Client.Audio.SmokeChecks" />
     </ItemGroup>
 
+    <!-- The package carries the committed libwebrtc of every platform as runtimes/<rid>/native, which a
+         consumer gets next to its executable on publish and through deps.json on a plain build. Inside
+         this repository the executables copy it themselves, see Build/LibWebRTCRuntime.targets -->
+    <ItemGroup>
+      <None Include="Build/prebuilt/linux-x64/libflowrate_webrtc.so" Pack="true" PackagePath="runtimes/linux-x64/native/" Visible="false" />
+      <None Include="Build/prebuilt/win-x64/flowrate_webrtc.dll" Pack="true" PackagePath="runtimes/win-x64/native/" Visible="false" />
+      <None Include="Build/prebuilt/osx-arm64/libflowrate_webrtc.dylib" Pack="true" PackagePath="runtimes/osx-arm64/native/" Visible="false" />
+      <None Include="Build/prebuilt/linux-x64/LICENSE.libwebrtc" Pack="true" PackagePath="licenses/libwebrtc/" Visible="false" />
+    </ItemGroup>
+
 </Project>
