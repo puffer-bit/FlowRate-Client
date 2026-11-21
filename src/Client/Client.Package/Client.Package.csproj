@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- FlowRate.Client: no code, only the dependencies on every library package, so a bot adds one
+         reference. The metadata comes from src/Directory.Build.props -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <PackageId>FlowRate.Client</PackageId>
+        <Description>Everything to build a FlowRate client without the interface, such as a bot: the protocol, the coordinator and session workflows, voice and screens over libwebrtc, and GStreamer media.</Description>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <!-- No assembly in lib/, on purpose: the package is its dependencies -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+        <!-- Nothing to debug: a symbol package without symbols is refused by nuget.org -->
+        <IncludeSymbols>false</IncludeSymbols>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+        <ProjectReference Include="..\Client.Platform\Client.Platform.csproj" />
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+        <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+        <ProjectReference Include="..\Client.WebSockets\Client.WebSockets.csproj" />
+        <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
+        <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
+        <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
+        <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
+    </ItemGroup>
+
+</Project>

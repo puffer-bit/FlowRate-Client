@@ -25,10 +25,12 @@ Project paths in this table are relative to `src/`.
 | Media | `Client/Client.GStreamer`, `Client/Client.LibWebRTC`, `Client/Client.OpenAL` | Media pipelines, the libwebrtc transport, native integration, and interface sounds. |
 | Presentation | `Client/Client.Avalonia.ViewModels`, `Client/Client.Avalonia.Controls`, `Client/Client.Avalonia.Styles`, `Client/Client.Avalonia.Assets`, `Client/Client.Avalonia.Localization`, `Client/Client.Avalonia.Video` | Shared presentation logic, controls, themes, resources, translations, and video rendering. |
 | Hosts | `Client/Client.Avalonia.Desktop`, `Client/Client.Avalonia.Android` | Application entry points, composition, views, and platform services. |
-| Utilities | `Client/Client.Tools` | Logging, launch options, application paths, and common helpers. |
+| Platform | `Client/Client.Platform` | Operating-system helpers the libraries share: native environment variables, the platform name, and native log categories. No dependencies. |
+| Host utilities | `Client/Client.Tools` | Logging setup, launch options, application paths, and build information of the client hosts. |
 
 - Keep domain and application logic independent of platform UI and concrete infrastructure implementations.
 - Implement external services through the existing application ports and register adapters through the established dependency injection patterns.
+- `Client.Core`, `Client.Application`, `Client.Api`, `Client.WebSockets`, `Client.WebRTC`, `Client.LibWebRTC`, `Client.GStreamer` and `Client.Platform` are libraries other hosts (bots) build on: they must not reference `Client.Tools`, Serilog, or desktop paths and launch options. The host passes what they need: `ClientInfo` to `AddApi`, the data folder to `AddApplication`, `GStreamerSettings`, and adapters such as `IMediaPerfRecords`.
 - Share presentation behavior where practical; keep operating-system integrations in the appropriate host or platform adapter.
 - Treat `src/Shared` as a separately versioned protocol dependency. Preserve client/server compatibility when changing protocol usage.
 

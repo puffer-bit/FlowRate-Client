@@ -24,12 +24,16 @@ internal partial class CoordinatorGateway : ICoordinatorGateway
     private readonly IWebSocketGateway _webSocketGateway;
     private CancellationTokenSource? _webSocketTokenSource;
 
+    private readonly ClientInfo _client;
+
     public CoordinatorGateway(
         IHeartbeatHandler heartbeatHandler,
         ResponseAwaiter responseAwaiter,
         IWebSocketGateway webSocketGateway,
+        ClientInfo client,
         ILogger<CoordinatorGateway> logger)
     {
+        _client = client;
         _responseAwaiter = responseAwaiter;
         _heartbeatHandler = heartbeatHandler;
         _logger = logger;

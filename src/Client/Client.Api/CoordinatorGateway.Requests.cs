@@ -1,4 +1,3 @@
-using Client.Tools.AppInfo;
 using Shared.Models.DataTransferObjects;
 using Shared.Permissions;
 using Client.Api.Mappers;
@@ -49,10 +48,10 @@ internal partial class CoordinatorGateway
             authResponse.SessionToken);
     }
 
-    private static DeviceInfoDTO Device() => new(
-        Truncate(DeviceInformation.Name, Limits.DeviceNameMaxLength),
-        DeviceInformation.Platform,
-        Truncate(AppInformation.GetClientVersion(), Limits.AppVersionMaxLength));
+    private DeviceInfoDTO Device() => new(
+        Truncate(_client.DeviceName, Limits.DeviceNameMaxLength),
+        _client.Platform,
+        Truncate(_client.AppVersion, Limits.AppVersionMaxLength));
 
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];

@@ -33,7 +33,6 @@
     <ItemGroup>
       <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
-      <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
       <ProjectReference Include="..\Client.WebSockets\Client.WebSockets.csproj" />
     </ItemGroup>
 

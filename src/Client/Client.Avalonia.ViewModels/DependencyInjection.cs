@@ -7,6 +7,7 @@ using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Services;
+using Client.Services.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Client.ViewModels.Connections;
@@ -27,6 +28,9 @@ public static class DependencyInjection
     public static IServiceCollection AddViewModels(this IServiceCollection services)
     {
         services.AddSingleton<ApplicationLoader>();
+        services.AddSingleton<IDebugAndLogService, DebugAndLogService>();
+        // Over the one of AddApplication, which keeps none
+        services.AddSingleton<IMediaPerfRecords, MediaPerfRecordFiles>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<ILanguageService, LanguageService>();

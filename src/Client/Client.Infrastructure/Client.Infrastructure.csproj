@@ -14,6 +14,7 @@
       <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+      <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
     </ItemGroup>
 
     <ItemGroup>

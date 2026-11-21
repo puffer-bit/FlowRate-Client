@@ -1,13 +1,13 @@
 using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.Core.Settings;
-using Client.Tools.Logging;
+using Client.Platform;
 using Microsoft.Extensions.Logging;
 
 namespace Client.LibWebRTC.Native;
 
 /// <summary>
-/// Passes the log of libwebrtc into the journal, under <see cref="ClientLogging.LibWebRTCNativeCategory"/>,
+/// Passes the log of libwebrtc into the journal, under <see cref="NativeLogCategories.LibWebRTC"/>,
 /// through fr_set_log. libwebrtc knows four levels: Info and Debug both pass its info messages.
 /// </summary>
 public sealed unsafe partial class LibWebRTCNativeLog(ILoggerFactory loggerFactory, ILogger<LibWebRTCNativeLog> logger)
@@ -38,7 +38,7 @@ public sealed unsafe partial class LibWebRTCNativeLog(ILoggerFactory loggerFacto
             if (level == NativeLogLevel.Off && !_isPassing)
                 return;
 
-            _native ??= loggerFactory.CreateLogger(ClientLogging.LibWebRTCNativeCategory);
+            _native ??= loggerFactory.CreateLogger(NativeLogCategories.LibWebRTC);
 
             var severity = level switch
             {

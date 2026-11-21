@@ -2,6 +2,7 @@ using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
 using Client.Application.Settings;
 using Client.Core.Settings;
+using Client.Services.Logging;
 using Client.Tools.Logging;
 using Serilog.Events;
 using Xunit;

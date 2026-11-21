@@ -21,7 +21,7 @@ internal static class VideoTranscodeSmokeChecks
     {
         Directory.CreateDirectory(Folder);
         // With --software-rendering the hardware encoders are left out, as in the client
-        Client.Tools.AppInfo.LaunchOptions.Configure(args.Where(arg => arg == "--software-rendering").ToList());
+        Client.GStreamer.GStreamerSettings.AllowHardwareCodecs = !args.Contains("--software-rendering");
         CheckDecisions();
 
         var phone = Path.Combine(Folder, "phone.mp4");

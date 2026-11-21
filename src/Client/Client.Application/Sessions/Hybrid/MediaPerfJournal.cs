@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using Client.Core.Media;
 using Client.Core.Settings;
-using Client.Tools.Logging;
+using Client.Application.Ports;
 using Microsoft.Extensions.Logging;
 using Shared.Models.Media;
 
@@ -11,14 +11,14 @@ namespace Client.Application.Sessions.Hybrid;
 /// <summary>
 /// Puts the statistics of the media of a session into the journal, as the Media statistics part of the
 /// settings asks: a summary line per stream now and then, every window into the file of
-/// <see cref="MediaPerfRecords"/>, and a warning when a stream runs into trouble.
+/// <see cref="IMediaPerfRecords"/>, and a warning when a stream runs into trouble.
 /// </summary>
 /// <remarks>
 /// A trouble is told when it starts, again at most every <see cref="RepeatInterval"/> while it lasts,
 /// and once more when it is over, so a stream that stays bad does not fill the journal.
 /// Not thread-safe: the reports of a transport come one at a time.
 /// </remarks>
-public sealed partial class MediaPerfJournal(int sessionId, ILogger logger)
+public sealed partial class MediaPerfJournal(int sessionId, ILogger logger, IMediaPerfRecords? records = null)
 {
     private static readonly TimeSpan RepeatInterval = TimeSpan.FromMinutes(1);
 
@@ -49,7 +49,7 @@ public sealed partial class MediaPerfJournal(int sessionId, ILogger logger)
         }
 
         if (settings.MediaPerfJournal == MediaPerfJournalMode.Detailed)
-            MediaPerfRecords.Write(MediaPerfJson.Write(sessionId, report));
+            (records ?? NoMediaPerfRecords.Instance).Write(MediaPerfJson.Write(sessionId, report));
 
         if (settings.LogMediaPerfAnomalies)
             CheckTroubles(report, now);

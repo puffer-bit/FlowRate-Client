@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Runtime.InteropServices;
+using Client.Platform;
 using Client.Tools.AppInfo;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,19 +21,6 @@ public static class ClientLogging
 {
     // Every category of the GStreamer project goes to a file of its own
     private const string GStreamerCategoryPrefix = "Client.GStreamer";
-
-    /// <summary>
-    /// The category of the log of GStreamer itself, written to the file of GStreamer.
-    /// </summary>
-    public const string GStreamerNativeCategory = "Native.GStreamer";
-
-    /// <summary>
-    /// The category of the log of libwebrtc itself, written to a file of its own.
-    /// </summary>
-    public const string LibWebRTCNativeCategory = "Native.LibWebRTC";
-
-    // The native libraries choose themselves how much they say, see NativeLogLevel
-    private const string NativeCategoryPrefix = "Native";
 
     private static volatile bool _isWritingToFiles = true;
 
@@ -93,15 +81,16 @@ public static class ClientLogging
         foreach (var (prefix, level) in options.Overrides)
             config.MinimumLevel.Override(prefix, level);
 
-        config.MinimumLevel.Override(NativeCategoryPrefix, LogEventLevel.Verbose);
+        // The native libraries choose themselves how much they say, see NativeLogLevel
+        config.MinimumLevel.Override(NativeLogCategories.Prefix, LogEventLevel.Verbose);
 
         LogDirectory = options.WriteToFiles ? options.LogDirectory : null;
 
         if (options.WriteToFiles)
         {
             var isGStreamer = Matching.FromSource(GStreamerCategoryPrefix);
-            var isGStreamerNative = Matching.FromSource(GStreamerNativeCategory);
-            var isLibWebRTCNative = Matching.FromSource(LibWebRTCNativeCategory);
+            var isGStreamerNative = Matching.FromSource(NativeLogCategories.GStreamer);
+            var isLibWebRTCNative = Matching.FromSource(NativeLogCategories.LibWebRTC);
 
             // Sub-loggers: a filter on the root configuration would drop the events from every sink
             config.WriteTo.Logger(lc => lc
@@ -154,7 +143,7 @@ public static class ClientLogging
         Log.ForContext(Constants.SourceContextPropertyName, typeof(ClientLogging).FullName).Information(
             "FlowRate {Version} ({Configuration}) started on {Platform} {OsDescription} ({OsArchitecture}), process {ProcessArchitecture}, " +
             "{Runtime}, {ProcessorCount} CPUs, culture {Culture}, device {Device}, journal level {Level}, files in {LogDirectory}",
-            version, BuildConfiguration, DeviceInformation.Platform, RuntimeInformation.OSDescription, RuntimeInformation.OSArchitecture,
+            version, BuildConfiguration, DevicePlatform.Name, RuntimeInformation.OSDescription, RuntimeInformation.OSArchitecture,
             RuntimeInformation.ProcessArchitecture, RuntimeInformation.FrameworkDescription, System.Environment.ProcessorCount,
             culture, device, LevelSwitch.MinimumLevel, LogDirectory ?? "none");
     }
@@ -175,7 +164,7 @@ public static class ClientLogging
         void Line(string name, object? value) => text.Append(name).Append(": ").AppendLine(value?.ToString());
 
         Line("FlowRate", $"{Version ?? "unknown"} ({BuildConfiguration})");
-        Line("Platform", DeviceInformation.Platform);
+        Line("Platform", DevicePlatform.Name);
         Line("Device", Device ?? DeviceInformation.Name);
         Line("System", $"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         Line("Process", RuntimeInformation.ProcessArchitecture);

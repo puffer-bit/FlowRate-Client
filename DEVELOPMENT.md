@@ -127,6 +127,17 @@ Cross-platform desktop packaging requires the other platform's prepared native r
 
 Use `--dev` / `-Dev` for development builds and `--notes FILE` / `-Notes FILE` to supply release notes. Installed desktop packages use Velopack feeds with separate channels for Windows, Linux, JIT, NativeAOT, and development builds. See the script help before preparing a release.
 
+### NuGet library packages
+
+The client libraries are also published to nuget.org as `FlowRate.*` packages, for other hosts such as bots; `FlowRate.Client` references them all. The list and requirements are in [the package README](src/Client/Client.Package/README.md); which projects are packed and their metadata are in `src/Directory.Build.props`.
+
+```bash
+bash src/Scripts/bash/pack.sh                    # 0.0.0-local.<date> into artifacts/packages
+bash src/Scripts/bash/pack.sh 0.1.0 /tmp/feed
+```
+
+The output folder works as a local feed (`dotnet nuget add source <folder> --name flowrate-local`) for a bot developed against unpublished changes. Pushing a tag `sdk-v<version>` runs the tests, packs every package with that version, and publishes them through `.github/workflows/packages.yml` with nuget.org Trusted Publishing: no stored API key, only a policy on nuget.org and the `NUGET_USER` secret (the nuget.org profile name), see the comment at the top of the workflow. The package version is separate from the client version.
+
 ## Architecture and repository layout
 
 The code separates domain concepts and application use cases from persistence, network transports, media backends, and platform UI composition. Shared view models and reusable Avalonia resources are separated from platform services in the application host.
@@ -149,7 +160,9 @@ The code separates domain concepts and application use cases from persistence, n
 | `Client/Client.Avalonia.Assets` | Shared icons, fonts, and application artwork. |
 | `Client/Client.Avalonia.Localization` | Interface translations and localization support. |
 | `Client/Client.Avalonia.Video` | Video frame presentation through GPU or memory-backed paths. |
-| `Client/Client.Tools` | Common utilities, launch options, paths, logging, and build information. |
+| `Client/Client.Platform` | Operating-system helpers shared by the libraries and their hosts: native environment variables, the platform name, native log categories. No dependencies. |
+| `Client/Client.Package` | The `FlowRate.Client` NuGet meta-package: no code, depends on every library package. |
+| `Client/Client.Tools` | Host-side utilities of the client: launch options, paths, logging setup, and build information. The libraries do not reference it. |
 | `Client/*.Tests`, `Shared/Shared.Tests` | Automated test projects. |
 | `Shared` | Git submodule with server/client protocol definitions. |
 | `Scripts/bash`, `Scripts/powershell` | Build, run, test, publish, and development helper scripts. |

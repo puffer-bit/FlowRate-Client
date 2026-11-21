@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
-using Client.Tools.Environment;
-using Client.Tools.AppInfo;
+using Client.Platform;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Interop;
 
@@ -62,7 +61,7 @@ public partial class GstLoader
     /// </summary>
     private static void IsolateFromSystem(string bundledRoot, ILogger logger)
     {
-        var cacheDirectory = Path.Combine(AppDirectories.Data, "gstreamer");
+        var cacheDirectory = GStreamerSettings.CacheDirectory;
 
         // Loading no GIO modules at all: the system ones are built against the system GLib
         var emptyGioModules = Path.Combine(cacheDirectory, "gio-modules");
@@ -80,11 +79,11 @@ public partial class GstLoader
             pluginPath += Path.PathSeparator + Path.Combine(bundledRoot, "lib", SelectPipeWirePluginFolder(logger));
         }
 
-        INativeEnvironment.Set("GST_PLUGIN_SYSTEM_PATH_1_0", pluginPath);
-        INativeEnvironment.Set("GST_PLUGIN_PATH_1_0", "");
-        INativeEnvironment.Set("GST_PLUGIN_SCANNER_1_0", scanner);
-        INativeEnvironment.Set("GST_REGISTRY_1_0", Path.Combine(cacheDirectory, "registry.x86_64.bin"));
-        INativeEnvironment.Set("GIO_MODULE_DIR", emptyGioModules);
+        NativeEnvironment.SetVariable("GST_PLUGIN_SYSTEM_PATH_1_0", pluginPath);
+        NativeEnvironment.SetVariable("GST_PLUGIN_PATH_1_0", "");
+        NativeEnvironment.SetVariable("GST_PLUGIN_SCANNER_1_0", scanner);
+        NativeEnvironment.SetVariable("GST_REGISTRY_1_0", Path.Combine(cacheDirectory, "registry.x86_64.bin"));
+        NativeEnvironment.SetVariable("GIO_MODULE_DIR", emptyGioModules);
     }
 
     /// <summary>

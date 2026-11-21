@@ -2,6 +2,7 @@ using Avalonia;
 using System;
 using Client.Core.Media;
 using Client.Avalonia.Icons;
+using Client.GStreamer;
 using Client.GStreamer.Loader;
 using Client.Tools.AppInfo;
 using Client.Services.Logging;
@@ -82,6 +83,8 @@ sealed class Program
             if (!HardwareAcceleration.IsEnabled)
                 Log.Information("Hardware acceleration is off ({Reason}): software rendering and video codecs",
                     HardwareAcceleration.IsForcedOff ? "--software-rendering" : "settings");
+            GStreamerSettings.AllowHardwareCodecs = HardwareAcceleration.IsEnabled;
+            GStreamerSettings.CacheDirectory = System.IO.Path.Combine(AppDirectories.Data, "gstreamer");
             MediaRuntime.Configure(LaunchOptions.Current.DisableMedia ? ["--no-media"] : []);
             if (!MediaRuntime.IsEnabled)
             {

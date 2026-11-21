@@ -3,14 +3,14 @@ using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.Core.Settings;
 using Client.GStreamer.Interop;
-using Client.Tools.Logging;
+using Client.Platform;
 using Microsoft.Extensions.Logging;
 
 namespace Client.GStreamer.Loader;
 
 /// <summary>
 /// Passes the debug log of GStreamer (what GST_DEBUG would print) into the journal, under
-/// <see cref="ClientLogging.GStreamerNativeCategory"/>, as much of it as the level says. A GST_DEBUG set
+/// <see cref="NativeLogCategories.GStreamer"/>, as much of it as the level says. A GST_DEBUG set
 /// in the environment is left alone while the level is off, so that it still works for debugging.
 /// </summary>
 public sealed unsafe partial class GstNativeLog(ILoggerFactory loggerFactory) : INativeLog
@@ -59,7 +59,7 @@ public sealed unsafe partial class GstNativeLog(ILoggerFactory loggerFactory) : 
     {
         lock (Gate)
         {
-            _logger ??= loggerFactory.CreateLogger(ClientLogging.GStreamerNativeCategory);
+            _logger ??= loggerFactory.CreateLogger(NativeLogCategories.GStreamer);
             _level = level;
 
             if (_isLoaded)

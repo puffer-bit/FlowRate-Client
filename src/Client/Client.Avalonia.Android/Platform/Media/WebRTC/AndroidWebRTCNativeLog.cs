@@ -1,14 +1,14 @@
 using System.Threading;
 using Client.Application.Ports;
 using Client.Core.Settings;
-using Client.Tools.Logging;
+using Client.Platform;
 using Com.Flowrate.Rtc;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Droid.Platform.Media.WebRTC;
 
 /// <summary>
-/// Passes the log of libwebrtc into the journal, under <see cref="ClientLogging.LibWebRTCNativeCategory"/>.
+/// Passes the log of libwebrtc into the journal, under <see cref="NativeLogCategories.LibWebRTC"/>.
 /// libwebrtc of Android takes its logger only when it starts, see <c>VoicePeer.setLog</c>: a level asked
 /// for later is applied as far as the one it started with allows, the rest after a restart.
 /// </summary>
@@ -27,7 +27,7 @@ internal sealed partial class AndroidWebRTCNativeLog : INativeLog
     public AndroidWebRTCNativeLog(ILoggerFactory loggerFactory, ILogger<AndroidWebRTCNativeLog> logger)
     {
         _logger = logger;
-        _listener = new Listener(loggerFactory.CreateLogger(ClientLogging.LibWebRTCNativeCategory));
+        _listener = new Listener(loggerFactory.CreateLogger(NativeLogCategories.LibWebRTC));
     }
 
     public NativeLogSource Source => NativeLogSource.LibWebRTC;
