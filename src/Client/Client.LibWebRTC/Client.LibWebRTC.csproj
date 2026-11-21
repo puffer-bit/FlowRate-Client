@@ -13,6 +13,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+      <ProjectReference Include="..\Client.Platform\Client.Platform.csproj" />
       <ProjectReference Include="..\Client.WebRTC\Client.WebRTC.csproj" />
     </ItemGroup>
 

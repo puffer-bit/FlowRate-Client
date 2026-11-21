@@ -11,6 +11,7 @@ using Client.GStreamer.Loader;
 using Client.Infrastructure;
 using Client.LibWebRTC;
 using Client.OpenAL;
+using Client.Platform;
 using Client.Services;
 using Client.Services.HotKeys;
 using Client.Services.Keyring;
@@ -136,8 +137,8 @@ public partial class App : global::Avalonia.Application
         var services = new ServiceCollection();
 
         services
-            .AddApplication()
-            .AddApi()
+            .AddApplication(AppDirectories.Data)
+            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
             .AddInfrastructure()
             .AddScreenCast()
             .AddGStreamer()

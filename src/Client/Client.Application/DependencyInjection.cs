@@ -9,21 +9,18 @@ using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Application.Updates;
-using Client.Tools.AppInfo;
 
 namespace Client.Application;
 
 public static class DependencyInjection
 {
-    /// <param name="dataDirectory">Where the files of the user are kept. Null means
-    /// <see cref="AppDirectories.Data"/>; a platform with a data folder of its own names it.</param>
-    public static IServiceCollection AddApplication(this IServiceCollection services, string? dataDirectory = null)
+    /// <param name="dataDirectory">Where the files of the user are kept: the data folder of the platform.</param>
+    public static IServiceCollection AddApplication(this IServiceCollection services, string dataDirectory)
     {
         services.AddSingleton<IBehaviorService, BehaviorService>();
         services.AddSingleton<IAudioService, AudioService>();
         services.AddSingleton<IAccountingService, AccountingService>();
         services.AddSingleton<IAppearanceService, AppearanceService>();
-        services.AddSingleton<IDebugAndLogService, DebugAndLogService>();
         services.AddSingleton<IHotKeysService, HotKeysService>();
         services.AddSingleton<IPlatformSpecificService, PlatformSpecificService>();
         services.AddSingleton<IStorageService, StorageService>();
@@ -35,6 +32,9 @@ public static class DependencyInjection
 
         // A platform that updates the application itself registers its updater after this one
         services.AddSingleton<IAppUpdater, NoAppUpdater>();
+
+        // A platform that writes the statistics of the media somewhere registers its records after this one
+        services.AddSingleton<IMediaPerfRecords>(NoMediaPerfRecords.Instance);
 
         // A platform with a network service of its own registers its monitor after this one
         services.AddSingleton<IConnectivityMonitor, SystemConnectivityMonitor>();
@@ -51,7 +51,7 @@ public static class DependencyInjection
         services.AddSingleton<IChatMediaUploader, ChatMediaUploader>();
         services.AddSingleton<IHybridSessionFactory, HybridSessionFactory>();
         services.AddSingleton<ISoundPackCatalog>(new DirectorySoundPackCatalog(
-            Path.Combine(dataDirectory ?? AppDirectories.Data, DirectorySoundPackCatalog.FolderName)));
+            Path.Combine(dataDirectory, DirectorySoundPackCatalog.FolderName)));
         services.AddSingleton<ISoundService, SoundService>();
 
         return services;

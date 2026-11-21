@@ -1,13 +1,22 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Client.Application.Ports;
 using Client.Application.Ports.Repositories;
+using Client.Application.Settings;
 using Client.Core.Settings;
-using System.Text;
+using Client.Tools.AppInfo;
 using Client.Tools.HardwareIdentifier;
 using Client.Tools.Logging;
 using Serilog.Events;
 
-namespace Client.Application.Settings;
+namespace Client.Services.Logging;
 
+/// <summary>
+/// The journal of the client, kept by <see cref="ClientLogging"/>, and the logs of its native libraries.
+/// </summary>
 public class DebugAndLogService : IDebugAndLogService
 {
     private readonly IDebugSettingsRepository _settings;
@@ -59,10 +68,10 @@ public class DebugAndLogService : IDebugAndLogService
     {
         settings = settings.Normalize();
 
-        ClientLogging.LevelSwitch.MinimumLevel = Client.Tools.AppInfo.LaunchOptions.Current.LogLevel ?? (settings.JournalLevel is { } level
+        ClientLogging.LevelSwitch.MinimumLevel = LaunchOptions.Current.LogLevel ?? (settings.JournalLevel is { } level
             ? ToSerilog(level)
             : ClientLogging.DefaultLevel);
-        ClientLogging.IsWritingToFiles = !Client.Tools.AppInfo.LaunchOptions.Current.NoFileLogging && settings.WriteToFiles;
+        ClientLogging.IsWritingToFiles = !LaunchOptions.Current.NoFileLogging && settings.WriteToFiles;
 
         foreach (var log in _nativeLogs)
             log.SetLevel(settings.LogLevelOf(log.Source));

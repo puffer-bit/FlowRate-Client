@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 
-namespace Client.Tools.Environment;
+namespace Client.Platform;
 
-public static class MacEnvironment
+internal static class MacEnvironment
 {
     // Ansi marshals as UTF-8 on Unix
     [DllImport("/usr/lib/libSystem.B.dylib", SetLastError = true, CharSet = CharSet.Ansi)]

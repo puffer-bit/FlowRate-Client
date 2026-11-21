@@ -149,7 +149,8 @@ The code separates domain concepts and application use cases from persistence, n
 | `Client/Client.Avalonia.Assets` | Shared icons, fonts, and application artwork. |
 | `Client/Client.Avalonia.Localization` | Interface translations and localization support. |
 | `Client/Client.Avalonia.Video` | Video frame presentation through GPU or memory-backed paths. |
-| `Client/Client.Tools` | Common utilities, launch options, paths, logging, and build information. |
+| `Client/Client.Platform` | Operating-system helpers shared by the libraries and their hosts: native environment variables, the platform name, native log categories. No dependencies. |
+| `Client/Client.Tools` | Host-side utilities of the client: launch options, paths, logging setup, and build information. The libraries do not reference it. |
 | `Client/*.Tests`, `Shared/Shared.Tests` | Automated test projects. |
 | `Shared` | Git submodule with server/client protocol definitions. |
 | `Scripts/bash`, `Scripts/powershell` | Build, run, test, publish, and development helper scripts. |

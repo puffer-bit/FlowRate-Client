@@ -8,7 +8,9 @@ using Client.Avalonia.Localization;
 using Client.Droid.Platform;
 using Client.Droid.Views.Main;
 using Client.Infrastructure;
+using Client.Platform;
 using Client.Services;
+using Client.Tools.AppInfo;
 using Client.Tools.Logging;
 using Client.ViewModels.Main;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,7 +53,7 @@ public partial class App : global::Avalonia.Application
         services
             // The place of the executable is read-only on Android; this is the data directory of the application
             .AddApplication(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
-            .AddApi()
+            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
             .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
             .AddAndroidPlatform();
 

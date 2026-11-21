@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 
-namespace Client.Tools.Environment;
+namespace Client.Platform;
 
-public static class LinuxEnvironment
+internal static class LinuxEnvironment
 {
     // Ansi marshals as UTF-8 on Unix, Unicode would pass UTF-16 and setenv would see a one-letter name.
     // The versioned name is always present, the bare "libc.so" is a linker script of the dev package.

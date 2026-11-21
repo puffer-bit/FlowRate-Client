@@ -128,10 +128,11 @@ public partial class HybridSession : IHybridSession
         IPeerPlaybackService? peerPlayback = null,
         IVoiceActivityService? voiceActivity = null,
         IScreenWatchService? screenWatch = null,
-        ILogger<MediaPerfJournal>? perfLogger = null)
+        ILogger<MediaPerfJournal>? perfLogger = null,
+        IMediaPerfRecords? perfRecords = null)
     {
         Model = sessionModel;
-        _perfJournal = new MediaPerfJournal(sessionModel.Id, (ILogger?)perfLogger ?? logger);
+        _perfJournal = new MediaPerfJournal(sessionModel.Id, (ILogger?)perfLogger ?? logger, perfRecords);
         _coordinatorSession = coordinatorSession;
         _transportFactory = transportFactory;
         _logger = logger;

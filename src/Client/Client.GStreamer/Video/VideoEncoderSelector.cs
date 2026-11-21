@@ -4,7 +4,6 @@ using Gst;
 using Client.Core.Media;
 using Client.Core.Settings;
 using Client.GStreamer.Interop;
-using Client.Tools.AppInfo;
 
 namespace Client.GStreamer.Video;
 
@@ -148,7 +147,7 @@ public static class VideoEncoderSelector
 
     // Without hardware acceleration only the software encoders are offered
     private static IEnumerable<Candidate> GetCandidates(VideoCodec codec) =>
-        GetAllCandidates(codec).Where(candidate => HardwareAcceleration.IsEnabled || !candidate.IsHardware);
+        GetAllCandidates(codec).Where(candidate => GStreamerSettings.AllowHardwareCodecs || !candidate.IsHardware);
 
     private static IEnumerable<Candidate> GetAllCandidates(VideoCodec codec) => codec switch
     {

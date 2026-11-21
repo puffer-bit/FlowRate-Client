@@ -4,7 +4,9 @@ using Client.GStreamer.Loader;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Video;
 using Client.LibWebRTC.Native;
+using Client.Platform;
 using Client.TestBot;
+using Client.Tools.AppInfo;
 using Client.Tools.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -55,7 +57,7 @@ Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
 
 // The same transient registrations the desktop client uses, so every bot gets its own connection
 var services = new ServiceCollection()
-    .AddApi()
+    .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
     .AddSingleton<ITrustedCertificatesRepository, InMemoryTrustedCertificates>()
     .AddClientLogging(Log.Logger)
     .BuildServiceProvider();

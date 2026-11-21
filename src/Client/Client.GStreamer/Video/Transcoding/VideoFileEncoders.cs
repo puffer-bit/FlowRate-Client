@@ -1,6 +1,5 @@
 using System.Globalization;
 using Gst;
-using Client.Tools.AppInfo;
 
 namespace Client.GStreamer.Video.Transcoding;
 
@@ -28,7 +27,7 @@ internal static class VideoFileEncoders
     public static IReadOnlyList<FileEncoder> H264(int kbps, int keyFrameInterval)
     {
         var available = Candidates()
-            .Where(candidate => HardwareAcceleration.IsEnabled || !candidate.IsHardware)
+            .Where(candidate => GStreamerSettings.AllowHardwareCodecs || !candidate.IsHardware)
             .Where(candidate => ElementFactory.Find(candidate.Factory) != null)
             .ToList();
         var chosen = available.Where(candidate => candidate.IsHardware).Take(1)
