@@ -1,4 +1,4 @@
-# Builds the desktop client for Linux, Windows and macOS and publishes it as a GitHub release, run by hand from the
+# Builds the desktop client for Linux, Windows and macOS and the Android .apk and publishes them as a GitHub release, run by hand from the
 # Actions tab: by default the pre-release v<version>-dev.<UTC yyMMddHHmm>, which clients set to the dev builds
 # update to; with prerelease off the release v<version>, which becomes the latest one and reaches every client.
 #

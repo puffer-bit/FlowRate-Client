@@ -8,8 +8,8 @@
         <!-- Not Client.Android: inside the Client namespace that name would hide the Android SDK namespace -->
         <RootNamespace>Client.Droid</RootNamespace>
         <ApplicationId>com.flowrate.client</ApplicationId>
-        <ApplicationVersion>1</ApplicationVersion>
-        <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
+        <ApplicationVersion>2</ApplicationVersion>
+        <ApplicationDisplayVersion>0.7.1</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     </PropertyGroup>
