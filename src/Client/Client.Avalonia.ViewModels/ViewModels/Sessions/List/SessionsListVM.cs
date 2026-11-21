@@ -101,8 +101,7 @@ public partial class SessionsListVM : ReactiveObject
     private async Task LeaveGroup(ChatSessionVM chat)
     {
         if (_coordinatorSession == null || chat.Model is not ChatSessionModel model) return;
-        var result = await _coordinatorSession.ChangeGroup(model.Id, model.Name, model.MemberIds,
-            model.AdminUserId ?? model.CreatorUserId, leave: true);
+        var result = await _coordinatorSession.LeaveGroup(model.Id);
         if (!result.IsSuccess && !result.IsRejected)
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
                 Strings.Get("privateChats.leaveFailed"), Strings.Get("common.error")));

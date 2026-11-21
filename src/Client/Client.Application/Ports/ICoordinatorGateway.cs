@@ -191,8 +191,9 @@ public interface ICoordinatorGateway : IDisposable
     Task SetSoundMuteInHybridSession(int sessionId, bool isMuted);
     Task SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
     Task PokeInHybridSession(int sessionId, int userId, string? message);
-    Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+    Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId)
         => throw new NotSupportedException();
+    Task LeaveGroup(int sessionId) => throw new NotSupportedException();
 
     Task DeleteSession(int sessionId);
 

@@ -41,8 +41,11 @@ public partial class CoordinatorSession
                    || newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax);
     }
 
-    public Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false) =>
-        SendAsync(() => _gateway.ChangeGroup(sessionId, name, memberIds, ownerId, leave));
+    public Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId) =>
+        SendAsync(() => _gateway.ChangeGroup(sessionId, name, memberIds, ownerId));
+
+    public Task<RequestResult> LeaveGroup(int sessionId) =>
+        SendAsync(() => _gateway.LeaveGroup(sessionId));
 
     public Task<RequestResult> DeleteSession(int sessionId) =>
         SendAsync(() => _gateway.DeleteSession(sessionId));
