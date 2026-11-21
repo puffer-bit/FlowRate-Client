@@ -44,7 +44,8 @@
 # The Android build has no GStreamer runtime and no --aot. It needs the android workload of dotnet
 # (dotnet workload install android), the Android SDK and a JDK. With no keystore given the .apk is signed
 # with the debug key: it installs, but a store does not take it. A release key goes in the variables
-# ANDROID_KEYSTORE (the file), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD.
+# ANDROID_KEYSTORE (the file), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD, or
+# in the file Signing/signing.env of the Android project, which builds from the IDE read as well.
 # Needs the .NET 10 SDK, Docker for the linux-x64 runtime, python3, and curl, unzip and g++ for libwebrtc.
 set -euo pipefail
 script=$(readlink -f "$0")
@@ -410,8 +411,10 @@ publish_android() {
             "-p:AndroidSigningKeyAlias=$ANDROID_KEY_ALIAS" -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD
             -p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD)
         export ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}
+    elif [[ -f "$(dirname "$ANDROID_PROJECT")/Signing/signing.env" ]]; then
+        echo "Note: the .apk is signed with the key of $(dirname "$ANDROID_PROJECT")/Signing/signing.env"
     else
-        echo "Note: ANDROID_KEYSTORE is not set, the .apk is signed with the debug key"
+        echo "Note: neither ANDROID_KEYSTORE nor signing.env is there, the .apk is signed with the debug key"
     fi
 
     echo "######## Publishing the client for android"

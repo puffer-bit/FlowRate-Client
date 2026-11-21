@@ -31,7 +31,8 @@ The Android client is one .apk (arm64-v8a and x86_64) with no GStreamer runtime.
 workload of dotnet (dotnet workload install android), the Android SDK and a JDK. With no keystore given
 the .apk is signed with the debug key: it installs, but a store does not take it. A release key goes in
 the variables ANDROID_KEYSTORE (the file), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD and
-ANDROID_KEY_PASSWORD.
+ANDROID_KEY_PASSWORD, or in the file Signing/signing.env of the Android project, which builds from the IDE
+read as well.
 
 .PARAMETER Target
 win-x64 (the default), linux-x64, android or all. Also accepted as the first argument without the name.
@@ -377,8 +378,10 @@ function Publish-Android {
             "-p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS",
             "-p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD",
             "-p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD")
+    } elseif (Test-Path (Join-Path (Split-Path $androidProject) "Signing\signing.env")) {
+        Write-Host "Note: the .apk is signed with the key of $(Join-Path (Split-Path $androidProject) "Signing\signing.env")"
     } else {
-        Write-Host "Note: ANDROID_KEYSTORE is not set, the .apk is signed with the debug key"
+        Write-Host "Note: neither ANDROID_KEYSTORE nor signing.env is there, the .apk is signed with the debug key"
     }
 
     Write-Host "######## Publishing the client for android"
