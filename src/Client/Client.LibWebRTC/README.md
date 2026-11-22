@@ -10,7 +10,11 @@ Android watches them only, decoded by libwebrtc itself (see below).
 
 | Path | Role |
 |---|---|
-| `Transport/LibWebRTCTransport.cs` | `IWebRTCTransport` of every platform: the sections of the SFU, the offer/answer rounds, the volumes, the speaking indicator, the statistics |
+| `Transport/LibWebRTCTransport*.cs` | `IWebRTCTransport` of every platform: the inbound tracks and volumes (main file), the sending tracks (`.Outbound`), the offer/answer rounds over the sections (`.Negotiation`, `.Slot`), the statistics and the speaking indicator (`.Stats`) |
+| `Transport/SendSections.cs` | The sections we send in: codecs, FEC/DTX, bitrates, transport-cc, RTX |
+| `Transport/SpeakingDetector.cs` | Who speaks, from the audio levels of the readings |
+| `Transport/StatsSchedule.cs` | How often the statistics are read, and which readings carry the counters and the entries |
+| `Transport/LocalDtlsParameters.cs` | Our fingerprint and DTLS role from the answer of libwebrtc |
 | `Transport/IMediaPeer.cs` | What a platform gives it: one peer connection that answers the offer of the SFU |
 | `Transport/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
 | `Transport/OutgoingSound.cs` | The sound of the screen we show: captured by `IAudioMedia`, pushed into libwebrtc 10 ms at a time |
