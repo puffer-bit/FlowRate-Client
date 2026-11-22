@@ -21,18 +21,18 @@
     </Control.Resources>
 
     <UserControl.Styles>
-        <!-- The arrow points up while the call's peers are unfolded -->
-        <Style Selector="Button.callPeersToggle Image.chevron">
-            <Setter Property="Opacity" Value="0.7"/>
-            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        <!-- The mark of the settings tabs: points down while the call's peers are out, to the right otherwise -->
+        <Style Selector="Button.callPeersToggle Path.chevron">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.callPeersToggle.expanded Image.chevron">
-            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        <Style Selector="Button.callPeersToggle.expanded Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
         </Style>
     </UserControl.Styles>
     
@@ -178,7 +178,10 @@
                             <StackPanel Orientation="Horizontal" Spacing="3">
                                 <Image Width="12" Height="12" Opacity="0.7" Source="{StaticResource BaseUserIcon}"/>
                                 <TextBlock Classes="sessionCounter" Text="{Binding CallPeers.Peers.Count, FallbackValue=0}"/>
-                                <Image Classes="chevron" Width="10" Height="10" Source="{StaticResource DownArrowIcon}"/>
+                                <Path Classes="chevron" Width="10" Height="6" Stretch="None" Margin="2,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                      StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"/>
                             </StackPanel>
                         </Button>
                         <text:MarqueeTextBlock Grid.Column="1" Classes="sessionName" Text="{Binding DisplayName}"
