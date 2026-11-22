@@ -379,6 +379,9 @@ internal partial class CoordinatorGateway
     public Task RejectInHybridSession(int sessionId, int userId) =>
         SendRequestAsync<RejectUserResponse>(new RejectUserRequest(sessionId, userId, null));
 
+    public Task ChangeChatSessionSettings(int sessionId, string name, string? description) =>
+        SendRequestAsync<ChangeChatSessionSettingsResponse>(new ChangeChatSessionSettingsRequest(sessionId, name, description));
+
     public Task ChangeHybridSessionSettings(int sessionId, string name, int capacity, bool isApprovalRequired,
         MediaSettings media) =>
         SendRequestAsync<ChangeHybridSessionSettingsResponse>(new ChangeHybridSessionSettingsRequest(sessionId, name,

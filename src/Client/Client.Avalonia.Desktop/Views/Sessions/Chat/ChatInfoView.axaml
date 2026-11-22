@@ -9,7 +9,7 @@
              Background="{DynamicResource GeneralBrush}"
              MaxWidth="440" HorizontalAlignment="Stretch" MaxHeight="560">
     <dialogs:DialogLayout>
-        <dialogs:DialogHeader Title="{l:Text chat.info.title}" Subtitle="{l:Text session.type.chat}"/>
+        <dialogs:DialogHeader Icon="{StaticResource HashIcon}" Title="{l:Text chat.info.title}" Subtitle="{l:Text session.type.chat}"/>
         <Border Grid.Row="1" Classes="dialogSeparator"/>
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="18">
@@ -21,10 +21,6 @@
                 <StackPanel Spacing="6">
                     <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.description}"/>
                     <SelectableTextBlock TextWrapping="Wrap" Text="{Binding Description}"/>
-                </StackPanel>
-                <StackPanel Spacing="6">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.participants}"/>
-                    <TextBlock TextWrapping="Wrap" Text="{l:Text chat.info.unlimitedParticipants}"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

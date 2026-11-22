@@ -240,6 +240,8 @@ public interface ICoordinatorGateway : IDisposable
     Task MoveHybridSessionPeer(int sessionId, int userId, int targetSessionId);
     Task ApproveInHybridSession(int sessionId, int userId);
     Task RejectInHybridSession(int sessionId, int userId);
+    Task ChangeChatSessionSettings(int sessionId, string name, string? description);
+
     Task ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isApprovalRequired, MediaSettings media);
     Task ChangeSessionPermissions(int sessionId,

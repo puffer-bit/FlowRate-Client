@@ -48,6 +48,11 @@
                                               IsVisible="{Binding DataContext.CanLeaveGroup, ElementName=Root}"
                                               Command="{Binding DataContext.LeaveGroupCommand, ElementName=Root}"/>
                         <Separator/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionSettings.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditSession, ElementName=Root}"
+                                              Command="{Binding DataContext.EditSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
                         <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionPermissions.title}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.CanEditPermissions, ElementName=Root}"

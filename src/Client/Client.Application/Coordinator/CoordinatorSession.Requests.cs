@@ -95,6 +95,10 @@ public partial class CoordinatorSession
     public Task<RequestResult> RejectInHybridSession(int sessionId, int userId) =>
         SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId));
 
+    public Task<RequestResult> ChangeChatSessionSettings(int sessionId, string name, string? description) =>
+        SendAsync(() => _gateway.ChangeChatSessionSettings(sessionId, name.Trim(),
+            string.IsNullOrWhiteSpace(description) ? null : description.Trim()));
+
     public Task<RequestResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
         bool isApprovalRequired, MediaSettings media) =>
         SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isApprovalRequired, media));

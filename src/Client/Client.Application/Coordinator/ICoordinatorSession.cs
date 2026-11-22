@@ -353,6 +353,9 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>Turns away a user waiting for the host; they cannot join the session again while it runs.</summary>
     Task<RequestResult> RejectInHybridSession(int sessionId, int userId);
 
+    /// <summary>Updates a server chat channel name and description and broadcasts its saved settings.</summary>
+    Task<RequestResult> ChangeChatSessionSettings(int sessionId, string name, string? description);
+
     /// <summary>
     /// Replaces the settings of the hybrid session. A saved change comes back to every client, this one too,
     /// as <see cref="HybridSessionReconfigured"/>.

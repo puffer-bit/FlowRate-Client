@@ -106,6 +106,9 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     }
 
     /// <summary>The roles of the current user let it move the chat to another category.</summary>
+    public ReactiveCommand<SessionModel, RxVoid> EditSessionCommand { get; set; } = null!;
+    public bool CanEditSession => !IsPrivate && CanManage;
+
     public bool CanArrange => !IsPrivate && CanManage;
 
     // Chats have no host
@@ -129,6 +132,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         CanManage = IsPrivate ? permissions.HasIn(Model, Permission.ManageSessions) : permissions.Has(Permission.ManageSessions);
         CanView = permissions.HasIn(Model, Permission.ViewSessions);
         CanEditPermissions = !IsPrivate && permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
+        this.RaisePropertyChanged(nameof(CanEditSession));
         this.RaisePropertyChanged(nameof(CanArrange));
         this.RaisePropertyChanged(nameof(CanEditGroup));
         this.RaisePropertyChanged(nameof(CanLeaveGroup));

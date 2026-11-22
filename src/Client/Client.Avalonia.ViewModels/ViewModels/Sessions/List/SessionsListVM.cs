@@ -174,7 +174,7 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<SessionModel, RxVoid> _showSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveChatCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveHybridSessionCommand;
-    private readonly ReactiveCommand<SessionModel, RxVoid> _editHybridSessionCommand;
+    private readonly ReactiveCommand<SessionModel, RxVoid> _editSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
     private readonly ReactiveCommand<int, RxVoid> _deleteSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
@@ -231,7 +231,7 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> leaveChatCommand,
         ReactiveCommand<int, RxVoid> leaveHybridSessionCommand,
-        ReactiveCommand<SessionModel, RxVoid> editHybridSessionCommand,
+        ReactiveCommand<SessionModel, RxVoid> editSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
@@ -252,7 +252,7 @@ public partial class SessionsListVM : ReactiveObject
         _showSessionCommand = showSessionCommand;
         _leaveChatCommand = leaveChatCommand;
         _leaveHybridSessionCommand = leaveHybridSessionCommand;
-        _editHybridSessionCommand = editHybridSessionCommand;
+        _editSessionCommand = editSessionCommand;
         _editPermissionsCommand = editPermissionsCommand;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
@@ -567,7 +567,8 @@ public partial class SessionsListVM : ReactiveObject
             _editPermissionsCommand,
             _leaveChatCommand)
         {
-            IsMuted = isMuted
+            IsMuted = isMuted,
+            EditSessionCommand = _editSessionCommand
         };
         if (_readTracker.Get(chatSessionModel.Id) is { } readState)
             model.ApplyReadState(readState);
@@ -656,7 +657,7 @@ public partial class SessionsListVM : ReactiveObject
     private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
     {
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
-            _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
+            _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
             _banUserCommand, _admitPeerCommand, _pokePeerCommand);
         model.ApplyAccess(Access.Permissions);

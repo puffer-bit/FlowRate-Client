@@ -239,6 +239,7 @@ public partial class MainWindowVM : ReactiveObject
 
     /// <summary>Asks for the account password or a one-time code when a login or a reconnect needs them.</summary>
     public Interaction<LoginPromptVM, LoginAnswer?> AskLogin { get; } = new();
+    public Interaction<ChatSessionSettingsWindowVM, RxVoid> ShowChatSessionSettingsWindow { get; } = new();
     public Interaction<HybridSessionSettingsWindowVM, RxVoid> ShowHybridSessionSettingsWindow { get; } = new();
     public Interaction<SessionPermissionsWindowVM, RxVoid> ShowSessionPermissionsWindow { get; } = new();
 
@@ -251,6 +252,7 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
+    private readonly ReactiveCommand<(int SessionId, string Name, string? Description), RequestResult> _changeChatSessionSettingsCommand;
     private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsApprovalRequired, MediaSettings Media),
         RequestResult> _changeHybridSessionSettingsCommand;
     private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>
@@ -329,6 +331,8 @@ public partial class MainWindowVM : ReactiveObject
         CreateSessionCommand = ReactiveCommand.CreateFromTask(() => CreateNewSession(null));
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
+        _changeChatSessionSettingsCommand = ReactiveCommand.CreateFromTask<(int SessionId, string Name, string? Description), RequestResult>(
+            change => _coordinatorSession!.ChangeChatSessionSettings(change.SessionId, change.Name, change.Description));
         _changeHybridSessionSettingsCommand = ReactiveCommand
             .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsApprovalRequired, MediaSettings Media),
                 RequestResult>(
@@ -352,7 +356,7 @@ public partial class MainWindowVM : ReactiveObject
                     ChangeContent(null);
             }),
             leaveHybridSessionCommand,
-            ReactiveCommand.CreateFromTask<SessionModel>(EditHybridSession, isConnected),
+            ReactiveCommand.CreateFromTask<SessionModel>(EditSession, isConnected),
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
             _users.PokePeerCommand,
@@ -641,8 +645,14 @@ public partial class MainWindowVM : ReactiveObject
         await ShowServerSettings.Handle(vm);
     }
 
-    private async Task EditHybridSession(SessionModel session)
+    private async Task EditSession(SessionModel session)
     {
+        if (session is ChatSessionModel { IsPrivate: false } chat)
+        {
+            using var chatSettings = new ChatSessionSettingsWindowVM(chat, _changeChatSessionSettingsCommand);
+            await ShowChatSessionSettingsWindow.Handle(chatSettings);
+            return;
+        }
         if (session is not HybridSessionModel hybridSession)
             return;
 

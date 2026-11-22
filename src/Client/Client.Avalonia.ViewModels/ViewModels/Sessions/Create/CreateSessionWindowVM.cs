@@ -233,7 +233,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
                 ? vm.ValidPrivateMembers && (!vm.IsGroup || SessionRules.ValidateName(vm.Name) == null)
                 : SessionRules.ValidateName(vm.Name) == null
                     && (vm.IsChatSelected || SessionRules.ValidateCapacity(vm.Capacity) == null)
-                    && (vm.SelectedType.Type != SessionType.Chat || ValidateDescription(vm.Description) == null));
+                    && (vm.SelectedType.Type != SessionType.Chat || SessionRules.ValidateDescription(vm.Description) == null));
 
         CreateCommand = ReactiveCommand.CreateFromTask(CreateAsync, isValid);
         SelectTypeCommand = ReactiveCommand.Create<SessionTypeOptionVM>(SelectType, CreateCommand.IsExecuting.Select(busy => !busy));
@@ -256,7 +256,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         _disposables.Add(this.WatchProperty(nameof(Capacity), vm => vm.Capacity)
             .Subscribe(capacity => CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(capacity)));
         _disposables.Add(this.WatchProperty(nameof(Description), vm => vm.Description)
-            .Subscribe(description => DescriptionError = ValidateDescription(description)));
+            .Subscribe(description => DescriptionError = SessionRules.ValidateDescription(description)));
     }
 
     private void OnLanguageChanged()
@@ -297,7 +297,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         GeneralError = null;
 
         CapacityError = IsChatSelected ? null : SessionRules.ValidateCapacity(Capacity);
-        DescriptionError = IsChatSelected ? ValidateDescription(Description) : null;
+        DescriptionError = IsChatSelected ? SessionRules.ValidateDescription(Description) : null;
         if (NameError != null || CapacityError != null || DescriptionError != null)
             return;
 
@@ -343,19 +343,6 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
             new NewChatSessionOptions(Kind: IsGroup ? ChatKind.Group : ChatKind.Direct, MemberIds: members)));
         if (result.IsSuccess) CreatedSession = result.Value;
         return result.Result;
-    }
-
-    private static string? ValidateDescription(string? description)
-    {
-        if (string.IsNullOrEmpty(description))
-            return null;
-
-        if (description.Trim().Length > Limits.SessionDescriptionMaxLength)
-            return Strings.Format("profile.name.tooLong", ("limit", Limits.SessionDescriptionMaxLength));
-
-        return description.Any(c => char.IsControl(c) && c is not ('\n' or '\r' or '\t'))
-            ? Strings.Get("createSession.description.controlCharacters")
-            : null;
     }
 
     public void Dispose()

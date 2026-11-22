@@ -30,6 +30,19 @@ public static class SessionRules
         return null;
     }
 
+    public static string? ValidateDescription(string? description)
+    {
+        if (string.IsNullOrEmpty(description))
+            return null;
+
+        if (description.Trim().Length > Limits.SessionDescriptionMaxLength)
+            return Strings.Format("profile.name.tooLong", ("limit", Limits.SessionDescriptionMaxLength));
+
+        return description.Any(c => char.IsControl(c) && c is not ('\n' or '\r' or '\t'))
+            ? Strings.Get("createSession.description.controlCharacters")
+            : null;
+    }
+
     public static string? ValidateCapacity(decimal? capacity) => capacity switch
     {
         null => Strings.Get("createSession.capacity.empty"),

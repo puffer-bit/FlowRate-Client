@@ -16,6 +16,7 @@ using Client.Views.Dialogs;
 using Client.Views.Profile;
 using Client.Views.ServerSettings;
 using Client.Views.Sessions.Create;
+using Client.Views.Sessions.Chat;
 using Client.Views.Sessions.Hybrid;
 using Client.Avalonia.Video;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,6 +87,10 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
                     .RegisterDialogHandler(this, () => new AccountSecurityView())
                     .DisposeWith(disposables);
                 ViewModel!.AskLogin.RegisterLoginPromptHandler(this).DisposeWith(disposables);
+                ViewModel!.ShowChatSessionSettingsWindow
+                    .RegisterDialogHandler(this, () => new ChatSessionSettingsView())
+                    .DisposeWith(disposables);
+
                 ViewModel!.ShowHybridSessionSettingsWindow
                     .RegisterDialogHandler(this, () => new HybridSessionSettingsView())
                     .DisposeWith(disposables);
