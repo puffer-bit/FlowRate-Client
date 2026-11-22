@@ -3,20 +3,20 @@ using Client.Core.Media;
 using Client.Core.Settings;
 using Shared.Enums.WebRTC;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
-/// The peer connection of one voice session on top of libwebrtc, which owns ICE, DTLS-SRTP, the
-/// microphone and the playback. <see cref="VoiceTransport"/> builds the description of the SFU and
+/// The peer connection of one hybrid session on top of libwebrtc, which owns ICE, DTLS-SRTP, the
+/// microphone and the playback. <see cref="LibWebRTCTransport"/> builds the description of the SFU and
 /// keeps the sections; a peer only answers it, so each platform needs nothing of libwebrtc but this.
 /// </summary>
-/// <remarks>The calls of <see cref="IVoicePeerListener"/> come on the threads of libwebrtc.</remarks>
-public interface IVoicePeer : IDisposable
+/// <remarks>The calls of <see cref="IMediaPeerListener"/> come on the threads of libwebrtc.</remarks>
+public interface IMediaPeer : IDisposable
 {
     /// <summary>
     /// Runs one offer/answer round: applies the description of the SFU, puts what we send into the
     /// sections we send in, answers, and gives each of those sections the SSRC the SFU expects there.
-    /// Ends in <see cref="IVoicePeerListener.OnNegotiated"/> or <see cref="IVoicePeerListener.OnFailed"/>.
+    /// Ends in <see cref="IMediaPeerListener.OnNegotiated"/> or <see cref="IMediaPeerListener.OnFailed"/>.
     /// </summary>
     void Negotiate(string offer, IReadOnlyList<SendSection> sends);
 
@@ -70,7 +70,7 @@ public interface IVoicePeer : IDisposable
     /// <summary>The playback volume of the voice of a section, 0 silences it.</summary>
     void SetVolume(string mid, double volume);
 
-    /// <summary>Reads the statistics once; see <see cref="IVoicePeerListener.OnStats"/>.</summary>
+    /// <summary>Reads the statistics once; see <see cref="IMediaPeerListener.OnStats"/>.</summary>
     /// <param name="isDetailed">
     /// The reading should carry the counters of the streams as well, not only the levels. A peer whose
     /// readings always carry them may ignore it.
@@ -78,7 +78,7 @@ public interface IVoicePeer : IDisposable
     void RequestStats(bool isDetailed);
 }
 
-public interface IVoicePeerListener
+public interface IMediaPeerListener
 {
     void OnConnectionChanged(WebRTCConnectionState state);
 
@@ -87,7 +87,7 @@ public interface IVoicePeerListener
 
     void OnFailed(string error);
 
-    void OnStats(VoiceStats stats);
+    void OnStats(TransportStats stats);
 
     /// <summary>
     /// A picture of the screen of a section, from a peer that decodes the screens itself, on the

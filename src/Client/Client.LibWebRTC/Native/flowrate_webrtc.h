@@ -1,6 +1,6 @@
 /*
  * The voice of a session over libwebrtc (webrtc-sdk/libwebrtc), as a plain C interface for P/Invoke.
- * The counterpart of VoicePeer.java on Android: the description of the SFU is built on the .NET side,
+ * The counterpart of MediaPeer.java on Android: the description of the SFU is built on the .NET side,
  * this answers it and exchanges processed PCM with the desktop media engine.
  *
  * Callbacks come on the threads of libwebrtc: the signaling thread for the peer, the encoder and

@@ -9,7 +9,7 @@ namespace Client.Droid.Platform.Media.WebRTC;
 
 /// <summary>
 /// Passes the log of libwebrtc into the journal, under <see cref="NativeLogCategories.LibWebRTC"/>.
-/// libwebrtc of Android takes its logger only when it starts, see <c>VoicePeer.setLog</c>: a level asked
+/// libwebrtc of Android takes its logger only when it starts, see <c>MediaPeer.setLog</c>: a level asked
 /// for later is applied as far as the one it started with allows, the rest after a restart.
 /// </summary>
 internal sealed partial class AndroidWebRTCNativeLog : INativeLog
@@ -45,7 +45,7 @@ internal sealed partial class AndroidWebRTCNativeLog : INativeLog
 
         _listener.MinSeverity = severity;
 
-        if (!VoicePeer.SetLog(_listener, severity))
+        if (!MediaPeer.SetLog(_listener, severity))
             LogAfterRestart(level);
     }
 
@@ -53,7 +53,7 @@ internal sealed partial class AndroidWebRTCNativeLog : INativeLog
         "libwebrtc has started already: its log at {Level} is passed from the next start of the application")]
     private partial void LogAfterRestart(NativeLogLevel level);
 
-    private sealed partial class Listener(ILogger native) : Java.Lang.Object, VoicePeer.ILogListener
+    private sealed partial class Listener(ILogger native) : Java.Lang.Object, MediaPeer.ILogListener
     {
         private int _minSeverity = SeverityNone;
 

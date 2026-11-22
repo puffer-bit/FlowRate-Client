@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- The voice of hybrid sessions over libwebrtc. Voice/ is the transport every platform shares, over
+    <!-- The media of hybrid sessions over libwebrtc. Transport/ is the transport every platform shares, over
          a peer of its own: Native/ is the desktop one, over webrtc-sdk/libwebrtc through the C interface
          of Native/flowrate_webrtc.h; Android has one over the libwebrtc of its Java bindings -->
     <PropertyGroup>

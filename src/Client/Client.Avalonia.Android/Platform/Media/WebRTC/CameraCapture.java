@@ -21,13 +21,13 @@ import org.webrtc.YuvHelper;
 
 /**
  * The camera we send, captured by Camera2 and encoded by libwebrtc itself: the track goes into its
- * section through VoicePeer.negotiate. What is captured is also handed out, upright, as the preview.
+ * section through MediaPeer.negotiate. What is captured is also handed out, upright, as the preview.
  */
 public final class CameraCapture {
 
     public interface Listener {
         /** A picture of the preview, on the thread of the camera. The listener releases it. */
-        void onPicture(VoicePeer.Picture picture);
+        void onPicture(MediaPeer.Picture picture);
 
         /** The camera was lost or could not open; nothing is captured any more. */
         void onFailed(String error);
@@ -92,7 +92,7 @@ public final class CameraCapture {
             }
 
             // The listener releases it, whatever happens to the picture there
-            listener.onPicture(new VoicePeer.Picture(buffer, frame.getTimestampNs()));
+            listener.onPicture(new MediaPeer.Picture(buffer, frame.getTimestampNs()));
         }
     };
 

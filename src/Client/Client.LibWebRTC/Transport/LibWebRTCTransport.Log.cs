@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 using Shared.Models.Media;
 using Shared.Enums.WebRTC;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
-public sealed partial class VoiceTransport
+public sealed partial class LibWebRTCTransport
 {
     [LoggerMessage(LogLevel.Debug, "[Session {SessionId}] Remote description:\n{Sdp}")]
     private partial void LogRemoteDescription(int sessionId, string sdp);

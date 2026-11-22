@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 
 namespace Client.LibWebRTC.Native;
 
@@ -16,7 +16,7 @@ namespace Client.LibWebRTC.Native;
 /// </remarks>
 public static class StatsReader
 {
-    public static VoiceStats Read(string json)
+    public static TransportStats Read(string json)
     {
         using var document = JsonDocument.Parse(json);
 
@@ -106,7 +106,7 @@ public static class StatsReader
             ? localProtocol == "tcp" || remoteProtocol == "tcp"
             : null;
 
-        return new VoiceStats(levels, new VoiceStreamCounters(inbound, outbound, isOverTcp,
+        return new TransportStats(levels, new StreamCounters(inbound, outbound, isOverTcp,
             selectedPair != null && available.TryGetValue(selectedPair, out var kbps) ? kbps : null), entries);
 
         string? Protocol(string? candidateId) =>

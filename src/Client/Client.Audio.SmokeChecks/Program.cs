@@ -4,7 +4,7 @@ using Client.Core.Settings;
 using Client.GStreamer.Audio;
 using Client.GStreamer.Loader;
 using Client.LibWebRTC.Native;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Microsoft.Extensions.Logging.Abstractions;
 
 // Requires the bundled media runtime and matching native prebuilt. Uses synthetic inputs and a
@@ -219,14 +219,14 @@ Require(runtime.TryLoad(), runtime.Load() ?? "Load native runtime");
 for (var round = 0; round < 3; round++)
 {
     var listener = new Listener();
-    using (var peer = new NativeVoicePeer(runtime, listener))
+    using (var peer = new NativeMediaPeer(runtime, listener))
     {
         Require(peer.SetMicrophone(new ToneAudioInput(440), NoiseSuppressionLevel.Off, false, false), "Configure native peer");
         await Task.Delay(250);
         peer.RequestStats(false);
         await Until(() => listener.Stats != null, "Native stats callback");
         Require(listener.Stats!.Levels.Any(level => level.Mid == null && level.Level > 0.1), "Custom capture speaking level");
-        using (var second = new NativeVoicePeer(runtime, new Listener()))
+        using (var second = new NativeMediaPeer(runtime, new Listener()))
         {
             Require(second.SetMicrophone(new ToneAudioInput(440), NoiseSuppressionLevel.Off, false, false), "Share native capture");
             var generation = audio.CaptureGeneration;
@@ -268,11 +268,11 @@ static async Task Until(Func<bool> condition, string message)
     }
 }
 
-sealed class Listener : IVoicePeerListener
+sealed class Listener : IMediaPeerListener
 {
-    public volatile VoiceStats? Stats;
+    public volatile TransportStats? Stats;
     public volatile string? Error;
-    public void OnStats(VoiceStats stats) => Stats = stats;
+    public void OnStats(TransportStats stats) => Stats = stats;
     public void OnFailed(string error) => Error = error;
     public void OnConnectionChanged(WebRTCConnectionState state) { }
     public void OnNegotiated(string localSdp) { }

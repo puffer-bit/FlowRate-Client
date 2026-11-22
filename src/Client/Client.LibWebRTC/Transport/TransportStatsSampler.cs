@@ -1,16 +1,16 @@
 using Client.Core.Sessions.Hybrid;
 using Shared.Models.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// Turns the counters of every few readings of the statistics into what happened since the
 /// previous sample.
 /// </summary>
 /// <remarks>Not thread-safe: the caller runs every call under one lock.</remarks>
-internal sealed class VoiceStatsSampler
+internal sealed class TransportStatsSampler
 {
-    // The transport passes a reading with the counters every second (see VoiceTransport.CountersInterval),
+    // The transport passes a reading with the counters every second (see LibWebRTCTransport.CountersInterval),
     // while the ones for the speaking indicator come far more often: a sample every 2 s
     public const int ReadingsPerSample = 2;
 
@@ -21,7 +21,7 @@ internal sealed class VoiceStatsSampler
     /// <param name="findInbound">The inbound track with the given SSRC.</param>
     /// <param name="findOutbound">The track we send with the given SSRC.</param>
     /// <returns>The sample, or null on a reading between two samples.</returns>
-    public TransportStatsSample? Read(VoiceStreamCounters counters, Func<uint, InboundTrack?> findInbound,
+    public TransportStatsSample? Read(StreamCounters counters, Func<uint, InboundTrack?> findInbound,
         Func<uint, OutboundTrack?> findOutbound)
     {
         if (_readings++ % ReadingsPerSample != 0)

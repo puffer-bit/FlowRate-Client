@@ -11,16 +11,16 @@ namespace Client.Droid.Platform.Media.WebRTC;
 /// </summary>
 internal sealed class AndroidPictureFrame : MemoryYuvVideoFrame
 {
-    private readonly VoicePeer.Picture _picture;
+    private readonly MediaPeer.Picture _picture;
 
-    private AndroidPictureFrame(VoicePeer.Picture picture, VideoPlane[] planes)
+    private AndroidPictureFrame(MediaPeer.Picture picture, VideoPlane[] planes)
         : base(picture.Width, picture.Height, YuvPlaneLayout.I420, planes)
     {
         _picture = picture;
     }
 
     /// <summary>Takes the picture over; it is released with the last reference of the frame.</summary>
-    public static AndroidPictureFrame Wrap(VoicePeer.Picture picture)
+    public static AndroidPictureFrame Wrap(MediaPeer.Picture picture)
     {
         try
         {

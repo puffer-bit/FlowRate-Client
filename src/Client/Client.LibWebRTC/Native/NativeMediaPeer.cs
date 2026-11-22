@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Client.Application.Ports;
 using Client.Core.Settings;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Shared.Enums.WebRTC;
 
 namespace Client.LibWebRTC.Native;
@@ -10,10 +10,10 @@ namespace Client.LibWebRTC.Native;
 /// The desktop peer over flowrate_webrtc. GStreamer captures and processes its microphone; decoded
 /// playback is pulled through the runtime's external audio device. Screens use encoded sources.
 /// </summary>
-internal sealed unsafe class NativeVoicePeer : IVoicePeer
+internal sealed unsafe class NativeMediaPeer : IMediaPeer
 {
     private readonly LibWebRTCRuntime _runtime;
-    private readonly IVoicePeerListener _listener;
+    private readonly IMediaPeerListener _listener;
     private readonly Lock _lock = new();
     private readonly GCHandle _self;
     private readonly nint _peer;
@@ -31,7 +31,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
     private double _volume = 1;
     private long _gateSummaryTaken = Environment.TickCount64;
 
-    public NativeVoicePeer(LibWebRTCRuntime runtime, IVoicePeerListener listener)
+    public NativeMediaPeer(LibWebRTCRuntime runtime, IMediaPeerListener listener)
     {
         _runtime = runtime;
         _listener = listener;
@@ -253,8 +253,8 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         }
     }
 
-    private static IVoicePeerListener? ListenerOf(nint context) =>
-        GCHandle.FromIntPtr(context).Target is NativeVoicePeer { _isClosed: false } peer ? peer._listener : null;
+    private static IMediaPeerListener? ListenerOf(nint context) =>
+        GCHandle.FromIntPtr(context).Target is NativeMediaPeer { _isClosed: false } peer ? peer._listener : null;
 
     // The callbacks come on the threads of libwebrtc, where an exception may not go; the listener
     // catches its own
@@ -278,7 +278,7 @@ internal sealed unsafe class NativeVoicePeer : IVoicePeer
         {
             var text = Marshal.PtrToStringUTF8((nint)json) ?? "[]";
 
-            if (GCHandle.FromIntPtr(context).Target is NativeVoicePeer { _isClosed: false } peer)
+            if (GCHandle.FromIntPtr(context).Target is NativeMediaPeer { _isClosed: false } peer)
             {
                 var microphone = Volatile.Read(ref peer._microphone);
                 var stats = StatsReader.Read(text);

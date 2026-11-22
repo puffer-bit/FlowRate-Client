@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using Client.Core.Media;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 
 namespace Client.LibWebRTC.Native;
 

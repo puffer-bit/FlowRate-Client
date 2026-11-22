@@ -5,7 +5,7 @@ into it: a file in a loop or a sine tone. It is the only way to put test audio i
 server has no built-in test peers.
 
 The bot uses the same code as the desktop client (`CoordinatorSession`, `HybridSession`,
-the libwebrtc `VoiceTransport`), so it also exercises the client send path and the real join protocol.
+the libwebrtc `LibWebRTCTransport`), so it also exercises the client send path and the real join protocol.
 
 ## Requirements
 

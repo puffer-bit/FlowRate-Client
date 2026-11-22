@@ -4,7 +4,7 @@ using Client.Application.Ports;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Media;
 using Client.LibWebRTC.Native;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shared.Models.Media;
 
@@ -16,9 +16,9 @@ internal static class VideoNegotiationSmokeChecks
     {
         var answers = new ConcurrentQueue<string>();
         var errors = new ConcurrentQueue<string>();
-        using var transport = new VoiceTransport(1,
-            listener => new NativeVoicePeer(runtime, new Listener(listener, answers, errors)),
-            NullLogger<VoiceTransport>.Instance, isPlaybackEnabled: false, video: new SilentVideoMedia(),
+        using var transport = new LibWebRTCTransport(1,
+            listener => new NativeMediaPeer(runtime, new Listener(listener, answers, errors)),
+            NullLogger<LibWebRTCTransport>.Instance, isPlaybackEnabled: false, video: new SilentVideoMedia(),
             isVideoDecodedByPeer: true);
         var parameters = new TransportParameters("127.0.0.1", 9,
             new DtlsParameters("auto", [new DtlsFingerprint("sha-256", string.Join(':', Enumerable.Repeat("00", 32)))]),
@@ -138,8 +138,8 @@ internal static class VideoNegotiationSmokeChecks
             throw new InvalidOperationException(message);
     }
 
-    private sealed class Listener(IVoicePeerListener inner, ConcurrentQueue<string> answers,
-        ConcurrentQueue<string> errors) : IVoicePeerListener
+    private sealed class Listener(IMediaPeerListener inner, ConcurrentQueue<string> answers,
+        ConcurrentQueue<string> errors) : IMediaPeerListener
     {
         public void OnNegotiated(string sdp)
         {
@@ -153,7 +153,7 @@ internal static class VideoNegotiationSmokeChecks
             inner.OnFailed(error);
         }
 
-        public void OnStats(VoiceStats stats) => inner.OnStats(stats);
+        public void OnStats(TransportStats stats) => inner.OnStats(stats);
         public void OnConnectionChanged(WebRTCConnectionState state) => inner.OnConnectionChanged(state);
     }
 }

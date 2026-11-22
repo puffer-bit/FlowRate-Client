@@ -1,6 +1,6 @@
 using Client.Core.Sessions.Hybrid;
 using Client.LibWebRTC.Native;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Shared.Models.Media;
 using Xunit;
 
@@ -33,7 +33,7 @@ public class LibWebRTCStatsTests
         // The level of the voice is the one before the playback volume, not the audioLevel of libwebrtc
         Assert.Equal([new VoiceLevel(null, 0.125), new VoiceLevel("2", 16384.0 / short.MaxValue)], stats.Levels);
 
-        var streams = Assert.IsType<VoiceStreamCounters>(stats.Streams);
+        var streams = Assert.IsType<StreamCounters>(stats.Streams);
         Assert.Equal([new InboundCounters(VoiceSsrc, 500, 3, 20), new InboundCounters(ScreenSsrc, 7, 1, 0, 2)],
             streams.Inbound);
         Assert.Equal([new OutboundCounters(MicrophoneSsrc, 400, 0.25, 40), new OutboundCounters(OurScreenSsrc, 900, null, null)],
@@ -61,7 +61,7 @@ public class LibWebRTCStatsTests
     [Fact]
     public void SampleCoversWhatHappenedSinceThePreviousOne()
     {
-        var sampler = new VoiceStatsSampler();
+        var sampler = new TransportStatsSampler();
 
         // The first reading only sets the counters to count from
         var first = Read(sampler, received: 100, lost: 0, sent: 100, fractionLost: null);
@@ -69,7 +69,7 @@ public class LibWebRTCStatsTests
         Assert.Empty(first.Inbound!);
         Assert.Null(first.RoundTripMs);
 
-        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+        for (var reading = 1; reading < TransportStatsSampler.ReadingsPerSample; reading++)
             Assert.Null(sampler.Read(Counters(150, 5, 150, 0.5), FindVoice, FindMicrophone));
 
         var sample = Read(sampler, received: 190, lost: 10, sent: 200, fractionLost: 0.05);
@@ -87,10 +87,10 @@ public class LibWebRTCStatsTests
     [Fact]
     public void ScreenIsSampledWithItsKeyframeRequests()
     {
-        var sampler = new VoiceStatsSampler();
+        var sampler = new TransportStatsSampler();
         sampler.Read(ScreenCounters(100, 0, 1), FindScreen, _ => null);
 
-        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+        for (var reading = 1; reading < TransportStatsSampler.ReadingsPerSample; reading++)
             sampler.Read(ScreenCounters(300, 2, 2), FindScreen, _ => null);
 
         var sample = Assert.IsType<TransportStatsSample>(sampler.Read(ScreenCounters(500, 5, 4), FindScreen, _ => null));
@@ -102,7 +102,7 @@ public class LibWebRTCStatsTests
         Assert.Equal(3u, screen.KeyframeRequests);
         Assert.Equal(100.0 * 5 / 405, screen.LossPercent, 3);
 
-        static VoiceStreamCounters ScreenCounters(long received, long lost, long plis) =>
+        static StreamCounters ScreenCounters(long received, long lost, long plis) =>
             new([new InboundCounters(ScreenSsrc, received, lost, 1, plis)], [], false);
 
         static InboundTrack? FindScreen(uint ssrc) => ssrc == ScreenSsrc ? Screen : null;
@@ -111,10 +111,10 @@ public class LibWebRTCStatsTests
     [Fact]
     public void LossOfVideoWeSendIsOurs()
     {
-        var sampler = new VoiceStatsSampler();
+        var sampler = new TransportStatsSampler();
         sampler.Read(Counters(100, 0, 100, null), FindVoice, FindVideo);
 
-        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+        for (var reading = 1; reading < TransportStatsSampler.ReadingsPerSample; reading++)
             sampler.Read(Counters(150, 0, 150, 0.5), FindVoice, FindVideo);
 
         var sample = Assert.IsType<TransportStatsSample>(
@@ -129,10 +129,10 @@ public class LibWebRTCStatsTests
     [Fact]
     public void StoppedStreamDoesNotReportItsLastLoss()
     {
-        var sampler = new VoiceStatsSampler();
+        var sampler = new TransportStatsSampler();
         Read(sampler, received: 100, lost: 0, sent: 100, fractionLost: null);
 
-        for (var reading = 1; reading < VoiceStatsSampler.ReadingsPerSample; reading++)
+        for (var reading = 1; reading < TransportStatsSampler.ReadingsPerSample; reading++)
             sampler.Read(Counters(100, 0, 100, 0.5), FindVoice, FindMicrophone);
 
         // The SFU repeats its last report of a stream we no longer send in
@@ -142,11 +142,11 @@ public class LibWebRTCStatsTests
         Assert.Null(sample.RoundTripMs);
     }
 
-    private static TransportStatsSample Read(VoiceStatsSampler sampler, long received, long lost, long sent,
+    private static TransportStatsSample Read(TransportStatsSampler sampler, long received, long lost, long sent,
         double? fractionLost) =>
         Assert.IsType<TransportStatsSample>(sampler.Read(Counters(received, lost, sent, fractionLost), FindVoice, FindMicrophone));
 
-    private static VoiceStreamCounters Counters(long received, long lost, long sent, double? fractionLost) =>
+    private static StreamCounters Counters(long received, long lost, long sent, double? fractionLost) =>
         new([new InboundCounters(VoiceSsrc, received, lost, 20)],
             [new OutboundCounters(MicrophoneSsrc, sent, fractionLost, fractionLost == null ? null : 40)], false);
 

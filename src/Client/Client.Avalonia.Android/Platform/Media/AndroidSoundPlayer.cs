@@ -59,7 +59,7 @@ internal sealed class AndroidSoundPlayer : ISoundPlayer
         }
     }
 
-    // A voice session puts the device into a call, see VoicePeer.setCommunicationMode
+    // A voice session puts the device into a call, see MediaPeer.setCommunicationMode
     private static bool IsInCall() =>
         global::Android.App.Application.Context.GetSystemService(global::Android.Content.Context.AudioService) is AudioManager
         {

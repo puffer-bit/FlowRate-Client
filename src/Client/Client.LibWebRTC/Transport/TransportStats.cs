@@ -1,6 +1,6 @@
 using Client.Core.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// One reading of the statistics of a peer: how loud every voice is now, and the counters of the
@@ -9,7 +9,7 @@ namespace Client.LibWebRTC.Voice;
 /// <param name="Levels">The level of each section that plays a voice, and of the microphone.</param>
 /// <param name="Streams">The counters, or null from a peer that reads levels only.</param>
 /// <param name="Entries">The objects of the reading the statistics of the media need, or null with the levels only.</param>
-public sealed record VoiceStats(IReadOnlyList<VoiceLevel> Levels, VoiceStreamCounters? Streams = null,
+public sealed record TransportStats(IReadOnlyList<VoiceLevel> Levels, StreamCounters? Streams = null,
     IReadOnlyList<StatsEntry>? Entries = null, VoiceGateSummary? GateSummary = null);
 
 /// <summary>
@@ -36,7 +36,7 @@ public readonly record struct VoiceLevel(string? Mid, double Level);
 
 /// <param name="IsOverTcp">The media goes over a TCP candidate pair, or null while none is selected.</param>
 /// <param name="AvailableOutgoingKbps">What the bandwidth estimate lets us send, or null before there is one.</param>
-public sealed record VoiceStreamCounters(IReadOnlyList<InboundCounters> Inbound, IReadOnlyList<OutboundCounters> Outbound,
+public sealed record StreamCounters(IReadOnlyList<InboundCounters> Inbound, IReadOnlyList<OutboundCounters> Outbound,
     bool? IsOverTcp, double? AvailableOutgoingKbps = null);
 
 /// <summary>The counters of a stream we receive since it started.</summary>
