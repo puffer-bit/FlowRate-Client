@@ -1,4 +1,8 @@
-# Builds the desktop client for Linux, Windows and macOS (Apple silicon), run by hand from the Actions tab.
+# Builds the desktop client for Linux, Windows and macOS (Apple silicon) and the Android client, run by
+# hand from the Actions tab.
+#
+# The Android .apk is signed with the release key from the secrets of the android-release environment
+# (see the android job); NativeAOT does not apply to it.
 #
 # Each platform is built on its own system with the publish script of that system: NativeAOT does not
 # compile for another one, and the Windows GStreamer runtime comes from the official installer, which
@@ -227,5 +231,62 @@ jobs:
         with:
           name: FlowRateClient-${{ needs.version.outputs.version }}-osx-arm64${{ inputs.aot && '-aot' || '' }}
           path: dist/${{ needs.version.outputs.version }}/osx-arm64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          compression-level: 0
+
+  android:
+    name: android
+    needs: version
+    # Has the Android SDK and a JDK
+    runs-on: ubuntu-24.04
+    # The release key is in the secrets of this environment, given to this job alone:
+    # ANDROID_KEYSTORE_BASE64 (the keystore file in base64), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD
+    environment: android-release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
+          dotnet-version: 10.0.402
+
+      - name: Android workload
+        run: |
+          dotnet workload install android
+          # The SDK platform and build tools the project needs, when the runner image has others
+          dotnet build src/Client/Client.Avalonia.Android/Client.Avalonia.Android.csproj -t:InstallAndroidDependencies \
+              -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=true -nologo
+
+      # Without the key the build stops: an .apk signed with a key of its own would not install over
+      # the one people have
+      - name: Release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          [[ -n "$KEYSTORE_BASE64" ]] ||
+              { echo "error: the android-release environment has no ANDROID_KEYSTORE_BASE64 secret" >&2; exit 1; }
+          umask 077
+          base64 -d <<< "$KEYSTORE_BASE64" > "$RUNNER_TEMP/release.keystore"
+
+      - name: Publish
+        env:
+          ANDROID_KEYSTORE: ${{ runner.temp }}/release.keystore
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          arguments=(--target android)
+          [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
+          src/Scripts/bash/publish.sh "${arguments[@]}"
+
+      - name: Remove the release key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-android
+          path: dist/${{ needs.version.outputs.version }}/android
           if-no-files-found: error
           compression-level: 0

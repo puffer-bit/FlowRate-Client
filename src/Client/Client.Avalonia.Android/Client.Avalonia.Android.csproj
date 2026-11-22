@@ -8,8 +8,8 @@
         <!-- Not Client.Android: inside the Client namespace that name would hide the Android SDK namespace -->
         <RootNamespace>Client.Droid</RootNamespace>
         <ApplicationId>com.flowrate.client</ApplicationId>
-        <ApplicationVersion>1</ApplicationVersion>
-        <ApplicationDisplayVersion>0.6.0</ApplicationDisplayVersion>
+        <ApplicationVersion>2</ApplicationVersion>
+        <ApplicationDisplayVersion>0.7.1</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     </PropertyGroup>
@@ -44,6 +44,7 @@
     <!-- Voice: libwebrtc as Google builds it, unbound. Only the small class of ours in front of it is
          bound, which keeps the bindings clear of its whole API -->
     <ItemGroup>
+        <!-- Rider marks AndroidMavenLibrary as an error, but the .NET Android build knows it -->
         <AndroidMavenLibrary Include="io.github.webrtc-sdk:android" Version="144.7559.15" Bind="false" />
         <AndroidJavaSource Include="Platform\Media\WebRTC\*.java" Bind="true" />
     </ItemGroup>
@@ -58,6 +59,32 @@
         </AndroidResource>
     </ItemGroup>
     
+    <!-- The release key for any build, from the IDE as well: Signing/signing.env (not in git, see
+         Signing/signing.env.example) with the variables publish.sh takes, and the keystore beside it.
+         Properties given on the command line, as publish.sh and the CI give them, come before these.
+         Without the file the debug key signs. -->
+    <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)/Signing/signing.env')">
+        <_SigningEnv>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Signing/signing.env'))</_SigningEnv>
+        <_SigningKeyStore>$([System.Text.RegularExpressions.Regex]::Match($(_SigningEnv), '(?m)^\s*ANDROID_KEYSTORE\s*=\s*(.*?)\s*$').Groups[1].Value)</_SigningKeyStore>
+        <_SigningKeyAlias>$([System.Text.RegularExpressions.Regex]::Match($(_SigningEnv), '(?m)^\s*ANDROID_KEY_ALIAS\s*=\s*(.*?)\s*$').Groups[1].Value)</_SigningKeyAlias>
+        <_SigningStorePass>$([System.Text.RegularExpressions.Regex]::Match($(_SigningEnv), '(?m)^\s*ANDROID_KEYSTORE_PASSWORD\s*=\s*(.*?)\s*$').Groups[1].Value)</_SigningStorePass>
+        <_SigningKeyPass>$([System.Text.RegularExpressions.Regex]::Match($(_SigningEnv), '(?m)^\s*ANDROID_KEY_PASSWORD\s*=\s*(.*?)\s*$').Groups[1].Value)</_SigningKeyPass>
+        <_SigningKeyPass Condition="'$(_SigningKeyPass)' == ''">$(_SigningStorePass)</_SigningKeyPass>
+
+        <AndroidKeyStore>true</AndroidKeyStore>
+        <!-- A relative path is from the Signing folder -->
+        <AndroidSigningKeyStore>$([System.IO.Path]::Combine($(MSBuildProjectDirectory), 'Signing', $(_SigningKeyStore)))</AndroidSigningKeyStore>
+        <AndroidSigningKeyAlias>$(_SigningKeyAlias)</AndroidSigningKeyAlias>
+        <AndroidSigningStorePass>$(_SigningStorePass)</AndroidSigningStorePass>
+        <AndroidSigningKeyPass>$(_SigningKeyPass)</AndroidSigningKeyPass>
+    </PropertyGroup>
+
+    <Target Name="CheckSigningEnv" BeforeTargets="Build" Condition="Exists('$(MSBuildProjectDirectory)/Signing/signing.env')">
+        <Error Condition="'$(_SigningKeyStore)' == '' Or '$(_SigningKeyAlias)' == '' Or '$(_SigningStorePass)' == ''"
+               Text="signing.env needs ANDROID_KEYSTORE, ANDROID_KEY_ALIAS and ANDROID_KEYSTORE_PASSWORD (see Signing/signing.env.example)" />
+        <Error Condition="!Exists('$(AndroidSigningKeyStore)')" Text="No keystore in $(AndroidSigningKeyStore), named in Signing/signing.env" />
+    </Target>
+
     <!-- The time and the commit of the build, shown after the version -->
     <Import Project="..\BuildNumber.targets" />
 </Project>
