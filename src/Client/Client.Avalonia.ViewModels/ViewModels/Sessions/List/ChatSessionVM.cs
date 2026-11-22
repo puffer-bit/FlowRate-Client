@@ -54,6 +54,29 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         }
     }
 
+    /// <summary>
+    /// The media session of the call running in this chat, whose peers the list shows under the chat with the
+    /// same rows and menus as under a voice channel; null while no call runs.
+    /// </summary>
+    public HybridSessionVM? CallPeers
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (value == null) IsCallExpanded = false;
+        }
+    }
+
+    /// <summary>The peers of the call are shown under the chat.</summary>
+    public bool IsCallExpanded
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public void ToggleCallExpanded() => IsCallExpanded = !IsCallExpanded;
+
     /// <summary>Starts the chat's call, joins the running one, or shows it when we are in it.</summary>
     public ReactiveCommand<RxVoid, RxVoid>? CallCommand { get; set; }
     public bool CanCall => Model is ChatSessionModel { Kind: ChatKind.Direct or ChatKind.Group }
