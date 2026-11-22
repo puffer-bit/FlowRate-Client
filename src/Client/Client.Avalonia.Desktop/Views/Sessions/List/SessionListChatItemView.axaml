@@ -21,10 +21,10 @@
     </Control.Resources>
 
     <UserControl.Styles>
-        <!-- The mark of the settings tabs: points down while the call's peers are out, to the right otherwise -->
+        <!-- The mark of the settings tabs: points down while the call's peers are in, turns up when they are out -->
         <Style Selector="Button.callPeersToggle Path.chevron">
             <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
-            <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
@@ -32,7 +32,7 @@
             </Setter>
         </Style>
         <Style Selector="Button.callPeersToggle.expanded Path.chevron">
-            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
         </Style>
     </UserControl.Styles>
     
