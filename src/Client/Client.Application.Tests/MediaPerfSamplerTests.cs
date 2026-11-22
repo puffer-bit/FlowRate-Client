@@ -1,6 +1,6 @@
 using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Shared.Models.Media;
 using Xunit;
 

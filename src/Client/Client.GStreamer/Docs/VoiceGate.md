@@ -209,7 +209,7 @@ effective threshold = max(threshold, min(floor + 12 dB, threshold + 15 dB, 0 dB)
 
 ## Logged
 
-Every minute `VoiceTransport.LogGateSummary` logs, per gate: the threshold, the threshold it opens from
+Every minute `LibWebRTCTransport.LogGateSummary` logs, per gate: the threshold, the threshold it opens from
 now and the noise floor (null without the adaptive threshold), how much of the time it was open
 and how often it opened, the loudest peak and the average peak while open, and how much of the time
 RNNoise heard a voice (null without voice detection).
@@ -242,7 +242,7 @@ GstBusWatcher thread           TimedPopFiltered(Element) ──► GstProcessedM
 
 ## What is gated
 
-Only a microphone (`DeviceAudioInput`): `VoiceTransport.StartOutbound(outbound, input, volume,
+Only a microphone (`DeviceAudioInput`): `LibWebRTCTransport.StartOutbound(outbound, input, volume,
 voiceGate, noiseSuppression)` hands its options to the microphone of the voice device. A looped
 file or a tone (the test bot) is pushed into libwebrtc as it is, and the sound of a shown screen
 never goes through the gate, which would cut the quiet parts of music.
@@ -423,7 +423,7 @@ its transport receives and sends.
 
 ### What counts as speech
 
-`VoiceTransport` reads the statistics of libwebrtc every 200 ms. A voice whose level is above
+`LibWebRTCTransport` reads the statistics of libwebrtc every 200 ms. A voice whose level is above
 `SpeakingLevel` (0.02 of full scale) speaks, and stays speaking for `SpeakingHold` (400 ms) after it
 falls, which covers the gaps between words. This works for senders with a voice gate, which send
 nothing in silence, and without one alike.
@@ -438,7 +438,7 @@ nothing in silence, and without one alike.
 ### From the meters to the avatars
 
 ```
-VoiceTransport stats (200 ms) ── reads the levels, maps sections to users
+LibWebRTCTransport stats (200 ms) ── reads the levels, maps sections to users
   └─ SpeakingChanged(userId, isSpeaking)            only on a change
        └─ HybridSession ──► IVoiceActivityService.Set(sessionId, userId, isSpeaking)
             └─ Changed(sessionId, userId, isSpeaking)

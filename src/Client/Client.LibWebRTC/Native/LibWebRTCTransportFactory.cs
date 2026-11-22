@@ -1,5 +1,5 @@
 using Client.Application.Ports;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace Client.LibWebRTC.Native;
@@ -20,7 +20,7 @@ public sealed class LibWebRTCTransportFactory(LibWebRTCRuntime runtime, IVideoMe
         if (!runtime.TryLoad())
             throw new InvalidOperationException("libwebrtc is not available");
 
-        return new VoiceTransport(sessionId, listener => new NativeVoicePeer(runtime, listener),
-            loggerFactory.CreateLogger<VoiceTransport>(), isPlaybackEnabled, video, videoReceiver, audio);
+        return new LibWebRTCTransport(sessionId, listener => new NativeMediaPeer(runtime, listener),
+            loggerFactory.CreateLogger<LibWebRTCTransport>(), isPlaybackEnabled, video, videoReceiver, audio);
     }
 }

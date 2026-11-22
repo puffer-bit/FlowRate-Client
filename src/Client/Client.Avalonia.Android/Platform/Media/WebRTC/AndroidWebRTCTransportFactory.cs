@@ -3,7 +3,7 @@ using Android.Content.PM;
 using AndroidX.Core.Content;
 using Client.Application.Ports;
 using Client.Droid.Platform.Calls;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Droid.Platform.Media.WebRTC;
@@ -12,9 +12,9 @@ internal sealed partial class AndroidWebRTCTransportFactory(ILoggerFactory logge
 {
     public IWebRTCTransport Create(int sessionId, bool isPlaybackEnabled = true)
     {
-        var logger = loggerFactory.CreateLogger<VoiceTransport>();
+        var logger = loggerFactory.CreateLogger<LibWebRTCTransport>();
 
-        return new VoiceTransport(sessionId, listener => new VoicePeerWorker(async peerListener =>
+        return new LibWebRTCTransport(sessionId, listener => new MediaPeerWorker(async peerListener =>
         {
             // The peer must not start recording while the permission dialog is still open.
             // Without the permission the session is still heard and its screens watched.
@@ -28,7 +28,7 @@ internal sealed partial class AndroidWebRTCTransportFactory(ILoggerFactory logge
             else
                 LogMicrophoneDenied(logger, sessionId);
 
-            return new AndroidVoicePeer(peerListener, isMicrophoneAllowed);
+            return new AndroidMediaPeer(peerListener, isMicrophoneAllowed);
         }, listener) { VideoCaptures = AndroidCameraCapture.Create }, logger, isPlaybackEnabled, isVideoDecodedByPeer: true);
     }
 

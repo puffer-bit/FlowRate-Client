@@ -1,6 +1,6 @@
 using Client.Core.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// The video streams a platform receives over libwebrtc, which puts their pictures together from the

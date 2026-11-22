@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Client.Core.Media;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Microsoft.Extensions.Logging;
 
 namespace Client.LibWebRTC.Native;

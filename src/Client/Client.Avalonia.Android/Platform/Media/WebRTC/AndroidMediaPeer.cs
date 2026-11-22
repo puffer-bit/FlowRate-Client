@@ -6,30 +6,30 @@ using Client.Application.Ports;
 using Client.Core.Media;
 using Client.Core.Settings;
 using Client.LibWebRTC.Native;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Com.Flowrate.Rtc;
 using Shared.Enums.WebRTC;
 
 namespace Client.Droid.Platform.Media.WebRTC;
 
 /// <summary>
-/// The voice peer of Android, over VoicePeer.java. The system chooses the microphone and processes
+/// The media peer of Android, over MediaPeer.java. The system chooses the microphone and processes
 /// it, with the echo canceller and the noise suppressor of the device, so the settings of the
 /// microphone are kept as they are. The sound is routed as for a call while the peer lives.
 /// Screens are decoded here, by MediaCodec where the device can, and handed out as I420 pictures.
 /// </summary>
-internal sealed class AndroidVoicePeer : IVoicePeer
+internal sealed class AndroidMediaPeer : IMediaPeer
 {
-    private readonly VoicePeer _peer;
+    private readonly MediaPeer _peer;
     private readonly bool _isMicrophoneAllowed;
 
     /// <param name="isMicrophoneAllowed">False without the permission to record: the peer only
     /// listens and its microphone stays off.</param>
-    public AndroidVoicePeer(IVoicePeerListener listener, bool isMicrophoneAllowed)
+    public AndroidMediaPeer(IMediaPeerListener listener, bool isMicrophoneAllowed)
     {
         _isMicrophoneAllowed = isMicrophoneAllowed;
-        VoicePeer.Initialize(global::Android.App.Application.Context);
-        _peer = new VoicePeer(new PeerListener(listener));
+        MediaPeer.Initialize(global::Android.App.Application.Context);
+        _peer = new MediaPeer(new PeerListener(listener));
         if (!isMicrophoneAllowed)
             _peer.SetMicrophoneEnabled(false);
         AndroidCallAudioRouter.Instance.BeginCall();
@@ -74,7 +74,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
         }
     }
 
-    private sealed class PeerListener(IVoicePeerListener listener) : Java.Lang.Object, VoicePeer.IListener
+    private sealed class PeerListener(IMediaPeerListener listener) : Java.Lang.Object, MediaPeer.IListener
     {
         public void OnConnectionChanged(string? state) => listener.OnConnectionChanged(state switch
         {
@@ -90,7 +90,7 @@ internal sealed class AndroidVoicePeer : IVoicePeer
 
         public void OnFailed(string? error) => listener.OnFailed(error ?? "unknown");
 
-        /// <summary>"mid=level;...;local=level" and the whole reading, see VoicePeer.Listener.onStats.</summary>
+        /// <summary>"mid=level;...;local=level" and the whole reading, see MediaPeer.Listener.onStats.</summary>
         public void OnStats(string? levels, string? report)
         {
             var parsed = new List<VoiceLevel>();
@@ -104,11 +104,11 @@ internal sealed class AndroidVoicePeer : IVoicePeer
             }
 
             // The levels of the reading are the ones above: the report has them after the volume
-            listener.OnStats(report == null ? new VoiceStats(parsed) : StatsReader.Read(report) with { Levels = parsed });
+            listener.OnStats(report == null ? new TransportStats(parsed) : StatsReader.Read(report) with { Levels = parsed });
         }
 
         // On the decoding thread of the stream, where an exception would reach libwebrtc
-        public void OnPicture(string? mid, VoicePeer.Picture? picture)
+        public void OnPicture(string? mid, MediaPeer.Picture? picture)
         {
             if (picture == null)
                 return;

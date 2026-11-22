@@ -1,7 +1,7 @@
 using Client.Application.Ports;
 using Client.Core.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// A screen we send: its capture encodes the pictures, libwebrtc sends them, and asks the capture for

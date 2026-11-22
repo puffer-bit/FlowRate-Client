@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 using Client.Application.Ports;
 using Client.Core.Settings;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Shared.Enums.WebRTC;
 using Xunit;
 
 namespace Client.Application.Tests;
 
-public class VoicePeerWorkerTests
+public class MediaPeerWorkerTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
@@ -16,7 +16,7 @@ public class VoicePeerWorkerTests
     {
         var done = Completion();
         var calls = new ConcurrentQueue<string>();
-        using var worker = new VoicePeerWorker(_ => new TestPeer
+        using var worker = new MediaPeerWorker(_ => new TestPeer
         {
             StopMicrophoneAction = () => calls.Enqueue("release capture"),
             VolumeAction = () =>
@@ -49,7 +49,7 @@ public class VoicePeerWorkerTests
                 applicationCalled.TrySetResult();
             }
         };
-        using var worker = new VoicePeerWorker(callbacks => new TestPeer
+        using var worker = new MediaPeerWorker(callbacks => new TestPeer
         {
             NegotiateAction = () =>
             {
@@ -73,7 +73,7 @@ public class VoicePeerWorkerTests
         var release = Completion();
         var disposed = Completion();
         var calls = new ConcurrentQueue<string>();
-        using var worker = new VoicePeerWorker(_ => new TestPeer
+        using var worker = new MediaPeerWorker(_ => new TestPeer
         {
             MicrophoneAction = enabled =>
             {
@@ -115,7 +115,7 @@ public class VoicePeerWorkerTests
         var done = Completion();
         var calls = new ConcurrentQueue<string>();
         List<SendSection> sends = [new SendSection("0", 123)];
-        using var worker = new VoicePeerWorker(async _ =>
+        using var worker = new MediaPeerWorker(async _ =>
         {
             await releaseCreation.Task;
             return new TestPeer
@@ -152,7 +152,7 @@ public class VoicePeerWorkerTests
                 failed.TrySetResult();
             }
         };
-        using var worker = new VoicePeerWorker(_ => new TestPeer
+        using var worker = new MediaPeerWorker(_ => new TestPeer
         {
             NegotiateAction = () => throw new InvalidOperationException("native failure"),
             DisposeAction = () => disposed.TrySetResult()
@@ -167,10 +167,10 @@ public class VoicePeerWorkerTests
     [Fact]
     public async Task LateCallbacksAfterCloseAreIgnored()
     {
-        var created = new TaskCompletionSource<IVoicePeerListener>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var created = new TaskCompletionSource<IMediaPeerListener>(TaskCreationOptions.RunContinuationsAsynchronously);
         var disposed = Completion();
         var listener = new TestListener();
-        using var worker = new VoicePeerWorker(callbacks =>
+        using var worker = new MediaPeerWorker(callbacks =>
         {
             created.TrySetResult(callbacks);
             return new TestPeer { DisposeAction = () => disposed.TrySetResult() };
@@ -191,7 +191,7 @@ public class VoicePeerWorkerTests
         var release = Completion();
         var disposed = Completion();
         var calls = new ConcurrentQueue<string>();
-        using var worker = new VoicePeerWorker(async _ =>
+        using var worker = new MediaPeerWorker(async _ =>
         {
             entered.TrySetResult();
             await release.Task;
@@ -215,8 +215,8 @@ public class VoicePeerWorkerTests
     {
         var failed = Completion();
         var listener = new TestListener { ConnectionChanged = _ => failed.TrySetResult() };
-        using var worker = new VoicePeerWorker(
-            _ => Task.FromException<IVoicePeer>(new InvalidOperationException("permission denied")), listener);
+        using var worker = new MediaPeerWorker(
+            _ => Task.FromException<IMediaPeer>(new InvalidOperationException("permission denied")), listener);
 
         await failed.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         Assert.Equal("permission denied", Assert.Single(listener.Errors));
@@ -224,7 +224,7 @@ public class VoicePeerWorkerTests
 
     private static TaskCompletionSource Completion() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private sealed class TestListener : IVoicePeerListener
+    private sealed class TestListener : IMediaPeerListener
     {
         public ConcurrentQueue<string> Errors { get; } = new();
         public Action<string>? Negotiated { get; init; }
@@ -232,10 +232,10 @@ public class VoicePeerWorkerTests
         public void OnConnectionChanged(WebRTCConnectionState state) => ConnectionChanged?.Invoke(state);
         public void OnNegotiated(string localSdp) => Negotiated?.Invoke(localSdp);
         public void OnFailed(string error) => Errors.Enqueue(error);
-        public void OnStats(VoiceStats stats) { }
+        public void OnStats(TransportStats stats) { }
     }
 
-    private sealed class TestPeer : IVoicePeer
+    private sealed class TestPeer : IMediaPeer
     {
         public Action? NegotiateAction { get; init; }
         public Action<IReadOnlyList<SendSection>>? NegotiateInputs { get; init; }

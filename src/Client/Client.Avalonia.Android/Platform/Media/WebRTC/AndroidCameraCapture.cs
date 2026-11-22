@@ -5,7 +5,7 @@ using Android.OS;
 using AndroidX.Core.Content;
 using Client.Application.Ports;
 using Client.Core.Media;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Com.Flowrate.Rtc;
 
 namespace Client.Droid.Platform.Media.WebRTC;
@@ -48,13 +48,13 @@ internal sealed class AndroidCameraCapture : IPeerVideoCapture
             return null;
 
         // The peer may still wait for the permission of the microphone; the camera needs libwebrtc all the same
-        VoicePeer.Initialize(context);
+        MediaPeer.Initialize(context);
 
         // Camera2 picks the size nearest to the one asked for, which it gives as the sensor lies
         var height = settings.MaxHeight;
         var width = (height * 16 / 9 + 1) & ~1;
         var listener = new CameraListener();
-        var camera = VoicePeer.CreateCamera(input.DeviceId, width, height, settings.Framerate, listener);
+        var camera = MediaPeer.CreateCamera(input.DeviceId, width, height, settings.Framerate, listener);
 
         if (camera == null)
         {
@@ -65,7 +65,7 @@ internal sealed class AndroidCameraCapture : IPeerVideoCapture
         return new AndroidCameraCapture(camera, listener, input.DeviceId);
     }
 
-    /// <summary>What goes into the section of the camera, see VoicePeer.negotiate.</summary>
+    /// <summary>What goes into the section of the camera, see MediaPeer.negotiate.</summary>
     public CameraCapture Java => _camera;
 
     public event Action<Exception>? Failed;
@@ -136,7 +136,7 @@ internal sealed class AndroidCameraCapture : IPeerVideoCapture
         }
     }
 
-    private void OnPicture(VoicePeer.Picture picture)
+    private void OnPicture(MediaPeer.Picture picture)
     {
         AndroidPictureFrame frame;
 
@@ -173,7 +173,7 @@ internal sealed class AndroidCameraCapture : IPeerVideoCapture
     {
         public AndroidCameraCapture? Owner { get; set; }
 
-        public void OnPicture(VoicePeer.Picture? picture)
+        public void OnPicture(MediaPeer.Picture? picture)
         {
             if (picture == null)
                 return;

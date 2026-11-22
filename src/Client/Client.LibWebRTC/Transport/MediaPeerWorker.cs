@@ -4,36 +4,36 @@ using Client.Core.Media;
 using Client.Core.Settings;
 using Shared.Enums.WebRTC;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// Serializes a platform peer's commands and callbacks away from both the UI and the native threads.
 /// Commands are accepted synchronously, but run on the worker; creation and disposal do too.
 /// </summary>
-public sealed class VoicePeerWorker : IVoicePeer
+public sealed class MediaPeerWorker : IMediaPeer
 {
-    private readonly Channel<Action<IVoicePeer>> _commands = Channel.CreateUnbounded<Action<IVoicePeer>>(
+    private readonly Channel<Action<IMediaPeer>> _commands = Channel.CreateUnbounded<Action<IMediaPeer>>(
         new UnboundedChannelOptions { SingleReader = true, AllowSynchronousContinuations = false });
-    private readonly IVoicePeerListener _listener;
+    private readonly IMediaPeerListener _listener;
     private int _isClosed;
 
-    public VoicePeerWorker(Func<IVoicePeerListener, IVoicePeer> createPeer, IVoicePeerListener listener)
+    public MediaPeerWorker(Func<IMediaPeerListener, IMediaPeer> createPeer, IMediaPeerListener listener)
         : this(peerListener => Task.FromResult(createPeer(peerListener)), listener)
     {
     }
 
-    public VoicePeerWorker(Func<IVoicePeerListener, Task<IVoicePeer>> createPeer, IVoicePeerListener listener)
+    public MediaPeerWorker(Func<IMediaPeerListener, Task<IMediaPeer>> createPeer, IMediaPeerListener listener)
     {
         _listener = listener;
         _ = Task.Run(() => RunAsync(createPeer));
     }
 
-    private bool Enqueue(Action<IVoicePeer> command) =>
+    private bool Enqueue(Action<IMediaPeer> command) =>
         Volatile.Read(ref _isClosed) == 0 && _commands.Writer.TryWrite(command);
 
-    private async Task RunAsync(Func<IVoicePeerListener, Task<IVoicePeer>> createPeer)
+    private async Task RunAsync(Func<IMediaPeerListener, Task<IMediaPeer>> createPeer)
     {
-        IVoicePeer? peer = null;
+        IMediaPeer? peer = null;
 
         try
         {
@@ -123,7 +123,7 @@ public sealed class VoicePeerWorker : IVoicePeer
             _commands.Writer.TryComplete();
     }
 
-    private sealed class Listener(VoicePeerWorker owner) : IVoicePeerListener
+    private sealed class Listener(MediaPeerWorker owner) : IMediaPeerListener
     {
         // Never enter application code from a native callback: a caller may be waiting for that
         // very native thread while holding a lock the callback needs.
@@ -131,7 +131,7 @@ public sealed class VoicePeerWorker : IVoicePeer
             owner.Enqueue(_ => owner._listener.OnConnectionChanged(state));
         public void OnNegotiated(string localSdp) => owner.Enqueue(_ => owner._listener.OnNegotiated(localSdp));
         public void OnFailed(string error) => owner.Enqueue(_ => owner._listener.OnFailed(error));
-        public void OnStats(VoiceStats stats) => owner.Enqueue(_ => owner._listener.OnStats(stats));
+        public void OnStats(TransportStats stats) => owner.Enqueue(_ => owner._listener.OnStats(stats));
 
         // The only call passed on at once: the picture is valid during it alone. Its receivers only
         // queue it for drawing, and never wait for the peer

@@ -13,7 +13,7 @@ import org.webrtc.VideoFrame;
 public final class ChatVideoEngine {
     public interface Listener {
         /** Takes ownership of this picture, including releasing it. */
-        void onPicture(VoicePeer.Picture picture);
+        void onPicture(MediaPeer.Picture picture);
     }
 
     private final SurfaceTextureHelper helper;
@@ -53,7 +53,7 @@ public final class ChatVideoEngine {
             try { buffer = frame.getBuffer().toI420(); }
             catch (Exception exception) { fail(exception); return; }
             if (buffer != null)
-                listener.onPicture(new VoicePeer.Picture(buffer, frame.getTimestampNs()));
+                listener.onPicture(new MediaPeer.Picture(buffer, frame.getTimestampNs()));
         });
         helper.getHandler().post(() -> {
             if (closed.get()) return;

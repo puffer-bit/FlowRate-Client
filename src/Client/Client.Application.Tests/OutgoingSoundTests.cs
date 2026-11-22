@@ -1,5 +1,5 @@
 using Client.Application.Ports;
-using Client.LibWebRTC.Voice;
+using Client.LibWebRTC.Transport;
 using Xunit;
 
 namespace Client.Application.Tests;

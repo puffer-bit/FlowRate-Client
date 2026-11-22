@@ -147,7 +147,7 @@ be detected less reliably. Requiring several voice frames could reject the isola
 may delay or clip soft word onsets, and the wider scan includes longer false runs. Removing gain
 indiscriminately is not justified. No additional production behavior was changed.
 
-Additional diagnostic limitation: `VoiceTransport.LogGateSummary` in the normal libwebrtc path
+Additional diagnostic limitation: `LibWebRTCTransport.LogGateSummary` in the normal libwebrtc path
 does not log the already-available `VoicePercent`; the removed GStreamer transport did. Existing
 normal voice-gate summary logs alone cannot distinguish detector positives from a level-only
 fallback. This observation was not changed in production code.
@@ -247,7 +247,7 @@ can pass while it remains open. Hold time grows from `100 ms` to `400 ms`.
 microphone-test label reflects the gate decision, rather than completion of that fade.
 
 The chat speaking indicator is derived from peak PCM after the gate, with a separate `400 ms`
-speaking hold (`Client.LibWebRTC/Voice/VoiceTransport.cs`). It is not a direct gate-state display.
+speaking hold (`Client.LibWebRTC/Transport/LibWebRTCTransport.cs`). It is not a direct gate-state display.
 
 ### Test indicator versus audible output: independently reproduced
 

@@ -33,7 +33,7 @@ import org.webrtc.audio.JavaAudioDeviceModule;
  * microphone and the playback. The description of the SFU is built on the .NET side; this class only
  * answers it, so that the bindings need nothing of libwebrtc but this class.
  */
-public final class VoicePeer {
+public final class MediaPeer {
 
     public interface Listener {
         /** The name of a PeerConnection.PeerConnectionState. */
@@ -176,7 +176,7 @@ public final class VoicePeer {
         }
     }
 
-    public VoicePeer(Listener listener) {
+    public MediaPeer(Listener listener) {
         this.listener = listener;
 
         PeerConnection.RTCConfiguration config = new PeerConnection.RTCConfiguration(new ArrayList<>());
@@ -189,7 +189,7 @@ public final class VoicePeer {
 
         connection = factory.createPeerConnection(config, new PeerConnection.Observer() {
             @Override public void onConnectionChange(PeerConnection.PeerConnectionState state) {
-                VoicePeer.this.listener.onConnectionChanged(state.name());
+                MediaPeer.this.listener.onConnectionChanged(state.name());
             }
             @Override public void onSignalingChange(PeerConnection.SignalingState state) { }
             @Override public void onIceConnectionChange(PeerConnection.IceConnectionState state) { }
@@ -286,7 +286,7 @@ public final class VoicePeer {
      */
     public static CameraCapture createCamera(String device, int width, int height, int framerate,
                                              CameraCapture.Listener listener) {
-        synchronized (VoicePeer.class) {
+        synchronized (MediaPeer.class) {
             if (factory == null || egl == null)
                 return null;
         }

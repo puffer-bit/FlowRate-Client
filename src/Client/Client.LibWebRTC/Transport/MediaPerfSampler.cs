@@ -3,7 +3,7 @@ using Client.Core.Media;
 using Client.Core.Sessions.Hybrid;
 using Shared.Models.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// What the encoders, the decoders and libwebrtc measured of the streams of a transport, taken at the

@@ -1,6 +1,6 @@
 using Client.Application.Ports;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// A sound we send besides the microphone, the one of a shown screen: its capture gives samples in

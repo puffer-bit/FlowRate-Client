@@ -13,7 +13,7 @@ internal static class DependencyInjection
     /// What the desktop gets from Client.GStreamer and Client.OpenAL, as far as loading the application
     /// and the settings of the sounds need it. The ports of voice, screen sharing and the settings dialog
     /// are not registered: nothing on Android opens them yet. Voice and the camera go over libwebrtc, see
-    /// <see cref="Media.WebRTC.AndroidVoicePeer"/> and <see cref="Media.WebRTC.AndroidCameraCapture"/>.
+    /// <see cref="Media.WebRTC.AndroidMediaPeer"/> and <see cref="Media.WebRTC.AndroidCameraCapture"/>.
     /// </summary>
     public static IServiceCollection AddAndroidPlatform(this IServiceCollection services)
     {

@@ -1,7 +1,7 @@
 using Client.Application.Ports;
 using Client.Core.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
 /// One video stream we receive: its pictures, as libwebrtc hands them out encoded, go to a decoder,

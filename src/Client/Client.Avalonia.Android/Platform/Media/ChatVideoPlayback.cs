@@ -102,7 +102,7 @@ internal sealed class ChatVideoPlayback : IDisposable
     {
         public Exception? Error;
 
-        public void OnPicture(VoicePeer.Picture? picture)
+        public void OnPicture(MediaPeer.Picture? picture)
         {
             if (picture == null) return;
             try

@@ -8,18 +8,18 @@ using Microsoft.Extensions.Logging;
 using Shared.Enums.WebRTC;
 using Shared.Models.Media;
 
-namespace Client.LibWebRTC.Voice;
+namespace Client.LibWebRTC.Transport;
 
 /// <summary>
-/// Voice of a hybrid session over libwebrtc, through the <see cref="IVoicePeer"/> of the platform.
+/// The media of a hybrid session (voices, screens, cameras) over libwebrtc, through the <see cref="IMediaPeer"/> of the platform.
 /// The description of the SFU is built out of its parameters (<see cref="SdpBuilder"/>);
 /// libwebrtc answers it; the platform peer supplies capture and playback. Screens are watched and shown
 /// where the platform hands the video out (<see cref="IEncodedVideoReceiver"/>) and takes it in
-/// encoded (<see cref="IVoicePeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
+/// encoded (<see cref="IMediaPeer.CreateVideoSource"/>): <see cref="IVideoMedia"/> captures, encodes and
 /// decodes them, libwebrtc only carries them. A peer that decodes the screens itself, as the one of
-/// Android, hands their pictures out through <see cref="IVoicePeerListener.OnVideoFrame"/> instead.
+/// Android, hands their pictures out through <see cref="IMediaPeerListener.OnVideoFrame"/> instead.
 /// </summary>
-public sealed partial class VoiceTransport : IWebRTCTransport
+public sealed partial class LibWebRTCTransport : IWebRTCTransport
 {
     public event Action<string>? VideoCaptureFailed;
 
@@ -49,12 +49,12 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     private readonly int _sessionId;
     private readonly bool _isPlaybackEnabled;
-    private readonly Func<IVoicePeerListener, IVoicePeer> _createPeer;
+    private readonly Func<IMediaPeerListener, IMediaPeer> _createPeer;
     private readonly IVideoMedia? _video;
     private readonly IAudioMedia? _audio;
     private readonly IEncodedVideoReceiver? _videoReceiver;
     private readonly bool _isVideoDecodedByPeer;
-    private readonly ILogger<VoiceTransport> _logger;
+    private readonly ILogger<LibWebRTCTransport> _logger;
     private readonly Lock _lock = new();
 
     // The m-sections by m-line index; never removed, only emptied and reused, which keeps every mid stable
@@ -68,13 +68,13 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private readonly Dictionary<(int UserId, MediaSourceType SourceType), double> _volumes = [];
     private readonly Dictionary<int, long> _speakingUntil = [];
     private readonly TaskCompletionSource<bool> _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly VoiceStatsSampler _sampler = new();
+    private readonly TransportStatsSampler _sampler = new();
     private readonly MediaPerfSampler _perfSampler = new();
     private long _countersRequested;
     private long _countersSampled;
     private long _perfSampled;
 
-    private IVoicePeer? _peer;
+    private IMediaPeer? _peer;
     private TransportParameters? _transportParameters;
     private Timer? _statsTimer;
     private bool _isVoiceMuted;
@@ -114,7 +114,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// The peer decodes the screens we watch itself and hands their pictures out, so neither the video
     /// nor the receiver is needed for them.
     /// </param>
-    public VoiceTransport(int sessionId, Func<IVoicePeerListener, IVoicePeer> createPeer, ILogger<VoiceTransport> logger,
+    public LibWebRTCTransport(int sessionId, Func<IMediaPeerListener, IMediaPeer> createPeer, ILogger<LibWebRTCTransport> logger,
         bool isPlaybackEnabled = true, IVideoMedia? video = null, IEncodedVideoReceiver? videoReceiver = null,
         IAudioMedia? audio = null, bool isVideoDecodedByPeer = false)
     {
@@ -147,7 +147,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     public void Disconnect()
     {
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
         {
@@ -160,7 +160,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     public void Dispose()
     {
-        IVoicePeer? peer;
+        IMediaPeer? peer;
         List<IncomingVideoStream> streams;
         List<OutgoingVideo> outgoing;
         List<OutgoingSound> sounds;
@@ -193,7 +193,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
             video.Dispose();
     }
 
-    private void Close(IVoicePeer? peer)
+    private void Close(IMediaPeer? peer)
     {
         Timer? statsTimer;
 
@@ -365,7 +365,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     private void ApplyVolumes()
     {
         List<(string Mid, double Volume)> volumes;
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
         {
@@ -402,7 +402,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         if (outbound.SourceType != MediaSourceType.Microphone)
             return false;
 
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
         {
@@ -441,7 +441,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// </summary>
     private bool StartSound(OutboundTrack outbound, AudioInput input, double volume)
     {
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
         {
@@ -495,7 +495,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     /// <summary>
     /// Shows a screen or a camera: <see cref="IVideoMedia"/> captures and encodes it, or the peer does
-    /// both itself (<see cref="IVoicePeer.CreateVideoCapture"/>); libwebrtc sends the pictures.
+    /// both itself (<see cref="IMediaPeer.CreateVideoCapture"/>); libwebrtc sends the pictures.
     /// What is sent also comes back through <see cref="VideoFrameReady"/>, as our own screen is not
     /// received from the SFU.
     /// </summary>
@@ -504,7 +504,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         if (outbound.MediaType != MediaType.Video || RtpCodec.VideoCodecOf(outbound.MimeType) is not { } codec)
             return false;
 
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
         {
@@ -601,7 +601,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     public void StopOutbound(string outboundId)
     {
-        IVoicePeer? peer;
+        IMediaPeer? peer;
         OutgoingVideo? video;
         OutgoingSound? sound;
         bool isMicrophone;
@@ -733,7 +733,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         FindOutboundPeer(outboundId)?.SetVoiceGate(voiceGate);
 
     /// <summary>The peer, while it sends the track of the microphone.</summary>
-    private IVoicePeer? FindOutboundPeer(string outboundId)
+    private IMediaPeer? FindOutboundPeer(string outboundId)
     {
         lock (_lock)
             return _outbounds.TryGetValue(outboundId, out var outbound) && IsMicrophone(outbound) ? _peer : null;
@@ -748,7 +748,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// </summary>
     private bool Negotiate()
     {
-        IVoicePeer peer;
+        IMediaPeer peer;
         string offer;
         List<SendSection> sends;
 
@@ -1046,7 +1046,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
     private void RequestStats()
     {
-        IVoicePeer? peer;
+        IMediaPeer? peer;
 
         lock (_lock)
             peer = _peer;
@@ -1081,7 +1081,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
         return true;
     }
 
-    private void OnStats(VoiceStats stats)
+    private void OnStats(TransportStats stats)
     {
         UpdateSpeaking(stats.Levels);
 
@@ -1252,7 +1252,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
     /// Passes the calls of the peer on; they come on the threads of libwebrtc, where an exception
     /// would tear the process down.
     /// </summary>
-    private sealed class PeerListener(VoiceTransport transport) : IVoicePeerListener
+    private sealed class PeerListener(LibWebRTCTransport transport) : IMediaPeerListener
     {
         public void OnConnectionChanged(WebRTCConnectionState state) => Run(() => transport.OnConnectionChanged(state));
 
@@ -1260,7 +1260,7 @@ public sealed partial class VoiceTransport : IWebRTCTransport
 
         public void OnFailed(string error) => Run(() => transport.OnNegotiationFailed(error));
 
-        public void OnStats(VoiceStats stats) => Run(() => transport.OnStats(stats));
+        public void OnStats(TransportStats stats) => Run(() => transport.OnStats(stats));
 
         public void OnVideoFrame(string mid, RawVideoFrame frame) => Run(() => transport.OnVideoFrame(mid, frame));
 

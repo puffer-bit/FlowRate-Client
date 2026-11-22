@@ -1,6 +1,6 @@
 # Client.LibWebRTC
 
-The voice of hybrid sessions over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
+The media of hybrid sessions (voices, screens, cameras) over libwebrtc, the WebRTC engine of Chrome: ICE, DTLS-SRTP, the jitter
 buffer (NetEq), codecs and the estimate of the network. GStreamer captures, processes and plays
 all desktop audio; Android keeps its platform audio processing. It is the only transport on every
 platform. On the desktop it also carries the screens, shown and watched, with their sound;
@@ -10,14 +10,14 @@ Android watches them only, decoded by libwebrtc itself (see below).
 
 | Path | Role |
 |---|---|
-| `Voice/VoiceTransport.cs` | `IWebRTCTransport` of every platform: the sections of the SFU, the offer/answer rounds, the volumes, the speaking indicator, the statistics |
-| `Voice/IVoicePeer.cs` | What a platform gives it: one peer connection that answers the offer of the SFU |
-| `Voice/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
-| `Voice/OutgoingSound.cs` | The sound of the screen we show: captured by `IAudioMedia`, pushed into libwebrtc 10 ms at a time |
-| `Voice/OutgoingVideo.cs` | The screen we show: the capture of `IVideoMedia` encodes it, libwebrtc sends it and asks for keyframes and the bitrate |
+| `Transport/LibWebRTCTransport.cs` | `IWebRTCTransport` of every platform: the sections of the SFU, the offer/answer rounds, the volumes, the speaking indicator, the statistics |
+| `Transport/IMediaPeer.cs` | What a platform gives it: one peer connection that answers the offer of the SFU |
+| `Transport/IncomingVideoStream.cs` | One screen we watch: its encoded pictures go to a decoder of `IVideoMedia`, its keyframe requests back to the sender |
+| `Transport/OutgoingSound.cs` | The sound of the screen we show: captured by `IAudioMedia`, pushed into libwebrtc 10 ms at a time |
+| `Transport/OutgoingVideo.cs` | The screen we show: the capture of `IVideoMedia` encodes it, libwebrtc sends it and asks for keyframes and the bitrate |
 | `Native/` | The peer of the desktop: `flowrate_webrtc.h`, a C interface over the C++ one of [webrtc-sdk/libwebrtc](https://github.com/webrtc-sdk/libwebrtc), the classes behind it (see [Native sources](#native-sources)), and the P/Invoke bindings |
 | `Build/` | The scripts that build libwebrtc with that interface into one library, the committed libraries (`prebuilt/<rid>/`) and `LibWebRTCRuntime.targets`, which copies them next to the executable |
-| `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidVoicePeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`VoicePeer.java`) |
+| `Client.Avalonia.Android/Platform/Media/WebRTC/AndroidMediaPeer.cs` | The peer of Android, over the Java bindings of libwebrtc (`MediaPeer.java`) |
 
 The SFU is described as a remote peer (`Client.WebRTC/Sdp`); libwebrtc answers, and the SSRC
 the SFU created each producer with is written into the answer, since mediasoup knows our streams by it
@@ -46,8 +46,8 @@ the first packet of one to it leaving libwebrtc, and the handing over itself
 (`fr_video_take_receive_stats`, by SSRC).
 
 On Android the Java libwebrtc decodes the screens itself, with MediaCodec where the device can
-(`DefaultVideoDecoderFactory` without an EGL context, so the pictures come into memory). `VoicePeer.java`
-hands each picture out as I420 planes, `AndroidVoicePeer` wraps them in a `MemoryYuvVideoFrame` that
+(`DefaultVideoDecoderFactory` without an EGL context, so the pictures come into memory). `MediaPeer.java`
+hands each picture out as I420 planes, `AndroidMediaPeer` wraps them in a `MemoryYuvVideoFrame` that
 gives them back with its last reference, and the transport (`isVideoDecodedByPeer`) passes them on by
 the mid of their section. `Views/PictureView` of Android draws them with a Skia shader.
 
@@ -120,7 +120,7 @@ producer, and the stream goes on with the next sequence number when it is back.
 
 The sound of a shown screen is captured by `IAudioMedia` (GStreamer: the process loopback of Windows,
 the streams of an application on PipeWire), cut into 10 ms and pushed into an `fr_audio_source` of its
-own section (`Voice/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX;
+own section (`Transport/OutgoingSound.cs`). libwebrtc encodes it as stereo Opus at 128 kbit/s without DTX;
 nothing of the processing of the microphone touches it. The
 microphone is processed by GStreamer (`MicrophoneProcessing`) before its own `fr_audio_source`, and
 the samples of a custom source go to the senders past the processing of libwebrtc, so a screen that
