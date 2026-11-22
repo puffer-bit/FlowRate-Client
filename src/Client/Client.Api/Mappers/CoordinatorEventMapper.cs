@@ -17,7 +17,7 @@ internal static class CoordinatorEventMapper
     /// <returns>The event, or null for a message the client does not react to yet.</returns>
     public static CoordinatorEvent? ToEvent(this BaseMessage message) => message switch
     {
-        DirectCallChangedNotification call => new DirectCallChangedEvent(call.Call),
+        ChatCallChangedNotification call => new ChatCallChangedEvent(call.Call),
         ServerRestartNotification restart => new ServerRestartEvent(restart.Reason, restart.At, restart.Message),
         ServerRestartCancelledNotification => new ServerRestartCancelledEvent(),
         CoordinatorUserBannedNotification banned => new BannedEvent(banned.Reason),

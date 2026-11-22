@@ -342,7 +342,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     /// <param name="jumpToMessage">Shows a message of the chat, for the reply bar.</param>
     public ChatComposerVM(int chatId, string chatName, bool isAttachmentsAllowed, ICoordinatorSession session,
         int currentUserId, IChatMediaUploader mediaUploader, IChatImageService images, ChatSenderDirectory senders,
-        Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null)
+        Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null,
+        Func<IReadOnlyCollection<int>?>? mentionableMembers = null)
     {
         _attachmentOptions = attachmentOptions;
         if (attachmentOptions != null)
@@ -359,7 +360,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         _senders = senders;
         _chatName = chatName;
         IsAttachmentsAllowed = isAttachmentsAllowed;
-        MentionPicker = new ChatMentionPickerVM(session, currentUserId);
+        MentionPicker = new ChatMentionPickerVM(session, currentUserId, mentionableMembers);
 
         Attachments.CollectionChanged += (_, _) =>
         {

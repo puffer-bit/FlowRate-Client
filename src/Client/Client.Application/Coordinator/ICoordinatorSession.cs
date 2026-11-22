@@ -14,11 +14,16 @@ namespace Client.Application.Coordinator;
 
 public interface ICoordinatorSession : IDisposable
 {
-    event Action<Shared.Models.DataTransferObjects.DirectCallDTO>? DirectCallChanged;
-    event Action<ErrorCode>? DirectCallFailed;
-    Shared.Models.DataTransferObjects.DirectCallDTO? DirectCall { get; }
-    Task<RequestResult<Shared.Models.DataTransferObjects.DirectCallDTO>> ChangeDirectCall(int chatId, Guid callId,
-        Shared.Models.DataTransferObjects.DirectCallAction action);
+    /// <summary>A call in one of the user's chats started, changed or ended.</summary>
+    event Action<Shared.Models.DataTransferObjects.ChatCallDTO>? ChatCallChanged;
+    event Action<ErrorCode>? ChatCallFailed;
+    /// <summary>The running calls of the user's chats, by chat.</summary>
+    IReadOnlyDictionary<int, Shared.Models.DataTransferObjects.ChatCallDTO> ChatCalls { get; }
+    /// <summary>The running call this device takes part in.</summary>
+    Shared.Models.DataTransferObjects.ChatCallDTO? CurrentCall { get; }
+    /// <param name="targetUserId">Whom Ring calls again; null rings every member not in the call.</param>
+    Task<RequestResult<Shared.Models.DataTransferObjects.ChatCallDTO>> ChangeChatCall(int chatId, Guid callId,
+        Shared.Models.DataTransferObjects.ChatCallAction action, int? targetUserId = null);
 
     CoordinatorState ConnectionStatus { get; }
 

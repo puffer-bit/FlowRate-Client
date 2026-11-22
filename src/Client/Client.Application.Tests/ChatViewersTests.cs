@@ -134,6 +134,38 @@ public sealed class ChatViewersTests
     });
 
     [Fact]
+    public Task GroupOwnerIsCrownedFirstAndOnlyTheOwnerRemovesMembers() => TestUiThread.RunAsync(async () =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();
+        var fake = (AudienceSession)session;
+        fake.Initial = [User(1, "Alice"), User(2, "Bob"), User(3, "Zed")];
+        using var command = ReactiveCommand.Create<int>(_ => { });
+        int? owner = 3;
+        var removed = new List<(int Chat, int User, string Name)>();
+        using var vm = new ChatViewersVM(7, session, command, currentUserId: 3)
+        {
+            GroupOwnerId = () => owner,
+            RemoveFromGroup = (chat, user, name) => { removed.Add((chat, user, name)); return Task.CompletedTask; }
+        };
+        vm.IsOpen = true;
+
+        Assert.Equal("Zed", vm.Users[0].Username);
+        Assert.True(vm.Users[0].IsOwner);
+        Assert.False(vm.Users[0].CanRemoveFromGroup);
+        var bob = vm.Users.Single(row => row.Id == 2);
+        Assert.True(bob.CanRemoveFromGroup);
+        Assert.True(bob.HasDangerActions);
+        await bob.RemoveFromGroup.Execute().ToTask();
+        Assert.Equal((7, 2, "Bob"), removed.Single());
+
+        owner = 1;
+        vm.RefreshOwner();
+        Assert.False(bob.CanRemoveFromGroup);
+        Assert.True(vm.Users[0].IsOwner);
+        Assert.Equal("Alice", vm.Users[0].Username);
+    });
+
+    [Fact]
     public Task DeltasPreserveExistingRowsAndNeverRequestAnotherSnapshot() => TestUiThread.RunAsync(() =>
     {
         var session = DispatchProxy.Create<ICoordinatorSession, AudienceSession>();

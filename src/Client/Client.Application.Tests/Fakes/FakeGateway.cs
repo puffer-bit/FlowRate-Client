@@ -20,8 +20,8 @@ public class FakeGateway : DispatchProxy
 {
     public const string CoordinatorId = "coordinator";
 
-    public Func<int, Guid, Shared.Models.DataTransferObjects.DirectCallAction,
-        Task<Shared.Models.DataTransferObjects.DirectCallDTO>>? CallHandler { get; set; }
+    public Func<int, Guid, Shared.Models.DataTransferObjects.ChatCallAction,
+        Task<Shared.Models.DataTransferObjects.ChatCallDTO>>? CallHandler { get; set; }
     public int Connects { get; private set; }
     public int Disconnects { get; private set; }
     public List<(string Token, PushPlatform Platform, PushKey Key)> Registered { get; } = [];
@@ -221,9 +221,9 @@ public class FakeGateway : DispatchProxy
     {
         switch (targetMethod!.Name)
         {
-            case "ChangeDirectCall":
+            case "ChangeChatCall":
                 return CallHandler!((int)args![0]!, (Guid)args[1]!,
-                    (Shared.Models.DataTransferObjects.DirectCallAction)args[2]!);
+                    (Shared.Models.DataTransferObjects.ChatCallAction)args[2]!);
             case "add_ConnectionLost":
                 _connectionLost += (Action<string>)args![0]!;
                 return null;

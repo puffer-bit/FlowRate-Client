@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Models.Media;
+using Shared.Models.DataTransferObjects;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -105,6 +106,41 @@ public partial class SessionsListVM : ReactiveObject
         if (!result.IsSuccess && !result.IsRejected)
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
                 Strings.Get("privateChats.leaveFailed"), Strings.Get("common.error")));
+    }
+
+    /// <summary>The owner takes a member out of the group, after being asked.</summary>
+    public async Task RemoveFromGroupAsync(int chatId, int userId, string name)
+    {
+        if (_coordinatorSession == null
+            || FindSession<ChatSessionVM>(chatId)?.Model is not ChatSessionModel { Kind: ChatKind.Group } model
+            || model.OwnerUserId is not { } ownerId || userId == ownerId) return;
+        var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
+            Strings.Format("privateChats.removeMemberConfirm", ("user", name)), Strings.Get("privateChats.removeMember")));
+        if (answer != Result.Yes) return;
+        var result = await _coordinatorSession.ChangeGroup(model.Id, model.Name,
+            model.MemberIds.Where(id => id != userId).ToArray(), ownerId);
+        if (!result.IsSuccess && !result.IsRejected)
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("privateChats.removeMemberFailed"), Strings.Get("common.error")));
+    }
+
+    /// <summary>Brings the call session we are in on screen.</summary>
+    public Action? ShowCallSession { get; set; }
+
+    /// <summary>The call item of a chat's menu: starts the call, joins it, or shows it when we are in it.</summary>
+    private async Task CallAsync(int chatId)
+    {
+        if (_coordinatorSession is not { ConnectionStatus: CoordinatorState.Connected } coordinator
+            || !Client.Core.Media.MediaRuntime.IsEnabled) return;
+        var running = coordinator.ChatCalls.GetValueOrDefault(chatId);
+        if (running is { IsSelectedDevice: true })
+        {
+            ShowCallSession?.Invoke();
+            return;
+        }
+        // Starting while a call runs joins it on the server too; its ID makes the request plain
+        await coordinator.ChangeChatCall(chatId, running?.CallId ?? Guid.NewGuid(),
+            running != null ? ChatCallAction.Join : ChatCallAction.Start);
     }
 
     public void ToggleListMode() => IsPrivateMode = !IsPrivateMode;
@@ -361,6 +397,7 @@ public partial class SessionsListVM : ReactiveObject
             .Add(() => session.ChatSessionDeleted += RemoveChatSession, () => session.ChatSessionDeleted -= RemoveChatSession)
             .Add(() => session.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => session.ChatSessionReconfigured -= OnChatSessionReconfigured)
+            .Add(() => session.ChatCallChanged += OnChatCallChanged, () => session.ChatCallChanged -= OnChatCallChanged)
             .Add(() => session.HybridSessionPeerJoined += AddPeerToSession, () => session.HybridSessionPeerJoined -= AddPeerToSession)
             .Add(() => session.HybridSessionPeerLeft += RemovePeerFromSession,
                 () => session.HybridSessionPeerLeft -= RemovePeerFromSession)
@@ -575,8 +612,14 @@ public partial class SessionsListVM : ReactiveObject
         model.ApplyAccess(Access.Permissions);
         model.EditGroupCommand = ReactiveCommand.CreateFromTask(() => EditGroup(model));
         model.LeaveGroupCommand = ReactiveCommand.CreateFromTask(() => LeaveGroup(model));
+        model.CallCommand = ReactiveCommand.CreateFromTask(() => CallAsync(model.Model.Id));
 
         MarkShown(model);
+        if (_coordinatorSession?.ChatCalls.GetValueOrDefault(chatSessionModel.Id) is { } running)
+        {
+            model.HasActiveCall = true;
+            FollowCall(model, running.State == ChatCallState.Active ? running.CallId : null, null);
+        }
         model.MoveTargets = MoveTargets;
         Sessions.Add(model);
         _ = UpdatePrivateTitleAsync(model);
@@ -614,6 +657,10 @@ public partial class SessionsListVM : ReactiveObject
     // A session created just now has no peers yet, so there is nothing to load for it
     private void OnHybridSessionAdded(HybridSessionModel session) => AddHybridSessionVM(session);
 
+    // Raised on the socket thread
+    private void OnChatCallChanged(Shared.Models.DataTransferObjects.ChatCallDTO call) =>
+        Dispatcher.UIThread.Post(FollowCalls);
+
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
     /// </summary>
@@ -622,8 +669,11 @@ public partial class SessionsListVM : ReactiveObject
         _enteredHybridSessionId = sessionId;
         _enteredHybridSessionControls = controls;
 
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
+        foreach (var session in HybridSessions)
             MarkEntered(session);
+        // A call runs in a session under the ID of its chat
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+            chat.IsEntered = CallSession != null && CallSession == chat.CallPeers && chat.Model.Id == sessionId;
 
         UpdateFolding();
     }
@@ -654,7 +704,7 @@ public partial class SessionsListVM : ReactiveObject
         session.IsShown = _shownSession is { } shown &&
                           shown.Id == session.Model.Id && shown.IsHybrid == session is HybridSessionVM;
 
-    private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
+    private HybridSessionVM CreateHybridSessionVM(HybridSessionModel sessionModel)
     {
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
             _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editSessionCommand,
@@ -663,6 +713,12 @@ public partial class SessionsListVM : ReactiveObject
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);
+        return model;
+    }
+
+    private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
+    {
+        var model = CreateHybridSessionVM(sessionModel);
 
         // Only one peer can be selected across all hybrid sessions
         model.WatchProperty(nameof(HybridSessionVM.SelectedPeer), x => x.SelectedPeer)
@@ -677,7 +733,7 @@ public partial class SessionsListVM : ReactiveObject
 
     private void ClearPeerSelectionExcept(HybridSessionVM selectedIn)
     {
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
+        foreach (var session in HybridSessions)
         {
             if (session != selectedIn)
                 session.SelectedPeer = null;
@@ -689,6 +745,7 @@ public partial class SessionsListVM : ReactiveObject
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // A call session follows its call, not the server's model of it
             var session = Sessions.OfType<HybridSessionVM>().FirstOrDefault(s => s.Model.Id == model.Id && !s.IsLeaving);
 
             if (session == null)
@@ -715,6 +772,12 @@ public partial class SessionsListVM : ReactiveObject
             RaiseStateProperties();
             // Its overrides may have changed
             session.ApplyAccess(Access.Permissions);
+            // The owner of a group kicks from its call
+            if (session.CallPeers is { Model: HybridSessionModel call } callPeers)
+            {
+                call.CallOwnerUserId = model.Kind == ChatKind.Group ? model.OwnerUserId : null;
+                callPeers.ApplyAccess(Access.Permissions);
+            }
         });
     }
 
@@ -747,6 +810,109 @@ public partial class SessionsListVM : ReactiveObject
     }
 
     /// <summary>
+    /// The media session of the chat call we are in. It is not a row of the list: the session panel shows its
+    /// peers, with the same rows and menus as the voice channels. It is the one its chat shows under it.
+    /// </summary>
+    public HybridSessionVM? CallSession
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The voice channels of the list and the calls running in its chats.</summary>
+    private IEnumerable<HybridSessionVM> HybridSessions => Sessions.OfType<HybridSessionVM>()
+        .Concat(Sessions.OfType<ChatSessionVM>().Select(chat => chat.CallPeers).OfType<HybridSessionVM>());
+
+    /// <summary>A chat of the list by its id.</summary>
+    public ChatSessionModel? FindChat(int chatId) => FindSession<ChatSessionVM>(chatId)?.Model as ChatSessionModel;
+
+    /// <summary>A voice channel of the list, or the call of a chat: a call runs under the ID of its chat.</summary>
+    public HybridSessionVM? FindHybridSession(int sessionId) =>
+        FindSession<HybridSessionVM>(sessionId) ?? FindSession<ChatSessionVM>(sessionId)?.CallPeers;
+
+    /// <summary>Follows the peers of the media session of a chat call we entered, or of none.</summary>
+    public Task SetCallSessionAsync(HybridSessionModel? model)
+    {
+        var chat = model != null ? FindSession<ChatSessionVM>(model.Id) : null;
+        var call = chat != null ? FollowCall(chat, model!.CallId, model) : null;
+        if (CallSession != call && CallSession != null) CallSession.IsInCall = false;
+        CallSession = call;
+        foreach (var other in Sessions.OfType<ChatSessionVM>())
+            other.IsEntered = other == chat && call != null;
+        if (call != null)
+        {
+            call.IsInCall = true;
+            // Entered, the call unfolds under its chat as the voice channel we are in shows its peers
+            chat!.IsCallExpanded = true;
+        }
+        UpdateFolding();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Keeps under each chat the peers of its running call, from the calls the coordinator knows.</summary>
+    private void FollowCalls()
+    {
+        var calls = _coordinatorSession?.ChatCalls;
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+        {
+            var call = calls?.GetValueOrDefault(chat.Model.Id);
+            chat.HasActiveCall = call != null;
+            FollowCall(chat, call is { State: ChatCallState.Active } ? call.CallId : null, null);
+        }
+    }
+
+    /// <summary>
+    /// The media session of the chat's call, made when the call is new to the list and loaded with its peers.
+    /// The session of a call that ended goes; <paramref name="model"/> is the one we entered, when we did.
+    /// </summary>
+    private HybridSessionVM? FollowCall(ChatSessionVM chat, Guid? callId, HybridSessionModel? model)
+    {
+        if (chat.CallPeers is { Model: HybridSessionModel { CallId: { } known } } existing && known == callId)
+        {
+            if (model != null) existing.Model = model;
+            return existing;
+        }
+        if (chat.CallPeers is { } ended)
+        {
+            if (CallSession == ended) CallSession = null;
+            chat.CallPeers = null;
+            chat.IsEntered = false;
+        }
+        if (callId == null || _coordinatorSession == null)
+            return null;
+
+        var chatModel = chat.Model as ChatSessionModel;
+        var call = CreateHybridSessionVM(model ?? new HybridSessionModel
+        {
+            Id = chat.Model.Id, Name = chat.DisplayName, Capacity = 0, SessionType = SessionType.Hybrid,
+            EngineType = Shared.Enums.WebRTC.WebRTCEngine.Mediasoup, IsApprovalRequested = false, CallId = callId,
+            CallOwnerUserId = chatModel is { Kind: ChatKind.Group } ? chatModel.OwnerUserId : null
+        });
+        call.RemoveFromGroup = RemoveFromGroupAsync;
+        call.ApplyAccess(Access.Permissions);
+        call.WatchProperty(nameof(HybridSessionVM.SelectedPeer), x => x.SelectedPeer)
+            .Where(peer => peer != null)
+            .Subscribe(_ => ClearPeerSelectionExcept(call));
+        chat.CallPeers = call;
+        _ = LoadCallPeersAsync(chat, call);
+        return call;
+    }
+
+    private async Task LoadCallPeersAsync(ChatSessionVM chat, HybridSessionVM call)
+    {
+        var coordinatorSession = _coordinatorSession!;
+        var result = await coordinatorSession.GetAllHybridSessionPeers(call.Model.Id);
+        if (chat.CallPeers != call || !result.Result.IsSuccess)
+            return;
+        var peers = result.Value!.Values;
+        foreach (var peer in peers)
+            call.AddPeerToSession(peer);
+        _ = _playbackService.LoadAsync(CoordinatorInstanceId!, peers.Select(peer => peer.UserId).ToList());
+        foreach (var (userId, user) in await coordinatorSession.GetUsers(peers.Select(peer => peer.UserId).ToList()))
+            call.UpdateUserModel(userId, user);
+    }
+
+    /// <summary>
     /// The sessions of the list by their id, of one kind.
     /// </summary>
     private T? FindSession<T>(int sessionId) where T : class, ISessionVM =>
@@ -758,7 +924,7 @@ public partial class SessionsListVM : ReactiveObject
     /// </summary>
     private void PostToHybrid(int sessionId, Action<HybridSessionVM> apply) => Dispatcher.UIThread.Post(() =>
     {
-        if (FindSession<HybridSessionVM>(sessionId) is { } session)
+        if (FindHybridSession(sessionId) is { } session)
             apply(session);
     });
 
@@ -769,7 +935,7 @@ public partial class SessionsListVM : ReactiveObject
 
         Dispatcher.UIThread.Post(async () =>
         {
-            if (FindSession<HybridSessionVM>(notification.SessionId) is not { } session)
+            if (FindHybridSession(notification.SessionId) is not { } session)
                 return;
 
             // Not awaited before adding: the leave and state changes of this peer are posted right behind
@@ -782,6 +948,7 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>Shows again what the current user may do, after their roles changed.</summary>
     private void ApplyAccess()
     {
+        foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.CallPeers?.ApplyAccess(Access.Permissions);
         this.RaisePropertyChanged(nameof(CanCreateSession));
         this.RaisePropertyChanged(nameof(CanCreateCategory));
         foreach (var session in Sessions)
@@ -806,7 +973,7 @@ public partial class SessionsListVM : ReactiveObject
 
     private void OnUserUpdated(UserModel user) => Dispatcher.UIThread.Post(() =>
     {
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
+        foreach (var session in HybridSessions)
             session.UpdateUserModel(user.Id, user);
         foreach (var chat in Sessions.OfType<ChatSessionVM>())
             if (chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(user.Id)
@@ -830,7 +997,7 @@ public partial class SessionsListVM : ReactiveObject
 
         Dispatcher.UIThread.Post(() =>
         {
-            foreach (var session in Sessions.OfType<HybridSessionVM>())
+            foreach (var session in HybridSessions)
                 session.ApplyPlayback(userId, playback);
         });
     }

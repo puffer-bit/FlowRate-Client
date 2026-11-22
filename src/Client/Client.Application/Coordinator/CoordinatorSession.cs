@@ -25,7 +25,7 @@ public partial class CoordinatorSession : ICoordinatorSession
             if (value != CoordinatorState.Connected)
             {
                 _chatTyping.Clear();
-                lock (_callLock) DirectCall = null;
+                lock (_callLock) _chatCalls.Clear();
             }
             StateChanged?.Invoke(value);
 

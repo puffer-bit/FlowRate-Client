@@ -74,7 +74,7 @@ public class ChatCacheRepositoryTests
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new ChatCacheRepository(database.Database);
         var content = new ChatSystemContent { Kind = ChatSystemEventKind.CallEnded,
-            CallId = Guid.NewGuid(), CallEndReason = Shared.Models.DataTransferObjects.DirectCallEndReason.Completed,
+            CallId = Guid.NewGuid(), CallEndReason = Shared.Models.DataTransferObjects.ChatCallEndReason.Completed,
             CallDurationSeconds = 75 };
         var message = new ChatMessageModel
         {

@@ -48,7 +48,9 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private DispatcherTimer? _callDurationTimer;
     private void UpdateCallDuration()
     {
-        if (IsTransportConnected && Model.DirectCallStartedAt is { } started)
+        if (IsTransportConnected && Model.CallId != null && Model.CallStartedAt == null)
+            StatusBar.ShortStatusText = Client.Avalonia.Localization.Strings.Get("calls.waiting");
+        else if (IsTransportConnected && Model.CallStartedAt is { } started)
         {
             var elapsed = DateTimeOffset.UtcNow - started;
             if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
@@ -254,7 +256,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _disposables.Add(BitmapFlyoutVM.WatchProperty(nameof(HybridSessionBitmapFlyoutVM.Volume), vm => vm.Volume)
             .Subscribe(_audioPlayerService.ChangeVolume));
 
-        if (Model.DirectCallStartedAt.HasValue)
+        if (Model.CallId.HasValue)
         {
             _callDurationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _callDurationTimer.Tick += (_, _) => UpdateCallDuration();
@@ -275,7 +277,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             // Left before the server answered: nothing is set up yet, only the join itself is undone
             if (IsClosed)
             {
-                if (result.Result.IsSuccess && Model.DirectCallId == null)
+                if (result.Result.IsSuccess && Model.CallId == null)
                     _ = _coordinatorSession.LeaveSession(Model.Id);
                 return;
             }
@@ -582,7 +584,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     // Raised on the socket thread
     private void OnSessionReconfigured(HybridSessionModel model)
     {
-        if (model.Id != Model.Id)
+        // A call session follows its call: the server's model has neither the call nor its name
+        if (model.Id != Model.Id || Model.CallId != null)
             return;
 
         Dispatcher.UIThread.Post(async () =>
@@ -605,8 +608,10 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
     private void ApplyAccess(CoordinatorPermissions permissions)
     {
-        var granted = Model.DirectCallId.HasValue
-            ? Permission.ViewSessions | Permission.JoinSessions | Permission.Speak
+        // Members in a chat call speak, send video and share their screen whatever their server roles
+        var granted = Model.CallId.HasValue
+            ? Permission.ViewSessions | Permission.JoinSessions | Permission.Speak | Permission.ShareVideo
+              | Permission.PokeMembers
             : permissions.InSession(Model);
         CanSpeak = granted.HasFlag(Permission.Speak);
         StatusBar.CanSpeak = CanSpeak;
@@ -766,10 +771,11 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         _subscriptions.Dispose();
         _peerStats.Clear(Model.Id);
 
-        if (Model.DirectCallId is { } callId)
-            _ = _coordinatorSession.ChangeDirectCall(Model.Id, callId,
-                Shared.Models.DataTransferObjects.DirectCallAction.End);
-        if (_isJoined && Model.DirectCallId == null)
+        // Not when the call already let us go: kicked, ended or taken over by another device
+        if (Model.CallId is { } callId && _coordinatorSession.CurrentCall?.CallId == callId)
+            _ = _coordinatorSession.ChangeChatCall(Model.Id, callId,
+                Shared.Models.DataTransferObjects.ChatCallAction.Leave);
+        if (_isJoined && Model.CallId == null)
         {
             _ = _coordinatorSession.LeaveSession(Model.Id);
         }

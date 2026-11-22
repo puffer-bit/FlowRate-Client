@@ -93,10 +93,14 @@
                 </Grid>
             </Button>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <!-- A phone to start a call; a door to join the one running without us -->
                 <Button Classes="ghost" Width="36" Height="36" Padding="8" CornerRadius="6"
-                        IsVisible="{Binding IsDirect}" Command="{Binding CallCommand}" ToolTip.Tip="{l:Text calls.start}"
-                        AutomationProperties.Name="{l:Text calls.start}">
-                    <Image Source="{StaticResource ChatCallStartedIcon}"/>
+                        IsVisible="{Binding CanHaveCalls}" Command="{Binding CallCommand}" ToolTip.Tip="{Binding CallTip}"
+                        AutomationProperties.Name="{Binding CallTip}">
+                    <Panel>
+                        <Image Source="{StaticResource ChatCallStartedIcon}" IsVisible="{Binding !IsCallRunning}"/>
+                        <Image Source="{StaticResource DoorWithGreenArrowIcon}" IsVisible="{Binding IsCallRunning}"/>
+                    </Panel>
                 </Button>
                 <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"
                               VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"

@@ -33,10 +33,10 @@ public static class ChatSystemMessageText
         {
             var outcome = Strings.Get(reason switch
             {
-                Shared.Models.DataTransferObjects.DirectCallEndReason.Declined => "calls.declined",
-                Shared.Models.DataTransferObjects.DirectCallEndReason.Cancelled => "calls.cancelled",
-                Shared.Models.DataTransferObjects.DirectCallEndReason.Missed => "calls.missed",
-                Shared.Models.DataTransferObjects.DirectCallEndReason.Disconnected => "calls.disconnected",
+                Shared.Models.DataTransferObjects.ChatCallEndReason.Declined => "calls.declined",
+                Shared.Models.DataTransferObjects.ChatCallEndReason.Cancelled => "calls.cancelled",
+                Shared.Models.DataTransferObjects.ChatCallEndReason.Missed => "calls.missed",
+                Shared.Models.DataTransferObjects.ChatCallEndReason.Disconnected => "calls.disconnected",
                 _ => "calls.ended"
             });
             if (content.CallDurationSeconds is { } seconds)

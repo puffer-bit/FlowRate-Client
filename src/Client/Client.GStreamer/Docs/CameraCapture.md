@@ -21,7 +21,7 @@ Each camera gets its own tile. Hiding a camera stops presentation; incoming medi
 and decoded, so showing it again does not require negotiation. Hiding the local camera preview
 closes its preview branch while transmission continues. Camera tiles expose neither sound
 controls nor viewers. Android can receive these tracks through its existing video path; Android
-camera capture is not implemented here. Direct calls retain their existing media restrictions.
+camera capture is not implemented here. Calls in direct chats and groups allow the camera like voice channels.
 
 The Video settings page selects Screen or Camera. Encoder, decoder, and codec property overrides
 are stored independently in database profiles 1 and 2. Existing screen preferences survive the

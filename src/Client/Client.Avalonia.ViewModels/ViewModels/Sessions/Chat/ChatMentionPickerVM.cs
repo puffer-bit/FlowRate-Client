@@ -79,10 +79,31 @@ public class ChatMentionPickerVM : ReactiveObject
         }
     } = -1;
 
-    public ChatMentionPickerVM(ICoordinatorSession session, int currentUserId)
+    // The members of a direct chat or group, who alone can be mentioned there; null in a server channel
+    private readonly Func<IReadOnlyCollection<int>?>? _members;
+
+    /// <param name="members">
+    /// The members of the chat when only they may be mentioned: the suggestions come from them alone.
+    /// </param>
+    public ChatMentionPickerVM(ICoordinatorSession session, int currentUserId,
+        Func<IReadOnlyCollection<int>?>? members = null)
     {
         _session = session;
         _currentUserId = currentUserId;
+        _members = members;
+    }
+
+    /// <summary>The users the query finds: among the members of a private chat, otherwise on the server.</summary>
+    private async Task<IEnumerable<Client.Core.Users.UserModel>> FindUsersAsync(string query)
+    {
+        if (_members?.Invoke() is not { } members)
+            return await _session.SearchUsers(query, SuggestionsCount + 1);
+        var users = await _session.GetUsers(members.Where(id => id != _currentUserId).ToList());
+        return users.Values
+            .Where(user => user.Username.Contains(query, StringComparison.OrdinalIgnoreCase)
+                           || user.DisplayName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+            .OrderByDescending(user => user.Username.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(user => user.Username, StringComparer.CurrentCultureIgnoreCase);
     }
 
     /// <summary>
@@ -306,7 +327,7 @@ public class ChatMentionPickerVM : ReactiveObject
         {
             var cancellationToken = search.Token;
             await Task.Delay(SearchDelay, cancellationToken);
-            var users = await _session.SearchUsers(query, SuggestionsCount + 1);
+            var users = await FindUsersAsync(query);
             if (search.IsCancellationRequested)
                 return;
 

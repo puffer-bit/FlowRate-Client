@@ -15,8 +15,8 @@ namespace Client.Application.Ports;
 /// </summary>
 public interface ICoordinatorGateway : IDisposable
 {
-    Task<Shared.Models.DataTransferObjects.DirectCallDTO> ChangeDirectCall(int chatId, Guid callId,
-        Shared.Models.DataTransferObjects.DirectCallAction action);
+    Task<Shared.Models.DataTransferObjects.ChatCallDTO> ChangeChatCall(int chatId, Guid callId,
+        Shared.Models.DataTransferObjects.ChatCallAction action, int? targetUserId);
 
     /// <summary>
     /// Raised for everything the coordinator reports on its own. Raised on the transport thread.

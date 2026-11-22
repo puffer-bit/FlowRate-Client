@@ -227,7 +227,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
-            services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions);
+            services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions,
+            // In a direct chat or a group only its members can be mentioned
+            () => _model.IsPrivate ? _model.MemberIds : null);
 
         ApplyAccess(coordinatorSession.Permissions);
         IsConnected = coordinatorSession.ConnectionStatus == CoordinatorState.Connected;
@@ -245,6 +247,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             Viewers = sessionModel.Kind == ChatKind.Direct ? null : new ChatViewersVM(Id, coordinatorSession, viewProfileCommand, Composer, banUserCommand, _currentUserId, unbanUserCommand,
                 services.Appearance, openDirectChatCommand)
         };
+        if (StatusBar.Viewers is { } viewers)
+            viewers.GroupOwnerId = () => _model.Kind == ChatKind.Group ? _model.OwnerUserId : null;
         StatusBar.AttachCalling(coordinatorSession);
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)
@@ -720,6 +724,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _model = session;
             _ = UpdateChatNameAsync(session);
             StatusBar.ApplySession(session);
+            StatusBar.Viewers?.RefreshOwner();
             ApplyAccess(_coordinatorSession.Permissions);
         });
     }
