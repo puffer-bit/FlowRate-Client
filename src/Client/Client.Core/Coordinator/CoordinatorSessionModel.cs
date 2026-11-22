@@ -15,9 +15,9 @@ public class CoordinatorSessionModel
     /// <summary>The OS and architecture the server runs on, such as "Linux x64".</summary>
     public string ServerPlatform { get; init; } = string.Empty;
         
-    public DateTime CreateTime { get; init; }
-    public DateTime FirstLaunchTime { get; init; }
-    public DateTime CurrentLaunchTime { get; init; }
+    public DateTimeOffset CreateTime { get; init; }
+    public DateTimeOffset FirstLaunchTime { get; init; }
+    public DateTimeOffset CurrentLaunchTime { get; init; }
     public int MaxOnlineUsers { get; init; }
     public int MaxUsers { get; init; }
     

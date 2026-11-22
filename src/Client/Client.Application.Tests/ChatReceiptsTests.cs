@@ -16,7 +16,7 @@ namespace Client.Application.Tests;
 public sealed class ChatReceiptsTests
 {
     private const int ChatId = 7;
-    private static readonly DateTime Noon = new(2026, 11, 13, 12, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTimeOffset Noon = new(2026, 11, 13, 12, 0, 0, TimeSpan.Zero);
 
     /// <summary>A coordinator session that answers the receipt requests and lets the test raise reads.</summary>
     private sealed class Server
@@ -166,7 +166,7 @@ public sealed class ChatReceiptsTests
     private static ChatMessageModel Message(int id, int senderId) => new()
     {
         Id = id, ChatId = ChatId, SenderUserId = senderId, SentTime = Noon, IsMine = senderId == 1,
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Images = [], Files = [], Reactions = []
     };
 
     private static object? ChatSession(string method, object?[]? args) => method switch
@@ -197,8 +197,8 @@ public sealed class ChatReceiptsTests
         var users = ReactiveCommand.Create<int>(_ => { });
         var chat = new ActiveChatSessionVM(new ChatSessionModel
             {
-                Id = ChatId, Name = "Chat", Capacity = -1, SessionType = SessionType.Chat,
-                CreatorUserId = 1, AdminUserId = 1, Kind = kind,
+                Id = ChatId, Name = "Chat", SessionType = SessionType.Chat,
+                CreatorUserId = 1, OwnerUserId = 1, Kind = kind,
                 MemberIds = kind == ChatKind.ServerChannel ? [] : [1, 2, 3]
             }, server.Session,
             new ChatSessionServices(caches, null!, null!, null!, media, Receipts: receipts),
@@ -210,10 +210,10 @@ public sealed class ChatReceiptsTests
 
     private static void Pump(Func<bool> done)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
         while (!done())
         {
-            Assert.True(DateTime.UtcNow < deadline, "Timed out");
+            Assert.True(DateTimeOffset.UtcNow < deadline, "Timed out");
             Dispatcher.UIThread.RunJobs();
             Thread.Sleep(5);
         }
@@ -222,10 +222,10 @@ public sealed class ChatReceiptsTests
 
     private static async Task WaitUntil(Func<bool> done)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
         while (!done())
         {
-            Assert.True(DateTime.UtcNow < deadline, "Timed out");
+            Assert.True(DateTimeOffset.UtcNow < deadline, "Timed out");
             await Task.Delay(5, TestContext.Current.CancellationToken);
         }
     }

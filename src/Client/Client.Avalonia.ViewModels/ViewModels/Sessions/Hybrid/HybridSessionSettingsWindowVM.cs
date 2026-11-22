@@ -22,7 +22,7 @@ namespace Client.ViewModels.Sessions.Hybrid;
 public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
 {
     private readonly HybridSessionModel _session;
-    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
+    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsApprovalRequired,
         MediaSettings Media), RequestResult> _changeSettingsCommand;
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
@@ -174,7 +174,7 @@ public sealed class HybridSessionSettingsWindowVM : ReactiveObject, IDisposable
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
     public HybridSessionSettingsWindowVM(HybridSessionModel session,
-        ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove,
+        ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsApprovalRequired,
             MediaSettings Media), RequestResult> changeSettingsCommand)
     {
         _session = session;

@@ -251,7 +251,7 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
-    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+    private readonly ReactiveCommand<(int SessionId, string Name, int Capacity, bool IsApprovalRequired, MediaSettings Media),
         RequestResult> _changeHybridSessionSettingsCommand;
     private readonly ReactiveCommand<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>
         _changeSessionPermissionsCommand;
@@ -330,10 +330,10 @@ public partial class MainWindowVM : ReactiveObject
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeHybridSessionSettingsCommand = ReactiveCommand
-            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsHostMustApprove, MediaSettings Media),
+            .CreateFromTask<(int SessionId, string Name, int Capacity, bool IsApprovalRequired, MediaSettings Media),
                 RequestResult>(
                 change => _coordinatorSession!.ChangeHybridSessionSettings(change.SessionId, change.Name,
-                    change.Capacity, change.IsHostMustApprove, change.Media));
+                    change.Capacity, change.IsApprovalRequired, change.Media));
         _changeSessionPermissionsCommand = ReactiveCommand.CreateFromTask<(int SessionId, IReadOnlyList<PermissionOverride> Overrides), RequestResult>(
                 change => _coordinatorSession!.ChangeSessionPermissions(change.SessionId, change.Overrides));
 
@@ -370,7 +370,7 @@ public partial class MainWindowVM : ReactiveObject
         {
             if (_coordinatorSession is not { } coordinator) return;
             var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
-                coordinator.GetCurrentUser().Id, Shared.Validation.Limits.SessionCapacityUnlimited,
+                coordinator.GetCurrentUser().Id,
                 new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
             if (result.IsSuccess)
             {

@@ -6,5 +6,5 @@ public class ChatReaction
     public required string Emoji { get; init; }
 
     /// <summary>UTC; null for reactions set before the server kept the time.</summary>
-    public DateTime? ReactedAt { get; init; }
+    public DateTimeOffset? ReactedAt { get; init; }
 }

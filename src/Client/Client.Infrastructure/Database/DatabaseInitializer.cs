@@ -139,7 +139,7 @@ internal sealed partial class DatabaseInitializer : IDatabaseInitializer
     /// </remarks>
     public string ResetDatabase()
     {
-        var backupPath = $"{_database.FilePath}.broken-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
+        var backupPath = $"{_database.FilePath}.broken-{DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
         MoveAside(backupPath);
 
         // The new file is plain and not locked until its settings say otherwise

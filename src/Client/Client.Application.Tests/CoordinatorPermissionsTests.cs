@@ -75,24 +75,17 @@ public class CoordinatorPermissionsTests
     {
         var moderator = As(ModeratorId);
 
-        Assert.True(moderator.CanInSessionOn(Permission.KickMembers, isHost: false, [MemberId]));
-        Assert.False(moderator.CanInSessionOn(Permission.KickMembers, isHost: false, [ModeratorId]));
+        Assert.True(moderator.CanInSessionOn(Permission.KickMembers, [MemberId]));
+        Assert.False(moderator.CanInSessionOn(Permission.KickMembers, [ModeratorId]));
     }
 
+    // Sessions have no host: without the role a user may not kick or manage in any session
     [Fact]
-    public void Kick_ByHost_AlsoTheSameRank_ButNotHigher()
+    public void WithoutARole_NothingIsAllowedInASession()
     {
         var plain = As();
 
-        Assert.True(plain.CanInSessionOn(Permission.KickMembers, isHost: true, []));
-        Assert.False(plain.CanInSessionOn(Permission.KickMembers, isHost: true, [MemberId]));
-        Assert.False(plain.CanInSessionOn(Permission.KickMembers, isHost: false, []));
-    }
-
-    [Fact]
-    public void Host_IsNotGivenWhatHostsMayNotDo()
-    {
-        Assert.True(As().CanInSession(Permission.ManageSessions, isHost: true));
-        Assert.False(As().CanInSession(Permission.ManageMessages, isHost: true));
+        Assert.False(plain.CanInSessionOn(Permission.KickMembers, []));
+        Assert.False(plain.CanInSession(Permission.ManageSessions));
     }
 }

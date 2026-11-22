@@ -34,7 +34,7 @@ public static class MediaPerfRecords
             lock (Lock)
             {
                 var path = Path.Combine(directory,
-                    FilePrefix + DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + FileExtension);
+                    FilePrefix + DateTimeOffset.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + FileExtension);
 
                 if (path != _path)
                     Open(directory, path);

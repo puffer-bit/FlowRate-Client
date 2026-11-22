@@ -19,7 +19,7 @@ internal sealed class SystemConnectivityMonitor : IConnectivityMonitor, IDisposa
     public event Action<bool>? Changed;
 
     private readonly Timer _clockTimer;
-    private DateTime _lastClockCheck = DateTime.UtcNow;
+    private DateTimeOffset _lastClockCheck = DateTimeOffset.UtcNow;
 
     public SystemConnectivityMonitor()
     {
@@ -34,7 +34,7 @@ internal sealed class SystemConnectivityMonitor : IConnectivityMonitor, IDisposa
 
     private void CheckClock()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         var elapsed = now - _lastClockCheck;
         _lastClockCheck = now;
 

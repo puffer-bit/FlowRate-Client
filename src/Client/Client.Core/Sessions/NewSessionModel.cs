@@ -8,7 +8,7 @@ namespace Client.Core.Sessions;
 /// A session the user asks the coordinator to create.
 /// </summary>
 /// <param name="CategoryId">The category the session is put in, or null for the sessions outside any category.</param>
-public sealed record NewSessionModel(string Name, int HostId, int Capacity, NewSessionOptions Options,
+public sealed record NewSessionModel(string Name, int HostId, NewSessionOptions Options,
     int? CategoryId = null);
 
 public abstract record NewSessionOptions
@@ -16,8 +16,10 @@ public abstract record NewSessionOptions
     public abstract SessionType SessionType { get; }
 }
 
+/// <param name="Capacity">How many peers the session holds at most.</param>
 public sealed record NewHybridSessionOptions(
     WebRTCEngine EngineType,
+    int Capacity,
     MediaSettings? Media = null
 ) : NewSessionOptions
 {

@@ -43,7 +43,6 @@ internal static class SessionMapper
         {
             Id = dto.Id,
             Name = dto.Name,
-            Capacity = dto.Capacity,
             SessionType = dto.SessionType,
             IsEntered = dto.IsEntered,
             PermissionOverrides = dto.PermissionOverrides.ToModel()
@@ -60,14 +59,11 @@ internal static class SessionMapper
             Id = dto.Id,
             Name = dto.Name,
             EngineType = dto.EngineType,
-            HostId = dto.HostId,
             Capacity = dto.Capacity,
             SessionType = dto.SessionType,
             IsEntered = dto.IsEntered,
             PermissionOverrides = dto.PermissionOverrides.ToModel(),
-            
-            IsAudioRequested = dto.IsAudioRequested,
-            IsApprovalRequested = dto.IsHostMustApprove,
+            IsApprovalRequested = dto.IsApprovalRequired,
             Media = dto.Media.ToModel(),
         };
     }
@@ -78,7 +74,6 @@ internal static class SessionMapper
         {
             Id = sessionDTO.Id,
             Name = sessionDTO.Name,
-            Capacity = sessionDTO.Capacity,
             SessionType = sessionDTO.SessionType,   
             PermissionOverrides = sessionDTO.PermissionOverrides.ToModel(),
 
@@ -86,7 +81,7 @@ internal static class SessionMapper
             MemberIds = sessionDTO.MemberIds,
             LastMessage = sessionDTO.LastMessage?.ToModel(),
             CreatorUserId = sessionDTO.CreatorUserId,
-            AdminUserId = sessionDTO.AdminUserId,
+            OwnerUserId = sessionDTO.OwnerUserId,
             Description = sessionDTO.Description,
             IconPath = sessionDTO.IconPath,
 

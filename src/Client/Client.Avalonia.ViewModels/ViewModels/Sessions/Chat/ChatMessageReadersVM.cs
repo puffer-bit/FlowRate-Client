@@ -15,30 +15,25 @@ namespace Client.ViewModels.Sessions.Chat;
 /// <summary>Times of receipts and reactions, local, with the date unless it is today.</summary>
 public static class ChatReceiptTime
 {
-    public static DateTime ToLocal(DateTime time) => time.Kind switch
-    {
-        DateTimeKind.Local => time,
-        DateTimeKind.Utc => time.ToLocalTime(),
-        _ => DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime()
-    };
+    public static DateTimeOffset ToLocal(DateTimeOffset time) => time.ToLocalTime();
 
-    public static string Format(DateTime? time)
+    public static string Format(DateTimeOffset? time)
     {
         if (time is not { } value)
             return Strings.Get("chat.readers.unknownTime");
         var local = ToLocal(value);
-        return local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : Strings.FormatDateTime(local);
+        return local.Date == DateTimeOffset.Now.Date ? local.ToString("HH:mm") : Strings.FormatDateTime(local);
     }
 }
 
 /// <summary>A member who has read the message, as the readers list shows them.</summary>
-public sealed class ChatMessageReaderVM(int userId, string name, string? avatarUrl, UserStatus? status, DateTime? readAt)
+public sealed class ChatMessageReaderVM(int userId, string name, string? avatarUrl, UserStatus? status, DateTimeOffset? readAt)
 {
     public int UserId { get; } = userId;
     public string Name { get; } = name;
     public string? AvatarUrl { get; } = avatarUrl;
     public UserStatus? Status { get; } = status;
-    public DateTime? ReadAt { get; } = readAt;
+    public DateTimeOffset? ReadAt { get; } = readAt;
     public string TimeText => ChatReceiptTime.Format(ReadAt);
 }
 
@@ -52,7 +47,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
     private readonly int _messageId;
     private readonly ChatReceipts _receipts;
     private readonly ChatSenderDirectory _senders;
-    private readonly Dictionary<int, DateTime?> _readers = new();
+    private readonly Dictionary<int, DateTimeOffset?> _readers = new();
     private Task? _load;
     private bool _isDisposed;
 
@@ -83,7 +78,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
     public bool IsEmpty => !IsLoading && !HasError && Items.Count == 0;
 
     /// <summary>The first time the message was read; what a direct chat shows next to its checks.</summary>
-    public DateTime? FirstReadAt => _readers.Values.Where(time => time.HasValue).Min();
+    public DateTimeOffset? FirstReadAt => _readers.Values.Where(time => time.HasValue).Min();
 
     public event Action? Changed;
 
@@ -159,7 +154,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
         }
     }
 
-    private void Remember(int userId, DateTime? readAt)
+    private void Remember(int userId, DateTimeOffset? readAt)
     {
         if (!_readers.TryGetValue(userId, out var known) || (readAt.HasValue && (!known.HasValue || readAt < known)))
             _readers[userId] = readAt;
@@ -170,7 +165,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
         if (_isDisposed)
             return;
         Items.Clear();
-        foreach (var (userId, readAt) in _readers.OrderBy(pair => pair.Value ?? DateTime.MinValue)
+        foreach (var (userId, readAt) in _readers.OrderBy(pair => pair.Value ?? DateTimeOffset.MinValue)
                      .ThenBy(pair => pair.Key))
             Items.Add(new ChatMessageReaderVM(userId, _senders.FindName(userId) ?? Strings.Get("chat.unknownUser"),
                 _senders.FindAvatarUrl(userId), _senders.FindStatus(userId), readAt));

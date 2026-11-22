@@ -47,7 +47,7 @@ public class CameraSessionTests
         var model = new HybridSessionModel
         {
             Id = 7, Name = "room", Capacity = 10, SessionType = SessionType.Hybrid,
-            EngineType = WebRTCEngine.Mediasoup, HostId = 1
+            EngineType = WebRTCEngine.Mediasoup
         };
         return (new HybridSession(model, coordinator, factory, NullLogger<HybridSession>.Instance), coordinatorStub, transportStub);
     }

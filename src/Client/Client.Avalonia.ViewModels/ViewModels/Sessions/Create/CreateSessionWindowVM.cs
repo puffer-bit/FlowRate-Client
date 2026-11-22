@@ -116,7 +116,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
             if (_disposed) return;
             foreach (var id in _editingGroup.MemberIds)
                 SelectedMembers.Add(new ChatMemberChoiceVM(id, users.TryGetValue(id, out var user) ? user.DisplayName ?? user.Username : id.ToString()));
-            SelectedOwner = SelectedMembers.FirstOrDefault(member => member.Id == _editingGroup.AdminUserId);
+            SelectedOwner = SelectedMembers.FirstOrDefault(member => member.Id == _editingGroup.OwnerUserId);
             RefreshMemberSelection();
         }
         await SearchMembersAsync("");
@@ -130,7 +130,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         new(SessionType.Hybrid, Strings.Get("session.type.hybrid"), Strings.Get("session.type.hybrid.description"), 8);
 
     public SessionTypeOptionVM ChatOption { get; } =
-        new(SessionType.Chat, Strings.Get("session.type.chat"), Strings.Get("session.type.chat.description"), Limits.SessionCapacityUnlimited);
+        new(SessionType.Chat, Strings.Get("session.type.chat"), Strings.Get("session.type.chat.description"));
 
     public SessionTypeOptionVM SelectedType
     {
@@ -305,11 +305,11 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         {
             SessionType.Chat => new NewChatSessionOptions(
                 Description: string.IsNullOrWhiteSpace(Description) ? null : Description.Trim()),
-            _ => new NewHybridSessionOptions(WebRTCEngine.Mediasoup)
+            _ => new NewHybridSessionOptions(WebRTCEngine.Mediasoup, (int)Capacity!.Value)
         };
 
         var session = new NewSessionModel(Name.Trim(), _coordinatorSession.GetCurrentUser().Id,
-            IsChatSelected ? Limits.SessionCapacityUnlimited : (int)Capacity!.Value, options, _categoryId);
+            options, _categoryId);
 
         var result = await _coordinatorSession.CreateSession(session);
 
@@ -339,7 +339,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     private async Task<Client.Core.Coordinator.RequestResult> CreatePrivateAsync(string name, int[] members)
     {
         var result = await _coordinatorSession.CreateConversation(new NewSessionModel(name,
-            _coordinatorSession.GetCurrentUser().Id, Limits.SessionCapacityUnlimited,
+            _coordinatorSession.GetCurrentUser().Id,
             new NewChatSessionOptions(Kind: IsGroup ? ChatKind.Group : ChatKind.Direct, MemberIds: members)));
         if (result.IsSuccess) CreatedSession = result.Value;
         return result.Result;

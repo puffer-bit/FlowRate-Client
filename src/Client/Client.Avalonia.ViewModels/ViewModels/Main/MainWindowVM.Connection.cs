@@ -17,6 +17,7 @@ using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
+using Shared.Enums;
 using Shared.Enums.User;
 
 namespace Client.ViewModels.Main;
@@ -33,7 +34,7 @@ public partial class MainWindowVM
     // Rejections come in bursts, e.g. every request of a rate limited action; one message covers a burst
     private static readonly TimeSpan RejectionMessagePause = TimeSpan.FromSeconds(5);
     private bool _isRejectionMessageShown;
-    private DateTime _nextRejectionMessageTime;
+    private DateTimeOffset _nextRejectionMessageTime;
 
     private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(() => Strings.Get(key), isActive);
 
@@ -154,6 +155,9 @@ public partial class MainWindowVM
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
             .Add(() => session.SessionEnded += OnSessionEnded, () => session.SessionEnded -= OnSessionEnded)
+            .Add(() => session.ServerRestart += OnServerRestart, () => session.ServerRestart -= OnServerRestart)
+            .Add(() => session.ServerRestartCancelled += OnServerRestartCancelled,
+                () => session.ServerRestartCancelled -= OnServerRestartCancelled)
             .Add(() => session.PermissionsChanged += OnPermissionsChanged, () => session.PermissionsChanged -= OnPermissionsChanged)
             .Add(() => session.CurrentUserChanged += OnCurrentUserChanged, () => session.CurrentUserChanged -= OnCurrentUserChanged)
             .Add(() => session.ServerRoundTripChanged += OnServerRoundTripChanged,
@@ -296,6 +300,44 @@ public partial class MainWindowVM
         Dispatcher.UIThread.Post(() => Access.Update(permissions));
 
     // The session disconnects on its own; the user is told why it does not come back
+    // A warning stays until its time; going down now is told once, the status line shows the reconnect
+    private void OnServerRestart(ServerRestartEvent restart)
+    {
+        var kind = restart.Reason switch
+        {
+            ServerRestartReason.Update => "update",
+            ServerRestartReason.Shutdown => "shutdown",
+            _ => "restart"
+        };
+        if (restart.At is { } at)
+        {
+            var left = at - DateTimeOffset.UtcNow;
+            _notifications.Show(NotificationType.Warning,
+                Strings.Format($"server.restart.warning.{kind}",
+                    ("time", at.ToLocalTime().ToString("t", System.Globalization.CultureInfo.CurrentCulture))),
+                restart.Message, left > TimeSpan.FromSeconds(10) ? left : TimeSpan.FromSeconds(10));
+            return;
+        }
+
+        _notifications.Show(restart.Reason == ServerRestartReason.Shutdown ? NotificationType.Error : NotificationType.Warning,
+            Strings.Get($"server.restart.now.{kind}"), restart.Message);
+    }
+
+    private void OnServerRestartCancelled() =>
+        _notifications.Show(NotificationType.Info, Strings.Get("server.restart.cancelled"));
+
+    // The version a coordinator had when last seen in this run: a reconnect to a newer one says so
+    private (string Id, string Version)? _knownServerVersion;
+
+    private void NotifyServerUpdate(ICoordinatorSession session)
+    {
+        if (session.CoordinatorModel is not { Id: { } id, ServerVersion: { Length: > 0 } version })
+            return;
+        if (_knownServerVersion is { } known && known.Id == id && known.Version != version)
+            _notifications.Show(NotificationType.Info, Strings.Format("server.updated", ("version", version)));
+        _knownServerVersion = (id, version);
+    }
+
     private void OnSessionEnded(UserSessionEndReason reason)
     {
         Dispatcher.UIThread.Post(async () =>
@@ -317,7 +359,7 @@ public partial class MainWindowVM
             if (_coordinatorSession?.ConnectionStatus == CoordinatorState.Reconnecting)
                 return;
 
-            if (_isRejectionMessageShown || DateTime.UtcNow < _nextRejectionMessageTime)
+            if (_isRejectionMessageShown || DateTimeOffset.UtcNow < _nextRejectionMessageTime)
                 return;
 
             _isRejectionMessageShown = true;
@@ -330,7 +372,7 @@ public partial class MainWindowVM
             finally
             {
                 _isRejectionMessageShown = false;
-                _nextRejectionMessageTime = DateTime.UtcNow + RejectionMessagePause;
+                _nextRejectionMessageTime = DateTimeOffset.UtcNow + RejectionMessagePause;
             }
         });
     }
@@ -415,6 +457,7 @@ public partial class MainWindowVM
             _ = _chatServices.Receipts?.AttachAsync(session);
 
             await ServerTitle.AttachCoordinator(session);
+            NotifyServerUpdate(session);
             AttachOpenedSessions(session);
             if (session.DirectCall is not { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended })
                 await RestoreLastSessionAsync();

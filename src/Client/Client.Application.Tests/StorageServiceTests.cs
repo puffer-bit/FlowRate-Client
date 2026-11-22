@@ -27,8 +27,8 @@ public class StorageServiceTests
 
     private static ChatMessageModel Message(int id) => new()
     {
-        Id = id, ChatId = Chat.ChatId, SenderUserId = 1, SentTime = DateTime.UtcNow,
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Id = id, ChatId = Chat.ChatId, SenderUserId = 1, SentTime = DateTimeOffset.UtcNow,
+        Images = [], Files = [], Reactions = []
     };
 
     [Fact]

@@ -67,12 +67,11 @@ public sealed class PrivateChatListTests
 
     private static ChatSessionModel Model(int id, ChatKind kind, int messageDay) => new()
     {
-        Id = id, Name = $"Chat {id}", Kind = kind, SessionType = SessionType.Chat, Capacity = null,
-        CreatorUserId = 1,
+        Id = id, Name = $"Chat {id}", Kind = kind, SessionType = SessionType.Chat, CreatorUserId = 1,
         LastMessage = new ChatMessageModel
         {
-            Id = id, ChatId = id, SenderUserId = 1, SentTime = new DateTime(2026, 11, messageDay),
-            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+            Id = id, ChatId = id, SenderUserId = 1, SentTime = new DateTimeOffset(2026, 11, messageDay, 0, 0, 0, TimeSpan.Zero),
+            Images = [], Files = [], Reactions = []
         }
     };
 

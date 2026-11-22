@@ -97,8 +97,8 @@ public sealed partial class GstVideoFrameGrabber(ILogger<GstVideoFrameGrabber> l
 
     private static bool WaitPrerolled(Bus bus, CancellationToken cancellationToken)
     {
-        var deadline = System.DateTime.UtcNow + Timeout;
-        while (System.DateTime.UtcNow < deadline)
+        var deadline = System.DateTimeOffset.UtcNow + Timeout;
+        while (System.DateTimeOffset.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var message = bus.TimedPopFiltered(PollTimeout, MessageType.AsyncDone | MessageType.Error);

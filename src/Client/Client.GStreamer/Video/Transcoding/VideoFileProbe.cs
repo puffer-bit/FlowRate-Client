@@ -93,13 +93,13 @@ public static class VideoFileProbe
                 return null;
 
             using var bus = pipeline.GetBus();
-            var deadline = System.DateTime.UtcNow + Timeout;
+            var deadline = System.DateTimeOffset.UtcNow + Timeout;
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (Volatile.Read(ref linkError) is { } error)
                     throw new InvalidOperationException("The file could not be probed.", error);
-                if (System.DateTime.UtcNow > deadline)
+                if (System.DateTimeOffset.UtcNow > deadline)
                     return null;
                 using var message = bus.TimedPopFiltered(PollTimeout, MessageType.AsyncDone | MessageType.Error);
                 if (message == null)

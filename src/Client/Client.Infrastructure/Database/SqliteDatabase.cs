@@ -210,8 +210,8 @@ internal sealed partial class SqliteDatabase
     /// <summary>
     /// Stored as UTC; SQLite gives the value back without the kind.
     /// </summary>
-    public static DateTime FromStorage(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    public static DateTimeOffset FromStorage(DateTime value) => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
 
-    public static DateTime ToStorage(DateTime value) =>
-        value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
+    /// <summary>The same text format every stored time already has: a DateTimeOffset would add an offset.</summary>
+    public static DateTime ToStorage(DateTimeOffset value) => value.UtcDateTime;
 }

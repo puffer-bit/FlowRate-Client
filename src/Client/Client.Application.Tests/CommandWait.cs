@@ -12,10 +12,10 @@ internal static class CommandWait
     /// </summary>
     public static async Task UntilCanExecuteAsync(ICommand command, TimeSpan? timeout = null)
     {
-        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
         while (!command.CanExecute(null))
         {
-            if (DateTime.UtcNow > deadline)
+            if (DateTimeOffset.UtcNow > deadline)
                 throw new TimeoutException("The command did not become executable.");
             await Task.Delay(10, TestContext.Current.CancellationToken);
         }

@@ -10,9 +10,9 @@ public class ChatPinActionTests
 {
     private static ChatMessageModel Message(bool pinned = false) => new()
     {
-        Id = 1, ChatId = 7, SenderUserId = 2, SentTime = DateTime.UtcNow,
-        PinnedAt = pinned ? DateTime.UtcNow : null,
-        Images = [], Video = [], Files = [], UsersIds = [], Reactions = []
+        Id = 1, ChatId = 7, SenderUserId = 2, SentTime = DateTimeOffset.UtcNow,
+        PinnedAt = pinned ? DateTimeOffset.UtcNow : null,
+        Images = [], Files = [], Reactions = []
     };
 
     [Fact]

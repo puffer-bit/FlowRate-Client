@@ -36,7 +36,7 @@ public class NoMediaTests : IDisposable
             _ => throw new InvalidOperationException("Voice factory must not be called"), null!);
         var model = new HybridSessionModel
         {
-            Id = 1, Name = "Voice", Capacity = 10, HostId = 1,
+            Id = 1, Name = "Voice", Capacity = 10,
             SessionType = default, EngineType = WebRTCEngine.Mediasoup
         };
 

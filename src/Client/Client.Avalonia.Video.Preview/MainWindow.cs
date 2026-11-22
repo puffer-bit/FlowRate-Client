@@ -55,10 +55,10 @@ public sealed class MainWindow : Window
     private bool _closed;
     private VideoView? _video;
     private StreamPerfOverlay? _perf;
-    private DateTime _perfSampled;
+    private DateTimeOffset _perfSampled;
     private PatternFeed? _feed;
     private int _scenario = -1;
-    private DateTime _scenarioEnds;
+    private DateTimeOffset _scenarioEnds;
     private bool _isPaused;
 
     public MainWindow()
@@ -147,25 +147,25 @@ public sealed class MainWindow : Window
     {
         if (_capture != null)
         {
-            if (DateTime.UtcNow - _perfSampled >= TimeSpan.FromSeconds(1))
+            if (DateTimeOffset.UtcNow - _perfSampled >= TimeSpan.FromSeconds(1))
             {
-                _perfSampled = DateTime.UtcNow;
+                _perfSampled = DateTimeOffset.UtcNow;
                 _perf?.SetPerf(null, null);
             }
             return;
         }
         if (_isPaused || _selecting) return;
 
-        var left = _scenarioEnds - DateTime.UtcNow;
+        var left = _scenarioEnds - DateTimeOffset.UtcNow;
 
         if (left <= TimeSpan.Zero)
             NextScenario();
         else
             _countdownText.Text = $"Next in {left.TotalSeconds:0.0} s";
 
-        if (DateTime.UtcNow - _perfSampled >= TimeSpan.FromSeconds(1))
+        if (DateTimeOffset.UtcNow - _perfSampled >= TimeSpan.FromSeconds(1))
         {
-            _perfSampled = DateTime.UtcNow;
+            _perfSampled = DateTimeOffset.UtcNow;
             _perf?.SetPerf(SamplePerf(), new NetworkPerf(18 + Random.Shared.Next(10), 6200, 90, 4100, false, "host", "host"));
         }
     }
@@ -188,7 +188,7 @@ public sealed class MainWindow : Window
     {
         if (_capture != null || _selecting) return;
         _scenario = (_scenario + 1) % IssueScenarios.All.Count;
-        _scenarioEnds = DateTime.UtcNow + ScenarioDuration;
+        _scenarioEnds = DateTimeOffset.UtcNow + ScenarioDuration;
 
         var scenario = IssueScenarios.All[_scenario];
         _scenarioText.Text = $"{_scenario + 1}/{IssueScenarios.All.Count}. {scenario.Name}";
@@ -343,7 +343,7 @@ public sealed class MainWindow : Window
         if (_isPaused)
             _countdownText.Text = "Paused";
         else
-            _scenarioEnds = DateTime.UtcNow + ScenarioDuration;
+            _scenarioEnds = DateTimeOffset.UtcNow + ScenarioDuration;
     }
 
     protected override void OnClosed(EventArgs e)

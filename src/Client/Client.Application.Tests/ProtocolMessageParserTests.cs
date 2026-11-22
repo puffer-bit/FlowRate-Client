@@ -27,7 +27,7 @@ public class ProtocolMessageParserTests
     public void ConversationCreation_PreservesAudienceNameAndMembersOnTheWire(ChatKind kind, string name, int peerCount)
     {
         var members = Enumerable.Range(2, peerCount).ToArray();
-        var model = new NewSessionModel(name, 1, Limits.SessionCapacityUnlimited,
+        var model = new NewSessionModel(name, 1,
             new NewChatSessionOptions(Kind: kind, MemberIds: members));
         var request = new CreateSessionRequest(model.ToDto());
 

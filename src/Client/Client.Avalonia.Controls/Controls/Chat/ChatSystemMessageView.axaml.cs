@@ -12,8 +12,8 @@ public partial class ChatSystemMessageView : UserControl
 {
     public static readonly StyledProperty<string> TextProperty =
         AvaloniaProperty.Register<ChatSystemMessageView, string>(nameof(Text), string.Empty);
-    public static readonly StyledProperty<DateTime> TimeProperty =
-        AvaloniaProperty.Register<ChatSystemMessageView, DateTime>(nameof(Time));
+    public static readonly StyledProperty<DateTimeOffset> TimeProperty =
+        AvaloniaProperty.Register<ChatSystemMessageView, DateTimeOffset>(nameof(Time));
     public static readonly StyledProperty<ChatSystemEventKind> KindProperty =
         AvaloniaProperty.Register<ChatSystemMessageView, ChatSystemEventKind>(nameof(Kind));
 
@@ -25,7 +25,7 @@ public partial class ChatSystemMessageView : UserControl
     public IReadOnlyList<ChatSystemMessagePart>? Parts { get => GetValue(PartsProperty); set => SetValue(PartsProperty, value); }
     public ICommand? OpenUserCommand { get => GetValue(OpenUserCommandProperty); set => SetValue(OpenUserCommandProperty, value); }
     public string Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
-    public DateTime Time { get => GetValue(TimeProperty); set => SetValue(TimeProperty, value); }
+    public DateTimeOffset Time { get => GetValue(TimeProperty); set => SetValue(TimeProperty, value); }
     public ChatSystemEventKind Kind { get => GetValue(KindProperty); set => SetValue(KindProperty, value); }
 
     public ChatSystemMessageView()

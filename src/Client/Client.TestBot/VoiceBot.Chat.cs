@@ -39,7 +39,7 @@ internal sealed partial class VoiceBot
                 return;
 
             if (TryReadSendTime(text) is { } sentAt)
-                _stats.ChatReceived(DateTime.UtcNow - sentAt);
+                _stats.ChatReceived(DateTimeOffset.UtcNow - sentAt);
         };
 
         Log($"writing to the chat \"{chat.Name}\"");
@@ -76,7 +76,7 @@ internal sealed partial class VoiceBot
             return;
 
         var sequence = ++_chatSequence;
-        var text = $"{ChatMarker} {DateTime.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture)} " +
+        var text = $"{ChatMarker} {DateTimeOffset.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture)} " +
                    $"{Name} #{sequence}: {ChatPhrases[random.Next(ChatPhrases.Length)]}";
 
         RequestResult result;
@@ -87,7 +87,7 @@ internal sealed partial class VoiceBot
             {
                 ChatId = _chatId,
                 SenderUserId = coordinator.GetCurrentUser().Id,
-                SentTime = DateTime.UtcNow,
+                SentTime = DateTimeOffset.UtcNow,
                 TextContent = ChatTextContent.FromUserInput(text)
             });
         }
@@ -104,7 +104,7 @@ internal sealed partial class VoiceBot
             Log($"failed to send a chat message: {result}");
     }
 
-    private static DateTime? TryReadSendTime(string text)
+    private static DateTimeOffset? TryReadSendTime(string text)
     {
         if (!text.StartsWith(ChatMarker, StringComparison.Ordinal))
             return null;
@@ -114,7 +114,7 @@ internal sealed partial class VoiceBot
 
         return end > start && long.TryParse(text.AsSpan(start, end - start), NumberStyles.None,
             CultureInfo.InvariantCulture, out var ticks)
-            ? new DateTime(ticks, DateTimeKind.Utc)
+            ? new DateTimeOffset(ticks, TimeSpan.Zero)
             : null;
     }
 

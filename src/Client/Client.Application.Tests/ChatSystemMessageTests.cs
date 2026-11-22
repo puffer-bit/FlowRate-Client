@@ -26,10 +26,10 @@ public sealed class ChatSystemMessageTests
 
     private static ChatMessageModel Message(int id, ChatSystemContent? content = null) => new()
     {
-        Id = id, ChatId = 7, SenderUserId = -1, SentTime = DateTime.UtcNow.AddSeconds(id),
+        Id = id, ChatId = 7, SenderUserId = -1, SentTime = DateTimeOffset.UtcNow.AddSeconds(id),
         IsSystem = true, IsReadOnly = true, SystemContent = content,
         TextContent = new ChatTextContent { Text = "Legacy server event" },
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Images = [], Files = [], Reactions = []
     };
 
     private static ChatMessageVM View(ChatMessageModel message) => new(message, 1,
@@ -46,10 +46,10 @@ public sealed class ChatSystemMessageTests
         var content = Content(kind);
         var model = new ChatMessageDTO
         {
-            Id = 1, ChatId = 7, SenderUserId = -1, SentTime = DateTime.UtcNow,
+            Id = 1, ChatId = 7, SenderUserId = -1, SentAt = DateTimeOffset.UtcNow,
             IsSystem = true, IsReadOnly = true, SystemContent = content,
             TextContent = new ChatTextContentDTO { Text = "Fallback" },
-            ReplyContent = null!, Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+            ReplyContent = null!, Files = [], Reactions = []
         }.ToModel();
         Assert.Equal(content, model.SystemContent);
         var view = View(model);

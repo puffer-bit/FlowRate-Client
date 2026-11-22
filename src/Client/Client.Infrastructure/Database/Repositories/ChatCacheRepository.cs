@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -257,7 +258,7 @@ internal sealed class ChatCacheRepository : IChatCacheRepository
 
             quote[nameof(ChatReplyContent.IsDeleted)] = quoted == null;
             quote[nameof(ChatReplyContent.HasAttachments)] = quoted != null && !quoted.IsDeleted &&
-                (quoted.Images.Count > 0 || quoted.Video.Count > 0 || quoted.Files.Count > 0);
+                (quoted.Images.Count > 0 || quoted.Files.Count > 0);
             if (quoted != null)
             {
                 quote[nameof(ChatReplyContent.TextContent)] = quoted.TextContent == null
@@ -302,7 +303,22 @@ internal sealed record TailBoundsRow(int? OldestId, int Count);
 internal sealed record QuotingMessageRow(int MessageId, string Payload);
 
 // Generated serializers: the app is published with NativeAOT, which has no reflection to fall back on
+[JsonSourceGenerationOptions(Converters = [typeof(CachedTimeConverter)])]
 [JsonSerializable(typeof(ChatMessageModel))]
 internal sealed partial class ChatCacheJsonContext : JsonSerializerContext;
 
 internal sealed record ChatCacheUsageRow(int Messages, long Bytes);
+
+/// <summary>
+/// Cached times are ISO strings in UTC. Messages cached before times became DateTimeOffset may lack the
+/// offset; they were UTC too, so a time without one is read as UTC rather than local.
+/// </summary>
+internal sealed class CachedTimeConverter : JsonConverter<DateTimeOffset>
+{
+    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        DateTimeOffset.Parse(reader.GetString() ?? throw new JsonException("A cached time is null"),
+            CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+}

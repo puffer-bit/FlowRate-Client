@@ -106,8 +106,8 @@ public partial class MainWindowVM
                 OpenedSessions?.Open(new HybridSessionModel
                 {
                     Id = session.Id, Name = name, Capacity = 2, SessionType = SessionType.Hybrid,
-                    EngineType = session.EngineType, HostId = session.HostId,
-                    IsAudioRequested = true, IsApprovalRequested = false, DirectCallId = call.CallId,
+                    EngineType = session.EngineType,
+                    IsApprovalRequested = false, DirectCallId = call.CallId,
                     DirectCallStartedAt = call.StartedAt
                 });
             }

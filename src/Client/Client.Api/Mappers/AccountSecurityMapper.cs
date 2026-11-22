@@ -11,11 +11,11 @@ internal static class AccountSecurityMapper
         dto.IsTwoFactorEnabled,
         dto.IsTwoFactorPending,
         dto.PasskeysAvailable,
-        dto.Passkeys.Select(passkey => new AccountPasskey(passkey.Id, passkey.Label, passkey.CreatedAtUtc,
-            passkey.LastUsedAtUtc)).ToList());
+        dto.Passkeys.Select(passkey => new AccountPasskey(passkey.Id, passkey.Label, passkey.CreatedAt,
+            passkey.LastUsedAt)).ToList());
 
     public static AccountSession ToModel(this UserSessionDTO dto) => new(dto.Id, dto.Device.Name, dto.Device.Platform,
-        dto.Device.AppVersion, dto.CreatedAtUtc, dto.LastUsedAtUtc, dto.ExpiresAtUtc, dto.LastAddress, dto.IsCurrent,
+        dto.Device.AppVersion, dto.CreatedAt, dto.LastUsedAt, dto.ExpiresAt, dto.LastAddress, dto.IsCurrent,
         dto.IsOnline);
 
     public static UserSecurityProofDTO ToDto(this AccountProof proof) => new(

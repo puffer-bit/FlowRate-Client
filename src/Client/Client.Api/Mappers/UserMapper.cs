@@ -23,8 +23,8 @@ internal static class UserMapper
             AvatarUrl = dto.AvatarUrl,
             State = dto.State,
             Status = dto.Status,
-            FirstConnectionTime = dto.FirstConnectionTime,
-            LastConnectionTime = dto.LastConnectionTime,
+            FirstConnectionTime = dto.FirstConnectedAt,
+            LastConnectionTime = dto.LastConnectedAt,
             RoleIds = dto.RoleIds
         };
     }

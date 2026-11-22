@@ -9,20 +9,22 @@ namespace Client.Application.Tests;
 
 public sealed class ChatTimelineTests : IDisposable
 {
-    private static readonly DateTime Start = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Local);
+    private static readonly DateTimeOffset Start = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Local);
     private readonly ReactiveCommand<ChatMessageModel, RxVoid> _messageCommand =
         ReactiveCommand.Create<ChatMessageModel>(_ => { });
     private readonly ReactiveCommand<int, RxVoid> _userCommand = ReactiveCommand.Create<int>(_ => { });
 
+    // Whatever offset a time carries, the separators follow local dates
     [Theory]
-    [InlineData(DateTimeKind.Utc)]
-    [InlineData(DateTimeKind.Unspecified)]
-    public void ServerMessagesUseLocalDatesAcrossMidnight(DateTimeKind kind)
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ServerMessagesUseLocalDatesAcrossMidnight(bool utc)
     {
         var timeline = new ChatTimeline();
-        var midnight = new DateTime(2026, 11, 2, 0, 0, 0, DateTimeKind.Local);
-        var first = Message(1, DateTime.SpecifyKind(midnight.AddMinutes(-1).ToUniversalTime(), kind));
-        var second = Message(2, DateTime.SpecifyKind(midnight.AddMinutes(1).ToUniversalTime(), kind));
+        DateTimeOffset midnight = new DateTime(2026, 11, 2, 0, 0, 0, DateTimeKind.Local);
+        DateTimeOffset At(int minutes) => utc ? midnight.AddMinutes(minutes).ToUniversalTime() : midnight.AddMinutes(minutes);
+        var first = Message(1, At(-1));
+        var second = Message(2, At(1));
 
         timeline.AddRange([second, first]);
 
@@ -230,10 +232,10 @@ public sealed class ChatTimelineTests : IDisposable
         earlier.Message.SenderUserId == later.Message.SenderUserId &&
         later.Message.SentTime - earlier.Message.SentTime <= TimeSpan.FromMinutes(2);
 
-    private ChatMessageVM Message(int id, DateTime time, int sender = 1) => new(new ChatMessageModel
+    private ChatMessageVM Message(int id, DateTimeOffset time, int sender = 1) => new(new ChatMessageModel
     {
         Id = id, ChatId = 1, SenderUserId = sender, SentTime = time,
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Images = [], Files = [], Reactions = []
     }, 1, _messageCommand, _userCommand, _messageCommand, _messageCommand, _userCommand,
         _ => Task.FromResult(true));
 

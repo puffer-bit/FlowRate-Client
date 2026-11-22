@@ -5,8 +5,6 @@ namespace Client.Core.Sessions.Hybrid;
 public class PeerModel
 {
     public required int UserId { get; init; }
-    public bool IsAudioRequested { get; init; }
-    public bool IsNegotiated { get; init; }
     public bool IsConnected { get; init; }
     public bool IsApproved { get; init; }
     public bool IsRejected { get; init; }

@@ -21,7 +21,14 @@ public sealed record BannedEvent(string? Reason) : CoordinatorEvent;
 public sealed record ChatViewersChangedEvent(int ChatId, Guid SubscriptionId,
     IReadOnlyList<UserModel> Upserted, IReadOnlyList<int> Removed) : CoordinatorEvent;
 
-public sealed record ServerClosingEvent(string? Message) : CoordinatorEvent;
+/// <summary>
+/// The server goes down: at <paramref name="At"/> as a warning, or now when it is null. The client reconnects on its
+/// own for every reason but <see cref="ServerRestartReason.Shutdown"/>.
+/// </summary>
+public sealed record ServerRestartEvent(ServerRestartReason Reason, DateTimeOffset? At, string? Message) : CoordinatorEvent;
+
+/// <summary>The announced restart is called off.</summary>
+public sealed record ServerRestartCancelledEvent : CoordinatorEvent;
 
 /// <summary>
 /// The server ended the session of this device, from another device or the control panel, and closes the connection.
@@ -43,11 +50,6 @@ public sealed record RolesChangedEvent(IReadOnlyList<RoleModel> Roles) : Coordin
 /// Round trip of the last heartbeat ping answered by the server.
 /// </summary>
 public sealed record ServerRoundTripMeasuredEvent(TimeSpan RoundTrip) : CoordinatorEvent;
-
-/// <summary>
-/// The server is about to restart and expects the clients to come back.
-/// </summary>
-public sealed record ServerRestartingEvent(string? Message) : CoordinatorEvent;
 
 /// <summary>
 /// A user of the coordinator changed, for example renamed themselves.

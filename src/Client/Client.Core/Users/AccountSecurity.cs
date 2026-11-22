@@ -10,7 +10,7 @@ public sealed record AccountSecurity(
     bool PasskeysAvailable,
     IReadOnlyList<AccountPasskey> Passkeys);
 
-public sealed record AccountPasskey(int Id, string Label, DateTime CreatedAtUtc, DateTime? LastUsedAtUtc);
+public sealed record AccountPasskey(int Id, string Label, DateTimeOffset CreatedAtUtc, DateTimeOffset? LastUsedAtUtc);
 
 /// <summary>
 /// The current password and one-time code, asked for by every change while the user has them. Each part is null
@@ -39,9 +39,9 @@ public sealed record AccountSession(
     string DeviceName,
     string Platform,
     string AppVersion,
-    DateTime CreatedAtUtc,
-    DateTime LastUsedAtUtc,
-    DateTime ExpiresAtUtc,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset LastUsedAtUtc,
+    DateTimeOffset ExpiresAtUtc,
     string? LastAddress,
     bool IsCurrent,
     bool IsOnline);

@@ -324,13 +324,12 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         StopEditing();
     }
 
-    private static string FormatTime(DateTime time)
+    private static string FormatTime(DateTimeOffset time)
     {
         if (time == default)
             return Strings.Get("common.unknown");
 
-        var local = time.Kind == DateTimeKind.Utc ? time.ToLocalTime() : time;
-        return Strings.FormatDateTime(local);
+        return Strings.FormatDateTime(time.ToLocalTime());
     }
 
     public void Dispose()

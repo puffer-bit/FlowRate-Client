@@ -19,10 +19,10 @@ public sealed class BanFormVM : ReactiveObject
     public string? Reason { get; set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool IsIp => KindIndex == 1;
     public BanKind Kind => IsIp ? BanKind.Ip : BanKind.Account;
-    public DateTime? ExpiresAt => DurationIndex switch
+    public DateTimeOffset? ExpiresAt => DurationIndex switch
     {
-        1 => DateTime.UtcNow.AddHours(1), 2 => DateTime.UtcNow.AddDays(1),
-        3 => DateTime.UtcNow.AddDays(7), 4 => DateTime.UtcNow.AddDays(30), _ => null
+        1 => DateTimeOffset.UtcNow.AddHours(1), 2 => DateTimeOffset.UtcNow.AddDays(1),
+        3 => DateTimeOffset.UtcNow.AddDays(7), 4 => DateTimeOffset.UtcNow.AddDays(30), _ => null
     };
     public IObservable<bool> CanSubmit => this.WatchProperty(nameof(Reason), vm => vm.Reason)
         .Select(value => (value?.Trim().Length ?? 0) <= 1000);

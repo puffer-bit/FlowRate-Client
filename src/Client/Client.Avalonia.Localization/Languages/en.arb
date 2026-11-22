@@ -1251,8 +1251,8 @@
   },
   "sessionSettings.title": "Session settings",
   "sessionSettings.hint": "The changes apply to everyone in the session.",
-  "sessionSettings.approval": "Host approves who joins",
-  "sessionSettings.approval.hint": "Users wait in the queue until the host lets them in.",
+  "sessionSettings.approval": "Joining needs approval",
+  "sessionSettings.approval.hint": "Users wait in the queue until someone allowed to approve lets them in.",
   "sessionSettings.capacity.notAccepted": "The server does not accept this number of participants. It cannot be below the number of participants in the session now.",
   "sessionSettings.sessionGone": "The session no longer exists.",
   "sessionSettings.notSaved": "The settings were not saved: {reason}.",
@@ -1815,11 +1815,11 @@
   "roles.permission.manageRoles": "Manage roles",
   "roles.permission.manageRoles.description": "Create, change, order, delete, give and take roles below one's own highest role.",
   "roles.permission.createSessions": "Create sessions",
-  "roles.permission.createSessions.description": "The creator of a voice session hosts it.",
+  "roles.permission.createSessions.description": "Create voice sessions and chats.",
   "roles.permission.manageSessions": "Manage sessions",
   "roles.permission.manageSessions.description": "Change and delete any session, arrange sessions and categories.",
   "roles.permission.kick": "Kick members",
-  "roles.permission.kick.description": "Global account and IP bans, reasons and revocation.",
+  "roles.permission.kick.description": "Remove users from any session.",
   "roles.permission.ban": "Ban members",
   "roles.permission.ban.description": "Global account and IP bans, reasons and revocation.",
   "roles.permission.approve": "Approve members",
@@ -2111,5 +2111,33 @@
   "serverSettings.roles.searchPermissions": "Search permissions",
   "serverSettings.roles.hierarchyHint": "Roles higher in the list can manage roles below them.",
   "settings.appearance.customTitleBar.title": "Own window title bar",
-  "settings.appearance.customTitleBar.description": "The window buttons sit in the top bar of the application and the title bar of the system is hidden. Turn off to get the title bar of the system back. Applies at once"
+  "settings.appearance.customTitleBar.description": "The window buttons sit in the top bar of the application and the title bar of the system is hidden. Turn off to get the title bar of the system back. Applies at once",
+  "server.restart.warning.restart": "The server restarts at {time}",
+  "@server.restart.warning.restart": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "server.restart.warning.update": "The server updates at {time}",
+  "@server.restart.warning.update": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "server.restart.warning.shutdown": "The server shuts down at {time}",
+  "@server.restart.warning.shutdown": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "server.restart.now.restart": "The server is restarting",
+  "server.restart.now.update": "The server is updating",
+  "server.restart.now.shutdown": "The server was shut down",
+  "server.restart.cancelled": "The announced restart is called off",
+  "server.updated": "The server was updated to {version}",
+  "@server.updated": {
+    "placeholders": {
+      "version": {}
+    }
+  }
 }

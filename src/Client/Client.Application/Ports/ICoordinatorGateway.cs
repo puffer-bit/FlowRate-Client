@@ -148,7 +148,7 @@ public interface ICoordinatorGateway : IDisposable
     /// <summary>Bans, freezes or reinstates another user.</summary>
     /// <returns>The user as the server has them now, when the state was set.</returns>
     Task<UserModel> SetUserState(int userId, UserState state);
-    Task<UserModel> BanUser(int userId, BanKind kind, string? reason = null, DateTime? expiresAt = null, string? address = null);
+    Task<UserModel> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null, string? address = null);
     Task<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans();
     Task RevokeBan(Guid banId);
     Task DeleteUser(int userId);
@@ -241,7 +241,7 @@ public interface ICoordinatorGateway : IDisposable
     Task ApproveInHybridSession(int sessionId, int userId);
     Task RejectInHybridSession(int sessionId, int userId);
     Task ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove, MediaSettings media);
+        bool isApprovalRequired, MediaSettings media);
     Task ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides);
 

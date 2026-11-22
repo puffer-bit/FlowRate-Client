@@ -12,13 +12,13 @@ namespace Client.Application.Tests;
 
 public class SessionCapacityIndicatorTests
 {
-    private static HybridSessionModel Model(int? capacity) => new()
+    private static HybridSessionModel Model(int capacity) => new()
     {
         Id = 7, Name = "Room", Capacity = capacity, SessionType = SessionType.Hybrid,
-        EngineType = WebRTCEngine.Mediasoup, HostId = 1
+        EngineType = WebRTCEngine.Mediasoup
     };
 
-    private static HybridSessionVM Create(int? capacity) => new(Model(capacity), 1,
+    private static HybridSessionVM Create(int capacity) => new(Model(capacity), 1,
         null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!);
 
     private static PeerVM Peer(int id) => new(new PeerModel { UserId = id }, false,
@@ -65,10 +65,9 @@ public class SessionCapacityIndicatorTests
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData(-1)]
     [InlineData(0)]
-    public void UnlimitedSession_HasNoFullWarning(int? capacity)
+    public void UnlimitedSession_HasNoFullWarning(int capacity)
     {
         var room = Create(capacity);
         room.Peers.Add(Peer(1));

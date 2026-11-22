@@ -47,7 +47,7 @@ public sealed class CoordinatorPermissions
         {
             if (!chat.MemberIds.Contains(CurrentUserId)) return Permission.None;
             var granted = Permission.ViewSessions | Permission.SendMessages | Permission.AttachFiles;
-            return chat.Kind == ChatKind.Group && chat.AdminUserId == CurrentUserId
+            return chat.Kind == ChatKind.Group && chat.OwnerUserId == CurrentUserId
                 ? granted | Permission.ManageSessions | Permission.ManageMessages : granted;
         }
         return InSession(session, RoleIds);
@@ -97,25 +97,13 @@ public sealed class CoordinatorPermissions
     /// <summary>A role cannot be given permissions its editor does not have.</summary>
     public bool CanGrant(Permission permissions) => (permissions & ~Granted) == 0;
 
-    /// <summary>
-    /// Whether the current user may do something in a hybrid session: by role, or as its host when hosts may
-    /// do it (managing, kicking, banning and approving).
-    /// </summary>
-    public bool CanInSession(Permission permission, bool isHost) =>
-        Has(permission) || (isHost && (permission & ~HostPermissions) == 0);
+    /// <summary>Whether the current user may do something in a hybrid session; sessions have no host, roles decide.</summary>
+    public bool CanInSession(Permission permission) => Has(permission);
 
     /// <summary>
     /// Whether the current user may act on another user in a hybrid session, as kick: a role acts only on users
-    /// below it, a host also on users of the same rank. Unknown target roles count as the everyone role alone.
+    /// below it. Unknown target roles count as the everyone role alone.
     /// </summary>
-    public bool CanInSessionOn(Permission permission, bool isHost, IEnumerable<int> targetRoleIds)
-    {
-        var target = HighestPositionOf(targetRoleIds);
-        return (Has(permission) && HighestPosition > target)
-               || (isHost && (permission & ~HostPermissions) == 0 && HighestPosition >= target);
-    }
-
-    /// <summary>What the host of a hybrid session may do in it, whatever its roles.</summary>
-    public const Permission HostPermissions =
-        Permission.ManageSessions | Permission.KickMembers | Permission.ApproveMembers;
+    public bool CanInSessionOn(Permission permission, IEnumerable<int> targetRoleIds) =>
+        Has(permission) && HighestPosition > HighestPositionOf(targetRoleIds);
 }

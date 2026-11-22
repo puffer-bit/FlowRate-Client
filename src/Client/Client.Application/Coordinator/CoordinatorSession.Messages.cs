@@ -1,4 +1,5 @@
 using Client.Core.Coordinator;
+using Shared.Enums;
 
 
 namespace Client.Application.Coordinator;
@@ -16,8 +17,20 @@ public partial class CoordinatorSession
                 Post(new BanReceived(banned.Reason));
                 break;
 
-            case ServerClosingEvent:
+            // A server turned off is not waited for; any other goes away for a moment
+            case ServerRestartEvent { At: null, Reason: ServerRestartReason.Shutdown } shutdown:
+                ServerRestart?.Invoke(shutdown);
                 _ = Disconnect();
+                break;
+            case ServerRestartEvent { At: null } restarting:
+                ServerRestart?.Invoke(restarting);
+                OnConnectionLost($"The server is going down ({restarting.Reason}). {restarting.Message}");
+                break;
+            case ServerRestartEvent warning:
+                ServerRestart?.Invoke(warning);
+                break;
+            case ServerRestartCancelledEvent:
+                ServerRestartCancelled?.Invoke();
                 break;
 
             // The identity would log in again at once: the device stays out until the user connects
@@ -43,9 +56,6 @@ public partial class CoordinatorSession
                 ServerRoundTrip = measured.RoundTrip;
                 break;
 
-            case ServerRestartingEvent restarting:
-                OnConnectionLost($"The server is restarting. {restarting.Message}");
-                break;
             
             case RolesChangedEvent rolesChanged:
                 OnRolesChanged(rolesChanged.Roles);

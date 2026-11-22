@@ -108,7 +108,7 @@ public sealed class ChatViewersTests
         using var command = ReactiveCommand.Create<int>(_ => { });
         using var bar = new ChatStatusBarVM(new Client.Core.Sessions.ChatSessionModel
         {
-            Id = 7, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
+            Id = 7, Name = "chat", CreatorUserId = 1, SessionType = SessionType.Chat
         }) { Viewers = new ChatViewersVM(7, session, command) };
         Assert.False(bar.IsSidePanelOpen);
         bar.IsPinsOpen = true;

@@ -26,7 +26,6 @@ public class HybridSessionParticipantsListVM : ReactiveObject
 
     // What the current user may do and whether they host the session, as of the last ApplyAccess
     private CoordinatorPermissions _permissions = CoordinatorPermissions.None;
-    private bool _isHost;
     private SessionModel? _session;
 
     /// <param name="kickPeer">Removes the user with the given id from the session.</param>
@@ -69,13 +68,11 @@ public class HybridSessionParticipantsListVM : ReactiveObject
     }
 
     /// <summary>
-    /// Shows what the current user may do to the participants, after their roles and whether they host the
-    /// session. Called again whenever either changes.
+    /// Shows what the current user may do to the participants, after their roles. Called again whenever they change.
     /// </summary>
-    public void ApplyAccess(CoordinatorPermissions permissions, bool isHost, SessionModel? session = null)
+    public void ApplyAccess(CoordinatorPermissions permissions, SessionModel? session = null)
     {
         _permissions = permissions;
-        _isHost = isHost;
         _session = session;
 
         foreach (var participant in Participants)
@@ -97,10 +94,10 @@ public class HybridSessionParticipantsListVM : ReactiveObject
                     participant.IsCurrentUser ? _permissions.RoleIds : participant.UserData!.RoleIds)
                 .HasFlag(Permission.Speak);
         participant.CanKick = !participant.IsCurrentUser
-                              && _permissions.CanInSessionOn(Permission.KickMembers, _isHost,
+                              && _permissions.CanInSessionOn(Permission.KickMembers,
                                   participant.UserData?.RoleIds ?? []);
         participant.CanApprove = !participant.IsCurrentUser && participant.IsWaiting
-                                 && _permissions.CanInSession(Permission.ApproveMembers, _isHost);
+                                 && _permissions.CanInSession(Permission.ApproveMembers);
     }
 
     public void RemovePeerFromSession(int userId)

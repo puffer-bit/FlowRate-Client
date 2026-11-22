@@ -90,7 +90,7 @@ public class CoordinatorSessionModerationTests
     {
         await _session.Connect("server", 1, null, null);
         Shared.Models.DataTransferObjects.BanDTO Ban(Shared.Enums.User.BanKind kind, int? userId) =>
-            new(Guid.NewGuid(), kind, userId, kind == Shared.Enums.User.BanKind.Ip ? "192.0.2.1" : null, "", 1, DateTime.UtcNow, null);
+            new(Guid.NewGuid(), kind, userId, kind == Shared.Enums.User.BanKind.Ip ? "192.0.2.1" : null, "", 1, DateTimeOffset.UtcNow, null);
         var account = Ban(Shared.Enums.User.BanKind.Account, 7);
         var ip = Ban(Shared.Enums.User.BanKind.Ip, 7);
         _gateway.Bans.AddRange([account, Ban(Shared.Enums.User.BanKind.Account, 8), ip, Ban(Shared.Enums.User.BanKind.Ip, null)]);

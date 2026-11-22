@@ -33,13 +33,13 @@ public sealed partial class MediaPerfJournal(int sessionId, ILogger logger, IMed
     // An encoder or a decoder that lets this share of what comes in through falls behind
     private const double BehindShare = 0.8;
 
-    private readonly Dictionary<(int UserId, MediaSourceType Source, string Kind), DateTime> _troubles = [];
-    private DateTime _summaryWritten = DateTime.MinValue;
+    private readonly Dictionary<(int UserId, MediaSourceType Source, string Kind), DateTimeOffset> _troubles = [];
+    private DateTimeOffset _summaryWritten = DateTimeOffset.MinValue;
 
     public void Add(MediaPerfReport report)
     {
         var settings = DebugSettings.Current;
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
 
         if (settings.MediaPerfJournal != MediaPerfJournalMode.Off &&
             now - _summaryWritten >= TimeSpan.FromSeconds(settings.MediaPerfSummarySeconds) * 0.95)
@@ -124,7 +124,7 @@ public sealed partial class MediaPerfJournal(int sessionId, ILogger logger, IMed
                   $"buffer {audio.JitterBufferMs:F0}/{audio.JitterBufferTargetMs ?? 0:F0} ms, concealed {audio.ConcealedPercent:F1}%, " +
                   $"faster/slower {audio.AcceleratedPercent:F1}/{audio.DeceleratedPercent:F1}%, fec {audio.FecPackets}");
 
-    private void CheckTroubles(MediaPerfReport report, DateTime now)
+    private void CheckTroubles(MediaPerfReport report, DateTimeOffset now)
     {
         var found = new Dictionary<(int UserId, MediaSourceType Source, string Kind), string>();
 

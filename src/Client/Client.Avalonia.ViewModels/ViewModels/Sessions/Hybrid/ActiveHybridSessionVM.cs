@@ -241,7 +241,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             () => Strings.LanguageChanged -= UpdateVideoTexts);
         // Corrected by our own peer as soon as the server reports it
         IsAdmitted = !hybridSessionModel.IsApprovalRequested
-                     || hybridSessionModel.HostId == _coordinatorSession.GetCurrentUser().Id;
+                     || _coordinatorSession.Permissions.CanInSession(Permission.ApproveMembers);
         ParticipantsListVM = new HybridSessionParticipantsListVM(_coordinatorSession.GetCurrentUser().Id,
             userId => kickPeerCommand.Execute((Model.Id, userId)).Subscribe(),
             userId => admitPeerCommand.Execute((Model.Id, userId, true)).Subscribe(),
@@ -613,7 +613,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (!CanSpeak && _hybridSession.IsVoiceStarted && !_hybridSession.IsMicrophoneMuted)
             _ = SetMicrophoneMutedAsync(true);
         CanShareVideo = granted.HasFlag(Permission.ShareVideo);
-        ParticipantsListVM.ApplyAccess(permissions, Model.HostId == _coordinatorSession.GetCurrentUser().Id, Model);
+        ParticipantsListVM.ApplyAccess(permissions, Model);
     }
 
     private void OnUserUpdated(UserModel user)

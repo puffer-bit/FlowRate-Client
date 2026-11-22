@@ -62,7 +62,7 @@ public partial class CoordinatorSession
     public async Task<RequestResult> SetUserState(int userId, UserState state) =>
         (await SendAsync(() => _gateway.SetUserState(userId, state))).Result;
 
-    public async Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTime? expiresAt = null,
+    public async Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null,
         string? address = null) =>
         (await SendAsync(() => _gateway.BanUser(userId, kind, reason, expiresAt, address))).Result;
 

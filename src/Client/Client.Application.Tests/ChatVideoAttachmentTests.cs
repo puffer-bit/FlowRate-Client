@@ -124,10 +124,10 @@ public sealed class ChatVideoAttachmentTests : IDisposable
 
     private static async Task Until(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
         while (!condition())
         {
-            if (DateTime.UtcNow > deadline)
+            if (DateTimeOffset.UtcNow > deadline)
                 throw new TimeoutException();
             await Task.Delay(10, TestContext.Current.CancellationToken);
         }

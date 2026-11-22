@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using Avalonia.Threading;
@@ -63,7 +64,7 @@ public sealed partial class ChatPushReporter(
                         Strings.Get("chat.unknownUser")).Text;
                 }
                 var attachment = message.Images.Count > 0 ? PushAttachmentKind.Image
-                    : message.Video.Count > 0 ? PushAttachmentKind.Video
+                    : message.Files.Any(file => file.Video != null) ? PushAttachmentKind.Video
                     : message.Files.Count > 0 ? PushAttachmentKind.File
                     : PushAttachmentKind.None;
 

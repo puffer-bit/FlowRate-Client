@@ -17,9 +17,7 @@ namespace Client.ViewModels.Sessions.Chat;
 
 public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 {
-    public DateTime LocalSentTime => Message.SentTime.Kind != DateTimeKind.Local
-        ? Message.SentTime.ToLocalTime()
-        : Message.SentTime;
+    public DateTimeOffset LocalSentTime => Message.SentTime.ToLocalTime();
 
     private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(1.5);
 
@@ -385,7 +383,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public IReadOnlyList<ChatReactionDetailVM> ReactionDetails => DetailsOf(Message.Reactions);
 
     private List<ChatReactionDetailVM> DetailsOf(IEnumerable<ChatReaction> reactions) => reactions
-        .OrderBy(reaction => reaction.ReactedAt ?? DateTime.MinValue)
+        .OrderBy(reaction => reaction.ReactedAt ?? DateTimeOffset.MinValue)
         .Select(reaction => new ChatReactionDetailVM(reaction.Emoji,
             _nameOf?.Invoke(reaction.UserId) ?? Strings.Get("chat.unknownUser"),
             ChatReceiptTime.Format(reaction.ReactedAt)))
