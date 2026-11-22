@@ -139,7 +139,8 @@ public sealed class PrivateChatTests
             nameof(ICoordinatorSession.GetChatTypingUsers) => new Dictionary<int, DateTimeOffset>(),
             "get_Permissions" => new CoordinatorPermissions([], [], 1),
             "get_ConnectionStatus" => CoordinatorState.Connected,
-            "get_DirectCall" => null,
+            "get_CurrentCall" => null,
+            "get_ChatCalls" => new Dictionary<int, Shared.Models.DataTransferObjects.ChatCallDTO>(),
             _ when method.StartsWith("add_") || method.StartsWith("remove_") => null,
             _ => throw new InvalidOperationException(method)
         });

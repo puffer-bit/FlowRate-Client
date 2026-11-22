@@ -287,6 +287,29 @@ public class PeerVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The owner of the group whose call this is; a crown stands before the name.</summary>
+    public bool IsOwner
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>In a group call, the current user owns the group and may take this member out of it.</summary>
+    public bool CanRemoveFromGroup
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Takes the member out of the group, after asking. Set for the peers of a group call.</summary>
+    public Action<PeerVM>? RemoveFromGroupAction { get; set; }
+
+    public void RemoveFromGroup()
+    {
+        if (CanRemoveFromGroup)
+            RemoveFromGroupAction?.Invoke(this);
+    }
+
     /// <summary>
     /// The roles of the current user let it move this user into another session. Never ourselves.
     /// </summary>

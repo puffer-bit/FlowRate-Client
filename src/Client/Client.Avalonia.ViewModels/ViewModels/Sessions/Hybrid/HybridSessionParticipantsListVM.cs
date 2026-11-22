@@ -81,7 +81,7 @@ public class HybridSessionParticipantsListVM : ReactiveObject
 
     private void ApplyAccess(HybridSessionParticipantVM participant)
     {
-        if (_session is Client.Core.Sessions.Hybrid.HybridSessionModel { DirectCallId: not null })
+        if (_session is Client.Core.Sessions.Hybrid.HybridSessionModel { CallId: not null })
         {
             participant.IsVoiceForbidden = false;
             participant.CanKick = false;

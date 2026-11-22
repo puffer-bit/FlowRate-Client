@@ -624,6 +624,7 @@ public partial class MainWindowVM : ReactiveObject
     {
         HybridSession = session;
         SessionsList.SetEnteredHybridSession(session?.Model.Id, session?.StatusBar);
+        _ = AttachCallSessionAsync(session);
         RememberLastSession();
     }
 

@@ -10,8 +10,8 @@ public partial class CoordinatorSession
     {
         switch (coordinatorEvent)
         {
-            case DirectCallChangedEvent call:
-                ApplyDirectCall(call.Call);
+            case ChatCallChangedEvent call:
+                ApplyChatCall(call.Call, true);
                 break;
             case BannedEvent banned:
                 Post(new BanReceived(banned.Reason));

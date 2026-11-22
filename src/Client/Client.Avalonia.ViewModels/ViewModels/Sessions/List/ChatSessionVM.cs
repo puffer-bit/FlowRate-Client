@@ -41,6 +41,9 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     public bool CanLeaveGroup => Model is ChatSessionModel { Kind: ChatKind.Group } && !CanManage;
     public bool IsDirect => Model is ChatSessionModel { Kind: ChatKind.Direct };
     public bool IsGroup => Model is ChatSessionModel { Kind: ChatKind.Group };
+
+    /// <summary>A call runs in this chat; its name turns the green of the outline.</summary>
+    public bool HasActiveCall { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
     public bool IsPrivate => Model is ChatSessionModel { IsPrivate: true };
     public string LastMessageTime => (Model as ChatSessionModel)?.LastMessage?.SentTime.ToLocalTime().ToString("HH:mm") ?? "";
     public string LastMessagePreview
@@ -62,6 +65,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     }
 
     // UI
+    /// <summary>The user is in the call of this chat; outlined like the voice channel one is in.</summary>
     public bool IsEntered
     {
         get;

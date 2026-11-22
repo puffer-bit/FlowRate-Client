@@ -16,9 +16,6 @@
     x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl">
 
     <Control.DataTemplates>
-        <DataTemplate DataType="hybridVm:HybridSessionParticipantsListVM">
-            <hybridViews:HybridSessionUsersListControl/>
-        </DataTemplate>
         <DataTemplate DataType="hybridVm:HybridSessionStatusBarVM">
              <hybridViews:HybridSessionStatusBarControl/>
         </DataTemplate>
@@ -166,11 +163,9 @@
                 IsVisible="{Binding IsUserListVisible}"/>
 
             <!-- USER LIST -->
-            <ContentControl
+            <hybridViews:HybridSessionPeersPanel
                 Grid.Column="2"
-                IsVisible="{Binding IsUserListVisible}"
-                Content="{Binding ParticipantsListVM}">
-            </ContentControl>
+                IsVisible="{Binding IsUserListVisible}"/>
         </Grid>
     </Grid>
 </UserControl>

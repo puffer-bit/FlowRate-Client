@@ -14,7 +14,7 @@ namespace Client.Core.Coordinator;
 /// </summary>
 public abstract record CoordinatorEvent;
 
-public sealed record DirectCallChangedEvent(Shared.Models.DataTransferObjects.DirectCallDTO Call) : CoordinatorEvent;
+public sealed record ChatCallChangedEvent(Shared.Models.DataTransferObjects.ChatCallDTO Call) : CoordinatorEvent;
 
 public sealed record BannedEvent(string? Reason) : CoordinatorEvent;
 

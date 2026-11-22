@@ -23,6 +23,7 @@
           anim:Presence.Leave="Fold"
           anim:Presence.IsLeaving="{Binding IsLeaving}">
         <Border Classes="sessionHeader"
+            Classes.entered="{Binding IsEntered}"
             Classes.shown="{Binding IsShown}"
             Classes.dragged="{Binding IsDragged}"
             Tag="{Binding}">
@@ -121,8 +122,17 @@
                                     Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <text:MarqueeTextBlock Classes="sessionName" Text="{Binding DisplayName}"
-                                          Classes.unread="{Binding HasUnread}" ToolTip.Tip="{Binding DisplayName}"/>
+                    <!-- A group says so before its name; a running call colors the name -->
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"
+                               Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"
+                               ToolTip.Tip="{l:Text privateChats.group}"/>
+                        <text:MarqueeTextBlock Grid.Column="1" Classes="sessionName" Text="{Binding DisplayName}"
+                                              Classes.unread="{Binding HasUnread}"
+                                              Classes.entered="{Binding IsEntered}"
+                                              Classes.callActive="{Binding HasActiveCall}"
+                                              ToolTip.Tip="{Binding DisplayName}"/>
+                    </Grid>
                     <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}"
                                Classes="sessionPreview" FontSize="12" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>

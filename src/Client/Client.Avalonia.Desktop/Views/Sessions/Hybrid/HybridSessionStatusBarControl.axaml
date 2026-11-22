@@ -139,6 +139,12 @@
             <Border Width="1" Height="20" Margin="4,0" Background="{DynamicResource SettingsCardBorderBrush}"/>
 
             <!-- How the session is shown -->
+            <ToggleButton Classes="barAction"
+                          IsChecked="{Binding IsUserListVisible}"
+                          ToolTip.Tip="{l:Text hybrid.participants.toggle}"
+                          AutomationProperties.Name="{l:Text hybrid.participants.toggle}">
+                <Image Source="{StaticResource BaseUsersIcon}"/>
+            </ToggleButton>
             <Button Classes="barAction"
                     Command="{Binding ToggleFullscreenCommand}"
                     ToolTip.Tip="{l:Text hybrid.fullscreen}"

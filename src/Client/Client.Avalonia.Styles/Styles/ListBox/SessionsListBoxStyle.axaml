@@ -92,6 +92,10 @@
     <Style Selector="TextBlock.sessionName.entered">
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+    <!-- A chat with a running call: the green of the outline of the session one is in -->
+    <Style Selector="Border.sessionHeader > Grid TextBlock.sessionName.callActive">
+        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
     <!-- A chat with messages the user has not read -->
     <Style Selector="TextBlock.sessionName.unread">
         <Setter Property="FontWeight" Value="SemiBold"/>

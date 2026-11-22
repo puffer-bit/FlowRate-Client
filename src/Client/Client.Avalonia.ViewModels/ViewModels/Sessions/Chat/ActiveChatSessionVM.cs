@@ -227,7 +227,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
-            services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions);
+            services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions,
+            // In a direct chat or a group only its members can be mentioned
+            () => _model.IsPrivate ? _model.MemberIds : null);
 
         ApplyAccess(coordinatorSession.Permissions);
         IsConnected = coordinatorSession.ConnectionStatus == CoordinatorState.Connected;

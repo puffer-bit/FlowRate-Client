@@ -2,6 +2,7 @@ using System;
 using Client.Services;
 using Avalonia.Threading;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Avalonia.Localization;
@@ -19,11 +20,28 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     private readonly ReactiveCommand<int, RxVoid>? _viewProfile;
     private Client.Application.Coordinator.ICoordinatorSession? _callCoordinator;
     public ReactiveCommand<RxVoid, RxVoid>? CallCommand { get; private set; }
+
+    /// <summary>A call can be started here, or joined because one is running without us.</summary>
     public bool CanCall
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    /// <summary>The chat has a running call this device is not in; the button joins it.</summary>
+    public bool IsCallRunning
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallTip));
+        }
+    }
+
+    public string CallTip => Strings.Get(IsCallRunning ? "calls.join" : "calls.start");
+
+    public bool CanHaveCalls => _session.Kind is ChatKind.Direct or ChatKind.Group;
 
     public void AttachCalling(Client.Application.Coordinator.ICoordinatorSession coordinator)
     {
@@ -31,20 +49,33 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         UpdateCallAccess();
         CallCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            await coordinator.ChangeDirectCall(_session.Id, Guid.NewGuid(),
-                Shared.Models.DataTransferObjects.DirectCallAction.Start);
+            // Starting while a call runs joins it on the server too; its ID makes the request plain
+            var running = coordinator.ChatCalls.GetValueOrDefault(_session.Id);
+            await coordinator.ChangeChatCall(_session.Id, running?.CallId ?? Guid.NewGuid(),
+                running != null ? Shared.Models.DataTransferObjects.ChatCallAction.Join
+                    : Shared.Models.DataTransferObjects.ChatCallAction.Start);
         }, this.WatchProperty(nameof(CanCall), vm => vm.CanCall));
-        coordinator.DirectCallChanged += OnDirectCallChanged;
+        coordinator.ChatCallChanged += OnChatCallChanged;
         coordinator.StateChanged += OnCallConnectionChanged;
     }
 
-    private void OnDirectCallChanged(Shared.Models.DataTransferObjects.DirectCallDTO call) =>
-        Dispatcher.UIThread.Post(UpdateCallAccess);
+    private void OnChatCallChanged(Shared.Models.DataTransferObjects.ChatCallDTO call)
+    {
+        if (call.ChatId == _session.Id)
+            Dispatcher.UIThread.Post(UpdateCallAccess);
+    }
+
     private void OnCallConnectionChanged(Client.Core.Coordinator.CoordinatorState state) =>
         Dispatcher.UIThread.Post(UpdateCallAccess);
-    private void UpdateCallAccess() => CanCall = IsDirect && Client.Core.Media.MediaRuntime.IsEnabled
-        && _callCoordinator?.ConnectionStatus == Client.Core.Coordinator.CoordinatorState.Connected
-        && (_callCoordinator.DirectCall == null || _callCoordinator.DirectCall.State == Shared.Models.DataTransferObjects.DirectCallState.Ended);
+
+    private void UpdateCallAccess()
+    {
+        var isConnected = _callCoordinator?.ConnectionStatus == Client.Core.Coordinator.CoordinatorState.Connected;
+        var running = isConnected && CanHaveCalls ? _callCoordinator!.ChatCalls.GetValueOrDefault(_session.Id) : null;
+        IsCallRunning = running != null;
+        CanCall = CanHaveCalls && Client.Core.Media.MediaRuntime.IsEnabled && isConnected
+            && running is not { IsSelectedDevice: true };
+    }
 
     public bool IsDirect => _session.Kind == ChatKind.Direct;
     public bool HasViewers => Viewers != null;
@@ -182,7 +213,7 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     {
         if (_callCoordinator != null)
         {
-            _callCoordinator.DirectCallChanged -= OnDirectCallChanged;
+            _callCoordinator.ChatCallChanged -= OnChatCallChanged;
             _callCoordinator.StateChanged -= OnCallConnectionChanged;
         }
         CallCommand?.Dispose();

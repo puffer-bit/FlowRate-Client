@@ -292,8 +292,27 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             ApplyAccess(peer);
     }
 
+    /// <summary>Takes a member out of the group whose call this is: chat ID, user ID and name.</summary>
+    public Func<int, int, string, Task>? RemoveFromGroup { get; set; }
+
     private void ApplyAccess(PeerVM peer)
     {
+        // A chat call goes by the group, not by server roles: everyone speaks and shares, its owner kicks
+        if (Model is HybridSessionModel { CallId: not null } call)
+        {
+            var isOwner = call.CallOwnerUserId == _currentUserId;
+            peer.IsOwner = call.CallOwnerUserId == peer.PeerData.UserId;
+            peer.IsVoiceForbidden = false;
+            peer.CanKick = !peer.IsCurrentUser && isOwner;
+            peer.CanRemoveFromGroup = peer.CanKick && RemoveFromGroup != null;
+            peer.RemoveFromGroupAction = p => _ = RemoveFromGroup?.Invoke(Model.Id, p.PeerData.UserId, p.DisplayedName);
+            peer.CanMove = false;
+            peer.CanApprove = false;
+            peer.IsPokeAllowed = !peer.IsCurrentUser;
+            peer.CanBan = !peer.IsCurrentUser && _permissions.Has(Permission.BanMembers)
+                          && _permissions.Outranks(peer.UserData?.RoleIds ?? []);
+            return;
+        }
         peer.IsVoiceForbidden = (peer.IsCurrentUser || peer.UserData != null)
             && !_permissions.InSession(Model, peer.IsCurrentUser ? _permissions.RoleIds : peer.UserData!.RoleIds)
                 .HasFlag(Permission.Speak);

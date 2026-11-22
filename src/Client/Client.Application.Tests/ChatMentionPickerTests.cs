@@ -239,6 +239,22 @@ public class ChatMentionPickerTests
         Assert.Equal(("/roll 5-10", 6), picker.Complete("/r 5-10", 2)!.Value);
     });
 
+    [Fact]
+    public Task PrivateChat_SuggestsOnlyItsMembers() => TestUiThread.RunAsync(() =>
+    {
+        var session = DispatchProxy.Create<ICoordinatorSession, SearchSession>();
+        var search = (SearchSession)(object)session;
+        search.Members = new Dictionary<int, UserModel> { [2] = User(2, "Andy"), [4] = User(4, "Bob") };
+        var picker = new ChatMentionPickerVM(session, 1, () => [1, 2, 4]);
+        picker.Update("@an", 3);
+        WaitUntil(() => picker.IsOpen);
+        Assert.Equal("Andy", Assert.Single(picker.Suggestions, s => s.UserId != null).Name);
+        // The server-wide search, which would find users outside the chat, is not asked
+        Assert.Empty(search.Requests);
+        Assert.Equal(new[] { 2, 4 }, search.RequestedMembers.Order());
+        picker.Close();
+    });
+
     private static (ChatMentionPickerVM Picker, SearchSession Search) CreatePicker()
     {
         var session = DispatchProxy.Create<ICoordinatorSession, SearchSession>();
@@ -276,8 +292,18 @@ public class ChatMentionPickerTests
         private readonly ConcurrentQueue<(string Query, TaskCompletionSource<IReadOnlyList<UserModel>> Result)> _requests = new();
         public IReadOnlyList<(string Query, TaskCompletionSource<IReadOnlyList<UserModel>> Result)> Requests => _requests.ToArray();
 
+        public IReadOnlyDictionary<int, UserModel> Members { get; set; } = new Dictionary<int, UserModel>();
+        public List<int> RequestedMembers { get; } = [];
+
         protected override object? Invoke(MethodInfo? method, object?[]? args)
         {
+            if (method!.Name == "GetUsers")
+            {
+                var ids = (IReadOnlyCollection<int>)args![0]!;
+                RequestedMembers.AddRange(ids);
+                return Task.FromResult<IReadOnlyDictionary<int, UserModel>>(
+                    Members.Where(m => ids.Contains(m.Key)).ToDictionary(m => m.Key, m => m.Value));
+            }
             if (method!.Name != "SearchUsers") throw new NotSupportedException(method.Name);
             var result = new TaskCompletionSource<IReadOnlyList<UserModel>>(TaskCreationOptions.RunContinuationsAsynchronously);
             _requests.Enqueue(((string)args![0]!, result));

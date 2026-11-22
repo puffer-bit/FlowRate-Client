@@ -17,14 +17,21 @@ using Person = AndroidX.Core.App.Person;
 namespace Client.Droid.Platform.Notifications;
 
 /// <summary>
-/// A direct call that rings for this device: what the notification and the screen of the call show and
+/// A call that rings for this device: what the notification and the screen of the call show and
 /// answer with.
 /// </summary>
 /// <param name="ActionToken">Proves that an action comes from our own notification or screen.</param>
+/// <param name="GroupName">The group the call is in; null in a direct chat.</param>
 internal sealed record IncomingCall(string CoordinatorId, int ChatId, Guid CallId, int RecipientId,
-    string CallerName, string? CallerAvatarUrl, long ExpiresAt, string ActionToken)
+    string CallerName, string? CallerAvatarUrl, long ExpiresAt, string ActionToken, string? GroupName = null)
 {
     private const string NameExtra = "com.flowrate.client.push.call_name";
+    private const string GroupExtra = "com.flowrate.client.push.call_group";
+
+    /// <summary>What goes under the caller: the group, or that it is a call.</summary>
+    public string Subtitle => GroupName is { } group
+        ? Strings.Format("calls.incomingGroupText", ("user", CallerName), ("group", group))
+        : Strings.Get("calls.incoming");
     private const string AvatarExtra = "com.flowrate.client.push.call_avatar";
     private const string ExpiresExtra = "com.flowrate.client.push.call_expires";
 
@@ -38,6 +45,7 @@ internal sealed record IncomingCall(string CoordinatorId, int ChatId, Guid CallI
         intent.PutExtra(NameExtra, CallerName);
         intent.PutExtra(AvatarExtra, CallerAvatarUrl);
         intent.PutExtra(ExpiresExtra, ExpiresAt);
+        intent.PutExtra(GroupExtra, GroupName);
     }
 
     public static IncomingCall? ReadFrom(Intent? intent)
@@ -48,7 +56,8 @@ internal sealed record IncomingCall(string CoordinatorId, int ChatId, Guid CallI
             return null;
         return new IncomingCall(chat.CoordinatorInstanceId, chat.ChatId, callId,
             intent.GetIntExtra(IncomingCallNotifications.RecipientExtra, 0), intent.GetStringExtra(NameExtra) ?? "",
-            intent.GetStringExtra(AvatarExtra), intent.GetLongExtra(ExpiresExtra, 0), token);
+            intent.GetStringExtra(AvatarExtra), intent.GetLongExtra(ExpiresExtra, 0), token,
+            intent.GetStringExtra(GroupExtra));
     }
 }
 
@@ -83,7 +92,10 @@ internal static class IncomingCallNotifications
             var lastTime = state.GetLong(tag + ":time", 0);
             var lastId = state.GetString(tag + ":id", null);
             var closed = state.GetBoolean(tag + ":closed", false);
-            if (payload.SentTime < lastTime || (lastId == callId.ToString() && closed && payload.CallState == 0)) return;
+            var lastExpires = state.GetLong(tag + ":expires", 0);
+            // A member in the call may ring again after a decline: a later expiry tells that ring from a stale one
+            if (payload.SentTime < lastTime
+                || (lastId == callId.ToString() && closed && payload.CallState == 0 && expires <= lastExpires)) return;
             var actionToken = lastId == callId.ToString() ? state.GetString(tag + ":token", null) : null;
             actionToken ??= Guid.NewGuid().ToString("N");
             var ended = payload.CallState != 0 || expires <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -91,6 +103,7 @@ internal static class IncomingCallNotifications
                 editor.PutLong(tag + ":time", payload.SentTime)!
                     .PutString(tag + ":id", callId.ToString())!
                     .PutBoolean(tag + ":closed", ended)!
+                    .PutLong(tag + ":expires", expires)!
                     .PutString(tag + ":token", actionToken)!.Commit();
             if (ended)
             {
@@ -102,8 +115,10 @@ internal static class IncomingCallNotifications
             // A live connection already shows the invitation inside FlowRate while it is in front.
             if (PushMessageHandler.IsCallAccountOnScreen?.Invoke(payload.CoordinatorId, payload.RecipientId.Value) == true) return;
 
+            // In a group the chat is named after the group, in a direct chat after the caller
             var call = new IncomingCall(payload.CoordinatorId, payload.ChatId, callId, payload.RecipientId.Value,
-                payload.SenderName, payload.SenderAvatarUrl, expires, actionToken);
+                payload.SenderName, payload.SenderAvatarUrl, expires, actionToken,
+                payload.ChatName != payload.SenderName && !string.IsNullOrEmpty(payload.ChatName) ? payload.ChatName : null);
             manager.Notify(tag, 1, Build(context, call));
             if (!OperatingSystem.IsAndroidVersionAtLeast(26)
                 && context.GetSystemService(Context.AlarmService) is AlarmManager alarms)
@@ -135,7 +150,7 @@ internal static class IncomingCallNotifications
         var builder = new NotificationCompat.Builder(context, ChannelId)
             .SetSmallIcon(Resource.Drawable.ic_stat_flowrate)!
             .SetContentTitle(call.CallerName)!
-            .SetContentText(Strings.Get("calls.incoming"))!
+            .SetContentText(call.Subtitle)!
             .SetCategory(NotificationCompat.CategoryCall)!
             .SetPriority(NotificationCompat.PriorityMax)!
             .SetVisibility(NotificationCompat.VisibilityPublic)!

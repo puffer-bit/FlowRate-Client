@@ -151,7 +151,7 @@ public sealed class IncomingCallActivity : Activity
 
         var subtitle = new TextView(this)
         {
-            Text = Strings.Get("calls.incoming"),
+            Text = call.Subtitle,
             TextSize = 16,
             Gravity = GravityFlags.Center
         };

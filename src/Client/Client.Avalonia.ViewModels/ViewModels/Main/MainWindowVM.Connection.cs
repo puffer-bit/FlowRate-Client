@@ -146,9 +146,9 @@ public partial class MainWindowVM
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
-            .Add(() => session.DirectCallFailed += OnDirectCallFailed, () => session.DirectCallFailed -= OnDirectCallFailed)
-            .Add(() => session.DirectCallChanged += OnDirectCallChanged,
-                () => { session.DirectCallChanged -= OnDirectCallChanged; DismissCallToast(); })
+            .Add(() => session.ChatCallFailed += OnChatCallFailed, () => session.ChatCallFailed -= OnChatCallFailed)
+            .Add(() => session.ChatCallChanged += OnChatCallChanged,
+                () => { session.ChatCallChanged -= OnChatCallChanged; DismissCallToast(); })
             .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
                 () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
@@ -459,12 +459,12 @@ public partial class MainWindowVM
             await ServerTitle.AttachCoordinator(session);
             NotifyServerUpdate(session);
             AttachOpenedSessions(session);
-            if (session.DirectCall is not { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended })
+            if (session.CurrentCall == null)
                 await RestoreLastSessionAsync();
-            // A push action may complete while the initial session list is still loading.
-            if (session.DirectCall is { State: Shared.Models.DataTransferObjects.DirectCallState.Active,
-                    IsSelectedDevice: true } call && OpenedSessions?.HybridSession?.Model.DirectCallId != call.CallId)
-                OnDirectCallChanged(call);
+            // A push action may complete while the initial session list is still loading; rings shown then
+            // waited for the chats to be named
+            foreach (var call in session.ChatCalls.Values)
+                OnChatCallChanged(call);
             if (IsRestoreCurrent(session, restoreId))
                 await SetStatus("main.status.connected", false);
         }
@@ -548,7 +548,7 @@ public partial class MainWindowVM
     /// </summary>
     public Task SuspendConnection() =>
         _coordinatorSession == null || OpenedSessions?.IsInHybridSession == true
-            || _coordinatorSession.DirectCall is { State: not Shared.Models.DataTransferObjects.DirectCallState.Ended }
+            || _coordinatorSession.CurrentCall != null
             ? Task.CompletedTask
             : _coordinatorSession.Suspend();
 
