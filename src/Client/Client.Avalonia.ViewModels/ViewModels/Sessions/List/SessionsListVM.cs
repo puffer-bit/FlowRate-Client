@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Models.Media;
+using Shared.Models.DataTransferObjects;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -121,6 +122,25 @@ public partial class SessionsListVM : ReactiveObject
         if (!result.IsSuccess && !result.IsRejected)
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
                 Strings.Get("privateChats.removeMemberFailed"), Strings.Get("common.error")));
+    }
+
+    /// <summary>Brings the call session we are in on screen.</summary>
+    public Action? ShowCallSession { get; set; }
+
+    /// <summary>The call item of a chat's menu: starts the call, joins it, or shows it when we are in it.</summary>
+    private async Task CallAsync(int chatId)
+    {
+        if (_coordinatorSession is not { ConnectionStatus: CoordinatorState.Connected } coordinator
+            || !Client.Core.Media.MediaRuntime.IsEnabled) return;
+        var running = coordinator.ChatCalls.GetValueOrDefault(chatId);
+        if (running is { IsSelectedDevice: true })
+        {
+            ShowCallSession?.Invoke();
+            return;
+        }
+        // Starting while a call runs joins it on the server too; its ID makes the request plain
+        await coordinator.ChangeChatCall(chatId, running?.CallId ?? Guid.NewGuid(),
+            running != null ? ChatCallAction.Join : ChatCallAction.Start);
     }
 
     public void ToggleListMode() => IsPrivateMode = !IsPrivateMode;
@@ -592,6 +612,7 @@ public partial class SessionsListVM : ReactiveObject
         model.ApplyAccess(Access.Permissions);
         model.EditGroupCommand = ReactiveCommand.CreateFromTask(() => EditGroup(model));
         model.LeaveGroupCommand = ReactiveCommand.CreateFromTask(() => LeaveGroup(model));
+        model.CallCommand = ReactiveCommand.CreateFromTask(() => CallAsync(model.Model.Id));
 
         MarkShown(model);
         model.HasActiveCall = _coordinatorSession?.ChatCalls.ContainsKey(chatSessionModel.Id) == true;

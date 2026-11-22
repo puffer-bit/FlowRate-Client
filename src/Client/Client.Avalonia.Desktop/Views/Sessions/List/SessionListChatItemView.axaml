@@ -40,15 +40,38 @@
                                               IsVisible="{Binding DataContext.IsShown, ElementName=Root}"
                                               Command="{Binding DataContext.LeaveChatCommand, ElementName=Root}"
                                               CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
-                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                        <!-- The call of the chat: start it, join it, or show it when we are in it -->
+                        <menus:MenuItemButton Icon="{StaticResource ChatCallStartedIcon}"
+                                              Content="{Binding DataContext.CallText, ElementName=Root}"
                                               menus:FlyoutMenu.CloseOnClick="True"
-                                              IsVisible="{Binding DataContext.CanEditGroup, ElementName=Root}"
-                                              Command="{Binding DataContext.EditGroupCommand, ElementName=Root}"/>
+                                              Command="{Binding DataContext.CallCommand, ElementName=Root}">
+                            <menus:MenuItemButton.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="DataContext.CanCall" ElementName="Root"/>
+                                    <Binding Path="!DataContext.HasActiveCall" ElementName="Root"/>
+                                </MultiBinding>
+                            </menus:MenuItemButton.IsVisible>
+                        </menus:MenuItemButton>
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}"
+                                              Content="{Binding DataContext.CallText, ElementName=Root}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding DataContext.CallCommand, ElementName=Root}">
+                            <menus:MenuItemButton.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="DataContext.CanCall" ElementName="Root"/>
+                                    <Binding Path="DataContext.HasActiveCall" ElementName="Root"/>
+                                </MultiBinding>
+                            </menus:MenuItemButton.IsVisible>
+                        </menus:MenuItemButton>
                         <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text privateChats.leaveGroup}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.CanLeaveGroup, ElementName=Root}"
                                               Command="{Binding DataContext.LeaveGroupCommand, ElementName=Root}"/>
                         <Separator/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditGroup, ElementName=Root}"
+                                              Command="{Binding DataContext.EditGroupCommand, ElementName=Root}"/>
                         <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionSettings.title}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.CanEditSession, ElementName=Root}"

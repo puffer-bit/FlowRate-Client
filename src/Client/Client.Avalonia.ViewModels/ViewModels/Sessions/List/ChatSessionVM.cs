@@ -27,6 +27,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
             this.RaisePropertyChanged(nameof(IsPrivate));
             this.RaisePropertyChanged(nameof(IsDirect));
             this.RaisePropertyChanged(nameof(IsGroup));
+            this.RaisePropertyChanged(nameof(CanCall));
             this.RaisePropertyChanged(nameof(LastMessagePreview));
             this.RaisePropertyChanged(nameof(LastMessageTime));
         }
@@ -43,7 +44,21 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     public bool IsGroup => Model is ChatSessionModel { Kind: ChatKind.Group };
 
     /// <summary>A call runs in this chat; its name turns the green of the outline.</summary>
-    public bool HasActiveCall { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public bool HasActiveCall
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallText));
+        }
+    }
+
+    /// <summary>Starts the chat's call, joins the running one, or shows it when we are in it.</summary>
+    public ReactiveCommand<RxVoid, RxVoid>? CallCommand { get; set; }
+    public bool CanCall => Model is ChatSessionModel { Kind: ChatKind.Direct or ChatKind.Group }
+        && Client.Core.Media.MediaRuntime.IsEnabled;
+    public string CallText => Strings.Get(IsEntered ? "calls.open" : HasActiveCall ? "calls.join" : "calls.start");
     public bool IsPrivate => Model is ChatSessionModel { IsPrivate: true };
     public string LastMessageTime => (Model as ChatSessionModel)?.LastMessage?.SentTime.ToLocalTime().ToString("HH:mm") ?? "";
     public string LastMessagePreview
@@ -69,7 +84,11 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     public bool IsEntered
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallText));
+        }
     }
 
     public bool IsShown
@@ -240,6 +259,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     {
         Strings.LanguageChanged -= OnLanguageChanged;
         EditGroupCommand?.Dispose();
+        CallCommand?.Dispose();
         LeaveGroupCommand?.Dispose();
     }
 

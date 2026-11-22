@@ -150,6 +150,12 @@ public partial class MainWindowVM
         if (entered != null) ChangeContent(entered);
     }
 
+    /// <summary>Brings the call session we are in on screen.</summary>
+    private void ShowCallSession()
+    {
+        if (OpenedSessions?.HybridSession is { Model.CallId: not null } call) ChangeContent(call);
+    }
+
     /// <summary>Connects the call session to the panel of peers and the state of the call.</summary>
     private async Task AttachCallSessionAsync(ActiveHybridSessionVM? session)
     {
