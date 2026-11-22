@@ -11,7 +11,8 @@ public sealed class SessionTypeOptionVM : ReactiveObject
     public SessionType Type { get; }
     public string Title { get; }
     public string Description { get; }
-    public int DefaultCapacity { get; }
+    /// <summary>Null for chats, which have no capacity.</summary>
+    public int? DefaultCapacity { get; }
 
     public bool IsSelected
     {
@@ -19,7 +20,7 @@ public sealed class SessionTypeOptionVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public SessionTypeOptionVM(SessionType type, string title, string description, int defaultCapacity)
+    public SessionTypeOptionVM(SessionType type, string title, string description, int? defaultCapacity = null)
     {
         Type = type;
         Title = title;

@@ -37,12 +37,14 @@ public partial class CoordinatorSession
         return !string.IsNullOrWhiteSpace(name)
                && name.Length <= Limits.SessionNameMaxLength
                && !name.Any(char.IsControl)
-               && (newSession.Options is NewChatSessionOptions
-                   || newSession.Capacity is >= Limits.SessionCapacityMin and <= Limits.SessionCapacityMax);
+               && newSession.Options is not NewHybridSessionOptions { Capacity: < Limits.SessionCapacityMin or > Limits.SessionCapacityMax };
     }
 
-    public Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false) =>
-        SendAsync(() => _gateway.ChangeGroup(sessionId, name, memberIds, ownerId, leave));
+    public Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId) =>
+        SendAsync(() => _gateway.ChangeGroup(sessionId, name, memberIds, ownerId));
+
+    public Task<RequestResult> LeaveGroup(int sessionId) =>
+        SendAsync(() => _gateway.LeaveGroup(sessionId));
 
     public Task<RequestResult> DeleteSession(int sessionId) =>
         SendAsync(() => _gateway.DeleteSession(sessionId));
@@ -94,8 +96,8 @@ public partial class CoordinatorSession
         SendAsync(() => _gateway.RejectInHybridSession(sessionId, userId));
 
     public Task<RequestResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove, MediaSettings media) =>
-        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isHostMustApprove, media));
+        bool isApprovalRequired, MediaSettings media) =>
+        SendAsync(() => _gateway.ChangeHybridSessionSettings(sessionId, name.Trim(), capacity, isApprovalRequired, media));
 
     public Task<RequestResult> ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides) =>

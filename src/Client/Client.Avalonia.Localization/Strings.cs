@@ -98,16 +98,16 @@ public static class Strings
     }
 
     /// <summary>A date in digits, in the order the language writes it.</summary>
-    public static string FormatDate(DateTime date) => date.ToString(Get("date.short"), CultureInfo.InvariantCulture);
+    public static string FormatDate(DateTimeOffset date) => date.ToString(Get("date.short"), CultureInfo.InvariantCulture);
 
-    public static string FormatDateTime(DateTime date) =>
+    public static string FormatDateTime(DateTimeOffset date) =>
         date.ToString(Get("date.shortWithTime"), CultureInfo.InvariantCulture);
 
     /// <summary>
     /// A date with the month in words. The month names come from the table, since the application
     /// runs with invariant globalization and the runtime knows only the English ones.
     /// </summary>
-    public static string FormatLongDate(DateTime date) =>
+    public static string FormatLongDate(DateTimeOffset date) =>
         Format("date.long", ("day", date.Day), ("month", Get($"date.month.{date.Month}")), ("year", date.Year));
 
     /// <summary>

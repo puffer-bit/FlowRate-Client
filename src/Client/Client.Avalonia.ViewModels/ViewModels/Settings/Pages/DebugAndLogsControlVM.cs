@@ -241,7 +241,7 @@ public class DebugAndLogsControlVM : ReactiveObject, ISettingVM
 
     private async Task SaveArchiveAsync()
     {
-        var name = $"flowrate-logs-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.zip";
+        var name = $"flowrate-logs-{DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.zip";
         var target = await PickArchiveTarget.Handle(name);
 
         if (target == null)

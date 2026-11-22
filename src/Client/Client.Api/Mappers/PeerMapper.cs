@@ -13,9 +13,7 @@ internal static class PeerMapper
         return new PeerModel
         {
             UserId = dto.UserId,
-            IsAudioRequested = dto.IsAudioRequested,
             State = dto.State,
-            IsNegotiated = dto.IsNegotiated,
             IsConnected = dto.IsConnected,
             IsApproved = dto.IsApproved,
             IsRejected = dto.IsRejected,

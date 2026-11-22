@@ -8,7 +8,7 @@ public class ChatSessionModel : SessionModel
     public bool IsPrivate => Kind != Shared.Enums.ChatKind.ServerChannel;
 
     public required int CreatorUserId { get; init; }
-    public int? AdminUserId { get; init; }
+    public int? OwnerUserId { get; init; }
     public string? Description { get; init; }
     public string? IconPath { get; init; }
 

@@ -643,7 +643,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     {
         ChatId = _chatId,
         SenderUserId = _session.GetCurrentUser().Id,
-        SentTime = DateTime.UtcNow,
+        SentTime = DateTimeOffset.UtcNow,
         TextContent = textContent,
         ReplyContent = ReplyPreview != null ? new ChatReplyContent { MessageId = ReplyPreview.MessageId } : null,
         Images = attachments.Where(attachment => attachment.IsImage)

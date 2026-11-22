@@ -10,8 +10,8 @@ public sealed class ChatReactionsTests
 {
     private static ChatMessageModel Message(params ChatReaction[] reactions) => new()
     {
-        Id = 5, ChatId = 7, SenderUserId = 9, SentTime = DateTime.UtcNow,
-        Images = [], Files = [], Video = [], UsersIds = [], Reactions = reactions.ToList()
+        Id = 5, ChatId = 7, SenderUserId = 9, SentTime = DateTimeOffset.UtcNow,
+        Images = [], Files = [], Reactions = reactions.ToList()
     };
 
     [Fact]

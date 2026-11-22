@@ -17,6 +17,6 @@ public sealed class AccountPasskeyVM(AccountPasskey passkey)
             ("used", Format(lastUsed)))
         : Strings.Format("accountSecurity.passkeys.createdAt", ("created", Format(passkey.CreatedAtUtc)));
 
-    private static string Format(DateTime time) =>
-        Strings.FormatDateTime(time.Kind == DateTimeKind.Local ? time : DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
+    private static string Format(DateTimeOffset time) =>
+        Strings.FormatDateTime(time.ToLocalTime());
 }

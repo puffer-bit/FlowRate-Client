@@ -16,7 +16,7 @@ public class TrustedCertificateItem
     public string Fingerprint => CertificateTrustMessages.Format(Certificate.Fingerprint);
     public string Subject => Certificate.Subject;
     public string ValidUntil => Strings.FormatDate(Certificate.NotAfter.ToLocalTime());
-    public bool IsExpired => Certificate.NotAfter < DateTime.UtcNow;
+    public bool IsExpired => Certificate.NotAfter < DateTimeOffset.UtcNow;
     public string Coordinator { get; }
 
     /// <param name="coordinatorName">Name of the saved server with the bound coordinator, if there is one.</param>

@@ -76,7 +76,7 @@ public partial class CoordinatorSession
     private ConnectionPhase _phase = ConnectionPhase.Idle;
     private bool _isInFront = true;
     private bool _isNetworkAvailable = true;
-    private DateTime _leftFrontAt;
+    private DateTimeOffset _leftFrontAt;
 
     // Counts the connections, so that the loss of one that is already replaced is told apart.
     // Read by the threads that report a loss.
@@ -239,7 +239,7 @@ public partial class CoordinatorSession
         if (_isInFront)
         {
             _isInFront = false;
-            _leftFrontAt = DateTime.UtcNow;
+            _leftFrontAt = DateTimeOffset.UtcNow;
 
             if (_phase != ConnectionPhase.Idle)
                 StartTimer(ref _suspendTimer, SuspendDelay, new SuspendDelayElapsed(++_suspendTimerId));
@@ -281,7 +281,7 @@ public partial class CoordinatorSession
 
         // A process the system froze off the screen misses its timer, and its connection went
         // unanswered for as long: the server has given it up by now
-        if (_phase == ConnectionPhase.Online && DateTime.UtcNow - _leftFrontAt >= SuspendDelay)
+        if (_phase == ConnectionPhase.Online && DateTimeOffset.UtcNow - _leftFrontAt >= SuspendDelay)
             await SuspendAsync();
 
         switch (_phase)

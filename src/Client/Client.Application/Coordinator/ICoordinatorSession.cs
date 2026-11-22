@@ -46,6 +46,15 @@ public interface ICoordinatorSession : IDisposable
     event Action<CoordinatorSessionModel>? CoordinatorReconfigured;
 
     /// <summary>
+    /// The server warned that it goes down, or goes down now (<see cref="ServerRestartEvent.At"/> null). Raised on the
+    /// transport thread.
+    /// </summary>
+    event Action<ServerRestartEvent>? ServerRestart;
+
+    /// <summary>The announced restart is called off. Raised on the transport thread.</summary>
+    event Action? ServerRestartCancelled;
+
+    /// <summary>
     /// A user connected or disconnected; carries how many are connected now, which
     /// <see cref="CoordinatorModel"/> already holds. Raised on the transport thread.
     /// </summary>
@@ -276,8 +285,9 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult<SessionModel>> CreateConversation(NewSessionModel session) => throw new NotSupportedException();
 
     Task<RequestResult> CreateSession(NewSessionModel newSession);
-    Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+    Task<RequestResult> ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId)
         => throw new NotSupportedException();
+    Task<RequestResult> LeaveGroup(int sessionId) => throw new NotSupportedException();
 
     Task<RequestResult> DeleteSession(int sessionId);
 
@@ -348,7 +358,7 @@ public interface ICoordinatorSession : IDisposable
     /// as <see cref="HybridSessionReconfigured"/>.
     /// </summary>
     Task<RequestResult> ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove, MediaSettings media);
+        bool isApprovalRequired, MediaSettings media);
 
     /// <summary>
     /// Replaces the permission overrides of the session. A saved change comes back as the session reconfigured,
@@ -400,7 +410,13 @@ public interface ICoordinatorSession : IDisposable
     /// <summary>
     /// Bans, freezes or reinstates another user. On success <see cref="UserUpdated"/> is raised with the new state.
     /// </summary>
-    Task<RequestResult> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null);
+    /// <summary>Freezes (<see cref="UserState.Suspended"/>) or reinstates (<see cref="UserState.Normal"/>) a user.</summary>
+    Task<RequestResult> SetUserState(int userId, UserState state);
+
+    Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null, string? address = null);
+
+    /// <summary>Lifts every ban made for the user, by account and by IP.</summary>
+    Task<RequestResult> UnbanUser(int userId);
 
     /// <summary>Deletes another user. On success <see cref="UserDeleted"/> is raised.</summary>
     Task<RequestResult<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans();

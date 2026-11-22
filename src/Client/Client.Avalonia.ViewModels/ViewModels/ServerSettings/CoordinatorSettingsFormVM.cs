@@ -109,13 +109,6 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
-    /// <inheritdoc cref="AllowedIps"/>
-    public string BannedIps
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
     public decimal? HeartbeatIntervalSeconds
     {
         get;
@@ -224,7 +217,6 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         MaxOnlineUsers = settings.MaxOnlineUsers;
         MaxUsers = settings.MaxUsers;
         AllowedIps = string.Join(Environment.NewLine, settings.AllowedIps);
-        BannedIps = string.Join(Environment.NewLine, settings.BannedIps);
         HeartbeatIntervalSeconds = settings.HeartbeatIntervalSeconds;
         HeartbeatTimeoutSeconds = settings.HeartbeatTimeoutSeconds;
         MaxFileSizeMegabytes = Math.Round(settings.MaxFileSizeBytes / Megabyte);
@@ -269,7 +261,6 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         IsMotdEnabled = IsMotdEnabled,
         MotdText = OrNull(MotdText),
         AllowedIps = ToLines(AllowedIps),
-        BannedIps = ToLines(BannedIps),
         HeartbeatIntervalSeconds = ToInt(HeartbeatIntervalSeconds),
         HeartbeatTimeoutSeconds = ToInt(HeartbeatTimeoutSeconds),
         MaxFileSizeBytes = (long)((MaxFileSizeMegabytes ?? 0) * Megabyte),
@@ -305,6 +296,6 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
 
     // Records compare their lists by reference, so the values are written out instead
     private static string Fingerprint(CoordinatorSettingsUpdate update) => string.Join('\u001f',
-        update with { AllowedIps = [], BannedIps = [], SfuNodeIds = [] },
-        string.Join(',', update.AllowedIps), string.Join(',', update.BannedIps), string.Join(',', update.SfuNodeIds));
+        update with { AllowedIps = [], SfuNodeIds = [] },
+        string.Join(',', update.AllowedIps), string.Join(',', update.SfuNodeIds));
 }

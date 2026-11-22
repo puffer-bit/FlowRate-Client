@@ -88,14 +88,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    /// <summary>The current user hosts the session.</summary>
-    public bool IsHost
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>The current user may change and delete the session: as its host, or by role.</summary>
+    /// <summary>The current user may change and delete the session, by role.</summary>
     public bool CanManage
     {
         get;
@@ -123,7 +116,8 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         }
     }
 
-    public bool IsFull => Model.Capacity is > 0 && Peers.Count(peer => !peer.IsLeaving) >= Model.Capacity;
+    public bool IsFull => Model is HybridSessionModel { Capacity: > 0 and var capacity }
+                          && Peers.Count(peer => !peer.IsLeaving) >= capacity;
     public bool HasStatusWarning => IsCorrupted || IsFull;
     public bool ShowsFullWarning => IsFull && !IsCorrupted;
 
@@ -288,8 +282,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     public void ApplyAccess(CoordinatorPermissions permissions)
     {
         _permissions = permissions;
-        IsHost = Model is HybridSessionModel { HostId: var hostId } && hostId == _currentUserId;
-        CanManage = permissions.CanInSession(Permission.ManageSessions, IsHost);
+        CanManage = permissions.CanInSession(Permission.ManageSessions);
         CanArrange = permissions.Has(Permission.ManageSessions);
         CanView = permissions.HasIn(Model, Permission.ViewSessions);
         CanJoin = permissions.HasIn(Model, Permission.JoinSessions);
@@ -305,12 +298,12 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
             && !_permissions.InSession(Model, peer.IsCurrentUser ? _permissions.RoleIds : peer.UserData!.RoleIds)
                 .HasFlag(Permission.Speak);
         peer.CanKick = !peer.IsCurrentUser
-                       && _permissions.CanInSessionOn(Permission.KickMembers, IsHost, peer.UserData?.RoleIds ?? []);
+                       && _permissions.CanInSessionOn(Permission.KickMembers, peer.UserData?.RoleIds ?? []);
         // As the server checks it: a role moves only users below it
         peer.CanMove = !peer.IsCurrentUser && _permissions.HasIn(Model, Permission.MoveMembers)
                        && _permissions.Outranks(peer.UserData?.RoleIds ?? []);
         peer.CanApprove = !peer.IsCurrentUser && peer.IsWaiting
-                          && _permissions.CanInSession(Permission.ApproveMembers, IsHost);
+                          && _permissions.CanInSession(Permission.ApproveMembers);
         peer.IsPokeAllowed = !peer.IsCurrentUser && _permissions.HasIn(Model, Permission.PokeMembers);
         // A ban is of the coordinator, not of the session, so hosting it gives no right to it
         peer.CanBan = !peer.IsCurrentUser && _permissions.Has(Permission.BanMembers)

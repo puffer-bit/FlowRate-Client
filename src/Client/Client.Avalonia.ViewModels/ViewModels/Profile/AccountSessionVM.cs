@@ -28,6 +28,6 @@ public sealed class AccountSessionVM(AccountSession session)
         session.LastAddress
     }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    private static string Format(DateTime time) =>
-        Strings.FormatDateTime(DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime());
+    private static string Format(DateTimeOffset time) =>
+        Strings.FormatDateTime(time.ToLocalTime());
 }

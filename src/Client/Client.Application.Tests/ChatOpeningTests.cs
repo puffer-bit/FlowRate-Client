@@ -85,7 +85,7 @@ public sealed class ChatOpeningTests
         var services = new ChatSessionServices(caches, null!, null!, null!, null!);
         return new ActiveChatSessionVM(new ChatSessionModel
         {
-            Id = 1, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
+            Id = 1, Name = "chat", CreatorUserId = 1, SessionType = SessionType.Chat
         }, session, services, new ChatReadTracker(), command);
     }
 

@@ -39,6 +39,6 @@ public class ServerInfoTabVM : ReactiveObject
     }
 
     // The server sends its times in UTC
-    private static string FormatTime(DateTime time) =>
-        DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+    private static string FormatTime(DateTimeOffset time) =>
+        time.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
 }

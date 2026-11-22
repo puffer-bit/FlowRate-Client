@@ -11,7 +11,7 @@ namespace Client.Infrastructure.Tests;
 public class ChatCacheRepositoryTests
 {
     private static readonly ChatCacheKey Chat = new("instance", 7);
-    private static readonly DateTime SentTime = new(2026, 10, 13, 8, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTimeOffset SentTime = new(2026, 10, 13, 8, 0, 0, TimeSpan.Zero);
 
     private static ChatMessageModel Message(int id, long revision, string text = "text", int? replyTo = null,
         bool isDeleted = false, bool pinned = false, ChatCommandResult? outcome = null) => new()
@@ -33,10 +33,8 @@ public class ChatCacheRepositoryTests
             }
             : null,
         Images = [],
-        Video = [],
         Files = [],
         Reactions = [new ChatReaction { UserId = 5, Emoji = "+" }],
-        UsersIds = [],
         IsDeleted = isDeleted
     };
 
@@ -59,7 +57,7 @@ public class ChatCacheRepositoryTests
             Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
             IsSystem = true, IsReadOnly = true, SystemContent = content,
             TextContent = new ChatTextContent { Text = content.ToFallbackText() },
-            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+            Images = [], Files = [], Reactions = [], 
         };
         await repository.ReplaceAsync(Chat, [message], 1, true);
         var reloaded = new ChatCacheRepository(database.Database);
@@ -83,7 +81,7 @@ public class ChatCacheRepositoryTests
             Id = 1, ChatId = Chat.ChatId, Revision = 1, SenderUserId = -1, SentTime = SentTime,
             IsSystem = true, IsReadOnly = true, SystemContent = content,
             TextContent = new ChatTextContent { Text = content.ToFallbackText() },
-            Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+            Images = [], Files = [], Reactions = [], 
         };
         await repository.ReplaceAsync(Chat, [message], 1, false);
         var reloaded = new ChatCacheRepository(database.Database);
@@ -148,7 +146,7 @@ public class ChatCacheRepositoryTests
         Assert.Equal(4, message.Revision);
         Assert.Equal(3, message.SenderUserId);
         Assert.Equal(SentTime.AddMinutes(1), message.SentTime);
-        Assert.Equal(DateTimeKind.Utc, message.SentTime.Kind);
+        Assert.Equal(TimeSpan.Zero, message.SentTime.Offset);
         Assert.Equal("первое\nсообщение", message.TextContent?.Text);
         Assert.Equal(9, message.ReplyContent?.MessageId);
         Assert.Equal(4, message.ReplyContent?.SenderUserId);

@@ -24,12 +24,10 @@ public class ChatReadTrackerTests
         Id = id,
         ChatId = ChatId,
         SenderUserId = senderId,
-        SentTime = DateTime.UtcNow,
+        SentTime = DateTimeOffset.UtcNow,
         Images = [],
-        Video = [],
         Files = [],
         Reactions = [],
-        UsersIds = [],
         MentionedUserIds = mentionsMe ? [Me] : [],
         MentionsHere = here,
         IsSystem = system

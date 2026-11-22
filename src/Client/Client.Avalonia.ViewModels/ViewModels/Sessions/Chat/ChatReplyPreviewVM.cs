@@ -77,7 +77,7 @@ public class ChatReplyPreviewVM : ReactiveObject
 
     public ChatReplyPreviewVM(ChatMessageModel message, bool isEdit = false)
         : this(message.Id, message.SenderUserId, message.TextContent?.Text, message.IsDeleted,
-            message.Images.Count > 0 || message.Video.Count > 0 || message.Files.Count > 0)
+            message.Images.Count > 0 || message.Files.Count > 0)
     {
         IsEdit = isEdit;
     }
@@ -99,7 +99,7 @@ public class ChatReplyPreviewVM : ReactiveObject
     {
         IsDeleted = message.IsDeleted;
         HasAttachments = !message.IsDeleted &&
-            (message.Images.Count > 0 || message.Video.Count > 0 || message.Files.Count > 0);
+            (message.Images.Count > 0 || message.Files.Count > 0);
         if (!message.IsDeleted)
         {
             _sourceText = message.TextContent?.Text;

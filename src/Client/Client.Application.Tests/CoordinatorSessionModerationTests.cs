@@ -86,6 +86,21 @@ public class CoordinatorSessionModerationTests
     }
 
     [Fact]
+    public async Task UnbanUser_LiftsEveryBanMadeForTheUser_AndNoOther()
+    {
+        await _session.Connect("server", 1, null, null);
+        Shared.Models.DataTransferObjects.BanDTO Ban(Shared.Enums.User.BanKind kind, int? userId) =>
+            new(Guid.NewGuid(), kind, userId, kind == Shared.Enums.User.BanKind.Ip ? "192.0.2.1" : null, "", 1, DateTimeOffset.UtcNow, null);
+        var account = Ban(Shared.Enums.User.BanKind.Account, 7);
+        var ip = Ban(Shared.Enums.User.BanKind.Ip, 7);
+        _gateway.Bans.AddRange([account, Ban(Shared.Enums.User.BanKind.Account, 8), ip, Ban(Shared.Enums.User.BanKind.Ip, null)]);
+
+        Assert.True((await _session.UnbanUser(7)).IsSuccess);
+
+        Assert.Equal([account.Id, ip.Id], _gateway.RevokedBans);
+    }
+
+    [Fact]
     public async Task DeletedUser_IsAnnounced()
     {
         await _session.Connect("server", 1, null, null);

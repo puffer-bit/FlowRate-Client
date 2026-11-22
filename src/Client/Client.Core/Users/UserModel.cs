@@ -15,8 +15,8 @@ public class UserModel
     public string? AvatarUrl { get; init; }
     public UserState State { get; init; }
     public UserStatus Status { get; init; }
-    public DateTime FirstConnectionTime { get; init; }
-    public DateTime LastConnectionTime { get; init; }
+    public DateTimeOffset FirstConnectionTime { get; init; }
+    public DateTimeOffset LastConnectionTime { get; init; }
 
     /// <summary>The coordinator roles of the user, without the everyone role.</summary>
     public IReadOnlyList<int> RoleIds { get; init; } = [];

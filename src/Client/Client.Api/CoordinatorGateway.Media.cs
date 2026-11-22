@@ -14,7 +14,7 @@ internal partial class CoordinatorGateway
     private readonly SemaphoreSlim _mediaTokenLock = new(1, 1);
     private MediaHttpClient? _media;
     private string? _mediaToken;
-    private DateTime _mediaTokenExpiresAt;
+    private DateTimeOffset _mediaTokenExpiresAt;
 
     public Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress,
         CancellationToken cancellationToken) =>
@@ -78,12 +78,12 @@ internal partial class CoordinatorGateway
         await _mediaTokenLock.WaitAsync(cancellationToken);
         try
         {
-            if (!refresh && _mediaToken != null && DateTime.UtcNow < _mediaTokenExpiresAt - MediaTokenMargin)
+            if (!refresh && _mediaToken != null && DateTimeOffset.UtcNow < _mediaTokenExpiresAt - MediaTokenMargin)
                 return _mediaToken;
 
             var response = await SendRequestAsync<MediaTokenResponse>(new MediaTokenRequest());
 
-            _mediaTokenExpiresAt = response.ExpiresAt.ToUniversalTime();
+            _mediaTokenExpiresAt = response.ExpiresAt;
             return _mediaToken = response.Token;
         }
         // No answer, a rejection or a lost connection: there is no token, and the transfer reports it

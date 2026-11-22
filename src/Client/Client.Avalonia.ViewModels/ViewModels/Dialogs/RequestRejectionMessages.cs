@@ -17,6 +17,7 @@ public static class RequestRejectionMessages
         ErrorCode.InvalidRequest => Strings.Get("rejection.invalidRequest"),
         ErrorCode.InsufficientPermissions => Strings.Get("rejection.insufficientPermissions"),
         ErrorCode.UserFrozen => Strings.Get("rejection.userFrozen"),
+        ErrorCode.UnsupportedRequest => Strings.Get("rejection.unsupportedRequest"),
         _ => Strings.Get("rejection.refused")
     };
 

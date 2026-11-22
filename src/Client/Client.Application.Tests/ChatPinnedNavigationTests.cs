@@ -21,10 +21,10 @@ public class ChatPinnedNavigationTests
 {
     private static ChatMessageModel Message(int id, long revision = 100, string text = "text", bool pinned = false, ChatImageContent? image = null, ChatFileContent? file = null) => new()
     {
-        Id = id, ChatId = 7, SenderUserId = 2, SentTime = DateTime.UnixEpoch.AddSeconds(id),
+        Id = id, ChatId = 7, SenderUserId = 2, SentTime = DateTimeOffset.UnixEpoch.AddSeconds(id),
         Revision = revision, TextContent = new ChatTextContent { Text = text },
-        PinnedAt = pinned ? DateTime.UnixEpoch : null, PinnedByUserId = pinned ? 1 : null,
-        Images = image == null ? [] : [image], Video = [], Files = file == null ? [] : [file], Reactions = [], UsersIds = []
+        PinnedAt = pinned ? DateTimeOffset.UnixEpoch : null, PinnedByUserId = pinned ? 1 : null,
+        Images = image == null ? [] : [image], Files = file == null ? [] : [file], Reactions = []
     };
 
     [Fact]
@@ -51,7 +51,7 @@ public class ChatPinnedNavigationTests
         var mediaCache = ChatHistoryWindowTests.Proxy<IMediaCache>((_, _) => null);
         using var chat = new ActiveChatSessionVM(new ChatSessionModel
         {
-            Id = 7, Name = "chat", CreatorUserId = 1, Capacity = null, SessionType = SessionType.Chat
+            Id = 7, Name = "chat", CreatorUserId = 1, SessionType = SessionType.Chat
         }, session, new ChatSessionServices(caches, null!, null!, null!, mediaCache), new ChatReadTracker(), users);
         using var scroll = chat.ScrollToMessageIndexInteraction.RegisterHandler(context => context.SetOutput(RxVoid.Default));
         typeof(ActiveChatSessionVM).GetProperty(nameof(chat.IsInitialLoading))!.SetValue(chat, false);

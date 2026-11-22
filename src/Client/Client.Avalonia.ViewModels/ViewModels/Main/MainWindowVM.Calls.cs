@@ -106,8 +106,8 @@ public partial class MainWindowVM
                 OpenedSessions?.Open(new HybridSessionModel
                 {
                     Id = session.Id, Name = name, Capacity = 2, SessionType = SessionType.Hybrid,
-                    EngineType = session.EngineType, HostId = session.HostId,
-                    IsAudioRequested = true, IsApprovalRequested = false, DirectCallId = call.CallId,
+                    EngineType = session.EngineType,
+                    IsApprovalRequested = false, DirectCallId = call.CallId,
                     DirectCallStartedAt = call.StartedAt
                 });
             }
@@ -166,8 +166,14 @@ public partial class MainWindowVM
     }
 
     private void OnDirectCallFailed(ErrorCode error) => Dispatcher.UIThread.Post(() =>
-        _notifications.Show(NotificationType.Warning, Strings.Get(error == ErrorCode.Conflict
-            ? "calls.busy" : error == ErrorCode.NotConnected ? "calls.offline" : "calls.failed")));
+        _notifications.Show(NotificationType.Warning, Strings.Get(error switch
+        {
+            ErrorCode.CallBusy => "calls.busy",
+            ErrorCode.CallAnsweredElsewhere => "calls.answeredElsewhere",
+            ErrorCode.CallNotFound => "calls.ended",
+            ErrorCode.NotConnected => "calls.offline",
+            _ => "calls.failed"
+        })));
 
     private async Task ChangeCallAsync(DirectCallDTO call, DirectCallAction action)
     {

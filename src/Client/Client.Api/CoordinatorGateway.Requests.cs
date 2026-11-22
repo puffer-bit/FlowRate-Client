@@ -184,12 +184,13 @@ internal partial class CoordinatorGateway
     public async Task RevokeBan(Guid banId) =>
         await SendRequestAsync<CoordinatorRevokeBanResponse>(new CoordinatorRevokeBanRequest(banId));
 
-    public async Task<UserModel> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null)
-    {
-        var request = new CoordinatorSetUserStateRequest(userId, state, kind, reason, expiresAt, address);
+    public async Task<UserModel> SetUserState(int userId, UserState state) =>
+        (await SendRequestAsync<CoordinatorSetUserStateResponse>(new CoordinatorSetUserStateRequest(userId, state))).User.ToModel();
 
-        return (await SendRequestAsync<CoordinatorSetUserStateResponse>(request)).User.ToModel();
-    }
+    public async Task<UserModel> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null,
+        string? address = null) =>
+        (await SendRequestAsync<CoordinatorBanResponse>(
+            new CoordinatorBanRequest(userId, kind, reason, expiresAt, address))).User.ToModel();
 
     public Task DeleteUser(int userId) =>
         SendRequestAsync<CoordinatorDeleteUserResponse>(new CoordinatorDeleteUserRequest(userId));
@@ -251,8 +252,11 @@ internal partial class CoordinatorGateway
     public Task CreateSession(NewSessionModel newSession) =>
         SendRequestAsync<CreateSessionResponse>(new CreateSessionRequest(newSession.ToDto()));
 
-    public Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false) =>
-        SendRequestAsync<ChangeGroupResponse>(new ChangeGroupRequest(sessionId, name, memberIds, ownerId, leave));
+    public Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId) =>
+        SendRequestAsync<ChangeGroupResponse>(new ChangeGroupRequest(sessionId, name, memberIds, ownerId));
+
+    public Task LeaveGroup(int sessionId) =>
+        SendRequestAsync<LeaveGroupResponse>(new LeaveGroupRequest(sessionId));
 
     public Task DeleteSession(int sessionId) =>
         SendRequestAsync<DeleteSessionResponse>(new DeleteSessionRequest(sessionId));
@@ -331,7 +335,7 @@ internal partial class CoordinatorGateway
             new ChatMessageReadersRequest(sessionId, messageId));
 
         return response.Readers.Select(reader => new ChatMessageReader(reader.UserId,
-            reader.ReadAt is { } at ? DateTime.SpecifyKind(at.ToUniversalTime(), DateTimeKind.Utc) : null)).ToList();
+            reader.ReadAt)).ToList();
     }
 
     public async Task<ChatMessageModel> RequestChatMessage(int sessionId, int messageId)
@@ -360,25 +364,25 @@ internal partial class CoordinatorGateway
         (await SendRequestAsync<ChatLinkPreviewResponse>(new ChatLinkPreviewRequest(sessionId, url))).Preview?.ToModel();
 
     public Task LeaveSession(int sessionId) =>
-        SendRequestAsync<LeaveSessionResponse>(new LeaveSessionRequest(sessionId, SessionType.Hybrid));
+        SendRequestAsync<LeaveSessionResponse>(new LeaveSessionRequest(sessionId));
 
     public Task KickFromHybridSession(int sessionId, int userId) =>
-        SendRequestAsync<KickFromSessionResponse>(new KickFromSessionRequest(sessionId, userId, SessionType.Hybrid, null));
+        SendRequestAsync<KickFromSessionResponse>(new KickFromSessionRequest(sessionId, userId, null));
 
     public Task MoveHybridSessionPeer(int sessionId, int userId, int targetSessionId) =>
         SendRequestAsync<HybridSessionMovePeerResponse>(
             new HybridSessionMovePeerRequest(sessionId, userId, targetSessionId));
 
     public Task ApproveInHybridSession(int sessionId, int userId) =>
-        SendRequestAsync<ApproveUserResponse>(new ApproveUserRequest(sessionId, userId, SessionType.Hybrid));
+        SendRequestAsync<ApproveUserResponse>(new ApproveUserRequest(sessionId, userId));
 
     public Task RejectInHybridSession(int sessionId, int userId) =>
-        SendRequestAsync<RejectUserResponse>(new RejectUserRequest(sessionId, userId, SessionType.Hybrid, null));
+        SendRequestAsync<RejectUserResponse>(new RejectUserRequest(sessionId, userId, null));
 
-    public Task ChangeHybridSessionSettings(int sessionId, string name, int capacity, bool isHostMustApprove,
+    public Task ChangeHybridSessionSettings(int sessionId, string name, int capacity, bool isApprovalRequired,
         MediaSettings media) =>
         SendRequestAsync<ChangeHybridSessionSettingsResponse>(new ChangeHybridSessionSettingsRequest(sessionId, name,
-            capacity, isHostMustApprove, media.ToDto()));
+            capacity, isApprovalRequired, media.ToDto()));
 
     public Task ChangeSessionPermissions(int sessionId, IReadOnlyList<PermissionOverride> overrides) =>
         SendRequestAsync<ChangeSessionPermissionsResponse>(

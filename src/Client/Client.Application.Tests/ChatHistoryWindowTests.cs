@@ -14,8 +14,8 @@ public class ChatHistoryWindowTests
 {
     private static ChatMessageModel Message(int id) => new()
     {
-        Id = id, ChatId = 7, SenderUserId = 1, SentTime = DateTime.UtcNow,
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Id = id, ChatId = 7, SenderUserId = 1, SentTime = DateTimeOffset.UtcNow,
+        Images = [], Files = [], Reactions = []
     };
 
     [Fact]

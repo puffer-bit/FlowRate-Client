@@ -15,8 +15,8 @@ public class RememberedUsersRepositoryTests
         Username = username,
         State = UserState.Suspended,
         Status = UserStatus.Away,
-        FirstConnectionTime = DateTime.UtcNow,
-        LastConnectionTime = DateTime.UtcNow
+        FirstConnectionTime = DateTimeOffset.UtcNow,
+        LastConnectionTime = DateTimeOffset.UtcNow
     };
 
     [Fact]

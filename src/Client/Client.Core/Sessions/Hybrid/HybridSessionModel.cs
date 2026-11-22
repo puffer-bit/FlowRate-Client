@@ -8,9 +8,9 @@ public class HybridSessionModel : SessionModel
     public Guid? DirectCallId { get; init; }
     public DateTimeOffset? DirectCallStartedAt { get; init; }
     public required WebRTCEngine EngineType { get; init; }
+    /// <summary>How many peers the session holds at most; not positive when it has no limit.</summary>
+    public required int Capacity { get; init; }
     
-    public bool IsAudioRequested { get; init; }
     public bool IsApprovalRequested { get; init; }
-    public required int HostId { get; init; }
     public MediaSettings Media { get; init; } = MediaSettings.Default;
 }

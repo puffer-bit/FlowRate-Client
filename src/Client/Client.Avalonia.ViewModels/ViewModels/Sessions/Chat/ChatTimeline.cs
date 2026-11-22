@@ -22,7 +22,7 @@ public class ChatTimeline
     public AvaloniaList<IMessageListItemVM> Items { get; } = new();
 
     private readonly List<ChatMessageVM> _messages = new();
-    private readonly SortedList<DateTime, ChatDateSeparatorVM> _separators = new();
+    private readonly SortedList<DateTimeOffset, ChatDateSeparatorVM> _separators = new();
 
     /// <summary>Adds messages not already in the timeline, sorting only the incoming batch.</summary>
     public void AddRange(IReadOnlyList<ChatMessageVM> messages)
@@ -93,7 +93,7 @@ public class ChatTimeline
         return position < 0 ? ~position : position;
     }
 
-    private int FindDatePosition(DateTime date)
+    private int FindDatePosition(DateTimeOffset date)
     {
         var low = 0;
         var high = _separators.Count;

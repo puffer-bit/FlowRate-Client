@@ -221,7 +221,7 @@ public sealed class UserActions
                 Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        var result = await Session.SetUserState(target.UserId, UserState.Banned, form.Kind, form.Reason, form.ExpiresAt, form.Address);
+        var result = await Session.BanUser(target.UserId, form.Kind, form.Reason, form.ExpiresAt, form.Address);
 
         // A rejection is reported on its own
         if (result.IsSuccess || result.IsRejected)
@@ -233,7 +233,7 @@ public sealed class UserActions
 
     private async Task UnbanUser(int userId)
     {
-        var result = await Session.SetUserState(userId, UserState.Normal);
+        var result = await Session.UnbanUser(userId);
         if (result.IsSuccess || result.IsRejected)
             return;
 

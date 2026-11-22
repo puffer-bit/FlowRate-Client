@@ -21,9 +21,9 @@ internal static class CoordinatorMapper
             ServerVersion = dto.ServerVersion,
             ServerPlatform = dto.ServerPlatform,
 
-            CreateTime = dto.CreateTime,
-            FirstLaunchTime = dto.FirstLaunchTime,
-            CurrentLaunchTime = dto.CurrentLaunchTime,
+            CreateTime = dto.CreatedAt,
+            FirstLaunchTime = dto.FirstLaunchedAt,
+            CurrentLaunchTime = dto.LaunchedAt,
             MaxOnlineUsers = dto.MaxOnlineUsers,
             MaxUsers = dto.MaxUsers,
 

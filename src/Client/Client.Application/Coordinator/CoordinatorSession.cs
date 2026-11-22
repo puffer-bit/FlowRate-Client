@@ -52,6 +52,8 @@ public partial class CoordinatorSession : ICoordinatorSession
     
     public event Action<CoordinatorState>? StateChanged;
     public event Action<CoordinatorSessionModel>? CoordinatorReconfigured;
+    public event Action<ServerRestartEvent>? ServerRestart;
+    public event Action? ServerRestartCancelled;
     public event Action<int>? OnlineUsersChanged;
     public event Action<ChatSessionModel>? ChatSessionAdded;
     public event Action<ChatSessionModel>? ChatSessionReconfigured;

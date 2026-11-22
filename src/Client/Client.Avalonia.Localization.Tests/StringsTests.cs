@@ -125,7 +125,7 @@ public class StringsTests : IDisposable
     [Fact]
     public void LongDateTakesTheMonthFromTheTable()
     {
-        var date = new DateTime(2026, 10, 5);
+        var date = new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero);
 
         Assert.Equal("5 October 2026", Strings.FormatLongDate(date));
 

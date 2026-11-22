@@ -177,8 +177,8 @@ public sealed class PrivateChatTests
 
     private static ChatSessionModel Model(ChatKind kind, params int[] members) => new()
     {
-        Id = 7, Name = "Chat", Capacity = -1, SessionType = SessionType.Chat,
-        CreatorUserId = 1, AdminUserId = 1, Kind = kind, MemberIds = members
+        Id = 7, Name = "Chat", SessionType = SessionType.Chat,
+        CreatorUserId = 1, OwnerUserId = 1, Kind = kind, MemberIds = members
     };
 
     public class Session : DispatchProxy

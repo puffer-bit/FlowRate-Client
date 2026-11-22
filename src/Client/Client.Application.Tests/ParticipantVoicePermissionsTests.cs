@@ -53,7 +53,7 @@ public class ParticipantVoicePermissionsTests
     private static readonly HybridSessionModel Room = new()
     {
         Id = 1, Name = "Room", Capacity = 10, SessionType = SessionType.Hybrid,
-        EngineType = WebRTCEngine.Mediasoup, HostId = 1,
+        EngineType = WebRTCEngine.Mediasoup,
         PermissionOverrides = [new PermissionOverride(2, Permission.None, Permission.Speak)]
     };
 
@@ -78,7 +78,7 @@ public class ParticipantVoicePermissionsTests
     {
         var permissions = new CoordinatorPermissions([Everyone, Restricted, Admin], [3]);
         var participants = new HybridSessionParticipantsListVM(1, _ => { }, _ => { }, _ => { });
-        participants.ApplyAccess(permissions, true, Room);
+        participants.ApplyAccess(permissions, Room);
         participants.AddPeerToSession(new PeerModel { UserId = 2 });
         var peer = Assert.Single(participants.Participants);
         Assert.False(peer.IsVoiceForbidden);
@@ -94,9 +94,9 @@ public class ParticipantVoicePermissionsTests
         var unrestrictedRoom = new HybridSessionModel
         {
             Id = 1, Name = "Room", Capacity = 10, SessionType = SessionType.Hybrid,
-            EngineType = WebRTCEngine.Mediasoup, HostId = 1
+            EngineType = WebRTCEngine.Mediasoup
         };
-        participants.ApplyAccess(permissions, true, unrestrictedRoom);
+        participants.ApplyAccess(permissions, unrestrictedRoom);
         Assert.False(peer.IsVoiceForbidden);
     }
 
@@ -105,7 +105,7 @@ public class ParticipantVoicePermissionsTests
     {
         var permissions = new CoordinatorPermissions([Everyone, Restricted, Admin], [3]);
         var participants = new HybridSessionParticipantsListVM(1, _ => { }, _ => { }, _ => { });
-        participants.ApplyAccess(permissions, true, Room);
+        participants.ApplyAccess(permissions, Room);
         participants.AddPeerToSession(new PeerModel { UserId = 2, IsMicrophoneMuted = true });
         participants.UpdateUserModel(2, User(2));
         var peer = Assert.Single(participants.Participants);

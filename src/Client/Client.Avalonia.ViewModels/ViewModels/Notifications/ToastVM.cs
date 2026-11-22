@@ -27,7 +27,7 @@ public class ToastVM : ReactiveObject
     /// <summary>
     /// When it was shown, as the notification center prints it.
     /// </summary>
-    public string TimeText { get; } = DateTime.Now.ToString("HH:mm");
+    public string TimeText { get; } = DateTimeOffset.Now.ToString("HH:mm");
 
     // What the view picks the icon and the color of the stripe by; a kind the corner has no look for is shown as info
     public bool IsSuccess => Type == NotificationType.Success;

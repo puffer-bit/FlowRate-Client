@@ -55,7 +55,7 @@ public sealed class ChatTypingTests
         var bar = new ChatStatusBarVM(new ChatSessionModel
         {
             Id = 1, Name = "general", Description = "Team chat", CreatorUserId = 1,
-            Capacity = null, SessionType = SessionType.Chat
+            SessionType = SessionType.Chat
         });
         bar.SetTypingNames(["Alice", "Bob"]);
         Assert.Contains("Alice", bar.StatusText);

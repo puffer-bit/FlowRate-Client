@@ -53,7 +53,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
             if (!string.IsNullOrWhiteSpace(message.TextContent?.Text))
                 return message.TextContent.Text.Replace('\n', ' ').Replace('\r', ' ');
             if (message.Images.Count > 0) return Strings.Get("privateChats.photo");
-            if (message.Video.Count > 0) return Strings.Get("privateChats.video");
+            if (message.Files.Any(file => file.Video != null)) return Strings.Get("privateChats.video");
             if (message.Files.Any(file => file.MimeType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)))
                 return Strings.Get("privateChats.audio");
             if (message.Files.Count > 0) return Strings.Get("privateChats.file");
@@ -109,7 +109,6 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     public bool CanArrange => !IsPrivate && CanManage;
 
     // Chats have no host
-    public bool IsHost => false;
 
     /// <summary>The roles of the current user let it see the chat. The server sends no chat it may not see.</summary>
     public bool CanView

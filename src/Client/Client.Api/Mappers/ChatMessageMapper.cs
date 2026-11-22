@@ -18,37 +18,35 @@ internal static class ChatMessageMapper
             ChatId = dto.ChatId,
             Revision = dto.Revision,
             SenderUserId = dto.SenderUserId,
-            SentTime = dto.SentTime,
-            DelayedSentTime = dto.DelayedSentTime,
-            DisposeTime = dto.DisposeTime,
-            EditTime = dto.EditTime,
+            SentTime = dto.SentAt,
+            DelayedSentTime = dto.ScheduledAt,
+            DisposeTime = dto.ExpiresAt,
+            EditTime = dto.EditedAt,
             PinnedAt = dto.PinnedAt,
             PinnedByUserId = dto.PinnedByUserId,
 
             TextContent = MapTextContent(dto.TextContent),
             ReplyContent = MapReplyContent(dto.ReplyContent),
 
-            Images = dto.Images?.Select(MapImageContent).ToList() ?? new List<ChatImageContent>(),
-            Video = dto.Video?.Select(MapVideoContent).ToList() ?? new List<ChatVideoContent>(),
-            Files = dto.Files?.Select(MapFileContent).ToList() ?? new List<ChatFileContent>(),
+            // The chat shows images in a grid apart from other files
+            Images = dto.Files?.OfType<ChatImageFileDTO>().Select(MapImageContent).ToList() ?? new List<ChatImageContent>(),
+            Files = dto.Files?.Where(file => file is not ChatImageFileDTO).Select(MapFileContent).ToList()
+                    ?? new List<ChatFileContent>(),
             LinkPreview = dto.LinkPreview?.ToModel(),
             IsLinkPreviewDisabled = dto.IsLinkPreviewDisabled,
 
             Reactions = dto.Reactions?.Select(MapReaction).ToList() ?? new List<ChatReaction>(),
-            UsersIds = dto.UsersIds?.ToList() ?? new List<string>(),
             MentionedUserIds = dto.MentionedUserIds?.ToList() ?? [],
             MentionsEveryone = dto.MentionsEveryone,
             MentionsHere = dto.MentionsHere,
 
-            IsDelayed = dto.IsDelayed,
-            IsEdited = dto.IsEdited,
-            IsReposted = dto.IsReposted,
-            IsDelivered = dto.IsDelivered,
+            IsDelayed = dto.ScheduledAt != null,
+            IsEdited = dto.EditedAt != null,
             IsDeleted = dto.IsDeleted,
             IsReadOnly = dto.IsReadOnly,
             IsSystem = dto.IsSystem,
             SystemContent = dto.SystemContent,
-            IsDisposable = dto.IsDisposable,
+            IsDisposable = dto.ExpiresAt != null,
         };
     }
 
@@ -79,12 +77,12 @@ internal static class ChatMessageMapper
             HasAttachments = dto.HasAttachments,
             IsDeleted = dto.IsDeleted,
             SenderUserId = dto.SenderUserId,
-            SentTime = dto.SentTime,
+            SentTime = dto.SentAt,
             TextContent = MapTextContent(dto.TextContent),
         };
     }
 
-    private static ChatImageContent MapImageContent(ChatImageContentDTO dto)
+    private static ChatImageContent MapImageContent(ChatImageFileDTO dto)
         => new ChatImageContent
         {
             Id = dto.Id,
@@ -97,54 +95,23 @@ internal static class ChatMessageMapper
             Height = dto.Height
         };
 
-    private static ChatVideoContent MapVideoContent(ChatVideoContentDTO dto)
-        => new ChatVideoContent
-        {
-            Id = dto.Id,
-            FileName = dto.FileName,
-            Thumbnail = dto.Thumbnail,
-            Description = dto.Description,
-            Size = dto.Size,
-            MimeType = dto.MimeType,
-            Width = dto.Width,
-            Height = dto.Height,
-            Duration = dto.Duration
-        };
-
-    private static ChatFileContent MapFileContent(ChatFileContentDTO dto)
+    private static ChatFileContent MapFileContent(ChatFileDTO dto)
         => new ChatFileContent
         {
             Id = dto.Id,
             FileName = dto.FileName,
             Size = dto.Size,
             MimeType = dto.MimeType,
-            Video = dto.Video is { } video
+            Video = dto is ChatVideoFileDTO video
                 ? new ChatFileVideo(Math.Max(0, video.Width), Math.Max(0, video.Height),
                     video.Duration is { } duration && duration > TimeSpan.Zero ? duration : null, video.HasPreview)
                 : null
         };
 
     private static ChatReaction MapReaction(ChatReactionDTO dto)
-        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji, ReactedAt = AsUtc(dto.ReactedAt) };
+        => new ChatReaction { UserId = dto.UserId, Emoji = dto.Emoji, ReactedAt = dto.ReactedAt };
 
-    private static DateTime? AsUtc(DateTime? time) => time is { } value
-        ? value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime()
-        : null;
 
     // DTO mappers
     internal static ChatTextContentDTO MapTextContentDto(ChatTextContent model) => new() { Text = model.Text };
-
-    internal static ChatVideoContentDTO MapVideoContentDto(ChatVideoContent model)
-        => new ChatVideoContentDTO
-        {
-            Id = model.Id,
-            FileName = model.FileName,
-            Thumbnail = model.Thumbnail,
-            Description = model.Description,
-            Size = model.Size,
-            MimeType = model.MimeType,
-            Width = model.Width,
-            Height = model.Height,
-            Duration = model.Duration
-        };
 }

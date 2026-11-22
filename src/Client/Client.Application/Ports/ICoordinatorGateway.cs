@@ -147,7 +147,8 @@ public interface ICoordinatorGateway : IDisposable
 
     /// <summary>Bans, freezes or reinstates another user.</summary>
     /// <returns>The user as the server has them now, when the state was set.</returns>
-    Task<UserModel> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null);
+    Task<UserModel> SetUserState(int userId, UserState state);
+    Task<UserModel> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null, string? address = null);
     Task<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans();
     Task RevokeBan(Guid banId);
     Task DeleteUser(int userId);
@@ -191,8 +192,9 @@ public interface ICoordinatorGateway : IDisposable
     Task SetSoundMuteInHybridSession(int sessionId, bool isMuted);
     Task SetAfkInHybridSession(int sessionId, bool isAfk, string? reason);
     Task PokeInHybridSession(int sessionId, int userId, string? message);
-    Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId, bool leave = false)
+    Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId)
         => throw new NotSupportedException();
+    Task LeaveGroup(int sessionId) => throw new NotSupportedException();
 
     Task DeleteSession(int sessionId);
 
@@ -239,7 +241,7 @@ public interface ICoordinatorGateway : IDisposable
     Task ApproveInHybridSession(int sessionId, int userId);
     Task RejectInHybridSession(int sessionId, int userId);
     Task ChangeHybridSessionSettings(int sessionId, string name, int capacity,
-        bool isHostMustApprove, MediaSettings media);
+        bool isApprovalRequired, MediaSettings media);
     Task ChangeSessionPermissions(int sessionId,
         IReadOnlyList<PermissionOverride> overrides);
 

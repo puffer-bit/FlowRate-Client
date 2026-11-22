@@ -13,5 +13,5 @@ public record ServerCertificateModel(
     int Port,
     string Fingerprint,
     string Subject,
-    DateTime NotAfter,
+    DateTimeOffset NotAfter,
     string? CoordinatorId = null);

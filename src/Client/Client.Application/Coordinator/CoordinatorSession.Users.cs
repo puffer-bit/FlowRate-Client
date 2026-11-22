@@ -59,8 +59,25 @@ public partial class CoordinatorSession
 
     public Task<RequestResult> RevokeBan(Guid banId) => SendAsync(() => _gateway.RevokeBan(banId));
 
-    public async Task<RequestResult> SetUserState(int userId, UserState state, BanKind kind = BanKind.Account, string? reason = null, DateTime? expiresAt = null, string? address = null) =>
-        (await SendAsync(() => _gateway.SetUserState(userId, state, kind, reason, expiresAt, address))).Result;
+    public async Task<RequestResult> SetUserState(int userId, UserState state) =>
+        (await SendAsync(() => _gateway.SetUserState(userId, state))).Result;
+
+    public async Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null,
+        string? address = null) =>
+        (await SendAsync(() => _gateway.BanUser(userId, kind, reason, expiresAt, address))).Result;
+
+    public async Task<RequestResult> UnbanUser(int userId)
+    {
+        var bans = await GetBans();
+        if (bans.Value is not { } list) return bans.Result;
+        foreach (var ban in list.Where(ban => ban.UserId == userId))
+        {
+            var result = await RevokeBan(ban.Id);
+            // A ban that expired in the meantime is lifted all the same
+            if (!result.IsSuccess && result.Error != ErrorCode.BanNotFound) return result;
+        }
+        return RequestResult.Success;
+    }
 
     public Task<RequestResult> DeleteUser(int userId) =>
         SendAsync(() => _gateway.DeleteUser(userId));

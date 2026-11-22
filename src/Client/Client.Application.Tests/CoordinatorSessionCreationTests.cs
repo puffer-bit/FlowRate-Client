@@ -12,11 +12,11 @@ namespace Client.Application.Tests;
 public sealed class CoordinatorSessionCreationTests
 {
     [Fact]
-    public async Task UnlimitedChatIsSentToGateway()
+    public async Task ChatIsSentToGateway()
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        var chat = new NewSessionModel("General", 1, Limits.SessionCapacityUnlimited,
+        var chat = new NewSessionModel("General", 1,
             new NewChatSessionOptions(Description: "Team chat"));
 
         var result = await session.CreateSession(chat);
@@ -35,7 +35,7 @@ public sealed class CoordinatorSessionCreationTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        var hybrid = new NewSessionModel("Voice", 1, capacity, new NewHybridSessionOptions(WebRTCEngine.Mediasoup));
+        var hybrid = new NewSessionModel("Voice", 1, new NewHybridSessionOptions(WebRTCEngine.Mediasoup, capacity));
 
         var result = await session.CreateSession(hybrid);
 
@@ -58,7 +58,7 @@ public sealed class CoordinatorSessionCreationTests
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
 
-        var result = await session.CreateSession(new NewSessionModel(name, 1, Limits.SessionCapacityUnlimited,
+        var result = await session.CreateSession(new NewSessionModel(name, 1,
             new NewChatSessionOptions()));
 
         Assert.Equal(ErrorCode.InvalidValue, result.Error);

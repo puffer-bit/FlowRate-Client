@@ -7,7 +7,7 @@ namespace Client.Infrastructure.Tests;
 [Collection(DatabaseTestCollection.Name)]
 public class TrustedCertificatesRepositoryTests
 {
-    private static readonly DateTime NotAfter = new(2027, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+    private static readonly DateTimeOffset NotAfter = new(2027, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
     [Fact]
     public async Task CertificateRoundTripsWithANormalizedHost()
@@ -23,7 +23,7 @@ public class TrustedCertificatesRepositoryTests
         Assert.Equal("AB:CD", certificate.Fingerprint);
         Assert.Equal("CN=server", certificate.Subject);
         Assert.Equal(NotAfter, certificate.NotAfter);
-        Assert.Equal(DateTimeKind.Utc, certificate.NotAfter.Kind);
+        Assert.Equal(TimeSpan.Zero, certificate.NotAfter.Offset);
         Assert.Null(certificate.CoordinatorId);
     }
 

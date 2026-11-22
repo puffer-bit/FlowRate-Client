@@ -66,10 +66,10 @@ public sealed class ChatLinkPreviewTests
 
     private static async Task Until(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
         while (!condition())
         {
-            if (DateTime.UtcNow > deadline)
+            if (DateTimeOffset.UtcNow > deadline)
                 throw new TimeoutException();
             await Task.Delay(10, TestContext.Current.CancellationToken);
         }
@@ -135,9 +135,9 @@ public sealed class ChatLinkPreviewTests
         using var composer = Composer();
         var message = new ChatMessageModel
         {
-            Id = 5, ChatId = ChatId, SenderUserId = 1, SentTime = DateTime.UtcNow,
+            Id = 5, ChatId = ChatId, SenderUserId = 1, SentTime = DateTimeOffset.UtcNow,
             TextContent = new ChatTextContent { Text = "https://example.com/a" },
-            Images = [], Video = [], Files = [], Reactions = [], UsersIds = [],
+            Images = [], Files = [], Reactions = [],
             LinkPreview = Preview, IsLinkPreviewDisabled = false, IsMine = true
         };
 

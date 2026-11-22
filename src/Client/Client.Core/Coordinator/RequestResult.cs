@@ -22,10 +22,11 @@ public readonly record struct RequestResult(ErrorCode? Error, IReadOnlyDictionar
 
     /// <summary>
     /// The request was refused as a whole: too many requests, data outside the shared validation limits, missing
-    /// permissions or a frozen user. The user is told about these apart from the request that failed.
+    /// permissions, a frozen user or a server too old to know the request. The user is told about these apart
+    /// from the request that failed.
     /// </summary>
     public bool IsRejected => Error is ErrorCode.RateLimited or ErrorCode.InvalidRequest
-        or ErrorCode.InsufficientPermissions or ErrorCode.UserFrozen;
+        or ErrorCode.InsufficientPermissions or ErrorCode.UserFrozen or ErrorCode.UnsupportedRequest;
 
     public override string ToString() => Error?.ToString() ?? "Success";
 

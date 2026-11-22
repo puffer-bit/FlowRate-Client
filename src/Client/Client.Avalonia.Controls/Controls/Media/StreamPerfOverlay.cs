@@ -189,7 +189,7 @@ public sealed class StreamPerfOverlay : Control
 
     private void AddHistory(Reading reading, FrameStats? frames)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         _history.Enqueue(new GraphPoint(now, Delay(reading.Stream), CodecMs(reading.Stream), Loss(reading),
             Bitrate(reading.Stream), frames?.ShownPerSecond));
 
@@ -690,7 +690,7 @@ public sealed class StreamPerfOverlay : Control
 
     private sealed record Reading(StreamPerf? Stream, NetworkPerf? Network);
 
-    private readonly record struct GraphPoint(DateTime Time, double? Delay, double? CodecMs, double? Loss, double? Kbps,
+    private readonly record struct GraphPoint(DateTimeOffset Time, double? Delay, double? CodecMs, double? Loss, double? Kbps,
         double? Fps);
 
     private enum Level

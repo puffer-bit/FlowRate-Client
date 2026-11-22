@@ -11,9 +11,9 @@ public class ChatCommandResultTests
 {
     private static ChatMessageModel Message(ChatCommandResult outcome) => new()
     {
-        Id = 1, ChatId = 7, SenderUserId = 1, SentTime = DateTime.UtcNow, IsMine = true,
+        Id = 1, ChatId = 7, SenderUserId = 1, SentTime = DateTimeOffset.UtcNow, IsMine = true,
         TextContent = new ChatTextContent { Text = outcome.ToFallbackText(), CommandResult = outcome },
-        Images = [], Video = [], Files = [], Reactions = [], UsersIds = []
+        Images = [], Files = [], Reactions = []
     };
 
     private static ChatMessageVM View(ChatCommandResult outcome) => new(Message(outcome), 1,

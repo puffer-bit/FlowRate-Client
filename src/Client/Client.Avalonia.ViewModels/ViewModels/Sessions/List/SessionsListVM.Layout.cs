@@ -94,7 +94,7 @@ public partial class SessionsListVM
     {
         SyncCategories();
         var privateChats = Sessions.OfType<ChatSessionVM>().Where(chat => chat.IsPrivate)
-            .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTime.MinValue)
+            .OrderByDescending(chat => (chat.Model as ChatSessionModel)?.LastMessage?.SentTime ?? DateTimeOffset.MinValue)
             .ThenByDescending(chat => chat.Model.Id).ToArray();
         if (!PrivateChats.SequenceEqual(privateChats))
             PrivateChats = privateChats;

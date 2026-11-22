@@ -18,8 +18,8 @@ internal static class CoordinatorEventMapper
     public static CoordinatorEvent? ToEvent(this BaseMessage message) => message switch
     {
         DirectCallChangedNotification call => new DirectCallChangedEvent(call.Call),
-        HeartbeatServerClosingNotification closing => new ServerClosingEvent(closing.Message),
-        HeartbeatServerRestartingNotification restarting => new ServerRestartingEvent(restarting.Message),
+        ServerRestartNotification restart => new ServerRestartEvent(restart.Reason, restart.At, restart.Message),
+        ServerRestartCancelledNotification => new ServerRestartCancelledEvent(),
         CoordinatorUserBannedNotification banned => new BannedEvent(banned.Reason),
         CoordinatorUserSessionEndedNotification ended => new SessionEndedEvent(ended.Reason),
 
@@ -51,7 +51,7 @@ internal static class CoordinatorEventMapper
         ChatReadStateChangedNotification readChanged => new ChatReadStateChangedEvent(readChanged.State.ToModel()),
         ChatPeerReadNotification peerRead => new ChatPeerReadEvent(new ChatPeerRead(peerRead.ChatId,
             peerRead.ReaderUserId, peerRead.LastReadMessageId,
-            DateTime.SpecifyKind(peerRead.ReadAt.ToUniversalTime(), DateTimeKind.Utc))),
+            peerRead.ReadAt)),
 
         HybridSessionStateChangedNotification changed => new SessionNodeStateChangedEvent(changed.SessionId, changed.State),
         HybridSessionSFUNodeChangedNotification changed => new SessionNodeReplacedEvent(changed.SessionId),
@@ -85,24 +85,17 @@ internal static class CoordinatorEventMapper
         HybridSessionPeerPokedNotification poked =>
             new PeerPokedEvent(poked.SessionId, poked.UserId, poked.InitiatorUserId, poked.Message),
 
-        HybridSessionPeerStartedVoiceShareNotification started =>
-            new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
-        HybridSessionPeerStartedVideoShareNotification started =>
-            new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
-        HybridSessionPeerStartedScreenShareNotification { Inbound: null } started =>
+        HybridSessionPeerMediaChangedNotification { IsActive: true, Inbound: { } inbound } started =>
+            new PeerTrackStartedEvent(started.SessionId, started.UserId, inbound.ToModel()),
+        HybridSessionPeerMediaChangedNotification { IsActive: true, Source: MediaSourceType.Screen } started =>
             new PeerScreenShareStartedEvent(started.SessionId, started.UserId, started.HasAudio),
-        HybridSessionPeerStartedScreenShareNotification started =>
-            new PeerTrackStartedEvent(started.SessionId, started.UserId, started.Inbound.ToModel()),
+        HybridSessionPeerMediaChangedNotification { IsActive: false } stopped =>
+            new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId,
+                stopped.Source == MediaSourceType.Microphone ? MediaType.Audio : MediaType.Video, stopped.Source),
         HybridSessionPeerScreenShareWatchChangedNotification changed =>
             new PeerScreenShareWatchChangedEvent(changed.SessionId, changed.UserId, changed.SharerUserId,
                 changed.IsWatching),
 
-        HybridSessionPeerStoppedVoiceShareNotification stopped =>
-            new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId, MediaType.Audio, MediaSourceType.Microphone),
-        HybridSessionPeerStoppedVideoShareNotification stopped =>
-            new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId, MediaType.Video, MediaSourceType.Camera),
-        HybridSessionPeerStoppedScreenShareNotification stopped =>
-            new PeerTrackStoppedEvent(stopped.SessionId, stopped.UserId, MediaType.Video, MediaSourceType.Screen),
 
         _ => null
     };

@@ -18,7 +18,7 @@ public sealed class ChatInfoTests
 {
     private static ChatSessionModel Chat(string? description, string name = "General") => new()
     {
-        Id = 7, Name = name, Capacity = null, SessionType = SessionType.Chat,
+        Id = 7, Name = name, SessionType = SessionType.Chat,
         CreatorUserId = 1, Description = description
     };
 
