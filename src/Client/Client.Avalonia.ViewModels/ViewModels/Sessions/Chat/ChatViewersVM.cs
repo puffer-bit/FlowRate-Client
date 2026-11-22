@@ -27,6 +27,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public string Username => _user.Username;
     public string? AvatarUrl => _user.AvatarUrl;
     public UserStatus Status => _user.Status;
+    public bool IsMobile => _user.IsMobile;
     public bool IsOnline => Status is UserStatus.Online or UserStatus.Away or UserStatus.DoNotDisturb;
     public bool ShowOnlineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
     public bool ShowOfflineHeader { get; internal set => this.RaiseAndSetIfChanged(ref field, value); }
@@ -93,6 +94,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(Username));
         this.RaisePropertyChanged(nameof(AvatarUrl));
         this.RaisePropertyChanged(nameof(Status));
+        this.RaisePropertyChanged(nameof(IsMobile));
         this.RaisePropertyChanged(nameof(IsBanned));
         this.RaisePropertyChanged(nameof(IsFrozen));
         RefreshAccess();

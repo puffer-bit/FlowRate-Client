@@ -43,7 +43,7 @@
                                     <DataTemplate DataType="chatVm:ChatMessageReaderVM">
                                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="6,4">
                                             <avatars:UserAvatar Width="24" Height="24" UserName="{Binding Name}"
-                                                                AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
+                                                                AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"

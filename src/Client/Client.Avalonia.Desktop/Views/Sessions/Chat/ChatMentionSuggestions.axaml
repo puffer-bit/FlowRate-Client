@@ -19,7 +19,8 @@
                                                         IsVisible="{Binding !IsGroup}"
                                                         UserName="{Binding Name}"
                                                         AvatarUrl="{Binding AvatarUrl}"
-                                                        Status="{Binding Status}"/>
+                                                        Status="{Binding Status}"
+                                                        IsMobile="{Binding IsMobile}"/>
                                     <TextBlock Grid.Column="1" VerticalAlignment="Center"
                                                Text="{Binding DisplayName}"/>
                                     <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"

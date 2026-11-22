@@ -208,6 +208,13 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The author is online from a phone.</summary>
+    public bool SenderIsMobile
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>
     /// The color of the highest colored role of the author, 0xRRGGBB; null keeps the usual one.
     /// </summary>

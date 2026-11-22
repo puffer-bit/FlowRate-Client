@@ -600,6 +600,8 @@
   "profile.field.name": "Имя:",
   "profile.field.firstConnected": "Первое подключение:",
   "profile.field.lastConnected": "Последнее подключение:",
+  "profile.field.device": "Устройство:",
+  "profile.field.appVersion": "Версия приложения:",
   "profile.name.yours": "Ваше имя",
   "profile.name.short": "Имя",
   "profile.avatar.resetsOnSave": "Сбросится при сохранении",

@@ -53,7 +53,8 @@ public partial class App : global::Avalonia.Application
         services
             // The place of the executable is read-only on Android; this is the data directory of the application
             .AddApplication(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
-            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
+            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
+                ApplicationDetails.SystemDescription, DevicePlatform.Architecture))
             .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
             .AddAndroidPlatform();
 

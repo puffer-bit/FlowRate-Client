@@ -88,7 +88,7 @@
                                         </Style>
                                     </Grid.Styles>
                                     <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Username}"
-                                                        AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
+                                                        AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
                                     <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left" VerticalAlignment="Center">
                                         <!-- The owner of the group -->
                                         <Image Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"

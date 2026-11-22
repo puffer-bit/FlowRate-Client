@@ -29,6 +29,8 @@ public sealed class ChatSenderDirectory : IDisposable
     private readonly Dictionary<int, string> _displayNames = new();
     private readonly Dictionary<int, string?> _avatars = new();
     private readonly Dictionary<int, UserStatus> _statuses = new();
+    // Online from a phone
+    private readonly HashSet<int> _mobile = [];
     private readonly Dictionary<int, IReadOnlyList<int>> _roleIds = new();
     private readonly HashSet<int> _resolving = new();
     private readonly HashSet<int> _deleted = new();
@@ -114,6 +116,7 @@ public sealed class ChatSenderDirectory : IDisposable
         if (!_names.TryGetValue(user.Id, out var name)
             || (name == user.Username && _displayNames.GetValueOrDefault(user.Id) == DisplayNameOf(user) && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
                 && _statuses.GetValueOrDefault(user.Id) == user.Status
+                && _mobile.Contains(user.Id) == user.IsMobile
                 && _roleIds.GetValueOrDefault(user.Id, []).SequenceEqual(user.RoleIds)))
             return;
 
@@ -139,6 +142,10 @@ public sealed class ChatSenderDirectory : IDisposable
         _displayNames[user.Id] = DisplayNameOf(user);
         _avatars[user.Id] = user.AvatarUrl;
         _statuses[user.Id] = user.Status;
+        if (user.IsMobile)
+            _mobile.Add(user.Id);
+        else
+            _mobile.Remove(user.Id);
         _roleIds[user.Id] = user.RoleIds;
     }
 
@@ -152,6 +159,7 @@ public sealed class ChatSenderDirectory : IDisposable
         _displayNames.Remove(userId);
         _avatars.Remove(userId);
         _statuses.Remove(userId);
+        _mobile.Remove(userId);
         _roleIds.Remove(userId);
     }
 
@@ -162,6 +170,7 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.IsSenderDeleted = _deleted.Contains(senderId);
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
         messageVm.SenderStatus = _statuses.TryGetValue(senderId, out var status) ? status : null;
+        messageVm.SenderIsMobile = _mobile.Contains(senderId);
         messageVm.SenderColor = GetColor(senderId);
         messageVm.SystemParts = ChatSystemMessageText.Parts(messageVm.Message,
             id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),
@@ -191,6 +200,9 @@ public sealed class ChatSenderDirectory : IDisposable
     public string? FindName(int userId) => _names.GetValueOrDefault(userId);
     public string? FindAvatarUrl(int userId) => _avatars.GetValueOrDefault(userId);
     public UserStatus? FindStatus(int userId) => _statuses.TryGetValue(userId, out var status) ? status : null;
+
+    /// <summary>The user is online from a phone, as far as is known.</summary>
+    public bool IsMobile(int userId) => _mobile.Contains(userId);
 
     /// <summary>
     /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.

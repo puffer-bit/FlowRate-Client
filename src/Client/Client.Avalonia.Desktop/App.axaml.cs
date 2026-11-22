@@ -138,7 +138,8 @@ public partial class App : global::Avalonia.Application
 
         services
             .AddApplication(AppDirectories.Data)
-            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
+            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
+                DevicePlatform.OsVersion, DevicePlatform.Architecture))
             .AddInfrastructure()
             .AddScreenCast()
             .AddGStreamer()
