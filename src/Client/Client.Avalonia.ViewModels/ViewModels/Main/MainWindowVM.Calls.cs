@@ -83,7 +83,7 @@ public partial class MainWindowVM
             if (current == null) return;
 
             await ShowRingAsync(coordinator, current);
-            FollowCallSession(coordinator, current);
+            await FollowCallSessionAsync(coordinator, current);
         });
     }
 
@@ -116,7 +116,7 @@ public partial class MainWindowVM
     }
 
     /// <summary>Opens the media session of the call this device joined, keeps it current, closes it when out.</summary>
-    private void FollowCallSession(Client.Application.Coordinator.ICoordinatorSession coordinator, ChatCallDTO call)
+    private async Task FollowCallSessionAsync(Client.Application.Coordinator.ICoordinatorSession coordinator, ChatCallDTO call)
     {
         var opened = OpenedSessions?.HybridSession;
         if (opened?.Model.CallId == call.CallId)
@@ -134,13 +134,20 @@ public partial class MainWindowVM
             return;
         }
         var chat = SessionsList.FindChat(call.ChatId);
-        OpenedSessions?.Open(new HybridSessionModel
+        // The server names a direct chat by its members' ids: the call is named after the other member
+        var (name, _) = await CallPresentation.GetNamesAsync(coordinator, call, chat);
+        if (coordinator != _coordinatorSession || OpenedSessions?.HybridSession?.Model.CallId == call.CallId
+            || coordinator.ChatCalls.GetValueOrDefault(call.ChatId) is not { State: ChatCallState.Active, IsSelectedDevice: true } still
+            || still.CallId != call.CallId) return;
+        // Entering the call brings it on screen, as joining a voice channel does
+        var entered = OpenedSessions?.Open(new HybridSessionModel
         {
-            Id = session.Id, Name = chat is { Kind: ChatKind.Group } ? chat.Name : SessionsList.FindChatTitle(call.ChatId),
+            Id = session.Id, Name = name,
             Capacity = session.Capacity, SessionType = SessionType.Hybrid, EngineType = session.EngineType,
             IsApprovalRequested = false, CallId = call.CallId, CallStartedAt = call.StartedAt,
             CallOwnerUserId = chat is { Kind: ChatKind.Group } ? chat.OwnerUserId : null
         });
+        if (entered != null) ChangeContent(entered);
     }
 
     /// <summary>Connects the call session to the panel of peers and the state of the call.</summary>

@@ -18,6 +18,7 @@
   "calls.failed": "无法完成通话操作，请重试。",
   "calls.mediaDisabled": "请启用音频以接听来电。",
   "calls.join": "加入通话",
+  "calls.open": "打开通话",
   "calls.incomingGroup": "群组通话",
   "calls.incomingGroupText": "{group} 中的 {user}",
   "calls.waiting": "正在等待其他人…",

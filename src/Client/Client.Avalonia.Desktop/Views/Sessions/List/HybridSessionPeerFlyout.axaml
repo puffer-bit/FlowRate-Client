@@ -163,7 +163,7 @@
                                       menus:FlyoutMenu.CloseOnClick="True"
                                       IsVisible="{Binding CanApprove}"
                                       Command="{Binding Reject}"/>
-                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text peer.kick}"
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource BootKickIcon}" Content="{l:Text peer.kick}"
                                       menus:FlyoutMenu.CloseOnClick="True"
                                       IsVisible="{Binding CanKick}"
                                       Command="{Binding Kick}"/>

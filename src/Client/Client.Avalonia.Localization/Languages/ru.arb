@@ -18,6 +18,7 @@
   "calls.failed": "Не удалось выполнить действие со звонком. Попробуйте ещё раз.",
   "calls.mediaDisabled": "Включите аудио, чтобы принимать звонки.",
   "calls.join": "Присоединиться к звонку",
+  "calls.open": "Открыть звонок",
   "calls.incomingGroup": "Звонок в группе",
   "calls.incomingGroupText": "{user} в «{group}»",
   "calls.waiting": "Ожидание собеседников…",

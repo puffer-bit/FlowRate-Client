@@ -41,6 +41,11 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
     public bool CanBan => _owner.CanBan(_user);
     public bool CanUnban => _owner.CanUnban(_user);
     public bool CanModerate => CanBan || CanUnban;
+    /// <summary>The owner of the group gets a crown before the name.</summary>
+    public bool IsOwner => _owner.IsGroupOwner(Id);
+    public bool CanRemoveFromGroup => _owner.CanRemoveFromGroup(Id);
+    public bool HasDangerActions => CanModerate || CanRemoveFromGroup;
+    public ReactiveCommand<RxVoid, RxVoid> RemoveFromGroup { get; }
     public ReactiveCommand<RxVoid, RxVoid> Mention { get; }
     public ReactiveCommand<RxVoid, RxVoid> Ban { get; }
     public ReactiveCommand<RxVoid, RxVoid> Unban { get; }
@@ -54,6 +59,10 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         Mention = ReactiveCommand.Create(() => { if (CanMention) _owner.MentionUser(_user); });
         Ban = ReactiveCommand.Create(() => { if (CanBan) _owner.BanUser(_user); });
         Unban = ReactiveCommand.Create(() => { if (CanUnban) _owner.UnbanUser(_user); });
+        RemoveFromGroup = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (CanRemoveFromGroup) await _owner.RemoveUserFromGroupAsync(_user);
+        });
     }
 
     public void RefreshAccess()
@@ -62,6 +71,9 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(CanBan));
         this.RaisePropertyChanged(nameof(CanUnban));
         this.RaisePropertyChanged(nameof(CanModerate));
+        this.RaisePropertyChanged(nameof(IsOwner));
+        this.RaisePropertyChanged(nameof(CanRemoveFromGroup));
+        this.RaisePropertyChanged(nameof(HasDangerActions));
         this.RaisePropertyChanged(nameof(RoleColor));
     }
 
@@ -72,6 +84,7 @@ public sealed class ChatViewerVM : ReactiveObject, IDisposable
         Mention.Dispose();
         Ban.Dispose();
         Unban.Dispose();
+        RemoveFromGroup.Dispose();
     }
 
     public void Update(UserModel user)
@@ -151,6 +164,27 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     internal bool CanOpenDirectChat(int userId) => userId != _currentUserId && _openDirectChat != null;
     internal void OpenDirectChat(int userId) => _openDirectChat?.Execute(userId).Subscribe();
     internal bool CanMention => _composer is { CanWrite: true, IsConnected: true };
+
+    /// <summary>The owner of the group, or null when the chat is not a group.</summary>
+    public Func<int?>? GroupOwnerId { get; set; }
+
+    /// <summary>Asks to remove a member from the group: chat id, user id and name.</summary>
+    public Func<int, int, string, Task>? RemoveFromGroup { get; set; }
+
+    internal bool IsGroupOwner(int userId) => GroupOwnerId?.Invoke() == userId;
+
+    internal bool CanRemoveFromGroup(int userId) => RemoveFromGroup != null && userId != _currentUserId
+        && _session.ConnectionStatus == CoordinatorState.Connected && GroupOwnerId?.Invoke() == _currentUserId;
+
+    internal Task RemoveUserFromGroupAsync(UserModel user) =>
+        RemoveFromGroup?.Invoke(_chatId, user.Id, user.Username) ?? Task.CompletedTask;
+
+    /// <summary>The group changed its owner: the crown and the menus follow.</summary>
+    public void RefreshOwner()
+    {
+        RefreshAccess();
+        SortUsers();
+    }
 
     internal int? GetRoleColor(UserModel user) => _session.Permissions.Roles
         .LastOrDefault(role => role.Color != null && user.RoleIds.Contains(role.Id))?.Color;
@@ -258,6 +292,7 @@ public sealed class ChatViewersVM : ReactiveObject, IDisposable
     private void SortUsers()
     {
         var ordered = Users.OrderBy(row => GroupOnlineUsers && !row.IsOnline)
+            .ThenBy(row => !row.IsOwner)
             .ThenBy(row => row.Username, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.Id).ToArray();
         for (int index = 0; index < ordered.Length; index++)

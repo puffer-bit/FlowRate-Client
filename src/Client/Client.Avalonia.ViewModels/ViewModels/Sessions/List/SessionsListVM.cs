@@ -803,9 +803,6 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>A chat of the list by its id.</summary>
     public ChatSessionModel? FindChat(int chatId) => FindSession<ChatSessionVM>(chatId)?.Model as ChatSessionModel;
 
-    /// <summary>The name the list shows for a chat: the other member in a direct chat.</summary>
-    public string FindChatTitle(int chatId) => FindSession<ChatSessionVM>(chatId)?.DisplayName ?? string.Empty;
-
     /// <summary>A voice channel of the list, or the call we are in.</summary>
     public HybridSessionVM? FindHybridSession(int sessionId) =>
         CallSession is { } call && call.Model.Id == sessionId ? call : FindSession<HybridSessionVM>(sessionId);

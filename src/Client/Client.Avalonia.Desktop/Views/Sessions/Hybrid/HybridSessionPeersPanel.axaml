@@ -13,7 +13,6 @@
              x:DataType="hybridVm:ActiveHybridSessionVM"
              x:Class="Client.Views.Sessions.Hybrid.HybridSessionPeersPanel"
              x:Name="Root"
-             Width="260"
              Background="{DynamicResource GeneralBrush}">
 
     <!-- The peers have the same rows and menus as under the session in the sessions list -->
@@ -63,10 +62,25 @@
                                     </Flyout>
                                 </Border.ContextFlyout>
                                 <Grid ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
-                                    <avatars:UserAvatar Width="28" Height="28" Opacity="0.6"
+                                    <!-- Members who are not rung fade out as users away from the keyboard do -->
+                                    <Grid.Styles>
+                                        <Style Selector=":is(Control).notRung">
+                                            <Setter Property="Transitions">
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                                                </Transitions>
+                                            </Setter>
+                                        </Style>
+                                        <Style Selector=":is(Control).notRung.dim">
+                                            <Setter Property="Opacity" Value="0.35"/>
+                                        </Style>
+                                    </Grid.Styles>
+                                    <avatars:UserAvatar Width="28" Height="28"
+                                                        Classes="notRung" Classes.dim="{Binding !IsRinging}"
                                                         UserName="{Binding UserData.Username}"
                                                         AvatarUrl="{Binding UserData.AvatarUrl}"/>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                Classes="notRung" Classes.dim="{Binding !IsRinging}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Image Width="14" Height="14" VerticalAlignment="Center"
                                                    Source="{StaticResource CrownIcon}" IsVisible="{Binding IsOwner}"

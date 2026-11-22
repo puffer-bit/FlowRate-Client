@@ -18,6 +18,7 @@
   "calls.failed": "Could not complete the call action. Try again.",
   "calls.mediaDisabled": "Enable audio to accept calls.",
   "calls.join": "Join call",
+  "calls.open": "Open call",
   "calls.incomingGroup": "Group call",
   "calls.incomingGroupText": "{user} in {group}",
   "calls.waiting": "Waiting for others…",

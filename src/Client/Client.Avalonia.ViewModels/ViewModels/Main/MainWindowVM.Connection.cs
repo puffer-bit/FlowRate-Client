@@ -502,6 +502,11 @@ public partial class MainWindowVM
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
                 _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
+            sessions.RemoveFromGroup = SessionsList.RemoveFromGroupAsync;
+            sessions.ShowCallSession = () =>
+            {
+                if (OpenedSessions?.HybridSession is { Model.CallId: not null } call) ChangeContent(call);
+            };
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
             sessions.HybridSessionMovedOut += OnHybridSessionMovedOut;

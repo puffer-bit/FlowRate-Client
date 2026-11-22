@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Avalonia.Styles.Animation;
 using ReactiveUI;
@@ -152,6 +153,12 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
         }, Presence.LeaveTime);
     }
 
+    /// <summary>Removes a member from a group after asking: chat id, user id and name.</summary>
+    public Func<int, int, string, Task>? RemoveFromGroup { get; set; }
+
+    /// <summary>Brings the call session we are in on screen.</summary>
+    public Action? ShowCallSession { get; set; }
+
     private ActiveChatSessionVM OpenChat(ChatSessionModel chatModel)
     {
         var chat = _chats.Find(c => c.Id == chatModel.Id);
@@ -160,6 +167,8 @@ public sealed class OpenedSessions : ReactiveObject, IDisposable
         else
             chat = new ActiveChatSessionVM(chatModel, _coordinatorSession, _chatServices, _readTracker,
                 _viewProfileCommand, _banUserCommand, _unbanUserCommand, _openDirectChatCommand);
+        if (chat.StatusBar.Viewers is { } viewers) viewers.RemoveFromGroup = RemoveFromGroup;
+        chat.StatusBar.ShowCallSession = () => ShowCallSession?.Invoke();
 
         _chats.Add(chat);
 

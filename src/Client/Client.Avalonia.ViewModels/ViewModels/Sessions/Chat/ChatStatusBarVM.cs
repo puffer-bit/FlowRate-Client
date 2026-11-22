@@ -39,7 +39,21 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         }
     }
 
-    public string CallTip => Strings.Get(IsCallRunning ? "calls.join" : "calls.start");
+    /// <summary>This device is in the chat's call; the button brings the call session up.</summary>
+    public bool IsInCall
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallTip));
+        }
+    }
+
+    /// <summary>Shows the session of the chat's call this device is in; set by whoever shows sessions.</summary>
+    public Action? ShowCallSession { get; set; }
+
+    public string CallTip => Strings.Get(IsInCall ? "calls.open" : IsCallRunning ? "calls.join" : "calls.start");
 
     public bool CanHaveCalls => _session.Kind is ChatKind.Direct or ChatKind.Group;
 
@@ -51,6 +65,11 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         {
             // Starting while a call runs joins it on the server too; its ID makes the request plain
             var running = coordinator.ChatCalls.GetValueOrDefault(_session.Id);
+            if (running is { IsSelectedDevice: true })
+            {
+                ShowCallSession?.Invoke();
+                return;
+            }
             await coordinator.ChangeChatCall(_session.Id, running?.CallId ?? Guid.NewGuid(),
                 running != null ? Shared.Models.DataTransferObjects.ChatCallAction.Join
                     : Shared.Models.DataTransferObjects.ChatCallAction.Start);
@@ -73,8 +92,8 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         var isConnected = _callCoordinator?.ConnectionStatus == Client.Core.Coordinator.CoordinatorState.Connected;
         var running = isConnected && CanHaveCalls ? _callCoordinator!.ChatCalls.GetValueOrDefault(_session.Id) : null;
         IsCallRunning = running != null;
-        CanCall = CanHaveCalls && Client.Core.Media.MediaRuntime.IsEnabled && isConnected
-            && running is not { IsSelectedDevice: true };
+        IsInCall = running is { IsSelectedDevice: true };
+        CanCall = CanHaveCalls && Client.Core.Media.MediaRuntime.IsEnabled && isConnected;
     }
 
     public bool IsDirect => _session.Kind == ChatKind.Direct;

@@ -61,7 +61,10 @@
                                             <menus:MenuItemButton Icon="{StaticResource MentionIcon}" Content="{l:Text chat.menu.mention}"
                                                                   menus:FlyoutMenu.CloseOnClick="True" IsEnabled="{Binding CanMention}"
                                                                   Command="{Binding Mention}"/>
-                                            <Separator IsVisible="{Binding CanModerate}"/>
+                                            <Separator IsVisible="{Binding HasDangerActions}"/>
+                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}"
+                                                                  Content="{l:Text privateChats.removeMember}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanRemoveFromGroup}" Command="{Binding RemoveFromGroup}"/>
                                             <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}"
                                                                   Content="{l:Text peer.ban}" menus:FlyoutMenu.CloseOnClick="True"
                                                                   IsVisible="{Binding CanBan}" Command="{Binding Ban}"/>
@@ -86,8 +89,12 @@
                                     </Grid.Styles>
                                     <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Username}"
                                                         AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
-                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Username}" VerticalAlignment="Center"
+                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <!-- The owner of the group -->
+                                        <Image Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"
+                                               Source="{StaticResource CrownIcon}"
+                                               IsVisible="{Binding IsOwner}" ToolTip.Tip="{l:Text privateChats.owner}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
                                                    Classes.role-colored="{Binding RoleColor, Converter={x:Static ObjectConverters.IsNotNull}}">
                                             <TextBlock.Styles>
@@ -97,7 +104,7 @@
                                                 </Style>
                                             </TextBlock.Styles>
                                         </TextBlock>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
                                             <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
                                                    IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
                                             <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"

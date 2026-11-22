@@ -18,6 +18,7 @@
   "calls.failed": "通話の操作を完了できませんでした。もう一度お試しください。",
   "calls.mediaDisabled": "通話に応答するには音声を有効にしてください。",
   "calls.join": "通話に参加",
+  "calls.open": "通話を開く",
   "calls.incomingGroup": "グループ通話",
   "calls.incomingGroupText": "{group} の {user}",
   "calls.waiting": "ほかの参加者を待っています…",

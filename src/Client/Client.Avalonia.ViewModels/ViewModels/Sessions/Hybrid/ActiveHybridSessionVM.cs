@@ -584,7 +584,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     // Raised on the socket thread
     private void OnSessionReconfigured(HybridSessionModel model)
     {
-        if (model.Id != Model.Id)
+        // A call session follows its call: the server's model has neither the call nor its name
+        if (model.Id != Model.Id || Model.CallId != null)
             return;
 
         Dispatcher.UIThread.Post(async () =>
