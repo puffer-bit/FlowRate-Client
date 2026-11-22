@@ -52,7 +52,7 @@ public class LogFilesTests : IDisposable
         await using (new FileStream(Path.Combine(_directory, "app-20261030.txt"), FileMode.Open, FileAccess.Write,
                          FileShare.Read | FileShare.Delete))
         {
-            await LogFiles.WriteArchiveAsync(archive, _directory, "FlowRate: 0.7.1", recent);
+            await LogFiles.WriteArchiveAsync(archive, _directory, "FlowRate: 0.7.1", recent, TestContext.Current.CancellationToken);
         }
 
         archive.Position = 0;

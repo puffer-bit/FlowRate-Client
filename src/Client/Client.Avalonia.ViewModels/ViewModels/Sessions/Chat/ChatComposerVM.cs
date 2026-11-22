@@ -345,14 +345,14 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null,
         Func<IReadOnlyCollection<int>?>? mentionableMembers = null)
     {
+        ArgumentNullException.ThrowIfNull(session);
         _attachmentOptions = attachmentOptions;
         if (attachmentOptions != null)
         {
             attachmentOptions.DefaultsChanged += OnAttachmentDefaultsChanged;
             _ = attachmentOptions.LoadAsync();
         }
-        if (session != null)
-            session.CoordinatorReconfigured += OnCoordinatorReconfigured;
+        session.CoordinatorReconfigured += OnCoordinatorReconfigured;
         _chatId = chatId;
         _session = session;
         _mediaUploader = mediaUploader;
@@ -825,7 +825,6 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             _attachmentOptions.DefaultsChanged -= OnAttachmentDefaultsChanged;
         foreach (var attachment in Attachments)
             attachment.Dispose();
-        if (_session != null)
-            _session.CoordinatorReconfigured -= OnCoordinatorReconfigured;
+        _session.CoordinatorReconfigured -= OnCoordinatorReconfigured;
     }
 }

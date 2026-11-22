@@ -450,7 +450,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             if (_readers == null && CanShowReaders)
             {
                 _readers = CreateReaders!();
-                _readers.Changed += () => this.RaisePropertyChanged(nameof(DeliveryTooltip));
+                _readers.ReadersChanged += () => this.RaisePropertyChanged(nameof(DeliveryTooltip));
                 _ = _readers.LoadAsync();
             }
             return _readers;

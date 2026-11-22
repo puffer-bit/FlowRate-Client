@@ -108,7 +108,7 @@ public class CameraSessionTests
             var failed = new TaskCompletionSource<HybridSessionError>(TaskCreationOptions.RunContinuationsAsynchronously);
             session.ErrorOccurred += error => failed.TrySetResult(error);
             transport.RaiseEvent(nameof(IWebRTCTransport.VideoCaptureFailed), "camera");
-            var error = await failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var error = await failed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.Equal(HybridSessionErrorKind.CameraCaptureFailed, error.Kind);
             Assert.False(session.IsCameraStarted);
             Assert.Empty(session.CameraUsers);
@@ -135,7 +135,7 @@ public class CameraSessionTests
                 MediaType = MediaType.Video, MimeType = "video/VP8", PayloadType = 96, ClockRate = 90000
             };
             coordinator.RaiseEvent("HybridSessionUpdated", new PeerTrackStartedEvent(7, 2, track));
-            await registered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await registered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.True(session.IsWatchingCamera(2));
             var received = 0;
             session.VideoFrameReady += (_, _, _) => received++;

@@ -2,7 +2,7 @@ using System;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Media;
-using ReactiveUI;
+using Client.Services;
 using ReactiveUI.Primitives;
 using Client.Views.Common;
 using Client.ViewModels.Sessions.Hybrid;
@@ -24,8 +24,10 @@ internal partial class HybridSessionControl : ViewControl<ActiveHybridSessionVM>
         {
             // The column holds the panel's width in pixels, so the panel keeps it as the window is
             // resized and widens with the splitter. Hidden, the column takes no room
-            System.ObservableExtensions.Subscribe(
-                    this.WhenAnyValue(view => view.ViewModel!.IsUserListVisible), ShowPeers)
+            this.WhenViewModelChanged((vm, subscriptions) =>
+                System.ObservableExtensions.Subscribe(
+                        vm.WatchProperty(nameof(vm.IsUserListVisible), model => model.IsUserListVisible), ShowPeers)
+                    .DisposeWith(subscriptions))
                 .DisposeWith(disposables);
 
             // Each glow wanders along its own closed path and comes back to where it started, so the

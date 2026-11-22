@@ -64,7 +64,7 @@ internal static partial class MacDockIcon
             context.DrawImage(artwork, new Rect(offset, offset, side, side));
 
         using var stream = new MemoryStream();
-        canvas.Save(stream);
+        canvas.Save(stream, PngBitmapEncoderOptions.Default);
         return stream.ToArray();
     }
 

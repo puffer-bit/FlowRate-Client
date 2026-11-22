@@ -136,7 +136,9 @@ public class ImageMetadataTests
         byte[] png = [.. signature, .. header, .. PngChunk("eXIf", Exif(1)), .. profile,
             .. PngChunk("tEXt", "Author\0me"u8.ToArray()), .. PngChunk("tIME", new byte[7]), .. data, .. end];
 
-        Assert.Equal([.. signature, .. header, .. profile, .. data, .. end], ImageMetadata.Strip(png));
+        var stripped = ImageMetadata.Strip(png);
+        Assert.NotNull(stripped);
+        Assert.Equal([.. signature, .. header, .. profile, .. data, .. end], stripped);
     }
 
     private static byte[] RiffChunk(string fourCc, byte[] data)

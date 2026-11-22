@@ -19,7 +19,7 @@ public sealed class ChatReactionsTests
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
         using var users = ReactiveCommand.Create<int>(_ => { });
-        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+        using var composer = new ChatComposerVM(7, "chat", false, ChatComposerTests.CreateSession(), 1, null!, null!, null!,
             _ => Task.CompletedTask) { CanWrite = true, IsConnected = true };
         var sent = new List<(string Emoji, bool Added)>();
         var vm = new ChatMessageVM(Message(new ChatReaction { Emoji = "👍", UserId = 2 }), 1,
@@ -66,7 +66,7 @@ public sealed class ChatReactionsTests
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
         using var users = ReactiveCommand.Create<int>(_ => { });
-        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+        using var composer = new ChatComposerVM(7, "chat", false, ChatComposerTests.CreateSession(), 1, null!, null!, null!,
             _ => Task.CompletedTask) { CanWrite = true, IsConnected = true };
         var vm = new ChatMessageVM(Message(), 1, messages, users, messages, messages, users,
             _ => Task.FromResult(true), composer: composer)

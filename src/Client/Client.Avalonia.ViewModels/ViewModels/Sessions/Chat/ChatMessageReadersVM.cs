@@ -80,7 +80,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
     /// <summary>The first time the message was read; what a direct chat shows next to its checks.</summary>
     public DateTimeOffset? FirstReadAt => _readers.Values.Where(time => time.HasValue).Min();
 
-    public event Action? Changed;
+    public event Action? ReadersChanged;
 
     public ChatMessageReadersVM(int chatId, int messageId, ChatReceipts receipts, ChatSenderDirectory senders)
     {
@@ -171,7 +171,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
                 _senders.FindAvatarUrl(userId), _senders.FindStatus(userId), readAt));
         this.RaisePropertyChanged(nameof(IsEmpty));
         this.RaisePropertyChanged(nameof(FirstReadAt));
-        Changed?.Invoke();
+        ReadersChanged?.Invoke();
     }
 
     public void Dispose()

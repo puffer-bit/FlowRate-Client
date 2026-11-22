@@ -34,6 +34,9 @@ These settings are managed in GitHub, separately from workflow YAML:
 ## Client-specific behavior
 
 Tests run on Linux and Windows and build only the test projects, avoiding the desktop media runtime and
-Android workload. The client pins .NET SDK 10.0.402 because of the documented 10.0.403 download issue.
+Android workload. Test builds treat warnings as errors. The desktop build jobs also rebuild the desktop
+project with warnings as errors after publishing, once the platform media runtime is available; this
+compiler check is separate from the warnings of third-party libraries during trimming and NativeAOT.
+The client pins .NET SDK 10.0.402 because of the documented 10.0.403 download issue.
 CodeQL scans C# and Actions. NativeAOT/JIT selection, GStreamer caching, the Linux glibc baseline, Windows
 libwebrtc verification, and Velopack release/development channels remain client-specific.

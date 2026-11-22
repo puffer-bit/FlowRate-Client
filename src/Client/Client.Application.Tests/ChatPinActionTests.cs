@@ -20,7 +20,7 @@ public class ChatPinActionTests
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
         using var users = ReactiveCommand.Create<int>(_ => { });
-        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+        using var composer = new ChatComposerVM(7, "chat", false, ChatComposerTests.CreateSession(), 1, null!, null!, null!,
             _ => Task.CompletedTask) { IsConnected = true };
         var requests = new List<bool>();
         var content = new ChatMessageVM(Message(true), 1, messages, users, messages, messages, users,
@@ -69,7 +69,7 @@ public class ChatPinActionTests
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
         using var users = ReactiveCommand.Create<int>(_ => { });
-        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+        using var composer = new ChatComposerVM(7, "chat", false, ChatComposerTests.CreateSession(), 1, null!, null!, null!,
             _ => Task.CompletedTask) { IsConnected = true };
         var requested = new List<bool>();
         var vm = new ChatMessageVM(Message(), 1, messages, users, messages, messages, users,
@@ -92,7 +92,7 @@ public class ChatPinActionTests
     {
         using var messages = ReactiveCommand.Create<ChatMessageModel>(_ => { });
         using var users = ReactiveCommand.Create<int>(_ => { });
-        using var composer = new ChatComposerVM(7, "chat", false, null!, 1, null!, null!, null!,
+        using var composer = new ChatComposerVM(7, "chat", false, ChatComposerTests.CreateSession(), 1, null!, null!, null!,
             _ => Task.CompletedTask) { CanWrite = false, IsConnected = true };
         var requested = new List<bool>();
         var vm = new ChatMessageVM(Message(), 1, messages, users, messages, messages, users,

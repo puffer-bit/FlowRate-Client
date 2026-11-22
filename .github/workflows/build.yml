@@ -118,6 +118,9 @@ jobs:
           [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
           src/Scripts/bash/publish.sh linux-x64 "${arguments[@]}"
 
+      - name: Check desktop compiler warnings
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
+
       - uses: actions/upload-artifact@v7
         with:
           name: FlowRateClient-${{ needs.version.outputs.version }}-linux-x64${{ inputs.aot && '-aot' || '' }}
@@ -157,6 +160,10 @@ jobs:
           if ("${{ inputs.aot }}" -eq "true") { $arguments.Aot = $true }
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
+
+      - name: Check desktop compiler warnings
+        shell: powershell
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
 
       - name: Upload GStreamer installer log
         if: failure()
@@ -226,6 +233,9 @@ jobs:
           [[ "${{ inputs.aot }}" == true ]] && arguments+=(--aot)
           [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
           src/Scripts/bash/publish.sh "${arguments[@]}"
+
+      - name: Check desktop compiler warnings
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
 
       - uses: actions/upload-artifact@v7
         with:

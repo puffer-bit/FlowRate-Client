@@ -64,11 +64,11 @@ public class HybridSessionNodeWaitingTests
             session.Connect(null);
 
             Assert.Equal(HybridSessionState.WaitingForSfuNode, session.State);
-            await transport.WaitingObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await transport.WaitingObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.DoesNotContain(nameof(IWebRTCTransport.Connect), transport.Calls);
 
             coordinator.Raise("HybridSessionNodeChanged", new SessionNodeStateChangedEvent(1, HybridSessionNodeState.Active));
-            await connected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await connected.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
             Assert.Equal(HybridSessionState.Connected, session.State);
             Assert.Contains(nameof(IWebRTCTransport.Connect), transport.Calls);
@@ -96,14 +96,14 @@ public class HybridSessionNodeWaitingTests
             };
 
             coordinator.Raise("HybridSessionNodeChanged", new SessionNodeReplacedEvent(1));
-            await repliedWithoutTransport.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await waiting.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await transport.WaitingObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await repliedWithoutTransport.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await waiting.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await transport.WaitingObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.DoesNotContain(nameof(IWebRTCTransport.Connect), transport.Calls);
 
             available = true;
             coordinator.Raise("HybridSessionNodeChanged", new SessionNodeStateChangedEvent(1, HybridSessionNodeState.Active));
-            await connected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await connected.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
             Assert.Equal(HybridSessionState.Connected, session.State);
         }

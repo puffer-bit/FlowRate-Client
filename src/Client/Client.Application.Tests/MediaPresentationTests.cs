@@ -82,7 +82,7 @@ public sealed class MediaPresentationTests
         using var target = new RenderTargetBitmap(new PixelSize(500, 350), new Vector(96, 96));
         target.Render(host);
         using var stream = new MemoryStream();
-        target.Save(stream);
+        target.Save(stream, PngBitmapEncoderOptions.Default);
         using var pixels = SkiaSharp.SKBitmap.Decode(stream.ToArray());
         Assert.Equal(SkiaSharp.SKColors.Red, pixels.GetPixel(300, 60));
         Assert.Equal(SkiaSharp.SKColors.Blue, pixels.GetPixel(300, 340));

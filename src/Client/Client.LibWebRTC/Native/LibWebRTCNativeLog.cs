@@ -58,7 +58,7 @@ public sealed unsafe partial class LibWebRTCNativeLog(ILoggerFactory loggerFacto
                                                   or BadImageFormatException)
             {
                 // No library, or one built before fr_set_log
-                LogUnavailable(exception.Message);
+                LogUnavailable(logger, exception.Message);
             }
         }
     }
@@ -92,5 +92,5 @@ public sealed unsafe partial class LibWebRTCNativeLog(ILoggerFactory loggerFacto
     private static partial void LogMessage(ILogger logger, LogLevel level, string? text);
 
     [LoggerMessage(LogLevel.Warning, "The log of libwebrtc cannot be passed to the journal: {Error}")]
-    private partial void LogUnavailable(string error);
+    private static partial void LogUnavailable(ILogger logger, string error);
 }

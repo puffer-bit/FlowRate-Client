@@ -83,26 +83,29 @@ public sealed class StreamingDownloadTests
     [Fact]
     public void Read_WaitsForItsChunkAndGetsTheBytesOfTheFile()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 5 + 300);
         var server = new Server(content);
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync);
 
         var buffer = new byte[content.Length];
-        Assert.Equal(content.Length, download.ReadFully(0, buffer));
+        Assert.Equal(content.Length, download.ReadFully(0, buffer, cancellationToken));
         Assert.Equal(content, buffer);
-        Assert.Equal(0, download.Read(content.Length, buffer));
+        Assert.Equal(0, download.Read(content.Length, buffer, cancellationToken));
     }
 
     [Fact]
     public async Task Read_FarAhead_IsFetchedBeforeTheRest()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 64);
         var server = new Server(content) { Delay = TimeSpan.FromMilliseconds(5) };
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync,
             readAhead: Chunk * 64);
 
         var buffer = new byte[100];
-        await Task.Run(() => download.ReadFully(Chunk * 60 + 10, buffer)).WaitAsync(Patience);
+        await Task.Run(() => download.ReadFully(Chunk * 60 + 10, buffer, cancellationToken), cancellationToken)
+            .WaitAsync(Patience, cancellationToken);
         Assert.Equal(content.AsSpan(Chunk * 60 + 10, 100).ToArray(), buffer);
         Assert.Contains(server.Requests, request => request.Offset == Chunk * 60);
         Assert.False(download.IsComplete);
@@ -111,13 +114,14 @@ public sealed class StreamingDownloadTests
     [Fact]
     public async Task NothingIsFetched_BeyondTheReadAhead()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 20);
         var server = new Server(content);
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync,
             readAhead: Chunk * 4);
 
-        download.ReadFully(0, new byte[10]);
-        await Task.Delay(200);
+        download.ReadFully(0, new byte[10], cancellationToken);
+        await Task.Delay(200, cancellationToken);
         // Ten bytes read: the read-ahead reaches into the fifth chunk
         Assert.All(server.Requests, request => Assert.True(request.Offset + request.Length <= Chunk * 5));
         Assert.InRange(download.Progress, 0.15, 0.25);
@@ -126,6 +130,7 @@ public sealed class StreamingDownloadTests
     [Fact]
     public async Task WholeFile_IsFetchedAndCompletes()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 30 + 1);
         var server = new Server(content);
         var file = new MemoryPartialFile(content.Length);
@@ -133,7 +138,8 @@ public sealed class StreamingDownloadTests
         using var download = new StreamingDownload(file, server.FetchAsync, new SyncProgress(progress.Add),
             wholeFile: true);
 
-        Assert.Equal(MediaTransferResult.NoError, await download.WaitCompleteAsync(CancellationToken.None).WaitAsync(Patience));
+        Assert.Equal(MediaTransferResult.NoError,
+            await download.WaitCompleteAsync(cancellationToken).WaitAsync(Patience, cancellationToken));
         Assert.True(download.IsComplete);
         Assert.Equal(1, progress[^1]);
         Assert.Equal([(0d, 1d)], download.GetKeptRanges());
@@ -142,17 +148,21 @@ public sealed class StreamingDownloadTests
     [Fact]
     public async Task MissingFile_FailsTheWaitingRead()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 4);
         var server = new Server(content) { Fail = _ => MediaTransferResult.NotFound };
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync);
 
-        await Assert.ThrowsAsync<IOException>(() => Task.Run(() => download.Read(0, new byte[10])).WaitAsync(Patience));
+        await Assert.ThrowsAsync<IOException>(() =>
+            Task.Run(() => download.Read(0, new byte[10], cancellationToken), cancellationToken)
+                .WaitAsync(Patience, cancellationToken));
         Assert.Equal(MediaTransferResult.NotFound, download.Failure);
     }
 
     [Fact]
     public async Task BrokenConnection_IsTriedAgain()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 4);
         var failures = 2;
         var server = new Server(content)
@@ -162,38 +172,41 @@ public sealed class StreamingDownloadTests
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync);
 
         var buffer = new byte[10];
-        await Task.Run(() => download.Read(0, buffer)).WaitAsync(Patience);
+        await Task.Run(() => download.Read(0, buffer, cancellationToken), cancellationToken)
+            .WaitAsync(Patience, cancellationToken);
         Assert.Equal(content.AsSpan(0, 10).ToArray(), buffer);
     }
 
     [Fact]
     public async Task CanceledRead_StopsWaiting()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 4);
         var server = new Server(content) { Delay = TimeSpan.FromSeconds(30) };
         using var download = new StreamingDownload(new MemoryPartialFile(content.Length), server.FetchAsync);
-        using var cancel = new CancellationTokenSource();
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        var read = Task.Run(() => download.Read(0, new byte[10], cancel.Token));
-        await Task.Delay(100);
+        var read = Task.Run(() => download.Read(0, new byte[10], cancel.Token), cancellationToken);
+        await Task.Delay(100, cancellationToken);
         Assert.True(download.IsWaiting);
         cancel.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read.WaitAsync(Patience));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read.WaitAsync(Patience, cancellationToken));
         Assert.False(download.IsWaiting);
     }
 
     [Fact]
     public async Task Dispose_EndsAWaitingReadAndLetsGoOfTheFile()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var content = Content(Chunk * 4);
         var server = new Server(content) { Delay = TimeSpan.FromSeconds(30) };
         var file = new MemoryPartialFile(content.Length);
-        var download = new StreamingDownload(file, server.FetchAsync);
+        using var download = new StreamingDownload(file, server.FetchAsync);
 
-        var read = Task.Run(() => download.Read(0, new byte[10]));
-        await Task.Delay(100);
+        var read = Task.Run(() => download.Read(0, new byte[10], cancellationToken), cancellationToken);
+        await Task.Delay(100, cancellationToken);
         download.Dispose();
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => read.WaitAsync(Patience));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => read.WaitAsync(Patience, cancellationToken));
         Assert.True(file.Disposed);
     }
 
