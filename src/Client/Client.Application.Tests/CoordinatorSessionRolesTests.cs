@@ -24,7 +24,7 @@ public class CoordinatorSessionRolesTests
     {
         _gateway.UserRoleIds = [2];
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         Assert.Equal(2, _session.Roles.Count);
         Assert.Equal(Permission.All, _session.Permissions.Granted);
@@ -33,7 +33,7 @@ public class CoordinatorSessionRolesTests
     [Fact]
     public async Task ChangedRoles_ChangeThePermissions()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         CoordinatorPermissions? announced = null;
         _session.PermissionsChanged += permissions => announced = permissions;
 
@@ -47,7 +47,7 @@ public class CoordinatorSessionRolesTests
     [Fact]
     public async Task NewRolesOfTheCurrentUser_ChangeThePermissions()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         Assert.False(_session.Permissions.Has(Permission.Administrator));
 
         _gateway.Raise(new UserUpdatedEvent(new UserModel
@@ -61,7 +61,7 @@ public class CoordinatorSessionRolesTests
     [Fact]
     public async Task AnotherUser_ChangesNothing()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         var announced = false;
         _session.PermissionsChanged += _ => announced = true;
 

@@ -155,10 +155,20 @@ public sealed class UserActions
         if (vm.WantsDirectChat && OpenDirectChat != null) await OpenDirectChat(user);
     }
 
+    /// <summary>What the account security dialog does with the recovery phrase and a logout; set by the main window.</summary>
+    public AccountSecurityHooks? SecurityHooks { get; set; }
+
     // What the user logs in with; loaded as the dialog opens
     private async Task ManageSecurity()
     {
-        var vm = new AccountSecurityVM(Session);
+        var hooks = SecurityHooks;
+        var vm = new AccountSecurityVM(Session)
+        {
+            KeepRecoveryPhrase = hooks?.KeepRecoveryPhrase,
+            ConfirmRecoveryPhraseSaved = hooks?.ConfirmRecoveryPhraseSaved,
+            LoadRecoveryPhrase = hooks?.LoadRecoveryPhrase,
+            LoggedOut = hooks?.LoggedOut
+        };
         vm.LoadCommand.Execute().Subscribe();
         await _showAccountSecurity.Handle(vm);
     }
@@ -263,3 +273,10 @@ public sealed class UserActions
             Strings.Format("peer.kick.failed.text", ("code", failure)));
     }
 }
+
+/// <summary>What the account security dialog needs of the saved account of the current user.</summary>
+public sealed record AccountSecurityHooks(
+    Func<string, Task> KeepRecoveryPhrase,
+    Func<bool, Task> ConfirmRecoveryPhraseSaved,
+    Func<Task<string?>> LoadRecoveryPhrase,
+    Func<Task> LoggedOut);

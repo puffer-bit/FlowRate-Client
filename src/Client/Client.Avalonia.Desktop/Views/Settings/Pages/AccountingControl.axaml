@@ -45,6 +45,7 @@
         </ui:SettingsCard>
 
         <hints:HintBlock Text="{l:Text settings.accounting.keyringUnavailable}" IsVisible="{Binding !CanStorePassword}"/>
+        <hints:HintBlock Text="{l:Text settings.accounting.secretsUnprotected}" IsVisible="{Binding AreSecretsUnprotected}"/>
         <hints:HintBlock Text="{l:Text settings.accounting.lockUnavailable}" IsVisible="{Binding !CanLockFile}"/>
         <hints:HintBlock Text="{l:Text settings.accounting.encryptionHint}"/>
 
@@ -130,11 +131,11 @@
                                             <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
                                                    Source="{StaticResource UserIcon}"/>
                                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Username}"/>
-                                            <!-- The identity is a credential: only its edges are shown, to tell accounts apart -->
+                                            <!-- An account without a device here has to log in again -->
                                             <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11"
                                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                                        TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"/>
+                                                       Text="{l:Text connect.identity.needsLogin}" IsVisible="{Binding !CanLogIn}"/>
                                             <Button Grid.Column="3" Classes="borderless" VerticalAlignment="Center"
                                                     ToolTip.Tip="{l:Text settings.accounting.identityActions}"
                                                     AutomationProperties.Name="{l:Text settings.accounting.identityActions}">
@@ -142,23 +143,17 @@
                                                 <Button.Flyout>
                                                     <Flyout Placement="BottomEdgeAlignedRight">
                                                         <StackPanel Spacing="2" x:DataType="models:SavedUserModel">
+                                                            <menus:MenuItemButton Icon="{StaticResource KeyIcon}"
+                                                                                  Content="{l:Text settings.backup.export}"
+                                                                                  IsVisible="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).AreBackupsAvailable}"
+                                                                                  Command="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).ExportBackupCommand}"
+                                                                                  CommandParameter="{Binding}"
+                                                                                  menus:FlyoutMenu.CloseOnClick="True"/>
                                                             <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
                                                                                   Content="{l:Text common.delete}"
                                                                                   Command="{Binding #Root.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
                                                                                   CommandParameter="{Binding}"
                                                                                   menus:FlyoutMenu.CloseOnClick="True"/>
-                                                            <menus:MenuItemButton Icon="{StaticResource QrCodeIcon}"
-                                                                                  Content="{l:Text settings.accounting.exportIdentityQr}"
-                                                                                  IsEnabled="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                                                <menus:MenuItemButton.Flyout>
-                                                                    <Flyout Placement="RightEdgeAlignedTop">
-                                                                        <StackPanel Spacing="8" Margin="8" MaxWidth="260">
-                                                                            <TextBlock FontWeight="SemiBold" Text="{Binding Username}" TextTrimming="CharacterEllipsis"/>
-                                                                            <images:QrCode Width="240" Height="240" Text="{Binding UserIdentity}"/>
-                                                                        </StackPanel>
-                                                                    </Flyout>
-                                                                </menus:MenuItemButton.Flyout>
-                                                            </menus:MenuItemButton>
                                                         </StackPanel>
                                                     </Flyout>
                                                 </Button.Flyout>
@@ -181,6 +176,21 @@
         </Grid>
         
         <hints:HintBlock Text="{l:Text settings.accounting.serversHint}"/>
+
+        <!-- Encrypted backups of the accounts, as files or through a shared folder -->
+        <StackPanel Spacing="8" IsVisible="{Binding AreBackupsAvailable}">
+            <TextBlock FontWeight="SemiBold" Text="{l:Text settings.backup.title}"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Text="{l:Text settings.backup.hint}"/>
+            <WrapPanel Orientation="Horizontal">
+                <Button Margin="0,0,8,4" Content="{l:Text settings.backup.import}" Command="{Binding ImportBackupCommand}"/>
+                <Button Margin="0,0,8,4" Content="{l:Text settings.backup.chooseFolder}" Command="{Binding ChooseSyncFolderCommand}"/>
+                <Button Margin="0,0,8,4" Content="{l:Text settings.backup.stopSync}" Command="{Binding StopSyncCommand}"
+                        IsVisible="{Binding IsSyncOn}"/>
+            </WrapPanel>
+            <TextBlock TextWrapping="Wrap" IsVisible="{Binding IsSyncOn}"
+                       Text="{Binding SyncFolder, StringFormat='📁 {0}'}"/>
+            <hints:HintBlock Text="{l:Text settings.backup.folderHint}"/>
+        </StackPanel>
 
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
             <controls:SettingsHeader services:SettingText.Section="accounting.trustedCertificates" ui:SettingsPage.SearchKey="accounting.trustedCertificates"/>

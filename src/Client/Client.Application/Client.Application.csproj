@@ -7,6 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- BIP-39 English word list, github.com/bitcoin/bips bip-0039/english.txt (SHA-256 2f5eed53…24dbda) -->
+        <EmbeddedResource Include="Security/bip39-english.txt" LogicalName="Client.Application.Bip39English.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
       <InternalsVisibleTo Include="Client.Application.Tests" />
     </ItemGroup>
 

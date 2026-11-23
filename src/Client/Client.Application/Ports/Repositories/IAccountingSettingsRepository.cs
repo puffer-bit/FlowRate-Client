@@ -15,14 +15,16 @@ public interface IAccountingSettingsRepository
     /// <summary>Changes the name of a saved identity and nothing else. Does nothing for an identity not saved.</summary>
     Task RenameUserAsync(string coordinatorId, int userId, string username);
 
-    /// <summary>Keeps or forgets the account password of a saved identity. Does nothing for an identity not saved.</summary>
-    Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword);
+    /// <summary>
+    /// Keeps the device a saved account logs in as, or forgets it when null. Does nothing for an account not saved.
+    /// </summary>
+    Task SetDeviceAsync(string coordinatorId, int userId, Guid? deviceId, string? deviceKey);
 
-    /// <summary>Keeps or forgets the session token of a saved identity. Does nothing for an identity not saved.</summary>
-    Task SetSessionTokenAsync(string coordinatorId, int userId, string? sessionToken);
+    /// <summary>Marks the recovery phrase of a saved account as saved by the user, or not.</summary>
+    Task SetRecoveryPhraseSavedAsync(string coordinatorId, int userId, bool isSaved);
 
-    /// <summary>Replaces the identity of a saved user, after it was reset. Does nothing for an identity not saved.</summary>
-    Task SetUserIdentityAsync(string coordinatorId, int userId, string userIdentity);
+    /// <summary>Drops the server password the earlier client kept in the database, once it is in the secret vault.</summary>
+    Task ClearServerPasswordAsync(string coordinatorId, int userId);
     Task SaveCoordinatorAsync(SavedCoordinatorModel model);
     Task DeleteCoordinatorAsync(string coordinatorId);
     Task DeleteUserAsync(string coordinatorId, int userId);

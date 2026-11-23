@@ -25,8 +25,8 @@ public partial class CoordinatorSession
     /// <param name="Completion">Completed once the message is handled, for a caller that waits for it.</param>
     private abstract record ConnectionMessage(TaskCompletionSource? Completion = null);
 
-    private sealed record ConnectRequested(string Address, int Port, string? UserIdentity, string? Password,
-        string? AccountPassword, string? SessionToken, string? ExpectedCoordinatorId, TaskCompletionSource Completion) : ConnectionMessage(Completion);
+    private sealed record ConnectRequested(string Address, int Port, string? Password, LoginPlan Login,
+        string? ExpectedCoordinatorId, TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
     private sealed record DisconnectRequested(TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
@@ -106,12 +106,29 @@ public partial class CoordinatorSession
 
     private string? _expectedCoordinatorId;
 
-    public Task Connect(string address, int port, string? userIdentity, string? password,
-        string? accountPassword = null, string? sessionToken = null, string? expectedCoordinatorId = null) =>
-        PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, accountPassword,
-            sessionToken, expectedCoordinatorId, completion));
+    public Task Connect(string address, int port, string? password, LoginPlan login,
+        string? expectedCoordinatorId = null) =>
+        PostAndWait(completion => new ConnectRequested(address, port, password, login, expectedCoordinatorId,
+            completion));
 
-    public Task Disconnect() => PostAndWait(completion => new DisconnectRequested(completion));
+    public async Task Disconnect()
+    {
+        // A temporary device leaves no trace: it logs out before the connection goes
+        if (_loginPlan is DeviceLoginPlan { IsTemporary: true } && _phase == ConnectionPhase.Online)
+        {
+            try
+            {
+                await _gateway.LogoutAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception exception) when (exception is RequestFailedException or TimeoutException)
+            {
+                // The server ends it after a day without a login anyway
+            }
+            await ForgetDeviceKeyAsync();
+        }
+
+        await PostAndWait(completion => new DisconnectRequested(completion));
+    }
 
     public Task Suspend() => PostAndWait(completion => new VisibilityChanged(false, completion));
 
@@ -209,16 +226,14 @@ public partial class CoordinatorSession
         _isInFront = true;
         _pendingConnect = connect;
 
-        // A password kept with the saved identity stays remembered while it is still the one
-        _accountPassword = connect.AccountPassword;
-        _isAccountPasswordRemembered = connect.AccountPassword != null;
-        _accountPasswordToSave = connect.AccountPassword;
-        _sessionToken = connect.SessionToken;
+        _loginPlan = connect.Login;
+        _accountPassword = null;
+        _password = connect.Password;
         _expectedCoordinatorId = connect.ExpectedCoordinatorId;
         ConnectionStatus = CoordinatorState.Connecting;
         LogConnectStarted(LogName, connect.Address, connect.Port);
 
-        StartAttempt(connect.Address, connect.Port, connect.UserIdentity, connect.Password);
+        StartAttempt(connect.Address, connect.Port, connect.Password);
     }
 
     private async Task HandleDisconnectAsync(DisconnectRequested disconnect)
@@ -388,10 +403,10 @@ public partial class CoordinatorSession
     private void StartRestoreAttempt()
     {
         LogReconnectAttemptStarted(LogName, _attempt);
-        StartAttempt(_address!, _port, GetCurrentUserCredentials().UserIdentity, _password);
+        StartAttempt(_address!, _port, _password);
     }
 
-    private void StartAttempt(string address, int port, string? userIdentity, string? password)
+    private void StartAttempt(string address, int port, string? password)
     {
         _phase = ConnectionPhase.Establishing;
         _isLostDuringAttempt = false;
@@ -407,7 +422,7 @@ public partial class CoordinatorSession
         {
             try
             {
-                var state = await EstablishAsync(address, port, userIdentity, password, cancellationToken);
+                var state = await EstablishAsync(address, port, password, cancellationToken);
                 Post(new AttemptCompleted(attemptId, state, null));
             }
             catch (Exception exception)
@@ -474,7 +489,9 @@ public partial class CoordinatorSession
         // Retrying cannot fix credentials the server rejected, a login the user gave up, a ban, a server only the user can trust
         // or a protocol only an update of one side can match
         if (state is CoordinatorState.AuthenticationFailed or CoordinatorState.AuthenticationNeeded
-            or CoordinatorState.PasskeyRequired or CoordinatorState.Denied
+            or CoordinatorState.PasskeyRequired or CoordinatorState.Denied or CoordinatorState.DeviceEnded
+            or CoordinatorState.LoginFactorsMissing or CoordinatorState.DeviceLinkDeclined
+            or CoordinatorState.LoginRefused
             or CoordinatorState.OnlineLimitReached or CoordinatorState.UserLimitReached
             or CoordinatorState.CertificateNotTrusted or CoordinatorState.CoordinatorMismatch
             or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated)
@@ -644,8 +661,8 @@ public partial class CoordinatorSession
     /// Opens the transport, authenticates and loads the coordinator info. Leaves the transport
     /// closed unless it returns <see cref="CoordinatorState.Connected"/>.
     /// </summary>
-    private async Task<CoordinatorState> EstablishAsync(string address, int port, string? userIdentity,
-        string? password, CancellationToken cancellationToken)
+    private async Task<CoordinatorState> EstablishAsync(string address, int port, string? password,
+        CancellationToken cancellationToken)
     {
         var trusted = await _trustedCertificates.GetAsync(address, port);
         var connectResult = await _gateway.ConnectWebSocketAsync(address, port, trusted?.Fingerprint, cancellationToken);
@@ -684,23 +701,13 @@ public partial class CoordinatorSession
             cancellationToken.ThrowIfCancellationRequested();
 
             LogAuthStarted(LogName);
-            var response = await _gateway.AuthenticateAsync(password, userIdentity, _sessionToken)
-                .WaitAsync(cancellationToken);
-
-            if (response is { Result: AuthResult.SecondStageRequired, Challenge: { } challenge })
+            var isDeviceLogin = _loginPlan is DeviceLoginPlan;
+            var (response, failure) = await LogInAsync(address, port, password, cancellationToken);
+            if (failure is { } failed)
             {
-                if (await PassSecondStageAsync(address, port, challenge, cancellationToken) is not { } finished)
-                {
-                    await _gateway.DisconnectWebSocketAsync();
-                    return challenge.AcceptsCodes ? CoordinatorState.AuthenticationNeeded : CoordinatorState.PasskeyRequired;
-                }
-
-                // The identity stays the one the login started with
-                response = finished with { UserIdentity = userIdentity };
+                await _gateway.DisconnectWebSocketAsync();
+                return failed;
             }
-            // Let in at once: the user has no password, whatever was kept for them
-            else if (response.Result == AuthResult.Success)
-                KeepAccountPassword(null, false);
 
             if (response is not { Result: AuthResult.Success, User: not null })
             {
@@ -713,7 +720,7 @@ public partial class CoordinatorSession
             var coordinatorInfo = await _gateway.GetCoordinatorInfo().WaitAsync(cancellationToken)
                                   ?? throw new ApplicationException("Failed to update coordinator info");
 
-            var expectedId = _expectedCoordinatorId ?? (userIdentity != null ? trusted?.CoordinatorId : null);
+            var expectedId = _expectedCoordinatorId ?? (isDeviceLogin ? trusted?.CoordinatorId : null);
             if (expectedId != null && expectedId != coordinatorInfo.Id)
             {
                 CoordinatorMismatch = new CoordinatorMismatch(address, port, expectedId, coordinatorInfo.Id,
@@ -734,12 +741,30 @@ public partial class CoordinatorSession
             CoordinatorModel = coordinatorInfo;
             // Remembered like the users met later, so the account shows its avatar before the next login
             _usersDirectory.Upsert(response.User);
-            // A login with the session token is not told the identity: it stays the one the device has
-            SetCurrentUser(response.User, response.UserIdentity ?? userIdentity ?? string.Empty);
-            KeepSessionToken(response.SessionToken);
+            SetCurrentUser(response.User);
             LogConnected(LogName, CoordinatorModel.Id);
 
             return CoordinatorState.Connected;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.DeviceNotFound)
+        {
+            LogDeviceNotFound(LogName);
+            await _gateway.DisconnectWebSocketAsync();
+            OnDeviceEnded(null);
+            return CoordinatorState.DeviceEnded;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.LoginFactorsMissing)
+        {
+            await _gateway.DisconnectWebSocketAsync();
+            return CoordinatorState.LoginFactorsMissing;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed
+                                                           && _loginPlan is RecoveryLoginPlan or LoginCodeLoginPlan
+                                                               or UsernameLoginPlan)
+        {
+            LogAuthFailed(LogName);
+            await _gateway.DisconnectWebSocketAsync();
+            return CoordinatorState.LoginRefused;
         }
         catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed or ErrorCode.Banned
                                                            or ErrorCode.OnlineLimitReached or ErrorCode.UserLimitReached)

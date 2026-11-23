@@ -88,8 +88,8 @@
                                                    Text="{Binding SelectionLabel}"/>
                                         <!-- Show only the edges of the credential to distinguish saved identities. -->
                                         <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                                   Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
-                                                   IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                   Text="{l:Text connect.identity.needsLogin}"
+                                                   IsVisible="{Binding !CanLogIn}"/>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

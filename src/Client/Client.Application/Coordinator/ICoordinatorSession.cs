@@ -170,62 +170,57 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     event Action<int, TimeSpan>? ReconnectScheduled;
 
-    /// <param name="password">The password of the server.</param>
-    /// <param name="accountPassword">
-    /// The password of the user's account kept with the saved identity; it finishes the login without asking.
+    /// <param name="password">The password of the server, asked of every login while it has one.</param>
+    /// <param name="login">
+    /// How to log in. A plan that adds a device (registration, recovery phrase, username, login code, approval by
+    /// another device, the identity of the earlier protocol) leaves the session logging in as that device, which
+    /// <see cref="GetCurrentUserCredentials"/> then tells.
     /// </param>
-    /// <param name="sessionToken">
-    /// The token of the device's session kept with the saved identity; logs in without the second stage while the
-    /// session lasts, and the identity takes over once it has ended.
-    /// </param>
-    /// <param name="expectedCoordinatorId">The coordinator owning the saved identity; a different ID rejects the connection.</param>
-    Task Connect(string address, int port, string? userIdentity, string? password, string? accountPassword = null,
-        string? sessionToken = null, string? expectedCoordinatorId = null);
+    /// <param name="expectedCoordinatorId">The coordinator owning the saved account; a different ID rejects the connection.</param>
+    Task Connect(string address, int port, string? password, LoginPlan login, string? expectedCoordinatorId = null);
 
     /// <summary>
-    /// Asks the user for the account password or a one-time code when a login, a reconnect too, needs them.
-    /// Without it such a login ends with <see cref="CoordinatorState.AuthenticationNeeded"/>. Called on a thread
-    /// of the pool.
+    /// Asks the user for the account password or a one-time code when a login by username needs them. Without it
+    /// such a login ends with <see cref="CoordinatorState.AuthenticationNeeded"/>. Called on a thread of the pool.
     /// </summary>
     LoginPromptHandler? LoginPrompt { get; set; }
 
-    /// <summary>
-    /// The account password to keep with the saved identity: the one the user logs in with, when they asked
-    /// to remember it. Null when nothing is to be kept.
-    /// </summary>
-    string? AccountPasswordToSave { get; }
+    /// <summary>The device is temporary: its key lives in memory, and it logs out when disconnected.</summary>
+    bool IsTemporaryDevice { get; }
 
     /// <summary>
-    /// Raised when <see cref="AccountPasswordToSave"/> changes: a login with another password, the password
-    /// changed or removed in the profile. Raised on any thread.
+    /// The device is not one of the account any more: removed from another device or the control panel (with the
+    /// reason), or unknown to the server or without its key at a login (null). Its key is dropped, and the session
+    /// does not reconnect on its own. Raised on any thread.
     /// </summary>
-    event Action<string?>? AccountPasswordToSaveChanged;
+    event Action<Shared.Enums.Auth.DeviceEndReason?>? DeviceEnded;
 
-    /// <summary>
-    /// Raised with the token the next login is to use: the server gives a new one on every login, and takes it back
-    /// when the session ends (null then). Raised on any thread, once the current user is known.
-    /// </summary>
-    event Action<string?>? SessionTokenChanged;
+    /// <summary>A device was added to the account, from here or elsewhere. Raised on any thread.</summary>
+    event Action<AccountDevice>? DeviceAdded;
 
-    /// <summary>Raised with the new identity of the current user, after <see cref="ResetUserIdentity"/>.</summary>
-    event Action<string>? UserIdentityChanged;
+    /// <summary>The code a new device shows while it waits for a device of the account to approve it.</summary>
+    event Action<DeviceLinkCode>? DeviceLinkCodeReceived;
 
-    /// <summary>
-    /// The server ended the session of this device and closed the connection; the session does not reconnect on its
-    /// own. Raised on any thread.
-    /// </summary>
-    event Action<UserSessionEndReason>? SessionEnded;
+    /// <summary>The phrase of an account this session just registered or moved over; null once taken.</summary>
+    string? TakeNewRecoveryPhrase();
 
-    /// <summary>The devices the current user is logged in from, the latest used first.</summary>
-    Task<RequestResult<IReadOnlyList<AccountSession>>> GetAccountSessions();
+    /// <summary>The devices of the account, the latest used first.</summary>
+    Task<RequestResult<IReadOnlyList<AccountDevice>>> GetAccountDevices();
 
-    /// <summary>Ends a session of another device, or all of them when <paramref name="sessionId"/> is null.</summary>
-    Task<RequestResult<IReadOnlyList<AccountSession>>> EndAccountSession(Guid? sessionId);
+    /// <summary>Removes another device of the account, or all of them when <paramref name="deviceId"/> is null.</summary>
+    Task<RequestResult<IReadOnlyList<AccountDevice>>> RevokeAccountDevice(Guid? deviceId);
 
-    /// <summary>
-    /// Gives the current user a new identity, which is kept from now on, and ends the sessions of the other devices.
-    /// </summary>
-    Task<RequestResult> ResetUserIdentity(AccountProof proof);
+    /// <summary>Removes this device from the account and disconnects; the saved account then needs a login.</summary>
+    Task<RequestResult> Logout();
+
+    /// <summary>What the new device that shows the code tells about itself.</summary>
+    Task<RequestResult<DeviceLinkInfo>> GetDeviceLinkInfo(string code);
+
+    /// <summary>Adds the new device that shows the code to the account, or turns it away.</summary>
+    Task<RequestResult> ApproveDeviceLink(string code, bool approve);
+
+    /// <summary>Replaces the recovery phrase with a new one, answered; the old one stops working.</summary>
+    Task<RequestResult<string>> ResetRecoveryPhrase(AccountProof proof);
 
     /// <summary>What the current user logs in with.</summary>
     Task<RequestResult<AccountSecurity>> GetAccountSecurity();

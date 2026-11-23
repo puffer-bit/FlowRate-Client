@@ -137,7 +137,7 @@ public partial class CoordinatorSession
         _usersDirectory.Upsert(user);
 
         if (user.Id == _currentUser?.Id)
-            SetCurrentUser(user, _currentUserCredentials!.UserIdentity);
+            SetCurrentUser(user);
 
         UserUpdated?.Invoke(user);
     }
@@ -148,15 +148,19 @@ public partial class CoordinatorSession
         UserDeleted?.Invoke(userId);
     }
 
-    private void SetCurrentUser(UserModel user, string userIdentity)
+    private void SetCurrentUser(UserModel user)
     {
         _currentUser = user;
+        var device = _loginPlan as DeviceLoginPlan;
         _currentUserCredentials = new SavedUserModel
         {
             Id = user.Id,
-            UserIdentity = userIdentity,
             Username = user.Username,
-            SessionToken = _sessionToken
+            CoordinatorId = CoordinatorModel?.Id ?? _expectedCoordinatorId ?? string.Empty,
+            Password = _password,
+            DeviceId = device?.DeviceId,
+            DeviceKey = device?.KeyName,
+            BackupKey = _backupKey
         };
 
         // The roles of the user may have changed with it

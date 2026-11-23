@@ -26,7 +26,6 @@ public sealed class LoginPromptVM : ReactiveObject
     {
         IsPasswordAsked = prompt.AsksPassword;
         IsCodeAsked = prompt.AsksTwoFactorCode;
-        RememberPassword = prompt.IsPasswordRemembered;
         Text = Strings.Format(IsPasswordAsked
             ? IsCodeAsked ? "loginPrompt.text.both" : "loginPrompt.text.password"
             : "loginPrompt.text.code", ("server", prompt.CoordinatorAddress));
@@ -62,11 +61,6 @@ public sealed class LoginPromptVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool RememberPassword
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
 
     public string Code
     {
@@ -120,5 +114,5 @@ public sealed class LoginPromptVM : ReactiveObject
     }
 
     private LoginAnswer? Confirm() => new(IsPasswordAsked ? Password : null,
-        IsCodeAsked ? NormalizeCode(Code) : null, IsPasswordAsked && RememberPassword);
+        IsCodeAsked ? NormalizeCode(Code) : null);
 }

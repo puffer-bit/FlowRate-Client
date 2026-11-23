@@ -14,25 +14,22 @@ internal static class AccountSecurityMapper
         dto.Passkeys.Select(passkey => new AccountPasskey(passkey.Id, passkey.Label, passkey.CreatedAt,
             passkey.LastUsedAt)).ToList());
 
-    public static AccountSession ToModel(this UserSessionDTO dto) => new(dto.Id, dto.Device.Name, dto.Device.Platform,
+    public static AccountDevice ToModel(this AccountDeviceDTO dto) => new(dto.Id, dto.Device.Name, dto.Device.Platform,
         dto.Device.AppVersion, dto.CreatedAt, dto.LastUsedAt, dto.ExpiresAt, dto.LastAddress, dto.IsCurrent,
-        dto.IsOnline);
+        dto.IsOnline, dto.IsTemporary, dto.AddedBy);
 
     public static UserSecurityProofDTO ToDto(this AccountProof proof) => new(
         string.IsNullOrEmpty(proof.Password) ? null : proof.Password,
         string.IsNullOrEmpty(proof.TwoFactorCode) ? null : proof.TwoFactorCode);
 
-    /// <summary>
-    /// Reads what the user can prove from the message of a first login stage: names of
-    /// <see cref="SecondStageAuthType"/>, comma separated.
-    /// </summary>
-    public static LoginChallenge ToLoginChallenge(IReadOnlyCollection<SecondStageAuthType>? secondStages,
+    /// <summary>What the user can prove in the second stage of a login by username.</summary>
+    public static LoginChallenge ToLoginChallenge(IReadOnlyCollection<LoginFactor>? factors,
         FIDO2LoginOptionsDTO? passkeyOptions)
     {
-        var methods = secondStages ?? [];
+        var methods = factors ?? [];
 
-        return new LoginChallenge(methods.Contains(SecondStageAuthType.Password),
-            methods.Contains(SecondStageAuthType.TwoFactor),
-            methods.Contains(SecondStageAuthType.FIDO2) || passkeyOptions != null);
+        return new LoginChallenge(methods.Contains(LoginFactor.Password),
+            methods.Contains(LoginFactor.TwoFactor),
+            methods.Contains(LoginFactor.Passkey) || passkeyOptions != null);
     }
 }

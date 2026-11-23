@@ -10,16 +10,13 @@
         xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
         xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
         xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="440"
         x:Class="Client.Views.Connections.ConnectView"
         x:DataType="connectVm:ConnectWindowVM"
         Background="{DynamicResource GeneralBrush}"
         MaxWidth="420"
         HorizontalAlignment="Stretch">
-
-    <UserControl.Resources>
-        <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
-    </UserControl.Resources>
 
     <dialogs:DialogLayout>
 
@@ -89,46 +86,103 @@
                          Classes.invalid="{Binding PasswordError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 <TextBlock Classes="fieldError" Text="{Binding PasswordError}"
                            IsVisible="{Binding PasswordError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <CheckBox IsChecked="{Binding RememberServerPassword}" Content="{l:Text connect.rememberServerPassword}"/>
             </StackPanel>
 
             <!-- Identity -->
             <StackPanel Spacing="6">
                 <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.identity}"/>
-                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
-                    <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
-                              ItemsSource="{Binding Identities}"
-                              SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="models:SavedUserModel">
-                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                                    <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
-                                                        UserName="{Binding Username}"
-                                                        Coordinator="{Binding CoordinatorId}"
-                                                        AvatarUrl="{Binding AvatarUrl}"/>
-                                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                                   Text="{Binding SelectionLabel}"/>
-                                        <!-- The identity is a credential: only its edges are shown, to tell accounts apart.
-                                             The entry that registers a new user has none -->
-                                        <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                                   Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
-                                                   IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <Button Grid.Column="1" Width="44" MinHeight="44"
-                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                            IsEnabled="{Binding IsIdentityQrAvailable}"
-                            ToolTip.Tip="{l:Text settings.accounting.exportIdentityQr}"
-                            AutomationProperties.Name="{l:Text settings.accounting.exportIdentityQr}">
-                        <Image Width="24" Height="24" Source="{StaticResource QrCodeIcon}"/>
-                    </Button>
-                </Grid>
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Identities}"
+                          SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:SavedUserModel">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                <!-- The entries that are not accounts show an icon in place of the avatar -->
+                                <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                                    UserName="{Binding Username}"
+                                                    Coordinator="{Binding CoordinatorId}"
+                                                    AvatarUrl="{Binding AvatarUrl}"
+                                                    IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                <Border Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                        IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Image Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Source="{Binding EntryIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                               Text="{Binding SelectionLabel}"/>
+                                    <!-- A saved account without a device here has to log in again -->
+                                    <TextBlock Classes="hint" TextWrapping="NoWrap" Text="{l:Text connect.identity.needsLogin}">
+                                        <TextBlock.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="CoordinatorId" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                                <Binding Path="!CanLogIn"/>
+                                            </MultiBinding>
+                                        </TextBlock.IsVisible>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.identity.newHint}"
+                           IsVisible="{Binding IsRegistering}"/>
+            </StackPanel>
+
+            <!-- An account this device does not know yet -->
+            <StackPanel Spacing="10" IsVisible="{Binding IsLoginFormVisible}">
+                <WrapPanel Orientation="Horizontal">
+                    <RadioButton GroupName="LoginMethod" Margin="0,0,12,4" IsChecked="{Binding IsUsernameLogin}"
+                                 Content="{l:Text connect.login.byUsername}"/>
+                    <RadioButton GroupName="LoginMethod" Margin="0,0,12,4" IsChecked="{Binding IsRecoveryLogin}"
+                                 Content="{l:Text connect.login.byPhrase}"/>
+                    <RadioButton GroupName="LoginMethod" Margin="0,0,12,4" IsChecked="{Binding IsDeviceLinkLogin}"
+                                 Content="{l:Text connect.login.byDevice}"/>
+                    <RadioButton GroupName="LoginMethod" Margin="0,0,12,4" IsChecked="{Binding IsCodeLogin}"
+                                 Content="{l:Text connect.login.byCode}"/>
+                </WrapPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsUsernameLogin}">
+                    <TextBox Text="{Binding LoginUsername}" PlaceholderText="{l:Text connect.login.usernamePlaceholder}"
+                             MaxLength="32"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.usernameHint}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsRecoveryLogin}">
+                    <TextBox Text="{Binding RecoveryPhraseText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                             PlaceholderText="{l:Text connect.login.phrasePlaceholder}"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.phraseHint}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsCodeLogin}">
+                    <TextBox Text="{Binding LoginCodeText}" PlaceholderText="XXXX-XXXX-XXXX" MaxLength="32"/>
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.codeHint}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6" IsVisible="{Binding IsDeviceLinkLogin}">
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.deviceHint}"/>
+                </StackPanel>
+
+                <CheckBox IsChecked="{Binding IsTemporaryDevice}" Content="{l:Text connect.login.temporary}"/>
             </StackPanel>
 
         </StackPanel>
+
+        <!-- The code this device shows while another device of the account is to approve it -->
+        <Border Grid.Row="2" Background="{DynamicResource GeneralBrush}" IsVisible="{Binding IsDeviceLinkCodeShown}">
+            <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="12" HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <TextBlock Classes="fieldLabel" HorizontalAlignment="Center" Text="{l:Text connect.link.title}"/>
+                <images:QrCode Width="200" Height="200" HorizontalAlignment="Center" Text="{Binding DeviceLinkCode.QrText}"/>
+                <SelectableTextBlock HorizontalAlignment="Center" FontSize="28" FontWeight="SemiBold"
+                                     Text="{Binding DeviceLinkCode.Code}"/>
+                <TextBlock Classes="hint" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="340"
+                           Text="{l:Text connect.link.hint}"/>
+                <Button HorizontalAlignment="Center" Command="{Binding CancelDeviceLinkCommand}"
+                        Content="{l:Text common.cancel}"/>
+            </StackPanel>
+        </Border>
 
         <Border Grid.Row="3" Classes="dialogSeparator"/>
 

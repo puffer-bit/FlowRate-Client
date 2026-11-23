@@ -31,9 +31,19 @@ public sealed record ServerRestartEvent(ServerRestartReason Reason, DateTimeOffs
 public sealed record ServerRestartCancelledEvent : CoordinatorEvent;
 
 /// <summary>
-/// The server ended the session of this device, from another device or the control panel, and closes the connection.
+/// The server removed this device from the account, from another device or the control panel, and closes the
+/// connection.
 /// </summary>
-public sealed record SessionEndedEvent(UserSessionEndReason Reason) : CoordinatorEvent;
+public sealed record DeviceEndedEvent(Shared.Enums.Auth.DeviceEndReason Reason) : CoordinatorEvent;
+
+/// <summary>A device was added to the account of the current user, by them or by someone who should not have.</summary>
+public sealed record DeviceAddedEvent(AccountDevice Device) : CoordinatorEvent;
+
+/// <summary>A device of the account approved this new device, which is logged in now.</summary>
+public sealed record DeviceLinkCompletedEvent(UserModel User, Guid DeviceId) : CoordinatorEvent;
+
+/// <summary>A device of the account turned this new device away.</summary>
+public sealed record DeviceLinkDeclinedEvent : CoordinatorEvent;
 
 /// <summary>
 /// The settings of the coordinator were changed and applied, from the control panel or by a user.

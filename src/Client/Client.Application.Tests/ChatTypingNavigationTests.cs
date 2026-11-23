@@ -33,7 +33,7 @@ public sealed class ChatTypingNavigationTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
 
         fake.Raise(new ChatUserTypingEvent(7, 9, true));
         fake.Raise(new ChatUserTypingEvent(8, 10, true));
@@ -66,7 +66,7 @@ public sealed class ChatTypingNavigationTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         fake.Raise(new ChatUserTypingEvent(7, 9, true));
         Assert.Single(session.GetChatTypingUsers(7));
 

@@ -570,8 +570,8 @@
                                                    Text="{Binding SelectionLabel}"/>
                                         <!-- Show only the edges of the credential to distinguish saved identities. -->
                                         <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                                   Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"
-                                                   IsVisible="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                   Text="{l:Text connect.identity.needsLogin}"
+                                                   IsVisible="{Binding !CanLogIn}"/>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>
@@ -875,11 +875,11 @@
                                                 <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center"
                                                        Source="{StaticResource UserIcon}"/>
                                                 <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Username}"/>
-                                                <!-- The identity is a credential: only its edges are shown, to tell accounts apart -->
+                                                <!-- An account without a device here has to log in again -->
                                                 <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11"
                                                            Foreground="{DynamicResource SecondaryTextBrush}"
                                                            TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding UserIdentity, Converter={StaticResource MaskedIdentityConverter}}"/>
+                                                           Text="{l:Text connect.identity.needsLogin}" IsVisible="{Binding !CanLogIn}"/>
                                             <Button Grid.Column="3" Classes="borderless" VerticalAlignment="Center"
                                                     ToolTip.Tip="{l:Text settings.accounting.identityActions}"
                                                     AutomationProperties.Name="{l:Text settings.accounting.identityActions}">
@@ -892,18 +892,6 @@
                                                                                   Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
                                                                                   CommandParameter="{Binding}"
                                                                                   menus:FlyoutMenu.CloseOnClick="True"/>
-                                                            <menus:MenuItemButton Icon="{StaticResource QrCodeIcon}"
-                                                                                  Content="{l:Text settings.accounting.exportIdentityQr}"
-                                                                                  IsEnabled="{Binding UserIdentity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                                                <menus:MenuItemButton.Flyout>
-                                                                    <Flyout Placement="RightEdgeAlignedTop">
-                                                                        <StackPanel Spacing="8" Margin="8" MaxWidth="260">
-                                                                            <TextBlock FontWeight="SemiBold" Text="{Binding Username}" TextTrimming="CharacterEllipsis"/>
-                                                                            <images:QrCode Width="240" Height="240" Text="{Binding UserIdentity}"/>
-                                                                        </StackPanel>
-                                                                    </Flyout>
-                                                                </menus:MenuItemButton.Flyout>
-                                                            </menus:MenuItemButton>
                                                         </StackPanel>
                                                     </Flyout>
                                                 </Button.Flyout>

@@ -9,6 +9,10 @@
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
+        <Style Selector="TextBlock.sectionTitle">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
         <!-- Buttons and fields tall enough for a finger -->
         <Style Selector="StackPanel.actions > Button">
             <Setter Property="MinHeight" Value="48"/>
@@ -70,7 +74,7 @@
                 </StackPanel>
 
                 <!-- What the user has -->
-                <StackPanel Spacing="20">
+                <StackPanel Spacing="28">
                     <StackPanel.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                             <Binding Path="IsOverview"/>
@@ -81,58 +85,7 @@
                     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.hint}"/>
 
                     <StackPanel Spacing="6">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.password}"/>
-                        <TextBlock TextWrapping="Wrap" Text="{Binding PasswordState}"/>
-                        <StackPanel Classes="actions" Spacing="10" Margin="0,4,0,0">
-                            <Button Command="{Binding SetPasswordCommand}">
-                                <Panel>
-                                    <TextBlock Text="{l:Text accountSecurity.password.change}" IsVisible="{Binding HasPassword}"/>
-                                    <TextBlock Text="{l:Text accountSecurity.password.add}" IsVisible="{Binding !HasPassword}"/>
-                                </Panel>
-                            </Button>
-                            <Button Command="{Binding RemovePasswordCommand}" IsVisible="{Binding HasPassword}">
-                                <TextBlock Text="{l:Text accountSecurity.password.remove}"/>
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <StackPanel Spacing="6">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes}"/>
-                        <TextBlock TextWrapping="Wrap" Text="{Binding CodesState}"/>
-                        <StackPanel Classes="actions" Margin="0,4,0,0">
-                            <Button Command="{Binding DisableCodesCommand}" IsVisible="{Binding IsTwoFactorEnabled}">
-                                <TextBlock Text="{l:Text accountSecurity.codes.disable}"/>
-                            </Button>
-                            <Button Command="{Binding EnableCodesCommand}" IsVisible="{Binding !IsTwoFactorEnabled}">
-                                <TextBlock Text="{l:Text accountSecurity.codes.enable}"/>
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <StackPanel Spacing="6">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.passkeys}"/>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding PasskeysState}"/>
-                        <ItemsControl ItemsSource="{Binding Passkeys}" IsVisible="{Binding HasPasskeys}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="profileVm:AccountPasskeyVM">
-                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,6">
-                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                            <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Label}"/>
-                                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
-                                        </StackPanel>
-                                        <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
-                                                Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).DeletePasskeyCommand}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Text="{l:Text common.delete}"/>
-                                        </Button>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <StackPanel Spacing="6">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.sessions}"/>
+                        <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.sessions}"/>
                         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.sessions.hint}"/>
                         <ItemsControl ItemsSource="{Binding Sessions}">
                             <ItemsControl.ItemTemplate>
@@ -141,6 +94,7 @@
                                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                                             <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
                                             <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding AddedBy}"/>
                                         </StackPanel>
                                         <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
                                                 IsVisible="{Binding IsOther}"
@@ -152,21 +106,102 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <StackPanel Classes="actions" Margin="0,4,0,0" IsVisible="{Binding HasOtherSessions}">
-                            <Button Command="{Binding EndOtherSessionsCommand}">
+                        <StackPanel Classes="actions" Margin="0,4,0,0">
+                            <Button Command="{Binding LinkDeviceCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.link.add}"/>
+                            </Button>
+                            <Button Command="{Binding EndOtherSessionsCommand}" IsVisible="{Binding HasOtherSessions}">
                                 <TextBlock Text="{l:Text accountSecurity.sessions.endOthers}"/>
                             </Button>
                         </StackPanel>
                     </StackPanel>
 
+                    <StackPanel Spacing="14">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.signIn}"/>
+                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.signIn.hint}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.password}"/>
+                            <TextBlock TextWrapping="Wrap" Text="{Binding PasswordState}"/>
+                            <StackPanel Classes="actions" Spacing="10" Margin="0,4,0,0">
+                                <Button Command="{Binding SetPasswordCommand}">
+                                    <Panel>
+                                        <TextBlock Text="{l:Text accountSecurity.password.change}" IsVisible="{Binding HasPassword}"/>
+                                        <TextBlock Text="{l:Text accountSecurity.password.add}" IsVisible="{Binding !HasPassword}"/>
+                                    </Panel>
+                                </Button>
+                                <Button Command="{Binding RemovePasswordCommand}" IsVisible="{Binding HasPassword}">
+                                    <TextBlock Text="{l:Text accountSecurity.password.remove}"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes}"/>
+                            <TextBlock TextWrapping="Wrap" Text="{Binding CodesState}"/>
+                            <StackPanel Classes="actions" Margin="0,4,0,0">
+                                <Button Command="{Binding DisableCodesCommand}" IsVisible="{Binding IsTwoFactorEnabled}">
+                                    <TextBlock Text="{l:Text accountSecurity.codes.disable}"/>
+                                </Button>
+                                <Button Command="{Binding EnableCodesCommand}" IsVisible="{Binding !IsTwoFactorEnabled}">
+                                    <TextBlock Text="{l:Text accountSecurity.codes.enable}"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.passkeys}"/>
+                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding PasskeysState}"/>
+                            <ItemsControl ItemsSource="{Binding Passkeys}" IsVisible="{Binding HasPasskeys}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="profileVm:AccountPasskeyVM">
+                                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,6">
+                                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Label}"/>
+                                                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
+                                                    Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).DeletePasskeyCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{l:Text common.delete}"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+
                     <StackPanel Spacing="6">
-                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.identity}"/>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.identity.hint}"/>
+                        <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.phrase}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.phrase.hint}"/>
                         <StackPanel Classes="actions" Margin="0,4,0,0">
-                            <Button Command="{Binding ResetIdentityCommand}">
-                                <TextBlock Text="{l:Text accountSecurity.identity.resetConfirm}"/>
+                            <Button Command="{Binding ShowPhraseCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.phrase.show}"/>
+                            </Button>
+                            <Button Command="{Binding ResetPhraseCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.phrase.resetConfirm}"/>
                             </Button>
                         </StackPanel>
+                        <Border Padding="12" CornerRadius="8" Background="{DynamicResource DarkBackgroundBrush}"
+                                IsVisible="{Binding IsRecoveryPhraseShown}">
+                            <StackPanel Spacing="8">
+                                <TextBlock TextWrapping="Wrap" Text="{l:Text accountSecurity.phrase.saveHint}"/>
+                                <SelectableTextBlock FontFamily="monospace" FontSize="13" Text="{Binding RecoveryPhraseText}"/>
+                                <CheckBox IsChecked="{Binding KeepPhraseOnDevice}" Content="{l:Text recoveryPhrase.keepOnDevice}"/>
+                                <Button Classes="primary" MinHeight="44" Command="{Binding ConfirmPhraseSavedCommand}">
+                                    <TextBlock Text="{l:Text accountSecurity.phrase.saved}"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Classes="actions">
+                        <Button Command="{Binding LogoutCommand}">
+                            <TextBlock Text="{l:Text accountSecurity.logout.title}"/>
+                        </Button>
                     </StackPanel>
 
                     <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
@@ -190,6 +225,17 @@
                             <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.proof.code}"/>
                             <TextBox Text="{Binding ProofCode}" MaxLength="12" PlaceholderText="000000"
                                      TextInputOptions.ContentType="Digits"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" IsVisible="{Binding IsLinkCodeAsked}" IsEnabled="{Binding !IsBusy}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.link.code}"/>
+                        <TextBox Text="{Binding LinkCode}" MaxLength="40" PlaceholderText="XXXX-XXXX" MinHeight="44"/>
+                        <StackPanel Spacing="6" IsVisible="{Binding IsLinkInfoShown}">
+                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding LinkInfoText}"/>
+                            <Button MinHeight="44" Command="{Binding DeclineLinkCommand}">
+                                <TextBlock Text="{l:Text accountSecurity.link.decline}"/>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
 

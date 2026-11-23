@@ -11,7 +11,8 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
 
     // The avatar is what the remembered users know about the same user
     private const string SelectIdentities = """
-        SELECT CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword, SessionToken,
+        SELECT CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword, SessionToken, DeviceId,
+            DeviceKey, IsRecoveryPhraseSaved,
             (SELECT AvatarUrl FROM RememberedUsers
              WHERE RememberedUsers.CoordinatorInstanceId = SavedIdentities.CoordinatorId
                AND RememberedUsers.UserId = SavedIdentities.UserId) AS AvatarUrl
@@ -77,48 +78,65 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
     {
         await using var connection = await _database.OpenAsync();
 
+        // The server password is kept in the secret vault, never here. An account with a device has moved over: what
+        // the earlier protocol logged in with goes
+        var hasDevice = model.DeviceId != null;
         await connection.ExecuteAsync("""
             INSERT INTO SavedIdentities (CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword,
-                SessionToken)
-            VALUES (@CoordinatorId, @Id, @UserIdentity, @Username, @Password, @AccountPassword, @SessionToken)
+                SessionToken, DeviceId, DeviceKey, IsRecoveryPhraseSaved)
+            VALUES (@CoordinatorId, @Id, @UserIdentity, @Username, NULL, @AccountPassword, @SessionToken, @DeviceId,
+                @DeviceKey, @IsRecoveryPhraseSaved)
             ON CONFLICT (CoordinatorId, UserId) DO UPDATE SET
                 UserIdentity = excluded.UserIdentity,
                 Username = excluded.Username,
-                Password = excluded.Password,
+                Password = NULL,
                 AccountPassword = excluded.AccountPassword,
-                SessionToken = excluded.SessionToken
-            """, new { model.CoordinatorId, model.Id, model.UserIdentity, model.Username, model.Password,
-                model.AccountPassword, model.SessionToken });
+                SessionToken = excluded.SessionToken,
+                DeviceId = excluded.DeviceId,
+                DeviceKey = excluded.DeviceKey,
+                IsRecoveryPhraseSaved = excluded.IsRecoveryPhraseSaved
+            """, new
+        {
+            model.CoordinatorId,
+            model.Id,
+            UserIdentity = hasDevice ? string.Empty : model.UserIdentity,
+            model.Username,
+            AccountPassword = hasDevice ? null : model.AccountPassword,
+            SessionToken = hasDevice ? null : model.SessionToken,
+            DeviceId = model.DeviceId?.ToString(),
+            model.DeviceKey,
+            model.IsRecoveryPhraseSaved
+        });
     }
 
-    public async Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword)
+    public async Task SetDeviceAsync(string coordinatorId, int userId, Guid? deviceId, string? deviceKey)
     {
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            UPDATE SavedIdentities SET AccountPassword = @accountPassword
+            UPDATE SavedIdentities SET DeviceId = @deviceId, DeviceKey = @deviceKey
             WHERE CoordinatorId = @coordinatorId AND UserId = @userId
-            """, new { coordinatorId, userId, accountPassword });
+            """, new { coordinatorId, userId, deviceId = deviceId?.ToString(), deviceKey });
     }
 
-    public async Task SetSessionTokenAsync(string coordinatorId, int userId, string? sessionToken)
+    public async Task SetRecoveryPhraseSavedAsync(string coordinatorId, int userId, bool isSaved)
     {
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            UPDATE SavedIdentities SET SessionToken = @sessionToken
+            UPDATE SavedIdentities SET IsRecoveryPhraseSaved = @isSaved
             WHERE CoordinatorId = @coordinatorId AND UserId = @userId
-            """, new { coordinatorId, userId, sessionToken });
+            """, new { coordinatorId, userId, isSaved });
     }
 
-    public async Task SetUserIdentityAsync(string coordinatorId, int userId, string userIdentity)
+    public async Task ClearServerPasswordAsync(string coordinatorId, int userId)
     {
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            UPDATE SavedIdentities SET UserIdentity = @userIdentity
+            UPDATE SavedIdentities SET Password = NULL
             WHERE CoordinatorId = @coordinatorId AND UserId = @userId
-            """, new { coordinatorId, userId, userIdentity });
+            """, new { coordinatorId, userId });
     }
 
     public async Task RenameUserAsync(string coordinatorId, int userId, string username)
@@ -224,8 +242,10 @@ internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, s
     };
 }
 
+/// <param name="Password">The server password the earlier client kept here; moved to the secret vault at start.</param>
 internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string UserIdentity, string Username,
-    string? Password, string? AccountPassword, string? SessionToken, string? AvatarUrl)
+    string? Password, string? AccountPassword, string? SessionToken, string? DeviceId, string? DeviceKey,
+    bool IsRecoveryPhraseSaved, string? AvatarUrl)
 {
     public SavedUserModel ToModel() => new()
     {
@@ -236,6 +256,9 @@ internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string
         Password = Password,
         AccountPassword = AccountPassword,
         SessionToken = SessionToken,
+        DeviceId = Guid.TryParse(DeviceId, out var deviceId) ? deviceId : null,
+        DeviceKey = DeviceKey,
+        IsRecoveryPhraseSaved = IsRecoveryPhraseSaved,
         AvatarUrl = AvatarUrl
     };
 }

@@ -37,5 +37,20 @@ public enum CoordinatorState
     PasskeyRequired = 20,
 
     OnlineLimitReached = 21,
-    UserLimitReached = 22
+    UserLimitReached = 22,
+
+    /// <summary>
+    /// The device is not one of the account any more: removed from another device or the control panel, expired, or
+    /// its key is gone. The user logs in again another way.
+    /// </summary>
+    DeviceEnded = 23,
+
+    /// <summary>The account has no password, one-time codes or passkeys, so it cannot be logged in to by username.</summary>
+    LoginFactorsMissing = 24,
+
+    /// <summary>The device of the account that was to add this one turned it away, or the code expired.</summary>
+    DeviceLinkDeclined = 25,
+
+    /// <summary>The recovery phrase, the login code or the username does not hold.</summary>
+    LoginRefused = 26
 }

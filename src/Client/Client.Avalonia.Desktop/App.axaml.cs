@@ -158,7 +158,11 @@ public partial class App : global::Avalonia.Application
         if (OperatingSystem.IsLinux())
             services.AddSingleton<ISecureStorage, SecretServiceStorage>();
         else if (OperatingSystem.IsWindows())
+        {
             services.AddSingleton<ISecureStorage, DpapiStorage>();
+            // Device keys in the TPM where there is one
+            services.AddSingleton<IDeviceKeyStore, TpmDeviceKeyStore>();
+        }
         else if (OperatingSystem.IsMacOS())
             services.AddSingleton<ISecureStorage, KeychainStorage>();
 

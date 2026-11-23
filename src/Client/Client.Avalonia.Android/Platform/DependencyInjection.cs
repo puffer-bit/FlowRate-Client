@@ -32,6 +32,10 @@ internal static class DependencyInjection
         services.AddSingleton<ICameraDeviceProvider, AndroidCameraDeviceProvider>();
         services.AddSingleton<IPushTokenProvider, FirebasePushTokenProvider>();
 
+        // Secrets and device keys stay in the Android Keystore
+        services.AddSingleton<ISecureStorage, Security.AndroidKeystoreSecureStorage>();
+        services.AddSingleton<IDeviceKeyStore, Security.AndroidKeystoreDeviceKeyStore>();
+
         // Replaces the one of the runtime, which is not told about the networks of the device here
         services.AddSingleton<IConnectivityMonitor, AndroidConnectivityMonitor>();
 

@@ -57,7 +57,7 @@ public class FakeGateway : DispatchProxy
     public List<Shared.Models.DataTransferObjects.BanDTO> Bans { get; } = [];
     public List<Guid> RevokedBans { get; } = [];
 
-    /// <summary>What the server asks for after the identity; null lets the user in at once.</summary>
+    /// <summary>What a login by username, or by an identity, asks for; null lets the user in at once.</summary>
     public LoginChallenge? Challenge { get; set; }
 
     /// <summary>The account password the second login stage takes.</summary>
@@ -69,13 +69,19 @@ public class FakeGateway : DispatchProxy
     /// <summary>The answers to the second login stage, as they came.</summary>
     public List<(string? Password, string? Code)> SecondStageAnswers { get; } = [];
 
-    /// <summary>The identity and session token of every login.</summary>
-    public List<(string? Identity, string? SessionToken)> SentLogins { get; } = [];
+    /// <summary>The method of every login.</summary>
+    public List<Shared.Models.DataTransferObjects.LoginMethodDTO> SentLogins { get; } = [];
 
-    /// <summary>The token of the session the server knows: the last one it gave out, or none.</summary>
+    /// <summary>The token of the earlier protocol the server still knows.</summary>
     public string? SessionToken { get; set; }
 
-    private int _issuedTokens;
+    /// <summary>The devices the server knows, with their public keys.</summary>
+    public Dictionary<Guid, byte[]> Devices { get; } = [];
+
+    /// <summary>The nonce of the last challenge given out.</summary>
+    public string Nonce { get; private set; } = "nonce";
+
+    private int _challenges;
 
     /// <summary>The roles of the user who logs in.</summary>
     public IReadOnlyList<int> UserRoleIds { get; set; } = [];
@@ -171,21 +177,59 @@ public class FakeGateway : DispatchProxy
     private UserModel LoggedInUser() =>
         new() { Id = 1, CoordinatorInstanceId = ActiveCoordinatorId, Username = "alice", RoleIds = UserRoleIds };
 
-    private AuthenticationResult Authenticate(string? userIdentity, string? sessionToken)
+    // The device being added by a login that waits for its second stage
+    private byte[]? _pendingDevice;
+
+    private AuthenticationResult Login(Shared.Models.DataTransferObjects.LoginMethodDTO method)
     {
-        SentLogins.Add((userIdentity, sessionToken));
+        SentLogins.Add(method);
 
         if (LoginError is { } loginError)
             throw new RequestFailedException(loginError, LoginErrorDetails);
-        // The token of the session lets the device in without the second stage, and is not told the identity
-        if (sessionToken != null && sessionToken == SessionToken)
-            return new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken());
-        if (Challenge != null)
-            return new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge);
-        return new AuthenticationResult(AuthResult.Success, LoggedInUser(), "#identity", SessionToken: IssueToken());
+
+        switch (method)
+        {
+            case Shared.Models.DataTransferObjects.DeviceLoginDTO device:
+                if (!Devices.TryGetValue(device.DeviceId, out var publicKey))
+                    throw new RequestFailedException(ErrorCode.DeviceNotFound, null);
+                var payload = Shared.Auth.LoginSignature.Payload(Shared.Auth.LoginSignature.DevicePurpose,
+                    ActiveCoordinatorId, Nonce);
+                return Shared.Auth.LoginSignature.Verify(publicKey, payload, device.Signature)
+                    ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), device.DeviceId)
+                    : throw new RequestFailedException(ErrorCode.AuthFailed, null);
+            case Shared.Models.DataTransferObjects.LegacyLoginDTO legacy
+                when legacy.SessionToken != null && legacy.SessionToken == SessionToken:
+                return AddDevice(legacy.NewDevice.PublicKey);
+            case Shared.Models.DataTransferObjects.UsernameLoginDTO username when Challenge != null:
+                _pendingDevice = Shared.Auth.LoginSignature.TryDecode(username.NewDevice.PublicKey);
+                return new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge);
+            case Shared.Models.DataTransferObjects.LegacyLoginDTO legacy when Challenge != null:
+                _pendingDevice = Shared.Auth.LoginSignature.TryDecode(legacy.NewDevice.PublicKey);
+                return new AuthenticationResult(AuthResult.SecondStageRequired, null, null, Challenge);
+            case Shared.Models.DataTransferObjects.RegisterLoginDTO register:
+                return AddDevice(register.NewDevice.PublicKey);
+            case Shared.Models.DataTransferObjects.UsernameLoginDTO username:
+                return AddDevice(username.NewDevice.PublicKey);
+            case Shared.Models.DataTransferObjects.LegacyLoginDTO legacy:
+                return AddDevice(legacy.NewDevice.PublicKey);
+            case Shared.Models.DataTransferObjects.LoginCodeLoginDTO code:
+                return AddDevice(code.NewDevice.PublicKey);
+            case Shared.Models.DataTransferObjects.RecoveryLoginDTO recovery:
+                return AddDevice(recovery.NewDevice.PublicKey);
+            default:
+                throw new RequestFailedException(ErrorCode.InvalidRequest, null);
+        }
     }
 
-    private string IssueToken() => SessionToken = $"token-{++_issuedTokens}";
+    private AuthenticationResult AddDevice(string publicKey) =>
+        AddDevice(Shared.Auth.LoginSignature.TryDecode(publicKey)!);
+
+    private AuthenticationResult AddDevice(byte[] publicKey)
+    {
+        var deviceId = Guid.NewGuid();
+        Devices[deviceId] = publicKey;
+        return new AuthenticationResult(AuthResult.Success, LoggedInUser(), deviceId);
+    }
 
     private AuthenticationResult FinishLogin(string? password, string? code)
     {
@@ -195,8 +239,8 @@ public class FakeGateway : DispatchProxy
                        && (!Challenge.AsksPassword || password == AccountPassword)
                        && (!Challenge.AsksTwoFactorCode || code == TwoFactorCode);
 
-        return isProven
-            ? new AuthenticationResult(AuthResult.Success, LoggedInUser(), null, SessionToken: IssueToken())
+        return isProven && _pendingDevice != null
+            ? AddDevice(_pendingDevice)
             : throw new RequestFailedException(ErrorCode.AuthFailed, null);
     }
 
@@ -250,15 +294,20 @@ public class FakeGateway : DispatchProxy
                 return DisconnectAsync();
             case nameof(ICoordinatorGateway.CheckConnectionAsync):
                 return CheckAsync((TimeSpan)args![0]!);
-            case nameof(ICoordinatorGateway.AuthenticateAsync):
+            case nameof(ICoordinatorGateway.GetLoginChallengeAsync):
+                Nonce = $"nonce-{++_challenges}";
+                return Task.FromResult((Nonce, ActiveCoordinatorId));
+            case nameof(ICoordinatorGateway.LoginAsync):
                 try
                 {
-                    return Task.FromResult(Authenticate((string?)args![1], (string?)args[2]));
+                    return Task.FromResult(Login((Shared.Models.DataTransferObjects.LoginMethodDTO)args![1]!));
                 }
                 catch (RequestFailedException exception)
                 {
                     return Task.FromException<AuthenticationResult>(exception);
                 }
+            case nameof(ICoordinatorGateway.LogoutAsync):
+                return Task.CompletedTask;
             case nameof(ICoordinatorGateway.FinishLoginAsync):
                 try
                 {
