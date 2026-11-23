@@ -640,8 +640,9 @@
   "profile.note.loadFailed": "メモを読み込めませんでした。もう一度お試しください。",
   "profile.note.saveFailed": "メモを保存できませんでした。入力内容は残っています。もう一度お試しください。",
   "profile.field.name": "名前:",
-  "profile.field.firstConnected": "初回接続",
   "profile.field.lastConnected": "最終接続",
+  "profile.action.mute": "ミュート",
+  "profile.action.unmute": "ミュート解除",
   "profile.field.device": "デバイス",
   "profile.field.appVersion": "アプリのバージョン",
 

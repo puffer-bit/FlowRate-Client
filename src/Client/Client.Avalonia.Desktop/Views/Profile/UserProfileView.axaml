@@ -119,6 +119,27 @@
                                 <TextBlock FontSize="12" HorizontalAlignment="Center" Text="{l:Text privateChats.write}"/>
                             </StackPanel>
                         </Button>
+                        <Button Classes="profileAction" Command="{Binding CallCommand}"
+                                IsVisible="{Binding CanCall}" AutomationProperties.Name="{l:Text calls.start}">
+                            <StackPanel Spacing="6">
+                                <Image Width="20" Height="20" HorizontalAlignment="Center" Source="{StaticResource ChatCallStartedIcon}"/>
+                                <TextBlock FontSize="12" HorizontalAlignment="Center" Text="{l:Text calls.start}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- The sound of the direct chat with the user, shown by what a click changes it to -->
+                        <Button Classes="profileAction" Command="{Binding ToggleChatMuteCommand}"
+                                IsVisible="{Binding CanMuteChat}">
+                            <Panel>
+                                <StackPanel Spacing="6" IsVisible="{Binding !IsChatMuted}">
+                                    <Image Width="20" Height="20" HorizontalAlignment="Center" Source="{StaticResource BellIcon}"/>
+                                    <TextBlock FontSize="12" HorizontalAlignment="Center" Text="{l:Text profile.action.mute}"/>
+                                </StackPanel>
+                                <StackPanel Spacing="6" IsVisible="{Binding IsChatMuted}">
+                                    <Image Width="20" Height="20" HorizontalAlignment="Center" Source="{StaticResource CrossedBellIcon}"/>
+                                    <TextBlock FontSize="12" HorizontalAlignment="Center" Text="{l:Text profile.action.unmute}"/>
+                                </StackPanel>
+                            </Panel>
+                        </Button>
                         <Button Classes="profileAction" Command="{Binding EditCommand}"
                                 IsVisible="{Binding CanEdit}" AutomationProperties.Name="{l:Text common.edit}">
                             <StackPanel Spacing="6">
@@ -162,13 +183,6 @@
                             </StackPanel>
                         </Grid>
 
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
-                            <Image Classes="infoIcon" Source="{StaticResource PlugIcon}"/>
-                            <StackPanel Grid.Column="1" Spacing="1">
-                                <SelectableTextBlock Classes="infoValue" Text="{Binding FirstConnected}"/>
-                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.firstConnected}"/>
-                            </StackPanel>
-                        </Grid>
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                             <Image Classes="infoIcon" Source="{StaticResource RecentEmojiIcon}"/>
                             <StackPanel Grid.Column="1" Spacing="1">

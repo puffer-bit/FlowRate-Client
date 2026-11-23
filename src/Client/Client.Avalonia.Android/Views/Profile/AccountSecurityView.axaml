@@ -11,17 +11,11 @@
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
-        <!-- The title over a card and the hint under it -->
+        <!-- The title over a card -->
         <Style Selector="TextBlock.sectionTitle">
             <Setter Property="Margin" Value="16,0"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-        </Style>
-        <Style Selector="TextBlock.cardHint">
-            <Setter Property="Margin" Value="16,0"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         </Style>
 
@@ -172,7 +166,7 @@
                         </MultiBinding>
                     </StackPanel.IsVisible>
 
-                    <TextBlock Classes="cardHint" Margin="4,0,4,8" Text="{l:Text accountSecurity.hint}"/>
+                    <hints:HintBlock Margin="4,0,4,8" Text="{l:Text accountSecurity.hint}"/>
 
                     <!-- Devices: each with the icon of its system, and a way out for the others -->
                     <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.sessions}"/>
@@ -238,7 +232,7 @@
                             </StackPanel>
                         </StackPanel>
                     </Border>
-                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.sessions.hint}"/>
+                    <hints:HintBlock Margin="12,2,12,0" Text="{l:Text accountSecurity.sessions.hint}"/>
 
                     <!-- Logging in by username: password, one-time codes, passkeys -->
                     <TextBlock Classes="sectionTitle" Margin="16,16,16,0" Text="{l:Text accountSecurity.signIn}"/>
@@ -341,7 +335,7 @@
                             </ItemsControl>
                         </StackPanel>
                     </Border>
-                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.signIn.hint}"/>
+                    <hints:HintBlock Margin="12,2,12,0" Text="{l:Text accountSecurity.signIn.hint}"/>
 
                     <!-- Recovery phrase -->
                     <TextBlock Classes="sectionTitle" Margin="16,16,16,0" Text="{l:Text accountSecurity.phrase}"/>
@@ -400,7 +394,7 @@
                             </Button>
                         </StackPanel>
                     </Border>
-                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.phrase.hint}"/>
+                    <hints:HintBlock Margin="12,2,12,0" Text="{l:Text accountSecurity.phrase.hint}"/>
 
                     <!-- Logging out of this device, apart from the rest -->
                     <Border Classes="card" Margin="0,16,0,0">

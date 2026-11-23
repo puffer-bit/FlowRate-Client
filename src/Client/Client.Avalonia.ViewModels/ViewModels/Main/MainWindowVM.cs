@@ -378,18 +378,9 @@ public partial class MainWindowVM : ReactiveObject
         SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
         SessionsList.Avatars = _avatars;
         SessionsList.MovePeerCommand = _users.MovePeerCommand;
-        _users.OpenDirectChat = async user =>
-        {
-            if (_coordinatorSession is not { } coordinator) return;
-            var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
-                coordinator.GetCurrentUser().Id,
-                new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
-            if (result.IsSuccess)
-            {
-                SessionsList.IsPrivateMode = true;
-                await OpenSession(result.Value);
-            }
-        };
+        _users.OpenDirectChat = user => OpenDirectChatAsync(user, call: false);
+        _users.CallUser = user => OpenDirectChatAsync(user, call: true);
+        _users.FindDirectChat = SessionsList.FindDirectChat;
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(
@@ -686,6 +677,19 @@ public partial class MainWindowVM : ReactiveObject
         using var vm = new SessionPermissionsWindowVM(session, _coordinatorSession.Permissions,
             _changeSessionPermissionsCommand);
         await ShowSessionPermissionsWindow.Handle(vm);
+    }
+
+    /// <summary>Opens the direct chat with a user, made when there is none yet, and starts its call when asked.</summary>
+    private async Task OpenDirectChatAsync(UserModel user, bool call)
+    {
+        if (_coordinatorSession is not { } coordinator) return;
+        var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
+            coordinator.GetCurrentUser().Id,
+            new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
+        if (!result.IsSuccess) return;
+        SessionsList.IsPrivateMode = true;
+        await OpenSession(result.Value);
+        if (call) await SessionsList.CallChatAsync(result.Value.Id);
     }
 
     private async Task OpenSession(SessionModel sessionModel)

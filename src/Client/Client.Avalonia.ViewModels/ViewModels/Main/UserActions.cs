@@ -26,6 +26,12 @@ namespace Client.ViewModels.Main;
 public sealed class UserActions
 {
     public Func<UserModel, Task>? OpenDirectChat { get; set; }
+
+    /// <summary>Opens the direct chat with a user and starts its call; set by the main window.</summary>
+    public Func<UserModel, Task>? CallUser { get; set; }
+
+    /// <summary>The direct chat with a user in the list, for muting it from the profile; set by the main window.</summary>
+    public Func<int, Client.ViewModels.Sessions.List.ChatSessionVM?>? FindDirectChat { get; set; }
     public ReactiveCommand<RxVoid, RxVoid> EditProfileCommand { get; }
 
     /// <summary>Opens what the current user logs in with: the password, one-time codes and passkeys.</summary>
@@ -149,10 +155,11 @@ public sealed class UserActions
 
         using var vm = new UserProfileWindowVM(user, user.Id == _currentUser()?.Id, _avatars, _changeUserUsernameCommand,
             _setAvatarCommand, _resetAvatarCommand, _access.Permissions, _setUserRoleCommand,
-            _userNotes, coordinatorInstanceId);
+            _userNotes, coordinatorInstanceId) { DirectChat = FindDirectChat?.Invoke(user.Id) };
         await vm.Note.LoadCommand.Execute();
         await _showUserProfile.Handle(vm);
-        if (vm.WantsDirectChat && OpenDirectChat != null) await OpenDirectChat(user);
+        if (vm.WantsCall && CallUser != null) await CallUser(user);
+        else if (vm.WantsDirectChat && OpenDirectChat != null) await OpenDirectChat(user);
     }
 
     /// <summary>What the account security dialog does with the recovery phrase and a logout; set by the main window.</summary>

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
@@ -140,6 +141,27 @@
                                 <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text privateChats.write}"/>
                             </StackPanel>
                         </Button>
+                        <Button Classes="profileAction" Command="{Binding CallCommand}"
+                                IsVisible="{Binding CanCall}" AutomationProperties.Name="{l:Text calls.start}">
+                            <StackPanel Spacing="6">
+                                <Image Width="22" Height="22" HorizontalAlignment="Center" Source="{StaticResource ChatCallStartedIcon}"/>
+                                <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text calls.start}"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- The sound of the direct chat with the user, shown by what a click changes it to -->
+                        <Button Classes="profileAction" Command="{Binding ToggleChatMuteCommand}"
+                                IsVisible="{Binding CanMuteChat}">
+                            <Panel>
+                                <StackPanel Spacing="6" IsVisible="{Binding !IsChatMuted}">
+                                    <Image Width="22" Height="22" HorizontalAlignment="Center" Source="{StaticResource BellIcon}"/>
+                                    <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text profile.action.mute}"/>
+                                </StackPanel>
+                                <StackPanel Spacing="6" IsVisible="{Binding IsChatMuted}">
+                                    <Image Width="22" Height="22" HorizontalAlignment="Center" Source="{StaticResource CrossedBellIcon}"/>
+                                    <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text profile.action.unmute}"/>
+                                </StackPanel>
+                            </Panel>
+                        </Button>
                         <Button Classes="profileAction" Command="{Binding EditCommand}"
                                 IsVisible="{Binding CanEdit}" AutomationProperties.Name="{l:Text common.edit}">
                             <StackPanel Spacing="6">
@@ -206,13 +228,6 @@
                         </Grid>
 
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
-                            <Image Classes="infoIcon" Source="{StaticResource PlugIcon}"/>
-                            <StackPanel Grid.Column="1" Spacing="1">
-                                <SelectableTextBlock Classes="infoValue" Text="{Binding FirstConnected}"/>
-                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.firstConnected}"/>
-                            </StackPanel>
-                        </Grid>
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
                             <Image Classes="infoIcon" Source="{StaticResource RecentEmojiIcon}"/>
                             <StackPanel Grid.Column="1" Spacing="1">
                                 <SelectableTextBlock Classes="infoValue" Text="{Binding LastConnected}"/>
@@ -265,7 +280,7 @@
                                  IsEnabled="{Binding Note.IsLoaded}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  PlaceholderText="{l:Text profile.note.placeholder}"/>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text profile.note.hint}"/>
+                        <hints:HintBlock Text="{l:Text profile.note.hint}"/>
                         <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
                         <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Note.Error}"
                                    IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>

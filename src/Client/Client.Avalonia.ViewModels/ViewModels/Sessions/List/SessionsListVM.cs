@@ -554,6 +554,10 @@ public partial class SessionsListVM : ReactiveObject
     private IEnumerable<HybridSessionVM> HybridSessions => Sessions.OfType<HybridSessionVM>()
         .Concat(Sessions.OfType<ChatSessionVM>().Select(chat => chat.CallPeers).OfType<HybridSessionVM>());
 
+    /// <summary>The direct chat with a user, when the list has one.</summary>
+    public ChatSessionVM? FindDirectChat(int userId) => Sessions.OfType<ChatSessionVM>().FirstOrDefault(chat =>
+        chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(userId));
+
     /// <summary>A chat of the list by its id.</summary>
     public ChatSessionModel? FindChat(int chatId) => FindSession<ChatSessionVM>(chatId)?.Model as ChatSessionModel;
 

@@ -21,6 +21,9 @@ public partial class SessionsListVM
     public Action? ShowCallSession { get; set; }
 
     /// <summary>The call item of a chat's menu: starts the call, joins it, or shows it when we are in it.</summary>
+    /// <summary>Starts or joins the call of a chat of the list, as its call button does.</summary>
+    public Task CallChatAsync(int chatId) => CallAsync(chatId);
+
     private async Task CallAsync(int chatId)
     {
         if (_coordinatorSession is not { ConnectionStatus: CoordinatorState.Connected } coordinator
