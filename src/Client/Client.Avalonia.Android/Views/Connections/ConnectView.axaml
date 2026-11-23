@@ -152,7 +152,7 @@
                             <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.phraseHint}"/>
                         </StackPanel>
                         <StackPanel Spacing="6" IsVisible="{Binding IsCodeLogin}">
-                            <TextBox Text="{Binding LoginCodeText}" PlaceholderText="XXXX-XXXX-XXXX" MaxLength="32"/>
+                            <TextBox Text="{Binding LoginCodeText}" PlaceholderText="{l:Text connect.login.codePlaceholder}" MaxLength="32"/>
                             <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.codeHint}"/>
                         </StackPanel>
                         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.deviceHint}"

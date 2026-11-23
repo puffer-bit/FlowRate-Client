@@ -1503,6 +1503,8 @@
   "connect.login.byDevice": "通过其他设备",
   "connect.login.byCode": "登录码",
   "connect.login.usernamePlaceholder": "用户名",
+  "connect.login.codePlaceholder": "XXXX-XXXX-XXXX",
+  "accountSecurity.link.codePlaceholder": "XXXX-XXXX",
   "connect.login.usernameHint": "接下来会要求输入账户密码或一次性验证码。没有这些的账户无法通过用户名登录。",
   "connect.login.phrasePlaceholder": "恢复短语的 24 个单词",
   "connect.login.phraseHint": "仅凭短语即可登录，即使启用了一次性验证码。大小写、编号和逗号都无关紧要。",
