@@ -147,7 +147,7 @@ public class CoordinatorSessionLoginTests
         await session.Connect("server", 1, null, new RegisterLoginPlan());
 
         gateway.Raise(new DeviceEndedEvent(Shared.Enums.Auth.DeviceEndReason.Revoked));
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.Equal(Shared.Enums.Auth.DeviceEndReason.Revoked, ended);
         Assert.Equal(CoordinatorState.Disconnected, session.ConnectionStatus);

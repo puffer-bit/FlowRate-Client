@@ -49,7 +49,7 @@ public class AccountingSettingsRepositoryTests
         {
             var command = connection.CreateCommand();
             command.CommandText = "UPDATE SavedIdentities SET Password = 'server-secret'";
-            await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var service = Service(database, repository);
@@ -212,7 +212,8 @@ public class AccountingSettingsRepositoryTests
         Assert.NotNull(instance);
         Assert.Equal(7, instance.Value.User.Id);
         Assert.Equal("second", instance.Value.User.UserIdentity);
-        Assert.Equal("changed", instance.Value.User.Password);
+        // The server password lives in the keyring, never in the database
+        Assert.Null(instance.Value.User.Password);
         Assert.Equal("coordinator", instance.Value.Model.CoordinatorId);
     }
 
@@ -230,7 +231,7 @@ public class AccountingSettingsRepositoryTests
         var user = Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users);
         Assert.Equal("renamed", user.Username);
         Assert.Equal("identity", user.UserIdentity);
-        Assert.Equal("secret", user.Password);
+        Assert.Null(user.Password);
     }
 
     [Fact]

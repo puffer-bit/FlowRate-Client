@@ -1503,6 +1503,8 @@
   "connect.login.byDevice": "別のデバイスから",
   "connect.login.byCode": "ログインコード",
   "connect.login.usernamePlaceholder": "ユーザー名",
+  "connect.login.codePlaceholder": "XXXX-XXXX-XXXX",
+  "accountSecurity.link.codePlaceholder": "XXXX-XXXX",
   "connect.login.usernameHint": "次にアカウントのパスワードまたはワンタイムコードを求められます。これらがないアカウントにはユーザー名でログインできません。",
   "connect.login.phrasePlaceholder": "復元フレーズの 24 語",
   "connect.login.phraseHint": "フレーズだけでログインできます（ワンタイムコードが有効でも）。大文字・番号・カンマは無視されます。",
