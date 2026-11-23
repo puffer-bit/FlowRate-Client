@@ -179,15 +179,15 @@
             </TransitioningContentControl.PageTransition>
         </TransitioningContentControl>
 
-        <!-- The menu of a message is written in the chat view and joins this layer in code -->
+        <!-- The menus, over everything else. The menu of a message is written in the chat view and joins this layer in code -->
         <Panel Grid.Row="0" x:Name="SheetLayer">
-            <common:BottomSheet x:Name="AudioDevicesMenu">
+            <common:PopupMenu x:Name="AudioDevicesMenu" Classes="wide">
                 <media:CallAudioDevicePicker Margin="12"/>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of the server, opened from its title in the menu: what the flyout of the desktop
                  shows, without what is not on Android yet -->
-            <common:BottomSheet x:Name="ServerMenu">
+            <common:PopupMenu x:Name="ServerMenu" Classes="wide">
                 <StackPanel Spacing="2">
 
                     <!-- Who we are connected to -->
@@ -252,10 +252,10 @@
                                           Content="{l:Text main.menu.disconnect.plain}"
                                           Click="OnDisconnectClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- The status of the user, opened by pressing and holding the user in the menu -->
-            <common:BottomSheet x:Name="StatusMenu">
+            <common:PopupMenu x:Name="StatusMenu">
                 <StackPanel Spacing="2">
                     <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
                                Text="{l:Text profile.status.title}"/>
@@ -280,11 +280,11 @@
                                           CommandParameter="{x:Static user:UserStatus.Invisible}"
                                           Click="OnStatusClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of the chat that was pressed and held in the list of sessions. The data context
                  is the chat -->
-            <common:BottomSheet x:Name="ChatMenu"
+            <common:PopupMenu x:Name="ChatMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ChatSessionVM">
                 <StackPanel Spacing="2">
@@ -314,11 +314,11 @@
                                           IsVisible="{Binding CanArrange}"
                                           Click="OnMoveChatClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of a peer of a voice session, tapped in the list of sessions or in the session we
                  are in: its screen, and how loud we hear its voice. The data context is the peer -->
-            <common:BottomSheet x:Name="PeerMenu"
+            <common:PopupMenu x:Name="PeerMenu" Classes="wide"
                                DataContext="{x:Null}"
                                x:DataType="listVm:PeerVM">
                 <StackPanel Spacing="2">
@@ -381,7 +381,7 @@
                                               Click="OnPeerSelfStatsClick"/>
                     </StackPanel>
 
-                    <!-- The sheet stays open while playback is adjusted. -->
+                    <!-- The menu stays open while playback is adjusted. -->
                     <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
                         <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
                                               IsVisible="{Binding CanPoke}" Click="OnPeerPokeClick"/>
@@ -430,9 +430,9 @@
                                           Command="{Binding ViewProfileCommand}" CommandParameter="{Binding PeerData.UserId}"
                                           Click="OnPeerMenuClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="PokeMenu" DataContext="{x:Null}" x:DataType="listVm:PeerVM">
+            <common:PopupMenu x:Name="PokeMenu" Classes="wide" DataContext="{x:Null}" x:DataType="listVm:PeerVM">
                 <StackPanel Margin="12,8" Spacing="12">
                     <TextBlock Text="{Binding PokeTitle}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <TextBlock Text="{l:Text peer.poke.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -442,9 +442,9 @@
                     <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke.send}"
                                           IsEnabled="{Binding CanPoke}" Command="{Binding Poke}" Click="OnPokeSendClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="AfkMenu" DataContext="{x:Null}" x:DataType="hybridVm:HybridSessionStatusBarVM">
+            <common:PopupMenu x:Name="AfkMenu" Classes="wide" DataContext="{x:Null}" x:DataType="hybridVm:HybridSessionStatusBarVM">
                 <StackPanel Margin="12,8" Spacing="12">
                     <TextBlock Text="{l:Text hybrid.afk.title}" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock Text="{l:Text hybrid.afk.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -463,14 +463,14 @@
                     <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.confirm}"
                                           Command="{Binding ToggleAfkCommand}" Click="OnAfkConfirmClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="PeerStatsMenu" DataContext="{x:Null}">
+            <common:PopupMenu x:Name="PeerStatsMenu" Classes="wide" DataContext="{x:Null}">
                 <hybrid:PeerStatsView/>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Where a session goes: a step up or down, or into a category. The data context is the session -->
-            <common:BottomSheet x:Name="SessionMoveMenu"
+            <common:PopupMenu x:Name="SessionMoveMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ISessionVM">
                 <StackPanel Spacing="2">
@@ -507,10 +507,10 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of a category held in the list of sessions. The data context is the category -->
-            <common:BottomSheet x:Name="CategoryMenu"
+            <common:PopupMenu x:Name="CategoryMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:SessionCategoryVM">
                 <StackPanel Spacing="2">
@@ -535,7 +535,10 @@
                                               Click="OnCategoryDeleteClick"/>
                     </StackPanel>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
+
+            <!-- Shows the menus written next to what they act on, in the other views -->
+            <common:PopupMenu x:Name="SharedMenu" ClosesOnItemClick="True"/>
         </Panel>
 
         <notifications:ToastHost Grid.Row="0" DataContext="{Binding Notifications}"

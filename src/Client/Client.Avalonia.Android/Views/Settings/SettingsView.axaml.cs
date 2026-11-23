@@ -388,6 +388,14 @@ public partial class SettingsView : UserControl
         return file == null ? null : await file.OpenWriteAsync();
     }
 
+    // The menu is shown away from the page, so it finds the page in code rather than by its name
+    private void OnDeleteIdentityClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is StyledElement { DataContext: global::Client.Core.Settings.SavedUserModel identity }
+            && AccountingPage.DataContext is AccountingControlVM accounting)
+            accounting.DeleteIdentityCommand.Execute(identity).Subscribe();
+    }
+
     private void OnAccountingClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AccountingPage, "settings.accounting.name");
 

@@ -21,6 +21,7 @@ using Client.Services;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Dialogs;
 using Client.Droid.Platform;
+using Client.Droid.Views.Common;
 using ReactiveUI;
 using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -41,29 +42,14 @@ public partial class ChatView : UserControl
             return;
 
         e.Handled = true;
-        card.ContextFlyout?.ShowAt(card);
+        if (PopupMenus.GetContextMenu(card) is { } menu)
+            PopupMenus.Show(card, menu);
     }
 
     private void OnDetachClick(object? sender, RoutedEventArgs e)
     {
         if (sender is Control { DataContext: ChatAttachmentVM attachment } && DataContext is ActiveChatSessionVM chat)
             chat.Composer.RemoveAttachmentCommand.Execute(attachment).Subscribe();
-    }
-
-    // The long press that opened the defaults of the attachments is still the press of the button:
-    // letting it go clicks it, and the click must not open the file picker as well
-    private bool _isAttachPressHeld;
-
-    private void OnAttachContextRequested(object? sender, ContextRequestedEventArgs e) => _isAttachPressHeld = true;
-
-    // Handled, the click does not run the command of the button
-    private void OnAttachClick(object? sender, RoutedEventArgs e)
-    {
-        if (!_isAttachPressHeld)
-            return;
-
-        _isAttachPressHeld = false;
-        e.Handled = true;
     }
 
     private readonly Client.Core.Chat.RecentEmoji _recentEmoji = new();
@@ -148,9 +134,6 @@ public partial class ChatView : UserControl
         // A double tap on a message puts the reaction chosen in the settings, or takes it back
         MessagesList.AddHandler(DoubleTappedEvent, OnMessageDoubleTapped);
 
-        // A new press starts clean, whatever became of the last one
-        AttachButton.AddHandler(PointerPressedEvent, (_, _) => _isAttachPressHeld = false, RoutingStrategies.Tunnel);
-
         // A long press asks for the context menu, as the right button does with a mouse
         MessagesList.AddHandler(ContextRequestedEvent, OnMessageContextRequested);
 
@@ -184,15 +167,10 @@ public partial class ChatView : UserControl
         }
     }
 
-    private void OnViewersClick(object? sender, RoutedEventArgs e)
-    {
-        ChatMoreButton.Flyout?.Hide();
-        Chat?.StatusBar.Viewers?.Open();
-    }
+    private void OnViewersClick(object? sender, RoutedEventArgs e) => Chat?.StatusBar.Viewers?.Open();
 
     private void OnPinsClick(object? sender, RoutedEventArgs e)
     {
-        ChatMoreButton.Flyout?.Hide();
         if (Chat is { } chat)
             chat.StatusBar.IsPinsOpen = true;
     }
@@ -299,6 +277,12 @@ public partial class ChatView : UserControl
         var text = message.Message.TextContent?.Text;
         message.SetCopyText(string.IsNullOrEmpty(text) ? null : text, false);
         message.IsFlyoutOpen = true;
+
+        // The menu shows the message where it is in the list
+        var row = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>()
+            .FirstOrDefault(control => control.GetVisualParent() is MessageListPanel);
+        if (row?.TransformToVisual(MessageMenu) is { } transform)
+            MessageMenu.MessageBounds = new Rect(row.Bounds.Size).TransformToAABB(transform);
 
         MessageMenu.DataContext = message;
         MessageMenu.IsOpen = true;

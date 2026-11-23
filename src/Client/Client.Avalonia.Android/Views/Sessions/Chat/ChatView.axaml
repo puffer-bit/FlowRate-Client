@@ -68,10 +68,6 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <Style Selector="Button.quick-reaction.selected">
-            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
-        </Style>
-
         <!-- ====== Mention list ====== -->
         <Style Selector="Border.mention-list">
             <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
@@ -257,19 +253,17 @@
                                IsVisible="{Binding StatusBar.IsCallRunning}"/>
                     </Panel>
                 </Button>
-                <Button x:Name="ChatMoreButton" Classes="ghost chat-round"
+                <Button Classes="ghost chat-round"
                         ToolTip.Tip="{l:Text chat.more}" AutomationProperties.Name="{l:Text chat.more}">
                     <Image Width="20" Height="20" Source="{StaticResource MoreIcon}"/>
-                    <Button.Flyout>
-                        <Flyout Placement="BottomEdgeAlignedRight">
-                            <StackPanel Spacing="2">
-                                <menus:MenuItemButton Icon="{StaticResource BaseUsersIcon}" Content="{l:Text chat.viewers.title}"
-                                                      IsVisible="{Binding StatusBar.HasViewers}" Click="OnViewersClick"/>
-                                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.pinned.title}"
-                                                      Click="OnPinsClick"/>
-                            </StackPanel>
-                        </Flyout>
-                    </Button.Flyout>
+                    <common:PopupMenus.Menu>
+                        <StackPanel Spacing="2">
+                            <menus:MenuItemButton Icon="{StaticResource BaseUsersIcon}" Content="{l:Text chat.viewers.title}"
+                                                  IsVisible="{Binding StatusBar.HasViewers}" Click="OnViewersClick"/>
+                            <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.pinned.title}"
+                                                  Click="OnPinsClick"/>
+                        </StackPanel>
+                    </common:PopupMenus.Menu>
                 </Button>
             </StackPanel>
         </Grid>
@@ -498,8 +492,7 @@
                 <!-- A long press on the empty space chooses what is done to files attached from now on -->
                 <ScrollViewer IsVisible="{Binding Composer.HasAttachments}" Margin="10,8,10,0" Background="Transparent"
                               HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                    <ScrollViewer.ContextFlyout>
-                        <Flyout Placement="Top">
+                    <common:PopupMenus.ContextMenu>
                             <StackPanel Spacing="2">
                                 <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
                                 <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}" IsChecked="{Binding Composer.DefaultCompressImages}">
@@ -511,8 +504,7 @@
                                 <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
                                            IsVisible="{Binding Composer.IsImageCompressionForced}"/>
                             </StackPanel>
-                        </Flyout>
-                    </ScrollViewer.ContextFlyout>
+                    </common:PopupMenus.ContextMenu>
                     <ItemsControl ItemsSource="{Binding Composer.Attachments}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -523,8 +515,7 @@
                             <DataTemplate DataType="chatVm:ChatAttachmentVM">
                                 <!-- A tap opens what is done to this file -->
                                 <Border Classes="chat-attachment" Classes.error="{Binding HasError}" Tapped="OnAttachmentTapped">
-                                    <Border.ContextFlyout>
-                                        <Flyout Placement="Top">
+                                    <common:PopupMenus.ContextMenu>
                                             <StackPanel Spacing="2">
                                                 <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" IsVisible="{Binding IsImage}"
                                                                       Command="{Binding ToggleCompressionCommand}" IsChecked="{Binding IsCompressed}">
@@ -541,8 +532,7 @@
                                                                       Content="{l:Text chat.attach.detach}"
                                                                       menus:FlyoutMenu.CloseOnClick="True" Click="OnDetachClick"/>
                                             </StackPanel>
-                                        </Flyout>
-                                    </Border.ContextFlyout>
+                                    </common:PopupMenus.ContextMenu>
                                     <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
                                         <Border Grid.Column="0" Classes="chat-attachment-thumbnail">
                                             <Panel>
@@ -585,14 +575,10 @@
                             VerticalAlignment="Bottom"
                             Focusable="False"
                             IsVisible="{Binding Composer.IsAttachmentsAllowed}"
-                            Command="{Binding Composer.AttachFilesCommand}"
-                            x:Name="AttachButton"
-                            ContextRequested="OnAttachContextRequested"
-                            Click="OnAttachClick">
+                            Command="{Binding Composer.AttachFilesCommand}">
                         <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
                         <!-- A long press chooses what is done to files attached from now on -->
-                        <Button.ContextFlyout>
-                            <Flyout Placement="Top">
+                        <common:PopupMenus.ContextMenu>
                                 <StackPanel Spacing="2">
                                     <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.defaults}"/>
                                     <menus:MenuItemButton Focusable="False" Content="{l:Text chat.attach.compress}" Command="{Binding Composer.ToggleDefaultCompressionCommand}" IsChecked="{Binding Composer.DefaultCompressImages}">
@@ -604,8 +590,7 @@
                                     <TextBlock Classes="menuLabel" Text="{l:Text chat.attach.compressForced}" TextWrapping="Wrap" MaxWidth="260"
                                                IsVisible="{Binding Composer.IsImageCompressionForced}"/>
                                 </StackPanel>
-                            </Flyout>
-                        </Button.ContextFlyout>
+                        </common:PopupMenus.ContextMenu>
                     </Button>
 
                     <TextBox Grid.Column="1"
@@ -712,148 +697,156 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- Menu of the message that was pressed and held. It is written here, next to what it acts on,
-             but the root view shows it: a sheet covers the status bar, which is outside the chat.
-             The data context is the message and is never inherited from where the sheet ends up -->
-        <common:BottomSheet Grid.Row="0" Grid.RowSpan="4"
-                           x:Name="MessageMenu"
-                           DataContext="{x:Null}"
-                           x:DataType="chatVm:ChatMessageVM">
-            <StackPanel Spacing="2">
-                <!-- The message the menu is about, so it is clear what the items act on -->
-                <Border Margin="12,4,12,8" Padding="10,0,0,0"
-                        BorderThickness="2,0,0,0"
-                        BorderBrush="{DynamicResource ButtonMainBrush}">
-                    <StackPanel Spacing="2">
-                        <TextBlock Classes="msg-reply-username" Text="{Binding SenderName}"
-                                   Classes.deleted-user="{Binding IsSenderDeleted}"/>
-                        <TextBlock FontSize="13"
-                                   Foreground="{DynamicResource SecondaryTextBrush}"
-                                   Text="{Binding Message.TextContent.Text}"
-                                   MaxLines="2"
-                                   TextWrapping="Wrap"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                </Border>
+        <!-- Menu of the message that was pressed and held, as a messenger shows it: the screen dims, the
+             message stays where it was over it, the reactions are above and the actions below. It is
+             written here, next to what it acts on, but the root view shows it over the whole screen.
+             The data context is the message and is never inherited from where the menu ends up -->
+        <common:MessageMenu Grid.Row="0" Grid.RowSpan="4"
+                            x:Name="MessageMenu"
+                            DataContext="{x:Null}"
+                            x:DataType="chatVm:ChatMessageVM">
+            <Border common:MessageMenu.Part="Backdrop" Classes="message-menu-backdrop"/>
 
-                <!-- Who read an own message and when; only its author sees it -->
-                <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding CanShowReaders}">
-                    <TextBlock Text="{l:Text chat.menu.readers}" FontSize="13" FontWeight="SemiBold"/>
-                    <TextBlock Text="{l:Text chat.readers.loading}" FontSize="13"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
-                    <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource ErrorBrush}"
-                               IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
-                    <TextBlock Text="{l:Text chat.readers.empty}" FontSize="13"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
-                    <ScrollViewer MaxHeight="180" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+            <!-- The palette at hand: one tap puts or takes back a reaction and closes the menu -->
+            <Border common:MessageMenu.Part="Reactions" Classes="menu-card message-menu-part"
+                    CornerRadius="26" Padding="4" IsVisible="{Binding CanReact}">
+                <Grid ColumnDefinitions="*, Auto">
+                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding ReactionChoices}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="chatVm:ChatMessageReaderVM">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
-                                        <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
-                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
-                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
-
-                <!-- Who reacted and when, for everyone -->
-                <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding HasReactions}">
-                    <TextBlock Text="{l:Text chat.reaction.who}" FontSize="13" FontWeight="SemiBold"/>
-                    <ScrollViewer MaxHeight="160" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding ReactionDetails}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="chatVm:ChatReactionDetailVM">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2">
+                                <DataTemplate x:DataType="chatVm:ChatReactionVM">
+                                    <Button Classes="ghost quick-reaction" Classes.selected="{Binding IsMine}"
+                                            Width="44" Height="44" Padding="0" CornerRadius="22"
+                                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                            Command="{Binding Choose}" AutomationProperties.Name="{Binding Emoji}">
                                         <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
-                                                   FontSize="16" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
-                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    </Grid>
+                                                   FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
-                </StackPanel>
+                    <!-- Any other emoji -->
+                    <Button Grid.Column="1" Classes="ghost quick-reaction" Width="44" Height="44" Padding="0" CornerRadius="22"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            ToolTip.Tip="{l:Text chat.reaction.more}" AutomationProperties.Name="{l:Text chat.reaction.more}">
+                        <Image Width="22" Height="22" Source="{StaticResource AddReactionIcon}"/>
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom" Opened="OnEmojiPickerOpened">
+                                <emoji:EmojiPickerView x:Name="AllEmoji" Width="320" Height="360"/>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+            </Border>
 
-                <!-- The palette at hand: one tap puts or takes back a reaction and closes the menu -->
-                <ItemsControl ItemsSource="{Binding ReactionChoices}" IsVisible="{Binding CanReact}" Margin="4,0,4,4">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="chatVm:ChatReactionVM">
-                            <Button Classes="ghost quick-reaction" Classes.selected="{Binding IsMine}"
-                                    HorizontalAlignment="Stretch" Height="44" Padding="0" CornerRadius="8"
-                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                    Command="{Binding Choose}" AutomationProperties.Name="{Binding Emoji}">
-                                <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
-                                           FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.reaction.more}"
-                                      IsVisible="{Binding CanReact}">
-                    <menus:MenuItemButton.Flyout>
-                        <Flyout Placement="Top" Opened="OnEmojiPickerOpened">
-                            <emoji:EmojiPickerView x:Name="AllEmoji" Width="320" Height="360"/>
-                        </Flyout>
-                    </menus:MenuItemButton.Flyout>
-                </menus:MenuItemButton>
-                <Separator IsVisible="{Binding CanReact}"/>
-                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
-                                      IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
-                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
-                              IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
-                              Command="{Binding TogglePinned}"/>
-                <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
-                              IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
-                              Command="{Binding TogglePinned}"/>
-                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
-                                      Command="{Binding StartReply}"/>
-                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
-                                      IsVisible="{Binding CanEdit}"
-                                      Command="{Binding StartEdit}"/>
-                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
-                                      IsEnabled="{Binding HasCopyText}"
-                                      Command="{Binding Copy}"/>
-                <menus:MenuItemButton Icon="{StaticResource CopySelectionIcon}" Content="{l:Text chat.menu.selectText}"
-                                      IsVisible="{Binding HasCopyText}"
-                                      Click="OnSelectMessageTextClick"/>
-                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
-                                      IsVisible="{Binding HasCopyLink}"
-                                      Command="{Binding CopyLink}"/>
-                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
-                                      IsVisible="{Binding HasCopyImage}"
-                                      Command="{Binding SaveImageAs}"/>
-                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
-                                      IsVisible="{Binding HasContextFile}"
-                                      IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
-                                      Command="{Binding SaveFileAs}"/>
-                <!-- The profile is also where a user is renamed -->
-                <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
-                                      IsEnabled="{Binding !IsSenderDeleted}"
-                                      Command="{Binding ViewProfile}"/>
+            <!-- The message itself, only to show what the menu is about: a tap on it closes the menu -->
+            <Border common:MessageMenu.Part="Message" Classes="message-menu-part"
+                    Background="{DynamicResource GeneralBrush}" CornerRadius="14" Padding="4,6"
+                    ClipToBounds="True" IsHitTestVisible="False">
+                <views:ChatMessageView/>
+            </Border>
 
-                <Separator IsVisible="{Binding CanDelete}"/>
+            <Border common:MessageMenu.Part="Actions" Classes="menu-card message-menu-part">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="2">
+                        <!-- Who read an own message and when; only its author sees it -->
+                        <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding CanShowReaders}">
+                            <TextBlock Text="{l:Text chat.menu.readers}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{l:Text chat.readers.loading}" FontSize="13"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
+                            <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" FontSize="13" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource ErrorBrush}"
+                                       IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
+                            <TextBlock Text="{l:Text chat.readers.empty}" FontSize="13"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
+                            <ScrollViewer MaxHeight="180" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="chatVm:ChatMessageReaderVM">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
+                                                <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
+                                                                    AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                           FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
 
-                <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
-                                      IsVisible="{Binding CanDelete}"
-                                      Command="{Binding Delete}"/>
-            </StackPanel>
-        </common:BottomSheet>
+                        <!-- Who reacted and when, for everyone -->
+                        <StackPanel Margin="12,0,12,6" Spacing="2" IsVisible="{Binding HasReactions}">
+                            <TextBlock Text="{l:Text chat.reaction.who}" FontSize="13" FontWeight="SemiBold"/>
+                            <ScrollViewer MaxHeight="160" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding ReactionDetails}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="chatVm:ChatReactionDetailVM">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2">
+                                                <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
+                                                           FontSize="16" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                           FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+
+                        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                              IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
+                        <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                                      IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                                      Command="{Binding TogglePinned}"/>
+                        <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
+                                      IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                                      Command="{Binding TogglePinned}"/>
+                        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
+                                              Command="{Binding StartReply}"/>
+                        <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
+                                              IsVisible="{Binding CanEdit}"
+                                              Command="{Binding StartEdit}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}"
+                                              IsEnabled="{Binding HasCopyText}"
+                                              Command="{Binding Copy}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CopySelectionIcon}" Content="{l:Text chat.menu.selectText}"
+                                              IsVisible="{Binding HasCopyText}"
+                                              Click="OnSelectMessageTextClick"/>
+                        <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
+                                              IsVisible="{Binding HasCopyLink}"
+                                              Command="{Binding CopyLink}"/>
+                        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                              IsVisible="{Binding HasCopyImage}"
+                                              Command="{Binding SaveImageAs}"/>
+                        <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                              IsVisible="{Binding HasContextFile}"
+                                              IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
+                                              Command="{Binding SaveFileAs}"/>
+                        <!-- The profile is also where a user is renamed -->
+                        <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
+                                              IsEnabled="{Binding !IsSenderDeleted}"
+                                              Command="{Binding ViewProfile}"/>
+
+                        <Separator IsVisible="{Binding CanDelete}"/>
+
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                              IsVisible="{Binding CanDelete}"
+                                              Command="{Binding Delete}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </common:MessageMenu>
         <Border Grid.RowSpan="4" IsVisible="{Binding StatusBar.Viewers.IsOpen, FallbackValue=False}">
             <views:ChatViewersPanel x:Name="ViewersPanel" DataContext="{Binding StatusBar.Viewers}"/>
         </Border>

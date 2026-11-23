@@ -89,10 +89,14 @@ public partial class MainView : UserControl
         PeerStatsMenu.Dismissed += () => TryClose(PeerStatsMenu);
         PeerStatsMenu.PropertyChanged += (_, e) =>
         {
-            if (e.Property == BottomSheet.IsOpenProperty && !PeerStatsMenu.IsOpen)
+            if (e.Property == PopupMenu.IsOpenProperty && !PeerStatsMenu.IsOpen)
                 PeerStatsMenu.DataContext = null;
         };
         AudioDevicesMenu.Dismissed += () => TryClose(AudioDevicesMenu);
+        SharedMenu.Dismissed += () => TryClose(SharedMenu);
+        PopupMenus.Host = SharedMenu;
+        // Menus open where they were asked for
+        PopupMenu.TrackPresses(this);
 
         // Shown over the session and navigation drawer
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
@@ -563,7 +567,7 @@ public partial class MainView : UserControl
         .OfType<HybridSessionVM>()
         .FirstOrDefault(session => session.Model.Id == sessionId);
 
-    // Watching a screen opens it, so the sheet goes out of its way
+    // Watching a screen opens it, so the menu goes out of its way
     private void OnPeerMenuClick(object? sender, RoutedEventArgs e) => TryClose(PeerMenu);
 
     private void OnPeerPokeClick(object? sender, RoutedEventArgs e)
@@ -616,12 +620,12 @@ public partial class MainView : UserControl
     }
 
     /// <returns>False when there was no menu to close.</returns>
-    private static bool TryClose(BottomSheet sheet)
+    private static bool TryClose(PopupMenu menu)
     {
-        if (!sheet.IsOpen)
+        if (!menu.IsOpen)
             return false;
 
-        sheet.IsOpen = false;
+        menu.IsOpen = false;
         return true;
     }
 
@@ -637,7 +641,7 @@ public partial class MainView : UserControl
 
     private void OnMoveSessionDownClick(object? sender, RoutedEventArgs e) => MoveSessionBy(1);
 
-    // The sheet stays open, so a session can be moved a few places in a row
+    // The menu stays open, so a session can be moved a few places in a row
     private void MoveSessionBy(int step)
     {
         if (SessionMoveMenu.DataContext is ISessionVM session && _viewModel != null)
@@ -768,7 +772,7 @@ public partial class MainView : UserControl
         // Menus close before navigating away from the current screen.
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
             || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(PokeMenu) || TryClose(AfkMenu)
-            || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu)
+            || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu) || TryClose(SharedMenu)
             || CloseDrawer())
         {
             e.Handled = true;

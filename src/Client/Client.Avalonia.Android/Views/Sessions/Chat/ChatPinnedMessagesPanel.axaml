@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
@@ -32,8 +33,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="chatVm:ChatPinnedMessageVM">
                             <Border Background="Transparent">
-                                <Border.ContextFlyout>
-                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                <common:PopupMenus.ContextMenu>
                                         <StackPanel Spacing="2">
                                             <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
                                                                   IsEnabled="{Binding Content.CanPin}" Command="{Binding Unpin}"
@@ -43,8 +43,7 @@
                                                                   Command="{Binding Open}" menus:FlyoutMenu.CloseOnClick="True"
                                                                   Click="OnGoToMessageClick"/>
                                         </StackPanel>
-                                    </Flyout>
-                                </Border.ContextFlyout>
+                                </common:PopupMenus.ContextMenu>
                                 <views:ChatMessageView DataContext="{Binding Content}"/>
                             </Border>
                         </DataTemplate>

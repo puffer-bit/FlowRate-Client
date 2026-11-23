@@ -2,6 +2,7 @@
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
@@ -917,17 +918,14 @@
                                                     ToolTip.Tip="{l:Text settings.accounting.identityActions}"
                                                     AutomationProperties.Name="{l:Text settings.accounting.identityActions}">
                                                 <Image Width="16" Height="16" Source="{StaticResource MoreIcon}"/>
-                                                <Button.Flyout>
-                                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                                <common:PopupMenus.Menu>
                                                         <StackPanel Spacing="2" x:DataType="models:SavedUserModel">
                                                             <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
                                                                                   Content="{l:Text common.delete}"
-                                                                                  Command="{Binding #AccountingPage.((pagesVm:AccountingControlVM)DataContext).DeleteIdentityCommand}"
-                                                                                  CommandParameter="{Binding}"
+                                                                                  Click="OnDeleteIdentityClick"
                                                                                   menus:FlyoutMenu.CloseOnClick="True"/>
                                                         </StackPanel>
-                                                    </Flyout>
-                                                </Button.Flyout>
+                                                </common:PopupMenus.Menu>
                                             </Button>
                                             </Grid>
                                         </DataTemplate>
