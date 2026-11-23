@@ -11,11 +11,15 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using Client.Avalonia.Localization;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Panels;
+using Client.Avalonia.Styles.Animation;
+using Client.Avalonia.Controls.Images;
 using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Sessions.Chat;
@@ -103,6 +107,14 @@ public partial class ChatView : UserControl
         InitializeComponent();
 
         MessageMenu.Dismissed += () => TryCloseMenu();
+
+        // A message swiped to the left is replied to; a swipe to the right is the root view's, back
+        _ = new DragGesture(MessagesList, Orientation.Horizontal)
+        {
+            CanStart = (source, offset) => offset < 0 && BeginReplySwipe(source),
+            Moved = MoveReplySwipe,
+            Ended = (_, _) => EndReplySwipe()
+        };
         ViewersPanel.CloseRequested += () => TryCloseViewers();
 
         // The mention list follows the word at the caret
@@ -142,9 +154,9 @@ public partial class ChatView : UserControl
     }
 
     /// <summary>
-    /// Raised by the menu button of the header.
+    /// Raised by the back button of the header.
     /// </summary>
-    public event Action? MenuRequested;
+    public event Action? BackRequested;
 
     /// <summary>
     /// Takes the menu of a message out of the chat, for the root view to show it over the whole screen.
@@ -360,6 +372,154 @@ public partial class ChatView : UserControl
         return subscriptions;
     }
 
+    // How far a message is swiped before letting go replies to it, and how far it goes at most
+    private const double ReplySwipeDistance = 64;
+    private const double ReplySwipeMax = 110;
+
+    private Control? _swipedRow;
+    private ChatMessageVM? _swipedMessage;
+    private TranslateTransform? _swipeShift;
+    private readonly ScaleTransform _replyIconScale = new();
+    private bool _isReplyArmed;
+
+    // The row of the pressed message, which a swipe moves
+    private bool BeginReplySwipe(Visual? source)
+    {
+        if (Chat == null || MessageMenu.IsOpen)
+            return false;
+
+        var row = source?.GetSelfAndVisualAncestors().OfType<Control>()
+            .FirstOrDefault(control => control.GetVisualParent() is MessageListPanel);
+        if (row?.DataContext is not ChatMessageVM { IsSystem: false } message)
+            return false;
+
+        _swipedRow = row;
+        _swipedMessage = message;
+        _isReplyArmed = false;
+        _swipeShift = new TranslateTransform();
+        row.RenderTransform = _swipeShift;
+
+        // The icon stands beside the middle of the message
+        var middle = row.TranslatePoint(new Point(0, row.Bounds.Height / 2), MessagesList)?.Y ?? 0;
+        var top = Math.Clamp(middle - ReplySwipeIcon.Height / 2, 0,
+            Math.Max(0, MessagesList.Bounds.Height - ReplySwipeIcon.Height));
+        ReplySwipeIcon.Margin = new Thickness(0, top, 12, 0);
+        ReplySwipeIcon.RenderTransform = _replyIconScale;
+        return true;
+    }
+
+    private void MoveReplySwipe(double offset)
+    {
+        if (_swipeShift == null)
+            return;
+
+        // Past the point of a reply the message follows the finger less and less
+        var distance = Math.Max(0, -offset);
+        var shift = distance <= ReplySwipeDistance
+            ? distance
+            : Math.Min(ReplySwipeMax, ReplySwipeDistance + (distance - ReplySwipeDistance) * 0.3);
+        _swipeShift.X = -shift;
+
+        var progress = Math.Min(1, shift / ReplySwipeDistance);
+        ReplySwipeIcon.Opacity = progress;
+        _replyIconScale.ScaleX = _replyIconScale.ScaleY = 0.6 + 0.4 * progress;
+
+        // Felt once when letting go would reply, and undone by going back
+        var isArmed = shift >= ReplySwipeDistance;
+        if (isArmed && !_isReplyArmed)
+            Haptics.Tick();
+        _isReplyArmed = isArmed;
+    }
+
+    private async void EndReplySwipe()
+    {
+        if (_swipedRow is not { } row || _swipeShift is not { } shift)
+            return;
+
+        if (_isReplyArmed)
+            _swipedMessage?.StartReply();
+
+        _swipedRow = null;
+        _swipedMessage = null;
+        _swipeShift = null;
+        _isReplyArmed = false;
+
+        // The message springs back to its place
+        var from = shift.X;
+        var opacity = ReplySwipeIcon.Opacity;
+        await DragGesture.Animate(row, Motion.Get(MotionDuration.Short), progress =>
+        {
+            shift.X = from * (1 - progress);
+            if (_swipeShift == null)
+                ReplySwipeIcon.Opacity = opacity * (1 - progress);
+        });
+
+        if (ReferenceEquals(row.RenderTransform, shift))
+            row.RenderTransform = null;
+    }
+
+    // The picture follows a finger up or down while it is not zoomed, the rest fading as it goes; let go
+    // far enough or flung, it flies off and closes
+    private void OnImageViewerLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Grid viewer || viewer.Tag is DragGesture
+            || viewer.Children.OfType<ZoomableImage>().FirstOrDefault() is not { } image)
+            return;
+
+        var backdrop = viewer.Children.OfType<Button>().FirstOrDefault();
+        var bar = viewer.Children.OfType<Border>().FirstOrDefault();
+        var shift = new TranslateTransform();
+        image.RenderTransform = shift;
+
+        void Follow(double offset)
+        {
+            shift.Y = offset;
+            var opacity = 1 - Math.Min(1, Math.Abs(offset) / Math.Max(1, viewer.Bounds.Height / 2));
+            if (backdrop != null)
+                backdrop.Opacity = opacity;
+            if (bar != null)
+                bar.Opacity = opacity;
+        }
+
+        void Restore()
+        {
+            shift.Y = 0;
+            backdrop?.ClearValue(OpacityProperty);
+            bar?.ClearValue(OpacityProperty);
+        }
+
+        viewer.Tag = new DragGesture(viewer, Orientation.Vertical)
+        {
+            // The bar has buttons of its own
+            CanStart = (source, _) => bar == null || source == null || !(ReferenceEquals(source, bar) || bar.IsVisualAncestorOf(source)),
+            Moved = Follow,
+            Ended = async (offset, velocity) =>
+            {
+                var height = viewer.Bounds.Height;
+                var isFlung = Math.Abs(velocity) > DragGesture.FlingVelocity && Math.Sign(velocity) == Math.Sign(offset);
+                var duration = Motion.Get(MotionDuration.Short);
+                if (Math.Abs(offset) > height / 5 || isFlung)
+                {
+                    var target = Math.Sign(offset) * height;
+                    await DragGesture.Animate(viewer, duration, progress => Follow(offset + (target - offset) * progress));
+                    Chat?.CloseImageViewer();
+                    Restore();
+                    return;
+                }
+
+                await DragGesture.Animate(viewer, duration, progress => Follow(offset * (1 - progress)));
+                Restore();
+            }
+        };
+    }
+
+    /// <summary>
+    /// Whether something covers the chat that back closes first: an image, the viewers or the pinned messages.
+    /// </summary>
+    public bool IsCovered => Chat is { } chat
+                             && (chat.IsImageViewerOpen || chat.StatusBar.IsPinsOpen
+                                 || chat.StatusBar.Viewers is { IsOpen: true });
+
     /// <summary>Closes the pinned messages panel before Back leaves the chat.</summary>
     public bool TryClosePinnedMessages()
     {
@@ -460,7 +620,7 @@ public partial class ChatView : UserControl
         }
     }
 
-    private void OnMenuClick(object? sender, RoutedEventArgs e) => MenuRequested?.Invoke();
+    private void OnBackClick(object? sender, RoutedEventArgs e) => BackRequested?.Invoke();
 
     private void OnMentionPointerEntered(object? sender, PointerEventArgs e)
     {

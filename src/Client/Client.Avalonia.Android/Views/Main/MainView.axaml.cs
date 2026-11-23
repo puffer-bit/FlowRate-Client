@@ -13,6 +13,7 @@ using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Application.Ports;
@@ -39,9 +40,9 @@ namespace Client.Droid.Views.Main;
 
 /// <summary>
 /// The root view. It stands where the main window stands on the desktop, so it answers the same view
-/// model: the open session takes the screen, with a placeholder while there is none, and the side
-/// panel with the server and its sessions slides in over it as a menu. The connect form, the profile
-/// and the settings take the whole screen, and message boxes lie over everything.
+/// model: the home screen holds the server, its chats or sessions and the voice session we are in, and
+/// the open session slides in over it. The connect form, the profile and the settings take the whole
+/// screen, and message boxes lie over everything.
 /// </summary>
 public partial class MainView : UserControl
 {
@@ -98,9 +99,33 @@ public partial class MainView : UserControl
         // Menus open where they were asked for
         PopupMenu.TrackPresses(this);
 
-        // Shown over the session and navigation drawer
+        // Shown over the session and the home screen
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
+
+        // A session is swiped to the right, back to the home screen under it
+        _ = new DragGesture(Screen, Orientation.Horizontal)
+        {
+            CanStart = (_, offset) => offset > 0 && CanSwipeBack(),
+            Moved = offset =>
+            {
+                _screenSlide?.Cancel();
+                Home.IsVisible = true;
+                _screenShift.X = Math.Max(0, offset);
+            },
+            Ended = (offset, velocity) =>
+            {
+                if (offset > Root.Bounds.Width / 3 || velocity > DragGesture.FlingVelocity)
+                    _viewModel?.ShowHome();
+                else
+                    SlideScreen(show: true);
+            }
+        };
     }
+
+    // Only the session itself goes: what covers it is closed by back, one at a time
+    private bool CanSwipeBack() => _isScreenShown && _viewModel?.CurrentContent != null
+                                   && !(_viewModel.CurrentContent is ActiveChatSessionVM && _chatView.IsCovered)
+                                   && !(_viewModel.CurrentContent is ActiveHybridSessionVM && _hybridView.IsFullscreenOpen);
 
     /// <param name="services">Where the settings take the services they change.</param>
     public MainView(MainWindowVM viewModel, IServiceProvider services) : this()
@@ -108,33 +133,19 @@ public partial class MainView : UserControl
         _viewModel = viewModel;
         _services = services;
         DataContext = viewModel;
-        _chatView.MenuRequested += OpenDrawer;
+        _chatView.BackRequested += viewModel.ShowHome;
         var behavior = services.GetRequiredService<IBehaviorService>();
         _chatView.QuickReaction = async () => (await behavior.GetSettingsAsync()).QuickReaction;
-        Sessions.ServerMenuRequested += OpenServerMenu;
         Sessions.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatMenuRequested += OpenChatMenu;
-        HomeChats.ChatRequested += chat =>
-        {
-            viewModel.SessionsList.SelectedSession = chat;
-            CloseDrawer();
-        };
+        HomeChats.ChatRequested += chat => viewModel.SessionsList.SelectedSession = chat;
         Sessions.SessionMoveMenuRequested += OpenSessionMoveMenu;
         Sessions.CategoryMenuRequested += OpenCategoryMenu;
-        Sessions.SettingsRequested += _navigation.OpenSettings;
-        Sessions.StatusMenuRequested += () => StatusMenu.IsOpen = true;
         Sessions.PeerMenuRequested += OpenPeerMenu;
         _hybridView.PeerMenuRequested += OpenPeerMenu;
-        _hybridView.MenuRequested += OpenDrawer;
+        _hybridView.BackRequested += viewModel.ShowHome;
         _hybridView.StatsRequested += _navigation.OpenHybridStats;
         _hybridView.AudioDevicesRequested += () => AudioDevicesMenu.IsOpen = true;
-
-        // A tap on the session that is already shown changes nothing in the view model, but still means "go to it"
-        Sessions.SessionTapped += () => Dispatcher.UIThread.Post(() =>
-        {
-            if (viewModel.CurrentContent != null)
-                CloseDrawer();
-        });
 
         viewModel.ShowMessageBox.RegisterHandler(async context =>
             context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
@@ -169,14 +180,7 @@ public partial class MainView : UserControl
 
         // A session that ends is taken off the screen from the thread its event came on
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
-            .Subscribe(content => Dispatcher.UIThread.Post(() =>
-            {
-                ShowCurrentScreen();
-
-                // The session picked in the menu is what the user wants to see
-                if (content != null)
-                    CloseDrawer();
-            }));
+            .Subscribe(_ => Dispatcher.UIThread.Post(ShowCurrentScreen));
 
         // The menu of the server is about the server we are connected to
         viewModel.ServerTitle.WatchProperty(nameof(ServerTitleVM.IsReady), title => title.IsReady)
@@ -372,10 +376,6 @@ public partial class MainView : UserControl
         await viewModel.Initialize(() => { }, StartupOverlay.FadeOutAsync);
         _readyForCallActions = true;
         await HandleRequestedCallAsync();
-
-        // There is nothing to see before connecting, so the menu opens on its offer to connect
-        if (!viewModel.IsConnected)
-            OpenDrawer();
     }
 
     private void ShowCurrentScreen()
@@ -448,7 +448,8 @@ public partial class MainView : UserControl
         SlideScreen(show: true);
     }
 
-    // A session comes in from the right over the personal chats, and goes back out to the right
+    // A session comes in from the right over the home screen, and goes back out to the right; from
+    // where a swipe left it, too
     private async void SlideScreen(bool show)
     {
         // A slide the other way that is still running turns around from where it got to
@@ -508,23 +509,28 @@ public partial class MainView : UserControl
         ReleaseChat();
     }
 
-    private void OpenDrawer() => Drawer.Classes.Set("open", true);
-
-    /// <returns>False when the menu was not open.</returns>
-    private bool CloseDrawer()
+    // The menu of the server we are connected to, or the connect form while there is none
+    private void OnServerTitleClick(object? sender, RoutedEventArgs e)
     {
-        if (!Drawer.Classes.Contains("open"))
-            return false;
+        if (_viewModel == null)
+            return;
 
-        Drawer.Classes.Set("open", false);
-        return true;
+        if (_viewModel.ServerTitle.IsReady)
+            OpenServerMenu();
+        else if (!_viewModel.IsConnected)
+            _viewModel.ConnectCommand.Execute().Subscribe();
     }
 
-    private void OnMenuClick(object? sender, RoutedEventArgs e) => OpenDrawer();
+    private void OnProfileClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is { IsConnected: true, UserCard.UserId: { } userId })
+            _viewModel.UserCard.ViewProfileCommand.Execute(userId).Subscribe();
+    }
 
-    private void OnDrawerBackdropTapped(object? sender, TappedEventArgs e) => CloseDrawer();
+    // Opened where its item was, once the menu of the home screen is gone
+    private void OnStatusMenuClick(object? sender, RoutedEventArgs e) => StatusMenu.IsOpen = true;
 
-    private void OnListModeClick(object? sender, RoutedEventArgs e) => TryCloseServerMenu();
+    private void OnSettingsClick(object? sender, RoutedEventArgs e) => _navigation.OpenSettings();
 
     private void OnChatActionClick(object? sender, RoutedEventArgs e) => TryCloseChatMenu();
 
@@ -772,8 +778,7 @@ public partial class MainView : UserControl
         // Menus close before navigating away from the current screen.
         if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
             || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(PokeMenu) || TryClose(AfkMenu)
-            || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu) || TryClose(SharedMenu)
-            || CloseDrawer())
+            || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu) || TryClose(SharedMenu))
         {
             e.Handled = true;
             return;
