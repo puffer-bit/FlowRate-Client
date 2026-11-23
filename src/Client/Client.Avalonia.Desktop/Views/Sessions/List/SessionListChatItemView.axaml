@@ -158,7 +158,8 @@
                 <!-- A direct chat shows the other member, a group its picture or the first letter of its name -->
                 <avatars:UserAvatar Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center"
                                     UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
-                                    Status="{Binding PeerStatus}" IsVisible="{Binding IsPrivate}"/>
+                                    Status="{Binding PeerStatus}"
+                                    IsMobile="{Binding PeerIsMobile}" IsVisible="{Binding IsPrivate}"/>
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                     <!-- A group says so before its name; a running call colors the name -->

@@ -32,7 +32,8 @@ internal static class PushMessageHandler
         // The journal of the process, which the application object has started
         .AddClientLogging(Serilog.Log.Logger)
         .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
-        .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
+        .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
+            ApplicationDetails.SystemDescription, DevicePlatform.Architecture))
         .AddTransient<PushReplies>()
         .BuildServiceProvider());
 

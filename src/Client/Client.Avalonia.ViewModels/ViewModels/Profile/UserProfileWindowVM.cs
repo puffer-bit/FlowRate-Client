@@ -131,6 +131,20 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public bool IsCurrentUser { get; }
     public string FirstConnected { get; }
     public string LastConnected { get; }
+
+    /// <summary>Online from a phone: the status badge is a phone.</summary>
+    public bool IsMobile { get; }
+
+    /// <summary>The server tells the device: the user is online and not invisible, or it is our own profile.</summary>
+    public bool HasDevice { get; }
+
+    /// <summary>The system of the device and its architecture, "Windows 11 (26100) · x64".</summary>
+    public string? DeviceSystem { get; }
+
+    /// <summary>The icon of the system of the device; null for a system without one.</summary>
+    public string? DeviceIconKey { get; }
+
+    public string? DeviceAppVersion { get; }
     public string NameHint => UsernameRules.Hint;
 
     public Interaction<RxVoid, RxVoid> CloseWindow { get; } = new();
@@ -185,6 +199,15 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         Name = user.Username;
         FirstConnected = FormatTime(user.FirstConnectionTime);
         LastConnected = FormatTime(user.LastConnectionTime);
+        IsMobile = user.IsMobile;
+        if (user.Device is { } device)
+        {
+            HasDevice = true;
+            DeviceSystem = string.Join(" · ", new[] { device.OsVersion ?? device.Platform, device.Architecture }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+            DeviceIconKey = PlatformIconKey(device.Platform);
+            DeviceAppVersion = device.AppVersion;
+        }
 
         EditCommand = ReactiveCommand.CreateFromTask(StartEditingAsync,
             this.WatchProperty(nameof(IsEditing), vm => vm.IsEditing).Select(editing => !editing && CanEdit));
@@ -323,6 +346,16 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         StopEditing();
     }
+
+    private static string? PlatformIconKey(string platform) => platform switch
+    {
+        "Windows" => "WindowsIcon",
+        "Linux" => "LinuxIcon",
+        "macOS" => "MacOSIcon",
+        "Android" => "AndroidIcon",
+        "iOS" => "IPhoneIcon",
+        _ => null
+    };
 
     private static string FormatTime(DateTimeOffset time)
     {

@@ -58,7 +58,8 @@
                         <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !HasAvatar}"/>
                         <avatars:UserAvatar Width="36" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center"
                                             UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}"
-                                            Status="{Binding PeerStatus}" IsVisible="{Binding HasAvatar}"/>
+                                            Status="{Binding PeerStatus}"
+                                            IsMobile="{Binding PeerIsMobile}" IsVisible="{Binding HasAvatar}"/>
                     </Panel>
 
                     <!-- Name with the chat status under it, as in Telegram -->

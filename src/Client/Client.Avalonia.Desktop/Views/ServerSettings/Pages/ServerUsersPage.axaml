@@ -159,6 +159,7 @@
                                                     UserName="{Binding Username}"
                                                     AvatarUrl="{Binding AvatarUrl}"
                                                     Status="{Binding Status}"
+                                                    IsMobile="{Binding IsMobile}"
                                                     StatusBackground="{DynamicResource SettingsCardBackgroundBrush}"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">

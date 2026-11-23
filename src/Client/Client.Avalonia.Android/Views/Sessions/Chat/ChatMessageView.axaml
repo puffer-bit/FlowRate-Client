@@ -39,7 +39,8 @@
                                 UserName="{Binding SenderName}"
                                 IsDeleted="{Binding IsSenderDeleted}"
                                 AvatarUrl="{Binding SenderAvatarUrl}"
-                                Status="{Binding SenderStatus}"/>
+                                Status="{Binding SenderStatus}"
+                                IsMobile="{Binding SenderIsMobile}"/>
 
             <StackPanel Grid.Column="1" Classes="msg-content">
 

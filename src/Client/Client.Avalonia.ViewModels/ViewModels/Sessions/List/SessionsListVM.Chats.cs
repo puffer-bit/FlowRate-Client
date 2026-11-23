@@ -115,6 +115,7 @@ public partial class SessionsListVM
         chat.DisplayName = other.DisplayName ?? other.Username;
         chat.AvatarUrl = other.AvatarUrl;
         chat.PeerStatus = other.Status;
+        chat.PeerIsMobile = other.IsMobile;
     }
 
     private async Task ToggleChatMute(int chatId)

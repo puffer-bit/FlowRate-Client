@@ -638,6 +638,8 @@
   "profile.field.name": "Nombre:",
   "profile.field.firstConnected": "Primera conexión:",
   "profile.field.lastConnected": "Última conexión:",
+  "profile.field.device": "Dispositivo:",
+  "profile.field.appVersion": "Versión de la app:",
 
   "session.peer.undefined": "Sin definir",
   "session.peer.waiting": "En espera",

@@ -35,6 +35,11 @@ public class ChatMentionSuggestionVM : ReactiveObject
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+    public bool IsMobile
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
     public string? Hint
     {
         get;

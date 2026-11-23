@@ -22,6 +22,7 @@ public sealed class ServerUserRowVM(UserModel user, IReadOnlyList<RoleModel> rol
     public string Username => User.Username;
     public string? AvatarUrl => User.AvatarUrl;
     public UserStatus Status => User.Status;
+    public bool IsMobile => User.IsMobile;
     /// <summary>Banned by account, or by IP for this user.</summary>
     public bool IsBanned => User.State == UserState.Banned || BanDetails != null;
 

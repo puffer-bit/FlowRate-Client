@@ -76,7 +76,17 @@ public sealed class ChatInfoTests
             Task? execution = null;
             await TestUiThread.RunAsync(() => execution = status.OpenInfoCommand.Execute().ToTask());
             await execution!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            await ready.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            // The test UI thread only runs dispatcher jobs when a test asks it to, so keep pumping
+            // until the command reports it is ready again instead of relying on other tests to do it.
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+            while (!ready.IsCompleted)
+            {
+                if (DateTimeOffset.UtcNow > deadline)
+                    throw new TimeoutException();
+                await TestUiThread.RunAsync(() => Dispatcher.UIThread.RunJobs());
+                await Task.WhenAny(ready, Task.Delay(10, TestContext.Current.CancellationToken));
+            }
+            await ready;
         }
 
         await ClickHeader();

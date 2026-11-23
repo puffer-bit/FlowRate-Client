@@ -797,6 +797,8 @@
   "profile.field.name": "Name:",
   "profile.field.firstConnected": "First connected:",
   "profile.field.lastConnected": "Last connected:",
+  "profile.field.device": "Device:",
+  "profile.field.appVersion": "App version:",
   "profile.name.yours": "Your name",
   "profile.name.short": "Name",
   "profile.avatar.resetsOnSave": "Resets on save",

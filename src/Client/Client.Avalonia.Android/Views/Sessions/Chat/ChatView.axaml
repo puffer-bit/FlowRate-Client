@@ -243,7 +243,8 @@
                 <Panel Width="40" Height="40">
                     <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !StatusBar.HasAvatar}"/>
                     <avatars:UserAvatar Width="40" Height="40" UserName="{Binding StatusBar.Name}" AvatarUrl="{Binding StatusBar.AvatarUrl}"
-                                        Status="{Binding StatusBar.PeerStatus}" IsVisible="{Binding StatusBar.HasAvatar}"/>
+                                        Status="{Binding StatusBar.PeerStatus}"
+                                        IsMobile="{Binding StatusBar.PeerIsMobile}" IsVisible="{Binding StatusBar.HasAvatar}"/>
                 </Panel>
             </Button>
 
@@ -395,7 +396,8 @@
                                                                 IsVisible="{Binding !IsGroup}"
                                                                 UserName="{Binding Name}"
                                                                 AvatarUrl="{Binding AvatarUrl}"
-                                                                Status="{Binding Status}"/>
+                                                                Status="{Binding Status}"
+                                                                IsMobile="{Binding IsMobile}"/>
                                             <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="15"
                                                        Text="{Binding DisplayName}"/>
                                             <TextBlock Grid.Column="2" Classes="mention-hint" VerticalAlignment="Center"
@@ -778,7 +780,7 @@
                                 <DataTemplate DataType="chatVm:ChatMessageReaderVM">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
                                         <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
-                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}"/>
+                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
                                         <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"

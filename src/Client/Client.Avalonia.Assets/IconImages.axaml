@@ -2185,6 +2185,15 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Online from a phone: a green phone, its screen cut out. Taller than the dots, in a badge of its own shape.
+         Source: Icons/Status/StatusMobileIcon.svg -->
+    <DrawingImage x:Key="StatusMobileIcon">
+        <DrawingGroup ClipGeometry="M0,0 H16 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H16 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource SuccessBrush}" Geometry="F0 M3,0 H13 A3,3 0 0 1 16,3 V21 A3,3 0 0 1 13,24 H3 A3,3 0 0 1 0,21 V3 A3,3 0 0 1 3,0 Z M3,3 H13 V18 H3 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Selected headphones wordmark. Source: AppIcons/Headphones/svg/wordmark-on-light.svg.
          The symbol follows the accent; the lettering follows the active text color. -->
     <SolidColorBrush x:Key="FlowRateLogoAccentBrush" Color="{DynamicResource ColorPrimary}"/>

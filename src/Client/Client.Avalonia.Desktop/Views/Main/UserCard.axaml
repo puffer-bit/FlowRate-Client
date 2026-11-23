@@ -40,6 +40,7 @@
                                 UserName="{Binding Username}"
                                 AvatarUrl="{Binding AvatarUrl}"
                                 Status="{Binding Presence}"
+                                IsMobile="{Binding IsMobile}"
                                 VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <text:MarqueeTextBlock Text="{Binding Username}"
