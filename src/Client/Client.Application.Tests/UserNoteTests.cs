@@ -177,6 +177,9 @@ public class UserNoteTests
             return FailLoad ? Task.FromException<string?>(new IOException("Read failed")) : Task.FromResult(Text);
         }
 
+        public Task<IReadOnlyDictionary<int, string>> GetAllAsync(string coordinatorInstanceId) =>
+            Task.FromResult<IReadOnlyDictionary<int, string>>(new Dictionary<int, string>());
+
         public async Task SetAsync(string coordinatorInstanceId, int userId, string text)
         {
             if (BeforeWrite != null)

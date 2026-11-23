@@ -21,7 +21,10 @@ internal static class CoordinatorEventMapper
         ServerRestartNotification restart => new ServerRestartEvent(restart.Reason, restart.At, restart.Message),
         ServerRestartCancelledNotification => new ServerRestartCancelledEvent(),
         CoordinatorUserBannedNotification banned => new BannedEvent(banned.Reason),
-        CoordinatorUserSessionEndedNotification ended => new SessionEndedEvent(ended.Reason),
+        AccountDeviceEndedNotification ended => new DeviceEndedEvent(ended.Reason),
+        AccountDeviceAddedNotification added => new DeviceAddedEvent(added.Device.ToModel()),
+        DeviceLinkCompletedNotification completed => new DeviceLinkCompletedEvent(completed.User.ToModel(), completed.DeviceId),
+        DeviceLinkDeclinedNotification => new DeviceLinkDeclinedEvent(),
 
         CoordinatorReconfiguredNotification reconfigured =>
             new CoordinatorReconfiguredEvent(reconfigured.Coordinator.ToModel()),

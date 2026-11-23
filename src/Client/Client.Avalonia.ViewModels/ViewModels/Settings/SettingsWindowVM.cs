@@ -179,7 +179,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         IThemeService themeService,
         ILanguageService languageService,
         ICollapsedSectionsRepository collapsedSectionsRepository,
-        IReleaseNotesSource releaseNotes)
+        IReleaseNotesSource releaseNotes,
+        Client.Application.Sync.IAccountBackupService? backups = null)
     {
         _collapsedSectionsRepository = collapsedSectionsRepository;
         CloseWindow = new Interaction<RxVoid, RxVoid>();
@@ -188,7 +189,7 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
         CloseCommand = ReactiveCommand.CreateFromTask(CloseAsync);
         ResetAllSettingsCommand = ReactiveCommand.CreateFromTask(ResetAllSettings);
 
-        SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity));
+        SettingList.Add(new AccountingControlVM(accountingService, databaseSecurity, backups));
         var behavior = new BehaviorControlVM(behaviorService, accountingService);
         SettingList.Add(behavior);
         SettingList.Add(new AudioControlVM(audioService, microphoneTester, soundService, soundPackCatalog));

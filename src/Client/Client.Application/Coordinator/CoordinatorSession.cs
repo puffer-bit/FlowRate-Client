@@ -100,10 +100,12 @@ public partial class CoordinatorSession : ICoordinatorSession
     public CoordinatorSession(ICoordinatorGateway gateway,
         ITrustedCertificatesRepository trustedCertificates,
         ILoggerFactory loggerFactory,
-        IConnectivityMonitor? connectivity = null)
+        IConnectivityMonitor? connectivity = null,
+        IDeviceKeyStore? deviceKeys = null)
     {
         // DI
         _gateway = gateway;
+        _deviceKeys = deviceKeys ?? new Security.InMemoryDeviceKeyStore();
         _trustedCertificates = trustedCertificates;
         _connectivity = connectivity;
         _logger = loggerFactory.CreateLogger<CoordinatorSession>();

@@ -19,9 +19,9 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 namespace Client.ViewModels.Profile;
 
 /// <summary>
-/// What the current user logs in with: the password, one-time codes and passkeys, and the devices logged in. Every
-/// change asks for the current password and code the user has, so an open session alone cannot take over the
-/// account; ending the sessions of other devices takes nothing from it, and asks for nothing.
+/// What the current user logs in with: the password, one-time codes and passkeys, the recovery phrase, and the devices
+/// of the account. Every change of how the account logs in asks for the current password and code the user has, so an
+/// open session alone cannot take over the account; removing other devices takes nothing from it, and asks for nothing.
 /// </summary>
 public sealed class AccountSecurityVM : ReactiveObject
 {
@@ -38,8 +38,22 @@ public sealed class AccountSecurityVM : ReactiveObject
         DeletePasskey,
         EndSession,
         EndOtherSessions,
-        ResetIdentity
+        ResetPhrase,
+        LinkDevice,
+        Logout
     }
+
+    /// <summary>Keeps a new recovery phrase on this device until the user confirms saving it.</summary>
+    public Func<string, Task>? KeepRecoveryPhrase { get; init; }
+
+    /// <summary>The user saved the phrase shown; true keeps it on this device anyway.</summary>
+    public Func<bool, Task>? ConfirmRecoveryPhraseSaved { get; init; }
+
+    /// <summary>The phrase while it is kept on this device; null otherwise.</summary>
+    public Func<Task<string?>>? LoadRecoveryPhrase { get; init; }
+
+    /// <summary>This device left the account: the saved account forgets it.</summary>
+    public Func<Task>? LoggedOut { get; init; }
 
     private readonly ICoordinatorSession _session;
 
@@ -67,7 +81,12 @@ public sealed class AccountSecurityVM : ReactiveObject
             Begin(Change.EndSession);
         }, inOverview);
         EndOtherSessionsCommand = ReactiveCommand.Create(() => Begin(Change.EndOtherSessions), inOverview);
-        ResetIdentityCommand = ReactiveCommand.Create(() => Begin(Change.ResetIdentity), inOverview);
+        ResetPhraseCommand = ReactiveCommand.Create(() => Begin(Change.ResetPhrase), inOverview);
+        LinkDeviceCommand = ReactiveCommand.Create(() => Begin(Change.LinkDevice), inOverview);
+        DeclineLinkCommand = ReactiveCommand.CreateFromTask(DeclineLinkAsync, notBusy);
+        LogoutCommand = ReactiveCommand.Create(() => Begin(Change.Logout), inOverview);
+        ShowPhraseCommand = ReactiveCommand.CreateFromTask(ShowKeptPhraseAsync, notBusy);
+        ConfirmPhraseSavedCommand = ReactiveCommand.CreateFromTask(ConfirmPhraseSavedAsync, notBusy);
         ConfirmCommand = ReactiveCommand.CreateFromTask(ConfirmAsync,
             this.WatchProperties(nameof(IsBusy), nameof(Current)).Select(_ => !IsBusy && Current != Change.None));
         BackCommand = ReactiveCommand.Create(Back, notBusy);
@@ -110,8 +129,67 @@ public sealed class AccountSecurityVM : ReactiveObject
 
     public ObservableCollection<AccountPasskeyVM> Passkeys { get; } = [];
 
-    /// <summary>The devices the user is logged in from, this one first.</summary>
+    /// <summary>The devices of the account, this one first.</summary>
     public ObservableCollection<AccountSessionVM> Sessions { get; } = [];
+
+    /// <summary>A recovery phrase to show: a new one, or the one kept on this device.</summary>
+    public string? RecoveryPhrase
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsRecoveryPhraseShown));
+            this.RaisePropertyChanged(nameof(RecoveryPhraseText));
+        }
+    }
+
+    public bool IsRecoveryPhraseShown => RecoveryPhrase != null;
+
+    /// <summary>The words numbered, four a line.</summary>
+    public string RecoveryPhraseText => RecoveryPhrase == null ? "" : NumberWords(RecoveryPhrase);
+
+    /// <summary>Keep the phrase on this device after the user saved it.</summary>
+    public bool KeepPhraseOnDevice
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>The code a new device shows, as typed or pasted (flowrate-link:… too).</summary>
+    public string LinkCode
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            LinkInfo = null;
+            Error = null;
+        }
+    } = "";
+
+    /// <summary>What the new device told about itself, once the code was looked up.</summary>
+    public DeviceLinkInfo? LinkInfo
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(LinkInfoText));
+            this.RaisePropertyChanged(nameof(IsLinkInfoShown));
+            this.RaisePropertyChanged(nameof(ConfirmText));
+        }
+    }
+
+    public bool IsLinkInfoShown => LinkInfo != null;
+
+    public string LinkInfoText => LinkInfo is not { } info ? "" : Strings.Format("accountSecurity.link.info",
+        ("device", info.DeviceName ?? "?"), ("platform", info.Platform ?? "?"), ("address", info.Address ?? "?"));
+
+    public bool IsLinkCodeAsked => Current == Change.LinkDevice;
+
+    public static string NumberWords(string phrase) => string.Join("\n", Client.Application.Security.RecoveryPhrase
+        .Split(phrase).Select((word, index) => $"{index + 1,2}. {word}").Chunk(4).Select(line => string.Join("   ", line)));
 
     public bool HasOtherSessions => Sessions.Any(session => !session.IsCurrent);
 
@@ -125,6 +203,7 @@ public sealed class AccountSecurityVM : ReactiveObject
             this.RaisePropertyChanged(nameof(IsOverview));
             this.RaisePropertyChanged(nameof(IsChanging));
             this.RaisePropertyChanged(nameof(IsNewPasswordAsked));
+            this.RaisePropertyChanged(nameof(IsLinkCodeAsked));
             this.RaisePropertyChanged(nameof(IsProofAsked));
             this.RaisePropertyChanged(nameof(ChangeTitle));
             this.RaisePropertyChanged(nameof(ChangeHint));
@@ -137,7 +216,8 @@ public sealed class AccountSecurityVM : ReactiveObject
     public bool IsNewPasswordAsked => Current == Change.SetPassword;
 
     /// <summary>Turning the codes on asks for the proof once, before the secret is offered.</summary>
-    public bool IsProofAsked => Current is not (Change.None or Change.EndSession or Change.EndOtherSessions)
+    public bool IsProofAsked => Current is not (Change.None or Change.EndSession or Change.EndOtherSessions
+                                    or Change.LinkDevice or Change.Logout)
                                 && (Current != Change.EnableCodes || Setup == null)
                                 && (IsPasswordProofAsked || IsCodeProofAsked);
 
@@ -153,7 +233,9 @@ public sealed class AccountSecurityVM : ReactiveObject
         Change.DeletePasskey => Strings.Format("accountSecurity.passkeys.delete", ("name", PasskeyToDelete?.Label ?? "")),
         Change.EndSession => Strings.Format("accountSecurity.sessions.end", ("name", SessionToEnd?.Name ?? "")),
         Change.EndOtherSessions => Strings.Get("accountSecurity.sessions.endOthers"),
-        Change.ResetIdentity => Strings.Get("accountSecurity.identity.reset"),
+        Change.ResetPhrase => Strings.Get("accountSecurity.phrase.reset"),
+        Change.LinkDevice => Strings.Get("accountSecurity.link.title"),
+        Change.Logout => Strings.Get("accountSecurity.logout.title"),
         _ => ""
     };
 
@@ -161,7 +243,9 @@ public sealed class AccountSecurityVM : ReactiveObject
     public string? ChangeHint => Current switch
     {
         Change.EndSession or Change.EndOtherSessions => Strings.Get("accountSecurity.sessions.endHint"),
-        Change.ResetIdentity => Strings.Get("accountSecurity.identity.resetHint"),
+        Change.ResetPhrase => Strings.Get("accountSecurity.phrase.resetHint"),
+        Change.LinkDevice => Strings.Get("accountSecurity.link.hint"),
+        Change.Logout => Strings.Get("accountSecurity.logout.hint"),
         _ => null
     };
 
@@ -169,7 +253,10 @@ public sealed class AccountSecurityVM : ReactiveObject
     {
         Change.RemovePassword or Change.DeletePasskey => "common.delete",
         Change.EndSession or Change.EndOtherSessions => "accountSecurity.sessions.endConfirm",
-        Change.ResetIdentity => "accountSecurity.identity.resetConfirm",
+        Change.ResetPhrase => "accountSecurity.phrase.resetConfirm",
+        Change.LinkDevice when LinkInfo == null => "accountSecurity.next",
+        Change.LinkDevice => "accountSecurity.link.approve",
+        Change.Logout => "accountSecurity.logout.confirm",
         Change.DisableCodes => "accountSecurity.codes.disableConfirm",
         Change.EnableCodes when Setup == null => "accountSecurity.next",
         Change.EnableCodes => "accountSecurity.codes.enableConfirm",
@@ -279,7 +366,12 @@ public sealed class AccountSecurityVM : ReactiveObject
     public ReactiveCommand<AccountPasskeyVM, RxVoid> DeletePasskeyCommand { get; }
     public ReactiveCommand<AccountSessionVM, RxVoid> EndSessionCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> EndOtherSessionsCommand { get; }
-    public ReactiveCommand<RxVoid, RxVoid> ResetIdentityCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ResetPhraseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> LinkDeviceCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> DeclineLinkCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> LogoutCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ShowPhraseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ConfirmPhraseSavedCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ConfirmCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> BackCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
@@ -293,9 +385,40 @@ public sealed class AccountSecurityVM : ReactiveObject
         if (!result.IsSuccess)
             return result;
 
-        var (sessionsResult, sessions) = await _session.GetAccountSessions();
+        var (sessionsResult, sessions) = await _session.GetAccountDevices();
         ApplySessions(sessionsResult, sessions);
         return sessionsResult;
+    }
+
+    private async Task ShowKeptPhraseAsync()
+    {
+        RecoveryPhrase = LoadRecoveryPhrase == null ? null : await LoadRecoveryPhrase();
+        if (RecoveryPhrase == null)
+            Error = Strings.Get("accountSecurity.phrase.notKept");
+    }
+
+    private async Task ConfirmPhraseSavedAsync()
+    {
+        if (ConfirmRecoveryPhraseSaved != null)
+            await ConfirmRecoveryPhraseSaved(KeepPhraseOnDevice);
+        RecoveryPhrase = null;
+    }
+
+    private async Task DeclineLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(LinkCode))
+        {
+            Back();
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            var result = await _session.ApproveDeviceLink(LinkCode, false);
+            if (result.IsSuccess)
+                Back();
+            return result;
+        });
     }
 
     private void Begin(Change change)
@@ -306,6 +429,8 @@ public sealed class AccountSecurityVM : ReactiveObject
         RepeatPassword = "";
         SetupCode = "";
         Setup = null;
+        LinkCode = "";
+        LinkInfo = null;
         Current = change;
         Error = null;
     }
@@ -356,19 +481,48 @@ public sealed class AccountSecurityVM : ReactiveObject
                 case Change.DeletePasskey when PasskeyToDelete is { } passkey:
                     return Finish(await _session.DeletePasskey(proof, passkey.Id));
                 case Change.EndSession when SessionToEnd is { } session:
-                    return FinishSessions(await _session.EndAccountSession(session.Id));
+                    return FinishSessions(await _session.RevokeAccountDevice(session.Id));
                 case Change.EndOtherSessions:
-                    return FinishSessions(await _session.EndAccountSession(null));
-                case Change.ResetIdentity:
+                    return FinishSessions(await _session.RevokeAccountDevice(null));
+                case Change.ResetPhrase:
                 {
-                    var result = await _session.ResetUserIdentity(proof);
+                    var (result, phrase) = await _session.ResetRecoveryPhrase(proof);
+                    if (!result.IsSuccess || phrase == null)
+                        return result;
+
+                    // Kept until the user saves it; the devices stay, they have keys of their own
+                    if (KeepRecoveryPhrase != null)
+                        await KeepRecoveryPhrase(phrase);
+                    RecoveryPhrase = phrase;
+                    Back();
+                    return RequestResult.Success;
+                }
+                case Change.LinkDevice when LinkInfo == null:
+                {
+                    var (result, info) = await _session.GetDeviceLinkInfo(LinkCode);
+                    LinkInfo = info;
+                    return result;
+                }
+                case Change.LinkDevice:
+                {
+                    var result = await _session.ApproveDeviceLink(LinkCode, true);
                     if (!result.IsSuccess)
                         return result;
 
-                    // The other devices were logged out with the old identity
-                    var (sessionsResult, sessions) = await _session.GetAccountSessions();
-                    ApplySessions(sessionsResult, sessions);
+                    var (devicesResult, devices) = await _session.GetAccountDevices();
+                    ApplySessions(devicesResult, devices);
                     Back();
+                    return RequestResult.Success;
+                }
+                case Change.Logout:
+                {
+                    var result = await _session.Logout();
+                    if (!result.IsSuccess)
+                        return result;
+
+                    if (LoggedOut != null)
+                        await LoggedOut();
+                    await CloseWindow.Handle(RxVoid.Default);
                     return RequestResult.Success;
                 }
                 default:
@@ -385,7 +539,7 @@ public sealed class AccountSecurityVM : ReactiveObject
         return response.Result;
     }
 
-    private RequestResult FinishSessions(RequestResult<IReadOnlyList<AccountSession>> response)
+    private RequestResult FinishSessions(RequestResult<IReadOnlyList<AccountDevice>> response)
     {
         ApplySessions(response.Result, response.Value);
         if (response.IsSuccess)
@@ -400,7 +554,7 @@ public sealed class AccountSecurityVM : ReactiveObject
     }
 
     private void ApplySessions(RequestResult result,
-        IReadOnlyList<AccountSession>? sessions)
+        IReadOnlyList<AccountDevice>? sessions)
     {
         if (!result.IsSuccess || sessions == null)
             return;
@@ -414,6 +568,9 @@ public sealed class AccountSecurityVM : ReactiveObject
     /// <summary>Checks here what the server would refuse anyway, so the user learns it without a round trip.</summary>
     private bool Validate()
     {
+        if (Current == Change.LinkDevice)
+            return Require(!string.IsNullOrWhiteSpace(LinkCode), "accountSecurity.link.codeEmpty");
+
         if (Current == Change.EnableCodes && Setup != null)
             return Require(IsCodeValid(SetupCode), "accountSecurity.error.codeFormat");
 
@@ -474,7 +631,8 @@ public sealed class AccountSecurityVM : ReactiveObject
         { Error: ErrorCode.InvalidValue } => Strings.Get("accountSecurity.error.invalid"),
         { Error: ErrorCode.FeatureDisabled } => Strings.Get("accountSecurity.passkeys.unavailable"),
         { Error: ErrorCode.PasskeyNotFound } => Strings.Get("accountSecurity.error.passkeyNotFound"),
-        { Error: ErrorCode.SessionNotFound } => Strings.Get("accountSecurity.error.sessionNotFound"),
+        { Error: ErrorCode.DeviceNotFound } => Strings.Get("accountSecurity.error.sessionNotFound"),
+        { Error: ErrorCode.DeviceLinkNotFound } => Strings.Get("accountSecurity.link.notFound"),
         _ => Strings.Format("accountSecurity.error.failed", ("code", (int?)result.Error))
     };
 }

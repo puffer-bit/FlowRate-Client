@@ -41,7 +41,6 @@
                                  Text="{Binding Password}"
                                  RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"
                                  Classes.invalid="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <CheckBox IsChecked="{Binding RememberPassword}" Content="{l:Text loginPrompt.remember}"/>
                     </StackPanel>
 
                     <StackPanel Spacing="6" IsVisible="{Binding IsCodeAsked}">

@@ -23,7 +23,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetAvatar_UploadsThePictureAndPutsItOnTheProfile()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         byte[] image = [1, 2, 3];
 
         var (result, user) = await _session.SetAvatar(image, "image/webp", TestContext.Current.CancellationToken);
@@ -41,7 +41,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetAvatar_WhenTheUploadFails_AsksForNothing()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         _gateway.UploadResult = MediaTransferResult.ConnectionFailed;
 
         var (result, user) = await _session.SetAvatar([1], "image/webp", TestContext.Current.CancellationToken);
@@ -54,7 +54,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetAvatar_LargerThanTheLimit_IsNotSent()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         var (result, _) = await _session.SetAvatar(new byte[Limits.AvatarMaxSize + 1], "image/webp",
             TestContext.Current.CancellationToken);
@@ -66,7 +66,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetAvatar_TheServerRefuses_ReportsItsAnswer()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         _gateway.AvatarError = ErrorCode.UploadNotFound;
 
         var (result, user) = await _session.SetAvatar([1], "image/webp", TestContext.Current.CancellationToken);
@@ -78,7 +78,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task ResetAvatar_NamesTheUserAndNoUpload()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         var result = await _session.ResetAvatar(7);
 
@@ -90,7 +90,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetGroupAvatar_UploadsThePictureAndPutsItOnTheGroup()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         byte[] image = [1, 2, 3];
 
         var result = await _session.SetGroupAvatar(5, image, "image/webp", TestContext.Current.CancellationToken);
@@ -107,7 +107,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetGroupAvatar_WithoutAPicture_TakesItOffWithoutAnUpload()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         var result = await _session.SetGroupAvatar(5, null, null, TestContext.Current.CancellationToken);
 
@@ -119,7 +119,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetGroupAvatar_WhenTheUploadFails_AsksForNothing()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         _gateway.UploadResult = MediaTransferResult.ConnectionFailed;
 
         var result = await _session.SetGroupAvatar(5, [1], "image/webp", TestContext.Current.CancellationToken);
@@ -131,7 +131,7 @@ public class CoordinatorSessionAvatarTests
     [Fact]
     public async Task SetGroupAvatar_TheServerRefuses_ReportsItsAnswer()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         _gateway.AvatarError = ErrorCode.InsufficientPermissions;
 
         var result = await _session.SetGroupAvatar(5, [1], "image/webp", TestContext.Current.CancellationToken);

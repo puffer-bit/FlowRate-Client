@@ -12,14 +12,11 @@ public delegate Task<LoginAnswer?> LoginPromptHandler(LoginPrompt prompt, Cancel
 /// <param name="AsksPassword">The password is needed and not known here, or the known one was refused.</param>
 /// <param name="AsksTwoFactorCode">A one-time code is needed.</param>
 /// <param name="IsRetry">The previous answer was refused.</param>
-/// <param name="IsPasswordRemembered">The password is kept with the saved identity; the remember box starts checked.</param>
 public sealed record LoginPrompt(
     string CoordinatorAddress,
     LoginChallenge Challenge,
     bool AsksPassword,
     bool AsksTwoFactorCode,
-    bool IsRetry,
-    bool IsPasswordRemembered);
+    bool IsRetry);
 
-/// <param name="RememberPassword">Keep the password with the saved identity, so that the next start does not ask.</param>
-public sealed record LoginAnswer(string? Password, string? TwoFactorCode, bool RememberPassword);
+public sealed record LoginAnswer(string? Password, string? TwoFactorCode);

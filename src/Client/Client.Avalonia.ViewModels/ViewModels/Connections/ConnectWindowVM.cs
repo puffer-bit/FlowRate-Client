@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Client.Application.Security;
 using Client.Application.Settings;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
@@ -27,22 +28,132 @@ public class ConnectWindowVM : ReactiveObject
     // Matches the coordinator port in the server defaults
     public const int DefaultPort = 26666;
 
+    /// <summary>The entry that registers a new account on the server.</summary>
+    public SavedUserModel NewAccount { get; } = new()
+    {
+        Username = Strings.Get("connect.identity.new"), EntryIconKey = "PlusIcon"
+    };
+
+    /// <summary>The entry that logs in to an account this device does not know yet.</summary>
+    public SavedUserModel ExistingAccount { get; } = new()
+    {
+        Username = Strings.Get("connect.identity.existing"), EntryIconKey = "DoorWithGreenArrowIcon"
+    };
+
     public SavedUserModel? SelectedIdentity
     {
         get;
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsIdentityQrAvailable));
 
-            // The server password saved with the identity is filled in; "New*" keeps what was typed
-            if (value?.UserIdentity != null)
-                Password = value.Password;
+            // The server password saved with the account is filled in; the other entries keep what was typed
+            if (IsSaved(value))
+                Password = value!.Password;
+
+            // A saved account without a device here logs in by its name, which is filled in
+            if (IsSaved(value) && !value!.CanLogIn)
+            {
+                LoginMethod = ExistingLoginMethod.Username;
+                LoginUsername = value.Username;
+            }
+
+            this.RaisePropertyChanged(nameof(IsLoginFormVisible));
+            this.RaisePropertyChanged(nameof(IsRegistering));
         }
     }
 
     public bool IsIdentitiesSelectable => Identities.Count > 1;
-    public bool IsIdentityQrAvailable => !string.IsNullOrEmpty(SelectedIdentity?.UserIdentity);
+
+    /// <summary>The account is logged in to by one of <see cref="ExistingLoginMethod"/>, not as a saved device.</summary>
+    public bool IsLoginFormVisible => ReferenceEquals(SelectedIdentity, ExistingAccount)
+                                      || IsSaved(SelectedIdentity) && !SelectedIdentity!.CanLogIn;
+
+    public bool IsRegistering => ReferenceEquals(SelectedIdentity, NewAccount);
+
+    public ExistingLoginMethod LoginMethod
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsUsernameLogin));
+            this.RaisePropertyChanged(nameof(IsRecoveryLogin));
+            this.RaisePropertyChanged(nameof(IsCodeLogin));
+            this.RaisePropertyChanged(nameof(IsDeviceLinkLogin));
+        }
+    } = ExistingLoginMethod.Username;
+
+    public bool IsUsernameLogin
+    {
+        get => LoginMethod == ExistingLoginMethod.Username;
+        set { if (value) LoginMethod = ExistingLoginMethod.Username; }
+    }
+
+    public bool IsRecoveryLogin
+    {
+        get => LoginMethod == ExistingLoginMethod.RecoveryPhrase;
+        set { if (value) LoginMethod = ExistingLoginMethod.RecoveryPhrase; }
+    }
+
+    public bool IsCodeLogin
+    {
+        get => LoginMethod == ExistingLoginMethod.LoginCode;
+        set { if (value) LoginMethod = ExistingLoginMethod.LoginCode; }
+    }
+
+    public bool IsDeviceLinkLogin
+    {
+        get => LoginMethod == ExistingLoginMethod.DeviceLink;
+        set { if (value) LoginMethod = ExistingLoginMethod.DeviceLink; }
+    }
+
+    public string? LoginUsername
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string? RecoveryPhraseText
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string? LoginCodeText
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>A device on someone else's computer: not remembered, and logged out when the app closes.</summary>
+    public bool IsTemporaryDevice
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Keep the server password, in the system keyring, so the next start does not ask.</summary>
+    public bool RememberServerPassword
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>The code this device shows while a device of the account is to approve it.</summary>
+    public DeviceLinkCode? DeviceLinkCode
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsDeviceLinkCodeShown));
+        }
+    }
+
+    public bool IsDeviceLinkCodeShown => DeviceLinkCode != null;
+
+    private static bool IsSaved(SavedUserModel? identity) => identity is { CoordinatorId.Length: > 0 };
 
     // Connecting before the saved identities are listed would go out as "New*"
     public bool IsLoadingIdentities
@@ -187,6 +298,12 @@ public class ConnectWindowVM : ReactiveObject
 
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+
+    /// <summary>Gives up waiting for a device of the account to approve this one.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> CancelDeviceLinkCommand { get; }
+
+    // The session that waits for a device link, to give the wait up
+    private ICoordinatorSession? _linkingSession;
     private ReactiveCommand<RxVoid, RxVoid> FindIdentitiesCommand { get; }
 
     private readonly ICoordinatorFactory _coordinatorFactory;
@@ -217,6 +334,12 @@ public class ConnectWindowVM : ReactiveObject
 
         _isBusy = ConnectCommand.IsExecuting.ToProperty(this, nameof(IsBusy));
 
+        CancelDeviceLinkCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (_linkingSession is { } linking)
+                await linking.Disconnect();
+        });
+
         FindIdentitiesCommand = ReactiveCommand.CreateFromTask(FindIdentities);
 
         Task.Run(async () =>
@@ -241,17 +364,25 @@ public class ConnectWindowVM : ReactiveObject
     {
         if (!IsFormValid)
             return;
+        if (CreateLoginPlan() is not { } plan)
+            return;
+        var identity = SelectedIdentity;
+
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
 
         // Only the reason of a rejected login is needed, the main window takes over the session after
         RequestFailedException? rejection = null;
         void OnRejected(RequestFailedException exception) => rejection = exception;
+        void OnLinkCode(DeviceLinkCode code) => Dispatcher.UIThread.Post(() => DeviceLinkCode = code);
         session.RequestRejected += OnRejected;
+        session.DeviceLinkCodeReceived += OnLinkCode;
+        if (plan is DeviceLinkLoginPlan)
+            _linkingSession = session;
 
         try
         {
-            if (!await ConnectWithCertificateAsync(session))
+            if (!await ConnectWithCertificateAsync(session, plan))
             {
                 session.Dispose();
                 return;
@@ -272,6 +403,10 @@ public class ConnectWindowVM : ReactiveObject
                 return;
             }
 
+            // Ended while this device was away: the account is marked right here and asks for a login
+            if (session.ConnectionStatus == CoordinatorState.DeviceEnded && IsSaved(identity))
+                await MarkDeviceEndedAsync(identity!);
+
             if (session.ConnectionStatus != CoordinatorState.Connected)
             {
                 var message = DescribeConnectionFailure(session.ConnectionStatus, rejection, session.BanReason);
@@ -280,10 +415,11 @@ public class ConnectWindowVM : ReactiveObject
                 return;
             }
 
-            // Set by the successful login above. A saved identity is stored again as well, so it becomes
-            // the last one and is offered first next time instead of "New*"
-            await SaveCoordinatorAsync(session.CoordinatorModel!, session.GetCurrentUserCredentials(),
-                session.AccountPasswordToSave);
+            // Set by the successful login above. A saved account is stored again as well, so it becomes the last one
+            // and is offered first next time. A temporary device leaves nothing behind
+            if (!session.IsTemporaryDevice)
+                await SaveCoordinatorAsync(session.CoordinatorModel!, session.GetCurrentUserCredentials(),
+                    session.TakeNewRecoveryPhrase());
 
             await CloseWindow.Handle(session);
         }
@@ -303,20 +439,70 @@ public class ConnectWindowVM : ReactiveObject
         finally
         {
             session.RequestRejected -= OnRejected;
+            session.DeviceLinkCodeReceived -= OnLinkCode;
+            _linkingSession = null;
+            DeviceLinkCode = null;
             ConnectionStatus = Strings.Get("connect.status.waitingForAction");
         }
     }
 
-    private async Task<bool> ConnectWithCertificateAsync(ICoordinatorSession session)
+    /// <summary>Forgets the device of a saved account the server no longer knows and shows the account as such.</summary>
+    private async Task MarkDeviceEndedAsync(SavedUserModel identity)
     {
-        ConnectionStatus = Strings.Get("main.status.waitingForServer");
+        try
+        {
+            await _accountingService.ForgetDeviceAsync(identity.CoordinatorId, identity.Id);
+        }
+        catch (Exception)
+        {
+            // The list still shows the account as ended; the database is cleared by the next login that fails so
+        }
 
-        string? identity = SelectedIdentity?.UserIdentity;
-        var accountPassword = SelectedIdentity?.AccountPassword;
-        var sessionToken = SelectedIdentity?.SessionToken;
+        var index = Identities.IndexOf(identity);
+        if (index < 0)
+            return;
+        var ended = identity.WithoutDevice();
+        Identities[index] = ended;
+        if (ReferenceEquals(SelectedIdentity, identity) || SelectedIdentity == null)
+            SelectedIdentity = ended;
+    }
+
+    /// <summary>How the selected entry logs in; null when what is typed is not enough, which the user is told.</summary>
+    private LoginPlan? CreateLoginPlan()
+    {
+        var identity = SelectedIdentity;
+        if (identity == null || ReferenceEquals(identity, NewAccount))
+            return new RegisterLoginPlan();
+        if (!IsLoginFormVisible)
+            return LoginPlan.For(identity);
+
+        return LoginMethod switch
+        {
+            ExistingLoginMethod.Username when !string.IsNullOrWhiteSpace(LoginUsername) =>
+                new UsernameLoginPlan(LoginUsername, IsTemporaryDevice),
+            ExistingLoginMethod.RecoveryPhrase when RecoveryPhrase.Normalize(RecoveryPhraseText) is { } phrase =>
+                new RecoveryLoginPlan(phrase, IsTemporaryDevice),
+            ExistingLoginMethod.LoginCode when !string.IsNullOrWhiteSpace(LoginCodeText) =>
+                new LoginCodeLoginPlan(LoginCodeText, IsTemporaryDevice),
+            ExistingLoginMethod.DeviceLink => new DeviceLinkLoginPlan(IsTemporaryDevice),
+            ExistingLoginMethod.RecoveryPhrase => Refuse("connect.login.phraseInvalid"),
+            _ => Refuse("connect.login.fieldEmpty")
+        };
+
+        LoginPlan? Refuse(string message)
+        {
+            _ = HandleConnectionError(Strings.Get(message));
+            return null;
+        }
+    }
+
+    private async Task<bool> ConnectWithCertificateAsync(ICoordinatorSession session, LoginPlan plan)
+    {
+        ConnectionStatus = Strings.Get(plan is DeviceLinkLoginPlan
+            ? "connect.status.waitingForApproval" : "main.status.waitingForServer");
+
         var expectedCoordinatorId = SelectedIdentity?.CoordinatorId is { Length: > 0 } id ? id : null;
-        await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-            sessionToken, expectedCoordinatorId);
+        await session.Connect(_parsedAddress!, _parsedPort!.Value, Password, plan, expectedCoordinatorId);
 
         _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -326,8 +512,7 @@ public class ConnectWindowVM : ReactiveObject
                 return false;
 
             ConnectionStatus = Strings.Get("main.status.waitingForServer");
-            await session.Connect(_parsedAddress!, _parsedPort!.Value, identity, Password, accountPassword,
-                sessionToken, expectedCoordinatorId);
+            await session.Connect(_parsedAddress!, _parsedPort!.Value, Password, plan, expectedCoordinatorId);
 
             _cancellationTokenSource.Token.ThrowIfCancellationRequested();
         }
@@ -343,6 +528,10 @@ public class ConnectWindowVM : ReactiveObject
             CoordinatorState.AuthenticationFailed => Strings.Get("connect.failed.authFailed"),
             CoordinatorState.Denied => Strings.Get("connect.failed.banned") + (string.IsNullOrWhiteSpace(banReason) ? "" : "\n" + banReason),
             CoordinatorState.PasskeyRequired => Strings.Get("connect.failed.passkeyRequired"),
+            CoordinatorState.DeviceEnded => Strings.Get("connect.failed.deviceEnded"),
+            CoordinatorState.LoginFactorsMissing => Strings.Get("connect.failed.loginFactorsMissing"),
+            CoordinatorState.DeviceLinkDeclined => Strings.Get("connect.failed.deviceLinkDeclined"),
+            CoordinatorState.LoginRefused => Strings.Get("connect.failed.loginRefused"),
             CoordinatorState.ClientOutdated => Strings.Get("connect.failed.clientOutdated"),
             CoordinatorState.ServerOutdated => Strings.Get("connect.failed.serverOutdated"),
             CoordinatorState.Rejected when rejection != null => RequestRejectionMessages.GetForConnection(rejection.Code),
@@ -357,7 +546,7 @@ public class ConnectWindowVM : ReactiveObject
     }
 
     private async Task SaveCoordinatorAsync(CoordinatorSessionModel coordinatorSessionModel, SavedUserModel userModel,
-        string? accountPassword)
+        string? newRecoveryPhrase)
     {
         coordinatorSessionModel.Address = _parsedAddress!;
 
@@ -374,12 +563,17 @@ public class ConnectWindowVM : ReactiveObject
                 new SavedUserModel()
                 {
                     Id = userModel.Id,
-                    UserIdentity = userModel.UserIdentity,
-                    Password = this.Password,
-                    AccountPassword = accountPassword,
-                    SessionToken = userModel.SessionToken,
+                    Password = RememberServerPassword ? Password : null,
                     Username = userModel.Username,
-                    CoordinatorId = coordinatorSessionModel.Id
+                    CoordinatorId = coordinatorSessionModel.Id,
+                    DeviceId = userModel.DeviceId,
+                    DeviceKey = userModel.DeviceKey,
+                    BackupKey = userModel.BackupKey,
+                    // A phrase made just now waits in the keyring until the user saves it; an older one stays as it is
+                    RecoveryPhrase = newRecoveryPhrase,
+                    IsRecoveryPhraseSaved = newRecoveryPhrase == null
+                        && Identities.FirstOrDefault(saved => IsSaved(saved) && saved.Id == userModel.Id
+                            && saved.CoordinatorId == coordinatorSessionModel.Id) is { IsRecoveryPhraseSaved: true }
                 });
 
             // Keep the explicit startup target when another server is connected manually.
@@ -466,7 +660,8 @@ public class ConnectWindowVM : ReactiveObject
             SelectedIdentity = null;
             Password = null;
             Identities.Clear();
-            Identities.Add(new SavedUserModel { UserIdentity = null!, Username = Strings.Get("connect.identity.new")});
+            Identities.Add(NewAccount);
+            Identities.Add(ExistingAccount);
 
             var coordinators = IsAddressValid
                 ? await _accountingService.GetSavedCoordinatorsAsync(_parsedAddress!, _parsedPort!.Value)
@@ -492,8 +687,8 @@ public class ConnectWindowVM : ReactiveObject
                 }
             }
 
-            // "New*" registers another user on the server, so it is picked only when nothing is saved for it
-            SelectedIdentity ??= Identities.Count > 1 ? Identities[1] : Identities[0];
+            // "New" registers another user on the server, so it is picked only when nothing is saved for it
+            SelectedIdentity ??= Identities.Count > 2 ? Identities[2] : Identities[0];
 
             this.RaisePropertyChanged(nameof(IsIdentitiesSelectable));
         }
@@ -516,4 +711,20 @@ public class ConnectWindowVM : ReactiveObject
     {
         _cancellationTokenSource.Cancel();
     }
+}
+
+/// <summary>How an account this device does not know yet is logged in to.</summary>
+public enum ExistingLoginMethod
+{
+    /// <summary>The username, then the password and/or one-time code.</summary>
+    Username,
+
+    /// <summary>The 24 words of the recovery phrase.</summary>
+    RecoveryPhrase,
+
+    /// <summary>A one-time code from the administrator of the server.</summary>
+    LoginCode,
+
+    /// <summary>Approved from another device of the account, by the code this one shows.</summary>
+    DeviceLink
 }

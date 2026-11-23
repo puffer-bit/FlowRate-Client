@@ -54,17 +54,15 @@ public interface ICoordinatorGateway : IDisposable
     
     // Requests: each fails with a RequestFailedException when the server answers with an error, and with a
     // TimeoutException when no answer comes
-    /// <param name="password">The password of the server, not of the user.</param>
-    /// <param name="sessionToken">
-    /// The token of the device's session; logs in without the second stage while the server still knows it, and is
-    /// otherwise passed over for <paramref name="userIdentity"/>.
-    /// </param>
+    /// <summary>The challenge a device or the recovery key signs, and the coordinator it is signed for.</summary>
+    Task<(string Nonce, string CoordinatorId)> GetLoginChallengeAsync();
+
+    /// <param name="serverPassword">The password of the server, not of the user.</param>
     /// <returns>
-    /// <see cref="Shared.Enums.Auth.AuthResult.SecondStageRequired"/> with the challenge set when the user has a
-    /// password, one-time codes or passkeys; <see cref="FinishLoginAsync"/> completes the login then.
+    /// <see cref="Shared.Enums.Auth.AuthResult.SecondStageRequired"/> with the challenge set for a login by username,
+    /// or one of the earlier protocol, whose user has factors; <see cref="FinishLoginAsync"/> completes the login then.
     /// </returns>
-    Task<AuthenticationResult> AuthenticateAsync(
-        string? password, string? userIdentity, string? sessionToken);
+    Task<AuthenticationResult> LoginAsync(string? serverPassword, Shared.Models.DataTransferObjects.LoginMethodDTO method);
 
     /// <summary>
     /// The second login stage: the password and the one-time code of the user, each when the challenge asks for it.
@@ -72,20 +70,31 @@ public interface ICoordinatorGateway : IDisposable
     /// </summary>
     Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode);
 
+    /// <summary>
+    /// Asks to be added by a device of an account; the code is what this device shows. The completion arrives as a
+    /// <see cref="Client.Core.Coordinator.DeviceLinkCompletedEvent"/> or <see cref="Client.Core.Coordinator.DeviceLinkDeclinedEvent"/>.
+    /// </summary>
+    Task<Coordinator.DeviceLinkCode> StartDeviceLinkAsync(string? serverPassword,
+        Shared.Models.DataTransferObjects.NewDeviceDTO newDevice);
+
     // The login of the current user: each change answers with what the user has now
     Task<AccountSecurity> GetAccountSecurity();
 
-    /// <summary>The devices the current user is logged in from, the latest used first.</summary>
-    Task<IReadOnlyList<AccountSession>> GetAccountSessions();
+    /// <summary>The devices of the account, the latest used first.</summary>
+    Task<IReadOnlyList<AccountDevice>> GetAccountDevices();
 
-    /// <summary>
-    /// Ends a session of the current user, or every one but this device's when <paramref name="sessionId"/> is null;
-    /// answers with the sessions left.
-    /// </summary>
-    Task<IReadOnlyList<AccountSession>> EndAccountSession(Guid? sessionId);
+    /// <summary>Removes a device, or every one but this when <paramref name="deviceId"/> is null; answers with the rest.</summary>
+    Task<IReadOnlyList<AccountDevice>> RevokeAccountDevice(Guid? deviceId);
 
-    /// <summary>Gives the current user a new identity and ends every other session; answers with the identity.</summary>
-    Task<string> ResetUserIdentity(AccountProof proof);
+    /// <summary>Removes this device from the account; the server closes the connection after the answer.</summary>
+    Task LogoutAsync();
+
+    Task<DeviceLinkInfo> GetDeviceLinkInfo(string code);
+
+    Task ApproveDeviceLink(string code, bool approve);
+
+    /// <summary>Gives the account the recovery keys of a new phrase.</summary>
+    Task ResetRecoveryKeys(AccountProof proof, Shared.Models.DataTransferObjects.RecoveryKeysDTO keys);
 
     /// <summary>Sets the password of the current user, or removes it when <paramref name="newPassword"/> is null.</summary>
     Task<AccountSecurity> SetAccountPassword(AccountProof proof,

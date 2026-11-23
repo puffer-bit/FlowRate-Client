@@ -5,9 +5,6 @@ namespace Client.ViewModels.Main;
 
 public partial class MainWindowVM
 {
-    [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Failed to keep the account password")]
-    private partial void LogAccountPasswordSaveFailed(Exception exception, string coordinator);
-
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Failed to remember the successful connection")]
     private partial void LogSuccessfulConnectionSaveFailed(Exception exception, string coordinator);
 

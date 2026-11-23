@@ -29,6 +29,9 @@ public static class DependencyInjection
 
         // A platform with a keyring registers its own after this one
         services.AddSingleton<ISecureStorage, NoSecureStorage>();
+        services.AddSingleton<ISecretVault, Security.SecretVault>();
+        // A platform with a hardware key store registers its own after this one
+        services.AddSingleton<IDeviceKeyStore, Security.VaultDeviceKeyStore>();
 
         // A platform that updates the application itself registers its updater after this one
         services.AddSingleton<IAppUpdater, NoAppUpdater>();
@@ -41,6 +44,7 @@ public static class DependencyInjection
 
         services.AddSingleton<RememberedUsersRecorder>();
         services.AddSingleton<SavedAccountsRecorder>();
+        services.AddSingleton<Sync.IAccountBackupService, Sync.AccountBackupService>();
         services.AddSingleton<PushRegistration>();
         services.AddTransient<PushReplies>();
         services.AddSingleton<IPeerPlaybackService, PeerPlaybackService>();

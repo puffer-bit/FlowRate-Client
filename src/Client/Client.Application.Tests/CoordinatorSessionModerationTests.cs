@@ -28,7 +28,7 @@ public class CoordinatorSessionModerationTests
         _gateway.LoginError = ErrorCode.Banned;
         _gateway.LoginErrorDetails = reason;
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         Assert.Equal(CoordinatorState.Denied, _session.ConnectionStatus);
         Assert.False(_gateway.IsOpen);
@@ -41,7 +41,7 @@ public class CoordinatorSessionModerationTests
     public async Task IpBanBeforeHandshake_IsDeniedWithReason_AndDoesNotAttemptLogin(string reason)
     {
         _gateway.TransportBanReason = reason;
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         Assert.Equal(CoordinatorState.Denied, _session.ConnectionStatus);
         Assert.Equal(reason, _session.BanReason);
         Assert.Empty(_gateway.SentLogins);
@@ -51,7 +51,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task BanWhileOnline_ShowsReason_ClosesTransport_AndDoesNotScheduleReconnect()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         var retries = 0;
         _session.ReconnectScheduled += (_, _) => retries++;
         _gateway.Raise(new BannedEvent("Repeated spam"));
@@ -69,7 +69,7 @@ public class CoordinatorSessionModerationTests
     {
         _gateway.LoginError = ErrorCode.AuthFailed;
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         Assert.Equal(CoordinatorState.AuthenticationFailed, _session.ConnectionStatus);
     }
@@ -77,7 +77,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task SetUserStateAndDeleteUser_GoToTheServer()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
 
         Assert.True((await _session.SetUserState(7, UserState.Suspended)).IsSuccess);
         Assert.True((await _session.DeleteUser(8)).IsSuccess);
@@ -88,7 +88,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task UnbanUser_LiftsEveryBanMadeForTheUser_AndNoOther()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         Shared.Models.DataTransferObjects.BanDTO Ban(Shared.Enums.User.BanKind kind, int? userId) =>
             new(Guid.NewGuid(), kind, userId, kind == Shared.Enums.User.BanKind.Ip ? "192.0.2.1" : null, "", 1, DateTimeOffset.UtcNow, null);
         var account = Ban(Shared.Enums.User.BanKind.Account, 7);
@@ -103,7 +103,7 @@ public class CoordinatorSessionModerationTests
     [Fact]
     public async Task DeletedUser_IsAnnounced()
     {
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         int? deleted = null;
         _session.UserDeleted += userId => deleted = userId;
 

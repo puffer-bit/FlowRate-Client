@@ -1,5 +1,8 @@
 using Client.Api.Mappers;
+using Shared.Models.DataTransferObjects;
+using Shared.Models.Requests.Coordinator.Devices;
 using Shared.Models.Requests.Coordinator.Security;
+using Shared.Models.Responses.Coordinator.Devices;
 using Shared.Models.Responses.Coordinator.Security;
 using Client.Core.Users;
 
@@ -10,17 +13,29 @@ internal partial class CoordinatorGateway
     public Task<AccountSecurity> GetAccountSecurity() =>
         SendSecurityRequestAsync(new UserSecurityInfoRequest());
 
-    public Task<IReadOnlyList<AccountSession>> GetAccountSessions() =>
-        SendSessionsRequestAsync(new UserSessionsRequest());
+    public Task<IReadOnlyList<AccountDevice>> GetAccountDevices() =>
+        SendDevicesRequestAsync(new AccountDevicesRequest());
 
-    public Task<IReadOnlyList<AccountSession>> EndAccountSession(Guid? sessionId) =>
-        SendSessionsRequestAsync(new UserSessionRevokeRequest(sessionId));
+    public Task<IReadOnlyList<AccountDevice>> RevokeAccountDevice(Guid? deviceId) =>
+        SendDevicesRequestAsync(new AccountDeviceRevokeRequest(deviceId));
 
-    public async Task<string> ResetUserIdentity(AccountProof proof) =>
-        (await SendRequestAsync<UserIdentityResetResponse>(new UserIdentityResetRequest(proof.ToDto()))).UserIdentity;
+    public Task LogoutAsync() => SendRequestAsync<LogoutResponse>(new LogoutRequest());
 
-    private async Task<IReadOnlyList<AccountSession>> SendSessionsRequestAsync(Shared.Models.Requests.Request request) =>
-        (await SendRequestAsync<UserSessionsResponse>(request)).Sessions.Select(session => session.ToModel()).ToList();
+    public async Task<DeviceLinkInfo> GetDeviceLinkInfo(string code)
+    {
+        var response = await SendRequestAsync<DeviceLinkInfoResponse>(new DeviceLinkInfoRequest(code.Trim()));
+        return new DeviceLinkInfo(response.Device?.Name, response.Device?.Platform, response.Device?.AppVersion,
+            response.Address);
+    }
+
+    public Task ApproveDeviceLink(string code, bool approve) =>
+        SendRequestAsync<DeviceLinkApproveResponse>(new DeviceLinkApproveRequest(code.Trim(), approve));
+
+    public Task ResetRecoveryKeys(AccountProof proof, RecoveryKeysDTO keys) =>
+        SendRequestAsync<UserRecoveryKeyResetResponse>(new UserRecoveryKeyResetRequest(proof.ToDto(), keys));
+
+    private async Task<IReadOnlyList<AccountDevice>> SendDevicesRequestAsync(Shared.Models.Requests.Request request) =>
+        (await SendRequestAsync<AccountDevicesResponse>(request)).Devices.Select(device => device.ToModel()).ToList();
 
     public Task<AccountSecurity> SetAccountPassword(AccountProof proof, string? newPassword) =>
         SendSecurityRequestAsync(new UserSetPasswordRequest(proof.ToDto(), newPassword));

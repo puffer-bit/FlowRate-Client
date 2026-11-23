@@ -33,12 +33,17 @@ public partial class CoordinatorSession
                 ServerRestartCancelled?.Invoke();
                 break;
 
-            // The identity would log in again at once: the device stays out until the user connects
-            case SessionEndedEvent ended:
-                LogSessionEnded(LogName, ended.Reason);
-                KeepSessionToken(null);
+            // The device is not one of the account any more: it stays out until the user logs in again
+            case DeviceEndedEvent ended:
+                LogDeviceEnded(LogName, ended.Reason);
                 _ = Disconnect();
-                SessionEnded?.Invoke(ended.Reason);
+                OnDeviceEnded(ended.Reason);
+                break;
+            case DeviceAddedEvent added:
+                DeviceAdded?.Invoke(added.Device);
+                break;
+            case DeviceLinkCompletedEvent or DeviceLinkDeclinedEvent:
+                OnDeviceLinkEvent(coordinatorEvent);
                 break;
 
             case CoordinatorReconfiguredEvent reconfigured:

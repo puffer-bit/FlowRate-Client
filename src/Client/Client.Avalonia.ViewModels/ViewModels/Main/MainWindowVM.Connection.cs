@@ -18,7 +18,6 @@ using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Shared.Enums;
-using Shared.Enums.User;
 
 namespace Client.ViewModels.Main;
 
@@ -43,11 +42,17 @@ public partial class MainWindowVM
         string Connecting() => Strings.Format("main.status.connecting", ("host", coordinator.Address),
             ("port", coordinator.Port), ("user", user.Username));
 
+        // An account without a device here logs in again: the connect window opens with its name filled in
+        if (LoginPlan.For(user) is not { } plan)
+        {
+            await ConnectToCoordinator();
+            return;
+        }
+
         await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
-        await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-            user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
+        await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan, coordinator.CoordinatorId);
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -59,8 +64,20 @@ public partial class MainWindowVM
             }
 
             await StatusLine.SetAsync(Connecting, true);
-            await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-                user.AccountPassword, user.SessionToken, coordinator.CoordinatorId);
+            await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan, coordinator.CoordinatorId);
+        }
+
+        // The device ended while the app was closed: the user logs in again
+        if (session.ConnectionStatus == CoordinatorState.DeviceEnded)
+        {
+            session.Dispose();
+            // The saved account is marked before the connect window lists it
+            await _accounting.ForgetDeviceAsync(coordinator.CoordinatorId, user.Id);
+            await SetStatus("main.status.offline", false);
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get("main.deviceEnded.notFound"), Strings.Get("main.deviceEnded.title")));
+            await ConnectToCoordinator();
+            return;
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)
@@ -78,22 +95,21 @@ public partial class MainWindowVM
             return;
         }
 
-        // The password may have been typed, or found changed, on the way
-        if (session.AccountPasswordToSave != user.AccountPassword)
-            await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
-
         try
         {
+            // An account of the earlier protocol has just moved over: it has a device and a new recovery phrase now
             var credentials = session.GetCurrentUserCredentials();
+            var newPhrase = session.TakeNewRecoveryPhrase();
             await _accounting.SaveCoordinatorInstanceAsync(coordinator, new SavedUserModel
             {
                 CoordinatorId = coordinator.CoordinatorId,
                 Id = credentials.Id,
                 Username = credentials.Username,
-                UserIdentity = credentials.UserIdentity,
                 Password = user.Password,
-                AccountPassword = session.AccountPasswordToSave,
-                SessionToken = credentials.SessionToken
+                DeviceId = credentials.DeviceId,
+                DeviceKey = credentials.DeviceKey,
+                RecoveryPhrase = newPhrase,
+                IsRecoveryPhraseSaved = newPhrase == null && user.IsRecoveryPhraseSaved
             });
         }
         catch (Exception exception)
@@ -149,12 +165,11 @@ public partial class MainWindowVM
             .Add(() => session.ChatCallFailed += OnChatCallFailed, () => session.ChatCallFailed -= OnChatCallFailed)
             .Add(() => session.ChatCallChanged += OnChatCallChanged,
                 () => { session.ChatCallChanged -= OnChatCallChanged; DismissCallToast(); })
-            .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
-                () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
-            .Add(() => session.SessionEnded += OnSessionEnded, () => session.SessionEnded -= OnSessionEnded)
+            .Add(() => session.DeviceEnded += OnDeviceEnded, () => session.DeviceEnded -= OnDeviceEnded)
+            .Add(() => session.DeviceAdded += OnDeviceAdded, () => session.DeviceAdded -= OnDeviceAdded)
             .Add(() => session.ServerRestart += OnServerRestart, () => session.ServerRestart -= OnServerRestart)
             .Add(() => session.ServerRestartCancelled += OnServerRestartCancelled,
                 () => session.ServerRestartCancelled -= OnServerRestartCancelled)
@@ -171,29 +186,76 @@ public partial class MainWindowVM
         _lastSession.Forget(session.CoordinatorModel?.Id);
 
         await RestoreCoordinatorData();
+        Dispatcher.UIThread.Post(() => _ = PromptRecoveryPhraseAsync());
     }
 
     private void UnsubscribeFromCoordinator() => _coordinatorSubscriptions.Clear();
 
-    // Raised on the thread of a login or of a change in the profile
-    private void OnAccountPasswordToSaveChanged(string? password)
+    /// <summary>The saved account of the session: its server and user, unless the device is temporary.</summary>
+    private (string CoordinatorId, int UserId)? SavedAccountOf(ICoordinatorSession? session)
     {
-        if (_coordinatorSession is not { CoordinatorModel.Id: var coordinatorId } session)
-            return;
-
-        var userId = session.GetCurrentUser().Id;
-        _ = SaveAccountPasswordAsync(coordinatorId, userId, password);
-    }
-
-    private async Task SaveAccountPasswordAsync(string coordinatorId, int userId, string? password)
-    {
+        if (session is not { CoordinatorModel.Id: var coordinatorId } || session.IsTemporaryDevice)
+            return null;
         try
         {
-            await _accounting.SetAccountPasswordAsync(coordinatorId, userId, password);
+            return (coordinatorId, session.GetCurrentUser().Id);
         }
-        catch (Exception e)
+        catch (InvalidOperationException)
         {
-            LogAccountPasswordSaveFailed(e, coordinatorId);
+            return null;
+        }
+    }
+
+    private AccountSecurityHooks CreateSecurityHooks() => new(
+        async phrase =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.KeepRecoveryPhraseAsync(coordinatorId, userId, phrase);
+        },
+        async keep =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.ConfirmRecoveryPhraseSavedAsync(coordinatorId, userId, keep);
+        },
+        async () => SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId)
+            ? await _accounting.GetRecoveryPhraseAsync(coordinatorId, userId)
+            : null,
+        async () =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.ForgetDeviceAsync(coordinatorId, userId);
+            Dispatcher.UIThread.Post(() => _ = Disconnect());
+        });
+
+    /// <summary>
+    /// Asks the user to save the recovery phrase of the account while it waits on this device: after the account was
+    /// registered or moved over, at each start until it is saved.
+    /// </summary>
+    private async Task PromptRecoveryPhraseAsync()
+    {
+        if (SavedAccountOf(_coordinatorSession) is not (string coordinatorId, int userId))
+            return;
+
+        try
+        {
+            var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
+                .SelectMany(coordinator => coordinator.Users)
+                .FirstOrDefault(user => user.CoordinatorId == coordinatorId && user.Id == userId);
+            if (saved is not { IsRecoveryPhraseSaved: false, RecoveryPhrase: { } phrase })
+                return;
+
+            var box = new MessageBoxVM(Icon.KeyWarning, Buttons.OkCancel, Strings.Get("recoveryPhrase.save.text"),
+                Strings.Get("recoveryPhrase.save.title"))
+            {
+                Detail = Profile.AccountSecurityVM.NumberWords(phrase),
+                CheckBoxText = Strings.Get("recoveryPhrase.keepOnDevice")
+            };
+            if (await ShowMessageBox.Handle(box) == Result.Ok)
+                await _accounting.ConfirmRecoveryPhraseSavedAsync(coordinatorId, userId, box.IsChecked);
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinatorId);
         }
     }
 
@@ -338,16 +400,43 @@ public partial class MainWindowVM
         _knownServerVersion = (id, version);
     }
 
-    private void OnSessionEnded(UserSessionEndReason reason)
+    // Raised on any thread; the session dropped the key, and the saved account needs a login
+    private void OnDeviceEnded(Shared.Enums.Auth.DeviceEndReason? reason)
     {
         Dispatcher.UIThread.Post(async () =>
         {
             await SetStatus("main.status.offline", false);
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
-                Strings.Get(reason == UserSessionEndReason.IdentityReset
-                    ? "main.sessionEnded.identityReset"
-                    : "main.sessionEnded.revoked"),
-                Strings.Get("main.sessionEnded.title")));
+                Strings.Get(reason == null ? "main.deviceEnded.notFound" : "main.deviceEnded.revoked"),
+                Strings.Get("main.deviceEnded.title")));
+        });
+    }
+
+    /// <summary>
+    /// A device was added to the account, maybe not by the user: they are asked, and "not me" removes it and offers a
+    /// new recovery phrase, which the one who added it may know.
+    /// </summary>
+    private void OnDeviceAdded(AccountDevice device)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            if (_coordinatorSession is not { } session)
+                return;
+
+            var method = Strings.Get("devices.addedBy." + device.AddedBy);
+            var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
+                Strings.Format("main.deviceAdded.question", ("device", device.DeviceName), ("platform", device.Platform),
+                    ("method", method), ("address", device.LastAddress ?? "?")),
+                Strings.Get("main.deviceAdded.title")));
+            if (answer != Result.No)
+                return;
+
+            var revoked = await session.RevokeAccountDevice(device.Id);
+            await ShowMessageBox.Handle(new MessageBoxVM(revoked.IsSuccess ? Icon.Info : Icon.Error, Buttons.Ok,
+                Strings.Get(revoked.IsSuccess ? "main.deviceAdded.removed" : "main.deviceAdded.removeFailed"),
+                Strings.Get("main.deviceAdded.title")));
+            // A new recovery phrase is made there: the one who added the device may know the old one
+            await _users.ManageSecurityCommand.Execute();
         });
     }
 
@@ -589,6 +678,9 @@ public partial class MainWindowVM
                 return;
             case CoordinatorState.PasskeyRequired:
                 PostDisconnect(Strings.Get("main.reconnect.passkeyRequired"));
+                return;
+            // Told by OnDeviceEnded
+            case CoordinatorState.DeviceEnded:
                 return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:

@@ -86,15 +86,18 @@ internal sealed partial class VoiceBot
     {
         _coordinator = ActivatorUtilities.CreateInstance<CoordinatorSession>(_services);
 
-        var identity = LoadIdentity();
+        // The bot logs in with the recovery phrase of its account as a temporary device, which leaves no device
+        // behind; the first run registers the account
+        var phrase = LoadPhrase();
+        LoginPlan login = phrase != null ? new RecoveryLoginPlan(phrase, Temporary: true) : new RegisterLoginPlan();
         var connectStarted = Stopwatch.GetTimestamp();
-        await _coordinator.Connect(_options.Host, _options.Port, identity, _options.Password);
+        await _coordinator.Connect(_options.Host, _options.Port, _options.Password, login);
 
         if (_coordinator is { ConnectionStatus: CoordinatorState.CertificateNotTrusted, UntrustedCertificate: { } untrusted })
         {
             Log($"trusting certificate {untrusted.Certificate.Fingerprint}");
             await _coordinator.TrustCertificateAsync(untrusted);
-            await _coordinator.Connect(_options.Host, _options.Port, identity, _options.Password);
+            await _coordinator.Connect(_options.Host, _options.Port, _options.Password, login);
         }
 
         if (_coordinator.ConnectionStatus != CoordinatorState.Connected)
@@ -117,7 +120,7 @@ internal sealed partial class VoiceBot
             }
         };
 
-        SaveIdentity(_coordinator.GetCurrentUserCredentials().UserIdentity);
+        SavePhrase(_coordinator.TakeNewRecoveryPhrase());
         Log($"connected as {_coordinator.GetCurrentUser().Username}");
 
         if (_options.ChatInterval is { } chatInterval)
@@ -664,16 +667,17 @@ internal sealed partial class VoiceBot
         }
     }
 
-    // Each bot keeps its own user between runs instead of registering a new one every time
-    private string IdentityPath => Path.Combine(
+    // Each bot keeps its own user between runs instead of registering a new one every time. A test account only:
+    // the phrase is its master key and lies here in plain text
+    private string PhrasePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FlowRate", "TestBot", $"identity-{_options.Host}-{_options.Port}-{_index + 1}.txt");
+        "FlowRate", "TestBot", $"phrase-{_options.Host}-{_options.Port}-{_index + 1}.txt");
 
-    private string? LoadIdentity()
+    private string? LoadPhrase()
     {
         try
         {
-            return File.Exists(IdentityPath) ? File.ReadAllText(IdentityPath).Trim() : null;
+            return File.Exists(PhrasePath) ? File.ReadAllText(PhrasePath).Trim() : null;
         }
         catch (IOException)
         {
@@ -681,19 +685,19 @@ internal sealed partial class VoiceBot
         }
     }
 
-    private void SaveIdentity(string? identity)
+    private void SavePhrase(string? phrase)
     {
-        if (string.IsNullOrWhiteSpace(identity))
+        if (string.IsNullOrWhiteSpace(phrase))
             return;
 
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(IdentityPath)!);
-            File.WriteAllText(IdentityPath, identity);
+            Directory.CreateDirectory(Path.GetDirectoryName(PhrasePath)!);
+            File.WriteAllText(PhrasePath, phrase);
         }
         catch (IOException exception)
         {
-            Log($"failed to save the identity: {exception.Message}");
+            Log($"failed to save the recovery phrase: {exception.Message}");
         }
     }
 

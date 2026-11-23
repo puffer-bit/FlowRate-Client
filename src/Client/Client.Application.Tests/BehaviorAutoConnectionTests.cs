@@ -132,7 +132,11 @@ public class BehaviorAutoConnectionTests
         public Task RemoveUserIdentityAsync(string coordinatorId, int userId) => throw new NotSupportedException();
         public Task SaveCoordinatorInstanceAsync(SavedCoordinatorModel instanceModel, SavedUserModel userModel) => throw new NotSupportedException();
         public Task RemoveCoordinatorInstanceAsync(string coordinatorId) => throw new NotSupportedException();
-        public Task SetAccountPasswordAsync(string coordinatorId, int userId, string? accountPassword) => throw new NotSupportedException();
+        public Task ForgetDeviceAsync(string coordinatorId, int userId) => throw new NotSupportedException();
+        public Task KeepRecoveryPhraseAsync(string coordinatorId, int userId, string phrase) => throw new NotSupportedException();
+        public Task<string?> GetRecoveryPhraseAsync(string coordinatorId, int userId) => throw new NotSupportedException();
+        public Task ConfirmRecoveryPhraseSavedAsync(string coordinatorId, int userId, bool keepOnDevice) => throw new NotSupportedException();
+        public bool AreSecretsProtected => true;
         public Task<IReadOnlyList<ServerCertificateModel>> GetTrustedCertificatesAsync() => throw new NotSupportedException();
         public Task RemoveTrustedCertificateAsync(string host, int port) => throw new NotSupportedException();
     }

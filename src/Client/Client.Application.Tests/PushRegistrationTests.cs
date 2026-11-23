@@ -46,7 +46,7 @@ public class PushRegistrationTests
     {
         Track(_token);
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _keys.ReplyTargets.ContainsKey(FakeGateway.CoordinatorId));
 
         Assert.Equal(new PushReplyTarget("server", 1, "reply-token"), _keys.ReplyTargets[FakeGateway.CoordinatorId]);
@@ -58,7 +58,7 @@ public class PushRegistrationTests
         _gateway.PushError = ErrorCode.FeatureDisabled;
         Track(_token);
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _gateway.Registered.Count == 1);
 
         Assert.Empty(_keys.ReplyTargets);
@@ -69,7 +69,7 @@ public class PushRegistrationTests
     {
         Track(_token);
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _gateway.Registered.Count == 1);
 
         var (token, platform, key) = _gateway.Registered[0];
@@ -85,7 +85,7 @@ public class PushRegistrationTests
     public async Task EveryLogin_RegistersAgainWithTheSameKey()
     {
         Track(_token);
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _gateway.Registered.Count == 1);
 
         await _session.Suspend();
@@ -99,7 +99,7 @@ public class PushRegistrationTests
     public async Task ReplacedToken_IsRegisteredAtTheConnectedCoordinator()
     {
         Track(_token);
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _gateway.Registered.Count == 1);
 
         _token.Replace("token-2");
@@ -112,7 +112,7 @@ public class PushRegistrationTests
     public async Task Unregister_TellsTheCoordinatorAndForgetsTheKey()
     {
         var registration = Track(_token);
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await WaitForAsync(() => _gateway.Registered.Count == 1);
 
         await registration.UnregisterAsync(_session);
@@ -126,7 +126,7 @@ public class PushRegistrationTests
     {
         var registration = Track(null);
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await registration.UnregisterAsync(_session);
         await Task.Delay(50, TestContext.Current.CancellationToken);
 
@@ -141,7 +141,7 @@ public class PushRegistrationTests
         _token.Token = null;
         Track(_token);
 
-        await _session.Connect("server", 1, null, null);
+        await _session.Connect("server", 1, null, new RegisterLoginPlan());
         await Task.Delay(50, TestContext.Current.CancellationToken);
 
         Assert.Empty(_gateway.Registered);

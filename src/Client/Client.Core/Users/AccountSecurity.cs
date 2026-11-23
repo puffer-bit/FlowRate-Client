@@ -23,18 +23,20 @@ public sealed record AccountProof(string? Password, string? TwoFactorCode);
 /// <param name="Uri">otpauth:// URI, for a QR code.</param>
 public sealed record TwoFactorSetup(string Secret, string Uri);
 
-/// <summary>What the server asks for to finish a login, beyond the identity.</summary>
+/// <summary>What the server asks for to finish a login by username.</summary>
 public sealed record LoginChallenge(bool AsksPassword, bool AsksTwoFactorCode, bool AcceptsPasskey)
 {
     /// <summary>A password or a code would do; a user with passkeys alone cannot log in from here.</summary>
     public bool AcceptsCodes => AsksPassword || AsksTwoFactorCode;
 }
 
-/// <summary>A device the current user is logged in from.</summary>
-/// <param name="LastUsedAtUtc">The last login of the device; the session ends after a while without one.</param>
+/// <summary>A device of the current user's account.</summary>
+/// <param name="LastUsedAtUtc">The last login of the device; it ends after a while without one.</param>
 /// <param name="IsCurrent">This device.</param>
 /// <param name="IsOnline">The device is connected now.</param>
-public sealed record AccountSession(
+/// <param name="IsTemporary">Not remembered: it ends after a day without a login.</param>
+/// <param name="AddedBy">How the device was added to the account.</param>
+public sealed record AccountDevice(
     Guid Id,
     string DeviceName,
     string Platform,
@@ -44,4 +46,10 @@ public sealed record AccountSession(
     DateTimeOffset ExpiresAtUtc,
     string? LastAddress,
     bool IsCurrent,
-    bool IsOnline);
+    bool IsOnline,
+    bool IsTemporary = false,
+    Shared.Enums.Auth.DeviceLoginMethod AddedBy = Shared.Enums.Auth.DeviceLoginMethod.Registration);
+
+/// <summary>What a new device that waits to be added tells about itself.</summary>
+/// <param name="Address">The IP address it connected from.</param>
+public sealed record DeviceLinkInfo(string? DeviceName, string? Platform, string? AppVersion, string? Address);

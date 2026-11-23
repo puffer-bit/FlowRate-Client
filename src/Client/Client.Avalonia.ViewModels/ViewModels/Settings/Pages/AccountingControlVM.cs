@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Client.Application.Ports;
 using Client.Application.Settings;
@@ -61,6 +62,12 @@ public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
     /// <summary>Whether the system has a keyring to keep the password of the database in.</summary>
     public bool CanStorePassword => _databaseSecurity.CanStorePassword;
 
+    /// <summary>
+    /// The system has no keyring and the database is not encrypted: server passwords and device keys lie in the file
+    /// as they are.
+    /// </summary>
+    public bool AreSecretsUnprotected => !_accountingService.AreSecretsProtected;
+
     /// <summary>Whether the system can hold the database file locked against other processes.</summary>
     public bool CanLockFile => _databaseSecurity.CanLockFile;
 
@@ -89,10 +96,56 @@ public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
     private readonly IDatabaseSecurityService _databaseSecurity;
     private bool _isUpdating = true;
 
-    public AccountingControlVM(IAccountingService accountingService, IDatabaseSecurityService databaseSecurity)
+    private readonly Client.Application.Sync.IAccountBackupService? _backups;
+
+    /// <summary>Asks where to write a backup file, by its suggested name.</summary>
+    public Interaction<string, System.IO.Stream?> PickBackupTarget { get; } = new();
+
+    /// <summary>Asks for a backup file to restore.</summary>
+    public Interaction<RxVoid, System.IO.Stream?> PickBackupSource { get; } = new();
+
+    /// <summary>Asks for the folder backups are shared through; null keeps the one there is.</summary>
+    public Interaction<RxVoid, string?> PickSyncFolder { get; } = new();
+
+    /// <summary>Asks for the recovery phrase a backup needs; null gives it up.</summary>
+    public Interaction<RxVoid, string?> AskRecoveryPhrase { get; } = new();
+
+    public ReactiveCommand<SavedUserModel, RxVoid> ExportBackupCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ImportBackupCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ChooseSyncFolderCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> StopSyncCommand { get; }
+
+    public bool AreBackupsAvailable => _backups != null;
+
+    /// <summary>The folder backups are shared through with the other devices; null when syncing is off.</summary>
+    public string? SyncFolder
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsSyncOn));
+        }
+    }
+
+    public bool IsSyncOn => SyncFolder != null;
+
+    public AccountingControlVM(IAccountingService accountingService, IDatabaseSecurityService databaseSecurity,
+        Client.Application.Sync.IAccountBackupService? backups = null)
     {
         _accountingService = accountingService;
         _databaseSecurity = databaseSecurity;
+        _backups = backups;
+        ExportBackupCommand = ReactiveCommand.CreateFromTask<SavedUserModel>(ExportBackupAsync);
+        ImportBackupCommand = ReactiveCommand.CreateFromTask(ImportBackupAsync);
+        ChooseSyncFolderCommand = ReactiveCommand.CreateFromTask(ChooseSyncFolderAsync);
+        StopSyncCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (_backups == null)
+                return;
+            await _backups.SetSyncFolderAsync(null);
+            SyncFolder = null;
+        });
 
         ServersPage = new(CoordinatorSessions, (server, filter) =>
             Contains(server.Name, filter) || Contains($"{server.Address}:{server.Port}", filter) ||
@@ -274,6 +327,69 @@ public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
         await LoadAsync();
     }
 
+    private async Task ExportBackupAsync(SavedUserModel user)
+    {
+        if (_backups == null)
+            return;
+
+        var file = await _backups.ExportAsync(user.CoordinatorId, user.Id);
+        if (file == null)
+        {
+            // The backup key is known once the phrase was here; otherwise the user gives it
+            if (await AskRecoveryPhrase.Handle(RxVoid.Default) is not { } phrase)
+                return;
+            file = await _backups.ExportAsync(user.CoordinatorId, user.Id, phrase);
+            if (file == null)
+            {
+                await ShowBackupMessage(Icon.Error, "settings.backup.phraseWrong");
+                return;
+            }
+        }
+
+        await using var target = await PickBackupTarget.Handle($"flowrate-{user.Username}.{Client.Application.Sync.AccountBackupFile.Extension}");
+        if (target == null)
+            return;
+        await target.WriteAsync(file);
+        await ShowBackupMessage(Icon.Info, "settings.backup.exported");
+    }
+
+    private async Task ImportBackupAsync()
+    {
+        if (_backups == null)
+            return;
+
+        byte[] file;
+        await using (var source = await PickBackupSource.Handle(RxVoid.Default))
+        {
+            if (source == null)
+                return;
+            using var buffer = new System.IO.MemoryStream();
+            await source.CopyToAsync(buffer);
+            file = buffer.ToArray();
+        }
+
+        var restored = await _backups.ImportAsync(file);
+        if (restored == null && await AskRecoveryPhrase.Handle(RxVoid.Default) is { } phrase)
+            restored = await _backups.ImportAsync(file, phrase);
+
+        await ShowBackupMessage(restored == null ? Icon.Error : Icon.Info,
+            restored == null ? "settings.backup.importFailed" : "settings.backup.imported");
+        if (restored != null)
+            await LoadAsync();
+    }
+
+    private async Task ChooseSyncFolderAsync()
+    {
+        if (_backups == null || await PickSyncFolder.Handle(RxVoid.Default) is not { } folder)
+            return;
+        await _backups.SetSyncFolderAsync(folder);
+        SyncFolder = folder;
+    }
+
+    private Task ShowBackupMessage(Icon icon, string key) =>
+        ShowMessageBox.Handle(new MessageBoxVM(icon, Buttons.Ok, Strings.Get(key), Strings.Get("settings.backup.title")))
+            .ToTask();
+
     private async Task ForgetCertificate(TrustedCertificateItem item)
     {
         var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
@@ -306,6 +422,8 @@ public class AccountingControlVM : ReactiveObject, ISettingVM, IDisposable
 
     private async Task LoadAsync()
     {
+        if (_backups != null)
+            SyncFolder = await _backups.GetSyncFolderAsync();
         await ApplyDatabaseSettingsAsync();
 
         var coordinators = await _accountingService.GetAllSavedCoordinatorsAsync();

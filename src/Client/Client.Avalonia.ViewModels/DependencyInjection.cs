@@ -102,7 +102,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IThemeService>(),
             provider.GetRequiredService<ILanguageService>(),
             provider.GetRequiredService<ICollapsedSectionsRepository>(),
-            provider.GetRequiredService<IReleaseNotesSource>()));
+            provider.GetRequiredService<IReleaseNotesSource>(),
+            provider.GetService<Client.Application.Sync.IAccountBackupService>()));
 
         return services;
     }

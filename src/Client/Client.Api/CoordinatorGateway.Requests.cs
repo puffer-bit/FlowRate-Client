@@ -33,21 +33,30 @@ namespace Client.Api;
 
 internal partial class CoordinatorGateway
 {
-    public async Task<AuthenticationResult> AuthenticateAsync(
-        string? password, string? userIdentity, string? sessionToken)
+    public async Task<(string Nonce, string CoordinatorId)> GetLoginChallengeAsync()
     {
-        var request = new UserAuthRequest(password, userIdentity, SessionToken: sessionToken, Device: Device());
-        var authResponse = await SendRequestAsync<UserAuthResponse>(request);
-
-        return new AuthenticationResult(
-            authResponse.AuthResult,
-            authResponse.User?.ToModel(),
-            authResponse.UserIdentity,
-            authResponse.AuthResult == AuthResult.SecondStageRequired
-                ? AccountSecurityMapper.ToLoginChallenge(authResponse.SecondStages, authResponse.FIDO2LoginOptions)
-                : null,
-            authResponse.SessionToken);
+        var response = await SendRequestAsync<LoginChallengeResponse>(new LoginChallengeRequest());
+        return (response.Nonce, response.CoordinatorId);
     }
+
+    public async Task<AuthenticationResult> LoginAsync(string? serverPassword, LoginMethodDTO method) =>
+        ToResult(await SendRequestAsync<LoginResponse>(new LoginRequest(serverPassword, method, Device())));
+
+    public async Task<Client.Application.Coordinator.DeviceLinkCode> StartDeviceLinkAsync(string? serverPassword,
+        NewDeviceDTO newDevice)
+    {
+        var response = await SendRequestAsync<DeviceLinkStartResponse>(
+            new DeviceLinkStartRequest(serverPassword, newDevice, Device()));
+        return new Client.Application.Coordinator.DeviceLinkCode(response.Code, response.ExpiresAt);
+    }
+
+    private static AuthenticationResult ToResult(LoginResponse response) => new(
+        response.AuthResult,
+        response.User?.ToModel(),
+        response.DeviceId,
+        response.AuthResult == AuthResult.SecondStageRequired
+            ? AccountSecurityMapper.ToLoginChallenge(response.Factors, response.PasskeyOptions)
+            : null);
 
     private DeviceInfoDTO Device() => new(
         Truncate(_client.DeviceName, Limits.DeviceNameMaxLength),
@@ -60,14 +69,8 @@ internal partial class CoordinatorGateway
     private static string? Truncate(string? value, int maxLength) =>
         value == null || value.Length <= maxLength ? value : value[..maxLength];
 
-    public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode)
-    {
-        var request = new TwoFactorUserAuthRequest(password, twoFactorCode);
-        var response = await SendRequestAsync<TwoFactorUserAuthResponse>(request);
-
-        return new AuthenticationResult(AuthResult.Success, response.User.ToModel(), null,
-            SessionToken: response.SessionToken);
-    }
+    public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode) =>
+        ToResult(await SendRequestAsync<LoginResponse>(new LoginProofRequest(password, twoFactorCode)));
 
     public async Task<CoordinatorSessionModel?> GetCoordinatorInfo()
     {

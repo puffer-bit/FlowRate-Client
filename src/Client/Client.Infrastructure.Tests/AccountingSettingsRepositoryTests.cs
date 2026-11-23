@@ -27,6 +27,40 @@ public class AccountingSettingsRepositoryTests
         Password = password
     };
 
+    private static AccountingService Service(TestDatabase database, AccountingSettingsRepository repository)
+    {
+        var secrets = new SecretsRepository(database.Database);
+        var vault = new Client.Application.Security.SecretVault(new NoKeyring(), secrets,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Client.Application.Security.SecretVault>.Instance);
+        return new AccountingService(repository, new TrustedCertificatesRepository(database.Database), vault,
+            new Client.Application.Security.VaultDeviceKeyStore(vault),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountingService>.Instance);
+    }
+
+    [Fact]
+    public async Task ServerPassword_MovesFromTheDatabaseToTheVault()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveUserAsync(Identity(1));
+        // As the earlier client left it
+        await using (var connection = await database.Database.OpenAsync())
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = "UPDATE SavedIdentities SET Password = 'server-secret'";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var service = Service(database, repository);
+        var user = Assert.Single(Assert.Single(await service.GetAllSavedCoordinatorsAsync()).Users);
+
+        Assert.Equal("server-secret", user.Password);
+        Assert.Null((await repository.GetCoordinatorInstanceAsync(("coordinator", 1)))!.Value.User.Password);
+        Assert.Equal("server-secret",
+            Assert.Single(Assert.Single(await service.GetAllSavedCoordinatorsAsync()).Users).Password);
+    }
+
     [Fact]
     public async Task SavingACoordinatorAgainUpdatesIt()
     {
@@ -76,7 +110,7 @@ public class AccountingSettingsRepositoryTests
             SessionToken = "new-token"
         });
 
-        var service = new AccountingService(repository, new TrustedCertificatesRepository(database.Database));
+        var service = Service(database, repository);
         var matches = await service.GetSavedCoordinatorsAsync("SERVER.LOCAL", 5000);
         Assert.Equal(2, matches.Count);
         var coordinator = matches.Single(c => c.CoordinatorId == "replacement");
@@ -115,7 +149,7 @@ public class AccountingSettingsRepositoryTests
             Port = 5000
         });
 
-        var service = new AccountingService(repository, new TrustedCertificatesRepository(database.Database));
+        var service = Service(database, repository);
         Assert.Equal("coordinator", Assert.Single(await service.GetSavedCoordinatorsAsync("server.local", 5000)).CoordinatorId);
         Assert.Equal("other-port", Assert.Single(await service.GetSavedCoordinatorsAsync("server.local", 5001)).CoordinatorId);
         Assert.Equal("other-host", Assert.Single(await service.GetSavedCoordinatorsAsync("other.local", 5000)).CoordinatorId);
@@ -255,23 +289,50 @@ public class AccountingSettingsRepositoryTests
     }
 
     [Fact]
-    public async Task SessionTokenAndNewIdentity_AreKeptWithTheSavedIdentity()
+    public async Task Device_IsKept_AndMovingOverDropsTheLegacyLogin()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new AccountingSettingsRepository(database.Database);
         await repository.SaveCoordinatorAsync(Coordinator());
         await repository.SaveUserAsync(Identity(1));
+        var deviceId = Guid.NewGuid();
 
-        await repository.SetSessionTokenAsync("coordinator", 1, "token");
-        await repository.SetUserIdentityAsync("coordinator", 1, "#new");
-        await repository.SetSessionTokenAsync("coordinator", 2, "not saved");
+        await repository.SaveUserAsync(new SavedUserModel
+        {
+            CoordinatorId = "coordinator", Id = 1, Username = "alice", DeviceId = deviceId, DeviceKey = "key",
+            UserIdentity = "#old", SessionToken = "token", AccountPassword = "secret", Password = "server"
+        });
 
         var user = Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users);
-        Assert.Equal(("#new", "token"), (user.UserIdentity, user.SessionToken));
+        Assert.Equal((deviceId, "key"), (user.DeviceId, user.DeviceKey));
+        Assert.Equal("", user.UserIdentity);
+        Assert.Null(user.SessionToken);
+        Assert.Null(user.AccountPassword);
+        // The server password lives in the secret vault, never in the database
+        Assert.Null(user.Password);
 
-        await repository.SetSessionTokenAsync("coordinator", 1, null);
-        Assert.Null((await repository.GetCoordinatorInstanceAsync(("coordinator", 1)))!.Value.User.SessionToken);
+        await repository.SetDeviceAsync("coordinator", 1, null, null);
+        await repository.SetRecoveryPhraseSavedAsync("coordinator", 1, true);
+        user = (await repository.GetCoordinatorInstanceAsync(("coordinator", 1)))!.Value.User;
+        Assert.Null(user.DeviceId);
+        Assert.True(user.IsRecoveryPhraseSaved);
+        Assert.False(user.CanLogIn);
     }
+
+    [Fact]
+    public async Task Secrets_AreKeptInTheDatabaseWithoutAKeyring()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var secrets = new SecretsRepository(database.Database);
+
+        await secrets.SaveAsync("name", "first");
+        await secrets.SaveAsync("name", "second");
+        Assert.Equal("second", await secrets.LoadAsync("name"));
+
+        await secrets.DeleteAsync("name");
+        Assert.Null(await secrets.LoadAsync("name"));
+    }
+
     [Fact]
     public async Task DeletingOneIdentity_PreservesCoordinatorAndOtherAccountsAndClearsItsAutoConnect()
     {
@@ -296,5 +357,20 @@ public class AccountingSettingsRepositoryTests
         await repository.DeleteUserAsync("coordinator", 2);
         Assert.Empty((await repository.GetCoordinatorAsync("coordinator"))!.Users);
         Assert.Equal(("other", 1), await behavior.GetAutoConnectInstanceAsync());
+    }
+}
+
+/// <summary>A system without a keyring: secrets fall back to the database.</summary>
+internal sealed class NoKeyring : Client.Application.Ports.ISecureStorage
+{
+    public bool IsAvailable => false;
+    public Task SavePassword(string password, string username, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    public Task<string?> LoadPassword(string username, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    public Task DeletePassword(string username, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    public void Dispose()
+    {
     }
 }

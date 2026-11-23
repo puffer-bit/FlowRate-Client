@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<IReleaseNotesSource, Updates.GitHubReleaseNotesSource>();
 
         services.AddSingleton<IAccountingSettingsRepository, AccountingSettingsRepository>();
+        services.AddSingleton<ISecretsRepository, SecretsRepository>();
         services.AddSingleton<IAppearanceSettingsRepository, AppearanceSettingsRepository>();
         services.AddSingleton<IBehaviorSettingsRepository, BehaviorSettingsRepository>();
         services.AddSingleton<IAudioSettingsRepository, AudioSettingsRepository>();

@@ -23,7 +23,7 @@ public sealed class ChatCallTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         var id = Guid.NewGuid();
         var started = Call(id, ChatCallState.Active);
         var joined = started with { Participants = [new(1, ChatCallParticipantState.Joined), new(2, ChatCallParticipantState.Joined)] };
@@ -46,7 +46,7 @@ public sealed class ChatCallTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         var id = Guid.NewGuid();
         var active = Call(id, ChatCallState.Active);
         fake.Raise(new ChatCallChangedEvent(active));
@@ -61,7 +61,7 @@ public sealed class ChatCallTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         var mine = Call(Guid.NewGuid(), ChatCallState.Active);
         var other = Call(Guid.NewGuid(), ChatCallState.Active, chatId: 8, selected: false);
         fake.Raise(new ChatCallChangedEvent(mine));
@@ -75,7 +75,7 @@ public sealed class ChatCallTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         var call = Call(Guid.NewGuid(), ChatCallState.Active);
         fake.CallHandler = (_, _, _) => Task.FromResult(call);
         await session.ChangeChatCall(7, call.CallId, ChatCallAction.Start);
@@ -87,7 +87,7 @@ public sealed class ChatCallTests
     {
         var (gateway, fake) = FakeGateway.Create();
         using var session = new CoordinatorSession(gateway, new NoTrustedCertificates(), NullLoggerFactory.Instance);
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         var call = Call(Guid.NewGuid(), ChatCallState.Active);
         fake.Raise(new ChatCallChangedEvent(call));
         Assert.NotNull(session.CurrentCall);

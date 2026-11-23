@@ -14,6 +14,15 @@ internal sealed class UserNotesRepository(SqliteDatabase database) : IUserNotesR
             """, new { coordinatorInstanceId, userId });
     }
 
+    public async Task<IReadOnlyDictionary<int, string>> GetAllAsync(string coordinatorInstanceId)
+    {
+        await using var connection = await database.OpenAsync();
+        var rows = await connection.QueryAsync<UserNoteRow>("""
+            SELECT UserId, Text FROM UserNotes WHERE CoordinatorInstanceId = @coordinatorInstanceId
+            """, new { coordinatorInstanceId });
+        return rows.ToDictionary(row => row.UserId, row => row.Text);
+    }
+
     public async Task SetAsync(string coordinatorInstanceId, int userId, string text)
     {
         await using var connection = await database.OpenAsync();
@@ -33,3 +42,5 @@ internal sealed class UserNotesRepository(SqliteDatabase database) : IUserNotesR
             """, new { coordinatorInstanceId, userId, text });
     }
 }
+
+internal sealed record UserNoteRow(int UserId, string Text);
