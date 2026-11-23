@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using Client.Application.Ports;
-using Client.Application.Ports.Repositories;
+using Client.Database.File;
 
 BotOptions? options;
 
@@ -59,7 +59,8 @@ Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
 var services = new ServiceCollection()
     .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
         DevicePlatform.OsVersion, DevicePlatform.Architecture))
-    .AddSingleton<ITrustedCertificatesRepository, InMemoryTrustedCertificates>()
+    .AddFileDatabase(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FlowRate", "TestBot"))
     .AddClientLogging(Log.Logger)
     .BuildServiceProvider();
 
