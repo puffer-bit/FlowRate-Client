@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Sessions.Chat.ChatPinnedMessagesPanel"
@@ -18,8 +19,6 @@
                            Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
                 <TextBlock Text="{l:Text chat.pinned.error}" IsVisible="{Binding HasPinnedMessagesError}"
                            Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                <TextBlock Text="{l:Text chat.pinned.empty}" IsVisible="{Binding IsPinnedListEmpty}"
-                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
             </StackPanel>
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding VisiblePinnedMessages}">
@@ -33,6 +32,13 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- Shown while the chat has nothing pinned -->
+            <emptyStates:EmptyState Grid.Row="1"
+                                    IsVisible="{Binding IsPinnedListEmpty}"
+                                    Icon="{StaticResource PinIcon}"
+                                    Title="{l:Text chat.pinned.empty.title}"
+                                    Text="{l:Text chat.pinned.empty.text}"/>
         </Grid>
     </Border>
 </UserControl>

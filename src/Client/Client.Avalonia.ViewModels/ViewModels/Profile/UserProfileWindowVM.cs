@@ -164,6 +164,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public bool WantsDirectChat { get; private set; }
     public bool CanWriteMessage => !IsCurrentUser;
 
+    /// <summary>The row of buttons under the name has something to show.</summary>
+    public bool HasActions => CanWriteMessage || CanEdit;
+
     public UserProfileWindowVM(UserModel user, bool isCurrentUser, IAvatarService avatars,
         ReactiveCommand<(int UserId, string Username), RequestResult> changeUsernameCommand,
         ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> setAvatarCommand,
@@ -347,7 +350,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         StopEditing();
     }
 
-    private static string? PlatformIconKey(string platform) => platform switch
+    /// <summary>The icon of a system the server names, null for one without an icon.</summary>
+    internal static string? PlatformIconKey(string platform) => platform switch
     {
         "Windows" => "WindowsIcon",
         "Linux" => "LinuxIcon",

@@ -540,7 +540,14 @@ public partial class MainWindowVM : ReactiveObject
         if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
             && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
-            await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
+        {
+            // The account is read again with its secrets: the server password is kept in the vault, not in the
+            // database the auto connection instance comes from
+            var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
+                .FirstOrDefault(server => server.CoordinatorId == autoConnect.Coordinator.CoordinatorId);
+            var user = saved?.Users.FirstOrDefault(account => account.Id == autoConnect.User.Id);
+            await AutoConnectToCoordinator(saved ?? autoConnect.Coordinator, user ?? autoConnect.User);
+        }
     }
 
     // The content under the screen has been laid out all along, so the screen leaves at once; it is out

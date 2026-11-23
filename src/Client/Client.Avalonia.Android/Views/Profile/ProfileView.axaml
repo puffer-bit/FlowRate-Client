@@ -10,7 +10,7 @@
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
-        <!-- Buttons and the field tall enough for a finger -->
+        <!-- Buttons and the fields tall enough for a finger -->
         <Style Selector="StackPanel.actions > Button">
             <Setter Property="MinHeight" Value="48"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -18,6 +18,48 @@
         </Style>
         <Style Selector="TextBox">
             <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- The sections of the profile: the info, the roles, the note, and later what the chats with the user hold -->
+        <Style Selector="Border.section">
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.sectionTitle">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <!-- A line of the info: an icon, the value and what it is under it -->
+        <Style Selector="Image.infoIcon">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="0,2,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.infoValue">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.infoCaption">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <!-- The buttons under the name, an icon over a word, sharing the width -->
+        <Style Selector="Button.profileAction">
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="Padding" Value="8,12"/>
+            <Setter Property="MinHeight" Value="68"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
     </UserControl.Styles>
@@ -33,18 +75,19 @@
                 <!-- The arrow of the scroll-down button, turned to point back -->
                 <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
             </Button>
-            <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+            <TextBlock Grid.Column="1" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"
                        Text="{l:Text main.profile.title}"/>
         </Grid>
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-        <ScrollViewer Grid.Row="2">
-            <StackPanel Margin="20,24" Spacing="20">
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,20,16,28" Spacing="14">
 
-                <!-- Avatar: our own can be replaced, the one of another user only reset -->
-                <StackPanel Spacing="10" IsEnabled="{Binding !IsBusy}">
-                    <avatars:UserAvatar Width="96" Height="96" HorizontalAlignment="Center"
+                <!-- Who it is: the avatar, the name and the status in the middle; while editing the name is a
+                     field. Our own avatar can be replaced, the one of another user only reset -->
+                <StackPanel Spacing="10" Margin="0,0,0,4" IsEnabled="{Binding !IsBusy}">
+                    <avatars:UserAvatar Width="112" Height="112" HorizontalAlignment="Center"
                                         UserName="{Binding Username}"
                                         AvatarUrl="{Binding ShownAvatarUrl}"
                                         Source="{Binding AvatarPicker.Avatar}"
@@ -55,32 +98,27 @@
                         </avatars:UserAvatar.Overlay>
                     </avatars:UserAvatar>
 
-                    <StackPanel Classes="actions" Spacing="10" IsVisible="{Binding IsEditing}">
-                        <Button Command="{Binding ResetAvatarCommand}">
+                    <StackPanel Spacing="2" Margin="0,4,0,0" IsVisible="{Binding !IsEditing}">
+                        <SelectableTextBlock FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap"
+                                             TextAlignment="Center" Text="{Binding Username}"/>
+                        <TextBlock Classes="hint" FontSize="14" TextAlignment="Center" Text="{Binding StatusText}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8" IsVisible="{Binding IsEditing}">
+                        <Button Classes="borderless" HorizontalAlignment="Center" MinHeight="44"
+                                Command="{Binding ResetAvatarCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Image Width="16" Height="16" Source="{StaticResource ResetIcon}" VerticalAlignment="Center"/>
                                 <TextBlock VerticalAlignment="Center" Text="{l:Text profile.avatar.reset}"/>
                             </StackPanel>
                         </Button>
-                    </StackPanel>
+                        <TextBlock Classes="hint" TextAlignment="Center" Text="{l:Text profile.avatar.resetsOnSave}"
+                                   IsVisible="{Binding IsAvatarReset}"/>
+                        <TextBlock Classes="fieldError" TextAlignment="Center" TextWrapping="Wrap"
+                                   Text="{Binding AvatarPicker.AvatarError}"
+                                   IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
-                    <TextBlock Classes="hint" TextAlignment="Center" Text="{l:Text profile.avatar.resetsOnSave}"
-                               IsVisible="{Binding IsAvatarReset}"/>
-
-                    <TextBlock Classes="fieldError" TextAlignment="Center" TextWrapping="Wrap"
-                               Text="{Binding AvatarPicker.AvatarError}"
-                               IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                </StackPanel>
-
-                <!-- Name -->
-                <StackPanel Spacing="6" IsEnabled="{Binding !IsBusy}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
-
-                    <TextBlock FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
-                               Text="{Binding Username}"
-                               IsVisible="{Binding !IsEditing}"/>
-
-                    <StackPanel Spacing="6" IsVisible="{Binding IsEditing}">
+                        <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
                         <TextBox x:Name="NameInput"
                                  PlaceholderText="{l:Text profile.name.short}"
                                  Text="{Binding Name}"
@@ -92,98 +130,28 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Private local note -->
-                <StackPanel Spacing="6">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBlock Classes="fieldLabel" VerticalAlignment="Center" Text="{l:Text profile.note.title}"/>
-                        <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
-                                                        IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
-                    </Grid>
-                    <TextBlock Classes="hint" Text="{l:Text profile.note.hint}"/>
-                    <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
-                             MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
-                             IsEnabled="{Binding Note.IsLoaded}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             PlaceholderText="{l:Text profile.note.placeholder}"/>
-                    <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
-                    <TextBlock Classes="fieldError" Text="{Binding Note.Error}"
-                               IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <Button Command="{Binding Note.LoadCommand}" IsVisible="{Binding !Note.IsLoaded}"
-                            HorizontalAlignment="Left" Content="{l:Text serverSettings.users.retry}"/>
-                </StackPanel>
+                <!-- What can be done with the user; a hidden button gives its width to the others -->
+                <Panel IsVisible="{Binding HasActions}">
+                    <UniformGrid Rows="1" Margin="-5,0" IsVisible="{Binding !IsEditing}">
+                        <Button Classes="profileAction" Command="{Binding WriteMessageCommand}"
+                                IsVisible="{Binding CanWriteMessage}" AutomationProperties.Name="{l:Text privateChats.write}">
+                            <StackPanel Spacing="6">
+                                <Image Width="22" Height="22" HorizontalAlignment="Center" Source="{StaticResource SendIcon}"/>
+                                <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text privateChats.write}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="profileAction" Command="{Binding EditCommand}"
+                                IsVisible="{Binding CanEdit}" AutomationProperties.Name="{l:Text common.edit}">
+                            <StackPanel Spacing="6">
+                                <Image Width="22" Height="22" HorizontalAlignment="Center" Source="{StaticResource PencilIcon}"/>
+                                <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{l:Text common.edit}"/>
+                            </StackPanel>
+                        </Button>
+                    </UniformGrid>
+                </Panel>
 
-                <!-- Connections -->
-                <StackPanel Spacing="4">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.firstConnected}"/>
-                    <TextBlock Text="{Binding FirstConnected}"/>
-                </StackPanel>
-                <StackPanel Spacing="4">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.lastConnected}"/>
-                    <TextBlock Text="{Binding LastConnected}"/>
-                </StackPanel>
-                <!-- The device the user is online from: a phone first, otherwise the one connected last -->
-                <StackPanel Spacing="4" IsVisible="{Binding HasDevice}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.device}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Image Width="18" Height="18" VerticalAlignment="Center"
-                               Source="{Binding DeviceIconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}"
-                               IsVisible="{Binding DeviceIconKey, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Text="{Binding DeviceSystem}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </StackPanel>
-                <StackPanel Spacing="4" IsVisible="{Binding HasDevice}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.appVersion}"/>
-                    <TextBlock Text="{Binding DeviceAppVersion}"/>
-                </StackPanel>
-
-                <!-- Roles: those the user has, and those the current user may give; a tap gives or takes -->
-                <StackPanel Spacing="6" IsVisible="{Binding HasRoles}">
-                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.roles}"/>
-                    <ItemsControl ItemsSource="{Binding Roles}" IsEnabled="{Binding !IsChangingRole}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="profileVm:UserRoleVM">
-                                <CheckBox IsChecked="{Binding IsAssigned, Mode=OneWay}"
-                                          IsEnabled="{Binding CanChange}"
-                                          Command="{Binding $parent[ItemsControl].((profileVm:UserProfileWindowVM)DataContext).ToggleRoleCommand}"
-                                          CommandParameter="{Binding}">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Ellipse Width="12" Height="12" VerticalAlignment="Center"
-                                                 Fill="{DynamicResource PrimaryTextBrush}"
-                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
-                                        <Ellipse Width="12" Height="12" VerticalAlignment="Center"
-                                                 Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
-                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </CheckBox>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding RoleError}"
-                               IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                </StackPanel>
-
-                <TextBlock FontSize="14" FontWeight="SemiBold"
-                           Text="{Binding UserId, StringFormat='ID: {0}'}"/>
-
-                <!-- Viewing -->
-                <StackPanel Classes="actions" Margin="0,4,0,0" IsVisible="{Binding !IsEditing}">
-                    <Button Command="{Binding WriteMessageCommand}" IsVisible="{Binding CanWriteMessage}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Image Width="16" Height="16" Source="{StaticResource SendIcon}"/>
-                            <TextBlock Text="{l:Text privateChats.write}"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="primary" Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Image Width="16" Height="16" Source="{StaticResource PencilIcon}" VerticalAlignment="Center"/>
-                            <TextBlock VerticalAlignment="Center" Text="{l:Text common.edit}"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-
-                <!-- Editing -->
-                <StackPanel Classes="actions" Margin="0,4,0,0" Spacing="10" IsVisible="{Binding IsEditing}">
+                <!-- Editing: the edit is saved or dropped here -->
+                <StackPanel Classes="actions" Spacing="10" IsVisible="{Binding IsEditing}">
                     <Button Classes="primary" Command="{Binding SaveCommand}">
                         <Panel>
                             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !IsBusy}">
@@ -203,6 +171,111 @@
                         <TextBlock Text="{l:Text common.cancel}"/>
                     </Button>
                 </StackPanel>
+
+                <!-- The info: each line an icon, the value and what it is -->
+                <Border Classes="section">
+                    <StackPanel Spacing="16">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Image Classes="infoIcon" Source="{StaticResource HashIcon}"/>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <SelectableTextBlock Classes="infoValue" Text="{Binding UserId}"/>
+                                <TextBlock Classes="infoCaption" Text="ID"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- The device the user is online from: a phone first, otherwise the one connected last -->
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16" IsVisible="{Binding HasDevice}">
+                            <Panel VerticalAlignment="Top">
+                                <Image Classes="infoIcon"
+                                       Source="{Binding DeviceIconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}"
+                                       IsVisible="{Binding DeviceIconKey, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <Image Classes="infoIcon" Source="{StaticResource StatusMobileIcon}"
+                                       IsVisible="{Binding DeviceIconKey, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            </Panel>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <SelectableTextBlock Classes="infoValue" Text="{Binding DeviceSystem}"/>
+                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.device}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16" IsVisible="{Binding HasDevice}">
+                            <Image Classes="infoIcon" Source="{StaticResource IInCircleIcon}"/>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <SelectableTextBlock Classes="infoValue" Text="{Binding DeviceAppVersion}"/>
+                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.appVersion}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Image Classes="infoIcon" Source="{StaticResource PlugIcon}"/>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <SelectableTextBlock Classes="infoValue" Text="{Binding FirstConnected}"/>
+                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.firstConnected}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Image Classes="infoIcon" Source="{StaticResource RecentEmojiIcon}"/>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <SelectableTextBlock Classes="infoValue" Text="{Binding LastConnected}"/>
+                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.lastConnected}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Roles: those the user has, and those the current user may give; a tap gives or takes -->
+                <Border Classes="section" IsVisible="{Binding HasRoles}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="sectionTitle" Margin="0,0,0,2" Text="{l:Text profile.field.roles}"/>
+                        <ItemsControl ItemsSource="{Binding Roles}" IsEnabled="{Binding !IsChangingRole}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="profileVm:UserRoleVM">
+                                    <CheckBox MinHeight="44"
+                                              IsChecked="{Binding IsAssigned, Mode=OneWay}"
+                                              IsEnabled="{Binding CanChange}"
+                                              Command="{Binding $parent[ItemsControl].((profileVm:UserProfileWindowVM)DataContext).ToggleRoleCommand}"
+                                              CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Ellipse Width="12" Height="12" VerticalAlignment="Center"
+                                                     Fill="{DynamicResource PrimaryTextBrush}"
+                                                     IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                            <Ellipse Width="12" Height="12" VerticalAlignment="Center"
+                                                     Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                     IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding RoleError}"
+                                   IsVisible="{Binding RoleError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- The private note, kept on this device only -->
+                <Border Classes="section">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Classes="sectionTitle" VerticalAlignment="Center" Text="{l:Text profile.note.title}"/>
+                            <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
+                        </Grid>
+                        <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
+                                 IsEnabled="{Binding Note.IsLoaded}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 PlaceholderText="{l:Text profile.note.placeholder}"/>
+                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text profile.note.hint}"/>
+                        <TextBlock Classes="hint" Text="{l:Text profile.note.saved}" IsVisible="{Binding Note.IsSaved}"/>
+                        <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Note.Error}"
+                                   IsVisible="{Binding Note.Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Command="{Binding Note.LoadCommand}" IsVisible="{Binding !Note.IsLoaded}"
+                                MinHeight="44" HorizontalAlignment="Left" Content="{l:Text serverSettings.users.retry}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- What the chats with the user hold (photos, videos, files, links) goes here later, as a
+                     section of its own with a tab for each kind -->
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -101,7 +101,8 @@
   "chat.pinned.count": "Pinned messages · {count}",
   "chat.pinned.loading": "Loading pinned messages…",
   "chat.pinned.error": "Could not load pinned messages.",
-  "chat.pinned.empty": "No pinned messages yet.",
+  "chat.pinned.empty.title": "No pinned messages yet",
+  "chat.pinned.empty.text": "Pin an important message and it will be here",
 
   "chat.menu.pin": "Pin message",
   "chat.menu.unpin": "Unpin message",
@@ -276,6 +277,7 @@
   "main.status.connectionLost": "Connection lost. Reconnecting...",
   "main.status.connectionLostVoiceClosed": "Connection lost. Voice session closed. Reconnecting...",
   "main.status.reconnectAttempt": "Connection lost. Reconnecting, attempt {attempt}...",
+  "main.status.autoConnectAttempt": "Connecting to {host}:{port}, attempt {attempt}...",
   "@main.status.reconnectAttempt": {
     "placeholders": {
       "attempt": {}
@@ -796,10 +798,10 @@
   "profile.note.loadFailed": "Could not load the note. Try again.",
   "profile.note.saveFailed": "Could not save the note. Your text is still here; try again.",
   "profile.field.name": "Name:",
-  "profile.field.firstConnected": "First connected:",
-  "profile.field.lastConnected": "Last connected:",
-  "profile.field.device": "Device:",
-  "profile.field.appVersion": "App version:",
+  "profile.field.firstConnected": "First connected",
+  "profile.field.lastConnected": "Last connected",
+  "profile.field.device": "Device",
+  "profile.field.appVersion": "App version",
   "profile.name.yours": "Your name",
   "profile.name.short": "Name",
   "profile.avatar.resetsOnSave": "Resets on save",
@@ -1806,7 +1808,7 @@
   "rejection.insufficientPermissions": "You may not do that.\n\nYour roles on this server do not allow it. Ask someone who manages roles.",
   "rejection.userFrozen": "You are frozen.\n\nOn this server you can read, but not write, join voice or change anything.",
   "rejection.unsupportedRequest": "This server is older than your app and cannot do this yet.\n\nAsk the server owner to update it.",
-  "profile.field.roles": "Roles:",
+  "profile.field.roles": "Roles",
   "roles.newRoleName": "New role",
   "roles.name.empty": "Enter a name",
   "roles.name.tooLong": "At most {limit} characters",

@@ -4,35 +4,110 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:profileVm="clr-namespace:Client.ViewModels.Profile;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Droid.Views.Profile.AccountSecurityView"
              x:DataType="profileVm:AccountSecurityVM"
              Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
+        <!-- The title over a card and the hint under it -->
         <Style Selector="TextBlock.sectionTitle">
-            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="Margin" Value="16,0"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         </Style>
+        <Style Selector="TextBlock.cardHint">
+            <Setter Property="Margin" Value="16,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+
+        <!-- A card of rows, the rows split by a line that starts after the icons -->
+        <Style Selector="Border.card">
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <Style Selector="Border.rowSeparator">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="66,0,0,0"/>
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <!-- The first device has no line over it -->
+        <Style Selector="ItemsControl.sessions ContentPresenter:nth-child(1) Border.rowSeparator">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <!-- A row that is a button: the whole width, darker while pressed -->
+        <Style Selector="Button.row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="MinHeight" Value="60"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.row:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.row:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- The icon of a row on a circle of its color -->
+        <Style Selector="Panel.rowIcon">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Panel.rowIcon > Image">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+        </Style>
+
+        <Style Selector="TextBlock.rowTitle">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.rowHint">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <!-- What a tap on the row does, on its right -->
+        <Style Selector="TextBlock.rowAction">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.accent">
+            <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.danger">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="Image.chevron">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Opacity" Value="0.5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+        </Style>
+
         <!-- Buttons and fields tall enough for a finger -->
         <Style Selector="StackPanel.actions > Button">
             <Setter Property="MinHeight" Value="48"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        </Style>
-        <!-- Logging out of this device is red, as the desktop has it -->
-        <Style Selector="Button.danger">
-            <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
-        </Style>
-        <Style Selector="Button.danger /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
-        </Style>
-        <Style Selector="Button.danger:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ColorDangerPressed}"/>
-        </Style>
-        <Style Selector="Button.danger:disabled /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ColorDangerDisabled}"/>
-            <Setter Property="Opacity" Value="0.6"/>
         </Style>
         <Style Selector="TextBox">
             <Setter Property="MinHeight" Value="44"/>
@@ -56,14 +131,14 @@
                     <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
                 </Button>
             </Panel>
-            <TextBlock Grid.Column="1" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+            <TextBlock Grid.Column="1" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"
                        Text="{l:Text accountSecurity.title}"/>
         </Grid>
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-        <ScrollViewer Grid.Row="2">
-            <Panel Margin="20,24">
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <Panel Margin="16,16,16,28">
 
                 <loadingIndicators:ProgressRing Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Top"
                                                 IsIndeterminate="True">
@@ -88,8 +163,8 @@
                     </Button>
                 </StackPanel>
 
-                <!-- What the user has -->
-                <StackPanel Spacing="28">
+                <!-- What the user has: cards of rows, a tap on a row does what it says -->
+                <StackPanel Spacing="8">
                     <StackPanel.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                             <Binding Path="IsOverview"/>
@@ -97,145 +172,251 @@
                         </MultiBinding>
                     </StackPanel.IsVisible>
 
-                    <hints:HintBlock Text="{l:Text accountSecurity.hint}"/>
+                    <TextBlock Classes="cardHint" Margin="4,0,4,8" Text="{l:Text accountSecurity.hint}"/>
 
-                    <StackPanel Spacing="6">
-                        <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.sessions}"/>
-                        <hints:HintBlock Text="{l:Text accountSecurity.sessions.hint}"/>
-                        <ItemsControl ItemsSource="{Binding Sessions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="profileVm:AccountSessionVM">
-                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,6">
-                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                            <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
-                                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
-                                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding AddedBy}"/>
+                    <!-- Devices: each with the icon of its system, and a way out for the others -->
+                    <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.sessions}"/>
+                    <Border Classes="card">
+                        <StackPanel>
+                            <ItemsControl Classes="sessions" ItemsSource="{Binding Sessions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="profileVm:AccountSessionVM">
+                                        <StackPanel>
+                                            <Border Classes="rowSeparator"/>
+                                            <Grid Margin="16,12" ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                                <Panel Classes="rowIcon">
+                                                    <Ellipse Classes="kind-tint" Classes.success="{Binding IsCurrent}"/>
+                                                    <Image Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}"
+                                                           IsVisible="{Binding IconKey, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                    <Image Source="{StaticResource PlanetIcon}"
+                                                           IsVisible="{Binding IconKey, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                </Panel>
+                                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Classes="rowTitle" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
+                                                    <TextBlock Classes="rowHint" Text="{Binding Details}"/>
+                                                    <TextBlock Classes="rowHint" Text="{Binding AddedBy}"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="2" Classes="borderless" VerticalAlignment="Center"
+                                                        MinHeight="40" Padding="10,0" Margin="0,0,-8,0"
+                                                        IsVisible="{Binding IsOther}"
+                                                        Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).EndSessionCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Classes="danger" FontWeight="SemiBold"
+                                                               Text="{l:Text accountSecurity.sessions.endConfirm}"/>
+                                                </Button>
+                                            </Grid>
                                         </StackPanel>
-                                        <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
-                                                IsVisible="{Binding IsOther}"
-                                                Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).EndSessionCommand}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Text="{l:Text accountSecurity.sessions.endConfirm}"/>
-                                        </Button>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <StackPanel Classes="actions" Margin="0,4,0,0">
-                            <Button Command="{Binding LinkDeviceCommand}">
-                                <TextBlock Text="{l:Text accountSecurity.link.add}"/>
-                            </Button>
-                            <Button Command="{Binding EndOtherSessionsCommand}" IsVisible="{Binding HasOtherSessions}">
-                                <TextBlock Text="{l:Text accountSecurity.sessions.endOthers}"/>
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                    <StackPanel Spacing="14">
-                        <StackPanel Spacing="4">
-                            <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.signIn}"/>
-                            <hints:HintBlock Text="{l:Text accountSecurity.signIn.hint}"/>
-                        </StackPanel>
-
-                        <StackPanel Spacing="6">
-                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.password}"/>
-                            <TextBlock TextWrapping="Wrap" Text="{Binding PasswordState}"/>
-                            <StackPanel Classes="actions" Spacing="10" Margin="0,4,0,0">
-                                <Button Command="{Binding SetPasswordCommand}">
-                                    <Panel>
-                                        <TextBlock Text="{l:Text accountSecurity.password.change}" IsVisible="{Binding HasPassword}"/>
-                                        <TextBlock Text="{l:Text accountSecurity.password.add}" IsVisible="{Binding !HasPassword}"/>
+                            <Border Classes="rowSeparator"/>
+                            <Button Classes="row" Command="{Binding LinkDeviceCommand}">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                    <Panel Classes="rowIcon">
+                                        <Ellipse Classes="kind-tint"/>
+                                        <Image Source="{StaticResource PlusIcon}"/>
                                     </Panel>
-                                </Button>
-                                <Button Command="{Binding RemovePasswordCommand}" IsVisible="{Binding HasPassword}">
-                                    <TextBlock Text="{l:Text accountSecurity.password.remove}"/>
+                                    <TextBlock Grid.Column="1" Classes="rowTitle accent" VerticalAlignment="Center"
+                                               Text="{l:Text accountSecurity.link.add}"/>
+                                    <Image Grid.Column="2" Classes="chevron" Source="{StaticResource DownArrowIcon}"/>
+                                </Grid>
+                            </Button>
+
+                            <StackPanel IsVisible="{Binding HasOtherSessions}">
+                                <Border Classes="rowSeparator"/>
+                                <Button Classes="row" Command="{Binding EndOtherSessionsCommand}">
+                                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="14">
+                                        <Panel Classes="rowIcon">
+                                            <Ellipse Classes="kind-tint error"/>
+                                            <Image Source="{StaticResource DoorWithCrossIcon}"/>
+                                        </Panel>
+                                        <TextBlock Grid.Column="1" Classes="rowTitle danger" VerticalAlignment="Center"
+                                                   Text="{l:Text accountSecurity.sessions.endOthers}"/>
+                                    </Grid>
                                 </Button>
                             </StackPanel>
                         </StackPanel>
+                    </Border>
+                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.sessions.hint}"/>
 
-                        <StackPanel Spacing="6">
-                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.codes}"/>
-                            <TextBlock TextWrapping="Wrap" Text="{Binding CodesState}"/>
-                            <StackPanel Classes="actions" Margin="0,4,0,0">
-                                <Button Command="{Binding DisableCodesCommand}" IsVisible="{Binding IsTwoFactorEnabled}">
-                                    <TextBlock Text="{l:Text accountSecurity.codes.disable}"/>
-                                </Button>
-                                <Button Command="{Binding EnableCodesCommand}" IsVisible="{Binding !IsTwoFactorEnabled}">
-                                    <TextBlock Text="{l:Text accountSecurity.codes.enable}"/>
+                    <!-- Logging in by username: password, one-time codes, passkeys -->
+                    <TextBlock Classes="sectionTitle" Margin="16,16,16,0" Text="{l:Text accountSecurity.signIn}"/>
+                    <Border Classes="card">
+                        <StackPanel>
+                            <Button Classes="row" Command="{Binding SetPasswordCommand}">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                    <Panel Classes="rowIcon">
+                                        <Ellipse Classes="kind-tint" Classes.success="{Binding HasPassword}"/>
+                                        <Image Source="{StaticResource KeyIcon}"/>
+                                    </Panel>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Classes="rowTitle" Text="{l:Text accountSecurity.password}"/>
+                                        <TextBlock Classes="rowHint" Text="{Binding PasswordState}"/>
+                                    </StackPanel>
+                                    <Panel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Classes="rowAction" Text="{l:Text accountSecurity.password.change}" IsVisible="{Binding HasPassword}"/>
+                                        <TextBlock Classes="rowAction" Text="{l:Text accountSecurity.password.add}" IsVisible="{Binding !HasPassword}"/>
+                                    </Panel>
+                                </Grid>
+                            </Button>
+
+                            <StackPanel IsVisible="{Binding HasPassword}">
+                                <Border Classes="rowSeparator"/>
+                                <Button Classes="row" Command="{Binding RemovePasswordCommand}">
+                                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="14">
+                                        <Panel Classes="rowIcon">
+                                            <Ellipse Classes="kind-tint error"/>
+                                            <Image Source="{StaticResource TrashIcon}"/>
+                                        </Panel>
+                                        <TextBlock Grid.Column="1" Classes="rowTitle danger" VerticalAlignment="Center"
+                                                   Text="{l:Text accountSecurity.password.remove}"/>
+                                    </Grid>
                                 </Button>
                             </StackPanel>
-                        </StackPanel>
 
-                        <StackPanel Spacing="6">
-                            <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.passkeys}"/>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding PasskeysState}"/>
-                            <ItemsControl ItemsSource="{Binding Passkeys}" IsVisible="{Binding HasPasskeys}">
+                            <Border Classes="rowSeparator"/>
+                            <!-- One row, doing what the state of the codes allows -->
+                            <Panel>
+                                <Button Classes="row" Command="{Binding DisableCodesCommand}" IsVisible="{Binding IsTwoFactorEnabled}">
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                        <Panel Classes="rowIcon">
+                                            <Ellipse Classes="kind-tint success"/>
+                                            <Image Source="{StaticResource GreenShieldIcon}"/>
+                                        </Panel>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Classes="rowTitle" Text="{l:Text accountSecurity.codes}"/>
+                                            <TextBlock Classes="rowHint" Text="{Binding CodesState}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Classes="rowAction" VerticalAlignment="Center"
+                                                   Text="{l:Text accountSecurity.codes.disable}"/>
+                                    </Grid>
+                                </Button>
+                                <Button Classes="row" Command="{Binding EnableCodesCommand}" IsVisible="{Binding !IsTwoFactorEnabled}">
+                                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                        <Panel Classes="rowIcon">
+                                            <Ellipse Classes="kind-tint warning"/>
+                                            <Image Source="{StaticResource OrangeShieldIcon}"/>
+                                        </Panel>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Classes="rowTitle" Text="{l:Text accountSecurity.codes}"/>
+                                            <TextBlock Classes="rowHint" Text="{Binding CodesState}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Classes="rowAction" VerticalAlignment="Center"
+                                                   Text="{l:Text accountSecurity.codes.enable}"/>
+                                    </Grid>
+                                </Button>
+                            </Panel>
+
+                            <Border Classes="rowSeparator"/>
+                            <!-- Passkeys are added on the server's dashboard; here they are only seen and deleted -->
+                            <Grid Margin="16,12" ColumnDefinitions="Auto, *" ColumnSpacing="14">
+                                <Panel Classes="rowIcon">
+                                    <Ellipse Classes="kind-tint"/>
+                                    <Image Source="{StaticResource BlueShieldIcon}"/>
+                                </Panel>
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Classes="rowTitle" Text="{l:Text accountSecurity.passkeys}"/>
+                                    <TextBlock Classes="rowHint" Text="{Binding PasskeysState}"/>
+                                </StackPanel>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Passkeys}" IsVisible="{Binding HasPasskeys}" Margin="0,0,0,6">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="profileVm:AccountPasskeyVM">
-                                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,6">
+                                        <Grid Margin="66,4,8,4" ColumnDefinitions="*, Auto" ColumnSpacing="8">
                                             <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                                <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Label}"/>
-                                                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Details}"/>
+                                                <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding Label}"/>
+                                                <TextBlock Classes="rowHint" Text="{Binding Details}"/>
                                             </StackPanel>
-                                            <Button Grid.Column="1" MinHeight="44" VerticalAlignment="Center"
+                                            <Button Grid.Column="1" Classes="borderless" Width="44" Height="44" CornerRadius="22"
+                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                    AutomationProperties.Name="{l:Text common.delete}"
                                                     Command="{Binding $parent[ItemsControl].((profileVm:AccountSecurityVM)DataContext).DeletePasskeyCommand}"
                                                     CommandParameter="{Binding}">
-                                                <TextBlock Text="{l:Text common.delete}"/>
+                                                <Image Width="20" Height="20" Source="{StaticResource TrashIcon}" Opacity="0.8"/>
                                             </Button>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
-                    </StackPanel>
+                    </Border>
+                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.signIn.hint}"/>
 
-                    <StackPanel Spacing="6">
-                        <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.phrase}"/>
-                        <hints:HintBlock Text="{l:Text accountSecurity.phrase.hint}"/>
-                        <StackPanel Classes="actions" Margin="0,4,0,0">
-                            <!-- One button shows the kept phrase and hides it again -->
-                            <Button Command="{Binding ShowPhraseCommand}">
-                                <Panel>
-                                    <TextBlock IsVisible="{Binding !IsRecoveryPhraseShown}" Text="{l:Text accountSecurity.phrase.show}"/>
-                                    <TextBlock IsVisible="{Binding IsRecoveryPhraseShown}" Text="{l:Text common.hide}"/>
-                                </Panel>
-                            </Button>
-                            <Button Command="{Binding ResetPhraseCommand}">
-                                <TextBlock Text="{l:Text accountSecurity.phrase.resetConfirm}"/>
-                            </Button>
-                        </StackPanel>
-                        <!-- A new phrase, or the one kept here: shown as the dialog of a new phrase shows it -->
-                        <StackPanel Spacing="8" Margin="0,4,0,0" IsVisible="{Binding IsRecoveryPhraseShown}">
-                            <hints:HintBlock Text="{l:Text accountSecurity.phrase.saveHint}"/>
-                            <Border Padding="10,8" CornerRadius="6" Background="{DynamicResource MessageBoxDetailBrush}">
-                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
-                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap"
-                                               Text="{Binding RecoveryPhraseText}"/>
-                                    <Button Grid.Column="1" Classes="borderless" Width="40" Height="40" Padding="0"
-                                            VerticalAlignment="Top" Margin="0,-6,-6,-6" Click="OnCopyPhraseClick"
-                                            AutomationProperties.Name="{l:Text common.copy}">
-                                        <Image Width="20" Height="20" Source="{StaticResource CopyIcon}"/>
-                                    </Button>
+                    <!-- Recovery phrase -->
+                    <TextBlock Classes="sectionTitle" Margin="16,16,16,0" Text="{l:Text accountSecurity.phrase}"/>
+                    <Border Classes="card">
+                        <StackPanel>
+                            <!-- One row shows the kept phrase and hides it again -->
+                            <Button Classes="row" Command="{Binding ShowPhraseCommand}">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                    <Panel Classes="rowIcon">
+                                        <Ellipse Classes="kind-tint"/>
+                                        <Image Source="{StaticResource EyeIcon}" IsVisible="{Binding !IsRecoveryPhraseShown}"/>
+                                        <Image Source="{StaticResource CrossedEyeIcon}" IsVisible="{Binding IsRecoveryPhraseShown}"/>
+                                    </Panel>
+                                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Classes="rowTitle" IsVisible="{Binding !IsRecoveryPhraseShown}" Text="{l:Text accountSecurity.phrase.show}"/>
+                                        <TextBlock Classes="rowTitle" IsVisible="{Binding IsRecoveryPhraseShown}" Text="{l:Text common.hide}"/>
+                                    </Panel>
+                                    <Image Grid.Column="2" Classes="chevron" Source="{StaticResource DownArrowIcon}"
+                                           IsVisible="{Binding !IsRecoveryPhraseShown}"/>
                                 </Grid>
-                            </Border>
-                            <CheckBox IsChecked="{Binding KeepPhraseOnDevice}" Content="{l:Text recoveryPhrase.keepOnDevice}"/>
-                            <Button Classes="primary" MinHeight="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    Command="{Binding ConfirmPhraseSavedCommand}">
-                                <TextBlock Text="{l:Text accountSecurity.phrase.saved}"/>
+                            </Button>
+
+                            <!-- A new phrase, or the one kept here: shown as the dialog of a new phrase shows it -->
+                            <StackPanel Spacing="10" Margin="16,4,16,14" IsVisible="{Binding IsRecoveryPhraseShown}">
+                                <TextBlock Classes="rowHint" Text="{l:Text accountSecurity.phrase.saveHint}"/>
+                                <Border Padding="12,10" CornerRadius="10" Background="{DynamicResource MessageBoxDetailBrush}">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                                        <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                             FontFamily="monospace" LineHeight="22"
+                                                             Text="{Binding RecoveryPhraseText}"/>
+                                        <Button Grid.Column="1" Classes="borderless" Width="40" Height="40" Padding="0"
+                                                VerticalAlignment="Top" Margin="0,-6,-6,-6" Click="OnCopyPhraseClick"
+                                                AutomationProperties.Name="{l:Text common.copy}">
+                                            <Image Width="20" Height="20" Source="{StaticResource CopyIcon}"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                                <CheckBox IsChecked="{Binding KeepPhraseOnDevice}" Content="{l:Text recoveryPhrase.keepOnDevice}"/>
+                                <Button Classes="primary" MinHeight="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Command="{Binding ConfirmPhraseSavedCommand}">
+                                    <TextBlock Text="{l:Text accountSecurity.phrase.saved}"/>
+                                </Button>
+                            </StackPanel>
+
+                            <Border Classes="rowSeparator"/>
+                            <Button Classes="row" Command="{Binding ResetPhraseCommand}">
+                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                    <Panel Classes="rowIcon">
+                                        <Ellipse Classes="kind-tint warning"/>
+                                        <Image Source="{StaticResource ResetIcon}"/>
+                                    </Panel>
+                                    <TextBlock Grid.Column="1" Classes="rowTitle" VerticalAlignment="Center"
+                                               Text="{l:Text accountSecurity.phrase.reset}"/>
+                                    <Image Grid.Column="2" Classes="chevron" Source="{StaticResource DownArrowIcon}"/>
+                                </Grid>
                             </Button>
                         </StackPanel>
-                    </StackPanel>
+                    </Border>
+                    <TextBlock Classes="cardHint" Text="{l:Text accountSecurity.phrase.hint}"/>
 
-                    <StackPanel Classes="actions">
-                        <Button Classes="danger" Command="{Binding LogoutCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Image Width="20" Height="20" Source="{StaticResource DoorWithRedArrowIcon}"/>
-                                <TextBlock VerticalAlignment="Center" Text="{l:Text accountSecurity.logout.title}"/>
-                            </StackPanel>
+                    <!-- Logging out of this device, apart from the rest -->
+                    <Border Classes="card" Margin="0,16,0,0">
+                        <Button Classes="row" Command="{Binding LogoutCommand}">
+                            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="14">
+                                <Panel Classes="rowIcon">
+                                    <Ellipse Classes="kind-tint error"/>
+                                    <Image Source="{StaticResource DoorWithRedArrowIcon}"/>
+                                </Panel>
+                                <TextBlock Grid.Column="1" Classes="rowTitle danger" VerticalAlignment="Center"
+                                           Text="{l:Text accountSecurity.logout.title}"/>
+                            </Grid>
                         </Button>
-                    </StackPanel>
+                    </Border>
 
-                    <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
+                    <TextBlock Classes="fieldError" Margin="4,8,4,0" TextWrapping="Wrap" Text="{Binding Error}"
                                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
 
