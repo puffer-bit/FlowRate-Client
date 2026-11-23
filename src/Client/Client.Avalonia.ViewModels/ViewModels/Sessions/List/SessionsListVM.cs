@@ -434,17 +434,37 @@ public partial class SessionsListVM : ReactiveObject
 
     private async Task AddNewHybridSession(HybridSessionModel hybridSessionModel)
     {
+        if (_coordinatorSession is not { } coordinator)
+            return;
+        var attachId = _attachId;
         var session = AddHybridSessionVM(hybridSessionModel);
-        var result = await LoadPeersAsync(_coordinatorSession!, session);
-        if (!result.IsSuccess)
+        bool IsCurrent() => attachId == _attachId && Sessions.Contains(session) && !session.IsLeaving;
+        var result = await LoadPeersAsync(coordinator, session, IsCurrent);
+        if (!result.IsSuccess && IsCurrent())
         {
             LogPeersRequestFailed(hybridSessionModel.Id, hybridSessionModel.Name, result);
             session.IsCorrupted = true;
         }
     }
 
-    // A session created just now has no peers yet, so there is nothing to load for it
-    private void OnHybridSessionAdded(HybridSessionModel session) => AddHybridSessionVM(session);
+    // This also announces an existing channel made visible again, with peers already inside.
+    private void OnHybridSessionAdded(HybridSessionModel session)
+    {
+        var attachId = _attachId;
+        Dispatcher.UIThread.Post(async () =>
+        {
+            if (attachId != _attachId || _coordinatorSession == null)
+                return;
+            try
+            {
+                await AddNewHybridSession(session);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to load participants of hybrid session {SessionId}.", session.Id);
+            }
+        });
+    }
 
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
