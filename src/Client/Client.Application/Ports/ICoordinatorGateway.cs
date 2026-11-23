@@ -195,6 +195,7 @@ public interface ICoordinatorGateway : IDisposable
     Task ChangeGroup(int sessionId, string name, int[] memberIds, int ownerId)
         => throw new NotSupportedException();
     Task LeaveGroup(int sessionId) => throw new NotSupportedException();
+    Task SetGroupAvatar(int sessionId, string? uploadId) => throw new NotSupportedException();
 
     Task DeleteSession(int sessionId);
 

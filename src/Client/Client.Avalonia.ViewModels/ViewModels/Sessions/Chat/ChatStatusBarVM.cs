@@ -97,9 +97,11 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     }
 
     public bool IsDirect => _session.Kind == ChatKind.Direct;
+    /// <summary>The chat is shown with an avatar: the other member's in a direct chat, its own in a group.</summary>
+    public bool HasAvatar => _session.IsPrivate;
     public bool HasViewers => Viewers != null;
     public string Name => IsDirect ? _peer?.DisplayName ?? _peer?.Username ?? string.Empty : _session.Name;
-    public string? AvatarUrl => _peer?.AvatarUrl;
+    public string? AvatarUrl => IsDirect ? _peer?.AvatarUrl : _session.AvatarUrl;
     public Shared.Enums.User.UserStatus? PeerStatus => _peer?.Status;
     public bool PeerIsMobile => _peer?.IsMobile == true;
 
@@ -196,6 +198,7 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     {
         _session = session;
         this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(AvatarUrl));
         UpdateTexts();
     }
 

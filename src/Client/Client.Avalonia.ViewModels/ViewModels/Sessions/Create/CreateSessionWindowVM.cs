@@ -9,6 +9,7 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Sessions;
 using Client.Services;
+using Client.ViewModels.Profile;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Enums.WebRTC;
@@ -24,6 +25,7 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     private readonly int? _categoryId;
     private readonly ChatSessionModel? _editingGroup;
     private int _searchVersion;
+    private (PreparedAvatar? Picked, bool Reset)? _savedAvatar;
     private bool _disposed;
     public SessionModel? CreatedSession { get; private set; }
     public bool IsPrivateMode { get; }
@@ -33,6 +35,27 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
     public bool ShowCapacity => !IsPrivateMode && !IsChatSelected;
     public bool ShowDescription => !IsPrivateMode && IsChatSelected;
     public bool ShowOwner => IsEditingGroup;
+
+    /// <summary>The picture of the group being edited; null when no group is edited.</summary>
+    public AvatarPickerVM? AvatarPicker { get; }
+    public bool ShowAvatar => AvatarPicker != null;
+
+    /// <summary>The picture the group has now, until the user takes it off; a picked one is shown over it.</summary>
+    public string? ShownAvatarUrl => IsAvatarReset ? null : _editingGroup?.AvatarUrl;
+
+    /// <summary>The user took the current picture off; saving clears it.</summary>
+    public bool IsAvatarReset
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShownAvatarUrl));
+        }
+    }
+
+    /// <summary>Takes the picked image away first, and then the picture the group already has.</summary>
+    public ReactiveCommand<RxVoid, RxVoid>? RemoveAvatarCommand { get; }
     public string BusyText => Strings.Get(IsEditingGroup ? "common.saving" : "createSession.creating");
     public string SubmitText => Strings.Get(IsEditingGroup ? "common.save" : "createSession.create");
     public string DialogTitle => Strings.Get(IsEditingGroup ? "privateChats.editGroup" : "createSession.title");
@@ -210,7 +233,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
 
     /// <param name="categoryId">The category the session is created in, or null for none.</param>
     public CreateSessionWindowVM(ICoordinatorSession coordinatorSession, SessionType initialType = SessionType.Hybrid,
-        int? categoryId = null, bool privateMode = false, ChatSessionModel? editingGroup = null)
+        int? categoryId = null, bool privateMode = false, ChatSessionModel? editingGroup = null,
+        IAvatarService? avatars = null)
     {
         _coordinatorSession = coordinatorSession;
         Strings.LanguageChanged += OnLanguageChanged;
@@ -219,6 +243,16 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         _editingGroup = editingGroup;
         IsGroup = editingGroup != null;
         if (editingGroup != null) Name = editingGroup.Name;
+        if (editingGroup != null && avatars != null)
+        {
+            AvatarPicker = new AvatarPickerVM(avatars);
+            var picked = AvatarPicker.WatchProperty(nameof(AvatarPickerVM.Avatar), picker => picker.Avatar);
+            RemoveAvatarCommand = ReactiveCommand.Create(RemoveAvatar,
+                this.WatchProperty(nameof(IsAvatarReset), vm => vm.IsAvatarReset)
+                    .CombineLatest(picked, (reset, image) => image != null || (!reset && editingGroup.AvatarUrl != null)));
+            // A picked image replaces the reset
+            _disposables.Add(picked.Where(image => image != null).Subscribe(_ => IsAvatarReset = false));
+        }
         SelectDirectCommand = ReactiveCommand.Create(() => { IsGroup = false; });
         SelectGroupCommand = ReactiveCommand.Create(() => { IsGroup = true; });
         ToggleMemberCommand = ReactiveCommand.Create<ChatMemberChoiceVM>(ToggleMember);
@@ -286,6 +320,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
             if (!ValidPrivateMembers) return;
             var name = IsGroup ? Name.Trim() : "Direct";
             var members = SelectedMembers.Select(member => member.Id).ToArray();
+            // Before the group may change hands: only its owner sets the picture
+            if (IsEditingGroup && !await SaveAvatarAsync()) return;
             var privateResult = IsEditingGroup
                 ? await _coordinatorSession.ChangeGroup(_editingGroup!.Id, name, members, SelectedOwner!.Id)
                 : await CreatePrivateAsync(name, members);
@@ -336,6 +372,29 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>Sends the picked picture or the reset; false when the server did not take it.</summary>
+    private async Task<bool> SaveAvatarAsync()
+    {
+        if (AvatarPicker == null || (AvatarPicker.Picked == null && !IsAvatarReset)) return true;
+        var change = (AvatarPicker.Picked, IsAvatarReset);
+        // Saved already: a second try after a failed member change does not send it again
+        if (_savedAvatar == change) return true;
+        var result = await _coordinatorSession.SetGroupAvatar(_editingGroup!.Id, change.Picked?.Encoded,
+            change.Picked?.MimeType);
+        AvatarPicker.ShowResult(result);
+        if (!result.IsSuccess) return false;
+        _savedAvatar = change;
+        return true;
+    }
+
+    private void RemoveAvatar()
+    {
+        if (AvatarPicker?.Avatar != null)
+            AvatarPicker.Clear();
+        else
+            IsAvatarReset = true;
+    }
+
     private async Task<Client.Core.Coordinator.RequestResult> CreatePrivateAsync(string name, int[] members)
     {
         var result = await _coordinatorSession.CreateConversation(new NewSessionModel(name,
@@ -351,6 +410,8 @@ public sealed class CreateSessionWindowVM : ReactiveObject, IDisposable
         Strings.LanguageChanged -= OnLanguageChanged;
         _searchVersion++;
         ToggleMemberCommand.Dispose();
+        RemoveAvatarCommand?.Dispose();
+        AvatarPicker?.Dispose();
         _disposables.Dispose();
         _isBusy.Dispose();
         SelectTypeCommand.Dispose();

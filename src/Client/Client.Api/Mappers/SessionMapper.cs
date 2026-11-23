@@ -83,7 +83,7 @@ internal static class SessionMapper
             CreatorUserId = sessionDTO.CreatorUserId,
             OwnerUserId = sessionDTO.OwnerUserId,
             Description = sessionDTO.Description,
-            IconPath = sessionDTO.IconPath,
+            AvatarUrl = sessionDTO.AvatarUrl,
 
             IsReadOnly = sessionDTO.IsReadOnly,
             IsArchived = sessionDTO.IsArchived,

@@ -87,6 +87,58 @@ public class CoordinatorSessionAvatarTests
         Assert.Empty(_gateway.Uploads);
     }
 
+    [Fact]
+    public async Task SetGroupAvatar_UploadsThePictureAndPutsItOnTheGroup()
+    {
+        await _session.Connect("server", 1, null, null);
+        byte[] image = [1, 2, 3];
+
+        var result = await _session.SetGroupAvatar(5, image, "image/webp", TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsSuccess);
+        var (uploadId, (upload, content)) = Assert.Single(_gateway.Uploads);
+        Assert.Equal(MediaUploadKind.Avatar, upload.Kind);
+        Assert.Null(upload.ChatId);
+        Assert.Equal(image, content);
+        Assert.Equal((5, uploadId), Assert.Single(_gateway.GroupAvatarRequests));
+        Assert.Empty(_gateway.AvatarRequests);
+    }
+
+    [Fact]
+    public async Task SetGroupAvatar_WithoutAPicture_TakesItOffWithoutAnUpload()
+    {
+        await _session.Connect("server", 1, null, null);
+
+        var result = await _session.SetGroupAvatar(5, null, null, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal((5, (string?)null), Assert.Single(_gateway.GroupAvatarRequests));
+        Assert.Empty(_gateway.Uploads);
+    }
+
+    [Fact]
+    public async Task SetGroupAvatar_WhenTheUploadFails_AsksForNothing()
+    {
+        await _session.Connect("server", 1, null, null);
+        _gateway.UploadResult = MediaTransferResult.ConnectionFailed;
+
+        var result = await _session.SetGroupAvatar(5, [1], "image/webp", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorCode.UploadNotFound, result.Error);
+        Assert.Empty(_gateway.GroupAvatarRequests);
+    }
+
+    [Fact]
+    public async Task SetGroupAvatar_TheServerRefuses_ReportsItsAnswer()
+    {
+        await _session.Connect("server", 1, null, null);
+        _gateway.AvatarError = ErrorCode.InsufficientPermissions;
+
+        var result = await _session.SetGroupAvatar(5, [1], "image/webp", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorCode.InsufficientPermissions, result.Error);
+    }
+
     [Theory]
     [InlineData("/media/avatars/0a1b", "0a1b")]
     [InlineData(null, null)]

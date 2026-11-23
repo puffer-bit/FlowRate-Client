@@ -20,8 +20,7 @@
                     <avatars:UserAvatar Width="44" Height="44"
                                         UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
                                         Status="{Binding PeerStatus}"
-                                        IsMobile="{Binding PeerIsMobile}" IsVisible="{Binding IsDirect}"/>
-                    <Image Width="44" Height="44" Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                                        IsMobile="{Binding PeerIsMobile}" IsVisible="{Binding IsPrivate}"/>
                 </Panel>
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">

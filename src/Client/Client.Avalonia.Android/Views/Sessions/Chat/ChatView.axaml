@@ -241,10 +241,10 @@
 
             <Button Grid.Column="1" Classes="borderless chat-round" Click="OnChatTitleClick">
                 <Panel Width="40" Height="40">
-                    <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !StatusBar.IsDirect}"/>
+                    <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !StatusBar.HasAvatar}"/>
                     <avatars:UserAvatar Width="40" Height="40" UserName="{Binding StatusBar.Name}" AvatarUrl="{Binding StatusBar.AvatarUrl}"
                                         Status="{Binding StatusBar.PeerStatus}"
-                                        IsMobile="{Binding StatusBar.PeerIsMobile}" IsVisible="{Binding StatusBar.IsDirect}"/>
+                                        IsMobile="{Binding StatusBar.PeerIsMobile}" IsVisible="{Binding StatusBar.HasAvatar}"/>
                 </Panel>
             </Button>
 

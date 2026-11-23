@@ -24,6 +24,9 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             DisplayName = value.Name;
+            // A group shows its own picture or the first letter of its name; a direct chat the other member's
+            if (value is ChatSessionModel { Kind: ChatKind.Group } group)
+                AvatarUrl = group.AvatarUrl;
             this.RaisePropertyChanged(nameof(IsPrivate));
             this.RaisePropertyChanged(nameof(IsDirect));
             this.RaisePropertyChanged(nameof(IsGroup));

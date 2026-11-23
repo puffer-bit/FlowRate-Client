@@ -369,6 +369,7 @@ public partial class MainWindowVM : ReactiveObject
             OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access)
         { SessionList = SessionsList };
         SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
+        SessionsList.Avatars = _avatars;
         SessionsList.MovePeerCommand = _users.MovePeerCommand;
         _users.OpenDirectChat = async user =>
         {

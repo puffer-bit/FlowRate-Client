@@ -3,6 +3,7 @@
              xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Sessions.Chat.ChatInfoView"
              x:DataType="chatVm:ChatInfoWindowVM"
@@ -14,7 +15,10 @@
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="18">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <Image Width="36" Height="36" Source="{StaticResource HashIcon}"/>
+                    <Panel Width="36" Height="36">
+                        <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsGroup}"/>
+                        <avatars:UserAvatar UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsGroup}"/>
+                    </Panel>
                     <SelectableTextBlock Grid.Column="1" FontSize="18" FontWeight="SemiBold"
                                          VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Name}"/>
                 </Grid>
