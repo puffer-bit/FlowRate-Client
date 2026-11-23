@@ -49,7 +49,7 @@ jobs:
         working-directory: src
         env:
           TEST_LABEL: Tests (${{ matrix.os }})
-        run: bash ../.github/scripts/test-dotnet.sh Client/*.Tests/*.Tests.csproj Shared/Shared.Tests/Shared.Tests.csproj
+        run: bash ../.github/scripts/test-dotnet.sh Client/*.Tests/*.Tests.csproj Client/Database/*.Tests/*.Tests.csproj Shared/Shared.Tests/Shared.Tests.csproj
 
       - name: Upload test results
         if: failure()
