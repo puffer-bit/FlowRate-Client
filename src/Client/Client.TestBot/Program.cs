@@ -57,7 +57,8 @@ Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
 
 // The same transient registrations the desktop client uses, so every bot gets its own connection
 var services = new ServiceCollection()
-    .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion()))
+    .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
+        DevicePlatform.OsVersion, DevicePlatform.Architecture))
     .AddSingleton<ITrustedCertificatesRepository, InMemoryTrustedCertificates>()
     .AddClientLogging(Log.Logger)
     .BuildServiceProvider();

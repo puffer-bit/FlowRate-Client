@@ -484,6 +484,7 @@
                                     UserName="{Binding UserCard.Username}"
                                     AvatarUrl="{Binding UserCard.AvatarUrl}"
                                     Status="{Binding UserCard.Presence}"
+                                    IsMobile="{Binding UserCard.IsMobile}"
                                     VerticalAlignment="Center"/>
 
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">

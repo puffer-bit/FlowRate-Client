@@ -101,6 +101,7 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
     public string Name => IsDirect ? _peer?.DisplayName ?? _peer?.Username ?? string.Empty : _session.Name;
     public string? AvatarUrl => _peer?.AvatarUrl;
     public Shared.Enums.User.UserStatus? PeerStatus => _peer?.Status;
+    public bool PeerIsMobile => _peer?.IsMobile == true;
 
     public void ApplyPeer(UserModel peer)
     {
@@ -108,6 +109,7 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(Name));
         this.RaisePropertyChanged(nameof(AvatarUrl));
         this.RaisePropertyChanged(nameof(PeerStatus));
+        this.RaisePropertyChanged(nameof(PeerIsMobile));
     }
     public ChatViewersVM? Viewers
     {

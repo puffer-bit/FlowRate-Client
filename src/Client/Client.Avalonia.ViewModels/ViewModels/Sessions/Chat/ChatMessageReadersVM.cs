@@ -27,12 +27,14 @@ public static class ChatReceiptTime
 }
 
 /// <summary>A member who has read the message, as the readers list shows them.</summary>
-public sealed class ChatMessageReaderVM(int userId, string name, string? avatarUrl, UserStatus? status, DateTimeOffset? readAt)
+public sealed class ChatMessageReaderVM(int userId, string name, string? avatarUrl, UserStatus? status, DateTimeOffset? readAt,
+    bool isMobile = false)
 {
     public int UserId { get; } = userId;
     public string Name { get; } = name;
     public string? AvatarUrl { get; } = avatarUrl;
     public UserStatus? Status { get; } = status;
+    public bool IsMobile { get; } = isMobile;
     public DateTimeOffset? ReadAt { get; } = readAt;
     public string TimeText => ChatReceiptTime.Format(ReadAt);
 }
@@ -168,7 +170,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
         foreach (var (userId, readAt) in _readers.OrderBy(pair => pair.Value ?? DateTimeOffset.MinValue)
                      .ThenBy(pair => pair.Key))
             Items.Add(new ChatMessageReaderVM(userId, _senders.FindName(userId) ?? Strings.Get("chat.unknownUser"),
-                _senders.FindAvatarUrl(userId), _senders.FindStatus(userId), readAt));
+                _senders.FindAvatarUrl(userId), _senders.FindStatus(userId), readAt, _senders.IsMobile(userId)));
         this.RaisePropertyChanged(nameof(IsEmpty));
         this.RaisePropertyChanged(nameof(FirstReadAt));
         ReadersChanged?.Invoke();

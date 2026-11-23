@@ -32,7 +32,8 @@
                                                 UserName="{Binding Name}"
                                                 AvatarUrl="{Binding ShownAvatarUrl}"
                                                 Source="{Binding AvatarPicker.Avatar}"
-                                                Status="{Binding Status}">
+                                                Status="{Binding Status}"
+                                                IsMobile="{Binding IsMobile}">
                                 <avatars:UserAvatar.Overlay>
                                     <avatars:AvatarEditButton Command="{Binding ChangeAvatarCommand}" IsVisible="{Binding IsCurrentUser}"/>
                                 </avatars:UserAvatar.Overlay>
@@ -170,7 +171,7 @@
                 </Border>
 
                 <Border Padding="12" CornerRadius="{StaticResource SurfaceCornerRadius}" Background="{DynamicResource SettingsCardBackgroundBrush}">
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
                         <TextBlock Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
                                    Text="{l:Text profile.field.firstConnected}"/>
                         <SelectableTextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap"
@@ -179,6 +180,21 @@
                                    Text="{l:Text profile.field.lastConnected}"/>
                         <SelectableTextBlock Grid.Row="1" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
                                              Text="{Binding LastConnected}"/>
+                        <!-- The device the user is online from: a phone first, otherwise the one connected last -->
+                        <TextBlock Grid.Row="2" Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.device}" IsVisible="{Binding HasDevice}"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                                    IsVisible="{Binding HasDevice}">
+                            <Image Width="14" Height="14" VerticalAlignment="Center"
+                                   Source="{Binding DeviceIconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}"
+                                   IsVisible="{Binding DeviceIconKey, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <SelectableTextBlock FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                 Text="{Binding DeviceSystem}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Classes="fieldLabel" MaxWidth="160" TextWrapping="Wrap"
+                                   Text="{l:Text profile.field.appVersion}" IsVisible="{Binding HasDevice}"/>
+                        <SelectableTextBlock Grid.Row="3" Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                             Text="{Binding DeviceAppVersion}" IsVisible="{Binding HasDevice}"/>
                     </Grid>
                 </Border>
             </StackPanel>

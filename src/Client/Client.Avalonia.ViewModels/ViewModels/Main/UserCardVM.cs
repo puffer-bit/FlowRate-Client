@@ -39,6 +39,13 @@ public class UserCardVM : ReactiveObject
     /// <summary>The icon of <see cref="Status"/>, for the menu that changes it.</summary>
     public string StatusIconKey => $"Status{Status}Icon";
 
+    /// <summary>The server shows the user online from a phone, this one or another.</summary>
+    public bool IsMobile
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public string? AvatarUrl
     {
         get;
@@ -93,6 +100,7 @@ public class UserCardVM : ReactiveObject
         Username = user.Username;
         AvatarUrl = user.AvatarUrl;
         Status = user.Status;
+        IsMobile = user.IsMobile;
         IsReady = true;
     }
 

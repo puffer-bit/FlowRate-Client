@@ -339,7 +339,8 @@ public class ChatMentionPickerVM : ReactiveObject
                     Name = user.Username,
                     UserId = user.Id,
                     AvatarUrl = user.AvatarUrl,
-                    Status = user.Status
+                    Status = user.Status,
+                    IsMobile = user.IsMobile
                 })
                 .ToList();
 
@@ -399,6 +400,7 @@ public class ChatMentionPickerVM : ReactiveObject
             existing.Name = result.Name;
             existing.AvatarUrl = result.AvatarUrl;
             existing.Status = result.Status;
+            existing.IsMobile = result.IsMobile;
             existing.Hint = result.Hint;
             updated.Add(existing);
         }

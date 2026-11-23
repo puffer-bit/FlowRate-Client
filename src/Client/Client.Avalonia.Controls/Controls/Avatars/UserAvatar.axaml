@@ -66,7 +66,8 @@
                     <Viewbox Stretch="Uniform" IsHitTestVisible="False"
                              IsVisible="{Binding StatusIcon, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Panel Width="20" Height="20">
-                            <Border Width="8" Height="8"
+                            <Border Name="PART_StatusBadge"
+                                    Width="8" Height="8"
                                     HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                     CornerRadius="4"
                                     Padding="1.25"
@@ -94,6 +95,14 @@
                 </Panel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- Online from a phone: an upright badge with a phone in it, in place of the round one -->
+    <Style Selector="avatars|UserAvatar:mobile /template/ Border#PART_StatusBadge">
+        <Setter Property="Width" Value="6.5"/>
+        <Setter Property="Height" Value="9"/>
+        <Setter Property="CornerRadius" Value="2"/>
+        <Setter Property="Padding" Value="1"/>
     </Style>
 
     <Style Selector="avatars|UserAvatar:deleted">

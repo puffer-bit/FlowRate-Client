@@ -23,6 +23,9 @@ internal static class UserMapper
             AvatarUrl = dto.AvatarUrl,
             State = dto.State,
             Status = dto.Status,
+            Device = dto.Device is { } device
+                ? new UserDeviceModel(device.Platform, device.OsVersion, device.Architecture, device.AppVersion)
+                : null,
             FirstConnectionTime = dto.FirstConnectedAt,
             LastConnectionTime = dto.LastConnectedAt,
             RoleIds = dto.RoleIds

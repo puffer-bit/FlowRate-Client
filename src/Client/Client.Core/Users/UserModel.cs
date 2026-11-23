@@ -15,6 +15,12 @@ public class UserModel
     public string? AvatarUrl { get; init; }
     public UserState State { get; init; }
     public UserStatus Status { get; init; }
+
+    /// <summary>The device the user connected from last; null while they look offline.</summary>
+    public UserDeviceModel? Device { get; init; }
+
+    /// <summary>Online from a phone: shown with a phone instead of the status dot.</summary>
+    public bool IsMobile => Device?.IsMobile == true;
     public DateTimeOffset FirstConnectionTime { get; init; }
     public DateTimeOffset LastConnectionTime { get; init; }
 

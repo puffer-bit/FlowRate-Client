@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Shared.Models.DataTransferObjects;
 using Shared.Permissions;
 using Client.Api.Mappers;
@@ -51,10 +52,13 @@ internal partial class CoordinatorGateway
     private DeviceInfoDTO Device() => new(
         Truncate(_client.DeviceName, Limits.DeviceNameMaxLength),
         _client.Platform,
-        Truncate(_client.AppVersion, Limits.AppVersionMaxLength));
+        Truncate(_client.AppVersion, Limits.AppVersionMaxLength),
+        Truncate(_client.OsVersion, Limits.OsVersionMaxLength),
+        Truncate(_client.Architecture, Limits.ArchitectureMaxLength));
 
-    private static string Truncate(string value, int maxLength) =>
-        value.Length <= maxLength ? value : value[..maxLength];
+    [return: NotNullIfNotNull(nameof(value))]
+    private static string? Truncate(string? value, int maxLength) =>
+        value == null || value.Length <= maxLength ? value : value[..maxLength];
 
     public async Task<AuthenticationResult> FinishLoginAsync(string? password, string? twoFactorCode)
     {

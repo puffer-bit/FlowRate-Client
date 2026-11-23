@@ -14,10 +14,11 @@ namespace Client.Avalonia.Controls.Avatars;
 /// 32px profile slot. A <see cref="Status"/> puts its badge at the lower right corner. A deleted user
 /// gets a ghost in place of the initial.
 /// </summary>
-[PseudoClasses(SpeakingPseudoClass, WaitingPseudoClass, DeletedPseudoClass)]
+[PseudoClasses(SpeakingPseudoClass, WaitingPseudoClass, DeletedPseudoClass, MobilePseudoClass)]
 public class UserAvatar : TemplatedControl
 {
     private const string SpeakingPseudoClass = ":speaking";
+    private const string MobilePseudoClass = ":mobile";
     private const string WaitingPseudoClass = ":waiting";
     private const string DeletedPseudoClass = ":deleted";
 
@@ -50,6 +51,9 @@ public class UserAvatar : TemplatedControl
 
     public static readonly StyledProperty<Enum?> StatusProperty =
         AvaloniaProperty.Register<UserAvatar, Enum?>(nameof(Status));
+
+    public static readonly StyledProperty<bool> IsMobileProperty =
+        AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsMobile));
 
     public static readonly StyledProperty<IBrush?> StatusBackgroundProperty =
         AvaloniaProperty.Register<UserAvatar, IBrush?>(nameof(StatusBackground));
@@ -173,6 +177,15 @@ public class UserAvatar : TemplatedControl
     }
 
     /// <summary>
+    /// The user is online from a phone: the badge of the online status is a phone instead of the dot.
+    /// </summary>
+    public bool IsMobile
+    {
+        get => GetValue(IsMobileProperty);
+        set => SetValue(IsMobileProperty, value);
+    }
+
+    /// <summary>
     /// The ring around the status badge; the color behind the avatar, so the badge looks cut out of it.
     /// </summary>
     public IBrush? StatusBackground
@@ -218,14 +231,22 @@ public class UserAvatar : TemplatedControl
             _ = LoadAsync();
         else if (change.Property == UserNameProperty)
             Initial = string.IsNullOrWhiteSpace(UserName) ? "?" : UserName.Trim()[..1].ToUpperInvariant();
-        else if (change.Property == StatusProperty)
-            StatusIcon = Status == null ? null : IconResources.Get($"Status{Status}Icon");
+        else if (change.Property == StatusProperty || change.Property == IsMobileProperty)
+            UpdateStatusIcon();
         else if (change.Property == IsSpeakingProperty)
             PseudoClasses.Set(SpeakingPseudoClass, IsSpeaking);
         else if (change.Property == IsWaitingProperty)
             PseudoClasses.Set(WaitingPseudoClass, IsWaiting);
         else if (change.Property == IsDeletedProperty)
             PseudoClasses.Set(DeletedPseudoClass, IsDeleted);
+    }
+
+    private void UpdateStatusIcon()
+    {
+        // Away and do not disturb keep their badges: what the user picked tells more than the device
+        var mobile = IsMobile && Status?.ToString() == "Online";
+        PseudoClasses.Set(MobilePseudoClass, mobile);
+        StatusIcon = Status == null ? null : IconResources.Get(mobile ? "StatusMobileIcon" : $"Status{Status}Icon");
     }
 
     private async Task LoadAsync()

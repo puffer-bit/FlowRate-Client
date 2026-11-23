@@ -638,6 +638,8 @@
   "profile.field.name": "名称：",
   "profile.field.firstConnected": "首次连接：",
   "profile.field.lastConnected": "最近连接：",
+  "profile.field.device": "设备：",
+  "profile.field.appVersion": "应用版本：",
 
   "session.peer.undefined": "未定义",
   "session.peer.waiting": "等待中",
