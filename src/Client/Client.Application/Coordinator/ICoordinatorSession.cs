@@ -294,6 +294,14 @@ public interface ICoordinatorSession : IDisposable
         => throw new NotSupportedException();
     Task<RequestResult> LeaveGroup(int sessionId) => throw new NotSupportedException();
 
+    /// <summary>
+    /// The owner uploads a picture and puts it on a group, or takes the picture off when <paramref name="image"/>
+    /// is null. The group comes back changed like after <see cref="ChangeGroup"/>.
+    /// Fails with <see cref="ErrorCode.UploadNotFound"/> when the image is empty or too large, or did not get to the server.
+    /// </summary>
+    Task<RequestResult> SetGroupAvatar(int sessionId, byte[]? image, string? mimeType,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
     Task<RequestResult> DeleteSession(int sessionId);
 
     /// <summary>

@@ -19,8 +19,7 @@
                     <Image Width="32" Height="32" Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
                     <avatars:UserAvatar Width="44" Height="44"
                                         UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
-                                        Status="{Binding PeerStatus}" IsVisible="{Binding IsDirect}"/>
-                    <Image Width="44" Height="44" Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                                        Status="{Binding PeerStatus}" IsVisible="{Binding IsPrivate}"/>
                 </Panel>
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">

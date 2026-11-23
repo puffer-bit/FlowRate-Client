@@ -10,7 +10,8 @@ public class ChatSessionModel : SessionModel
     public required int CreatorUserId { get; init; }
     public int? OwnerUserId { get; init; }
     public string? Description { get; init; }
-    public string? IconPath { get; init; }
+    /// <summary>The picture of a group; null shows the first letter of its name.</summary>
+    public string? AvatarUrl { get; init; }
 
     public bool IsReadOnly { get; init; }
     public bool IsArchived { get; init; }

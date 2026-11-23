@@ -1,4 +1,5 @@
 using Client.Views.Dialogs;
+using Client.Views.Profile;
 using Client.Views.Common;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -15,6 +16,8 @@ internal partial class CreateSessionView : ViewControl<CreateSessionWindowVM>
         this.WhenActivated(disposables =>
         {
             ViewModel!.CloseWindow.RegisterCloseHandler(this).DisposeWith(disposables);
+            if (ViewModel.AvatarPicker is { } avatarPicker)
+                AvatarFilePicker.Register(avatarPicker, this).DisposeWith(disposables);
 
             // The dialog opens straight into typing the name
             if (ViewModel.IsPrivateMode)

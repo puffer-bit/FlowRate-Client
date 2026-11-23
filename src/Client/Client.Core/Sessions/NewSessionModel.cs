@@ -28,7 +28,6 @@ public sealed record NewHybridSessionOptions(
 
 public sealed record NewChatSessionOptions(
     string? Description = null,
-    string? IconPath = null,
     bool IsEncrypted = false,
     bool IsAttachmentsAllowed = true,
     bool IsVoiceMessageAllowed = true,

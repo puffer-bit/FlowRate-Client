@@ -88,15 +88,33 @@ public partial class CoordinatorSession
     public async Task<RequestResult<UserModel>> SetAvatar(byte[] image, string mimeType,
         CancellationToken cancellationToken = default)
     {
-        if (image.Length is 0 or > Limits.AvatarMaxSize)
-            return ErrorCode.UploadNotFound;
-
-        var upload = await _gateway.UploadMedia(new MediaUpload(null, MediaUploadKind.Avatar, mimeType, image.Length,
-            () => Task.FromResult<Stream>(new MemoryStream(image, writable: false))), null, cancellationToken);
-        if (upload is not { Result: MediaTransferResult.NoError, UploadId: { } uploadId })
+        if (await UploadAvatarAsync(image, mimeType, cancellationToken) is not { } uploadId)
             return ErrorCode.UploadNotFound;
 
         return await SendAsync(() => _gateway.SetAvatar(uploadId));
+    }
+
+    public async Task<RequestResult> SetGroupAvatar(int sessionId, byte[]? image, string? mimeType,
+        CancellationToken cancellationToken = default)
+    {
+        if (image == null)
+            return await SendAsync(() => _gateway.SetGroupAvatar(sessionId, null));
+
+        if (mimeType == null || await UploadAvatarAsync(image, mimeType, cancellationToken) is not { } uploadId)
+            return ErrorCode.UploadNotFound;
+
+        return await SendAsync(() => _gateway.SetGroupAvatar(sessionId, uploadId));
+    }
+
+    /// <summary>An avatar upload, user or group; null when it is empty, too large or did not get to the server.</summary>
+    private async Task<string?> UploadAvatarAsync(byte[] image, string mimeType, CancellationToken cancellationToken)
+    {
+        if (image.Length is 0 or > Limits.AvatarMaxSize)
+            return null;
+
+        var upload = await _gateway.UploadMedia(new MediaUpload(null, MediaUploadKind.Avatar, mimeType, image.Length,
+            () => Task.FromResult<Stream>(new MemoryStream(image, writable: false))), null, cancellationToken);
+        return upload is { Result: MediaTransferResult.NoError, UploadId: { } uploadId } ? uploadId : null;
     }
 
     public async Task<RequestResult> SetStatus(UserStatus status) =>

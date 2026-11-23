@@ -20,7 +20,6 @@ internal static class RequestMapper
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
             chat.Description,
-            chat.IconPath,
             chat.IsAttachmentsAllowed,
             chat.IsVoiceMessageAllowed,
             chat.IsVideoMessagesAllowed,

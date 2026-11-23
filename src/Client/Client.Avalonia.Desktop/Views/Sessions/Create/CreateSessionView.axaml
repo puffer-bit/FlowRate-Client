@@ -115,6 +115,26 @@
                     </Grid>
                 </StackPanel>
 
+                <!-- Picture of the group being edited: its own, or the first letter of the name -->
+                <StackPanel Spacing="6" IsVisible="{Binding ShowAvatar}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <avatars:UserAvatar Width="64" Height="64"
+                                            UserName="{Binding Name}"
+                                            AvatarUrl="{Binding ShownAvatarUrl}"
+                                            Source="{Binding AvatarPicker.Avatar, FallbackValue={x:Null}}">
+                            <avatars:UserAvatar.Overlay>
+                                <avatars:AvatarEditButton Command="{Binding AvatarPicker.ChooseAvatarCommand, FallbackValue={x:Null}}"/>
+                            </avatars:UserAvatar.Overlay>
+                        </avatars:UserAvatar>
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center" ItemSpacing="8" LineSpacing="8">
+                            <Button Classes="ghost" Command="{Binding RemoveAvatarCommand}"
+                                    Content="{l:Text common.remove}"/>
+                        </WrapPanel>
+                    </Grid>
+                    <TextBlock Classes="fieldError" Text="{Binding AvatarPicker.AvatarError, FallbackValue={x:Null}}"
+                               IsVisible="{Binding AvatarPicker.AvatarError, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}"/>
+                </StackPanel>
+
                 <!-- Name -->
                 <StackPanel Spacing="6" IsVisible="{Binding ShowName}">
                     <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>

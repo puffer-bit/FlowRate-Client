@@ -38,6 +38,7 @@ public class FakeGateway : DispatchProxy
     /// <summary>The avatar requests: the upload, null for a reset, and the user named.</summary>
     public List<(string? UploadId, int? UserId)> AvatarRequests { get; } = [];
     public ErrorCode? AvatarError { get; set; }
+    public List<(int SessionId, string? UploadId)> GroupAvatarRequests { get; } = [];
 
     /// <summary>The roles the server answers the login with, lowest first.</summary>
     public IReadOnlyList<RoleModel> Roles { get; set; } =
@@ -289,6 +290,9 @@ public class FakeGateway : DispatchProxy
                         Username = "alice",
                         AvatarUrl = args[0] == null ? null : $"/media/avatars/{args[0]}"
                     });
+            case nameof(ICoordinatorGateway.SetGroupAvatar):
+                GroupAvatarRequests.Add(((int)args![0]!, (string?)args[1]));
+                return AvatarError is { } groupAvatarError ? Fail<object>(groupAvatarError) : Task.CompletedTask;
             case nameof(ICoordinatorGateway.SetUserState):
                 ModerationRequests.Add(((int)args![0]!, (UserState)args[1]!));
                 return Task.FromResult(new UserModel { Id = (int)args[0]!, CoordinatorInstanceId = CoordinatorId, Username = "bob" });

@@ -129,11 +129,14 @@ public partial class SessionsListVM
 
     public Interaction<CreateSessionWindowVM, RxVoid>? ShowGroupEditor { get; set; }
 
+    /// <summary>Prepares the picture the owner picks for a group in its editor.</summary>
+    public Client.Services.IAvatarService? Avatars { get; set; }
+
     private async Task EditGroup(ChatSessionVM chat)
     {
         if (_coordinatorSession == null || ShowGroupEditor == null || chat.Model is not ChatSessionModel model) return;
         using var editor = new CreateSessionWindowVM(_coordinatorSession,
-            privateMode: true, editingGroup: model);
+            privateMode: true, editingGroup: model, avatars: Avatars);
         await ShowGroupEditor.Handle(editor);
     }
 

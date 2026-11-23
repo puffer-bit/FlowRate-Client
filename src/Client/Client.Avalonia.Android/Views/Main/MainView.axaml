@@ -257,8 +257,7 @@
                     <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,8,12,10">
                         <Panel Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center">
                             <Image Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
-                            <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsDirect}"/>
-                            <Image Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"/>
+                            <avatars:UserAvatar UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}" IsVisible="{Binding IsPrivate}"/>
                         </Panel>
                         <TextBlock Grid.Column="1" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"

@@ -258,6 +258,9 @@ internal partial class CoordinatorGateway
     public Task LeaveGroup(int sessionId) =>
         SendRequestAsync<LeaveGroupResponse>(new LeaveGroupRequest(sessionId));
 
+    public Task SetGroupAvatar(int sessionId, string? uploadId) =>
+        SendRequestAsync<SetGroupAvatarResponse>(new SetGroupAvatarRequest(sessionId, uploadId));
+
     public Task DeleteSession(int sessionId) =>
         SendRequestAsync<DeleteSessionResponse>(new DeleteSessionRequest(sessionId));
 

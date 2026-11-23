@@ -8,6 +8,7 @@ using Client.Avalonia.Controls.Avatars;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -239,7 +240,29 @@ internal sealed class MainViewNavigation
             view.FocusNameInput();
             context.SetOutput(RxVoid.Default);
         });
-        using var pickAvatar = profile.AvatarPicker.PickAvatarFile.RegisterHandler(async context =>
+        using var avatarPicker = RegisterAvatarPicker(profile.AvatarPicker, view);
+
+        _profileView = view;
+        _showCurrentScreen();
+
+        try
+        {
+            await closed.Task;
+        }
+        finally
+        {
+            _cancelAvatarEdit?.Invoke();
+            _profileView = null;
+            _showCurrentScreen();
+        }
+    }
+
+    /// <summary>
+    /// Answers the file and crop requests of an avatar picker over <paramref name="view"/>; the crop opens on the
+    /// dialog layer and is cancelled by Back.
+    /// </summary>
+    private IDisposable RegisterAvatarPicker(AvatarPickerVM picker, Control view) => new CompositeDisposable(
+        picker.PickAvatarFile.RegisterHandler(async context =>
         {
             var storage = TopLevel.GetTopLevel(_owner)?.StorageProvider;
             var files = storage == null
@@ -252,9 +275,8 @@ internal sealed class MainViewNavigation
                 });
 
             context.SetOutput((await PickedFiles.FromAsync(files)).FirstOrDefault());
-        });
-
-        using var editAvatar = profile.AvatarPicker.EditAvatar.RegisterHandler(async context =>
+        }),
+        picker.EditAvatar.RegisterHandler(async context =>
         {
             var session = context.Input;
             var editor = new AvatarEditor();
@@ -296,22 +318,7 @@ internal sealed class MainViewNavigation
                 _dialogLayer.Children.Remove(backdrop);
                 _cancelAvatarEdit = null;
             }
-        });
-
-        _profileView = view;
-        _showCurrentScreen();
-
-        try
-        {
-            await closed.Task;
-        }
-        finally
-        {
-            _cancelAvatarEdit?.Invoke();
-            _profileView = null;
-            _showCurrentScreen();
-        }
-    }
+        }));
 
     /// <summary>
     /// Shows the form of a new session until it is closed: by the user, or by itself once the session is created.
@@ -327,6 +334,9 @@ internal sealed class MainViewNavigation
         });
 
         _createSessionView = new CreateSessionView { DataContext = createSession };
+        using var avatarPicker = createSession.AvatarPicker is { } picker
+            ? RegisterAvatarPicker(picker, _createSessionView)
+            : null;
         _showCurrentScreen();
 
         try
@@ -337,6 +347,7 @@ internal sealed class MainViewNavigation
         }
         finally
         {
+            _cancelAvatarEdit?.Invoke();
             _createSessionView = null;
             _showCurrentScreen();
         }
