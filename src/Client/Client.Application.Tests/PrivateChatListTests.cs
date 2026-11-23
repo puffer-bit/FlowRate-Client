@@ -4,6 +4,7 @@ using Client.Application.Chat;
 using Client.Application.Coordinator.Users;
 using Client.Application.Sessions.Hybrid;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Hybrid;
@@ -18,6 +19,48 @@ namespace Client.Application.Tests;
 
 public sealed class PrivateChatListTests
 {
+    private static CoordinatorPermissions Permissions(Permission granted) => new(
+        [new RoleModel(1, "@everyone", null, 0, granted, true, 0)], []);
+
+    [Fact]
+    public Task RevokingChannelAccessForcesPrivateModeAndPreventsSwitchingBack() => TestUiThread.RunAsync(() =>
+    {
+        using var fixture = new ListFixture();
+        var list = fixture.List;
+        list.IsPrivateMode = false;
+        list.Access.Update(Permissions(Permission.None));
+
+        Assert.False(list.Access.CanViewServerChannels);
+        Assert.True(list.IsPrivateMode);
+        Assert.False(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.True(list.IsPrivateMode);
+        list.IsPrivateMode = false;
+        Assert.True(list.IsPrivateMode);
+
+        list.Access.Update(Permissions(Permission.ViewSessions));
+        Assert.True(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.False(list.IsPrivateMode);
+    });
+
+    [Theory]
+    [InlineData(Permission.ViewSessions)]
+    [InlineData(Permission.Administrator)]
+    public Task EmptyChannelsStillAllowSwitchingWhenPermissionExists(Permission granted) => TestUiThread.RunAsync(() =>
+    {
+        using var fixture = new ListFixture();
+        var list = fixture.List;
+        list.Access.Update(Permissions(granted));
+        list.IsPrivateMode = true;
+
+        Assert.Empty(list.Sessions);
+        Assert.True(list.Access.CanViewServerChannels);
+        Assert.True(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.False(list.IsPrivateMode);
+    });
+
     [Fact]
     public Task HomeListKeepsPersonalChatsInRecentOrderInEitherSidebarMode() => TestUiThread.RunAsync(() =>
     {
@@ -80,12 +123,17 @@ public sealed class PrivateChatListTests
         private readonly CompositeDisposable _commands = new();
         public SessionsListVM List { get; }
 
-        public ListFixture() => List = new SessionsListVM(
+        public ListFixture()
+        {
+            var access = new AccessVM();
+            access.Update(Permissions(Permission.ViewSessions));
+            List = new SessionsListVM(
             Command<RxVoid>(), Command<SessionModel>(), Command<int>(), Command<int>(), Command<SessionModel>(),
             Command<SessionModel>(), Command<int>(), Command<(int, int)>(), Command<(int, string)>(),
             Command<(int, int, bool)>(), Command<(int, int, string?)>(), Command<int?>(),
             Proxy<IPeerPlaybackService>(), Proxy<IVoiceActivityService>(), Proxy<IScreenWatchService>(),
-            new PeerStatsService(), null!, new ChatReadTracker(), new AccessVM(), NullLogger<SessionsListVM>.Instance);
+            new PeerStatsService(), null!, new ChatReadTracker(), access, NullLogger<SessionsListVM>.Instance);
+        }
 
         private static T Proxy<T>() where T : class => DispatchProxy.Create<T, ServiceProxy>();
 

@@ -71,13 +71,16 @@ public partial class SessionsListVM : ReactiveObject
     public bool IsPrivateChatsEmpty => State == SessionsListState.Loaded && PrivateChats.Count == 0;
     public bool CanCreateSession => IsPrivateMode || Access.CanCreateSessions;
     public bool CanCreateCategory => !IsPrivateMode && Access.CanManageSessions;
+    public bool CanShowChannels => IsPrivateMode && Access.CanViewServerChannels;
     public bool IsPrivateMode
     {
         get;
         set
         {
+            value = value || !Access.CanViewServerChannels;
             if (field == value) return;
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanShowChannels));
             this.RaisePropertyChanged(nameof(CanCreateSession));
             this.RaisePropertyChanged(nameof(CanCreateCategory));
             RebuildRows();
@@ -236,6 +239,8 @@ public partial class SessionsListVM : ReactiveObject
             this.RaisePropertyChanged(nameof(IsEmpty));
             this.RaisePropertyChanged(nameof(HasSessions));
         };
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
     }
 
     private void RaiseStateProperties()
@@ -565,6 +570,9 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>Shows again what the current user may do, after their roles changed.</summary>
     private void ApplyAccess()
     {
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
+        this.RaisePropertyChanged(nameof(CanShowChannels));
         foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.CallPeers?.ApplyAccess(Access.Permissions);
         this.RaisePropertyChanged(nameof(CanCreateSession));
         this.RaisePropertyChanged(nameof(CanCreateCategory));

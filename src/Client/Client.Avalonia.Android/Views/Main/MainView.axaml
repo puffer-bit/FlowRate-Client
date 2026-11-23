@@ -141,8 +141,13 @@
 
                 <!-- The personal chats or the sessions of the server; the icon shows where a tap leads -->
                 <Button Grid.Column="1" Classes="borderless home-action"
-                        IsVisible="{Binding ServerTitle.IsReady}"
                         Command="{Binding ServerTitle.ToggleListModeCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ServerTitle.IsReady"/>
+                            <Binding Path="Access.CanViewServerChannels"/>
+                        </MultiBinding>
+                    </Button.IsVisible>
                     <Panel>
                         <Image Width="22" Height="22" Source="{StaticResource HashIcon}"
                                IsVisible="{Binding SessionsList.IsPrivateMode}"
