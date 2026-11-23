@@ -64,16 +64,16 @@ public class RecoveryPhraseTests
     public async Task InMemoryKeys_SignUntilDeleted()
     {
         var store = new InMemoryDeviceKeyStore();
-        var publicKey = await store.CreateAsync("device");
+        var publicKey = await store.CreateAsync("device", TestContext.Current.CancellationToken);
         var data = "nonce"u8.ToArray();
 
-        var signature = await store.SignAsync("device", data);
+        var signature = await store.SignAsync("device", data, TestContext.Current.CancellationToken);
         using var verifier = ECDsa.Create();
         verifier.ImportSubjectPublicKeyInfo(publicKey, out _);
         Assert.True(verifier.VerifyData(data, signature!, HashAlgorithmName.SHA256,
             DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
 
-        await store.DeleteAsync("device");
-        Assert.Null(await store.SignAsync("device", data));
+        await store.DeleteAsync("device", TestContext.Current.CancellationToken);
+        Assert.Null(await store.SignAsync("device", data, TestContext.Current.CancellationToken));
     }
 }
