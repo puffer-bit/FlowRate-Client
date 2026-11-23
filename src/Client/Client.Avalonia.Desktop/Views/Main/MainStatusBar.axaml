@@ -11,6 +11,10 @@
              x:DataType="mainVm:MainWindowVM"
              x:Class="Client.Views.Main.MainStatusBar">
 
+    <UserControl.Styles>
+        <Style Selector="Ellipse.connectionDot"><Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/></Style>
+        <Style Selector="Ellipse.connectionDot.offline"><Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/></Style>
+    </UserControl.Styles>
     <Border Height="28" Padding="12,0"
             Background="{DynamicResource GeneralBrush}"
             BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
@@ -32,16 +36,14 @@
                 <Panel>
                     <loadingIndicators:ProgressRing x:Name="LoadingIcon"
                                                     Width="14" Height="14" MinWidth="14" MinHeight="14"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     IsIndeterminate="True"
                                                     IsVisible="{Binding StatusLine.IsActive}"
                                                     BorderThickness="2"
                                                     Foreground="{DynamicResource ProgressRingBrush}"/>
-                    <!-- Unlit bars while there is no connection to measure -->
-                    <indicators:PingIndicator HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              Foreground="{DynamicResource SecondaryTextBrush}"
-                                              IsTextVisible="False"
-                                              RoundTrip="{Binding ServerRoundTrip}"
-                                              IsVisible="{Binding !StatusLine.IsActive}"/>
+                    <Ellipse Classes="connectionDot" Classes.offline="{Binding !IsConnected}" Width="8" Height="8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             IsVisible="{Binding !StatusLine.IsActive}"/>
+
                 </Panel>
             </Button>
 

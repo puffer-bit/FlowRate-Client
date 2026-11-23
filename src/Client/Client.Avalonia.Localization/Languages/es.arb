@@ -1,4 +1,7 @@
 {
+  "connect.failed.authFailed": "No se pudo conectar al servidor.\n\nError de autenticación.",
+  "common.hide": "Ocultar",
+  "common.copy": "Copiar",
   "calls.start": "Llamar",
   "calls.incoming": "Llamada entrante",
   "calls.outgoing": "Llamando…",

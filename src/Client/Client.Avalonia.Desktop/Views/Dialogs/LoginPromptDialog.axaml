@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -37,7 +38,7 @@
                              MaxLength="12"
                              PlaceholderText="000000"
                              Classes.invalid="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text loginPrompt.code.hint}"/>
+                    <hints:HintBlock Text="{l:Text loginPrompt.code.hint}"/>
                 </StackPanel>
 
                 <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"

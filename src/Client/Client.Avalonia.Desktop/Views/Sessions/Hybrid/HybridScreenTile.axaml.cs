@@ -21,6 +21,16 @@ public partial class HybridScreenTile : UserControl
     {
         InitializeComponent();
 
+        PointerMoved += (_, e) => Classes.Set("nearControls", e.GetPosition(this).Y <= 120);
+        PointerExited += (_, _) => Classes.Set("nearControls", false);
+
+        if (ViewersButton.Content is Button { Flyout: global::Avalonia.Controls.Primitives.PopupFlyoutBase audience })
+        {
+            audience.Opening += (_, _) => Classes.Set("audienceOpen", true);
+            audience.Closed += (_, _) => Classes.Set("audienceOpen", false);
+        }
+
+        SizeChanged += (_, _) => PerfScroller.MaxHeight = Math.Max(0, Bounds.Height - 56);
         Perf.ReadFrames = () => Picture.Stats;
         Perf.ReadRoute = () => Picture.Route;
 

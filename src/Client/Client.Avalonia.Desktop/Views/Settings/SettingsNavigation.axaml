@@ -35,7 +35,14 @@
         <TextBox Grid.Row="0" x:Name="SearchBox" Classes="search" Margin="12,12,12,0"
                  PlaceholderText="{l:Text settings.search.placeholder}"
                  Text="{Binding SearchQuery}"
-                 KeyDown="SearchBox_OnKeyDown"/>
+                 GotFocus="SearchBox_OnGotFocus" KeyDown="SearchBox_OnKeyDown"/>
+
+        <Button Grid.Row="0" x:Name="CompactSearchButton" Margin="12,12,12,0" Padding="0" Height="32" HorizontalAlignment="Stretch"
+                Background="{DynamicResource DarkBackgroundBrush}" GotFocus="SearchBox_OnGotFocus"
+                ToolTip.Tip="{l:Text settings.search.placeholder}" AutomationProperties.Name="{l:Text settings.search.placeholder}">
+            <Path Width="16" Height="16" Stretch="None" Data="M 2,6.5 A 4.5,4.5 0 1 0 11,6.5 A 4.5,4.5 0 1 0 2,6.5 Z M 9.9,9.9 L 14,14"
+                  Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.4" StrokeLineCap="Round"/>
+        </Button>
 
         <ListBox Grid.Row="1" x:Name="SearchResultsList" Classes="searchResults"
                  ItemsSource="{Binding SearchResults}"
@@ -104,18 +111,16 @@
                     <Setter Property="Margin" Value="0"/>
                     <Setter Property="Padding" Value="6,4"/>
                 </Style>
-                <Style Selector="Path.guide">
+                <Style Selector="Border.guide">
                     <Setter Property="Margin" Value="0,-4"/>
-                    <Setter Property="Height" Value="38"/>
-                    <Setter Property="Data" Value="M 12,0 L 12,38"/>
-                    <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
-                    <Setter Property="StrokeThickness" Value="2"/>
+                    <Setter Property="Width" Value="2"/>
+                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                    <Setter Property="Background" Value="{DynamicResource SecondaryTextBrush}"/>
                     <Setter Property="Opacity" Value="0.6"/>
                 </Style>
-                <!-- The piece of the sub-item that is picked is lighter and thicker -->
-                <Style Selector="ListBoxItem:selected Path.guide">
-                    <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
-                    <Setter Property="StrokeThickness" Value="4"/>
+                <Style Selector="ListBoxItem:selected Border.guide">
+                    <Setter Property="Background" Value="{DynamicResource OnAccentTextBrush}"/>
+                    <Setter Property="Width" Value="4"/>
                     <Setter Property="Opacity" Value="1"/>
                 </Style>
 
@@ -152,9 +157,9 @@
                           ToolTip.Tip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
                           ColumnDefinitions="Auto, Auto, *, Auto" VerticalAlignment="Center">
                         <!-- The line the sub-items are set in by -->
-                        <Path Grid.Column="0" Classes="guide"
-                              Width="24" Stretch="None"
-                              IsVisible="{Binding IsSubItem}"/>
+                        <Panel Grid.Column="0" Width="24" IsVisible="{Binding IsSubItem}">
+                            <Border Classes="guide"/>
+                        </Panel>
 
                         <Image Grid.Column="1"
                                Classes.agitated="{Binding Setting.IsIconAgitated}"

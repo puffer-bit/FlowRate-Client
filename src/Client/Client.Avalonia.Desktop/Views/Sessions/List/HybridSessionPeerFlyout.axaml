@@ -3,6 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
@@ -91,9 +93,13 @@
 
             <!-- Only a peer of the session we are in; the message is asked in a card of its own -->
             <StackPanel Spacing="2" IsVisible="{Binding CanPoke}">
-                <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                <common:HoverActionMenuItem Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
                                       menus:FlyoutMenu.CloseOnClick="True"
-                                      Click="OnPokeClick"/>
+                                      Click="OnPokeClick">
+                    <menus:MenuItemButton.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop"><listViews:PokeCard/></Flyout>
+                    </menus:MenuItemButton.Flyout>
+                </common:HoverActionMenuItem>
 
                 <Separator/>
             </StackPanel>

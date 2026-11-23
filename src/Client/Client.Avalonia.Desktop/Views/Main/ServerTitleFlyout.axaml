@@ -34,7 +34,7 @@
             </Border>
 
             <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Text="{Binding DisplayName}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayName}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>

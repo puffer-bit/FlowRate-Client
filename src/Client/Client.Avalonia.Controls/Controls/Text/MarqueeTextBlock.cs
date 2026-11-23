@@ -200,7 +200,7 @@ public class MarqueeTextBlock : TextBlock
     protected override void RenderTextLayout(DrawingContext context, Point origin)
     {
         // At rest (and during the pause) it is the regular trimmed TextBlock
-        if (!_isRunning || _offset <= 0)
+        if (!_isRunning || (_offset <= 0 && Pause > TimeSpan.Zero))
         {
             base.RenderTextLayout(context, origin);
             return;

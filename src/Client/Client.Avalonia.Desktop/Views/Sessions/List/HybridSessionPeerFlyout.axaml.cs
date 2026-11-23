@@ -15,17 +15,13 @@ public partial class HybridSessionPeerFlyout : UserControl
         InitializeComponent();
     }
 
-    // The card opens from the peer once its menu has closed, the way the AFK card opens from its button
+    // Clicking sends immediately; hovering opens the optional-message submenu.
     private void OnPokeClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not PeerVM peer || this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget is not { } target)
+        if (DataContext is not PeerVM peer)
             return;
-
-        Dispatcher.UIThread.Post(() => new Flyout
-        {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
-            Content = new PokeCard { DataContext = peer }
-        }.ShowAt(target), DispatcherPriority.Background);
+        peer.PokeMessage = string.Empty;
+        peer.Poke();
     }
 
     private void OnAfkClick(object? sender, RoutedEventArgs e)

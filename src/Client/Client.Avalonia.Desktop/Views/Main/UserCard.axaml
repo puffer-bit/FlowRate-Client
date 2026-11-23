@@ -43,10 +43,10 @@
                                 IsMobile="{Binding IsMobile}"
                                 VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Text="{Binding Username}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding Username}"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>
-                <text:MarqueeTextBlock Text="{Binding StatusText}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding StatusText}"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        FontSize="11"
                                        TextTrimming="CharacterEllipsis"/>

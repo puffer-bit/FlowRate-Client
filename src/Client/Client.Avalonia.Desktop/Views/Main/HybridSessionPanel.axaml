@@ -103,10 +103,10 @@
                     ToolTip.Tip="{l:Text sessions.return}"
                     AutomationProperties.Name="{l:Text sessions.return}">
                 <StackPanel Spacing="2" VerticalAlignment="Center">
-                    <text:MarqueeTextBlock Text="{Binding StatusBar.SessionName, FallbackValue={x:Null}}"
+                    <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding StatusBar.SessionName, FallbackValue={x:Null}}"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis"/>
-                    <text:MarqueeTextBlock Text="{Binding StatusBar.ShortStatusText, FallbackValue={x:Null}}"
+                    <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding StatusBar.ShortStatusText, FallbackValue={x:Null}}"
                                            Foreground="{DynamicResource SecondaryTextBrush}"
                                            FontSize="11"
                                            TextTrimming="CharacterEllipsis"/>
@@ -142,27 +142,20 @@
                     </Panel>
                 </Button>
 
-                <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
-                <Panel>
-                    <Button Classes="hybridAction"
-                            IsVisible="{Binding !StatusBar.IsAfk, FallbackValue=True}"
-                            ToolTip.Tip="{l:Text hybrid.afk.go}"
-                            AutomationProperties.Name="{l:Text hybrid.afk.go}">
-                        <Button.Flyout>
-                            <Flyout Placement="TopEdgeAlignedRight">
-                                <hybrid:AfkReasonCard DataContext="{Binding StatusBar, FallbackValue={x:Null}}"/>
-                            </Flyout>
-                        </Button.Flyout>
+                <Grid ColumnDefinitions="*,16" ColumnSpacing="1">
+                    <Button Grid.Column="1" Classes="hybridAction" Width="16" MinWidth="0"
+                            ToolTip.Tip="{l:Text hybrid.afk.title}" AutomationProperties.Name="{l:Text hybrid.afk.title}">
+                        <Button.Flyout><Flyout Placement="TopEdgeAlignedRight">
+                            <hybrid:AfkReasonCard DataContext="{Binding StatusBar}"/>
+                        </Flyout></Button.Flyout>
+                        <Image Width="12" Height="12" Source="{StaticResource DropdownTriangleIcon}"/>
+                    </Button>
+                    <Button Grid.Column="0" Classes="hybridAction" Classes.afk="{Binding StatusBar.IsAfk}"
+                            Command="{Binding StatusBar.ToggleAfkCommand}" ToolTip.Tip="{Binding StatusBar.AfkHint}"
+                            AutomationProperties.Name="{Binding StatusBar.AfkHint}">
                         <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
                     </Button>
-                    <Button Classes="hybridAction afk"
-                            IsVisible="{Binding StatusBar.IsAfk, FallbackValue=False}"
-                            Command="{Binding StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}"
-                            ToolTip.Tip="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}"
-                            AutomationProperties.Name="{Binding StatusBar.AfkHint, FallbackValue={x:Null}}">
-                        <Image Width="20" Height="20" Source="{StaticResource AfkIcon}"/>
-                    </Button>
-                </Panel>
+                </Grid>
 
                 <hybrid:HybridBroadcastButton Classes="panel" HorizontalAlignment="Stretch"
                                               HorizontalContentAlignment="Stretch" DataContext="{Binding StatusBar}"/>

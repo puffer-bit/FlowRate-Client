@@ -146,6 +146,9 @@ public sealed class AccountSecurityVM : ReactiveObject
 
     public bool IsRecoveryPhraseShown => RecoveryPhrase != null;
 
+    /// <summary>Desktop supplies a single show/hide action for the saved phrase.</summary>
+    public bool TogglePhraseVisibility { get; set; }
+
     /// <summary>The words numbered, four a line.</summary>
     public string RecoveryPhraseText => RecoveryPhrase == null ? "" : NumberWords(RecoveryPhrase);
 
@@ -392,6 +395,11 @@ public sealed class AccountSecurityVM : ReactiveObject
 
     private async Task ShowKeptPhraseAsync()
     {
+        if (TogglePhraseVisibility && IsRecoveryPhraseShown)
+        {
+            RecoveryPhrase = null;
+            return;
+        }
         RecoveryPhrase = LoadRecoveryPhrase == null ? null : await LoadRecoveryPhrase();
         if (RecoveryPhrase == null)
             Error = Strings.Get("accountSecurity.phrase.notKept");

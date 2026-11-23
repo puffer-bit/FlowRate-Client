@@ -16,6 +16,24 @@
              d:DataContext="{d:DesignInstance Type=listVm:HybridSessionVM, IsDesignTimeCreatable=True}"
              x:Name="Root">
     
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.peersToggle, ToggleButton.peersToggle:checked">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle /template/ ContentPresenter, ToggleButton.peersToggle:checked /template/ ContentPresenter, ToggleButton.peersToggle:pressed /template/ ContentPresenter, ToggleButton.peersToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle Path.chevron">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle:checked Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+    </UserControl.Styles>
     <Control.Resources>
         <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
     </Control.Resources>
@@ -114,26 +132,34 @@
                            Source="{StaticResource CrossIcon}"/>
                 </Panel>
 
-                <text:MarqueeTextBlock Grid.Column="1"
+                <text:MarqueeTextBlock Pause="0:0:0" Grid.Column="1"
                            Classes="sessionName"
                            Classes.entered="{Binding IsEntered}"
                            Text="{Binding Model.Name}"
                            ToolTip.Tip="{Binding Model.Name}"/>
                 
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                <ToggleButton Grid.Column="2" x:Name="PeersToggle" IsChecked="True" Classes="ghost peersToggle" Padding="4,0" VerticalAlignment="Center"
+                        ToolTip.Tip="{l:Text sessions.participants}" AutomationProperties.Name="{l:Text sessions.participants}">
+                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
                             IsVisible="{Binding !!Peers.Count}"
                             ToolTip.Tip="{l:Text sessions.participants}">
                     <Image Width="12" Height="12" Opacity="0.7" Source="{StaticResource BaseUserIcon}"/>
                     <TextBlock Classes="sessionCounter" Text="{Binding Peers.Count}"/>
+                    <Path Classes="chevron" Width="10" Height="6" Stretch="None" Margin="2,0,0,0"
+                          VerticalAlignment="Center" Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                          StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"/>
                 </StackPanel>
+                </ToggleButton>
             </Grid>
         </Border>
 
         <!-- The line runs down from the center of the session icon and ties the peers to it -->
         <Border Grid.Row="1"
-                Classes="peersBranch"
-                IsVisible="{Binding !!Peers.Count}">
+                Classes="peersBranch">
+            <Border.IsVisible><MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="!!Peers.Count"/><Binding Path="IsChecked" ElementName="PeersToggle"/>
+            </MultiBinding></Border.IsVisible>
             <ListBox Classes="peersList"
                      ItemsSource="{Binding Peers}"
                      SelectedItem="{Binding SelectedPeer}">

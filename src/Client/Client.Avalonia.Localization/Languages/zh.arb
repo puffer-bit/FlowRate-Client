@@ -1,4 +1,7 @@
 {
+  "connect.failed.authFailed": "无法连接到服务器。\n\n身份验证失败。",
+  "common.hide": "隐藏",
+  "common.copy": "复制",
   "calls.start": "拨打电话",
   "calls.incoming": "来电",
   "calls.outgoing": "正在呼叫…",

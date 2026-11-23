@@ -18,12 +18,17 @@ internal static class SettingsNavigationLayout
             tabs.GetVisualAncestors().OfType<Grid>().FirstOrDefault(g => g.Classes.Contains("settingsFrame")) is not { } frame)
             return false;
 
-        var collapsed = !IsCollapsed(tabs);
+        SetCollapsed(tabs, !IsCollapsed(tabs));
+        e.Handled = true;
+        return true;
+    }
+
+    public static void SetCollapsed(ListBox tabs, bool collapsed)
+    {
+        var frame = tabs.GetVisualAncestors().OfType<Grid>().First(g => g.Classes.Contains("settingsFrame"));
         tabs.Classes.Set("collapsedNavigation", collapsed);
         frame.Classes.Set("collapsedNavigation", collapsed);
         var navigation = frame.Children.First(c => Grid.GetColumn(c) == 0 && Grid.GetRow(c) == 2);
         navigation.Width = (collapsed ? 80 : 220) - navigation.Margin.Left - navigation.Margin.Right;
-        e.Handled = true;
-        return true;
     }
 }

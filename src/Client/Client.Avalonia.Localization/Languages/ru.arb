@@ -1,4 +1,7 @@
 {
+  "connect.failed.authFailed": "Не удалось подключиться к серверу.\n\nОшибка аутентификации.",
+  "common.hide": "Скрыть",
+  "common.copy": "Копировать",
   "calls.start": "Позвонить",
   "calls.incoming": "Входящий звонок",
   "calls.outgoing": "Вызов…",

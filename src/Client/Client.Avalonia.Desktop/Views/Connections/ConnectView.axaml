@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -126,7 +127,7 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.identity.newHint}"
+                <hints:HintBlock Text="{l:Text connect.identity.newHint}"
                            IsVisible="{Binding IsRegistering}"/>
             </StackPanel>
 
@@ -146,22 +147,23 @@
                 <StackPanel Spacing="6" IsVisible="{Binding IsUsernameLogin}">
                     <TextBox Text="{Binding LoginUsername}" PlaceholderText="{l:Text connect.login.usernamePlaceholder}"
                              MaxLength="32"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.usernameHint}"/>
+                    <hints:HintBlock Text="{l:Text connect.login.usernameHint}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsRecoveryLogin}">
                     <TextBox Text="{Binding RecoveryPhraseText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                             TextAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
                              PlaceholderText="{l:Text connect.login.phrasePlaceholder}"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.phraseHint}"/>
+                    <hints:HintBlock Text="{l:Text connect.login.phraseHint}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsCodeLogin}">
                     <TextBox Text="{Binding LoginCodeText}" PlaceholderText="{l:Text connect.login.codePlaceholder}" MaxLength="32"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.codeHint}"/>
+                    <hints:HintBlock Text="{l:Text connect.login.codeHint}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsDeviceLinkLogin}">
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.deviceHint}"/>
+                    <hints:HintBlock Text="{l:Text connect.login.deviceHint}"/>
                 </StackPanel>
 
                 <CheckBox IsChecked="{Binding IsTemporaryDevice}" Content="{l:Text connect.login.temporary}"/>
@@ -188,16 +190,16 @@
 
         <!-- Footer -->
         <Grid Grid.Row="4" Classes="dialogFooter" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
-            <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+            <Button Grid.Column="1" Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.cancel}">
                 <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
             </Button>
 
-            <Button Grid.Column="2" Classes="primary" MinWidth="130" HorizontalContentAlignment="Left"
+            <Button Grid.Column="2" Classes="primary" MinWidth="130" HorizontalContentAlignment="Center"
                     Command="{Binding ConnectCommand}"
                     IsEnabled="{Binding IsFormValid}"
                     IsDefault="True" AutomationProperties.Name="{l:Text connect.button}">
                 <Grid>
-                    <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource PlugIcon}" Text="{l:Text connect.button}"/>
+                    <common:ActionLabel HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}" Icon="{StaticResource PlugIcon}" Text="{l:Text connect.button}"/>
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                 IsVisible="{Binding IsBusy}">
                         <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"

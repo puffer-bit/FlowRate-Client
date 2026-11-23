@@ -87,7 +87,7 @@
                                    Source="{StaticResource ServerIcon}"/>
                             
                             <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                <text:MarqueeTextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                <text:MarqueeTextBlock Pause="0:0:0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                            Text="{Binding Name, Converter={x:Static services:TextOrDefaultConverter.Instance}, ConverterParameter=settings.accounting.unnamedServer}"/>
                                 <SelectableTextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}">
                                     <SelectableTextBlock.Text>

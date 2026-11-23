@@ -1,5 +1,9 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light"><SolidColorBrush x:Key="DesktopSaveIconBrush" Color="Black"/></ResourceDictionary>
+        <ResourceDictionary x:Key="Dark"><SolidColorBrush x:Key="DesktopSaveIconBrush" Color="White"/></ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
     <Thickness x:Key="DialogHeaderPadding">20,16,20,14</Thickness>
     <Thickness x:Key="DialogBodyMargin">20,16</Thickness>
     <Thickness x:Key="DialogFooterMargin">20,12</Thickness>

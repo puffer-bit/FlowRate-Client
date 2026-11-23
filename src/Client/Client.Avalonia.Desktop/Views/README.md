@@ -15,6 +15,7 @@ Group views by feature in both Desktop and Android: `Main`, `Connections`, `Prof
 ## Shared presentation patterns
 
 - `Common/Styles/UiResources.axaml` defines spacing, typography, surface radii, navigation sizes, and session header/sidebar dimensions. Load these resources before the Desktop styles in `App.axaml`.
+- `StableScrollViewer` reserves a 16px scrollbar gutter even when the bar is hidden. Keep that gutter inside the dialog; reduce the body’s right margin by 16px to align fields with the footer without clipping the bar.
 - `DialogLayout` provides five rows: header, separator, body, separator, and footer. Put a `ScrollViewer` in the body when content can exceed the available height. Keep the action buttons outside that scroller.
 - `DialogHeader` displays an icon, title, optional subtitle, optional close command, and optional status content. The `compact` class gives settings dialogs a tiled icon and section typography. Its content inherits the view's data context.
 - Small forms use `MaxWidth` instead of forcing a width. `DialogOverlay` supplies that preferred width when space allows and constrains it to the host window. Large settings dialogs retain the existing fill-window behavior.
@@ -31,7 +32,7 @@ Audio device selectors and volume sliders use `settingsDevice` and `settingsVolu
 
 ## Chat composition
 
-`ChatSessionControl` owns the timeline, scrolling/selection, composer, sidebars, and platform interactions. `ChatImageViewer` owns its visual overlay. `ChatComposer` retains text input, keyboard handling, clipboard/emoji behavior, and message submission. It composes `ChatMentionSuggestions`, `ChatReplyBar`, and `ChatAttachmentList`; composer styles are scoped through `Sessions/Chat/Styles/ChatComposer.axaml`.
+`ChatSessionControl` owns the timeline, scrolling/selection, composer, sidebars, and platform interactions. `ChatImageViewer` adapts attachment loading to `ImagePreviewView`, the common image overlay used for chat attachments, embedded link pictures, and avatars. Link pictures stay inside their chat until fullscreen is explicitly requested; the same toolbar and backdrop actions are available in both sizes. `ChatComposer` retains text input, keyboard handling, clipboard/emoji behavior, and message submission. It composes `ChatMentionSuggestions`, `ChatReplyBar`, and `ChatAttachmentList`; composer styles are scoped through `Sessions/Chat/Styles/ChatComposer.axaml`.
 
 Keep the input focused while navigating suggestions. Selection is reported from the suggestion view to the composer, which performs text completion. Preserve reply folding, attachment commands, image-viewer Escape handling, and focus restoration when changing these components.
 

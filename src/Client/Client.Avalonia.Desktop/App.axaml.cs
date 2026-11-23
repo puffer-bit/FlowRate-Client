@@ -50,6 +50,7 @@ public partial class App : global::Avalonia.Application
 
         AvaloniaXamlLoader.Load(this);
         ApplicationFontResources.Initialize(this);
+        Views.Common.DesktopImagePreview.Initialize();
     }
 
     public override void OnFrameworkInitializationCompleted()

@@ -337,7 +337,10 @@ public class ConnectWindowVM : ReactiveObject
         CancelDeviceLinkCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             if (_linkingSession is { } linking)
+            {
+                _deviceLinkCancelled = true;
                 await linking.Disconnect();
+            }
         });
 
         FindIdentitiesCommand = ReactiveCommand.CreateFromTask(FindIdentities);
@@ -360,6 +363,8 @@ public class ConnectWindowVM : ReactiveObject
 
     }
 
+    private bool _deviceLinkCancelled;
+
     private async Task ConnectAsync()
     {
         if (!IsFormValid)
@@ -368,13 +373,18 @@ public class ConnectWindowVM : ReactiveObject
             return;
         var identity = SelectedIdentity;
 
+        _deviceLinkCancelled = false;
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
 
         // Only the reason of a rejected login is needed, the main window takes over the session after
         RequestFailedException? rejection = null;
         void OnRejected(RequestFailedException exception) => rejection = exception;
-        void OnLinkCode(DeviceLinkCode code) => Dispatcher.UIThread.Post(() => DeviceLinkCode = code);
+        void OnLinkCode(DeviceLinkCode code) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_deviceLinkCancelled && ReferenceEquals(_linkingSession, session))
+                DeviceLinkCode = code;
+        });
         session.RequestRejected += OnRejected;
         session.DeviceLinkCodeReceived += OnLinkCode;
         if (plan is DeviceLinkLoginPlan)
@@ -382,7 +392,7 @@ public class ConnectWindowVM : ReactiveObject
 
         try
         {
-            if (!await ConnectWithCertificateAsync(session, plan))
+            if (!await ConnectWithCertificateAsync(session, plan) || _deviceLinkCancelled)
             {
                 session.Dispose();
                 return;
@@ -427,6 +437,16 @@ public class ConnectWindowVM : ReactiveObject
         {
             await session.Disconnect();
             session.Dispose();
+        }
+        catch (Exception) when (_deviceLinkCancelled)
+        {
+            session.Dispose();
+        }
+        catch (RequestFailedException ex)
+        {
+            await FinalizeConnectionError(session, ex.Code == Shared.Enums.ErrorCode.AuthFailed
+                ? Strings.Get("connect.failed.authFailed")
+                : RequestRejectionMessages.GetForConnection(ex.Code));
         }
         catch (TimeoutException)
         {

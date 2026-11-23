@@ -1,20 +1,45 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:chat="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
+        xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji;assembly=Client.Avalonia.Controls"
         xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
         xmlns:loading="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls">
+    <Style Selector="chat|ChatSystemMessageView TextBlock#EventText">
+        <Setter Property="LineHeight" Value="20"/>
+    </Style>
+    <Style Selector="chat|ChatSystemMessageView Button.event-user TextBlock">
+        <Setter Property="LineHeight" Value="20"/>
+    </Style>
+    <Style Selector="emoji|EmojiPickerView">
+        <Setter Property="RecentIcon" Value="{StaticResource RecentEmojiIcon}"/>
+    </Style>
+    <Style Selector="emoji|EmojiPickerView Button.emoji-category /template/ ContentPresenter">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="emoji|EmojiPickerView Button.emoji-category TextBlock">
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button">
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
     <Style Selector="common|ActionLabel">
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <Image Width="{StaticResource SmallIconSize}" Height="{StaticResource SmallIconSize}"
-                           Margin="0,1,0,0" VerticalAlignment="Center" Source="{TemplateBinding Icon}"
+                           VerticalAlignment="Center" Source="{TemplateBinding Icon}"
                            IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <TextBlock Grid.Column="1" Text="{TemplateBinding Text}" VerticalAlignment="Center"
+                    <TextBlock Text="{TemplateBinding Text}" VerticalAlignment="Center"
                                Foreground="{TemplateBinding Foreground}"/>
-                </Grid>
+                </StackPanel>
             </ControlTemplate>
         </Setter>
     </Style>
@@ -106,6 +131,12 @@
     <Style Selector="Grid.dialogFooter">
         <Setter Property="Margin" Value="{StaticResource DialogFooterMargin}"/>
     </Style>
+    <Style Selector="ListBox.tabs ListBoxItem, ListBox#TabList ListBoxItem">
+        <Setter Property="Padding" Value="12,6"/>
+    </Style>
+    <Style Selector="ListBox.collapsedNavigation ListBoxItem">
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
     <Style Selector="Grid.navigationRow">
         <Setter Property="MinHeight" Value="{StaticResource NavigationRowHeight}"/>
     </Style>
@@ -133,12 +164,18 @@
         <Setter Property="IsVisible" Value="False"/>
     </Style>
     <Style Selector="ListBox.collapsedNavigation Grid.navigationRow">
-        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Width" Value="{StaticResource NavigationIconSize}"/>
     </Style>
-    <Style Selector="Grid.settingsFrame.collapsedNavigation TextBox#SearchBox">
-        <Setter Property="IsVisible" Value="False"/>
+    <Style Selector="TextBox#SearchBox">
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
     </Style>
+    <Style Selector="TextBox#SearchBox:pointerover /template/ Border#PART_BorderElement, TextBox#SearchBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+    </Style>
+    <Style Selector="Button#CompactSearchButton"><Setter Property="IsVisible" Value="False"/></Style>
+    <Style Selector="Grid.settingsFrame.collapsedNavigation TextBox#SearchBox"><Setter Property="IsVisible" Value="False"/></Style>
+    <Style Selector="Grid.settingsFrame.collapsedNavigation Button#CompactSearchButton"><Setter Property="IsVisible" Value="True"/></Style>
     <Style Selector="common|StatePanel">
         <Setter Property="Margin" Value="16"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
