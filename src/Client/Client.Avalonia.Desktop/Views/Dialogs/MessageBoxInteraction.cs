@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -27,6 +28,10 @@ internal static class MessageBoxInteraction
 
     public static async Task<Result> ShowAsync(MessageBoxVM messageBox, Visual? owner)
     {
+        if (messageBox.CanCopyDetail)
+            foreach (var cancel in messageBox.ButtonsList.Where(button => button.IsCancel).ToArray())
+                messageBox.ButtonsList.Remove(cancel);
+
         if (!InWindowDialog.CanShow(owner))
         {
             // Nothing to show it in, e.g. the view was already detached while its window closed

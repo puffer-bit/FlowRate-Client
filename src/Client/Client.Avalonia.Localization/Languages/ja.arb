@@ -1,4 +1,7 @@
 {
+  "connect.failed.authFailed": "サーバーに接続できませんでした。\n\n認証に失敗しました。",
+  "common.hide": "非表示",
+  "common.copy": "コピー",
   "calls.start": "通話する",
   "calls.incoming": "着信",
   "calls.outgoing": "呼び出し中…",

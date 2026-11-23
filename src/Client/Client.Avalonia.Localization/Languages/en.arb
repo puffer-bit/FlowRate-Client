@@ -1,4 +1,6 @@
 {
+  "common.hide": "Hide",
+  "common.copy": "Copy",
   "calls.start": "Call",
   "calls.incoming": "Incoming call",
   "calls.outgoing": "Calling…",

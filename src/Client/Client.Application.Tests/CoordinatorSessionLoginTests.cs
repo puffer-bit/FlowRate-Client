@@ -139,6 +139,25 @@ public class CoordinatorSessionLoginTests
     }
 
     [Fact]
+    public async Task DeviceRemoval_IsReportedBeforeTheConnectionCloses()
+    {
+        var (session, gateway) = Create(null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
+        var notifications = new List<string>();
+        session.DeviceEnded += _ => notifications.Add("device-ended");
+        session.StateChanged += state =>
+        {
+            if (state == CoordinatorState.Disconnected)
+                notifications.Add("disconnected");
+        };
+
+        gateway.Raise(new DeviceEndedEvent(Shared.Enums.Auth.DeviceEndReason.Revoked));
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["device-ended", "disconnected"], notifications);
+    }
+
+    [Fact]
     public async Task DeviceRemovedWhileConnected_StaysOffline()
     {
         var (session, gateway) = Create(null);

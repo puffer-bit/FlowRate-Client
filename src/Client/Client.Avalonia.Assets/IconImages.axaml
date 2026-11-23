@@ -669,6 +669,26 @@
             </GeometryDrawing>
         </DrawingGroup>
     </DrawingImage>
+    <DrawingImage x:Key="DesktopSaveIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 3 H19 A2 2 0 0 1 21 5 V19 A2 2 0 0 1 19 21 H5 A2 2 0 0 1 3 19 V5 A2 2 0 0 1 5 3 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource DesktopSaveIconBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M17 3 V8 H7 V3">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource DesktopSaveIconBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8,13 H16 A1,1 0 0 1 17,14 V18 A1,1 0 0 1 16,19 H8 A1,1 0 0 1 7,18 V14 A1,1 0 0 1 8,13 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource DesktopSaveIconBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
 
     <!-- Door with red cross. Source: Icons/DoorWithCrossIcon.svg -->
     <DrawingImage x:Key="DoorWithCrossIcon">
@@ -1801,7 +1821,15 @@
         </DrawingGroup>
     </DrawingImage>
 
-    <!-- Keycap with an orange top (hotkeys settings). Source: Icons/Settings/KeycapIcon.svg -->
+    <DrawingImage x:Key="RecentEmojiIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M12,3 A9,9 0 1 1 12,21 A9,9 0 1 1 12,3 Z M12,7 V12 L16,14">
+                <GeometryDrawing.Pen><Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/></GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <DrawingImage x:Key="KeycapIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>

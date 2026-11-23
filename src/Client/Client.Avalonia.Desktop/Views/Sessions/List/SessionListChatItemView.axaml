@@ -184,7 +184,7 @@
                                       StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"/>
                             </StackPanel>
                         </Button>
-                        <text:MarqueeTextBlock Grid.Column="1" Classes="sessionName" Text="{Binding DisplayName}"
+                        <text:MarqueeTextBlock Pause="0:0:0" Grid.Column="1" Classes="sessionName" Text="{Binding DisplayName}"
                                               Classes.unread="{Binding HasUnread}"
                                               Classes.entered="{Binding IsEntered}"
                                               Classes.callActive="{Binding HasActiveCall}"

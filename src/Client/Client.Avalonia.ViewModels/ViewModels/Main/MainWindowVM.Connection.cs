@@ -159,6 +159,7 @@ public partial class MainWindowVM
 
     private async Task FinalizeCoordinatorConnection()
     {
+        _deviceEnded = false;
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
@@ -248,6 +249,7 @@ public partial class MainWindowVM
                 Strings.Get("recoveryPhrase.save.title"))
             {
                 Detail = Profile.AccountSecurityVM.NumberWords(phrase),
+                CopyText = phrase,
                 CheckBoxText = Strings.Get("recoveryPhrase.keepOnDevice")
             };
             if (await ShowMessageBox.Handle(box) == Result.Ok)
@@ -401,8 +403,11 @@ public partial class MainWindowVM
     }
 
     // Raised on any thread; the session dropped the key, and the saved account needs a login
+    private volatile bool _deviceEnded;
+
     private void OnDeviceEnded(Shared.Enums.Auth.DeviceEndReason? reason)
     {
+        _deviceEnded = true;
         Dispatcher.UIThread.Post(async () =>
         {
             await SetStatus("main.status.offline", false);
@@ -704,6 +709,11 @@ public partial class MainWindowVM
                     Icon.KeyWarning);
                 return;
             case CoordinatorState.Disconnected:
+                if (_deviceEnded)
+                {
+                    Dispatcher.UIThread.Post(() => _ = DisconnectFromCoordinator());
+                    return;
+                }
                 PostDisconnect(Strings.Get("main.serverShutDown"));
                 return;
         }

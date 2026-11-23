@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -156,7 +157,7 @@
                             <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
                                                             IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
                         </Grid>
-                        <TextBlock Classes="hint" Text="{l:Text profile.note.hint}"/>
+                        <hints:HintBlock Text="{l:Text profile.note.hint}"/>
                         <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
                                  IsEnabled="{Binding Note.IsLoaded}"
@@ -207,11 +208,11 @@
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !IsEditing}">
                 <Button Command="{Binding WriteMessageCommand}" IsVisible="{Binding CanWriteMessage}"
                         Content="{l:Text privateChats.write}"/>
-                <Button Command="{Binding CloseCommand}" IsCancel="{Binding !IsEditing}" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.close}">
+                <Button Command="{Binding CloseCommand}" IsCancel="{Binding !IsEditing}" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.close}">
                     <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.close}"/>
                 </Button>
 
-                <Button Classes="primary" Command="{Binding EditCommand}" MinWidth="110" HorizontalContentAlignment="Left"
+                <Button Classes="primary" Command="{Binding EditCommand}" MinWidth="110" HorizontalContentAlignment="Center"
                         IsVisible="{Binding CanEdit}" AutomationProperties.Name="{l:Text common.edit}">
                     <common:ActionLabel Icon="{StaticResource PencilIcon}" Text="{l:Text common.edit}"/>
                 </Button>
@@ -219,13 +220,13 @@
 
             <!-- Editing -->
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEditing}">
-                <Button Command="{Binding CancelEditCommand}" IsCancel="{Binding IsEditing}" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                <Button Command="{Binding CancelEditCommand}" IsCancel="{Binding IsEditing}" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.cancel}">
                     <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
                 </Button>
 
-                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="{Binding IsEditing}" MinWidth="110" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.save}">
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="{Binding IsEditing}" MinWidth="110" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.save}">
                     <Grid>
-                        <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DisketteIcon}" Text="{l:Text common.save}"/>
+                        <common:ActionLabel HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DesktopSaveIcon}" Text="{l:Text common.save}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                     IsVisible="{Binding IsBusy}">
                             <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"

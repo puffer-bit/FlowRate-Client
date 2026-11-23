@@ -26,13 +26,12 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Panel.streamBarZone:pointerover Border.streamBar, hybridViews|HybridScreenTile.keyboardControls Border.streamBar">
+        <Style Selector="Panel.streamBarZone:pointerover Border.streamBar, hybridViews|HybridScreenTile.nearControls Border.streamBar, hybridViews|HybridScreenTile.keyboardControls Border.streamBar, hybridViews|HybridScreenTile.audienceOpen Border.streamBar">
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="RenderTransform" Value="translateY(0px)"/>
         </Style>
-        <!-- Over the picture the reach is the upper part of the tile; on the card it stays the bar
-             itself, so the zone does not cover the watch button -->
-        <Style Selector="Panel.streamBarZone.watched">
+        <!-- Pointer tracking on the tile keeps the reach identical on cards and watched screens. -->
+        <Style Selector="Panel.streamBarZone">
             <Setter Property="Height" Value="120"/>
         </Style>
         <Style Selector="Button.streamBarAction">
@@ -114,11 +113,14 @@
                     <video:VideoView x:Name="Picture" Stretch="Uniform"/>
                 </Border>
                 <!-- The statistics of the screen, as the debug settings ask; a click expands them -->
+                <ScrollViewer x:Name="PerfScroller" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,48,8,8"
+                              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <media:StreamPerfOverlay x:Name="Perf"
                                          IsExpandedTile="{Binding IsExpanded}"
                                          HorizontalAlignment="Left"
                                          VerticalAlignment="Bottom"
-                                         Margin="8"/>
+                                         Margin="0"/>
+                </ScrollViewer>
                 <!-- Under the bar at the top edge, out of its way -->
                 <video:StreamIssuesOverlay Issues="{Binding Issues}"
                                            HorizontalAlignment="Right"
@@ -126,14 +128,13 @@
                                            Margin="8"/>
             </Panel>
 
-            <!-- The transparent zone around the bar is hit-testable so nearing the top edge reveals its controls.
+            <!-- The tile tracks nearing the bar without covering the watch button or the statistics.
                  The controls are the same on the card and on the picture; only the eye
                  changes with what it does. The bar is opaque: its icons and the name are in the
                  text color of the theme, which the picture can match -->
             <Panel Classes="streamBarZone"
                    Classes.watched="{Binding IsWatched}"
                    VerticalAlignment="Top"
-                   Background="Transparent"
                    DoubleTapped="OnBarZoneDoubleTapped">
             <Border Classes="streamBar"
                     VerticalAlignment="Top"

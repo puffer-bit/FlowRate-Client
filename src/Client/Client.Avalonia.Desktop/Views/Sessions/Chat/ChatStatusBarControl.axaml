@@ -64,7 +64,7 @@
 
                     <!-- Name with the chat status under it, as in Telegram -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                        <text:MarqueeTextBlock Text="{Binding Name}"
+                        <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding Name}"
                                                FontSize="15"
                                                FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis"/>

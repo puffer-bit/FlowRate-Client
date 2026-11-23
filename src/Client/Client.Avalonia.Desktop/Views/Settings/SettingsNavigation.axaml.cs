@@ -89,7 +89,8 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
 
         container.IsVisible = true;
         container.ClipToBounds = true;
-        container.Measure(Size.Infinity);
+        var width = container.Bounds.Width > 0 ? container.Bounds.Width : TabList.Bounds.Width;
+        container.Measure(new Size(width, double.PositiveInfinity));
         var fullHeight = container.DesiredSize.Height - container.Margin.Top - container.Margin.Bottom;
 
         var run = new CancellationTokenSource();
@@ -127,6 +128,13 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         if (!SettingsNavigationLayout.Toggle(TabList, e) || ViewModel is not { } vm)
             return;
 
+        RefreshCollapsedItems();
+    }
+
+    private void RefreshCollapsedItems()
+    {
+        if (ViewModel is not { } vm)
+            return;
         foreach (var run in _folds.Values)
         {
             run.Cancel();
@@ -150,6 +158,15 @@ internal partial class SettingsNavigation : ViewControl<SettingsWindowVM>
         if (ViewModel is { } vm && (e.Source as Control)?.DataContext is SettingNavItemVM { IsSubItem: true } item &&
             ReferenceEquals(item, vm.SelectedNavigationItem))
             vm.ShowSection(item);
+    }
+
+    private void SearchBox_OnGotFocus(object? sender, global::Avalonia.Input.FocusChangedEventArgs e)
+    {
+        if (!SettingsNavigationLayout.IsCollapsed(TabList))
+            return;
+        SettingsNavigationLayout.SetCollapsed(TabList, false);
+        RefreshCollapsedItems();
+        SearchBox.Focus();
     }
 
     // Enter opens the best match, Down goes into the results, Escape drops the search

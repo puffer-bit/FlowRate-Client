@@ -34,6 +34,8 @@ public class MessageBoxVM : ReactiveObject
 
     public string? Detail { get; init; }
     public bool HasDetail => Detail != null;
+    public string? CopyText { get; init; }
+    public bool CanCopyDetail => CopyText != null;
 
     /// <summary>
     /// The label of a check box under the text; without it the box has none.

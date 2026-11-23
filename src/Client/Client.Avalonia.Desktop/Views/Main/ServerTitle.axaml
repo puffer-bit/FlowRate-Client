@@ -67,10 +67,10 @@
             </Border>
 
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Text="{Binding DisplayName}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayName}"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>
-                <text:MarqueeTextBlock Text="{Binding DisplayAddress}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayAddress}"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        FontSize="11"
                                        TextTrimming="CharacterEllipsis"/>

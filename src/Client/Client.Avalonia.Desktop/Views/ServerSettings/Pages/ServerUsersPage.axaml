@@ -164,7 +164,7 @@
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <text:MarqueeTextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                        <text:MarqueeTextBlock Pause="0:0:0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                                Text="{Binding Username}"/>
                                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                             <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"

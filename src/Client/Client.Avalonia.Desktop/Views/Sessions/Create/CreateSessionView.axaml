@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -38,6 +39,15 @@
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="MinHeight" Value="52"/>
         </Style>
+        <Style Selector="Button.memberRow, Button.memberRow:pressed, Button.memberRow.selected">
+            <Setter Property="RenderTransform" Value="none"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.memberRow /template/ ContentPresenter, Button.memberRow:pointerover /template/ ContentPresenter, Button.memberRow:pressed /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
         <Style Selector="Button.memberChip">
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="Padding" Value="8,5"/>
@@ -52,16 +62,16 @@
         <dialogs:DialogHeader Grid.Row="0" Icon="{StaticResource PlusIcon}"
                              Title="{Binding DialogTitle}">
                 <StackPanel Spacing="4">
-                    <TextBlock Classes="hint" Text="{l:Text createSession.hint}" IsVisible="{Binding ShowServerOptions}"/>
-                    <TextBlock Classes="hint" Text="{l:Text privateChats.createHint}" IsVisible="{Binding IsPrivateMode}"/>
+                    <hints:HintBlock Text="{l:Text createSession.hint}" IsVisible="{Binding ShowServerOptions}"/>
+                    <hints:HintBlock Text="{l:Text privateChats.createHint}" IsVisible="{Binding IsPrivateMode}"/>
                 </StackPanel>
         </dialogs:DialogHeader>
 
         <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <!-- Form -->
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="18" IsEnabled="{Binding !IsBusy}">
+        <common:StableScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20,16,4,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
 
                 <!-- Type -->
                 <StackPanel Spacing="8" IsVisible="{Binding ShowServerOptions}">
@@ -152,8 +162,7 @@
                         <TextBlock Classes="fieldLabel" Text="{l:Text privateChats.members}"/>
                         <TextBlock Grid.Column="1" Classes="hint" Text="{Binding SelectedCountText}"/>
                     </Grid>
-                    <ScrollViewer MaxHeight="88" HorizontalScrollBarVisibility="Disabled"
-                                  IsVisible="{Binding HasSelectedMembers}">
+                    <ScrollViewer Height="88" HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding SelectedMembers}">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
@@ -184,7 +193,7 @@
                                                     IsEnabled="{Binding CanToggle}"
                                                     Command="{Binding $parent[UserControl].((createVm:CreateSessionWindowVM)DataContext).ToggleMemberCommand}"
                                                     CommandParameter="{Binding}">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                                <Grid ColumnDefinitions="Auto,*,16" ColumnSpacing="10">
                                                     <avatars:UserAvatar Width="32" Height="32" UserName="{Binding Name}" AvatarUrl="{Binding AvatarUrl}"/>
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontWeight="Medium"/>
@@ -260,19 +269,19 @@
                     </Grid>
                 </Border>
             </StackPanel>
-        </ScrollViewer>
+        </common:StableScrollViewer>
 
         <Border Grid.Row="3" Classes="dialogSeparator"/>
 
         <!-- Footer -->
         <StackPanel Grid.Row="4" Margin="{StaticResource DialogFooterMargin}" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+            <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.cancel}">
                 <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
             </Button>
 
-            <Button Classes="primary" Command="{Binding CreateCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left" AutomationProperties.Name="{Binding SubmitText}">
+            <Button Classes="primary" Command="{Binding CreateCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Center" AutomationProperties.Name="{Binding SubmitText}">
                 <Grid>
-                    <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource PlusIcon}" Text="{Binding SubmitText}"/>
+                    <common:ActionLabel HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}" Icon="{StaticResource PlusIcon}" Text="{Binding SubmitText}"/>
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                 IsVisible="{Binding IsBusy}">
                         <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"

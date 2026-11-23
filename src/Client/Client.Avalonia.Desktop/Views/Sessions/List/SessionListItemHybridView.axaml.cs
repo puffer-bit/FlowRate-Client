@@ -1,4 +1,5 @@
 using Avalonia;
+using System.Linq;
 using Client.Views.Common;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -25,6 +26,8 @@ public partial class SessionListItemHybridView : ViewControl<HybridSessionVM>
     // One click joins, as in Discord; a click on the session we are in brings it back on screen
     private void OnHeaderTapped(object? sender, TappedEventArgs e)
     {
+        if ((e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true)
+            return;
         ViewModel?.Connect();
         e.Handled = true;
     }

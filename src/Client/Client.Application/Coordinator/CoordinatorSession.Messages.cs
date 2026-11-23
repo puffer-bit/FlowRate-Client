@@ -36,8 +36,8 @@ public partial class CoordinatorSession
             // The device is not one of the account any more: it stays out until the user logs in again
             case DeviceEndedEvent ended:
                 LogDeviceEnded(LogName, ended.Reason);
-                _ = Disconnect();
                 OnDeviceEnded(ended.Reason);
+                _ = Disconnect();
                 break;
             case DeviceAddedEvent added:
                 DeviceAdded?.Invoke(added.Device);

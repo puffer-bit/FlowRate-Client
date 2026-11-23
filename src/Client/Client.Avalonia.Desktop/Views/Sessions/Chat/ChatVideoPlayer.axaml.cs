@@ -206,8 +206,7 @@ public partial class ChatVideoPlayer : UserControl
         if (!_ready || _updating)
             return;
         VolumeText.Text = $"{e.NewValue:0}%";
-        if (!_changingVolume)
-            ApplyVolume();
+        ApplyVolume();
     }
 
     private void OnVolumePressed(object? sender, PointerPressedEventArgs e)

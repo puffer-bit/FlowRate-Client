@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -35,7 +36,9 @@
 
         <!-- Header -->
         <dialogs:DialogHeader Grid.Row="0" Icon="{StaticResource KeyIcon}"
-                             Title="{l:Text accountSecurity.title}" Subtitle="{l:Text accountSecurity.hint}"/>
+                             Title="{l:Text accountSecurity.title}">
+            <hints:HintBlock Text="{l:Text accountSecurity.hint}"/>
+        </dialogs:DialogHeader>
 
         <Border Grid.Row="1" Classes="dialogSeparator"/>
 
@@ -64,13 +67,13 @@
             </StackPanel>
 
             <!-- What the user has: devices, how to log in by username, the recovery phrase -->
-            <ScrollViewer MaxHeight="540" HorizontalScrollBarVisibility="Disabled" Margin="0,0,-12,0" Padding="0,0,12,0">
-                <ScrollViewer.IsVisible>
+            <common:StableScrollViewer MaxHeight="540" HorizontalScrollBarVisibility="Disabled">
+                <common:StableScrollViewer.IsVisible>
                     <MultiBinding Converter="{x:Static BoolConverters.And}">
                         <Binding Path="IsOverview"/>
                         <Binding Path="Security" Converter="{x:Static ObjectConverters.IsNotNull}"/>
                     </MultiBinding>
-                </ScrollViewer.IsVisible>
+                </common:StableScrollViewer.IsVisible>
 
                 <StackPanel Spacing="18">
 
@@ -110,7 +113,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Border>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.sessions.hint}"/>
+                        <hints:HintBlock Text="{l:Text accountSecurity.sessions.hint}"/>
                     </StackPanel>
 
                     <!-- Logging in by username: password, one-time codes, passkeys -->
@@ -178,7 +181,7 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.signIn.hint}"/>
+                        <hints:HintBlock Text="{l:Text accountSecurity.signIn.hint}"/>
                     </StackPanel>
 
                     <!-- Recovery phrase -->
@@ -186,23 +189,31 @@
                         <TextBlock Classes="sectionTitle" Text="{l:Text accountSecurity.phrase}"/>
                         <Border Classes="section">
                             <StackPanel Spacing="10">
-                                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.phrase.hint}"/>
+                                <hints:HintBlock Text="{l:Text accountSecurity.phrase.hint}"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Button Command="{Binding ShowPhraseCommand}" Content="{l:Text accountSecurity.phrase.show}"/>
+                                    <Button Command="{Binding ShowPhraseCommand}">
+                                        <Panel>
+                                            <TextBlock IsVisible="{Binding !IsRecoveryPhraseShown}" Text="{l:Text accountSecurity.phrase.show}"/>
+                                            <TextBlock IsVisible="{Binding IsRecoveryPhraseShown}" Text="{l:Text common.hide}"/>
+                                        </Panel>
+                                    </Button>
                                     <Button Command="{Binding ResetPhraseCommand}" Content="{l:Text accountSecurity.phrase.resetConfirm}"/>
                                 </StackPanel>
-                                <!-- A new phrase, or the one kept here: shown until the user saved it -->
-                                <Border Padding="12" CornerRadius="8" Background="{DynamicResource DarkBackgroundBrush}"
-                                        IsVisible="{Binding IsRecoveryPhraseShown}">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock TextWrapping="Wrap" Text="{l:Text accountSecurity.phrase.saveHint}"/>
-                                        <SelectableTextBlock FontFamily="monospace" FontSize="14" TextWrapping="Wrap"
-                                                             Text="{Binding RecoveryPhraseText}"/>
-                                        <CheckBox IsChecked="{Binding KeepPhraseOnDevice}" Content="{l:Text recoveryPhrase.keepOnDevice}"/>
-                                        <Button HorizontalAlignment="Left" Classes="primary" Command="{Binding ConfirmPhraseSavedCommand}"
-                                                Content="{l:Text accountSecurity.phrase.saved}"/>
-                                    </StackPanel>
-                                </Border>
+                                <StackPanel Spacing="8" IsVisible="{Binding IsRecoveryPhraseShown}">
+                                    <hints:HintBlock Text="{l:Text accountSecurity.phrase.saveHint}"/>
+                                    <Border Padding="10,8" CornerRadius="6" Background="{DynamicResource MessageBoxDetailBrush}">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Button Grid.Column="1" Classes="borderless iconButton" HorizontalAlignment="Right" VerticalAlignment="Top" Click="CopyPhrase"
+                                                    ToolTip.Tip="{l:Text common.copy}" AutomationProperties.Name="{l:Text common.copy}">
+                                                <Image Width="16" Height="16" Source="{StaticResource CopyIcon}"/>
+                                            </Button>
+                                            <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding RecoveryPhraseText}"/>
+                                        </Grid>
+                                    </Border>
+                                    <CheckBox IsChecked="{Binding KeepPhraseOnDevice}" Content="{l:Text recoveryPhrase.keepOnDevice}"/>
+                                    <Button HorizontalAlignment="Left" Classes="primary" Command="{Binding ConfirmPhraseSavedCommand}"
+                                            Content="{l:Text accountSecurity.phrase.saved}"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -210,16 +221,16 @@
                     <TextBlock Classes="fieldError" TextWrapping="Wrap" Text="{Binding Error}"
                                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
-            </ScrollViewer>
+            </common:StableScrollViewer>
 
             <!-- A change -->
             <StackPanel Spacing="12" IsVisible="{Binding IsChanging}" IsEnabled="{Binding !IsBusy}">
                 <TextBlock FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding ChangeTitle}"/>
-                <TextBlock TextWrapping="Wrap" Text="{Binding ChangeHint}"
+                <hints:HintBlock Text="{Binding ChangeHint}"
                            IsVisible="{Binding ChangeHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsProofAsked}">
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text accountSecurity.proof.hint}"/>
+                    <hints:HintBlock Text="{l:Text accountSecurity.proof.hint}"/>
                     <StackPanel Spacing="6" IsVisible="{Binding IsPasswordProofAsked}">
                         <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.proof.password}"/>
                         <TextBox Classes="password" Text="{Binding ProofPassword}"
@@ -248,7 +259,7 @@
                     <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.repeatPassword}"/>
                     <TextBox Classes="password" Text="{Binding RepeatPassword}" MaxLength="{Binding PasswordMaxLength}"
                              RevealPassword="{Binding IsPasswordVisible, Mode=TwoWay}"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding NewPasswordHint}"/>
+                    <hints:HintBlock Text="{Binding NewPasswordHint}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6" IsVisible="{Binding IsSetupShown}">
@@ -274,7 +285,8 @@
 
         <!-- Footer -->
         <Panel Grid.Row="4" Margin="{StaticResource DialogFooterMargin}">
-            <Button HorizontalAlignment="Left" Command="{Binding LogoutCommand}" Content="{l:Text accountSecurity.logout.title}">
+            <Button HorizontalAlignment="Left" Classes="danger" Command="{Binding LogoutCommand}">
+                <common:ActionLabel Icon="{StaticResource DoorWithRedArrowIcon}" Text="{l:Text accountSecurity.logout.title}"/>
                 <Button.IsVisible>
                     <MultiBinding Converter="{x:Static BoolConverters.And}">
                         <Binding Path="IsOverview"/>

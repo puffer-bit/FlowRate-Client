@@ -87,12 +87,12 @@
 
         <!-- The reason of an away user goes under the name, and stays readable while the rest fades -->
         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left">
+            <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
                 <!-- The owner of the group whose call this is -->
-                <Image Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"
-                       Source="{StaticResource CrownIcon}"
+                <Image Grid.Column="1" Width="14" Height="14" Margin="4,0,0,0" VerticalAlignment="Center"
+                                               Source="{StaticResource CrownIcon}"
                        IsVisible="{Binding IsOwner}" ToolTip.Tip="{l:Text privateChats.owner}"/>
-                <text:MarqueeTextBlock Grid.Column="1" Classes="peerName afkDim"
+                <text:MarqueeTextBlock Pause="0:0:0" Grid.Column="0" Classes="peerName afkDim"
                                        Classes.connecting="{Binding !IsConnected}"
                                        Text="{Binding DisplayedName}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
@@ -102,7 +102,7 @@
                            IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
                 </StackPanel>
             </Grid>
-            <text:MarqueeTextBlock Text="{Binding AfkReason}"
+            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding AfkReason}"
                                    IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
                                    FontSize="11"
                                    Foreground="{DynamicResource SecondaryTextBrush}"
@@ -139,8 +139,11 @@
             <!-- The user turned their own microphone off; everyone sees it -->
             <Image Width="20" Height="20"
                    Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
-                   IsVisible="{Binding ShowsMicrophoneOff}"
-                   ToolTip.Tip="{l:Text peer.microphoneOff}"/>
+                   ToolTip.Tip="{l:Text peer.microphoneOff}">
+                <Image.IsVisible><MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="ShowsMicrophoneOff"/><Binding Path="!ShowsSoundOff"/>
+                </MultiBinding></Image.IsVisible>
+            </Image>
 
             <!-- The user turned the sound of the session off and hears nobody; everyone sees it -->
             <Image Width="20" Height="20"
