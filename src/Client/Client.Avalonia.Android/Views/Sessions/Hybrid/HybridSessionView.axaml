@@ -9,13 +9,12 @@
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Common.Media"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              xmlns:hybrid="clr-namespace:Client.Droid.Views.Sessions.Hybrid"
              xmlns:media="clr-namespace:Client.Avalonia.Controls.Media;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.Sessions.Hybrid.HybridSessionView"
              x:DataType="hybridVm:ActiveHybridSessionVM"
-             Background="{DynamicResource GeneralBrush}"
-             anim:Presence.Appear="Fade"
-             anim:Presence.Duration="Medium">
+             Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
         <!-- Round buttons of the bar, sized for a finger -->
@@ -343,9 +342,12 @@
             </Button>
         </StackPanel>
 
-        <!-- One screen over the whole display; back or the button closes it -->
+        <!-- One screen over the whole display; back or the button closes it. Two fingers or a double tap
+             zoom into it, as small text of a computer screen needs on a phone; a finger moves the zoomed one -->
         <Panel Grid.Row="0" Grid.RowSpan="3" x:Name="FullscreenLayer" Background="Black" IsVisible="False">
-            <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            <images:ZoomDecorator x:Name="FullscreenZoom">
+                <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            </images:ZoomDecorator>
             <hybrid:ScreenPerfView x:Name="FullscreenPerf" Stream="{x:Null}" IsFullscreen="True"/>
             <Button Classes="screen-action" Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top"
                     Opacity="0.7" Click="OnCloseFullscreenClick"

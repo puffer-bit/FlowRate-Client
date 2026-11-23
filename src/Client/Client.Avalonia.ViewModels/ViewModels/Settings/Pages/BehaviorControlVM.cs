@@ -8,6 +8,7 @@ using Client.Application.Settings.Search;
 using Client.Core.Settings;
 using Client.Services;
 using ReactiveUI;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -77,6 +78,15 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>The reaction a double tap on a message puts on it; the phone shows the choice.</summary>
+    public string? QuickReaction
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = BehaviorSettings.DefaultQuickReaction;
+
+    public IReadOnlyList<string> QuickReactionChoices => ChatReactionEmoji.All;
+
     public IReadOnlyList<SavedCoordinatorModel> SavedServers
     {
         get;
@@ -141,7 +151,8 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
                 nameof(IsPropagatedConnectionWarningEnabled),
                 nameof(CloseButtonActionIndex),
                 nameof(IsUpdateCheckOnStartupEnabled),
-                nameof(UpdateChannelIndex))
+                nameof(UpdateChannelIndex),
+                nameof(QuickReaction))
             .Where(_ => !_isUpdating)
             .Select(_ => Observable.FromAsync(() => _behaviorService.SaveSettingsAsync(ToSettings())))
             .Concat()
@@ -175,7 +186,9 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IsPropagatedConnectionWarningEnabled = IsPropagatedConnectionWarningEnabled,
         CloseButtonAction = (CloseButtonAction)CloseButtonActionIndex,
         IsUpdateCheckOnStartupEnabled = IsUpdateCheckOnStartupEnabled,
-        UpdateChannel = (UpdateChannel)UpdateChannelIndex
+        UpdateChannel = (UpdateChannel)UpdateChannelIndex,
+        // The list clears its selection while it is rebuilt; nothing chosen keeps the default
+        QuickReaction = ChatReactionEmoji.IsSupported(QuickReaction) ? QuickReaction : BehaviorSettings.DefaultQuickReaction
     };
 
     private void Apply(BehaviorSettings settings)
@@ -187,6 +200,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         CloseButtonActionIndex = (int)settings.CloseButtonAction;
         IsUpdateCheckOnStartupEnabled = settings.IsUpdateCheckOnStartupEnabled;
         UpdateChannelIndex = (int)settings.UpdateChannel;
+        QuickReaction = settings.QuickReaction;
     }
 
     public async Task ResetAllAsync()

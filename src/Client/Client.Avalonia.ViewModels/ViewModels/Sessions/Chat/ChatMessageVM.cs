@@ -497,6 +497,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public Task ChooseReactionAsync(string emoji) => ReactAsync(emoji, true);
 
+    /// <summary>Puts the reaction, or takes it back when it is already ours; no menu is involved.</summary>
+    public void ToggleReaction(string emoji) => _ = ReactAsync(emoji, false);
+
     private async Task ReactAsync(string emoji, bool closeMenu)
     {
         if (closeMenu)

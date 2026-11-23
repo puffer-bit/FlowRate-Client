@@ -72,7 +72,8 @@
                 <TextBlock Text="{l:Text privateChats.empty}"/>
             </StackPanel>
 
-            <ListBox x:Name="Chats" Classes="sessionsList byContent" Margin="8"
+            <!-- The bottom padding keeps the last chat clear of the new chat button over the list -->
+            <ListBox x:Name="Chats" Classes="sessionsList byContent" Margin="8" Padding="0,0,0,80"
                      ItemsSource="{Binding PrivateChats}" IsVisible="{Binding HasPrivateChats}"
                      IsEnabled="{Binding !IsStale}" Background="Transparent" Tapped="OnChatTapped">
                 <ListBox.ItemTemplate>

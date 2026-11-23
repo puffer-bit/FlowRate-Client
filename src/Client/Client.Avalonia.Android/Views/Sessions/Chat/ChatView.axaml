@@ -15,45 +15,12 @@
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
              xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:common="clr-namespace:Client.Droid.Views.Common"
+             xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.Sessions.Chat.ChatView"
              x:DataType="chatVm:ActiveChatSessionVM"
-             Background="{DynamicResource GeneralBrush}"
-             anim:Presence.Appear="Fade"
-             anim:Presence.Duration="Medium">
+             Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
-        <Style Selector="ToggleButton.pinsToggle">
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="ToggleButton.pinsToggle /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:checked /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:pointerover /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter">
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style Selector="ToggleButton.pinsToggle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource PeerItemHoverBrush}"/>
-        </Style>
-        <Style Selector="ToggleButton.pinsToggle:checked /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:checked:pointerover /template/ ContentPresenter,
-                         ToggleButton.pinsToggle:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
-        </Style>
-        <Style Selector="Border.pins-panel">
-            <Setter Property="Width" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border.pins-panel.open">
-            <Setter Property="Width" Value="260"/>
-        </Style>
-
         <!-- Round buttons of the header, list and composer, sized for a finger -->
         <Style Selector="Button.chat-round">
             <Setter Property="Width" Value="44"/>
@@ -99,6 +66,10 @@
             <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.quick-reaction.selected">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
         </Style>
 
         <!-- ====== Mention list ====== -->
@@ -274,12 +245,8 @@
                                MaxLines="1"/>
                 </Grid>
             </StackPanel>
+            <!-- Only the call stays in sight, as in Telegram; the rest of the chat is under the three dots -->
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.HasViewers}"
-                        Click="OnViewersClick" ToolTip.Tip="{l:Text chat.viewers.title}"
-                        AutomationProperties.Name="{l:Text chat.viewers.title}">
-                    <Image Width="24" Height="24" Source="{StaticResource BaseUsersIcon}"/>
-                </Button>
                 <!-- A phone to start a call; a door to join the one running without us -->
                 <Button Classes="ghost chat-round" IsVisible="{Binding StatusBar.CanHaveCalls}"
                         Command="{Binding StatusBar.CallCommand}" ToolTip.Tip="{Binding StatusBar.CallTip}">
@@ -290,11 +257,20 @@
                                IsVisible="{Binding StatusBar.IsCallRunning}"/>
                     </Panel>
                 </Button>
-            <ToggleButton Classes="pinsToggle" Grid.Column="3" Width="44" Height="44" Padding="10"
-                          VerticalAlignment="Center" ToolTip.Tip="{l:Text chat.pinned.title}"
-                          IsChecked="{Binding StatusBar.IsPinsOpen, Mode=TwoWay}">
-                <Image Source="{StaticResource PinIcon}"/>
-            </ToggleButton>
+                <Button x:Name="ChatMoreButton" Classes="ghost chat-round"
+                        ToolTip.Tip="{l:Text chat.more}" AutomationProperties.Name="{l:Text chat.more}">
+                    <Image Width="20" Height="20" Source="{StaticResource MoreIcon}"/>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Spacing="2">
+                                <menus:MenuItemButton Icon="{StaticResource BaseUsersIcon}" Content="{l:Text chat.viewers.title}"
+                                                      IsVisible="{Binding StatusBar.HasViewers}" Click="OnViewersClick"/>
+                                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.pinned.title}"
+                                                      Click="OnPinsClick"/>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -609,7 +585,10 @@
                             VerticalAlignment="Bottom"
                             Focusable="False"
                             IsVisible="{Binding Composer.IsAttachmentsAllowed}"
-                            Command="{Binding Composer.AttachFilesCommand}">
+                            Command="{Binding Composer.AttachFilesCommand}"
+                            x:Name="AttachButton"
+                            ContextRequested="OnAttachContextRequested"
+                            Click="OnAttachClick">
                         <Image Width="20" Height="20" Source="{StaticResource ClipIcon}"/>
                         <!-- A long press chooses what is done to files attached from now on -->
                         <Button.ContextFlyout>
@@ -691,11 +670,6 @@
 
         <!-- An image of a message opened over the whole chat; two fingers or a double tap zoom it, a
              finger moves the zoomed one, a tap beside it or back closes it -->
-        <Border Grid.Row="2" Grid.RowSpan="2" Classes="pins-panel" Classes.open="{Binding StatusBar.IsPinsOpen}"
-                HorizontalAlignment="Right" ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsPinsOpen}">
-            <views:ChatPinnedMessagesPanel Width="260" HorizontalAlignment="Left"/>
-        </Border>
-
         <ContentControl Grid.Row="0" Grid.RowSpan="4"
                         IsVisible="{Binding IsImageViewerOpen}"
                         Content="{Binding ImageViewer}">
@@ -813,16 +787,32 @@
                     </ScrollViewer>
                 </StackPanel>
 
-                <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
+                <!-- The palette at hand: one tap puts or takes back a reaction and closes the menu -->
+                <ItemsControl ItemsSource="{Binding ReactionChoices}" IsVisible="{Binding CanReact}" Margin="4,0,4,4">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="chatVm:ChatReactionVM">
+                            <Button Classes="ghost quick-reaction" Classes.selected="{Binding IsMine}"
+                                    HorizontalAlignment="Stretch" Height="44" Padding="0" CornerRadius="8"
+                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                    Command="{Binding Choose}" AutomationProperties.Name="{Binding Emoji}">
+                                <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
+                                           FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.reaction.more}"
                                       IsVisible="{Binding CanReact}">
                     <menus:MenuItemButton.Flyout>
-                        <Flyout Placement="Top" FlyoutPresenterClasses="reaction-picker">
-                            <ScrollViewer MaxHeight="288" HorizontalScrollBarVisibility="Disabled">
-                            <sharedChat:ChatReactionPicker/>
-                            </ScrollViewer>
+                        <Flyout Placement="Top" Opened="OnEmojiPickerOpened">
+                            <emoji:EmojiPickerView x:Name="AllEmoji" Width="320" Height="360"/>
                         </Flyout>
                     </menus:MenuItemButton.Flyout>
                 </menus:MenuItemButton>
+                <Separator IsVisible="{Binding CanReact}"/>
                 <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
                                       IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
                 <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
@@ -866,6 +856,10 @@
         </common:BottomSheet>
         <Border Grid.RowSpan="4" IsVisible="{Binding StatusBar.Viewers.IsOpen, FallbackValue=False}">
             <views:ChatViewersPanel x:Name="ViewersPanel" DataContext="{Binding StatusBar.Viewers}"/>
+        </Border>
+        <!-- The pinned messages take the whole chat, as a page like the list of users -->
+        <Border Grid.RowSpan="4" IsVisible="{Binding StatusBar.IsPinsOpen}">
+            <views:ChatPinnedMessagesPanel x:Name="PinnedPanel"/>
         </Border>
     </Grid>
 </UserControl>

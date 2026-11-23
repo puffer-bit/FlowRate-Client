@@ -10,22 +10,18 @@
     <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
         <Grid RowDefinitions="Auto,*" RowSpacing="6">
             <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <!-- A page of its own: back, the title, and the options of the list at the right of the header -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                     <Button Classes="borderless" Width="44" Height="44" Padding="12" Click="OnBackClick">
                         <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
                     </Button>
                     <TextBlock Grid.Column="1" Text="{l:Text chat.viewers.title}" FontSize="18"
-                               FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </Grid>
-                <Grid ColumnDefinitions="14,*,Auto" ColumnSpacing="6" Margin="6,0"
-                      ToolTip.Tip="{l:Text chat.viewers.title}">
-                    <Image Width="14" Height="14" Source="{StaticResource BaseUsersIcon}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="2" Classes="borderless" Padding="4" Width="44" Height="44"
+                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="2" Classes="borderless" Padding="0" Width="44" Height="44"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             ToolTip.Tip="{l:Text chat.viewers.options}"
                             AutomationProperties.Name="{l:Text chat.viewers.options}">
-                        <Image Width="16" Height="16" Source="{StaticResource MoreIcon}"/>
+                        <Image Width="20" Height="20" Source="{StaticResource MoreIcon}"/>
                         <Button.Flyout>
                             <Flyout Placement="BottomEdgeAlignedRight">
                                 <StackPanel Spacing="2">

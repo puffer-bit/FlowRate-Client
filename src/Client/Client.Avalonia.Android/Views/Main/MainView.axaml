@@ -73,6 +73,27 @@
             <Setter Property="RenderTransform" Value="translateX(0px)"/>
         </Style>
 
+        <!-- The new chat button of the home screen: an accent circle with a plus -->
+        <Style Selector="Button.new-chat-button">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.new-chat-button /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.new-chat-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
+        </Style>
+        <Style Selector="Path.new-chat-plus">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Stretch" Value="None"/>
+            <Setter Property="Data" Value="M11,3 V19 M3,11 H19"/>
+            <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+        </Style>
+
         <!-- A fact about the server: what it is on the left, the value on the right -->
         <Style Selector="TextBlock.infoLabel">
             <Setter Property="FontSize" Value="14"/>
@@ -117,10 +138,24 @@
             <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
             <views:PrivateChatsView Grid.Row="2" x:Name="HomeChats" DataContext="{Binding SessionsList}"/>
+
+            <!-- A new direct chat or group, where the thumb is -->
+            <Border Grid.Row="2" Classes="new-chat"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16"
+                    CornerRadius="28" BoxShadow="{DynamicResource FloatingButtonShadow}"
+                    IsVisible="{Binding ServerTitle.IsReady}">
+                <Button Classes="new-chat-button" Width="56" Height="56" Padding="0" CornerRadius="28"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        Command="{Binding CreatePrivateChatCommand}"
+                        ToolTip.Tip="{l:Text privateChats.newChat}"
+                        AutomationProperties.Name="{l:Text privateChats.newChat}">
+                    <Path Classes="new-chat-plus"/>
+                </Button>
+            </Border>
         </Grid>
 
         <!-- The session that is open -->
-        <ContentControl Grid.Row="0" x:Name="Screen"/>
+        <ContentControl Grid.Row="0" x:Name="Screen" IsVisible="False" Background="{DynamicResource GeneralBrush}"/>
 
         <!-- The menu. The backdrop covers the screen and takes the pointer input; a tap on it closes the menu -->
         <Panel Grid.Row="0" x:Name="Drawer" Classes="drawer" ClipToBounds="True">

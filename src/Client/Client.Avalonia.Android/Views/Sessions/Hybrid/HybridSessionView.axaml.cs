@@ -86,6 +86,7 @@ public partial class HybridSessionView : UserControl
 
         _fullscreen = stream;
         stream.PropertyChanged += OnFullscreenStreamChanged;
+        FullscreenZoom.ResetZoom();
         FullscreenPicture.Stream = stream;
         FullscreenPerf.Stream = stream;
         FullscreenLayer.IsVisible = true;

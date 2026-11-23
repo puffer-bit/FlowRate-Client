@@ -249,6 +249,9 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CreateSessionCommand { get; }
+
+    /// <summary>A direct chat or a group, whatever list the side panel shows.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> CreatePrivateChatCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
@@ -332,6 +335,7 @@ public partial class MainWindowVM : ReactiveObject
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectToCoordinator);
         DisconnectCommand = ReactiveCommand.CreateFromTask(Disconnect);
         CreateSessionCommand = ReactiveCommand.CreateFromTask(() => CreateNewSession(null));
+        CreatePrivateChatCommand = ReactiveCommand.CreateFromTask(() => CreateNewSession(null, privateMode: true));
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeChatSessionSettingsCommand = ReactiveCommand.CreateFromTask<(int SessionId, string Name, string? Description), RequestResult>(
@@ -363,7 +367,7 @@ public partial class MainWindowVM : ReactiveObject
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
             _users.PokePeerCommand,
-            ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
+            ReactiveCommand.CreateFromTask<int?>(categoryId => CreateNewSession(categoryId)),
             playback, voiceActivity, screenWatch, peerStats, listPreferences,
             ChatReads,
             Access,
@@ -633,9 +637,11 @@ public partial class MainWindowVM : ReactiveObject
     }
 
     /// <param name="categoryId">The category the new session goes into, or null for none.</param>
-    private async Task CreateNewSession(int? categoryId)
+    /// <param name="privateMode">A direct chat or a group whatever the list shows; null follows the list.</param>
+    private async Task CreateNewSession(int? categoryId, bool? privateMode = null)
     {
-        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId, privateMode: SessionsList.IsPrivateMode);
+        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId,
+            privateMode: privateMode ?? SessionsList.IsPrivateMode);
         await ShowCreateSessionWindow.Handle(vm);
         if (vm.CreatedSession is { } created)
             await OpenSession(created);

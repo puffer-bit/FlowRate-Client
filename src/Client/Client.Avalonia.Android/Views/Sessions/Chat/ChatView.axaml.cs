@@ -16,11 +16,13 @@ using Client.Avalonia.Localization;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Panels;
+using Client.Core.Settings;
 using Client.Services;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Dialogs;
 using Client.Droid.Platform;
 using ReactiveUI;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.Droid.Views.Sessions.Chat;
@@ -46,6 +48,52 @@ public partial class ChatView : UserControl
     {
         if (sender is Control { DataContext: ChatAttachmentVM attachment } && DataContext is ActiveChatSessionVM chat)
             chat.Composer.RemoveAttachmentCommand.Execute(attachment).Subscribe();
+    }
+
+    // The long press that opened the defaults of the attachments is still the press of the button:
+    // letting it go clicks it, and the click must not open the file picker as well
+    private bool _isAttachPressHeld;
+
+    private void OnAttachContextRequested(object? sender, ContextRequestedEventArgs e) => _isAttachPressHeld = true;
+
+    // Handled, the click does not run the command of the button
+    private void OnAttachClick(object? sender, RoutedEventArgs e)
+    {
+        if (!_isAttachPressHeld)
+            return;
+
+        _isAttachPressHeld = false;
+        e.Handled = true;
+    }
+
+    private readonly Client.Core.Chat.RecentEmoji _recentEmoji = new();
+    private Flyout? _emojiPickerFlyout;
+
+    /// <summary>Gives the reaction a double tap puts on a message; set by the root view.</summary>
+    public Func<Task<string>>? QuickReaction { get; set; }
+
+    private void OnEmojiPickerOpened(object? sender, EventArgs e)
+    {
+        _emojiPickerFlyout = sender as Flyout;
+        AllEmoji.Open(_recentEmoji);
+    }
+
+    private async void OnMessageDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        var source = e.Source as Visual;
+        // A double tap on what has a tap of its own, such as an image or a reaction, is two taps on it
+        if (source?.GetSelfAndVisualAncestors().TakeWhile(visual => visual != MessagesList)
+                .Any(visual => visual is Button) == true)
+            return;
+
+        var message = source?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
+        if (message is not { IsSystem: false, CanReact: true } || QuickReaction is not { } quickReaction)
+            return;
+
+        e.Handled = true;
+        var emoji = await quickReaction();
+        message.ToggleReaction(ChatReactionEmoji.IsSupported(emoji) ? emoji : BehaviorSettings.DefaultQuickReaction);
     }
 
     // Older messages are requested while the viewport is within this many screens of the top,
@@ -86,6 +134,23 @@ public partial class ChatView : UserControl
             _mentionPicker = Chat?.Composer.MentionPicker;
         };
 
+        // Any emoji, for the message of the open menu; choosing one closes the picker and the menu
+        AllEmoji.EmojiPicked += async (_, e) =>
+        {
+            if (MessageMenu.DataContext is not ChatMessageVM { CanReact: true } message)
+                return;
+            e.Accepted = true;
+            _emojiPickerFlyout?.Hide();
+            await message.ChooseReactionAsync(e.Entry.Text);
+        };
+        AllEmoji.CloseRequested += (_, _) => _emojiPickerFlyout?.Hide();
+
+        // A double tap on a message puts the reaction chosen in the settings, or takes it back
+        MessagesList.AddHandler(DoubleTappedEvent, OnMessageDoubleTapped);
+
+        // A new press starts clean, whatever became of the last one
+        AttachButton.AddHandler(PointerPressedEvent, (_, _) => _isAttachPressHeld = false, RoutingStrategies.Tunnel);
+
         // A long press asks for the context menu, as the right button does with a mouse
         MessagesList.AddHandler(ContextRequestedEvent, OnMessageContextRequested);
 
@@ -119,7 +184,18 @@ public partial class ChatView : UserControl
         }
     }
 
-    private void OnViewersClick(object? sender, RoutedEventArgs e) => Chat?.StatusBar.Viewers?.Open();
+    private void OnViewersClick(object? sender, RoutedEventArgs e)
+    {
+        ChatMoreButton.Flyout?.Hide();
+        Chat?.StatusBar.Viewers?.Open();
+    }
+
+    private void OnPinsClick(object? sender, RoutedEventArgs e)
+    {
+        ChatMoreButton.Flyout?.Hide();
+        if (Chat is { } chat)
+            chat.StatusBar.IsPinsOpen = true;
+    }
 
     public bool TryCloseViewers()
     {

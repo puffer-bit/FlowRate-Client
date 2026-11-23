@@ -552,6 +552,7 @@ public class SettingsRepositoriesTests
         Assert.Equal(CloseButtonAction.Ask, settings.CloseButtonAction);
         Assert.True(settings.IsUpdateCheckOnStartupEnabled);
         Assert.Equal(UpdateChannel.Release, settings.UpdateChannel);
+        Assert.Equal(BehaviorSettings.DefaultQuickReaction, settings.QuickReaction);
     }
 
     [Fact]
@@ -568,7 +569,8 @@ public class SettingsRepositoriesTests
             IsPropagatedConnectionWarningEnabled = false,
             CloseButtonAction = CloseButtonAction.MinimizeToTray,
             IsUpdateCheckOnStartupEnabled = false,
-            UpdateChannel = UpdateChannel.Dev
+            UpdateChannel = UpdateChannel.Dev,
+            QuickReaction = "🔥"
         });
         var settings = await repository.GetAsync();
 
@@ -579,6 +581,7 @@ public class SettingsRepositoriesTests
         Assert.Equal(CloseButtonAction.MinimizeToTray, settings.CloseButtonAction);
         Assert.False(settings.IsUpdateCheckOnStartupEnabled);
         Assert.Equal(UpdateChannel.Dev, settings.UpdateChannel);
+        Assert.Equal("🔥", settings.QuickReaction);
     }
 
     [Fact]

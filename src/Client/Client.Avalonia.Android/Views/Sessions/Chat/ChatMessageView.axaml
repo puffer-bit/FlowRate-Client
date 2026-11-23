@@ -13,8 +13,8 @@
              x:Class="Client.Droid.Views.Sessions.Chat.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
 
-    <!-- The message as the desktop shows it, without the time of a continuation, which appears on
-         hover there. The menu of a message is a sheet of the chat view, opened by a long press -->
+    <!-- The message as the desktop shows it, with the time of a continuation always shown. The menu
+         of a message is a sheet of the chat view, opened by a long press -->
     <Border Classes="msg-root"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
@@ -32,6 +32,15 @@
                    Width="16" Height="16" Margin="6,2,0,0" VerticalAlignment="Top">
                 <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
                 <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
+            </Panel>
+
+            <!-- A continuation shows its time in place of the avatar, always: a phone has no hover to reveal it.
+                 The hidden text is one line of the message body, so the time is centered on that first line -->
+            <Panel Grid.Column="0" IsVisible="{Binding !IsSequenceStart}"
+                   Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
+                <TextBlock Classes="msg-time" VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
             </Panel>
 
             <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"

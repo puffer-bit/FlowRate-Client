@@ -3,6 +3,7 @@ using Client.Droid.Views.Sessions.Chat;
 using Client.Droid.Views.Sessions.Hybrid;
 using System;
 using System.Linq;
+using System.Threading;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -12,10 +13,13 @@ using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Application.Ports;
+using Client.Application.Settings;
 using Client.Application.Sounds;
 using Client.Avalonia.Localization;
+using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
 using Client.Core.Push;
 using Client.Droid.Platform;
@@ -60,10 +64,17 @@ public partial class MainView : UserControl
     private bool _readyForCallActions;
     private bool _handlingCallAction;
 
+    // Moves the open session sideways while it comes in or goes out
+    private readonly TranslateTransform _screenShift = new();
+    private CancellationTokenSource? _screenSlide;
+    // Whether a session is on the screen, or on its way there
+    private bool _isScreenShown;
+
 
     public MainView()
     {
         InitializeComponent();
+        Screen.RenderTransform = _screenShift;
         _navigation = new MainViewNavigation(this, DialogLayer, ShowCurrentScreen,
             () => _viewModel?.CurrentContent as ActiveHybridSessionVM, () => _services);
 
@@ -94,6 +105,8 @@ public partial class MainView : UserControl
         _services = services;
         DataContext = viewModel;
         _chatView.MenuRequested += OpenDrawer;
+        var behavior = services.GetRequiredService<IBehaviorService>();
+        _chatView.QuickReaction = async () => (await behavior.GetSettingsAsync()).QuickReaction;
         Sessions.ServerMenuRequested += OpenServerMenu;
         Sessions.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatMenuRequested += OpenChatMenu;
@@ -384,15 +397,14 @@ public partial class MainView : UserControl
             }
 
             Screen.Content = _chatView;
-            Home.IsVisible = false;
+            ShowScreen();
             return;
         }
 
-        _chatView.DataContext = null;
-        _chatDialogs.Disposable = null;
-
         if (_viewModel?.CurrentContent is ActiveHybridSessionVM hybrid)
         {
+            ReleaseChat();
+
             if (!ReferenceEquals(_hybridView.DataContext, hybrid))
             {
                 _hybridView.DataContext = hybrid;
@@ -405,12 +417,91 @@ public partial class MainView : UserControl
             // Shown since it was joined, so its row is in the list already
             _hybridView.ShowPeers(FindListSession(hybrid.Model.Id)?.Peers);
             Screen.Content = _hybridView;
+            ShowScreen();
+            return;
+        }
+
+        // The session slides away with what it showed, and is let go once it is off the screen
+        if (_isScreenShown)
+        {
+            _isScreenShown = false;
+            SlideScreen(show: false);
+        }
+    }
+
+    private void ReleaseChat()
+    {
+        _chatView.DataContext = null;
+        _chatDialogs.Disposable = null;
+    }
+
+    private void ShowScreen()
+    {
+        if (_isScreenShown)
+            return;
+
+        _isScreenShown = true;
+        SlideScreen(show: true);
+    }
+
+    // A session comes in from the right over the personal chats, and goes back out to the right
+    private async void SlideScreen(bool show)
+    {
+        // A slide the other way that is still running turns around from where it got to
+        var current = _screenShift.X;
+        _screenSlide?.Cancel();
+        var slide = _screenSlide = new CancellationTokenSource();
+        var width = Root.Bounds.Width;
+
+        Home.IsVisible = true;
+        if (show && !Screen.IsVisible)
+            current = width;
+        Screen.IsVisible = true;
+        _screenShift.X = current;
+
+        var target = show ? 0 : width;
+        var duration = Motion.Get(MotionDuration.Long);
+        if (duration > TimeSpan.Zero && width > 0 && current != target
+            && TopLevel.GetTopLevel(this) is { } topLevel)
+        {
+            // Moved frame by frame here rather than by an animation: an animation lets go of its value
+            // when it ends, and the screen would jump back to where it started for a frame
+            var ease = Motion.Ease(MotionEase.Standard);
+            var finished = new TaskCompletionSource();
+            TimeSpan? start = null;
+            void Step(TimeSpan time)
+            {
+                if (slide.IsCancellationRequested)
+                {
+                    finished.TrySetResult();
+                    return;
+                }
+
+                start ??= time;
+                var progress = Math.Clamp((time - start.Value) / duration, 0, 1);
+                _screenShift.X = current + (target - current) * ease.Ease(progress);
+                if (progress < 1)
+                    topLevel.RequestAnimationFrame(Step);
+                else
+                    finished.TrySetResult();
+            }
+
+            topLevel.RequestAnimationFrame(Step);
+            await finished.Task;
+            if (slide.IsCancellationRequested)
+                return;
+        }
+
+        _screenShift.X = 0;
+        if (show)
+        {
             Home.IsVisible = false;
             return;
         }
 
+        Screen.IsVisible = false;
         Screen.Content = null;
-        Home.IsVisible = true;
+        ReleaseChat();
     }
 
     private void OpenDrawer() => Drawer.Classes.Set("open", true);
