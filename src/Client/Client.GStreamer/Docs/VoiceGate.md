@@ -24,7 +24,7 @@ This has two purposes:
 | `Interop/GstBusWatcher.cs` | Takes bus messages on a managed thread of its own |
 | `Loader/GstElementCheck.cs` | Reports at startup whether the runtime has `level`, `webrtcdsp` and `audiornnoise` |
 | `Client.Core/Settings/AudioSettings.cs`, `VoiceGateOptions.cs` | The settings of the gate and their limits; the record the gate travels as |
-| `Client.Infrastructure/Database/Migrations/001_Initial.sql`, `012_VoiceGateOptions.sql` | Hold the settings in the `AudioSettings` table |
+| `Database/Client.Database.Sqlite/Migrations/001_Initial.sql`, `012_VoiceGateOptions.sql` | Hold the settings in the `AudioSettings` table |
 | `Client.Avalonia.Desktop/.../AudioControlVM.cs`, `AudioControl.axaml` | The settings tab: switches, threshold slider, meter |
 | `Build/linux/meson-options.txt`, `Build/linux/Dockerfile`, `Build/windows/collect.ps1` | Put `level` and `audiornnoise` into the bundled runtime |
 

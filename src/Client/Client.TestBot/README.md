@@ -109,9 +109,9 @@ Every `--stats-interval` seconds the bots report their counters together:
 ## Behavior
 
 - **Identities.** Each bot keeps its user between runs instead of registering a new one. Identities
-  are stored per server and bot number in
-  `<LocalApplicationData>/FlowRate/TestBot/identity-<host>-<port>-<n>.txt`. Delete the file to get a
-  new user.
+  are recovered from plaintext recovery phrases stored per server and bot number in
+  `<LocalApplicationData>/FlowRate/TestBot/phrase-<host>-<port>-<n>.txt`. Delete the file to get a
+  new user. Storage is provided by `Client.Database.File`; TestBot supplies the data directory.
 - **Certificates.** The bot trusts whatever certificate the server presents, in memory only. It is
   meant for test servers.
 - **Audio files.** A file is decoded once to raw 48 kHz mono S16LE and cached in the temp directory

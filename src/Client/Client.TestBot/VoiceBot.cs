@@ -30,6 +30,8 @@ internal sealed partial class VoiceBot
     private readonly IWebRTCTransportFactory _transports;
     private readonly ILogger<VoiceBot> _logger;
     private readonly LoadStats _stats;
+    private readonly IRecoveryPhraseStore _recoveryPhrases;
+    private readonly string _profileId;
 
     private ICoordinatorSession? _coordinator;
     private HybridSession? _session;
@@ -66,6 +68,8 @@ internal sealed partial class VoiceBot
         _services = services;
         _transports = transports;
         _logger = services.GetRequiredService<ILogger<VoiceBot>>();
+        _recoveryPhrases = services.GetRequiredService<IRecoveryPhraseStore>();
+        _profileId = $"{options.Host}-{options.Port}-{index + 1}";
 
         _voiceActivity.Changed += (_, userId, isSpeaking) =>
         {
@@ -88,7 +92,7 @@ internal sealed partial class VoiceBot
 
         // The bot logs in with the recovery phrase of its account as a temporary device, which leaves no device
         // behind; the first run registers the account
-        var phrase = LoadPhrase();
+        var phrase = _recoveryPhrases.Load(_profileId);
         LoginPlan login = phrase != null ? new RecoveryLoginPlan(phrase, Temporary: true) : new RegisterLoginPlan();
         var connectStarted = Stopwatch.GetTimestamp();
         await _coordinator.Connect(_options.Host, _options.Port, _options.Password, login);
@@ -120,7 +124,7 @@ internal sealed partial class VoiceBot
             }
         };
 
-        SavePhrase(_coordinator.TakeNewRecoveryPhrase());
+        _recoveryPhrases.Save(_profileId, _coordinator.TakeNewRecoveryPhrase());
         Log($"connected as {_coordinator.GetCurrentUser().Username}");
 
         if (_options.ChatInterval is { } chatInterval)
@@ -664,40 +668,6 @@ internal sealed partial class VoiceBot
             }
 
             voiceSessions = await GetVoiceSessionsAsync(coordinator);
-        }
-    }
-
-    // Each bot keeps its own user between runs instead of registering a new one every time. A test account only:
-    // the phrase is its master key and lies here in plain text
-    private string PhrasePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FlowRate", "TestBot", $"phrase-{_options.Host}-{_options.Port}-{_index + 1}.txt");
-
-    private string? LoadPhrase()
-    {
-        try
-        {
-            return File.Exists(PhrasePath) ? File.ReadAllText(PhrasePath).Trim() : null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-    }
-
-    private void SavePhrase(string? phrase)
-    {
-        if (string.IsNullOrWhiteSpace(phrase))
-            return;
-
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(PhrasePath)!);
-            File.WriteAllText(PhrasePath, phrase);
-        }
-        catch (IOException exception)
-        {
-            Log($"failed to save the recovery phrase: {exception.Message}");
         }
     }
 

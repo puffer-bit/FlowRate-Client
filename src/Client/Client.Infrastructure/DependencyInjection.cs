@@ -1,7 +1,5 @@
 using Client.Application.Ports;
-using Client.Application.Ports.Repositories;
-using Client.Infrastructure.Database;
-using Client.Infrastructure.Database.Repositories;
+using Client.Database.Sqlite;
 using Client.Infrastructure.Media;
 using Client.Tools.AppInfo;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,33 +18,8 @@ public static class DependencyInjection
     /// </param>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string? databaseDirectory = null)
     {
-        services.AddSingleton(databaseDirectory == null ? new SqliteDatabase() : SqliteDatabase.In(databaseDirectory));
-        services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
-        services.AddSingleton<IDatabaseProtection, DatabaseProtection>();
+        services.AddSqliteDatabase(databaseDirectory ?? AppDirectories.Data);
         services.AddSingleton<IReleaseNotesSource, Updates.GitHubReleaseNotesSource>();
-
-        services.AddSingleton<IAccountingSettingsRepository, AccountingSettingsRepository>();
-        services.AddSingleton<ISecretsRepository, SecretsRepository>();
-        services.AddSingleton<IAppearanceSettingsRepository, AppearanceSettingsRepository>();
-        services.AddSingleton<IBehaviorSettingsRepository, BehaviorSettingsRepository>();
-        services.AddSingleton<IAudioSettingsRepository, AudioSettingsRepository>();
-        services.AddSingleton<IScreenShareSettingsRepository, ScreenShareSettingsRepository>();
-        services.AddSingleton<ICameraPreferencesRepository, CameraPreferencesRepository>();
-        services.AddSingleton<IChatAttachmentPreferencesRepository, ChatAttachmentPreferencesRepository>();
-        services.AddSingleton<ICollapsedSectionsRepository, CollapsedSectionsRepository>();
-        services.AddSingleton<IDismissedPromptsRepository, DismissedPromptsRepository>();
-        services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();
-        services.AddSingleton<IUserNotesRepository, UserNotesRepository>();
-        services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
-        services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
-        services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();
-        services.AddSingleton<IChatReadStateRepository, ChatReadStateRepository>();
-        services.AddSingleton<ICoordinatorStateRepository, CoordinatorStateRepository>();
-        services.AddSingleton<IPushKeysRepository, PushKeysRepository>();
-        services.AddSingleton<IStorageSettingsRepository, StorageSettingsRepository>();
-        services.AddSingleton<IVideoSettingsRepository, VideoSettingsRepository>();
-        services.AddSingleton<IDebugSettingsRepository, DebugSettingsRepository>();
-        services.AddSingleton<IHotKeysSettingsRepository, HotKeysSettingsRepository>();
         services.AddSingleton<IMediaCache>(provider => new MediaCache(
             Path.Combine(databaseDirectory ?? AppDirectories.Data, MediaCache.FolderName),
             provider.GetRequiredService<ILogger<MediaCache>>()));
