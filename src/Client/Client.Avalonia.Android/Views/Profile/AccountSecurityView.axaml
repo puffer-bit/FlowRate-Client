@@ -230,7 +230,7 @@
 
                     <StackPanel Spacing="6" IsVisible="{Binding IsLinkCodeAsked}" IsEnabled="{Binding !IsBusy}">
                         <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.link.code}"/>
-                        <TextBox Text="{Binding LinkCode}" MaxLength="40" PlaceholderText="XXXX-XXXX" MinHeight="44"/>
+                        <TextBox Text="{Binding LinkCode}" MaxLength="40" PlaceholderText="{l:Text accountSecurity.link.codePlaceholder}" MinHeight="44"/>
                         <StackPanel Spacing="6" IsVisible="{Binding IsLinkInfoShown}">
                             <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding LinkInfoText}"/>
                             <Button MinHeight="44" Command="{Binding DeclineLinkCommand}">

@@ -1573,6 +1573,8 @@
   "connect.login.byDevice": "С другого устройства",
   "connect.login.byCode": "Код входа",
   "connect.login.usernamePlaceholder": "Ник",
+  "connect.login.codePlaceholder": "XXXX-XXXX-XXXX",
+  "accountSecurity.link.codePlaceholder": "XXXX-XXXX",
   "connect.login.usernameHint": "Дальше спросят пароль или одноразовый код аккаунта. В аккаунт без них по нику войти нельзя.",
   "connect.login.phrasePlaceholder": "24 слова фразы восстановления",
   "connect.login.phraseHint": "Одной фразы достаточно, даже если включены одноразовые коды. Регистр, номера и запятые не важны.",

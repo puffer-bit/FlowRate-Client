@@ -2157,6 +2157,8 @@
   "connect.login.byDevice": "From another device",
   "connect.login.byCode": "Login code",
   "connect.login.usernamePlaceholder": "Username",
+  "connect.login.codePlaceholder": "XXXX-XXXX-XXXX",
+  "accountSecurity.link.codePlaceholder": "XXXX-XXXX",
   "connect.login.usernameHint": "Then the password or one-time code of the account is asked. An account without them cannot be logged in to by username.",
   "connect.login.phrasePlaceholder": "24 words of the recovery phrase",
   "connect.login.phraseHint": "The phrase alone logs in, one-time codes or not. Case, numbers and commas do not matter.",

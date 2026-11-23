@@ -1503,6 +1503,8 @@
   "connect.login.byDevice": "Desde otro dispositivo",
   "connect.login.byCode": "Código de acceso",
   "connect.login.usernamePlaceholder": "Nombre de usuario",
+  "connect.login.codePlaceholder": "XXXX-XXXX-XXXX",
+  "accountSecurity.link.codePlaceholder": "XXXX-XXXX",
   "connect.login.usernameHint": "Después se pide la contraseña o el código de un solo uso de la cuenta. A una cuenta sin ellos no se entra por nombre.",
   "connect.login.phrasePlaceholder": "Las 24 palabras de la frase de recuperación",
   "connect.login.phraseHint": "La frase sola basta para entrar, con códigos de un solo uso o sin ellos. Mayúsculas, números y comas dan igual.",
