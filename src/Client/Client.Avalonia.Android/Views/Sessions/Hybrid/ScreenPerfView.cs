@@ -16,11 +16,20 @@ public sealed class ScreenPerfView : Panel
     public static readonly StyledProperty<bool> IsFullscreenProperty =
         AvaloniaProperty.Register<ScreenPerfView, bool>(nameof(IsFullscreen));
 
-    private readonly StreamPerfOverlay _overlay = new()
+    // Over the whole display the statistics start below the button that closes it
+    private static readonly Thickness TileMargin = new(6);
+    private static readonly Thickness FullscreenMargin = new(6, 64, 6, 6);
+
+    private readonly StreamPerfOverlay _overlay = new();
+
+    // The extended statistics can be taller than the picture: they scroll instead of being cut
+    private readonly ScrollViewer _scroller = new()
     {
         HorizontalAlignment = HorizontalAlignment.Left,
         VerticalAlignment = VerticalAlignment.Bottom,
-        Margin = new Thickness(6)
+        HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+        VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+        Margin = TileMargin
     };
 
     // The stream the statistics come from now
@@ -28,7 +37,8 @@ public sealed class ScreenPerfView : Panel
 
     public ScreenPerfView()
     {
-        Children.Add(_overlay);
+        _scroller.Content = _overlay;
+        Children.Add(_scroller);
     }
 
     public ScreenStreamVM? Stream
@@ -51,7 +61,10 @@ public sealed class ScreenPerfView : Panel
         if (change.Property == StreamProperty && VisualRoot != null)
             Attach(Stream);
         else if (change.Property == IsFullscreenProperty)
+        {
             _overlay.IsExpandedTile = IsFullscreen;
+            _scroller.Margin = IsFullscreen ? FullscreenMargin : TileMargin;
+        }
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

@@ -156,7 +156,13 @@
                 <!-- The user and the settings -->
                 <Button Grid.Column="2" Classes="borderless home-action"
                         ToolTip.Tip="{l:Text chat.more}" AutomationProperties.Name="{l:Text chat.more}">
-                    <Image Width="22" Height="22" Source="{StaticResource MoreIcon}"/>
+                    <!-- The dot tells of notifications that have not been looked at -->
+                    <Panel>
+                        <Image Width="22" Height="22" Source="{StaticResource MoreIcon}"/>
+                        <Ellipse Classes="unread-dot" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,-1,-3,0"
+                                 IsVisible="{Binding Notifications.HasUnread}"/>
+                    </Panel>
                     <common:PopupMenus.Menu>
                         <StackPanel Spacing="2">
                             <!-- The signed-in user: a tap opens the profile -->
@@ -186,6 +192,16 @@
                             <menus:MenuItemButton Icon="{StaticResource StatusOnlineIcon}" Content="{l:Text profile.status.title}"
                                                   IsVisible="{Binding IsConnected}" Click="OnStatusMenuClick"/>
                             <Separator IsVisible="{Binding IsConnected}"/>
+
+                            <!-- Everything shown at the top of the screen before, on a page of its own -->
+                            <menus:MenuItemButton Icon="{StaticResource BellIcon}" Click="OnNotificationsClick">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{l:Text notification.center.title}" VerticalAlignment="Center"/>
+                                    <Ellipse Classes="unread-dot" VerticalAlignment="Center"
+                                             IsVisible="{Binding Notifications.HasUnread}"/>
+                                </StackPanel>
+                            </menus:MenuItemButton>
+                            <Separator/>
 
                             <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text settings.title}"
                                                   Click="OnSettingsClick"/>
@@ -235,7 +251,7 @@
                 </Panel>
             </Border>
 
-            <main:CallBar Grid.Row="4"/>
+            <main:CallBar x:Name="CallBar" Grid.Row="4"/>
         </Grid>
 
         <!-- The session that is open -->
@@ -435,7 +451,11 @@
                         <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
                                               Command="{Binding SelfSession.ToggleSoundCommand}"
                                               IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+                        <!-- Going away takes the last reason at once; another one is chosen apart -->
                         <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                              Command="{Binding SelfSession.ToggleAfkCommand}"
+                                              Click="OnPeerMenuClick" IsVisible="{Binding !SelfSession.IsAfk}"/>
+                        <menus:MenuItemButton Content="{l:Text hybrid.afk.withReason}"
                                               Click="OnPeerAfkClick" IsVisible="{Binding !SelfSession.IsAfk}"/>
                         <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
                                               Command="{Binding SelfSession.ToggleAfkCommand}"
@@ -446,7 +466,10 @@
 
                     <!-- The menu stays open while playback is adjusted. -->
                     <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+                        <!-- A poke goes at once; a message for it is written apart -->
                         <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                              IsVisible="{Binding CanPoke}" Click="OnPeerPokeNowClick"/>
+                        <menus:MenuItemButton Content="{l:Text peer.poke.withMessage}"
                                               IsVisible="{Binding CanPoke}" Click="OnPeerPokeClick"/>
                         <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
                                               IsVisible="{Binding CanShowConnectionStats}" Click="OnPeerStatsClick"/>
@@ -604,8 +627,9 @@
             <common:PopupMenu x:Name="SharedMenu" ClosesOnItemClick="True"/>
         </Panel>
 
+        <!-- Notifications of the whole application, at the top of the screen over everything else -->
         <notifications:ToastHost Grid.Row="0" DataContext="{Binding Notifications}"
-                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,56,12,12"/>
+                                 HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="12,8,12,12"/>
 
         <main:StartupScreen Grid.Row="0" x:Name="StartupOverlay"/>
 

@@ -179,6 +179,10 @@
         <Style Selector="Expander.releaseNote /template/ ToggleButton:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:checked:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:pressed /template/ Border#ExpandCollapseChevronBorder, Expander.releaseNote /template/ ToggleButton:checked:pressed /template/ Border#ExpandCollapseChevronBorder">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+        <!-- The notes end where their text ends, without the bottom padding of the template -->
+        <Style Selector="Expander.releaseNote /template/ Border#ExpanderContent">
+            <Setter Property="Padding" Value="16,16,16,0"/>
+        </Style>
         <!-- The release timeline: a card only around the notes that are open, the newest release in the accent;
              everything blends from one state to the next -->
         <Style Selector="Expander.releaseNote /template/ ToggleButton /template/ Border#ToggleButtonBackground">
@@ -1184,7 +1188,7 @@
                                                     </ItemsControl>
                                                 </StackPanel>
                                             </Expander.Header>
-                                            <StackPanel Spacing="14" Margin="8,0,8,12">
+                                            <StackPanel Spacing="14" Margin="8,0,8,0">
                                                 <ItemsControl ItemsSource="{Binding Sections}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><StackPanel Spacing="14"/></ItemsPanelTemplate>

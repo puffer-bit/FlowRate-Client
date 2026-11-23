@@ -14,7 +14,7 @@
              x:DataType="chatVm:ChatMessageVM">
 
     <!-- The message as the desktop shows it, with the time of a continuation always shown. The menu
-         of a message is a sheet of the chat view, opened by a long press -->
+         of a message is a sheet of the chat view, opened by a tap or a long press -->
     <Border Classes="msg-root"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
@@ -22,7 +22,7 @@
             Classes.mentioned="{Binding IsMentioningMe}">
         <!-- The avatar column stays in continuations, so their text lines up with the first message -->
         <Panel>
-            <events:ChatSystemMessageView IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
+            <events:ChatSystemMessageView CenterInlineUsers="True" IsVisible="{Binding IsSystem}" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
                                           Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
         <Grid ColumnDefinitions="46, *, Auto" IsVisible="{Binding !IsSystem}">
 
@@ -214,7 +214,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatReactionVM">
-                            <Button anim:Presence.Appear="Grow" Classes="msg-reaction" Classes.mine="{Binding IsMine}"
+                            <Button anim:Presence.Appear="None" anim:Presence.Leave="None" Classes="msg-reaction" Classes.mine="{Binding IsMine}"
                                     Command="{Binding Toggle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}" FontSize="16" VerticalAlignment="Center"/>

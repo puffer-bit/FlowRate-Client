@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
@@ -65,8 +66,8 @@
 
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="20,16,20,24" Spacing="18">
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text createSession.hint}" IsVisible="{Binding ShowServerOptions}"/>
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text privateChats.createHint}" IsVisible="{Binding IsPrivateMode}"/>
+                <hints:HintBlock Text="{l:Text createSession.hint}" IsVisible="{Binding ShowServerOptions}"/>
+                <hints:HintBlock Text="{l:Text privateChats.createHint}" IsVisible="{Binding IsPrivateMode}"/>
 
                 <StackPanel Spacing="18" IsEnabled="{Binding !IsBusy}">
 

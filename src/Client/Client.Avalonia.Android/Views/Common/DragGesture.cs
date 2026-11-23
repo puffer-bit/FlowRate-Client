@@ -76,16 +76,24 @@ public sealed class DragGesture
 
     private void OnPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_pointer != null)
+        // A second finger: a pinch, not a drag
+        if (!e.Pointer.IsPrimary)
         {
-            // A second finger: a pinch, not a drag
-            if (!_isDragging)
+            if (_pointer != null && !_isDragging)
                 _isRejected = true;
             return;
         }
 
         if (e.Pointer.Type == PointerType.Mouse && !e.GetCurrentPoint(_host).Properties.IsLeftButtonPressed)
             return;
+
+        // A primary press means no other finger is down: what is still tracked was lifted where the
+        // release never came here, e.g. after the list took the finger for scrolling
+        if (_pointer != null && _isDragging)
+        {
+            Reset();
+            Ended?.Invoke(_offset, 0);
+        }
 
         _pointer = e.Pointer;
         _source = e.Source as Visual;
@@ -148,14 +156,21 @@ public sealed class DragGesture
         Ended?.Invoke(_offset, velocity);
     }
 
-    // Taken away by the system or another control: the gesture ends where it is, without a fling
+    // Taken away by the system or another control, such as a list that started scrolling: the finger is
+    // no longer ours, and a gesture under way ends where it is, without a fling
     private void OnCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        if (!ReferenceEquals(e.Pointer, _pointer) || !_isDragging)
+        if (!ReferenceEquals(e.Pointer, _pointer))
             return;
 
+        // The drag itself letting go on release is not a loss
+        if (_isDragging && ReferenceEquals(e.Pointer.Captured, _host))
+            return;
+
+        var wasDragging = _isDragging;
         Reset();
-        Ended?.Invoke(_offset, 0);
+        if (wasDragging)
+            Ended?.Invoke(_offset, 0);
     }
 
     private void Reset()

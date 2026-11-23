@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Client.ViewModels.Sessions.List;
 
 namespace Client.Droid.Views.Sessions.List;
@@ -139,6 +141,10 @@ public partial class SessionsView : UserControl
     private void OnHybridSessionTapped(object? sender, TappedEventArgs e)
     {
         if (_isMenuPress || sender is not StyledElement { DataContext: HybridSessionVM hybrid })
+            return;
+
+        // The fold of the peers is a button of its own
+        if ((e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true)
             return;
 
         hybrid.Connect();

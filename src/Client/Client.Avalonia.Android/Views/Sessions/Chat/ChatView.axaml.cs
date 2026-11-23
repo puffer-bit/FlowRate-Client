@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -81,6 +82,8 @@ public partial class ChatView : UserControl
         if (message is not { IsSystem: false, CanReact: true } || QuickReaction is not { } quickReaction)
             return;
 
+        // The first tap was waiting to open the menu: this one is a reaction instead
+        _pendingTapMenu?.Cancel();
         e.Handled = true;
         var emoji = await quickReaction();
         message.ToggleReaction(ChatReactionEmoji.IsSupported(emoji) ? emoji : BehaviorSettings.DefaultQuickReaction);
@@ -108,7 +111,7 @@ public partial class ChatView : UserControl
 
         MessageMenu.Dismissed += () => TryCloseMenu();
 
-        // A message swiped to the left is replied to; a swipe to the right is the root view's, back
+        // A message swiped to the left is replied to
         _ = new DragGesture(MessagesList, Orientation.Horizontal)
         {
             CanStart = (source, offset) => offset < 0 && BeginReplySwipe(source),
@@ -146,8 +149,11 @@ public partial class ChatView : UserControl
         // A double tap on a message puts the reaction chosen in the settings, or takes it back
         MessagesList.AddHandler(DoubleTappedEvent, OnMessageDoubleTapped);
 
-        // A long press asks for the context menu, as the right button does with a mouse
+        // A tap opens the menu of a message, and so does a long press, as the right button does with a mouse
+        MessagesList.AddHandler(TappedEvent, OnMessageTapped);
         MessagesList.AddHandler(ContextRequestedEvent, OnMessageContextRequested);
+        MessagesList.AddHandler(PointerPressedEvent, OnMessagesPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        MessagesList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => _lastScrollTime = Environment.TickCount64);
 
         // The panel is built with the template of the list, so its event is caught on the list
         MessagesList.AddHandler(MessageListPanel.ScrollStateChangedEvent, (_, _) => OnScrollStateChanged());
@@ -239,16 +245,86 @@ public partial class ChatView : UserControl
 
     private void OnMessageContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        var message = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
-            .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
-        if (message == null)
-            return;
-        if (message.IsSystem) { e.Handled = true; return; }
+        if (OpenMessageMenu(e.Source as Visual))
+            e.Handled = true;
+    }
 
-        message.ContextFile = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<StyledElement>()
-            .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();
+    // A press that stops the list while it still scrolls on is not a tap on a message
+    private const long ScrollSettleMilliseconds = 150;
+    private long _lastScrollTime;
+    private bool _isPressDuringScroll;
+    private CancellationTokenSource? _pendingTapMenu;
+    // How long a tap waits for a second one, about the double tap time of Android
+    private static readonly TimeSpan DoubleTapWait = TimeSpan.FromMilliseconds(300);
+
+    private void OnMessagesPressed(object? sender, PointerPressedEventArgs e) =>
+        _isPressDuringScroll = Environment.TickCount64 - _lastScrollTime < ScrollSettleMilliseconds;
+
+    // A tap on a message opens its menu. What has a tap of its own keeps it: a button, such as an image,
+    // a file, a reaction or the quoted message, a link or a mention in the text, the avatar and the name
+    private async void OnMessageTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Handled || _isPressDuringScroll || e.Source is not Visual source || MessageMenu.IsOpen)
+            return;
+
+        var ancestors = source.GetSelfAndVisualAncestors().TakeWhile(visual => visual != MessagesList).ToList();
+        if (ancestors.Any(visual => visual is Button or TextBox or SelectableTextBlock))
+            return;
+
+        if (ancestors.OfType<TextBlock>().FirstOrDefault(block => ChatMessageText.GetBody(block) != null) is { } text)
+        {
+            var position = e.GetPosition(text);
+            if (ChatMessageText.GetLinkAt(text, position) != null || ChatMessageText.GetMentionAt(text, position) != null)
+                return;
+        }
+
+        var message = ancestors.OfType<StyledElement>().Select(element => element.DataContext)
+            .OfType<ChatMessageVM>().FirstOrDefault();
+        if (message is not { IsSystem: false })
+            return;
 
         e.Handled = true;
+        _pendingTapMenu?.Cancel();
+
+        // A second tap may follow for the quick reaction: the menu waits until it can no longer come
+        if (message.CanReact && QuickReaction != null)
+        {
+            var pending = _pendingTapMenu = new CancellationTokenSource();
+            try
+            {
+                await Task.Delay(DoubleTapWait, pending.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            finally
+            {
+                if (ReferenceEquals(_pendingTapMenu, pending))
+                    _pendingTapMenu = null;
+            }
+
+            if (TopLevel.GetTopLevel(source) == null || MessageMenu.IsOpen)
+                return;
+        }
+
+        OpenMessageMenu(source);
+    }
+
+    /// <returns>Whether the source is in a message; a system message has no menu.</returns>
+    private bool OpenMessageMenu(Visual? source)
+    {
+        var message = source?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatMessageVM>().FirstOrDefault();
+        if (message == null)
+            return false;
+        if (message.IsSystem)
+            return true;
+
+        message.ContextFile = source?.GetSelfAndVisualAncestors().OfType<StyledElement>()
+            .Select(element => element.DataContext).OfType<ChatFileVM>().FirstOrDefault();
+
+        _pendingTapMenu?.Cancel();
         TryCloseMenu();
         var chat = Chat;
 
@@ -291,13 +367,14 @@ public partial class ChatView : UserControl
         message.IsFlyoutOpen = true;
 
         // The menu shows the message where it is in the list
-        var row = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>()
+        var row = source?.GetSelfAndVisualAncestors().OfType<Control>()
             .FirstOrDefault(control => control.GetVisualParent() is MessageListPanel);
         if (row?.TransformToVisual(MessageMenu) is { } transform)
             MessageMenu.MessageBounds = new Rect(row.Bounds.Size).TransformToAABB(transform);
 
         MessageMenu.DataContext = message;
         MessageMenu.IsOpen = true;
+        return true;
     }
 
     private void OnSelectMessageTextClick(object? sender, RoutedEventArgs e)
@@ -512,13 +589,6 @@ public partial class ChatView : UserControl
             }
         };
     }
-
-    /// <summary>
-    /// Whether something covers the chat that back closes first: an image, the viewers or the pinned messages.
-    /// </summary>
-    public bool IsCovered => Chat is { } chat
-                             && (chat.IsImageViewerOpen || chat.StatusBar.IsPinsOpen
-                                 || chat.StatusBar.Viewers is { IsOpen: true });
 
     /// <summary>Closes the pinned messages panel before Back leaves the chat.</summary>
     public bool TryClosePinnedMessages()

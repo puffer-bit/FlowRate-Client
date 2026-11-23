@@ -223,8 +223,14 @@
                                 </Panel>
                                 <!-- The reason of an away user goes under the name, and stays readable -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Classes="afkDim" FontSize="16" TextTrimming="CharacterEllipsis"
-                                               Text="{Binding DisplayedName}"/>
+                                    <Grid ColumnDefinitions="*, Auto" HorizontalAlignment="Left">
+                                        <TextBlock Grid.Column="0" Classes="afkDim" FontSize="16" TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding DisplayedName}"/>
+                                        <!-- The owner has a crown after the name -->
+                                        <Image Grid.Column="1" Width="16" Height="16" Margin="4,0,0,0"
+                                               VerticalAlignment="Center" Source="{StaticResource CrownIcon}"
+                                               IsVisible="{Binding IsOwner}"/>
+                                    </Grid>
                                     <TextBlock Text="{Binding AfkReason}"
                                                IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                FontSize="12"
@@ -240,9 +246,16 @@
                                     <Image Width="20" Height="20"
                                            Source="{StaticResource AfkIcon}"
                                            IsVisible="{Binding IsAfk}"/>
+                                    <!-- With all the sound off the crossed headphones say it all -->
                                     <Image Width="20" Height="20"
-                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
-                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
+                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                                        <Image.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="ShowsMicrophoneOff"/>
+                                                <Binding Path="!ShowsSoundOff"/>
+                                            </MultiBinding>
+                                        </Image.IsVisible>
+                                    </Image>
                                     <Image Width="20" Height="20"
                                            Source="{StaticResource CrossedHeadphonesIcon}"
                                            IsVisible="{Binding ShowsSoundOff}"/>

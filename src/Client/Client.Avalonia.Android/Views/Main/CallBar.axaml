@@ -49,9 +49,13 @@
               ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="8" Margin="4,6,12,6">
             <common:PopupMenus.ContextMenu>
                 <StackPanel Spacing="2">
+                    <!-- Going away takes the last reason at once; another one is chosen apart -->
                     <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
                                           IsVisible="{Binding !StatusBar.IsAfk}"
                                           Command="{Binding StatusBar.ToggleAfkCommand}"/>
+                    <menus:MenuItemButton Content="{l:Text hybrid.afk.withReason}"
+                                          IsVisible="{Binding !StatusBar.IsAfk}"
+                                          Click="OnAfkReasonClick"/>
                     <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
                                           IsVisible="{Binding StatusBar.IsAfk}"
                                           Command="{Binding StatusBar.ToggleAfkCommand}"/>

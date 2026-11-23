@@ -740,6 +740,7 @@
   "notification.center.mute": "Mute notification sound",
   "notification.center.unmute": "Unmute notification sound",
   "notification.center.empty": "No notifications yet",
+  "notification.page.muted": "Sound off",
   "main.server.info.platform": "Platform",
   "main.server.info.version": "Version",
   "main.server.info.online": "Online",
@@ -981,6 +982,7 @@
   "hybrid.afk.go": "Away from keyboard",
   "hybrid.afk.reason.placeholder": "Reason (optional)",
   "hybrid.afk.confirm": "Go AFK",
+  "hybrid.afk.withReason": "Go AFK with a reason…",
   "hybrid.afk.title": "Step away",
   "hybrid.afk.subtitle": "Your microphone turns off, and others see that you are away and why.",
   "hybrid.afk.presets": "Quick reasons",
@@ -1162,6 +1164,7 @@
   "peer.poke": "Poke",
   "peer.poke.message.placeholder": "Message (optional)",
   "peer.poke.send": "Poke",
+  "peer.poke.withMessage": "Poke with a message…",
   "peer.poke.title": "Poke {user}",
   "@peer.poke.title": {
     "placeholders": {

@@ -96,9 +96,6 @@ public partial class HybridSessionView : UserControl
             activity.RequestedOrientation = ScreenOrientation.SensorLandscape;
     }
 
-    /// <summary>Whether a screen is shown over the whole display.</summary>
-    public bool IsFullscreenOpen => _fullscreen != null;
-
     /// <returns>False when no screen was shown over the display.</returns>
     public bool TryCloseFullscreen()
     {

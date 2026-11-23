@@ -1,7 +1,9 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Client.ViewModels.Main;
+using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.Droid.Views.Main;
 
@@ -13,6 +15,15 @@ public partial class CallBar : UserControl
     public CallBar()
     {
         InitializeComponent();
+    }
+
+    /// <summary>Asks for the reason to go away with, which the root view shows.</summary>
+    public event Action<HybridSessionStatusBarVM>? AfkReasonRequested;
+
+    private void OnAfkReasonClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is StyledElement { DataContext: ActiveHybridSessionVM session })
+            AfkReasonRequested?.Invoke(session.StatusBar);
     }
 
     // Brings the session on screen

@@ -13,7 +13,6 @@ using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Application.Ports;
@@ -87,6 +86,7 @@ public partial class MainView : UserControl
         PeerMenu.Dismissed += () => TryClose(PeerMenu);
         PokeMenu.Dismissed += () => TryClose(PokeMenu);
         AfkMenu.Dismissed += () => TryClose(AfkMenu);
+        CallBar.AfkReasonRequested += OpenAfkMenu;
         PeerStatsMenu.Dismissed += () => TryClose(PeerStatsMenu);
         PeerStatsMenu.PropertyChanged += (_, e) =>
         {
@@ -101,31 +101,7 @@ public partial class MainView : UserControl
 
         // Shown over the session and the home screen
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
-
-        // A session is swiped to the right, back to the home screen under it
-        _ = new DragGesture(Screen, Orientation.Horizontal)
-        {
-            CanStart = (_, offset) => offset > 0 && CanSwipeBack(),
-            Moved = offset =>
-            {
-                _screenSlide?.Cancel();
-                Home.IsVisible = true;
-                _screenShift.X = Math.Max(0, offset);
-            },
-            Ended = (offset, velocity) =>
-            {
-                if (offset > Root.Bounds.Width / 3 || velocity > DragGesture.FlingVelocity)
-                    _viewModel?.ShowHome();
-                else
-                    SlideScreen(show: true);
-            }
-        };
     }
-
-    // Only the session itself goes: what covers it is closed by back, one at a time
-    private bool CanSwipeBack() => _isScreenShown && _viewModel?.CurrentContent != null
-                                   && !(_viewModel.CurrentContent is ActiveChatSessionVM && _chatView.IsCovered)
-                                   && !(_viewModel.CurrentContent is ActiveHybridSessionVM && _hybridView.IsFullscreenOpen);
 
     /// <param name="services">Where the settings take the services they change.</param>
     public MainView(MainWindowVM viewModel, IServiceProvider services) : this()
@@ -532,6 +508,12 @@ public partial class MainView : UserControl
 
     private void OnSettingsClick(object? sender, RoutedEventArgs e) => _navigation.OpenSettings();
 
+    private void OnNotificationsClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null)
+            _navigation.OpenNotifications(_viewModel.Notifications);
+    }
+
     private void OnChatActionClick(object? sender, RoutedEventArgs e) => TryCloseChatMenu();
 
     private void OpenServerMenu() => ServerMenu.IsOpen = true;
@@ -587,11 +569,27 @@ public partial class MainView : UserControl
 
     private void OnPokeSendClick(object? sender, RoutedEventArgs e) => TryClose(PokeMenu);
 
+    // A poke without a message, at once
+    private void OnPeerPokeNowClick(object? sender, RoutedEventArgs e)
+    {
+        if (PeerMenu.DataContext is not PeerVM { CanPoke: true } peer)
+            return;
+        TryClose(PeerMenu);
+        peer.PokeMessage = string.Empty;
+        peer.Poke();
+    }
+
     private void OnPeerAfkClick(object? sender, RoutedEventArgs e)
     {
         if (PeerMenu.DataContext is not PeerVM { SelfSession: { } session })
             return;
         TryClose(PeerMenu);
+        OpenAfkMenu(session);
+    }
+
+    // The reason to go away with, chosen from the presets or written
+    private void OpenAfkMenu(HybridSessionStatusBarVM session)
+    {
         AfkMenu.DataContext = session;
         AfkMenu.IsOpen = true;
     }
