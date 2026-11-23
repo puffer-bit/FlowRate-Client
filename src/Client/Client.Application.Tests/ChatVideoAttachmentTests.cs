@@ -133,5 +133,22 @@ public sealed class ChatVideoAttachmentTests : IDisposable
         }
     }
 
-    public void Dispose() => Directory.Delete(_folder, true);
+    // A disposed attachment deletes its compressed file in the background; on Windows that can still
+    // hold the file while the folder goes, so retry and leave the temp folder behind if it never frees.
+    public void Dispose()
+    {
+        for (var attempt = 0; attempt < 50; attempt++)
+        {
+            try
+            {
+                if (Directory.Exists(_folder))
+                    Directory.Delete(_folder, true);
+                return;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(20);
+            }
+        }
+    }
 }
