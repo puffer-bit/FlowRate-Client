@@ -10,8 +10,8 @@
 # (dist/<version>/<platform>: installer, update packages, standalone archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
 # calls this workflow and publishes them.
 #
-# The GStreamer runtimes are cached: the Linux one takes 30-60 minutes in Docker. A change to the build
-# scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
+# The GStreamer runtimes come from .github/actions/gstreamer-runtime, cached: the Linux one takes 30-60
+# minutes in Docker. A change to the build scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
 name: Build
 
 on:
@@ -52,7 +52,6 @@ defaults:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  GSTREAMER_DIR: src/Client/Client.GStreamer/Build
 
 jobs:
   version:
@@ -101,13 +100,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends clang zlib1g-dev
 
-      - name: GStreamer runtime cache
-        uses: actions/cache@v6
+      # Built in Docker when the cache has none
+      - uses: ./.github/actions/gstreamer-runtime
         with:
-          path: ${{ env.GSTREAMER_DIR }}/artifacts/linux-x64
-          key: gstreamer-linux-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/linux/**') }}
+          rid: linux-x64
 
-      # Builds the runtime in Docker when the cache had none
       - name: Publish
         env:
           # vpk takes the previous release of the channel from GitHub for the delta package
@@ -144,13 +141,11 @@ jobs:
           # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
           dotnet-version: 10.0.402
 
-      - name: GStreamer runtime cache
-        uses: actions/cache@v6
+      # Collected from the official installer when the cache has none
+      - uses: ./.github/actions/gstreamer-runtime
         with:
-          path: ${{ env.GSTREAMER_DIR }}/artifacts/win-x64
-          key: gstreamer-win-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/windows/**') }}
+          rid: win-x64
 
-      # Collects the runtime from the official installer when the cache had none
       - name: Publish
         shell: powershell
         env:
@@ -192,10 +187,6 @@ jobs:
     needs: version
     # Apple silicon, with the clang of Xcode that NativeAOT links with
     runs-on: macos-15
-    env:
-      # The official framework the runtime is collected from (Build/mac/collect.sh); a new version
-      # here collects it again
-      GSTREAMER_VERSION: 1.28.7
     steps:
       - uses: actions/checkout@v7
         with:
@@ -206,24 +197,10 @@ jobs:
           # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
           dotnet-version: 10.0.402
 
-      - name: GStreamer runtime cache
-        id: gstreamer-cache
-        uses: actions/cache@v6
+      # Collected from the official framework when the cache has none; its version is in the action
+      - uses: ./.github/actions/gstreamer-runtime
         with:
-          path: ${{ env.GSTREAMER_DIR }}/artifacts/osx-arm64
-          key: gstreamer-osx-arm64-${{ env.GSTREAMER_VERSION }}-${{ hashFiles('src/Client/Client.GStreamer/Build/mac/**') }}
-
-      # The runtime .pkg of gstreamer.freedesktop.org into /Library/Frameworks, which collect.sh copies
-      # the runtime from; publish.sh collects it when the cache had none
-      - name: GStreamer framework
-        if: steps.gstreamer-cache.outputs.cache-hit != 'true'
-        run: |
-          pkg="$RUNNER_TEMP/gstreamer.pkg"
-          curl -fsSL --retry 3 -o "$pkg" \
-              "https://gstreamer.freedesktop.org/data/pkg/osx/$GSTREAMER_VERSION/gstreamer-1.0-$GSTREAMER_VERSION-universal.pkg"
-          sudo installer -pkg "$pkg" -target /
-          rm "$pkg"
-          /Library/Frameworks/GStreamer.framework/Versions/1.0/bin/gst-inspect-1.0 --version
+          rid: osx-arm64
 
       - name: Publish
         env:

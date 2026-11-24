@@ -18,15 +18,18 @@ it logs in, joins voice sessions, talks and shares screens over libwebrtc, and r
 | `FlowRate.Client.WebRTC` | WebRTC negotiation shared by the transports. |
 | `FlowRate.Client.LibWebRTC` | The libwebrtc transport, with the native library for linux-x64, win-x64 and osx-arm64. |
 | `FlowRate.Client.GStreamer` | Audio and video through GStreamer. |
+| `FlowRate.Client.GStreamer.Runtime.<rid>` | The GStreamer runtime of the client for linux-x64, win-x64 or osx-arm64, put next to the executable. Not part of `FlowRate.Client`. |
 
 A chat-only host needs `FlowRate.Client.Api` alone; anything with voice takes `FlowRate.Client`.
 
 ## Requirements
 
 - .NET 10.
-- GStreamer installed on the system (`FlowRate.Client.GStreamer`): the client ships 1.28, older versions
-  are not tested. Register it with `GstNativeLibraryResolver.Register(useInstalledRuntime: true)` before
-  the first media call.
+- A GStreamer runtime for `FlowRate.Client.GStreamer`, registered with `GstNativeLibraryResolver.Register()`
+  before the first media call. Either the one the client ships: reference
+  `FlowRate.Client.GStreamer.Runtime.<rid>` for each RID the host runs on (its version is that of
+  GStreamer, see its README). Or the GStreamer installed on the system, with
+  `Register(useInstalledRuntime: true)`: the client ships 1.28, older versions are not tested.
 - The host passes what the libraries do not decide themselves: `ClientInfo` to `AddApi`, its data folder
   to `AddApplication`, `GStreamerSettings`, and its own logging through `Microsoft.Extensions.Logging`.
 

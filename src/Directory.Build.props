@@ -64,7 +64,7 @@
         <Description>The libwebrtc voice and video transport of the FlowRate client, with the native library for linux-x64, win-x64 and osx-arm64.</Description>
     </PropertyGroup>
     <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.GStreamer'">
-        <Description>Audio and video of the FlowRate client through GStreamer, which must be installed on the system.</Description>
+        <Description>Audio and video of the FlowRate client through GStreamer: the runtime of the client from FlowRate.Client.GStreamer.Runtime.&lt;rid&gt;, or GStreamer installed on the system.</Description>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsFlowRatePackage)' == 'true' And '$(FlowRateSdkVersion)' != ''">

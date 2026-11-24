@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The package FlowRate.Client.GStreamer.Runtime.<rid>: the GStreamer runtime the client ships, for
+     hosts of the FlowRate.* libraries such as bots. Packed by src/Scripts/bash/pack.sh
+     (- -gstreamer-runtime <rid>), which lays the package out in a staging folder first and passes it
+     as the base path; see README.md next to this file. -->
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+    <metadata>
+        <id>FlowRate.Client.GStreamer.Runtime.$rid$</id>
+        <version>$version$</version>
+        <authors>puffer-bit</authors>
+        <copyright>Copyright (c) 2026 puffer-bit</copyright>
+        <description>The GStreamer runtime of the FlowRate client for $rid$, put next to the executable for FlowRate.Client.GStreamer. No GPL components. The version is that of GStreamer.</description>
+        <license type="file">THIRD-PARTY-NOTICES.txt</license>
+        <projectUrl>https://github.com/puffer-bit/FlowRate-Client</projectUrl>
+        <repository type="git" url="https://github.com/puffer-bit/FlowRate-Client" />
+        <tags>flowrate;gstreamer;native;runtime;$rid$</tags>
+        <readme>README.md</readme>
+        <icon>icon.png</icon>
+        <!-- No dependencies and no lib folder: native files only, which a project of any framework takes -->
+    </metadata>
+    <files>
+        <file src="**" target="" />
+    </files>
+</package>

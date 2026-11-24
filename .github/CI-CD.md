@@ -38,5 +38,5 @@ Android workload. Test builds treat warnings as errors. The desktop build jobs a
 project with warnings as errors after publishing, once the platform media runtime is available; this
 compiler check is separate from the warnings of third-party libraries during trimming and NativeAOT.
 The client pins .NET SDK 10.0.402 because of the documented 10.0.403 download issue.
-CodeQL scans C# and Actions. NativeAOT/JIT selection, GStreamer caching, the Linux glibc baseline, Windows
+CodeQL scans C# and Actions. NativeAOT/JIT selection, GStreamer caching (`.github/actions/gstreamer-runtime`, shared with the runtime packages of `packages.yml`), the Linux glibc baseline, Windows
 libwebrtc verification, and Velopack release/development channels remain client-specific.

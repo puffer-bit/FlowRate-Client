@@ -2,6 +2,11 @@
 # (sdk-v0.1.0, sdk-v0.2.0-preview.1): every package with that version, see
 # src/Client/Client.Package/README.md. The tests run first; a version already on nuget.org is skipped.
 #
+# The same run packs the GStreamer runtime of the client as FlowRate.Client.GStreamer.Runtime.<rid>, with
+# the version GSTREAMER_RUNTIME_VERSION below instead of the tag: each runtime comes from its own system
+# (.github/actions/gstreamer-runtime, the cache of build.yml), the packing is done on Linux. As a version
+# already on nuget.org is skipped, a runtime is published again only under a new version.
+#
 # Publishes through nuget.org Trusted Publishing, with no stored API key: GitHub gives the job an OIDC
 # token, which nuget.org exchanges for a key valid for an hour. Needs, once:
 # - on nuget.org, Trusted Publishing: a policy for owner puffer-bit, repository FlowRate-Client,
@@ -28,15 +33,49 @@ defaults:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # The version of the FlowRate.Client.GStreamer.Runtime.* packages: that of GStreamer, the one the build
+  # scripts and the action take. A fourth number (1.28.7.1) publishes the same GStreamer built anew
+  GSTREAMER_RUNTIME_VERSION: 1.28.7
 
 jobs:
   validate:
     name: Validate
     uses: ./.github/workflows/tests.yml
 
+  gstreamer-runtime:
+    name: GStreamer runtime ${{ matrix.rid }}
+    strategy:
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-22.04
+          - rid: win-x64
+            os: windows-2025
+          - rid: osx-arm64
+            os: macos-15
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The build scripts of the runtimes need no submodules
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/gstreamer-runtime
+        with:
+          rid: ${{ matrix.rid }}
+
+      # What the package takes; tools/ is for the checks of the scripts only
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gstreamer-runtime-${{ matrix.rid }}
+          path: |
+            src/Client/Client.GStreamer/Build/artifacts/${{ matrix.rid }}/gstreamer
+            src/Client/Client.GStreamer/Build/artifacts/${{ matrix.rid }}/licenses
+            src/Client/Client.GStreamer/Build/artifacts/${{ matrix.rid }}/THIRD-PARTY-NOTICES.txt
+          if-no-files-found: error
+          retention-days: 1
+
   publish:
     name: Pack and publish
-    needs: validate
+    needs: [validate, gstreamer-runtime]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -64,6 +103,21 @@ jobs:
 
       - name: Pack
         run: bash src/Scripts/bash/pack.sh "${{ steps.version.outputs.version }}" artifacts/packages
+
+      # Each into artifacts/<rid>, where the runtime was on its own system
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: gstreamer-runtime-*
+          path: ${{ runner.temp }}/gstreamer-runtimes
+
+      - name: Pack the GStreamer runtimes
+        run: |
+          for rid in linux-x64 win-x64 osx-arm64; do
+            runtime=src/Client/Client.GStreamer/Build/artifacts/$rid
+            mkdir -p "$runtime"
+            cp -R "$RUNNER_TEMP/gstreamer-runtimes/gstreamer-runtime-$rid/." "$runtime/"
+            bash src/Scripts/bash/pack.sh --gstreamer-runtime "$rid" "$GSTREAMER_RUNTIME_VERSION" artifacts/packages
+          done
 
       - uses: actions/upload-artifact@v7
         with:

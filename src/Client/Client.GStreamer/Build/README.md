@@ -182,3 +182,11 @@ version or the plugin set changes:
 NTFS has no executable bit, so `publish.ps1` packs the Linux archive through `tar.exe` from an mtree
 file list that sets mode 0755 on every ELF file (the executable, createdump, gst-plugin-scanner, shared
 objects). Unpacked on Linux, the client starts as is.
+
+## The NuGet package for other hosts
+
+Hosts of the `FlowRate.*` libraries, such as bots, get the same runtime as the packages
+`FlowRate.Client.GStreamer.Runtime.<rid>`, made from `artifacts/<rid>` by
+`src/Scripts/bash/pack.sh --gstreamer-runtime <rid>` and published by `.github/workflows/packages.yml`.
+The package layout, its targets and its version are in `package/README.md`. In CI each runtime comes
+from `.github/actions/gstreamer-runtime`, the cache `build.yml` uses as well.
