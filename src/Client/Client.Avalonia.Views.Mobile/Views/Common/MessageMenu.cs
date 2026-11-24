@@ -116,10 +116,10 @@ public class MessageMenu : Panel
         message?.Measure(new Size(room.Width, double.PositiveInfinity));
 
         // A long message gives way first, then the actions scroll
-        var reactionsHeight = Height(reactions);
+        var reactionsHeight = DesiredHeight(reactions);
         var free = room.Height - reactionsHeight - 2 * Gap;
-        var messageHeight = Math.Min(Height(message), Math.Max(MinMessageHeight, free - Height(actions)));
-        var actionsHeight = Math.Max(0, Math.Min(Height(actions), free - messageHeight));
+        var messageHeight = Math.Min(DesiredHeight(message), Math.Max(MinMessageHeight, free - DesiredHeight(actions)));
+        var actionsHeight = Math.Max(0, Math.Min(DesiredHeight(actions), free - messageHeight));
         message?.Measure(new Size(room.Width, messageHeight));
         actions?.Measure(new Size(Math.Min(ActionsWidth, room.Width), actionsHeight));
 
@@ -135,9 +135,9 @@ public class MessageMenu : Panel
         var message = Find(MessageMenuPart.Message);
         var actions = Find(MessageMenuPart.Actions);
 
-        var reactionsHeight = Height(reactions);
-        var messageHeight = Height(message);
-        var actionsHeight = Height(actions);
+        var reactionsHeight = DesiredHeight(reactions);
+        var messageHeight = DesiredHeight(message);
+        var actionsHeight = DesiredHeight(actions);
         var total = (reactions != null ? reactionsHeight + Gap : 0) + messageHeight
                     + (actions != null ? Gap + actionsHeight : 0);
 
@@ -170,7 +170,7 @@ public class MessageMenu : Panel
         return finalSize;
     }
 
-    private static double Height(Control? control) => control?.DesiredSize.Height ?? 0;
+    private static double DesiredHeight(Control? control) => control?.DesiredSize.Height ?? 0;
 
     // While the menu has no room yet, such as before the chat is on the screen, a size may come out
     // negative; a control cannot be arranged in that
