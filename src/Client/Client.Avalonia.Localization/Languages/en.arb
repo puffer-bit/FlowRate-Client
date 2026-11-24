@@ -801,6 +801,7 @@
   "profile.field.lastConnected": "Last connected",
   "profile.action.mute": "Mute",
   "profile.action.unmute": "Unmute",
+  "profile.field.id": "ID",
   "profile.field.device": "Device",
   "profile.field.appVersion": "App version",
   "profile.name.yours": "Your name",

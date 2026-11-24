@@ -198,7 +198,8 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IsUpdateCheckOnStartupEnabled = IsUpdateCheckOnStartupEnabled,
         UpdateChannel = (UpdateChannel)UpdateChannelIndex,
         // The list clears its selection while it is rebuilt; nothing chosen keeps the default
-        QuickReaction = ChatReactionEmoji.IsSupported(QuickReaction) ? QuickReaction : BehaviorSettings.DefaultQuickReaction
+        QuickReaction = QuickReaction is { } reaction && ChatReactionEmoji.IsSupported(reaction)
+            ? reaction : BehaviorSettings.DefaultQuickReaction
     };
 
     private void Apply(BehaviorSettings settings)

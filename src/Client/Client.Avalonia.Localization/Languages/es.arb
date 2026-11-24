@@ -643,6 +643,7 @@
   "profile.field.lastConnected": "Última conexión",
   "profile.action.mute": "Silenciar",
   "profile.action.unmute": "Activar sonido",
+  "profile.field.id": "ID",
   "profile.field.device": "Dispositivo",
   "profile.field.appVersion": "Versión de la app",
 

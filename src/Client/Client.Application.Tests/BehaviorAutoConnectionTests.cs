@@ -11,6 +11,23 @@ namespace Client.Application.Tests;
 
 public class BehaviorAutoConnectionTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unsupported")]
+    [InlineData("👍")]
+    public async Task QuickReactionSelectionAlwaysSavesSupportedValue(string? selection)
+    {
+        var behavior = new BehaviorStub();
+        var vm = new BehaviorControlVM(behavior, new AccountingStub([]));
+        await vm.LoadCommand.Execute();
+
+        vm.QuickReaction = selection;
+
+        Assert.Equal(selection == "👍" ? selection : BehaviorSettings.DefaultQuickReaction,
+            behavior.Settings.QuickReaction);
+    }
+
     [Fact]
     public async Task ScreenAwakePreferenceLoadsSavesAndResetsWithBehaviorSettings()
     {

@@ -643,6 +643,7 @@
   "profile.field.lastConnected": "最終接続",
   "profile.action.mute": "ミュート",
   "profile.action.unmute": "ミュート解除",
+  "profile.field.id": "ID",
   "profile.field.device": "デバイス",
   "profile.field.appVersion": "アプリのバージョン",
 

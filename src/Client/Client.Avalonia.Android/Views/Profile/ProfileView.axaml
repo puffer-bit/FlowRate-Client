@@ -201,7 +201,7 @@
                             <Image Classes="infoIcon" Source="{StaticResource HashIcon}"/>
                             <StackPanel Grid.Column="1" Spacing="1">
                                 <SelectableTextBlock Classes="infoValue" Text="{Binding UserId}"/>
-                                <TextBlock Classes="infoCaption" Text="ID"/>
+                                <TextBlock Classes="infoCaption" Text="{l:Text profile.field.id}"/>
                             </StackPanel>
                         </Grid>
 

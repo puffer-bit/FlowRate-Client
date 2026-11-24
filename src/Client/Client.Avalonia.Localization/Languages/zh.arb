@@ -643,6 +643,7 @@
   "profile.field.lastConnected": "最近连接",
   "profile.action.mute": "静音",
   "profile.action.unmute": "取消静音",
+  "profile.field.id": "ID",
   "profile.field.device": "设备",
   "profile.field.appVersion": "应用版本",
 

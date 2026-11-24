@@ -605,6 +605,7 @@
   "profile.field.lastConnected": "Последнее подключение",
   "profile.action.mute": "Выкл. звук",
   "profile.action.unmute": "Вкл. звук",
+  "profile.field.id": "ID",
   "profile.field.device": "Устройство",
   "profile.field.appVersion": "Версия приложения",
   "profile.name.yours": "Ваше имя",
