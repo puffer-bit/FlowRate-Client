@@ -73,28 +73,23 @@ public partial class AccountingControl : ViewControl<AccountingControlVM>
     // The phrase is typed into a small dialog of its own; it goes no further than the backup it opens
     private async Task<string?> AskRecoveryPhraseAsync()
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner)
+        if (!InWindowDialog.CanShow(this))
             return null;
 
         var input = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 80 };
-        var dialog = new Window
-        {
-            Title = Strings.Get("settings.backup.phraseTitle"),
-            Width = 420,
-            SizeToContent = SizeToContent.Height,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
-        };
-        var ok = new Button { Content = Strings.Get("common.ok"), IsDefault = true };
+        var ok = new Button { Content = Strings.Get("common.ok"), Classes = { "primary" }, IsDefault = true };
         var cancel = new Button { Content = Strings.Get("common.cancel"), IsCancel = true };
-        ok.Click += (_, _) => dialog.Close(input.Text);
-        cancel.Click += (_, _) => dialog.Close(null);
-        dialog.Content = new StackPanel
+        var form = new StackPanel
         {
-            Margin = new Thickness(16),
+            MaxWidth = 420,
+            Margin = new Thickness(20, 16),
             Spacing = 10,
             Children =
             {
+                new TextBlock
+                {
+                    Text = Strings.Get("settings.backup.phraseTitle"), FontSize = 16, FontWeight = FontWeight.SemiBold
+                },
                 new TextBlock { Text = Strings.Get("settings.backup.phraseHint"), TextWrapping = TextWrapping.Wrap },
                 input,
                 new StackPanel
@@ -104,6 +99,9 @@ public partial class AccountingControl : ViewControl<AccountingControlVM>
                 }
             }
         };
-        return await dialog.ShowDialog<string?>(owner);
+        ok.Click += (_, _) => InWindowDialog.Close(form, input.Text);
+        cancel.Click += (_, _) => InWindowDialog.Close(form);
+        input.AttachedToVisualTree += (_, _) => input.Focus();
+        return await InWindowDialog.ShowAsync<string?>(form, this, null);
     }
 }

@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:scaling="clr-namespace:Client.Avalonia.Styles.Scaling;assembly=Client.Avalonia.Styles"
+                    xmlns:chrome="clr-namespace:Avalonia.Controls.Chrome;assembly=Avalonia.Controls"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- The window of the Fluent theme with its content laid out at the scale of the interface.
@@ -64,6 +65,13 @@
         </Style>
         <Style Selector="^:has-shadow /template/ Border#PART_WindowBorder">
             <Setter Property="BoxShadow" Value="{DynamicResource WindowShadow}"/>
+        </Style>
+
+        <!-- In fullscreen Avalonia drops a title bar with caption buttons from the top edge on hover.
+             The application has its own way out of fullscreen, so that bar is never shown. It is the
+             only title bar part of the template besides PART_TitleBar, which has a name -->
+        <Style Selector="^ /template/ Panel[(chrome|WindowDecorationProperties.ElementRole)=TitleBar]:not(#PART_TitleBar)">
+            <Setter Property="IsVisible" Value="False"/>
         </Style>
     </ControlTheme>
 </ResourceDictionary>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
@@ -10,15 +9,15 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Tools.Logging;
+using Client.Views.Dialogs;
 using Client.ViewModels.Sessions.Hybrid;
 using Serilog.Events;
 
 namespace Client.Views.Sessions.Hybrid;
 
-/// <summary>A bounded, live view of events explicitly attributed to one session.</summary>
-internal sealed class HybridSessionLogsWindow : Window
+/// <summary>A bounded, live view of events explicitly attributed to one session, shown as a dialog.</summary>
+internal sealed class HybridSessionLogsView : UserControl
 {
-    private static readonly Dictionary<(Window Owner, int SessionId), HybridSessionLogsWindow> Windows = new();
     private readonly ObservableCollection<LogEntry> _entries = [];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly ListBox _list;
@@ -27,30 +26,18 @@ internal sealed class HybridSessionLogsWindow : Window
     private readonly int _sessionId;
     private long _sequence;
 
-    public static void Open(Window owner, HybridSessionStatusBarVM session)
+    /// <summary>Shows the journal of <paramref name="session"/> over the window that hosts <paramref name="owner"/>.</summary>
+    public static void Open(Visual owner, HybridSessionStatusBarVM session)
     {
-        var key = (owner, session.SessionId);
-        if (Windows.TryGetValue(key, out var existing))
-        {
-            existing.Activate();
-            return;
-        }
-
-        var window = new HybridSessionLogsWindow(session);
-        Windows.Add(key, window);
-        window.Closed += (_, _) => Windows.Remove(key);
-        window.Show(owner);
+        if (InWindowDialog.CanShow(owner))
+            _ = InWindowDialog.ShowAsync<object?>(new HybridSessionLogsView(session), owner, null, fillWindow: true);
     }
 
-    private HybridSessionLogsWindow(HybridSessionStatusBarVM session)
+    private HybridSessionLogsView(HybridSessionStatusBarVM session)
     {
         _sessionId = session.SessionId;
-        Title = $"{Strings.Get("hybrid.logs.open")} — {session.SessionName}";
-        Width = 1000;
-        Height = 600;
-        MinWidth = 560;
-        MinHeight = 300;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        MaxWidth = 1000;
+        MaxHeight = 600;
 
         _follow = new CheckBox { Content = Strings.Get("hybrid.logs.follow"), IsChecked = true };
         _empty = new TextBlock
@@ -80,15 +67,29 @@ internal sealed class HybridSessionLogsWindow : Window
         var journal = new Grid();
         journal.Children.Add(_list);
         journal.Children.Add(_empty);
-        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*"), Margin = new Thickness(12), RowSpacing = 8 };
+        var close = new Button { Content = Strings.Get("common.close"), IsCancel = true };
+        close.Click += (_, _) => InWindowDialog.Close(this);
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 12 };
+        header.Children.Add(new TextBlock
+        {
+            Text = $"{Strings.Get("hybrid.logs.open")} — {session.SessionName}", FontSize = 16,
+            FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        Grid.SetColumn(close, 1);
+        header.Children.Add(close);
+
+        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), Margin = new Thickness(20, 16), RowSpacing = 8 };
+        layout.Children.Add(header);
+        Grid.SetRow(_follow, 1);
         layout.Children.Add(_follow);
-        Grid.SetRow(journal, 1);
+        Grid.SetRow(journal, 2);
         layout.Children.Add(journal);
         Content = layout;
 
         _timer.Tick += (_, _) => Refresh();
-        Opened += (_, _) => { Refresh(); _timer.Start(); };
-        Closed += (_, _) => _timer.Stop();
+        Loaded += (_, _) => { Refresh(); _timer.Start(); };
+        Unloaded += (_, _) => _timer.Stop();
     }
 
     private void Refresh()

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
@@ -36,12 +37,9 @@ public partial class HybridSessionPeerFlyout : UserControl
             return;
 
         var card = new HybridSessionStatsFlyout { DataContext = session };
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        card.SessionLogsRequested += (_, _) =>
-        {
-            if (owner != null)
-                HybridSessionLogsWindow.Open(owner, session);
-        };
+        // This flyout lives in a popup of its own, the journal goes to the window behind it
+        var owner = this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget;
+        card.SessionLogsRequested += (_, _) => HybridSessionLogsView.Open(owner ?? (Visual)this, session);
         OpenSelfCard(card);
     }
 

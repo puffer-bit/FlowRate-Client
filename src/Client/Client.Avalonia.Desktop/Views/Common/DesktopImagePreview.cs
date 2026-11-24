@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -61,11 +62,14 @@ internal static class DesktopImagePreview
 
     private static bool Open(Control anchor, IImage source, string title, bool fullscreen, Action? released = null)
     {
-        if (TopLevel.GetTopLevel(anchor) is not Window owner)
+        // Popups close on their own, there is no place in them to show the picture
+        if (TopLevel.GetTopLevel(anchor) is not { } owner || owner is PopupRoot)
             return false;
         // Chat pictures cover their chat, leaving session navigation and the rest of the app in place.
+        // Others cover the root of the window, which is the main view in the window or the browser.
         var chat = anchor.GetSelfAndVisualAncestors().OfType<ChatSessionControl>().FirstOrDefault();
-        var host = chat?.Content as Panel ?? owner.Content as Panel;
+        var host = chat?.Content as Panel ?? (owner.Content as ContentControl)?.Content as Panel ?? owner.Content as Panel;
+        var window = owner as Window;
         if (host == null) return false;
         var previousFocus = owner.FocusManager?.GetFocusedElement();
         var viewer = new ImagePreviewView { Focusable = true };
@@ -75,7 +79,8 @@ internal static class DesktopImagePreview
         {
             if (closed) return;
             closed = true;
-            owner.Closed -= OwnerClosed;
+            if (window != null)
+                window.Closed -= OwnerClosed;
             host.DetachedFromVisualTree -= HostDetached;
             host.Children.Remove(viewer);
             model?.Dispose();
@@ -92,7 +97,8 @@ internal static class DesktopImagePreview
             Close();
             e.Handled = true;
         }, RoutingStrategies.Tunnel);
-        owner.Closed += OwnerClosed;
+        if (window != null)
+            window.Closed += OwnerClosed;
         host.DetachedFromVisualTree += HostDetached;
         if (host is Grid grid)
         {
