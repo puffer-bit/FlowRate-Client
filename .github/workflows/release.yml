@@ -39,6 +39,8 @@ jobs:
     name: Build
     needs: validate
     uses: ./.github/workflows/build.yml
+    # Required for the called Android job to receive its environment secrets.
+    secrets: inherit
     with:
       aot: ${{ inputs.aot }}
       dev: ${{ inputs.prerelease }}
