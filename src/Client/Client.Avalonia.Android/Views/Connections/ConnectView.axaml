@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:connectVm="clr-namespace:Client.ViewModels.Connections;assembly=Client.Avalonia.ViewModels"
              xmlns:models="clr-namespace:Client.Core.Settings;assembly=Client.Core"
@@ -132,8 +133,8 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.identity.newHint}"
-                                   IsVisible="{Binding IsRegistering}"/>
+                        <hints:HintBlock Text="{l:Text connect.identity.newHint}"
+                                         IsVisible="{Binding IsRegistering}"/>
                     </StackPanel>
 
                     <StackPanel Spacing="10" IsVisible="{Binding IsLoginFormVisible}">
@@ -144,19 +145,20 @@
 
                         <StackPanel Spacing="6" IsVisible="{Binding IsUsernameLogin}">
                             <TextBox Text="{Binding LoginUsername}" PlaceholderText="{l:Text connect.login.usernamePlaceholder}" MaxLength="32"/>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.usernameHint}"/>
+                            <hints:HintBlock Text="{l:Text connect.login.usernameHint}"/>
                         </StackPanel>
                         <StackPanel Spacing="6" IsVisible="{Binding IsRecoveryLogin}">
                             <TextBox Text="{Binding RecoveryPhraseText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96"
+                                     TextAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
                                      PlaceholderText="{l:Text connect.login.phrasePlaceholder}"/>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.phraseHint}"/>
+                            <hints:HintBlock Text="{l:Text connect.login.phraseHint}"/>
                         </StackPanel>
                         <StackPanel Spacing="6" IsVisible="{Binding IsCodeLogin}">
                             <TextBox Text="{Binding LoginCodeText}" PlaceholderText="{l:Text connect.login.codePlaceholder}" MaxLength="32"/>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.codeHint}"/>
+                            <hints:HintBlock Text="{l:Text connect.login.codeHint}"/>
                         </StackPanel>
-                        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text connect.login.deviceHint}"
-                                   IsVisible="{Binding IsDeviceLinkLogin}"/>
+                        <hints:HintBlock Text="{l:Text connect.login.deviceHint}"
+                                         IsVisible="{Binding IsDeviceLinkLogin}"/>
                         <CheckBox IsChecked="{Binding IsTemporaryDevice}" Content="{l:Text connect.login.temporary}"/>
                     </StackPanel>
                 </StackPanel>

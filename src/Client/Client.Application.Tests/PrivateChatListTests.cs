@@ -1,16 +1,22 @@
 using System.Reflection;
 using System.Reactive.Disposables;
+using Avalonia.Threading;
 using Client.Application.Chat;
+using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Sessions.Hybrid;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
+using Client.Core.Sessions.Hybrid;
+using Client.Core.Users;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReactiveUI;
 using Shared.Enums;
+using Shared.Enums.WebRTC;
 using Xunit;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -18,6 +24,104 @@ namespace Client.Application.Tests;
 
 public sealed class PrivateChatListTests
 {
+    private static CoordinatorPermissions Permissions(Permission granted) => new(
+        [new RoleModel(1, "@everyone", null, 0, granted, true, 0)], []);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task VisibleAgainHybridChannelLoadsExistingParticipants(bool failed) => TestUiThread.RunAsync(() =>
+    {
+        using var fixture = new ListFixture();
+        var list = fixture.List;
+        list.Access.Update(Permissions(Permission.None));
+        list.Access.Update(Permissions(Permission.Default));
+        var user = new UserModel { Id = 2, CoordinatorInstanceId = "server", Username = "Existing peer" };
+        var requested = new List<int>();
+        var coordinator = DispatchProxy.Create<ICoordinatorSession, ServiceProxy>();
+        ((ServiceProxy)(object)coordinator).Handler = (method, args) => method!.Name switch
+        {
+            nameof(ICoordinatorSession.GetCurrentUser) => user,
+            nameof(ICoordinatorSession.GetAllHybridSessionPeers) => Peers((int)args![0]!),
+            nameof(ICoordinatorSession.GetUsers) => Task.FromResult<IReadOnlyDictionary<int, UserModel>>(
+                new Dictionary<int, UserModel> { [2] = user }),
+            _ => throw new InvalidOperationException(method.Name)
+        };
+        Task<RequestResult<Dictionary<int, PeerModel>>> Peers(int sessionId)
+        {
+            requested.Add(sessionId);
+            RequestResult<Dictionary<int, PeerModel>> result = failed ? ErrorCode.Internal
+                : new Dictionary<int, PeerModel>
+                {
+                    [2] = new() { UserId = 2, State = HybridSessionPeerState.Connected, IsMicrophoneMuted = true }
+                };
+            return Task.FromResult(result);
+        }
+        typeof(SessionsListVM).GetField("_coordinatorSession", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(list, coordinator);
+        var model = new HybridSessionModel
+        {
+            Id = 10, Name = "Restored channel", SessionType = SessionType.Hybrid, Capacity = 10,
+            EngineType = WebRTCEngine.Mediasoup
+        };
+
+        typeof(SessionsListVM).GetMethod("OnHybridSessionAdded", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(list, [model]);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal([10], requested);
+        var channel = Assert.IsType<HybridSessionVM>(Assert.Single(list.Sessions));
+        Assert.Equal(failed, channel.IsCorrupted);
+        if (failed)
+            Assert.Empty(channel.Peers);
+        else
+        {
+            var peer = Assert.Single(channel.Peers);
+            Assert.Equal(2, peer.PeerData.UserId);
+            Assert.True(peer.PeerData.IsMicrophoneMuted);
+            Assert.Equal("Existing peer", peer.UserData!.Username);
+        }
+    });
+
+    [Fact]
+    public Task RevokingChannelAccessForcesPrivateModeAndPreventsSwitchingBack() => TestUiThread.RunAsync(() =>
+    {
+        using var fixture = new ListFixture();
+        var list = fixture.List;
+        list.IsPrivateMode = false;
+        list.Access.Update(Permissions(Permission.None));
+
+        Assert.False(list.Access.CanViewServerChannels);
+        Assert.True(list.IsPrivateMode);
+        Assert.False(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.True(list.IsPrivateMode);
+        list.IsPrivateMode = false;
+        Assert.True(list.IsPrivateMode);
+
+        list.Access.Update(Permissions(Permission.ViewSessions));
+        Assert.True(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.False(list.IsPrivateMode);
+    });
+
+    [Theory]
+    [InlineData(Permission.ViewSessions)]
+    [InlineData(Permission.Administrator)]
+    public Task EmptyChannelsStillAllowSwitchingWhenPermissionExists(Permission granted) => TestUiThread.RunAsync(() =>
+    {
+        using var fixture = new ListFixture();
+        var list = fixture.List;
+        list.Access.Update(Permissions(granted));
+        list.IsPrivateMode = true;
+
+        Assert.Empty(list.Sessions);
+        Assert.True(list.Access.CanViewServerChannels);
+        Assert.True(list.CanShowChannels);
+        list.ToggleListMode();
+        Assert.False(list.IsPrivateMode);
+    });
+
     [Fact]
     public Task HomeListKeepsPersonalChatsInRecentOrderInEitherSidebarMode() => TestUiThread.RunAsync(() =>
     {
@@ -80,12 +184,17 @@ public sealed class PrivateChatListTests
         private readonly CompositeDisposable _commands = new();
         public SessionsListVM List { get; }
 
-        public ListFixture() => List = new SessionsListVM(
+        public ListFixture()
+        {
+            var access = new AccessVM();
+            access.Update(Permissions(Permission.ViewSessions));
+            List = new SessionsListVM(
             Command<RxVoid>(), Command<SessionModel>(), Command<int>(), Command<int>(), Command<SessionModel>(),
             Command<SessionModel>(), Command<int>(), Command<(int, int)>(), Command<(int, string)>(),
             Command<(int, int, bool)>(), Command<(int, int, string?)>(), Command<int?>(),
             Proxy<IPeerPlaybackService>(), Proxy<IVoiceActivityService>(), Proxy<IScreenWatchService>(),
-            new PeerStatsService(), null!, new ChatReadTracker(), new AccessVM(), NullLogger<SessionsListVM>.Instance);
+            new PeerStatsService(), null!, new ChatReadTracker(), access, NullLogger<SessionsListVM>.Instance);
+        }
 
         private static T Proxy<T>() where T : class => DispatchProxy.Create<T, ServiceProxy>();
 
@@ -104,6 +213,15 @@ public sealed class PrivateChatListTests
 
     public class ServiceProxy : DispatchProxy
     {
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => null;
+        public Func<MethodInfo?, object?[]?, object?>? Handler { get; set; }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (Handler != null) return Handler(targetMethod, args);
+            var type = targetMethod!.ReturnType;
+            if (type == typeof(void)) return null;
+            if (type == typeof(Task)) return Task.CompletedTask;
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
     }
 }

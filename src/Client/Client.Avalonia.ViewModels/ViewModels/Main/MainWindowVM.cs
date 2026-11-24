@@ -249,6 +249,9 @@ public partial class MainWindowVM : ReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> ConnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> DisconnectCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CreateSessionCommand { get; }
+
+    /// <summary>A direct chat or a group, whatever list the side panel shows.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> CreatePrivateChatCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ToggleFullscreenCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShowHybridSessionCommand { get; }
 
@@ -332,6 +335,7 @@ public partial class MainWindowVM : ReactiveObject
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectToCoordinator);
         DisconnectCommand = ReactiveCommand.CreateFromTask(Disconnect);
         CreateSessionCommand = ReactiveCommand.CreateFromTask(() => CreateNewSession(null));
+        CreatePrivateChatCommand = ReactiveCommand.CreateFromTask(() => CreateNewSession(null, privateMode: true));
         ToggleFullscreenCommand = ReactiveCommand.Create(() => { IsContentFullScreen = !IsContentFullScreen; });
         ShowHybridSessionCommand = ReactiveCommand.Create(() => ChangeContent(OpenedSessions?.HybridSession));
         _changeChatSessionSettingsCommand = ReactiveCommand.CreateFromTask<(int SessionId, string Name, string? Description), RequestResult>(
@@ -363,7 +367,7 @@ public partial class MainWindowVM : ReactiveObject
             ReactiveCommand.CreateFromTask<SessionModel>(EditSessionPermissions, isConnected),
             _users.ViewProfileCommand, _users.KickPeerCommand, _users.BanUserCommand, _users.AdmitPeerCommand,
             _users.PokePeerCommand,
-            ReactiveCommand.CreateFromTask<int?>(CreateNewSession),
+            ReactiveCommand.CreateFromTask<int?>(categoryId => CreateNewSession(categoryId)),
             playback, voiceActivity, screenWatch, peerStats, listPreferences,
             ChatReads,
             Access,
@@ -374,18 +378,9 @@ public partial class MainWindowVM : ReactiveObject
         SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
         SessionsList.Avatars = _avatars;
         SessionsList.MovePeerCommand = _users.MovePeerCommand;
-        _users.OpenDirectChat = async user =>
-        {
-            if (_coordinatorSession is not { } coordinator) return;
-            var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
-                coordinator.GetCurrentUser().Id,
-                new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
-            if (result.IsSuccess)
-            {
-                SessionsList.IsPrivateMode = true;
-                await OpenSession(result.Value);
-            }
-        };
+        _users.OpenDirectChat = user => OpenDirectChatAsync(user, call: false);
+        _users.CallUser = user => OpenDirectChatAsync(user, call: true);
+        _users.FindDirectChat = SessionsList.FindDirectChat;
         UserCard = new UserCardVM(_users.EditProfileCommand, _users.ViewProfileCommand, _users.SetStatusCommand);
 
         _pushReporter = new ChatPushReporter(
@@ -536,7 +531,14 @@ public partial class MainWindowVM : ReactiveObject
         if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
             && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
             && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
-            await AutoConnectToCoordinator(autoConnect.Coordinator, autoConnect.User);
+        {
+            // The account is read again with its secrets: the server password is kept in the vault, not in the
+            // database the auto connection instance comes from
+            var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
+                .FirstOrDefault(server => server.CoordinatorId == autoConnect.Coordinator.CoordinatorId);
+            var user = saved?.Users.FirstOrDefault(account => account.Id == autoConnect.User.Id);
+            await AutoConnectToCoordinator(saved ?? autoConnect.Coordinator, user ?? autoConnect.User);
+        }
     }
 
     // The content under the screen has been laid out all along, so the screen leaves at once; it is out
@@ -633,9 +635,11 @@ public partial class MainWindowVM : ReactiveObject
     }
 
     /// <param name="categoryId">The category the new session goes into, or null for none.</param>
-    private async Task CreateNewSession(int? categoryId)
+    /// <param name="privateMode">A direct chat or a group whatever the list shows; null follows the list.</param>
+    private async Task CreateNewSession(int? categoryId, bool? privateMode = null)
     {
-        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId, privateMode: SessionsList.IsPrivateMode);
+        using var vm = new CreateSessionWindowVM(_coordinatorSession!, categoryId: categoryId,
+            privateMode: privateMode ?? SessionsList.IsPrivateMode);
         await ShowCreateSessionWindow.Handle(vm);
         if (vm.CreatedSession is { } created)
             await OpenSession(created);
@@ -673,6 +677,19 @@ public partial class MainWindowVM : ReactiveObject
         using var vm = new SessionPermissionsWindowVM(session, _coordinatorSession.Permissions,
             _changeSessionPermissionsCommand);
         await ShowSessionPermissionsWindow.Handle(vm);
+    }
+
+    /// <summary>Opens the direct chat with a user, made when there is none yet, and starts its call when asked.</summary>
+    private async Task OpenDirectChatAsync(UserModel user, bool call)
+    {
+        if (_coordinatorSession is not { } coordinator) return;
+        var result = await coordinator.CreateConversation(new NewSessionModel("Direct",
+            coordinator.GetCurrentUser().Id,
+            new NewChatSessionOptions(Kind: Shared.Enums.ChatKind.Direct, MemberIds: [user.Id])));
+        if (!result.IsSuccess) return;
+        SessionsList.IsPrivateMode = true;
+        await OpenSession(result.Value);
+        if (call) await SessionsList.CallChatAsync(result.Value.Id);
     }
 
     private async Task OpenSession(SessionModel sessionModel)

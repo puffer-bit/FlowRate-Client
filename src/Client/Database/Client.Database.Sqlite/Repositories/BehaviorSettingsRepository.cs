@@ -20,7 +20,7 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
         var row = await connection.QueryFirstOrDefaultAsync<BehaviorSettingsRow>("""
             SELECT IsAutoConnectEnabled, IsFallbackConnectionEnabled, IsFallbackConnectionWarningEnabled,
                    IsPropagatedConnectionWarningEnabled, CloseButtonAction, IsUpdateCheckOnStartupEnabled,
-                   UpdateChannel
+                   UpdateChannel, QuickReaction, KeepScreenOnWhileWatching
             FROM BehaviorSettings WHERE Id = 1
             """);
 
@@ -35,7 +35,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             IsPropagatedConnectionWarningEnabled = row.IsPropagatedConnectionWarningEnabled,
             CloseButtonAction = (CloseButtonAction)row.CloseButtonAction,
             IsUpdateCheckOnStartupEnabled = row.IsUpdateCheckOnStartupEnabled,
-            UpdateChannel = (UpdateChannel)row.UpdateChannel
+            UpdateChannel = (UpdateChannel)row.UpdateChannel,
+            QuickReaction = row.QuickReaction,
+            KeepScreenOnWhileWatching = row.KeepScreenOnWhileWatching
         };
     }
 
@@ -46,10 +48,10 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
         await connection.ExecuteAsync("""
             INSERT INTO BehaviorSettings (Id, IsAutoConnectEnabled, IsFallbackConnectionEnabled,
                 IsFallbackConnectionWarningEnabled, IsPropagatedConnectionWarningEnabled, CloseButtonAction,
-                IsUpdateCheckOnStartupEnabled, UpdateChannel)
+                IsUpdateCheckOnStartupEnabled, UpdateChannel, QuickReaction, KeepScreenOnWhileWatching)
             VALUES (1, @IsAutoConnectEnabled, @IsFallbackConnectionEnabled,
                 @IsFallbackConnectionWarningEnabled, @IsPropagatedConnectionWarningEnabled, @CloseButtonAction,
-                @IsUpdateCheckOnStartupEnabled, @UpdateChannel)
+                @IsUpdateCheckOnStartupEnabled, @UpdateChannel, @QuickReaction, @KeepScreenOnWhileWatching)
             ON CONFLICT (Id) DO UPDATE SET
                 IsAutoConnectEnabled = excluded.IsAutoConnectEnabled,
                 IsFallbackConnectionEnabled = excluded.IsFallbackConnectionEnabled,
@@ -57,7 +59,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 IsPropagatedConnectionWarningEnabled = excluded.IsPropagatedConnectionWarningEnabled,
                 CloseButtonAction = excluded.CloseButtonAction,
                 IsUpdateCheckOnStartupEnabled = excluded.IsUpdateCheckOnStartupEnabled,
-                UpdateChannel = excluded.UpdateChannel
+                UpdateChannel = excluded.UpdateChannel,
+                QuickReaction = excluded.QuickReaction,
+                KeepScreenOnWhileWatching = excluded.KeepScreenOnWhileWatching
             """, new
             {
                 settings.IsAutoConnectEnabled,
@@ -66,7 +70,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 settings.IsPropagatedConnectionWarningEnabled,
                 CloseButtonAction = (int)settings.CloseButtonAction,
                 settings.IsUpdateCheckOnStartupEnabled,
-                UpdateChannel = (int)settings.UpdateChannel
+                UpdateChannel = (int)settings.UpdateChannel,
+                settings.QuickReaction,
+                settings.KeepScreenOnWhileWatching
             });
     }
 
@@ -99,6 +105,6 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
 
 internal sealed record BehaviorSettingsRow(bool IsAutoConnectEnabled, bool IsFallbackConnectionEnabled,
     bool IsFallbackConnectionWarningEnabled, bool IsPropagatedConnectionWarningEnabled, int CloseButtonAction,
-    bool IsUpdateCheckOnStartupEnabled, int UpdateChannel);
+    bool IsUpdateCheckOnStartupEnabled, int UpdateChannel, string QuickReaction, bool KeepScreenOnWhileWatching);
 
 internal sealed record AutoConnectRow(string? AutoConnectCoordinatorId, int? AutoConnectUserId);

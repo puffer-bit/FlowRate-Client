@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -9,17 +11,17 @@
     <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
         <Grid RowDefinitions="Auto,*" RowSpacing="6">
             <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="14,*" ColumnSpacing="6" Margin="6,0"
-                      ToolTip.Tip="{l:Text chat.pinned.title}">
-                    <Image Width="14" Height="14" Source="{StaticResource PinIcon}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding PinsCaption}" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+                <!-- A page of its own, as the list of users: back and the title -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Button Classes="borderless" Width="44" Height="44" Padding="12" Click="OnBackClick">
+                        <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+                    </Button>
+                    <TextBlock Grid.Column="1" Text="{l:Text chat.pinned.title}" FontSize="18"
+                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </Grid>
                 <TextBlock Text="{l:Text chat.pinned.loading}" IsVisible="{Binding IsLoadingPinnedMessages}"
                            Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
                 <TextBlock Text="{l:Text chat.pinned.error}" IsVisible="{Binding HasPinnedMessagesError}"
-                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                <TextBlock Text="{l:Text chat.pinned.empty}" IsVisible="{Binding IsPinnedListEmpty}"
                            Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
             </StackPanel>
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -30,23 +32,30 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="chatVm:ChatPinnedMessageVM">
                             <Border Background="Transparent">
-                                <Border.ContextFlyout>
-                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                <common:PopupMenus.ContextMenu>
                                         <StackPanel Spacing="2">
                                             <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
                                                                   IsEnabled="{Binding Content.CanPin}" Command="{Binding Unpin}"
                                                                   menus:FlyoutMenu.CloseOnClick="True"/>
+                                            <!-- The page covers the chat, so it goes away to show the message -->
                                             <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
-                                                                  Command="{Binding Open}" menus:FlyoutMenu.CloseOnClick="True"/>
+                                                                  Command="{Binding Open}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  Click="OnGoToMessageClick"/>
                                         </StackPanel>
-                                    </Flyout>
-                                </Border.ContextFlyout>
+                                </common:PopupMenus.ContextMenu>
                                 <views:ChatMessageView DataContext="{Binding Content}"/>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- Shown while the chat has nothing pinned -->
+            <emptyStates:EmptyState Grid.Row="1"
+                                    IsVisible="{Binding IsPinnedListEmpty}"
+                                    Icon="{StaticResource PinIcon}"
+                                    Title="{l:Text chat.pinned.empty.title}"
+                                    Text="{l:Text chat.pinned.empty.text}"/>
         </Grid>
     </Border>
 </UserControl>

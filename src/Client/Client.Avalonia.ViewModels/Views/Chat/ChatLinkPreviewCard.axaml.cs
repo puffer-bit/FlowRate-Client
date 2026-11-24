@@ -5,6 +5,8 @@ namespace Client.Views.Shared.Chat;
 
 public partial class ChatLinkPreviewCard : UserControl
 {
+    public static System.Action<Control, ChatLinkPreviewVM>? ImageOpener { get; set; }
+
     public ChatLinkPreviewCard()
     {
         InitializeComponent();
@@ -15,7 +17,7 @@ public partial class ChatLinkPreviewCard : UserControl
         if (DataContext is not ChatLinkPreviewVM { IsImageLoaded: true } preview)
             return;
         e.Handled = true;
-        LinkImageLightbox.Open(this, preview);
+        (ImageOpener ?? LinkImageLightbox.Open)(this, preview);
     }
 
     private void OnImageKeyDown(object? sender, global::Avalonia.Input.KeyEventArgs e)
@@ -24,7 +26,7 @@ public partial class ChatLinkPreviewCard : UserControl
             || DataContext is not ChatLinkPreviewVM { IsImageLoaded: true } preview)
             return;
         e.Handled = true;
-        LinkImageLightbox.Open(this, preview);
+        (ImageOpener ?? LinkImageLightbox.Open)(this, preview);
     }
 
     // A card that can be opened takes clicks; the one above the input only shows what the message will carry

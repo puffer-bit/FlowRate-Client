@@ -12,6 +12,9 @@ public sealed class AccountSessionVM(AccountDevice device)
     public bool IsCurrent => device.IsCurrent;
     public bool IsOther => !device.IsCurrent;
 
+    /// <summary>The icon of the system of the device; null for a system without one.</summary>
+    public string? IconKey => UserProfileWindowVM.PlatformIconKey(device.Platform);
+
     public string Name => string.IsNullOrWhiteSpace(device.DeviceName)
         ? Strings.Get("accountSecurity.sessions.unnamed")
         : device.DeviceName;

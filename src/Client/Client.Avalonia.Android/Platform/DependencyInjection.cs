@@ -17,6 +17,7 @@ internal static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddAndroidPlatform(this IServiceCollection services)
     {
+        services.AddSingleton<IScreenAwakeService, AndroidScreenAwakeService>();
         services.AddSingleton<IMediaRuntimeLoader, NoMediaRuntimeLoader>();
         services.AddSingleton<IAudioPlayerService, SilentAudioPlayerService>();
         services.AddSingleton<Client.Services.ChatMediaPlayback>();

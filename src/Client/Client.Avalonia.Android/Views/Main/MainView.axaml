@@ -7,6 +7,7 @@
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:views="clr-namespace:Client.Droid.Views.Sessions.List"
+             xmlns:chat="clr-namespace:Client.Droid.Views.Sessions.Chat"
              xmlns:common="clr-namespace:Client.Droid.Views.Common"
              xmlns:main="clr-namespace:Client.Droid.Views.Main"
              xmlns:media="clr-namespace:Client.Droid.Views.Common.Media"
@@ -30,47 +31,48 @@
             <Setter Property="Foreground" Value="{DynamicResource OverdriveBrush}"/>
         </Style>
 
-        <!-- The three lines of the menu button, drawn on a 22 px grid; the header of a chat has the same button -->
-        <Style Selector="Path.burger">
+        <!-- The arrow of the back button in the headers of a chat and a session, drawn on a 22 px grid -->
+        <Style Selector="Path.back-arrow">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
             <Setter Property="Stretch" Value="None"/>
-            <Setter Property="Data" Value="M2,5 H20 M2,11 H20 M2,17 H20"/>
+            <Setter Property="Data" Value="M19,11 H4 M10,5 L4,11 L10,17"/>
             <Setter Property="Stroke" Value="{DynamicResource PrimaryTextBrush}"/>
             <Setter Property="StrokeThickness" Value="1.75"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
         </Style>
 
-        <!-- ====== Menu: the side panel of the desktop, slid in from the left over the screen ====== -->
-        <Style Selector="Panel.drawer">
-            <Setter Property="IsHitTestVisible" Value="False"/>
+        <!-- The round buttons of the header of the home screen -->
+        <Style Selector="Button.home-action">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
-        <Style Selector="Panel.drawer.open">
-            <Setter Property="IsHitTestVisible" Value="True"/>
+
+        <!-- The new chat button of the home screen: an accent circle with a plus -->
+        <Style Selector="Button.new-chat-button">
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="Panel.drawer > Border.drawer-backdrop">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
+        <Style Selector="Button.new-chat-button /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="Panel.drawer.open > Border.drawer-backdrop">
-            <Setter Property="Opacity" Value="1"/>
+        <Style Selector="Button.new-chat-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoveredPressedBrush}"/>
         </Style>
-        <!-- Moved out by its own width while closed -->
-        <Style Selector="Panel.drawer > Border.drawer-panel">
-            <Setter Property="Width" Value="304"/>
-            <Setter Property="RenderTransform" Value="translateX(-304px)"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Panel.drawer.open > Border.drawer-panel">
-            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+        <Style Selector="Path.new-chat-plus">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Stretch" Value="None"/>
+            <Setter Property="Data" Value="M11,3 V19 M3,11 H19"/>
+            <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
         </Style>
 
         <!-- A fact about the server: what it is on the left, the value on the right -->
@@ -92,49 +94,173 @@
          bar and the gesture area. Room for the keyboard is made by the margin of this panel -->
     <Grid x:Name="Root">
 
-        <!-- Personal conversations are the home screen on Android. -->
-        <Grid Grid.Row="0" x:Name="Home" RowDefinitions="Auto, 1, *">
-            <Grid Grid.Row="0" Margin="4,8,12,8" ColumnDefinitions="Auto, *" ColumnSpacing="8">
+        <!-- The home screen: the server on top, then the personal chats or the sessions of the server, and the
+             voice session we are in at the bottom -->
+        <Grid Grid.Row="0" x:Name="Home" RowDefinitions="Auto, 1, Auto, *, Auto">
+            <Grid Grid.Row="0" Margin="4" ColumnDefinitions="*, Auto, Auto" ColumnSpacing="2">
+                <!-- The server we are connected to. A tap opens its menu, or the connect form while there is no server -->
                 <Button Grid.Column="0"
                         Classes="borderless"
-                        Width="44" Height="44" Padding="0" CornerRadius="22"
-                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                        Click="OnMenuClick">
-                    <Path Classes="burger"/>
+                        Padding="8,6"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Click="OnServerTitleClick">
+                    <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
+                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10"
+                                Background="{DynamicResource DarkBackgroundBrush}"
+                                VerticalAlignment="Center">
+                            <Panel>
+                                <Image Width="22" Height="22" Source="{StaticResource ServerIcon}"
+                                       IsVisible="{Binding ServerTitle.IsReady}"/>
+                                <Image Width="22" Height="22" Source="{StaticResource DashInCircleIcon}"
+                                       IsVisible="{Binding !ServerTitle.IsReady}"/>
+                            </Panel>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock FontSize="16" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding ServerTitle.DisplayName}"/>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding ServerTitle.DisplayAddress}"/>
+                        </StackPanel>
+
+                        <Path Grid.Column="2"
+                              Width="10" Height="6" Margin="0,0,4,0"
+                              VerticalAlignment="Center"
+                              Stretch="Uniform"
+                              IsVisible="{Binding ServerTitle.IsReady}"
+                              Data="M0,0 L5,5 L10,0"
+                              Stroke="{DynamicResource SecondaryTextBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"/>
+                    </Grid>
                 </Button>
 
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock FontSize="16" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding ServerTitle.DisplayName}"/>
-                    <TextBlock FontSize="12"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding ServerTitle.DisplayAddress}"/>
-                </StackPanel>
+                <!-- The personal chats or the sessions of the server; the icon shows where a tap leads -->
+                <Button Grid.Column="1" Classes="borderless home-action"
+                        Command="{Binding ServerTitle.ToggleListModeCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ServerTitle.IsReady"/>
+                            <Binding Path="Access.CanViewServerChannels"/>
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <Panel>
+                        <Image Width="22" Height="22" Source="{StaticResource HashIcon}"
+                               IsVisible="{Binding SessionsList.IsPrivateMode}"
+                               ToolTip.Tip="{l:Text privateChats.showChannels}"/>
+                        <Image Width="22" Height="22" Source="{StaticResource SendIcon}"
+                               IsVisible="{Binding !SessionsList.IsPrivateMode}"
+                               ToolTip.Tip="{l:Text privateChats.showPrivate}"/>
+                    </Panel>
+                </Button>
+
+                <!-- The user and the settings -->
+                <Button Grid.Column="2" Classes="borderless home-action"
+                        ToolTip.Tip="{l:Text chat.more}" AutomationProperties.Name="{l:Text chat.more}">
+                    <!-- The dot tells of notifications that have not been looked at -->
+                    <Panel>
+                        <Image Width="22" Height="22" Source="{StaticResource MoreIcon}"/>
+                        <Ellipse Classes="unread-dot" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,-1,-3,0"
+                                 IsVisible="{Binding Notifications.HasUnread}"/>
+                    </Panel>
+                    <common:PopupMenus.Menu>
+                        <StackPanel Spacing="2">
+                            <!-- The signed-in user: a tap opens the profile -->
+                            <Button Classes="borderless" Padding="10,8" Margin="0,0,0,4"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    menus:FlyoutMenu.CloseOnClick="True"
+                                    IsVisible="{Binding IsConnected}"
+                                    Click="OnProfileClick">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <avatars:UserAvatar Grid.Column="0" Width="40" Height="40"
+                                                        UserName="{Binding UserCard.Username}"
+                                                        AvatarUrl="{Binding UserCard.AvatarUrl}"
+                                                        Status="{Binding UserCard.Presence}"
+                                                        IsMobile="{Binding UserCard.IsMobile}"
+                                                        VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock FontSize="15" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Text="{Binding UserCard.Username}"/>
+                                        <TextBlock FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Text="{Binding UserCard.StatusText}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                            <menus:MenuItemButton Icon="{StaticResource StatusOnlineIcon}" Content="{l:Text profile.status.title}"
+                                                  IsVisible="{Binding IsConnected}" Click="OnStatusMenuClick"/>
+                            <Separator IsVisible="{Binding IsConnected}"/>
+
+                            <!-- Everything shown at the top of the screen before, on a page of its own -->
+                            <menus:MenuItemButton Icon="{StaticResource BellIcon}" Click="OnNotificationsClick">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{l:Text notification.center.title}" VerticalAlignment="Center"/>
+                                    <Ellipse Classes="unread-dot" VerticalAlignment="Center"
+                                             IsVisible="{Binding Notifications.HasUnread}"/>
+                                </StackPanel>
+                            </menus:MenuItemButton>
+                            <Separator/>
+
+                            <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text settings.title}"
+                                                  Click="OnSettingsClick"/>
+                        </StackPanel>
+                    </common:PopupMenus.Menu>
+                </Button>
             </Grid>
 
             <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-            <views:PrivateChatsView Grid.Row="2" x:Name="HomeChats" DataContext="{Binding SessionsList}"/>
+            <!-- What plays from a chat goes on while the chats are browsed -->
+            <chat:GlobalChatPlayer Grid.Row="2"/>
+
+            <Panel Grid.Row="3" IsVisible="{Binding SessionsList.IsPrivateMode}">
+                <views:PrivateChatsView x:Name="HomeChats" DataContext="{Binding SessionsList}"/>
+            </Panel>
+            <views:SessionsView Grid.Row="3" x:Name="Sessions"
+                                IsVisible="{Binding !SessionsList.IsPrivateMode}"/>
+
+            <!-- A new chat, or a new session in the list of the server, where the thumb is -->
+            <Border Grid.Row="3" Classes="new-chat"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16"
+                    CornerRadius="28" BoxShadow="{DynamicResource FloatingButtonShadow}">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="ServerTitle.IsReady"/>
+                        <Binding Path="SessionsList.CanCreateSession"/>
+                    </MultiBinding>
+                </Border.IsVisible>
+                <Panel>
+                    <Button Classes="new-chat-button" Width="56" Height="56" Padding="0" CornerRadius="28"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            IsVisible="{Binding SessionsList.IsPrivateMode}"
+                            Command="{Binding CreatePrivateChatCommand}"
+                            ToolTip.Tip="{l:Text privateChats.newChat}"
+                            AutomationProperties.Name="{l:Text privateChats.newChat}">
+                        <Path Classes="new-chat-plus"/>
+                    </Button>
+                    <Button Classes="new-chat-button" Width="56" Height="56" Padding="0" CornerRadius="28"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            IsVisible="{Binding !SessionsList.IsPrivateMode}"
+                            Command="{Binding ServerTitle.CreateSessionCommand}"
+                            ToolTip.Tip="{l:Text main.createSession}"
+                            AutomationProperties.Name="{l:Text main.createSession}">
+                        <Path Classes="new-chat-plus"/>
+                    </Button>
+                </Panel>
+            </Border>
+
+            <main:CallBar x:Name="CallBar" Grid.Row="4"/>
         </Grid>
 
         <!-- The session that is open -->
-        <ContentControl Grid.Row="0" x:Name="Screen"/>
-
-        <!-- The menu. The backdrop covers the screen and takes the pointer input; a tap on it closes the menu -->
-        <Panel Grid.Row="0" x:Name="Drawer" Classes="drawer" ClipToBounds="True">
-            <Border Classes="drawer-backdrop"
-                    Background="{DynamicResource DialogBackdropBrush}"
-                    Tapped="OnDrawerBackdropTapped"/>
-
-            <Border Classes="drawer-panel"
-                    HorizontalAlignment="Left"
-                    Background="{DynamicResource GeneralBrush}"
-                    BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,0,1,0">
-                <views:SessionsView x:Name="Sessions"/>
-            </Border>
-        </Panel>
+        <ContentControl Grid.Row="0" x:Name="Screen" IsVisible="False" Background="{DynamicResource GeneralBrush}"/>
 
         <!-- The connect form, the profile, the settings and the form of a new session take the whole screen, over the session and
              the menu. They slide in from the right and back out to it -->
@@ -144,15 +270,15 @@
             </TransitioningContentControl.PageTransition>
         </TransitioningContentControl>
 
-        <!-- The menu of a message is written in the chat view and joins this layer in code -->
+        <!-- The menus, over everything else. The menu of a message is written in the chat view and joins this layer in code -->
         <Panel Grid.Row="0" x:Name="SheetLayer">
-            <common:BottomSheet x:Name="AudioDevicesMenu">
+            <common:PopupMenu x:Name="AudioDevicesMenu" Classes="wide">
                 <media:CallAudioDevicePicker Margin="12"/>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <!-- Menu of the server, opened from its title in the menu: what the flyout of the desktop
+            <!-- Menu of the server, opened from its title on the home screen: what the flyout of the desktop
                  shows, without what is not on Android yet -->
-            <common:BottomSheet x:Name="ServerMenu">
+            <common:PopupMenu x:Name="ServerMenu" Classes="wide">
                 <StackPanel Spacing="2">
 
                     <!-- Who we are connected to -->
@@ -192,13 +318,6 @@
                         </Grid>
                     </Border>
 
-                    <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text privateChats.showChannels}"
-                                          IsVisible="{Binding SessionsList.IsPrivateMode}"
-                                          Command="{Binding ServerTitle.ToggleListModeCommand}" Click="OnListModeClick"/>
-                    <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.showPrivate}"
-                                          IsVisible="{Binding !SessionsList.IsPrivateMode}"
-                                          Command="{Binding ServerTitle.ToggleListModeCommand}" Click="OnListModeClick"/>
-                    <Separator/>
                     <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                                           IsVisible="{Binding SessionsList.CanCreateSession}" Click="OnCreateSessionClick"/>
                     <menus:MenuItemButton Icon="{StaticResource FolderPlusIcon}" Content="{l:Text main.createCategory}"
@@ -217,10 +336,10 @@
                                           Content="{l:Text main.menu.disconnect.plain}"
                                           Click="OnDisconnectClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <!-- The status of the user, opened by pressing and holding the user in the menu -->
-            <common:BottomSheet x:Name="StatusMenu">
+            <!-- The status of the user, opened from the menu of the home screen -->
+            <common:PopupMenu x:Name="StatusMenu">
                 <StackPanel Spacing="2">
                     <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
                                Text="{l:Text profile.status.title}"/>
@@ -245,11 +364,11 @@
                                           CommandParameter="{x:Static user:UserStatus.Invisible}"
                                           Click="OnStatusClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of the chat that was pressed and held in the list of sessions. The data context
                  is the chat -->
-            <common:BottomSheet x:Name="ChatMenu"
+            <common:PopupMenu x:Name="ChatMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ChatSessionVM">
                 <StackPanel Spacing="2">
@@ -279,11 +398,11 @@
                                           IsVisible="{Binding CanArrange}"
                                           Click="OnMoveChatClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of a peer of a voice session, tapped in the list of sessions or in the session we
                  are in: its screen, and how loud we hear its voice. The data context is the peer -->
-            <common:BottomSheet x:Name="PeerMenu"
+            <common:PopupMenu x:Name="PeerMenu" Classes="wide"
                                DataContext="{x:Null}"
                                x:DataType="listVm:PeerVM">
                 <StackPanel Spacing="2">
@@ -337,7 +456,11 @@
                         <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
                                               Command="{Binding SelfSession.ToggleSoundCommand}"
                                               IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+                        <!-- Going away takes the last reason at once; another one is chosen apart -->
                         <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                              Command="{Binding SelfSession.ToggleAfkCommand}"
+                                              Click="OnPeerMenuClick" IsVisible="{Binding !SelfSession.IsAfk}"/>
+                        <menus:MenuItemButton Content="{l:Text hybrid.afk.withReason}"
                                               Click="OnPeerAfkClick" IsVisible="{Binding !SelfSession.IsAfk}"/>
                         <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
                                               Command="{Binding SelfSession.ToggleAfkCommand}"
@@ -346,9 +469,12 @@
                                               Click="OnPeerSelfStatsClick"/>
                     </StackPanel>
 
-                    <!-- The sheet stays open while playback is adjusted. -->
+                    <!-- The menu stays open while playback is adjusted. -->
                     <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+                        <!-- A poke goes at once; a message for it is written apart -->
                         <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                              IsVisible="{Binding CanPoke}" Click="OnPeerPokeNowClick"/>
+                        <menus:MenuItemButton Content="{l:Text peer.poke.withMessage}"
                                               IsVisible="{Binding CanPoke}" Click="OnPeerPokeClick"/>
                         <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
                                               IsVisible="{Binding CanShowConnectionStats}" Click="OnPeerStatsClick"/>
@@ -395,9 +521,9 @@
                                           Command="{Binding ViewProfileCommand}" CommandParameter="{Binding PeerData.UserId}"
                                           Click="OnPeerMenuClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="PokeMenu" DataContext="{x:Null}" x:DataType="listVm:PeerVM">
+            <common:PopupMenu x:Name="PokeMenu" Classes="wide" DataContext="{x:Null}" x:DataType="listVm:PeerVM">
                 <StackPanel Margin="12,8" Spacing="12">
                     <TextBlock Text="{Binding PokeTitle}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <TextBlock Text="{l:Text peer.poke.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -407,9 +533,9 @@
                     <menus:MenuItemButton Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke.send}"
                                           IsEnabled="{Binding CanPoke}" Command="{Binding Poke}" Click="OnPokeSendClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="AfkMenu" DataContext="{x:Null}" x:DataType="hybridVm:HybridSessionStatusBarVM">
+            <common:PopupMenu x:Name="AfkMenu" Classes="wide" DataContext="{x:Null}" x:DataType="hybridVm:HybridSessionStatusBarVM">
                 <StackPanel Margin="12,8" Spacing="12">
                     <TextBlock Text="{l:Text hybrid.afk.title}" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock Text="{l:Text hybrid.afk.subtitle}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -428,14 +554,14 @@
                     <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.confirm}"
                                           Command="{Binding ToggleAfkCommand}" Click="OnAfkConfirmClick"/>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
-            <common:BottomSheet x:Name="PeerStatsMenu" DataContext="{x:Null}">
+            <common:PopupMenu x:Name="PeerStatsMenu" Classes="wide" DataContext="{x:Null}">
                 <hybrid:PeerStatsView/>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Where a session goes: a step up or down, or into a category. The data context is the session -->
-            <common:BottomSheet x:Name="SessionMoveMenu"
+            <common:PopupMenu x:Name="SessionMoveMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ISessionVM">
                 <StackPanel Spacing="2">
@@ -472,10 +598,10 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
 
             <!-- Menu of a category held in the list of sessions. The data context is the category -->
-            <common:BottomSheet x:Name="CategoryMenu"
+            <common:PopupMenu x:Name="CategoryMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:SessionCategoryVM">
                 <StackPanel Spacing="2">
@@ -500,11 +626,15 @@
                                               Click="OnCategoryDeleteClick"/>
                     </StackPanel>
                 </StackPanel>
-            </common:BottomSheet>
+            </common:PopupMenu>
+
+            <!-- Shows the menus written next to what they act on, in the other views -->
+            <common:PopupMenu x:Name="SharedMenu" ClosesOnItemClick="True"/>
         </Panel>
 
+        <!-- Notifications of the whole application, at the top of the screen over everything else -->
         <notifications:ToastHost Grid.Row="0" DataContext="{Binding Notifications}"
-                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,56,12,12"/>
+                                 HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="12,8,12,12"/>
 
         <main:StartupScreen Grid.Row="0" x:Name="StartupOverlay"/>
 

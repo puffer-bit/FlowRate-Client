@@ -1,17 +1,18 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using Client.ViewModels.Main;
+using Avalonia.VisualTree;
 using Client.ViewModels.Sessions.List;
 
 namespace Client.Droid.Views.Sessions.List;
 
 /// <summary>
-/// What the menu holds: the side panel of the desktop, with the server on top, its sessions under it
-/// and the signed-in user at the bottom.
+/// The sessions of the server, as in the side panel of the desktop: the categories, the chats and the
+/// voice sessions with who is in them. The home screen shows it in place of the personal chats.
 /// </summary>
 public partial class SessionsView : UserControl
 {
@@ -36,16 +37,6 @@ public partial class SessionsView : UserControl
     private bool _isMenuPress;
 
     /// <summary>
-    /// Raised by a tap on the server we are connected to.
-    /// </summary>
-    public event Action? ServerMenuRequested;
-
-    /// <summary>
-    /// Raised by a tap on the list, whether or not it changed what is selected.
-    /// </summary>
-    public event Action? SessionTapped;
-
-    /// <summary>
     /// Raised by a long press on a chat.
     /// </summary>
     public event Action<ChatSessionVM>? ChatMenuRequested;
@@ -64,29 +55,6 @@ public partial class SessionsView : UserControl
     /// Raised by a long press on the header of a category.
     /// </summary>
     public event Action<SessionCategoryVM>? CategoryMenuRequested;
-
-    /// <summary>
-    /// Raised by a long press on the user.
-    /// </summary>
-    public event Action? StatusMenuRequested;
-
-    /// <summary>
-    /// Raised by the gear next to the user.
-    /// </summary>
-    public event Action? SettingsRequested;
-
-    private void OnSettingsClick(object? sender, RoutedEventArgs e) => SettingsRequested?.Invoke();
-
-    private void OnServerTitleClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainWindowVM viewModel)
-            return;
-
-        if (viewModel.ServerTitle.IsReady)
-            ServerMenuRequested?.Invoke();
-        else if (!viewModel.IsConnected)
-            viewModel.ConnectCommand.Execute().Subscribe();
-    }
 
     private void OnSessionContextRequested(object? sender, ContextRequestedEventArgs e)
     {
@@ -170,36 +138,15 @@ public partial class SessionsView : UserControl
             category.CommitRenameCommand.Execute().Subscribe();
     }
 
-    private void OnSessionsTapped(object? sender, TappedEventArgs e) => SessionTapped?.Invoke();
-
     private void OnHybridSessionTapped(object? sender, TappedEventArgs e)
     {
         if (_isMenuPress || sender is not StyledElement { DataContext: HybridSessionVM hybrid })
             return;
 
-        hybrid.Connect();
-    }
-
-    // Brings the session back on screen; the menu closes as after a tap on the list, even if it is shown already
-    private void OnHybridPanelClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainWindowVM viewModel)
+        // The fold of the peers is a button of its own
+        if ((e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true)
             return;
 
-        viewModel.ShowHybridSessionCommand.Execute().Subscribe();
-        SessionTapped?.Invoke();
-    }
-
-    private void OnUserCardContextRequested(object? sender, ContextRequestedEventArgs e)
-    {
-        e.Handled = true;
-        if (DataContext is MainWindowVM { IsConnected: true })
-            StatusMenuRequested?.Invoke();
-    }
-
-    private void OnUserCardClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is MainWindowVM { IsConnected: true, UserCard.UserId: { } userId } viewModel)
-            viewModel.UserCard.ViewProfileCommand.Execute(userId).Subscribe();
+        hybrid.Connect();
     }
 }

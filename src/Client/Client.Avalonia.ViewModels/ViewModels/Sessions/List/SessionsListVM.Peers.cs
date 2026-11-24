@@ -75,7 +75,10 @@ public partial class SessionsListVM
         var userIds = peers.Select(peer => peer.UserId).ToList();
         // The peers show the defaults until then and get the stored settings through Changed
         _ = _playbackService.LoadAsync(coordinator.GetCurrentUser().CoordinatorInstanceId, userIds);
-        foreach (var (userId, user) in await coordinator.GetUsers(userIds))
+        var users = await coordinator.GetUsers(userIds);
+        if (isCurrent?.Invoke() == false)
+            return result.Result;
+        foreach (var (userId, user) in users)
             session.UpdateUserModel(userId, user);
         return result.Result;
     }

@@ -1,15 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:main="clr-namespace:Client.Droid.Views.Main"
              xmlns:listViews="clr-namespace:Client.Droid.Views.Sessions.List"
-             xmlns:views="clr-namespace:Client.Droid.Views.Sessions.Chat"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
-             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.Sessions.List.SessionsView"
              x:DataType="mainVm:MainWindowVM"
@@ -29,6 +26,27 @@
         </Style>
         <Style Selector="TextBlock.peerName">
             <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <!-- The count of peers is the fold of their list: no button look, a chevron that turns -->
+        <Style Selector="ToggleButton.peersToggle">
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="0,0,-8,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle /template/ ContentPresenter, ToggleButton.peersToggle:checked /template/ ContentPresenter, ToggleButton.peersToggle:pressed /template/ ContentPresenter, ToggleButton.peersToggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle Path.chevron">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        </Style>
+        <Style Selector="ToggleButton.peersToggle:checked Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
         </Style>
 
         <!-- Placeholders shown in place of the list, one at a time -->
@@ -85,428 +103,237 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, 1, Auto, *, Auto, 1, Auto">
-        <views:GlobalChatPlayer Grid.Row="2"/>
+    <!-- The sessions of the server: the placeholders, or the list with its categories and who is in
+         each voice session -->
+    <Grid DataContext="{Binding SessionsList}">
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
+            <Image Source="{StaticResource PlugIcon}"/>
+            <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
+            <TextBlock Text="{l:Text sessions.notConnected.text}"/>
+            <Button Classes="primary" Command="{Binding ConnectCommand}"
+                    HorizontalAlignment="Center" MinWidth="140" MinHeight="44" Margin="0,4,0,0"
+                    HorizontalContentAlignment="Center">
+                <TextBlock Text="{l:Text connect.button}" Foreground="{DynamicResource OnAccentTextBrush}"/>
+            </Button>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsReconnecting}">
+            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                            IsIndeterminate="True" BorderThickness="4"
+                                            Foreground="{DynamicResource ProgressRingBrush}"/>
+            <TextBlock Classes="title" Text="{l:Text sessions.connectionLost.title}"/>
+            <TextBlock Text="{l:Text sessions.connectionLost.text}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsLoading}">
+            <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
+                                            IsIndeterminate="True" BorderThickness="4"
+                                            Foreground="{DynamicResource ProgressRingBrush}"/>
+            <TextBlock Text="{l:Text sessions.retrieving}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsFailed}">
+            <Image Source="{StaticResource DashInCircleIcon}"/>
+            <TextBlock Text="{Binding ErrorMessage}"/>
+        </StackPanel>
+        <StackPanel Classes="placeholder" IsVisible="{Binding IsEmpty}">
+            <Image Source="{StaticResource TipIcon}"/>
+            <TextBlock Text="{l:Text sessions.empty.plain}"/>
+        </StackPanel>
 
-        <!-- The server, as at the top of the side panel of the desktop. A tap opens its menu, or the
-             connect form while there is no server -->
-        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
-        <Button Grid.Column="0"
-                Classes="borderless"
-                Padding="8,6"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                Click="OnServerTitleClick">
-            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
-                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10"
-                        Background="{DynamicResource DarkBackgroundBrush}"
-                        VerticalAlignment="Center">
-                    <Panel>
-                        <Image Width="22" Height="22" Source="{StaticResource ServerIcon}"
-                               IsVisible="{Binding ServerTitle.IsReady}"/>
-                        <Image Width="22" Height="22" Source="{StaticResource DashInCircleIcon}"
-                               IsVisible="{Binding !ServerTitle.IsReady}"/>
-                    </Panel>
-                </Border>
+        <!-- A tap opens a chat or joins a voice session; the visible session stays selected. -->
+        <ListBox Classes="sessionsList byContent"
+                 x:Name="SessionsListBox"
+                 Margin="8,8"
+                 ItemsSource="{Binding Rows}"
+                 IsVisible="{Binding HasSessions}"
+                 IsEnabled="{Binding !IsStale}"
+                 SelectedItem="{Binding SelectedSession}"
+                 Background="Transparent"
+                 SelectionMode="Single">
+            <ListBox.DataTemplates>
+                <DataTemplate DataType="listVm:HybridSessionVM">
+                    <Grid RowDefinitions="Auto, Auto" RowSpacing="2"
+                          anim:Presence.Leave="Fold"
+                          anim:Presence.IsLeaving="{Binding IsLeaving}">
+                        <!-- A tap on the header enters the session, or brings it back on screen -->
+                        <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}"
+                                Tapped="OnHybridSessionTapped">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                                    <Image Source="{StaticResource HybridSessionIcon}"/>
+                                    <Image Width="10" Height="10" Margin="0,0,-3,-3"
+                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           IsVisible="{Binding ShowsFullWarning}"
+                                           ToolTip.Tip="{l:Text sessions.full}"
+                                           Source="{StaticResource CrossIcon}"/>
+                                </Panel>
 
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock FontSize="16" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding ServerTitle.DisplayName}"/>
-                    <main:StatusBarView/>
-                    <TextBlock FontSize="12"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding ServerTitle.DisplayAddress}"/>
-                </StackPanel>
-
-                <Path Grid.Column="2"
-                      Width="10" Height="6" Margin="0,0,4,0"
-                      VerticalAlignment="Center"
-                      Stretch="Uniform"
-                      IsVisible="{Binding ServerTitle.IsReady}"
-                      Data="M0,0 L5,5 L10,0"
-                      Stroke="{DynamicResource SecondaryTextBrush}"
-                      StrokeThickness="1.5"
-                      StrokeLineCap="Round"
-                      StrokeJoin="Round"/>
-            </Grid>
-        </Button>
-
-        <!-- Creates a session on the server we are connected to -->
-        <Button Grid.Column="1"
-                Classes="borderless"
-                Width="44" Height="44" Padding="0" Margin="0,0,4,0"
-                VerticalAlignment="Center"
-                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                Command="{Binding CreateSessionCommand}">
-            <Button.IsVisible>
-                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                    <Binding Path="ServerTitle.IsReady"/>
-                    <Binding Path="SessionsList.CanCreateSession"/>
-                </MultiBinding>
-            </Button.IsVisible>
-            <Image Width="22" Height="22" Source="{StaticResource PlusIcon}"/>
-        </Button>
-        </Grid>
-
-        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
-
-        <DockPanel Grid.Row="3" DataContext="{Binding SessionsList}">
-            <StackPanel DockPanel.Dock="Top" Margin="16,8" IsVisible="{Binding CanCreate}">
-                <TextBlock Text="{l:Text privateChats.showPrivate}" IsVisible="{Binding IsPrivateMode}" FontWeight="SemiBold"/>
-                <TextBlock Text="{l:Text privateChats.showChannels}" IsVisible="{Binding !IsPrivateMode}" FontWeight="SemiBold"/>
-            </StackPanel>
-            <Grid>
-            <StackPanel Classes="placeholder" IsVisible="{Binding IsOffline}">
-                <Image Source="{StaticResource PlugIcon}"/>
-                <TextBlock Classes="title" Text="{l:Text sessions.notConnected.title}"/>
-                <TextBlock Text="{l:Text sessions.notConnected.text}"/>
-                <Button Classes="primary" Command="{Binding ConnectCommand}"
-                        HorizontalAlignment="Center" MinWidth="140" MinHeight="44" Margin="0,4,0,0"
-                        HorizontalContentAlignment="Center">
-                    <TextBlock Text="{l:Text connect.button}" Foreground="{DynamicResource OnAccentTextBrush}"/>
-                </Button>
-            </StackPanel>
-            <StackPanel Classes="placeholder" IsVisible="{Binding IsReconnecting}">
-                <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
-                                                IsIndeterminate="True" BorderThickness="4"
-                                                Foreground="{DynamicResource ProgressRingBrush}"/>
-                <TextBlock Classes="title" Text="{l:Text sessions.connectionLost.title}"/>
-                <TextBlock Text="{l:Text sessions.connectionLost.text}"/>
-            </StackPanel>
-            <StackPanel Classes="placeholder" IsVisible="{Binding IsLoading}">
-                <loadingIndicators:ProgressRing Width="40" Height="40" MinWidth="0" MinHeight="0"
-                                                IsIndeterminate="True" BorderThickness="4"
-                                                Foreground="{DynamicResource ProgressRingBrush}"/>
-                <TextBlock Text="{l:Text sessions.retrieving}"/>
-            </StackPanel>
-            <StackPanel Classes="placeholder" IsVisible="{Binding IsFailed}">
-                <Image Source="{StaticResource DashInCircleIcon}"/>
-                <TextBlock Text="{Binding ErrorMessage}"/>
-            </StackPanel>
-            <StackPanel Classes="placeholder" IsVisible="{Binding IsEmpty}">
-                <Image Source="{StaticResource TipIcon}"/>
-                <TextBlock Text="{l:Text sessions.empty.plain}"/>
-            </StackPanel>
-
-            <!-- A tap opens a chat or joins a voice session; the visible session stays selected. -->
-            <ListBox Classes="sessionsList byContent"
-                     x:Name="SessionsListBox"
-                     Margin="8,8"
-                     Tapped="OnSessionsTapped"
-                     ItemsSource="{Binding Rows}"
-                     IsVisible="{Binding HasSessions}"
-                     IsEnabled="{Binding !IsStale}"
-                     SelectedItem="{Binding SelectedSession}"
-                     Background="Transparent"
-                     SelectionMode="Single">
-                <ListBox.DataTemplates>
-                    <DataTemplate DataType="listVm:HybridSessionVM">
-                        <Grid RowDefinitions="Auto, Auto" RowSpacing="2"
-                              anim:Presence.Leave="Fold"
-                              anim:Presence.IsLeaving="{Binding IsLeaving}">
-                            <!-- A tap on the header enters the session, or brings it back on screen -->
-                            <Border Grid.Row="0" Classes="sessionHeader" Classes.shown="{Binding IsShown}"
-                                    Tapped="OnHybridSessionTapped">
-                                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
-                                    <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
-                                        <Image Source="{StaticResource HybridSessionIcon}"/>
-                                        <Image Width="10" Height="10" Margin="0,0,-3,-3"
-                                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                               IsVisible="{Binding ShowsFullWarning}"
-                                               ToolTip.Tip="{l:Text sessions.full}"
-                                               Source="{StaticResource CrossIcon}"/>
-                                    </Panel>
-
-                                    <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
-                                               Text="{Binding Model.Name}"/>
+                                <TextBlock Grid.Column="1" Classes="sessionName" FontSize="16"
+                                           Text="{Binding Model.Name}"/>
 
 
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
-                                                VerticalAlignment="Center"
-                                                IsVisible="{Binding !!Peers.Count}">
+                                <!-- The count of peers folds and unfolds their list; at first it is unfolded -->
+                                <ToggleButton Grid.Column="2" x:Name="PeersToggle" Classes="peersToggle"
+                                              IsChecked="True" VerticalAlignment="Center"
+                                              IsVisible="{Binding !!Peers.Count}"
+                                              AutomationProperties.Name="{l:Text sessions.participants}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                         <Image Width="14" Height="14" Source="{StaticResource BaseUserIcon}"/>
                                         <TextBlock Classes="sessionCounter" FontSize="14" Text="{Binding Peers.Count}"/>
+                                        <Path Classes="chevron" Width="10" Height="6" Stretch="None" Margin="2,0,0,0"
+                                              VerticalAlignment="Center" Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                              StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"/>
                                     </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <!-- Who is in the session. Not a list box: a tap on a peer opens its menu -->
-                            <Border Grid.Row="1"
-                                    Classes="peersBranch"
-                                    IsVisible="{Binding !!Peers.Count}">
-                                <ItemsControl ItemsSource="{Binding Peers}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="listVm:PeerVM">
-                                            <!-- A joining peer unfolds its row and a leaving one folds it, so the
-                                                 sessions below slide instead of jumping -->
-                                            <Grid ColumnDefinitions="28, *, Auto" ColumnSpacing="8"
-                                                  Margin="4,4"
-                                                  ClipToBounds="True"
-                                                  anim:Presence.Appear="Unfold"
-                                                  anim:Presence.Leave="Fold"
-                                                  anim:Presence.IsLeaving="{Binding IsLeaving}"
-                                                  Classes="peerRow"
-                                                  Classes.afk="{Binding IsAfk}"
-                                                  Background="Transparent"
-                                                  Tapped="OnPeerTapped">
-                                                <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
-                                                    <avatars:UserAvatar UserName="{Binding UserData.Username}"
-                                                                        IsAnimated="True"
-                                                                        AvatarUrl="{Binding UserData.AvatarUrl}"
-                                                                        IsSpeaking="{Binding IsSpeaking}"
-                                                                        IsWaiting="{Binding IsWaiting}">
-                                                        <avatars:UserAvatar.IsVisible>
-                                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                                                                <Binding Path="IsConnected"/>
-                                                                <Binding Path="IsWaiting"/>
-                                                            </MultiBinding>
-                                                        </avatars:UserAvatar.IsVisible>
-                                                    </avatars:UserAvatar>
-
-                                                    <loadingIndicators:ProgressRing Width="16" Height="16"
-                                                                                    MinWidth="0" MinHeight="0"
-                                                                                    IsIndeterminate="True"
-                                                                                    BorderThickness="2"
-                                                                                    Foreground="{DynamicResource PrimaryTextBrush}">
-                                                        <loadingIndicators:ProgressRing.IsVisible>
-                                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                                                <Binding Path="!IsConnected"/>
-                                                                <Binding Path="!IsWaiting"/>
-                                                            </MultiBinding>
-                                                        </loadingIndicators:ProgressRing.IsVisible>
-                                                    </loadingIndicators:ProgressRing>
-                                                </Panel>
-
-                                                <!-- The reason of an away user goes under the name, and stays readable -->
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Classes="peerName afkDim"
-                                                               Classes.connecting="{Binding !IsConnected}"
-                                                               Text="{Binding DisplayedName}"/>
-                                                    <TextBlock Text="{Binding AfkReason}"
-                                                               IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                               FontSize="11"
-                                                               Foreground="{DynamicResource SecondaryTextBrush}"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-
-                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
-                                                            VerticalAlignment="Center">
-                                                    <!-- The user shows a screen -->
-                                                    <Image Width="20" Height="20" Classes="afkDim"
-                                                           Source="{StaticResource ScreenShareIcon}"
-                                                           IsVisible="{Binding IsSharingScreen}"/>
-
-                                                    <!-- The user stepped away from the keyboard: the mark stands for their microphone and sound -->
-                                                    <Image Width="20" Height="20"
-                                                           Source="{StaticResource AfkIcon}"
-                                                           IsVisible="{Binding IsAfk}"
-                                                           ToolTip.Tip="{Binding AfkHint}"/>
-
-                                                    <!-- The user turned their own microphone off -->
-                                                    <Image Width="20" Height="20"
-                                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
-                                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
-
-                                                    <!-- The user turned the sound of the session off -->
-                                                    <Image Width="20" Height="20"
-                                                           Source="{StaticResource CrossedHeadphonesIcon}"
-                                                           IsVisible="{Binding ShowsSoundOff}"/>
-
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Border>
-                        </Grid>
-                    </DataTemplate>
-
-                    <!-- A tap folds the category, a long press opens its menu -->
-                    <DataTemplate DataType="listVm:SessionCategoryVM">
-                        <Border Classes="categoryHeader"
-                                Classes.collapsed="{Binding IsCollapsed}"
-                                Classes.unread="{Binding HasUnread}"
-                                Tapped="OnCategoryTapped">
-                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="6">
-                                <Path Grid.Column="0" Classes="categoryChevron" Data="M0,0 L4,4 L8,0"/>
-
-                                <TextBlock Grid.Column="1" Classes="categoryName"
-                                           Text="{Binding Name}"
-                                           IsVisible="{Binding !IsEditing}"/>
-
-                                <TextBox Grid.Column="1"
-                                         Text="{Binding EditedName}"
-                                         PlaceholderText="{l:Text sessions.category.namePlaceholder}"
-                                         MaxLength="50"
-                                         IsVisible="{Binding IsEditing}"
-                                         Loaded="OnCategoryEditorLoaded"
-                                         KeyDown="OnCategoryEditorKeyDown"
-                                         LostFocus="OnCategoryEditorLostFocus"/>
-
-                                <Panel Grid.Column="2" VerticalAlignment="Center">
-                                    <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
-                                        <TextBlock Text="{Binding UnreadCountText}"/>
-                                    </Border>
-                                    <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
-                                        <TextBlock Text="{Binding MentionCountText}"/>
-                                    </Border>
-                                </Panel>
+                                </ToggleButton>
                             </Grid>
                         </Border>
-                    </DataTemplate>
 
-                    <DataTemplate DataType="listVm:ChatSessionVM">
-                        <listViews:ChatListItemView/>
-                    </DataTemplate>
-                </ListBox.DataTemplates>
-            </ListBox>
-            </Grid>
-        </DockPanel>
-
-        <!-- The voice session we are in, as under the list of the desktop: its state, a way back to it
-             and out of it, and the microphone, the sound and AFK. It unfolds when we join and folds
-             back when we leave, so the list above gives way smoothly -->
-        <Border Grid.Row="4" Classes="hybridPanel"
-                BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
-                Padding="8"
-                anim:Presence.Appear="Unfold"
-                anim:Presence.Leave="Fold"
-                anim:Presence.IsLeaving="{Binding OpenedSessions?.IsHybridPanelLeaving, FallbackValue=False}"
-                IsVisible="{Binding OpenedSessions?.HybridPanelSession, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
-            <Border.Styles>
-                <!-- The part that has not unfolded yet is cut off. A style and not a value of the
-                     element: the end of a fold clears the value the element has -->
-                <Style Selector="Border.hybridPanel">
-                    <Setter Property="ClipToBounds" Value="True"/>
-                </Style>
-                <Style Selector="Button.hybridAction">
-                    <Setter Property="Height" Value="44"/>
-                    <Setter Property="Padding" Value="0"/>
-                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                    <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                </Style>
-                <Style Selector="Button.hybridAction /template/ ContentPresenter">
-                    <Setter Property="BorderThickness" Value="0"/>
-                </Style>
-                <!-- Being away stays visible at a glance -->
-                <Style Selector="Button.hybridAction.active /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-                </Style>
-            </Border.Styles>
-
-            <Grid RowDefinitions="Auto, Auto" RowSpacing="8">
-                <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" ColumnSpacing="4">
-                    <!-- The state of the connection, as wide as the avatar of the user below -->
-                    <Panel Grid.Column="0" Width="40" Height="40" Margin="8,0,0,0" VerticalAlignment="Center">
-                        <loadingIndicators:ProgressRing Width="22" Height="22" MinWidth="22" MinHeight="22"
-                                                        IsIndeterminate="True"
-                                                        BorderThickness="3"
-                                                        Foreground="{DynamicResource ProgressRingBrush}"
-                                                        IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsLoading, FallbackValue=False}"/>
-                        <indicators:SignalIndicator Width="24" Height="24"
-                                                    Level="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.Stats.SignalLevel, FallbackValue=0}"
-                                                    IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsConnected, FallbackValue=False}"/>
-                        <Image Width="22" Height="22"
-                               Source="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}, FallbackValue={x:Null}}">
-                            <Image.IsVisible>
+                        <!-- Who is in the session. Not a list box: a tap on a peer opens its menu -->
+                        <Border Grid.Row="1"
+                                Classes="peersBranch">
+                            <Border.IsVisible>
                                 <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                    <Binding Path="!OpenedSessions?.HybridPanelSession?.StatusBar.IsLoading" FallbackValue="False"/>
-                                    <Binding Path="!OpenedSessions?.HybridPanelSession?.StatusBar.IsConnected" FallbackValue="False"/>
+                                    <Binding Path="!!Peers.Count"/>
+                                    <Binding Path="IsChecked" ElementName="PeersToggle"/>
                                 </MultiBinding>
-                            </Image.IsVisible>
-                        </Image>
-                    </Panel>
+                            </Border.IsVisible>
+                            <ItemsControl ItemsSource="{Binding Peers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="listVm:PeerVM">
+                                        <!-- A joining peer unfolds its row and a leaving one folds it, so the
+                                             sessions below slide instead of jumping -->
+                                        <Grid ColumnDefinitions="28, *, Auto" ColumnSpacing="8"
+                                              Margin="4,4"
+                                              ClipToBounds="True"
+                                              anim:Presence.Appear="Unfold"
+                                              anim:Presence.Leave="Fold"
+                                              anim:Presence.IsLeaving="{Binding IsLeaving}"
+                                              Classes="peerRow"
+                                              Classes.afk="{Binding IsAfk}"
+                                              Background="Transparent"
+                                              Tapped="OnPeerTapped">
+                                            <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
+                                                <avatars:UserAvatar UserName="{Binding UserData.Username}"
+                                                                    IsAnimated="True"
+                                                                    AvatarUrl="{Binding UserData.AvatarUrl}"
+                                                                    IsSpeaking="{Binding IsSpeaking}"
+                                                                    IsWaiting="{Binding IsWaiting}">
+                                                    <avatars:UserAvatar.IsVisible>
+                                                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                            <Binding Path="IsConnected"/>
+                                                            <Binding Path="IsWaiting"/>
+                                                        </MultiBinding>
+                                                    </avatars:UserAvatar.IsVisible>
+                                                </avatars:UserAvatar>
 
-                    <!-- A tap brings the session back on screen -->
-                    <Button Grid.Column="1" Classes="borderless" Padding="10,6,6,6"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                            Click="OnHybridPanelClick">
-                        <StackPanel Spacing="2" VerticalAlignment="Center">
-                            <TextBlock FontSize="15" FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                       Text="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.SessionName, FallbackValue={x:Null}}"/>
-                            <TextBlock FontSize="12"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                       Text="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ShortStatusText, FallbackValue={x:Null}}"/>
-                        </StackPanel>
-                    </Button>
+                                                <loadingIndicators:ProgressRing Width="16" Height="16"
+                                                                                MinWidth="0" MinHeight="0"
+                                                                                IsIndeterminate="True"
+                                                                                BorderThickness="2"
+                                                                                Foreground="{DynamicResource PrimaryTextBrush}">
+                                                    <loadingIndicators:ProgressRing.IsVisible>
+                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                            <Binding Path="!IsConnected"/>
+                                                            <Binding Path="!IsWaiting"/>
+                                                        </MultiBinding>
+                                                    </loadingIndicators:ProgressRing.IsVisible>
+                                                </loadingIndicators:ProgressRing>
+                                            </Panel>
 
-                    <Button Grid.Column="2" Classes="hybridAction" Width="44" VerticalAlignment="Center"
-                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.CloseCommand, FallbackValue={x:Null}}">
-                        <Image Width="22" Height="22" Source="{StaticResource DoorWithRedArrowIcon}"/>
-                    </Button>
-                </Grid>
+                                            <!-- The reason of an away user goes under the name, and stays readable -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <!-- The owner has a crown after the name -->
+                                                <Grid ColumnDefinitions="*, Auto" HorizontalAlignment="Left">
+                                                    <TextBlock Grid.Column="0" Classes="peerName afkDim"
+                                                               Classes.connecting="{Binding !IsConnected}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding DisplayedName}"/>
+                                                    <Image Grid.Column="1" Width="14" Height="14" Margin="4,0,0,0"
+                                                           VerticalAlignment="Center" Source="{StaticResource CrownIcon}"
+                                                           IsVisible="{Binding IsOwner}"/>
+                                                </Grid>
+                                                <TextBlock Text="{Binding AfkReason}"
+                                                           IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
 
-                <UniformGrid Grid.Row="1" Rows="1" Columns="3" ColumnSpacing="6">
-                    <Button Classes="hybridAction"
-                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}">
-                        <Image Width="22" Height="22" Source="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
-                    </Button>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <!-- The user shows a screen -->
+                                                <Image Width="20" Height="20" Classes="afkDim"
+                                                       Source="{StaticResource ScreenShareIcon}"
+                                                       IsVisible="{Binding IsSharingScreen}"/>
 
-                    <Button Classes="hybridAction"
-                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleSoundCommand, FallbackValue={x:Null}}">
-                        <Panel>
-                            <Image Width="22" Height="22" Source="{StaticResource HeadphonesIcon}"
-                                   IsVisible="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsSoundOn, FallbackValue=True}"/>
-                            <Image Width="22" Height="22" Source="{StaticResource CrossedHeadphonesIcon}"
-                                   IsVisible="{Binding !OpenedSessions?.HybridPanelSession?.StatusBar.IsSoundOn, FallbackValue=False}"/>
-                        </Panel>
-                    </Button>
+                                                <!-- The user stepped away from the keyboard: the mark stands for their microphone and sound -->
+                                                <Image Width="20" Height="20"
+                                                       Source="{StaticResource AfkIcon}"
+                                                       IsVisible="{Binding IsAfk}"
+                                                       ToolTip.Tip="{Binding AfkHint}"/>
 
-                    <!-- Away from the keyboard and back with one tap, without a reason -->
-                    <Button Classes="hybridAction"
-                            Classes.active="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.IsAfk, FallbackValue=False}"
-                            Command="{Binding OpenedSessions?.HybridPanelSession?.StatusBar.ToggleAfkCommand, FallbackValue={x:Null}}">
-                        <Image Width="22" Height="22" Source="{StaticResource AfkIcon}"/>
-                    </Button>
-                </UniformGrid>
-            </Grid>
-        </Border>
+                                                <!-- The user turned their own microphone off -->
+                                                <Image Width="20" Height="20"
+                                                       Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                                                    <!-- With all the sound off the crossed headphones say it all -->
+                                                    <Image.IsVisible>
+                                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                            <Binding Path="ShowsMicrophoneOff"/>
+                                                            <Binding Path="!ShowsSoundOff"/>
+                                                        </MultiBinding>
+                                                    </Image.IsVisible>
+                                                </Image>
 
-        <Border Grid.Row="5" Background="{DynamicResource DarkBackgroundBrush}"/>
+                                                <!-- The user turned the sound of the session off -->
+                                                <Image Width="20" Height="20"
+                                                       Source="{StaticResource CrossedHeadphonesIcon}"
+                                                       IsVisible="{Binding ShowsSoundOff}"/>
 
-        <!-- The signed-in user and the settings, as at the bottom of the side panel of the desktop.
-             A tap on the user opens the profile, a long press the choice of the status -->
-        <Grid Grid.Row="6" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="4">
-        <Button Grid.Column="0"
-                Classes="borderless"
-                Padding="8,6"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                Click="OnUserCardClick"
-                ContextRequested="OnUserCardContextRequested">
-            <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                <avatars:UserAvatar Grid.Column="0" Width="40" Height="40"
-                                    UserName="{Binding UserCard.Username}"
-                                    AvatarUrl="{Binding UserCard.AvatarUrl}"
-                                    Status="{Binding UserCard.Presence}"
-                                    IsMobile="{Binding UserCard.IsMobile}"
-                                    VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
 
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock FontSize="15" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding UserCard.Username}"/>
-                    <TextBlock FontSize="12"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                               Text="{Binding UserCard.StatusText}"/>
-                </StackPanel>
-            </Grid>
-        </Button>
+                <!-- A tap folds the category, a long press opens its menu -->
+                <DataTemplate DataType="listVm:SessionCategoryVM">
+                    <Border Classes="categoryHeader"
+                            Classes.collapsed="{Binding IsCollapsed}"
+                            Classes.unread="{Binding HasUnread}"
+                            Tapped="OnCategoryTapped">
+                        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="6">
+                            <Path Grid.Column="0" Classes="categoryChevron" Data="M0,0 L4,4 L8,0"/>
 
-        <Button Grid.Column="1"
-                Classes="borderless"
-                Width="44" Height="44" Padding="0" Margin="0,0,4,0"
-                VerticalAlignment="Center"
-                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                Click="OnSettingsClick">
-            <Image Width="22" Height="22" Source="{StaticResource GearIcon}"/>
-        </Button>
-        </Grid>
+                            <TextBlock Grid.Column="1" Classes="categoryName"
+                                       Text="{Binding Name}"
+                                       IsVisible="{Binding !IsEditing}"/>
+
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding EditedName}"
+                                     PlaceholderText="{l:Text sessions.category.namePlaceholder}"
+                                     MaxLength="50"
+                                     IsVisible="{Binding IsEditing}"
+                                     Loaded="OnCategoryEditorLoaded"
+                                     KeyDown="OnCategoryEditorKeyDown"
+                                     LostFocus="OnCategoryEditorLostFocus"/>
+
+                            <Panel Grid.Column="2" VerticalAlignment="Center">
+                                <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
+                                    <TextBlock Text="{Binding UnreadCountText}"/>
+                                </Border>
+                                <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
+                                    <TextBlock Text="{Binding MentionCountText}"/>
+                                </Border>
+                            </Panel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+
+                <DataTemplate DataType="listVm:ChatSessionVM">
+                    <listViews:ChatListItemView/>
+                </DataTemplate>
+            </ListBox.DataTemplates>
+        </ListBox>
     </Grid>
 </UserControl>

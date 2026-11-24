@@ -1,0 +1,145 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             x:DataType="notificationVm:NotificationCenterVM"
+             x:Class="Client.Droid.Views.Notifications.NotificationsPage"
+             Background="{DynamicResource GeneralBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="Border.entry">
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, 1, *">
+
+        <!-- Header: back, the title and the menu with the sound and the clearing of the list -->
+        <Grid Grid.Row="0" Margin="4,8,4,8" ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+            <Button Grid.Column="0" Classes="borderless"
+                    Width="44" Height="44" Padding="0" CornerRadius="22"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Click="OnBackClick">
+                <!-- The arrow of the scroll-down button, turned to point back -->
+                <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+            </Button>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="{l:Text notification.center.title}"/>
+                <!-- Whether a notification makes a sound, seen without opening the menu -->
+                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsSoundMuted}">
+                    <Image Width="12" Height="12" Source="{StaticResource CrossedNoVolumeIcon}" Opacity="0.7"
+                           VerticalAlignment="Center"/>
+                    <TextBlock FontSize="12" Text="{l:Text notification.page.muted}"
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Column="2" Classes="borderless"
+                    Width="44" Height="44" Padding="0" CornerRadius="22"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    ToolTip.Tip="{l:Text chat.more}" AutomationProperties.Name="{l:Text chat.more}">
+                <Image Width="22" Height="22" Source="{StaticResource MoreIcon}"/>
+                <common:PopupMenus.Menu>
+                    <StackPanel Spacing="2">
+                        <!-- One item, shown by the state it would change -->
+                        <menus:MenuItemButton Icon="{StaticResource CrossedNoVolumeIcon}"
+                                              Content="{l:Text notification.center.mute}"
+                                              IsVisible="{Binding !IsSoundMuted}"
+                                              Command="{Binding ToggleSoundCommand}"/>
+                        <menus:MenuItemButton Icon="{StaticResource HighVolumeIcon}"
+                                              Content="{l:Text notification.center.unmute}"
+                                              IsVisible="{Binding IsSoundMuted}"
+                                              Command="{Binding ToggleSoundCommand}"/>
+                        <Separator IsVisible="{Binding HasHistory}"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
+                                              Content="{l:Text notification.center.clear}"
+                                              IsVisible="{Binding HasHistory}"
+                                              Command="{Binding ClearHistoryCommand}"/>
+                    </StackPanel>
+                </common:PopupMenus.Menu>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
+
+        <emptyStates:EmptyState Grid.Row="2"
+                                anim:Presence.Appear="Rise"
+                                IsVisible="{Binding !HasHistory}"
+                                Icon="{StaticResource BellIcon}"
+                                Title="{l:Text notification.center.empty}"/>
+
+        <!-- Everything the top of the screen has shown, the newest first -->
+        <ScrollViewer Grid.Row="2"
+                      HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding HasHistory}">
+            <ItemsControl ItemsSource="{Binding History}" Margin="12,12,12,24">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="notificationVm:ToastVM">
+                        <Border Classes="entry">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <!-- The kind of the notification: its icon on a circle of its color -->
+                                <Panel Grid.Column="0" Width="36" Height="36" VerticalAlignment="Top">
+                                    <Ellipse Classes="kind-tint"
+                                             Classes.success="{Binding IsSuccess}"
+                                             Classes.warning="{Binding IsWarning}"
+                                             Classes.error="{Binding IsError}"/>
+                                    <Panel Width="20" Height="20">
+                                        <Image Source="{StaticResource IInCircleIcon}" IsVisible="{Binding IsInfo}"/>
+                                        <Image Source="{StaticResource MarkInCircleIcon}" IsVisible="{Binding IsSuccess}"/>
+                                        <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding IsWarning}"/>
+                                        <Image Source="{StaticResource CrossInCircleIcon}" IsVisible="{Binding IsError}"/>
+                                    </Panel>
+                                </Panel>
+
+                                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Title}"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding TimeText}"
+                                                   FontSize="12"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,1,0,0"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Message}"
+                                               IsVisible="{Binding HasMessage}"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="2" Classes="borderless"
+                                        Width="32" Height="32" Padding="0" CornerRadius="16"
+                                        Margin="0,-6,-6,0" VerticalAlignment="Top"
+                                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                        Command="{Binding $parent[ItemsControl].((notificationVm:NotificationCenterVM)DataContext).RemoveCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Image Width="14" Height="14" Source="{StaticResource CloseIcon}" Opacity="0.7"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

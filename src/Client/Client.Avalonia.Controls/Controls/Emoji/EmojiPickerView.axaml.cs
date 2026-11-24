@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using Avalonia;
+using Avalonia.Media;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -39,6 +41,11 @@ public sealed record EmojiRow(IReadOnlyList<EmojiCell> Cells);
 /// <summary>A reusable offline picker. Its host inserts text and persists the shared recent list.</summary>
 public partial class EmojiPickerView : UserControl
 {
+    public static readonly StyledProperty<IImage?> RecentIconProperty =
+        AvaloniaProperty.Register<EmojiPickerView, IImage?>(nameof(RecentIcon));
+
+    public IImage? RecentIcon { get => GetValue(RecentIconProperty); set => SetValue(RecentIconProperty, value); }
+
     private static readonly string[] CategoryIcons = ["◷", "😀", "👋", "🐻", "🍎", "🚗", "⚽", "💡", "❤", "🏳"];
     private RecentEmoji _recent = new();
     private EmojiCell[] _cells = [];
@@ -52,6 +59,13 @@ public partial class EmojiPickerView : UserControl
     public event EventHandler<EmojiPickedEventArgs>? EmojiPicked;
     public event EventHandler? CloseRequested;
     public event EventHandler? RecentChanged;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (_ready && change.Property == RecentIconProperty && Categories.Children.Count > 0)
+            BuildCategories();
+    }
 
     public EmojiPickerView()
     {
@@ -98,8 +112,10 @@ public partial class EmojiPickerView : UserControl
             var button = new Button
             {
                 Width = 30, Height = 32,
-                Content = new TextBlock { Text = CategoryIcons[category + 1], FontSize = 18,
-                    FontFamily = category == -1 ? FontFamily : EmojiFont.Family }
+                Content = category == -1 && RecentIcon != null
+                    ? new Image { Source = RecentIcon, Width = 18, Height = 18 }
+                    : new TextBlock { Text = CategoryIcons[category + 1], FontSize = 18,
+                        FontFamily = category == -1 ? FontFamily : EmojiFont.Family }
             };
             button.Classes.Add("emoji-category");
             button.Classes.Set("selected", value == _category && string.IsNullOrWhiteSpace(SearchInput.Text));

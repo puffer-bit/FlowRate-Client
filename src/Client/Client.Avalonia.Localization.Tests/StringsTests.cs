@@ -8,6 +8,18 @@ public class StringsTests : IDisposable
 {
     public void Dispose() => Strings.SetLanguage("en");
 
+    [Theory]
+    [InlineData("ru")]
+    [InlineData("es")]
+    [InlineData("ja")]
+    [InlineData("zh")]
+    public void AuthenticationFailure_HasATranslation(string language)
+    {
+        Strings.SetLanguage(language);
+        Assert.NotEqual(Strings.FindInvariant("connect.failed.authFailed"), Strings.Get("connect.failed.authFailed"));
+        Assert.NotEqual("connect.failed.authFailed", Strings.Get("connect.failed.authFailed"));
+    }
+
     [Fact]
     public void UnknownLanguageFallsBackToEnglish()
     {

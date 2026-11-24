@@ -28,6 +28,13 @@ public partial class ChatSystemMessageView : UserControl
     public DateTimeOffset Time { get => GetValue(TimeProperty); set => SetValue(TimeProperty, value); }
     public ChatSystemEventKind Kind { get => GetValue(KindProperty); set => SetValue(KindProperty, value); }
 
+    private bool _centerInlineUsers;
+    public bool CenterInlineUsers
+    {
+        get => _centerInlineUsers;
+        set { _centerInlineUsers = value; RenderParts(); }
+    }
+
     public ChatSystemMessageView()
     {
         InitializeComponent();
@@ -56,8 +63,14 @@ public partial class ChatSystemMessageView : UserControl
                     Command = OpenUserCommand, CommandParameter = id
                 };
                 button.Classes.Add("event-user");
-                EventText.Inlines.Add(new InlineUIContainer(button) { BaselineAlignment = global::Avalonia.Media.BaselineAlignment.TextBottom });
+                EventText.Inlines.Add(new InlineUIContainer(button) { BaselineAlignment = CenterInlineUsers ? global::Avalonia.Media.BaselineAlignment.Center : global::Avalonia.Media.BaselineAlignment.TextBottom });
             }
+            else if (CenterInlineUsers)
+                EventText.Inlines.Add(new InlineUIContainer(new TextBlock
+                {
+                    Text = part.Text, FontSize = 12, LineHeight = 20,
+                    TextWrapping = global::Avalonia.Media.TextWrapping.Wrap
+                }) { BaselineAlignment = global::Avalonia.Media.BaselineAlignment.Center });
             else EventText.Inlines.Add(new Run(part.Text));
         }
         LimitNameWidths();
@@ -67,6 +80,6 @@ public partial class ChatSystemMessageView : UserControl
     {
         if (EventText.Bounds.Width <= 0) return;
         foreach (var inline in EventText.Inlines!.OfType<InlineUIContainer>())
-            if (inline.Child is Button button) button.MaxWidth = EventText.Bounds.Width;
+            if (inline.Child is Control control) control.MaxWidth = EventText.Bounds.Width;
     }
 }

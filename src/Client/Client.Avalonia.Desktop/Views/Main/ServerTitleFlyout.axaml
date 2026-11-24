@@ -34,7 +34,7 @@
             </Border>
 
             <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Text="{Binding DisplayName}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayName}"
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>
@@ -67,12 +67,12 @@
         </Border>
 
         <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text privateChats.showChannels}"
-                              IsVisible="{Binding SessionList.IsPrivateMode}"
+                              IsVisible="{Binding SessionList.CanShowChannels}"
                               menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
         <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.showPrivate}"
                               IsVisible="{Binding !SessionList.IsPrivateMode}"
                               menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
-        <Separator/>
+        <Separator IsVisible="{Binding SessionList.Access.CanViewServerChannels}"/>
         <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                               menus:FlyoutMenu.CloseOnClick="True"
                               IsVisible="{Binding SessionList.CanCreateSession}"

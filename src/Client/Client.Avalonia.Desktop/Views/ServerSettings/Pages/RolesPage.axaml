@@ -195,7 +195,7 @@
                         </Button>
                         <Button Grid.Column="2" Classes="primary" Command="{Binding SaveCommand}"
                                 IsVisible="{Binding Editor.CanEdit}" AutomationProperties.Name="{l:Text serverSettings.roles.save}">
-                            <common:ActionLabel Icon="{StaticResource SaveIcon}" Text="{l:Text serverSettings.roles.save}"/>
+                            <common:ActionLabel Icon="{StaticResource DesktopSaveIcon}" Text="{l:Text serverSettings.roles.save}"/>
                         </Button>
                     </Grid>
                 </StackPanel>

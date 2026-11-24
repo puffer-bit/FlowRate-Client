@@ -9,13 +9,12 @@
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:views="clr-namespace:Client.Droid.Views.Common.Media"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              xmlns:hybrid="clr-namespace:Client.Droid.Views.Sessions.Hybrid"
              xmlns:media="clr-namespace:Client.Avalonia.Controls.Media;assembly=Client.Avalonia.Controls"
              x:Class="Client.Droid.Views.Sessions.Hybrid.HybridSessionView"
              x:DataType="hybridVm:ActiveHybridSessionVM"
-             Background="{DynamicResource GeneralBrush}"
-             anim:Presence.Appear="Fade"
-             anim:Presence.Duration="Medium">
+             Background="{DynamicResource GeneralBrush}">
 
     <UserControl.Styles>
         <!-- Round buttons of the bar, sized for a finger -->
@@ -55,8 +54,8 @@
     <Grid RowDefinitions="Auto, *, Auto">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" Margin="4,8,16,8">
             <Button Grid.Column="0" Classes="borderless screen-action" Width="44" Height="44"
-                    Click="OnMenuClick">
-                <Path Classes="burger"/>
+                    Click="OnBackClick">
+                <Path Classes="back-arrow"/>
             </Button>
             <Button Grid.Column="1" Classes="borderless screen-action" Width="44" Height="44"
                     Click="OnStatsClick" ToolTip.Tip="{l:Text hybrid.stats.open}">
@@ -224,8 +223,14 @@
                                 </Panel>
                                 <!-- The reason of an away user goes under the name, and stays readable -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Classes="afkDim" FontSize="16" TextTrimming="CharacterEllipsis"
-                                               Text="{Binding DisplayedName}"/>
+                                    <Grid ColumnDefinitions="*, Auto" HorizontalAlignment="Left">
+                                        <TextBlock Grid.Column="0" Classes="afkDim" FontSize="16" TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding DisplayedName}"/>
+                                        <!-- The owner has a crown after the name -->
+                                        <Image Grid.Column="1" Width="16" Height="16" Margin="4,0,0,0"
+                                               VerticalAlignment="Center" Source="{StaticResource CrownIcon}"
+                                               IsVisible="{Binding IsOwner}"/>
+                                    </Grid>
                                     <TextBlock Text="{Binding AfkReason}"
                                                IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                FontSize="12"
@@ -241,9 +246,16 @@
                                     <Image Width="20" Height="20"
                                            Source="{StaticResource AfkIcon}"
                                            IsVisible="{Binding IsAfk}"/>
+                                    <!-- With all the sound off the crossed headphones say it all -->
                                     <Image Width="20" Height="20"
-                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
-                                           IsVisible="{Binding ShowsMicrophoneOff}"/>
+                                           Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                                        <Image.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="ShowsMicrophoneOff"/>
+                                                <Binding Path="!ShowsSoundOff"/>
+                                            </MultiBinding>
+                                        </Image.IsVisible>
+                                    </Image>
                                     <Image Width="20" Height="20"
                                            Source="{StaticResource CrossedHeadphonesIcon}"
                                            IsVisible="{Binding ShowsSoundOff}"/>
@@ -343,9 +355,12 @@
             </Button>
         </StackPanel>
 
-        <!-- One screen over the whole display; back or the button closes it -->
+        <!-- One screen over the whole display; back or the button closes it. Two fingers or a double tap
+             zoom into it, as small text of a computer screen needs on a phone; a finger moves the zoomed one -->
         <Panel Grid.Row="0" Grid.RowSpan="3" x:Name="FullscreenLayer" Background="Black" IsVisible="False">
-            <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            <images:ZoomDecorator x:Name="FullscreenZoom">
+                <views:PictureView x:Name="FullscreenPicture" Stream="{x:Null}"/>
+            </images:ZoomDecorator>
             <hybrid:ScreenPerfView x:Name="FullscreenPerf" Stream="{x:Null}" IsFullscreen="True"/>
             <Button Classes="screen-action" Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top"
                     Opacity="0.7" Click="OnCloseFullscreenClick"

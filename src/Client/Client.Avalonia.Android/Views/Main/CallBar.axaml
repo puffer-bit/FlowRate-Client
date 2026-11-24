@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Droid.Views.Main.CallBar"
+             x:DataType="mainVm:MainWindowVM">
+
+    <UserControl.Styles>
+        <!-- The part that has not unfolded yet is cut off. A style and not a value of the element: the
+             end of a fold clears the value the element has -->
+        <Style Selector="Border.callBar">
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+        <Style Selector="Button.callAction">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundGeneralBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.callAction /template/ ContentPresenter">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The voice session we are in, at the bottom of the home screen: its state, and the microphone, the
+         sound and the way out. A tap brings the session on screen, a long press offers the rest. It unfolds
+         when we join and folds back when we leave, so the list above gives way smoothly -->
+    <Border Classes="callBar"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
+            anim:Presence.Appear="Unfold"
+            anim:Presence.Leave="Fold"
+            anim:Presence.IsLeaving="{Binding OpenedSessions?.IsHybridPanelLeaving, FallbackValue=False}"
+            IsVisible="{Binding OpenedSessions?.HybridPanelSession, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+        <Grid DataContext="{Binding OpenedSessions?.HybridPanelSession, FallbackValue={x:Null}}"
+              x:DataType="hybridVm:ActiveHybridSessionVM"
+              ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="8" Margin="4,6,12,6">
+            <common:PopupMenus.ContextMenu>
+                <StackPanel Spacing="2">
+                    <!-- Going away takes the last reason at once; another one is chosen apart -->
+                    <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                          IsVisible="{Binding !StatusBar.IsAfk}"
+                                          Command="{Binding StatusBar.ToggleAfkCommand}"/>
+                    <menus:MenuItemButton Content="{l:Text hybrid.afk.withReason}"
+                                          IsVisible="{Binding !StatusBar.IsAfk}"
+                                          Click="OnAfkReasonClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
+                                          IsVisible="{Binding StatusBar.IsAfk}"
+                                          Command="{Binding StatusBar.ToggleAfkCommand}"/>
+                    <Separator/>
+                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithRedArrowIcon}"
+                                          Content="{l:Text main.voice.leave}"
+                                          Command="{Binding StatusBar.CloseCommand}"/>
+                </StackPanel>
+            </common:PopupMenus.ContextMenu>
+
+            <Button Grid.Column="0" Classes="borderless" Padding="6,4"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    Click="OnOpenClick">
+                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                    <!-- The state of the connection -->
+                    <Panel Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center">
+                        <loadingIndicators:ProgressRing Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                        IsIndeterminate="True"
+                                                        BorderThickness="3"
+                                                        Foreground="{DynamicResource ProgressRingBrush}"
+                                                        IsVisible="{Binding StatusBar.IsLoading}"/>
+                        <indicators:SignalIndicator Width="22" Height="22"
+                                                    Level="{Binding StatusBar.Stats.SignalLevel}"
+                                                    IsVisible="{Binding StatusBar.IsConnected}"/>
+                        <Image Width="20" Height="20"
+                               Source="{Binding StatusBar.IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}">
+                            <Image.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="!StatusBar.IsLoading"/>
+                                    <Binding Path="!StatusBar.IsConnected"/>
+                                </MultiBinding>
+                            </Image.IsVisible>
+                        </Image>
+                    </Panel>
+
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock FontSize="15" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                   Text="{Binding StatusBar.SessionName}"/>
+                        <!-- Being away stays visible at a glance -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Image Width="14" Height="14" VerticalAlignment="Center"
+                                   Source="{StaticResource AfkIcon}"
+                                   IsVisible="{Binding StatusBar.IsAfk}"/>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                       Text="{Binding StatusBar.ShortStatusText}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Button>
+
+            <Button Grid.Column="1" Classes="callAction"
+                    Command="{Binding StatusBar.ToggleMicrophoneCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
+                <Image Width="20" Height="20"
+                       Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+            </Button>
+
+            <Button Grid.Column="2" Classes="callAction"
+                    Command="{Binding StatusBar.ToggleSoundCommand}"
+                    ToolTip.Tip="{l:Text main.voice.toggleSound}">
+                <Panel>
+                    <Image Width="20" Height="20" Source="{StaticResource HeadphonesIcon}"
+                           IsVisible="{Binding StatusBar.IsSoundOn}"/>
+                    <Image Width="20" Height="20" Source="{StaticResource CrossedHeadphonesIcon}"
+                           IsVisible="{Binding !StatusBar.IsSoundOn}"/>
+                </Panel>
+            </Button>
+
+            <Button Grid.Column="3" Classes="callAction"
+                    Command="{Binding StatusBar.CloseCommand}"
+                    ToolTip.Tip="{l:Text main.voice.leave}">
+                <Image Width="20" Height="20" Source="{StaticResource DoorWithRedArrowIcon}"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

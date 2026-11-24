@@ -25,7 +25,14 @@
                 <Border IsVisible="{Binding HasDetail}"
                         Background="{DynamicResource MessageBoxDetailBrush}"
                         CornerRadius="6" Padding="10, 8">
-                    <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Button Grid.Column="1" Classes="borderless iconButton" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                IsVisible="{Binding CanCopyDetail}" Click="CopyDetail"
+                                ToolTip.Tip="{l:Text common.copy}" AutomationProperties.Name="{l:Text common.copy}">
+                            <Image Width="16" Height="16" Source="{StaticResource CopyIcon}"/>
+                        </Button>
+                        <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding Detail}" TextWrapping="Wrap"/>
+                    </Grid>
                 </Border>
                 <ContentControl IsVisible="{Binding HasBanForm}" Content="{Binding BanForm}">
                     <ContentControl.ContentTemplate>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Droid.Views.Common"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
@@ -10,31 +11,25 @@
     <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
         <Grid RowDefinitions="Auto,*" RowSpacing="6">
             <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <!-- A page of its own: back, the title, and the options of the list at the right of the header -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                     <Button Classes="borderless" Width="44" Height="44" Padding="12" Click="OnBackClick">
                         <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
                     </Button>
                     <TextBlock Grid.Column="1" Text="{l:Text chat.viewers.title}" FontSize="18"
-                               FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </Grid>
-                <Grid ColumnDefinitions="14,*,Auto" ColumnSpacing="6" Margin="6,0"
-                      ToolTip.Tip="{l:Text chat.viewers.title}">
-                    <Image Width="14" Height="14" Source="{StaticResource BaseUsersIcon}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Caption}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="2" Classes="borderless" Padding="4" Width="44" Height="44"
+                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="2" Classes="borderless" Padding="0" Width="44" Height="44"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             ToolTip.Tip="{l:Text chat.viewers.options}"
                             AutomationProperties.Name="{l:Text chat.viewers.options}">
-                        <Image Width="16" Height="16" Source="{StaticResource MoreIcon}"/>
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
+                        <Image Width="20" Height="20" Source="{StaticResource MoreIcon}"/>
+                        <common:PopupMenus.Menu>
                                 <StackPanel Spacing="2">
                                     <menus:MenuItemButton Command="{Binding ToggleGroupOnlineUsers}"
                                                           Content="{l:Text chat.viewers.groupOnline}"
                                                           IsChecked="{Binding GroupOnlineUsers}"/>
                                 </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
+                        </common:PopupMenus.Menu>
                     </Button>
                 </Grid>
                 <TextBlock Text="{l:Text chat.viewers.loading}" IsVisible="{Binding IsLoading}"
@@ -56,8 +51,7 @@
                                            Margin="6,8,6,4" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
                             <Button Classes="borderless" Command="{Binding ViewProfile}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,6" MinHeight="56">
-                                <Button.ContextFlyout>
-                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                <common:PopupMenus.ContextMenu>
                                         <StackPanel Spacing="2">
                                             <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
                                                                   menus:FlyoutMenu.CloseOnClick="True"
@@ -79,8 +73,7 @@
                                                                   Content="{l:Text serverSettings.users.action.unban}" menus:FlyoutMenu.CloseOnClick="True"
                                                                   IsVisible="{Binding CanUnban}" Command="{Binding Unban}"/>
                                         </StackPanel>
-                                    </Flyout>
-                                </Button.ContextFlyout>
+                                </common:PopupMenus.ContextMenu>
                                 <Grid ColumnDefinitions="40,*" ColumnSpacing="8" Classes.banned="{Binding IsBanned}">
                                     <Grid.Styles>
                                         <Style Selector="Grid">

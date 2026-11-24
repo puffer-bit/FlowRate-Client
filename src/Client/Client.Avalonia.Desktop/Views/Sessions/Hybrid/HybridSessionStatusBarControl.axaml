@@ -83,10 +83,10 @@
             </Button>
 
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Text="{Binding SessionName}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding SessionName}"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"/>
-                <text:MarqueeTextBlock Text="{Binding ShortStatusText}"
+                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding ShortStatusText}"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        FontSize="11"
                                        TextTrimming="CharacterEllipsis"/>
@@ -114,25 +114,20 @@
                 </Panel>
             </Button>
 
-            <!-- Away from the keyboard: the reason is asked on the way out, the way back is one press -->
-            <Button Classes="barAction"
-                    IsVisible="{Binding !IsAfk}"
-                    ToolTip.Tip="{l:Text hybrid.afk.go}"
-                    AutomationProperties.Name="{l:Text hybrid.afk.go}">
-                <Button.Flyout>
-                    <Flyout Placement="BottomEdgeAlignedRight">
-                        <hybrid:AfkReasonCard/>
-                    </Flyout>
-                </Button.Flyout>
-                <Image Source="{StaticResource AfkIcon}"/>
-            </Button>
-            <Button Classes="barAction afk"
-                    IsVisible="{Binding IsAfk}"
-                    Command="{Binding ToggleAfkCommand}"
-                    ToolTip.Tip="{Binding AfkHint}"
-                    AutomationProperties.Name="{Binding AfkHint}">
-                <Image Source="{StaticResource AfkIcon}"/>
-            </Button>
+            <Grid ColumnDefinitions="36,16" ColumnSpacing="1">
+                <Button Grid.Column="1" Classes="barAction" Width="16" MinWidth="0"
+                        ToolTip.Tip="{l:Text hybrid.afk.title}" AutomationProperties.Name="{l:Text hybrid.afk.title}">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight"><hybrid:AfkReasonCard/></Flyout>
+                    </Button.Flyout>
+                    <Image Width="12" Height="12" Source="{StaticResource DropdownTriangleIcon}"/>
+                </Button>
+                <Button Grid.Column="0" Classes="barAction" Classes.afk="{Binding IsAfk}"
+                        Command="{Binding ToggleAfkCommand}" ToolTip.Tip="{Binding AfkHint}"
+                        AutomationProperties.Name="{Binding AfkHint}">
+                    <Image Source="{StaticResource AfkIcon}"/>
+                </Button>
+            </Grid>
 
             <hybrid:HybridBroadcastButton/>
 

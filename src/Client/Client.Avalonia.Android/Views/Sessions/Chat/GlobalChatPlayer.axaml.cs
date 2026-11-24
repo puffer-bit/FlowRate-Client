@@ -148,8 +148,8 @@ public partial class GlobalChatPlayer : UserControl
         if (!_ready || _updating)
             return;
         VolumeText.Text = $"{e.NewValue:0}%";
-        if (!_changingVolume)
-            ApplyVolume();
+        // The sound follows the slider while it is dragged
+        ApplyVolume();
     }
 
     private void OnVolumePressed(object? sender, PointerPressedEventArgs e)

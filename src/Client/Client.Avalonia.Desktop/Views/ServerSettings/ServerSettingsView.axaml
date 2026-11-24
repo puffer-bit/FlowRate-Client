@@ -183,7 +183,7 @@
                         IsVisible="{Binding ShowsSettingsFooter}" AutomationProperties.Name="{l:Text serverSettings.save}">
                     <!-- Both states stay measured, so the button keeps the width of the longer one -->
                     <Grid>
-                        <common:ActionLabel HorizontalAlignment="Center" Classes.hidden="{Binding IsBusy}" Icon="{StaticResource SaveIcon}" Text="{l:Text serverSettings.save}"/>
+                        <common:ActionLabel HorizontalAlignment="Center" Classes.hidden="{Binding IsBusy}" Icon="{StaticResource DesktopSaveIcon}" Text="{l:Text serverSettings.save}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
                                     Classes.hidden="{Binding !IsBusy}">
                             <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"

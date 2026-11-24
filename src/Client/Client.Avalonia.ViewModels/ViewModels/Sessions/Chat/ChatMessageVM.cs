@@ -380,11 +380,37 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public bool CanReact => IsReactionAllowed && SetReaction != null && Message is { IsSystem: false, IsReadOnly: false, IsDeleted: false }
                             && _composer is { CanWrite: true, IsConnected: true };
 
-    public IReadOnlyList<ChatReactionVM> Reactions => Message.Reactions
-        .GroupBy(reaction => reaction.Emoji)
-        .Select(group => new ChatReactionVM(group.Key, group.Select(r => r.UserId).Distinct().Count(),
-            group.Any(r => r.UserId == _currentUserId), ReactAsync,
-            string.Join("\n", DetailsOf(group).Select(detail => $"{detail.Name} — {detail.TimeText}")))).ToList();
+    private readonly System.Collections.ObjectModel.ObservableCollection<ChatReactionVM> _reactions = [];
+
+    public IReadOnlyList<ChatReactionVM> Reactions
+    {
+        get
+        {
+            var groups = Message.Reactions.GroupBy(reaction => reaction.Emoji).ToArray();
+            var emojis = groups.Select(group => group.Key).ToHashSet();
+            for (var index = _reactions.Count - 1; index >= 0; index--)
+                if (!emojis.Contains(_reactions[index].Emoji))
+                    _reactions.RemoveAt(index);
+            for (var index = 0; index < groups.Length; index++)
+            {
+                var group = groups[index];
+                var count = group.Select(reaction => reaction.UserId).Distinct().Count();
+                var mine = group.Any(reaction => reaction.UserId == _currentUserId);
+                var details = string.Join("\n", DetailsOf(group).Select(detail => $"{detail.Name} — {detail.TimeText}"));
+                var reaction = _reactions.FirstOrDefault(item => item.Emoji == group.Key);
+                if (reaction == null)
+                    _reactions.Insert(index, new ChatReactionVM(group.Key, count, mine, ReactAsync, details));
+                else
+                {
+                    var previous = _reactions.IndexOf(reaction);
+                    if (previous != index)
+                        _reactions.Move(previous, index);
+                    reaction.Update(count, mine, details);
+                }
+            }
+            return _reactions;
+        }
+    }
 
     /// <summary>Every reaction with who set it and when, the earliest first.</summary>
     public IReadOnlyList<ChatReactionDetailVM> ReactionDetails => DetailsOf(Message.Reactions);
@@ -496,6 +522,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private bool _isSettingReaction;
 
     public Task ChooseReactionAsync(string emoji) => ReactAsync(emoji, true);
+
+    /// <summary>Puts the reaction, or takes it back when it is already ours; no menu is involved.</summary>
+    public void ToggleReaction(string emoji) => _ = ReactAsync(emoji, false);
 
     private async Task ReactAsync(string emoji, bool closeMenu)
     {

@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns="https://github.com/avaloniaui"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -24,8 +25,8 @@
         <Border Grid.Row="1" Classes="dialogSeparator"/>
 
         <!-- Form -->
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="384" HorizontalAlignment="Stretch" Margin="{StaticResource DialogBodyMargin}" Spacing="18" IsEnabled="{Binding !IsBusy}">
+        <common:StableScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel HorizontalAlignment="Stretch" Margin="20,16,4,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
 
                 <!-- Name -->
                 <StackPanel Spacing="6">
@@ -50,7 +51,7 @@
                                        FormatString="0"
                                        ParsingNumberStyle="Integer"
                                        Classes.invalid="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <TextBlock Classes="hint" VerticalAlignment="Center" Text="{Binding CapacityHint}"/>
+                        <hints:HintBlock VerticalAlignment="Center" Text="{Binding CapacityHint}"/>
                     </StackPanel>
                     <TextBlock Classes="fieldError" Text="{Binding CapacityError}"
                                IsVisible="{Binding CapacityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -59,7 +60,7 @@
                 <!-- Approval -->
                 <StackPanel Spacing="4">
                     <CheckBox Content="{l:Text sessionSettings.approval}" IsChecked="{Binding IsApprovalRequested}"/>
-                    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.approval.hint}"/>
+                    <hints:HintBlock Text="{l:Text sessionSettings.approval.hint}"/>
                 </StackPanel>
 
                 <!-- Media: the advanced part, folded until asked for -->
@@ -109,7 +110,7 @@
                                                Increment="5" FormatString="0" ParsingNumberStyle="Integer"/>
                             </Grid>
                             <CheckBox Content="{l:Text sessionSettings.media.nack}" IsChecked="{Binding IsAudioNackEnabled}"/>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.audioNack.hint}"/>
+                            <hints:HintBlock Text="{l:Text sessionSettings.media.audioNack.hint}"/>
                             <CheckBox Content="{l:Text sessionSettings.media.voiceDtx}" IsChecked="{Binding IsVoiceDtxEnabled}"/>
                         </StackPanel>
 
@@ -130,7 +131,7 @@
                                                Maximum="{Binding JitterBufferMax}"
                                                Increment="10" FormatString="0" ParsingNumberStyle="Integer"/>
                             </Grid>
-                            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{l:Text sessionSettings.media.buffers.hint}"/>
+                            <hints:HintBlock Text="{l:Text sessionSettings.media.buffers.hint}"/>
                         </StackPanel>
                     </StackPanel>
                 </controls:ExpandableSection>
@@ -145,7 +146,7 @@
                     </Grid>
                 </Border>
             </StackPanel>
-        </ScrollViewer>
+        </common:StableScrollViewer>
 
         <Border Grid.Row="3" Classes="dialogSeparator"/>
 
@@ -155,13 +156,13 @@
                                  Text="{Binding SessionId, StringFormat='ID: {0}'}"/>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.cancel}">
+                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.cancel}">
                     <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
                 </Button>
 
-                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Left" AutomationProperties.Name="{l:Text common.save}">
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.save}">
                     <Grid>
-                        <common:ActionLabel HorizontalAlignment="Left" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DisketteIcon}" Text="{l:Text common.save}"/>
+                        <common:ActionLabel HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DesktopSaveIcon}" Text="{l:Text common.save}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
                                     IsVisible="{Binding IsBusy}">
                             <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"

@@ -1,5 +1,5 @@
 using System;
-using System.Reactive.Linq;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using ReactiveUI;
@@ -27,11 +27,13 @@ internal static class MessageBoxInteraction
 
     public static async Task<Result> ShowAsync(MessageBoxVM messageBox, Visual? owner)
     {
+        if (messageBox.CanCopyDetail)
+            foreach (var cancel in messageBox.ButtonsList.Where(button => button.IsCancel).ToArray())
+                messageBox.ButtonsList.Remove(cancel);
+
+        // Nothing to show it in, e.g. the application is shutting down
         if (!InWindowDialog.CanShow(owner))
-        {
-            // Nothing to show it in, e.g. the view was already detached while its window closed
-            return await ShowInWindowAsync(messageBox);
-        }
+            return Result.Cancel;
 
         var view = new MessageBoxView
         {
@@ -41,22 +43,5 @@ internal static class MessageBoxInteraction
         using var buttons = messageBox.Answers.Subscribe(result => InWindowDialog.Close(view, result));
 
         return await InWindowDialog.ShowAsync(view, owner, Result.Cancel);
-    }
-
-    private static async Task<Result> ShowInWindowAsync(MessageBoxVM messageBox)
-    {
-        var dialog = new MessageBoxWindow
-        {
-            DataContext = messageBox
-        };
-
-        // A modeless window does not return its close result, so it is taken from the buttons
-        var result = new TaskCompletionSource<Result>();
-
-        using var buttons = messageBox.Answers.Subscribe(r => result.TrySetResult(r));
-        dialog.Closed += (_, _) => result.TrySetResult(Result.Cancel);
-
-        dialog.Show();
-        return await result.Task;
     }
 }

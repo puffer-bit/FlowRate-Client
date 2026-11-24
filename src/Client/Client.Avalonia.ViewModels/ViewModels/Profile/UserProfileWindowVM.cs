@@ -12,6 +12,7 @@ using ReactiveUI;
 using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Roles;
+using Client.ViewModels.Sessions.List;
 using Shared.Enums;
 using Shared.Enums.User;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
@@ -129,7 +130,6 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
     public int UserId { get; }
     public bool IsCurrentUser { get; }
-    public string FirstConnected { get; }
     public string LastConnected { get; }
 
     /// <summary>Online from a phone: the status badge is a phone.</summary>
@@ -164,6 +164,34 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public bool WantsDirectChat { get; private set; }
     public bool CanWriteMessage => !IsCurrentUser;
 
+    /// <summary>Asked to call the user once the profile is closed.</summary>
+    public bool WantsCall { get; private set; }
+    public bool CanCall => !IsCurrentUser && Client.Core.Media.MediaRuntime.IsEnabled;
+    public ReactiveCommand<RxVoid, RxVoid> CallCommand { get; }
+
+    /// <summary>
+    /// The direct chat with the user, set before the profile shows: its notifications are muted from here.
+    /// Without one there is nothing to mute yet.
+    /// </summary>
+    public ChatSessionVM? DirectChat
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanMuteChat));
+            this.RaisePropertyChanged(nameof(IsChatMuted));
+            this.RaisePropertyChanged(nameof(HasActions));
+        }
+    }
+
+    public bool CanMuteChat => DirectChat != null && !IsCurrentUser;
+    public bool IsChatMuted => DirectChat?.IsMuted == true;
+    public ReactiveCommand<RxVoid, RxVoid> ToggleChatMuteCommand { get; }
+
+    /// <summary>The row of buttons under the name has something to show.</summary>
+    public bool HasActions => CanWriteMessage || CanCall || CanMuteChat || CanEdit;
+
     public UserProfileWindowVM(UserModel user, bool isCurrentUser, IAvatarService avatars,
         ReactiveCommand<(int UserId, string Username), RequestResult> changeUsernameCommand,
         ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> setAvatarCommand,
@@ -176,6 +204,17 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         {
             WantsDirectChat = true;
             await CloseWindow.Handle(RxVoid.Default);
+        });
+        CallCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            WantsCall = true;
+            await CloseWindow.Handle(RxVoid.Default);
+        });
+        ToggleChatMuteCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (DirectChat is not { } chat) return;
+            await chat.ToggleMuteCommand.Execute(chat.Model.Id);
+            this.RaisePropertyChanged(nameof(IsChatMuted));
         });
         Note = new UserNoteVM(userNotes, coordinatorInstanceId, user.Id);
         _changeUsernameCommand = changeUsernameCommand;
@@ -197,7 +236,6 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         IsCurrentUser = isCurrentUser;
         Username = user.Username;
         Name = user.Username;
-        FirstConnected = FormatTime(user.FirstConnectionTime);
         LastConnected = FormatTime(user.LastConnectionTime);
         IsMobile = user.IsMobile;
         if (user.Device is { } device)
@@ -347,7 +385,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         StopEditing();
     }
 
-    private static string? PlatformIconKey(string platform) => platform switch
+    /// <summary>The icon of a system the server names, null for one without an icon.</summary>
+    internal static string? PlatformIconKey(string platform) => platform switch
     {
         "Windows" => "WindowsIcon",
         "Linux" => "LinuxIcon",

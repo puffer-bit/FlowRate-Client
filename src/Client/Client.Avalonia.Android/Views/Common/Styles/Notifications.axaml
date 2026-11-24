@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The circle under the icon of a notification, a faint tint of the color of its kind -->
+    <Style Selector="Ellipse.kind-tint">
+        <Setter Property="Opacity" Value="0.16"/>
+        <Setter Property="Fill" Value="{DynamicResource ButtonMainBrush}"/>
+    </Style>
+    <Style Selector="Ellipse.kind-tint.success">
+        <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+    </Style>
+    <Style Selector="Ellipse.kind-tint.warning">
+        <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+    </Style>
+    <Style Selector="Ellipse.kind-tint.error">
+        <Setter Property="Fill" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+
+    <!-- The dot of what has not been seen yet -->
+    <Style Selector="Ellipse.unread-dot">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="Fill" Value="{DynamicResource UnreadBadgeBrush}"/>
+    </Style>
+
+</Styles>

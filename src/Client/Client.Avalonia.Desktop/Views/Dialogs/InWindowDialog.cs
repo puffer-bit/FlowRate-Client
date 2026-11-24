@@ -83,18 +83,25 @@ internal static class InWindowDialog
     }
 
     /// <summary>
-    /// Whether a dialog can be shown for <paramref name="owner"/>, i.e. some window is visible.
+    /// Whether a dialog can be shown for <paramref name="owner"/>, i.e. there is a window to show it in.
     /// </summary>
     public static bool CanShow(Visual? owner) => FindOwnerTopLevel(owner) != null;
 
     private static TopLevel? FindOwnerTopLevel(Visual? owner)
     {
-        if (owner != null && TopLevel.GetTopLevel(owner) is { IsVisible: true } topLevel)
+        // A popup is a top level of its own that closes as soon as it loses focus, so the dialog goes to
+        // the window behind it
+        if (owner != null && TopLevel.GetTopLevel(owner) is { IsVisible: true } topLevel and not PopupRoot)
             return topLevel;
 
-        var lifetime = global::Avalonia.Application.Current?.ApplicationLifetime 
-            as IClassicDesktopStyleApplicationLifetime;
-        
-        return lifetime?.MainWindow is { IsVisible: true } mainWindow ? mainWindow : null;
+        // A main window hidden to the tray keeps the dialog until the user brings it back
+        var main = global::Avalonia.Application.Current?.ApplicationLifetime switch
+        {
+            IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
+            ISingleViewApplicationLifetime singleView => TopLevel.GetTopLevel(singleView.MainView),
+            _ => null
+        };
+
+        return main != null && OverlayLayer.GetOverlayLayer(main) != null ? main : null;
     }
 }

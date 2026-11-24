@@ -52,7 +52,8 @@ public partial class MainWindowVM
         await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
-        await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan, coordinator.CoordinatorId);
+        if (!await ConnectWithRetriesAsync(session, coordinator, user, plan))
+            return;
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
@@ -64,7 +65,8 @@ public partial class MainWindowVM
             }
 
             await StatusLine.SetAsync(Connecting, true);
-            await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan, coordinator.CoordinatorId);
+            if (!await ConnectWithRetriesAsync(session, coordinator, user, plan))
+                return;
         }
 
         // The device ended while the app was closed: the user logs in again
@@ -121,6 +123,65 @@ public partial class MainWindowVM
         await FinalizeCoordinatorConnection();
     }
 
+    // The network of a phone that has just woken up or moved to another one is often not there yet when
+    // the application starts, and a desktop may start before its network too: a failure the network can
+    // explain is tried again a few times before it is told
+    private static readonly TimeSpan[] AutoConnectRetryDelays =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(4),
+        TimeSpan.FromSeconds(8)
+    ];
+
+    private static bool CanRetryAutoConnect(CoordinatorState state) => state is CoordinatorState.Failed
+        or CoordinatorState.TimedOut or CoordinatorState.Disconnected or CoordinatorState.InternalServerError
+        or CoordinatorState.HeartbeatTimedOut or CoordinatorState.HeartbeatServerShutdown;
+
+    /// <returns>
+    /// False when another connection took the place of this one meanwhile, made by the user from the
+    /// connect window: the session is disposed and there is nothing to tell.
+    /// </returns>
+    private async Task<bool> ConnectWithRetriesAsync(ICoordinatorSession session, SavedCoordinatorModel coordinator,
+        SavedUserModel user, LoginPlan plan)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan,
+                    coordinator.CoordinatorId);
+            }
+            catch (Exception exception)
+            {
+                // The state of the session is Failed then, which is retried or told below
+                LogAutoConnectAttemptFailed(exception, coordinator.CoordinatorId, attempt);
+            }
+
+            if (_coordinatorSession != null)
+            {
+                session.Dispose();
+                return false;
+            }
+
+            if (!CanRetryAutoConnect(session.ConnectionStatus) || attempt > AutoConnectRetryDelays.Length)
+                return true;
+
+            var delay = AutoConnectRetryDelays[attempt - 1];
+            LogAutoConnectRetry(coordinator.CoordinatorId, attempt, session.ConnectionStatus, delay);
+            var next = attempt + 1;
+            await StatusLine.SetAsync(() => Strings.Format("main.status.autoConnectAttempt",
+                ("host", coordinator.Address), ("port", coordinator.Port), ("attempt", next)), true);
+            await Task.Delay(delay);
+
+            if (_coordinatorSession != null)
+            {
+                session.Dispose();
+                return false;
+            }
+        }
+    }
+
     private async Task ConnectToCoordinator()
     {
         if (_coordinatorSession != null &&
@@ -159,6 +220,7 @@ public partial class MainWindowVM
 
     private async Task FinalizeCoordinatorConnection()
     {
+        _deviceEnded = false;
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
@@ -248,6 +310,7 @@ public partial class MainWindowVM
                 Strings.Get("recoveryPhrase.save.title"))
             {
                 Detail = Profile.AccountSecurityVM.NumberWords(phrase),
+                CopyText = phrase,
                 CheckBoxText = Strings.Get("recoveryPhrase.keepOnDevice")
             };
             if (await ShowMessageBox.Handle(box) == Result.Ok)
@@ -401,8 +464,11 @@ public partial class MainWindowVM
     }
 
     // Raised on any thread; the session dropped the key, and the saved account needs a login
+    private volatile bool _deviceEnded;
+
     private void OnDeviceEnded(Shared.Enums.Auth.DeviceEndReason? reason)
     {
+        _deviceEnded = true;
         Dispatcher.UIThread.Post(async () =>
         {
             await SetStatus("main.status.offline", false);
@@ -704,6 +770,11 @@ public partial class MainWindowVM
                     Icon.KeyWarning);
                 return;
             case CoordinatorState.Disconnected:
+                if (_deviceEnded)
+                {
+                    Dispatcher.UIThread.Post(() => _ = DisconnectFromCoordinator());
+                    return;
+                }
                 PostDisconnect(Strings.Get("main.serverShutDown"));
                 return;
         }

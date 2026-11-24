@@ -8,6 +8,7 @@ using Client.Application.Settings.Search;
 using Client.Core.Settings;
 using Client.Services;
 using ReactiveUI;
+using Shared.Models.DataTransferObjects.ChatSession.Messages.Reactions;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -19,6 +20,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     public SettingTabType Type => SettingTabType.AppBehavior;
     public IReadOnlyList<SettingAnchor> Anchors =>
     [
+        new("behavior.playback", "settings.behavior.section.playback"),
         new("behavior.autoConnection", "settings.behavior.section.autoConnection"),
         new("behavior.manualConnection", "settings.behavior.section.manualConnection"),
         new("behavior.tray", "settings.behavior.section.tray"),
@@ -28,10 +30,17 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("behavior",
+        ("playback", ["keepScreenOn"]),
         ("autoConnection", ["autoConnect", "server", "identity"]),
         ("manualConnection", ["fallbackServers", "fallbackWarning", "propagatedWarning"]),
         ("tray", ["closeAction"]),
         ("updates", ["updateCheck", "updateChannel"]));
+
+    public bool KeepScreenOnWhileWatching
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
 
     public bool IsAutoConnectedEnabled
     {
@@ -76,6 +85,15 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    /// <summary>The reaction a double tap on a message puts on it; the phone shows the choice.</summary>
+    public string? QuickReaction
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = BehaviorSettings.DefaultQuickReaction;
+
+    public IReadOnlyList<string> QuickReactionChoices => ChatReactionEmoji.All;
 
     public IReadOnlyList<SavedCoordinatorModel> SavedServers
     {
@@ -135,13 +153,15 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     {
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
+                nameof(KeepScreenOnWhileWatching),
                 nameof(IsAutoConnectedEnabled),
                 nameof(IsAutoConnectedToFallbackServersEnabled),
                 nameof(IsFallbackConnectionWarningEnabled),
                 nameof(IsPropagatedConnectionWarningEnabled),
                 nameof(CloseButtonActionIndex),
                 nameof(IsUpdateCheckOnStartupEnabled),
-                nameof(UpdateChannelIndex))
+                nameof(UpdateChannelIndex),
+                nameof(QuickReaction))
             .Where(_ => !_isUpdating)
             .Select(_ => Observable.FromAsync(() => _behaviorService.SaveSettingsAsync(ToSettings())))
             .Concat()
@@ -169,17 +189,22 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 
     private BehaviorSettings ToSettings() => new()
     {
+        KeepScreenOnWhileWatching = KeepScreenOnWhileWatching,
         IsAutoConnectEnabled = IsAutoConnectedEnabled,
         IsFallbackConnectionEnabled = IsAutoConnectedToFallbackServersEnabled,
         IsFallbackConnectionWarningEnabled = IsFallbackConnectionWarningEnabled,
         IsPropagatedConnectionWarningEnabled = IsPropagatedConnectionWarningEnabled,
         CloseButtonAction = (CloseButtonAction)CloseButtonActionIndex,
         IsUpdateCheckOnStartupEnabled = IsUpdateCheckOnStartupEnabled,
-        UpdateChannel = (UpdateChannel)UpdateChannelIndex
+        UpdateChannel = (UpdateChannel)UpdateChannelIndex,
+        // The list clears its selection while it is rebuilt; nothing chosen keeps the default
+        QuickReaction = QuickReaction is { } reaction && ChatReactionEmoji.IsSupported(reaction)
+            ? reaction : BehaviorSettings.DefaultQuickReaction
     };
 
     private void Apply(BehaviorSettings settings)
     {
+        KeepScreenOnWhileWatching = settings.KeepScreenOnWhileWatching;
         IsAutoConnectedEnabled = settings.IsAutoConnectEnabled;
         IsAutoConnectedToFallbackServersEnabled = settings.IsFallbackConnectionEnabled;
         IsFallbackConnectionWarningEnabled = settings.IsFallbackConnectionWarningEnabled;
@@ -187,6 +212,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         CloseButtonActionIndex = (int)settings.CloseButtonAction;
         IsUpdateCheckOnStartupEnabled = settings.IsUpdateCheckOnStartupEnabled;
         UpdateChannelIndex = (int)settings.UpdateChannel;
+        QuickReaction = settings.QuickReaction;
     }
 
     public async Task ResetAllAsync()

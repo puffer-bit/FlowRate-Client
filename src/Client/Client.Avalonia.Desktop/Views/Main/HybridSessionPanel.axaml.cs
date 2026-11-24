@@ -12,9 +12,8 @@ internal partial class HybridSessionPanel : UserControl
 {
     private void OnSessionLogs(object? sender, RoutedEventArgs e)
     {
-        if (sender is HybridSessionStatsFlyout { Session: { } session }
-            && TopLevel.GetTopLevel(this) is Window owner)
-            HybridSessionLogsWindow.Open(owner, session);
+        if (sender is HybridSessionStatsFlyout { Session: { } session })
+            HybridSessionLogsView.Open(this, session);
     }
 
     public HybridSessionPanel()

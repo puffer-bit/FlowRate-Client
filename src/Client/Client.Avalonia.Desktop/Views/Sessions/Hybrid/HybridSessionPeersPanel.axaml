@@ -82,11 +82,12 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center"
                                                 Classes="notRung" Classes.dim="{Binding !IsRinging}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
+
+                                            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayedName}"
+                                                                   TextTrimming="CharacterEllipsis"/>
                                             <Image Width="14" Height="14" VerticalAlignment="Center"
                                                    Source="{StaticResource CrownIcon}" IsVisible="{Binding IsOwner}"
                                                    ToolTip.Tip="{l:Text privateChats.owner}"/>
-                                            <text:MarqueeTextBlock Text="{Binding DisplayedName}"
-                                                                   TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         <TextBlock Text="{Binding StatusText}" FontSize="10"
                                                    Foreground="{DynamicResource SecondaryTextBrush}"

@@ -50,6 +50,7 @@ public partial class App : global::Avalonia.Application
 
         AvaloniaXamlLoader.Load(this);
         ApplicationFontResources.Initialize(this);
+        Views.Common.DesktopImagePreview.Initialize();
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -83,6 +84,7 @@ public partial class App : global::Avalonia.Application
 
             desktop.Exit += (_, _) =>
             {
+                Services.GetRequiredService<IScreenAwakeService>().Dispose();
                 globalHotKeys.Dispose();
                 Services.GetRequiredService<ChatAudioSession>().Dispose();
                 Services.GetRequiredService<ChatVideoSession>().Dispose();
@@ -147,6 +149,7 @@ public partial class App : global::Avalonia.Application
             .AddOpenAL();
 
         services.AddSingleton<Client.Services.ChatMediaPlayback>();
+        services.AddSingleton<IScreenAwakeService, DesktopScreenAwakeService>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
 

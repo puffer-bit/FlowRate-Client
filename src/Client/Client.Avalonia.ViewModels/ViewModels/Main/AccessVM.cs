@@ -21,6 +21,7 @@ public sealed class AccessVM : ReactiveObject
     public event Action<CoordinatorPermissions>? PermissionsUpdated;
 
     public bool CanViewServerSettings => Permissions.Has(Permission.ViewCoordinatorSettings);
+    public bool CanViewServerChannels => Permissions.Has(Permission.ViewSessions);
     public bool CanEditServerSettings => Permissions.Has(Permission.ManageCoordinatorSettings);
     public bool CanManageRoles => Permissions.Has(Permission.ManageRoles);
 
@@ -39,6 +40,7 @@ public sealed class AccessVM : ReactiveObject
     {
         Permissions = permissions;
         this.RaisePropertyChanged(nameof(CanViewServerSettings));
+        this.RaisePropertyChanged(nameof(CanViewServerChannels));
         this.RaisePropertyChanged(nameof(CanEditServerSettings));
         this.RaisePropertyChanged(nameof(CanManageRoles));
         this.RaisePropertyChanged(nameof(CanOpenServerSettings));

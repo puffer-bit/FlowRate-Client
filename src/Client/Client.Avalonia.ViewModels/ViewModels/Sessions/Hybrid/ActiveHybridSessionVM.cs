@@ -45,6 +45,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     }
 
     private bool IsClosed { get; set; }
+    private readonly ScreenAwakeSession? _screenAwake;
     private DispatcherTimer? _callDurationTimer;
     private void UpdateCallDuration()
     {
@@ -156,6 +157,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
         ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> admitPeerCommand)
     {
+        if (services.ScreenAwake is { } screenAwake)
+            _screenAwake = new ScreenAwakeSession(ScreenStreams, screenAwake);
         _coordinatorStates = services.CoordinatorStates;
         _mediaCapabilities = services.MediaCapabilities;
         _screenShareSettings = services.ScreenShareSettings;
@@ -403,6 +406,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         StatusBar.ChangeStatus(state);
         IsTransportConnected = state == HybridSessionState.Connected;
+        _screenAwake?.SetConnected(IsTransportConnected);
 
         // A transport that went down takes the outgoing tracks with it
         if (state is HybridSessionState.Failed or HybridSessionState.Disconnected or HybridSessionState.Reconnecting
@@ -766,6 +770,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
         if (IsClosed)
             return;
         IsClosed = true;
+        _screenAwake?.Dispose();
 
         _callDurationTimer?.Stop();
         _subscriptions.Dispose();

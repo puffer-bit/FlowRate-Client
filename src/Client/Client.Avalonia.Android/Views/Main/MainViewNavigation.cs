@@ -1,5 +1,6 @@
 using Client.Droid.Views.Connections;
 using Client.Droid.Views.Dialogs;
+using Client.Droid.Views.Notifications;
 using Client.Droid.Views.Profile;
 using Client.Droid.Views.Sessions.Create;
 using Client.Droid.Views.Sessions.Hybrid;
@@ -19,6 +20,7 @@ using Client.Avalonia.Localization;
 using Client.Services;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
+using Client.ViewModels.Notifications;
 using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Create;
@@ -39,6 +41,7 @@ internal sealed class MainViewNavigation
     private AccountSecurityView? _securityView;
     private readonly List<LoginPromptVM> _loginPrompts = [];
     private SettingsView? _settingsView;
+    private NotificationsPage? _notificationsPage;
     private HybridSessionStatsPage? _hybridStatsPage;
     private CreateSessionView? _createSessionView;
 
@@ -70,7 +73,8 @@ internal sealed class MainViewNavigation
         }
 
         var overlay = (Control?)_connectView ?? (Control?)_securityView ?? (Control?)_profileView
-                      ?? (Control?)_createSessionView ?? (Control?)_settingsView ?? _hybridStatsPage;
+                      ?? (Control?)_createSessionView ?? (Control?)_settingsView ?? (Control?)_notificationsPage
+                      ?? _hybridStatsPage;
         return overlay;
     }
 
@@ -139,6 +143,12 @@ internal sealed class MainViewNavigation
             return true;
         }
 
+        if (_notificationsPage != null)
+        {
+            CloseNotifications();
+            return true;
+        }
+
         if (_hybridStatsPage != null)
         {
             CloseHybridStats();
@@ -165,6 +175,25 @@ internal sealed class MainViewNavigation
 
         _hybridStatsPage.DataContext = null;
         _hybridStatsPage = null;
+        _showCurrentScreen();
+    }
+
+    public void OpenNotifications(NotificationCenterVM notifications)
+    {
+        if (_notificationsPage != null)
+            return;
+
+        _notificationsPage = new NotificationsPage { DataContext = notifications };
+        _notificationsPage.CloseRequested += CloseNotifications;
+        _showCurrentScreen();
+    }
+
+    private void CloseNotifications()
+    {
+        if (_notificationsPage == null)
+            return;
+
+        _notificationsPage = null;
         _showCurrentScreen();
     }
 
@@ -407,6 +436,11 @@ internal sealed class MainViewNavigation
     /// <param name="backAnswer">What the system back button answers while the box is the topmost one.</param>
     public async Task<Result> ShowMessageBoxAsync(MessageBoxVM messageBox, Result backAnswer)
     {
+        // A box with something to copy, such as a new recovery phrase, is read and confirmed, not cancelled
+        if (messageBox.CanCopyDetail)
+            foreach (var cancel in messageBox.ButtonsList.Where(button => button.IsCancel).ToArray())
+                messageBox.ButtonsList.Remove(cancel);
+
         var view = new MessageBoxView { DataContext = messageBox };
         var answer = new TaskCompletionSource<Result>(TaskCreationOptions.RunContinuationsAsynchronously);
 

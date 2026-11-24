@@ -35,7 +35,7 @@ public sealed class ChatVideoSession : IDisposable, IChatMediaSession
     public double? StreamProgress => _playback != null ? _source?.Download?.Progress : null;
     public bool IsPlaying => _playback?.IsPlaying == true;
     public bool HasError { get; private set; }
-    public double Position => _playback?.Position ?? 0;
+    public double Position => _playback is { HasEnded: true } ended ? ended.Duration : _playback?.Position ?? 0;
     public double Duration => _playback?.Duration ?? 0;
 
     public event Action<RawVideoFrame>? FrameReady;

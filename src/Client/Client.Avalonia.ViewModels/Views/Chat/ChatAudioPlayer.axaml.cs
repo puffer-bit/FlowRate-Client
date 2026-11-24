@@ -17,6 +17,7 @@ public partial class ChatAudioPlayer : UserControl
     private bool _updating;
     private bool _seeking;
     private bool _changingVolume;
+    public bool ApplyVolumeWhileDragging { get; set; }
     private bool _ready;
 
     public ChatAudioPlayer() : this(null) { }
@@ -121,7 +122,7 @@ public partial class ChatAudioPlayer : UserControl
         if (!_ready || _updating)
             return;
         VolumeText.Text = $"{e.NewValue:0}%";
-        if (!_changingVolume)
+        if (ApplyVolumeWhileDragging || !_changingVolume)
             ApplyVolume();
     }
 

@@ -21,11 +21,12 @@ public partial class HybridSessionView : UserControl
         InitializeComponent();
     }
 
-    public event Action? MenuRequested;
+    /// <summary>Raised by the back button of the header.</summary>
+    public event Action? BackRequested;
     public event Action? StatsRequested;
     public event Action? AudioDevicesRequested;
 
-    private void OnMenuClick(object? sender, RoutedEventArgs e) => MenuRequested?.Invoke();
+    private void OnBackClick(object? sender, RoutedEventArgs e) => BackRequested?.Invoke();
     private void OnStatsClick(object? sender, RoutedEventArgs e) => StatsRequested?.Invoke();
     private void OnAudioDevicesClick(object? sender, RoutedEventArgs e) => AudioDevicesRequested?.Invoke();
 
@@ -86,6 +87,7 @@ public partial class HybridSessionView : UserControl
 
         _fullscreen = stream;
         stream.PropertyChanged += OnFullscreenStreamChanged;
+        FullscreenZoom.ResetZoom();
         FullscreenPicture.Stream = stream;
         FullscreenPerf.Stream = stream;
         FullscreenLayer.IsVisible = true;

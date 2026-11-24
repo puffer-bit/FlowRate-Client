@@ -19,6 +19,12 @@
         <converters:MaskedIdentityConverter x:Key="MaskedIdentityConverter"/>
     </UserControl.Resources>
     <ui:SettingsPage>
+        <controls:SettingsHeader services:SettingText.Section="behavior.playback"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.keepScreenOn">
+                <CheckBox IsChecked="{Binding KeepScreenOnWhileWatching}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
         <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
         <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanAutoConnect}">
             <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">

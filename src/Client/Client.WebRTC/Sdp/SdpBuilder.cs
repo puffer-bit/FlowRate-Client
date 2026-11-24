@@ -104,14 +104,17 @@ public static class SdpBuilder
             sdp.Append($"a=fmtp:{rtxPayloadType} apt={codec.PayloadType}").Append(LineBreak);
         }
 
-        // The SSRC is only announced for streams the SFU sends.
-        if (section.Direction == SdpDirection.SendOnly && section.SSRC.HasValue)
+        if (section.Direction == SdpDirection.SendOnly)
         {
             // A stream of its own for each section: without msid libwebrtc puts every track into one
             // stream and keeps the pictures of a screen in step with the voice of somebody else,
             // as late as that voice is played
             sdp.Append($"a=msid:flowrate-{section.Mid} flowrate-{section.Mid}").Append(LineBreak);
-            sdp.Append($"a=ssrc:{section.SSRC.Value} cname:{section.Cname}").Append(LineBreak);
+            // The transport placeholder has no SSRC, but still needs an explicit stream. Otherwise
+            // libwebrtc creates a default stream that Android's JNI observer can fail to find when
+            // the first real track replaces it during renegotiation ("unexpected stream").
+            if (section.SSRC.HasValue)
+                sdp.Append($"a=ssrc:{section.SSRC.Value} cname:{section.Cname}").Append(LineBreak);
         }
     }
 

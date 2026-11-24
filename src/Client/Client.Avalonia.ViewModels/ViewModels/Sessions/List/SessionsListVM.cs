@@ -71,13 +71,16 @@ public partial class SessionsListVM : ReactiveObject
     public bool IsPrivateChatsEmpty => State == SessionsListState.Loaded && PrivateChats.Count == 0;
     public bool CanCreateSession => IsPrivateMode || Access.CanCreateSessions;
     public bool CanCreateCategory => !IsPrivateMode && Access.CanManageSessions;
+    public bool CanShowChannels => IsPrivateMode && Access.CanViewServerChannels;
     public bool IsPrivateMode
     {
         get;
         set
         {
+            value = value || !Access.CanViewServerChannels;
             if (field == value) return;
             this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanShowChannels));
             this.RaisePropertyChanged(nameof(CanCreateSession));
             this.RaisePropertyChanged(nameof(CanCreateCategory));
             RebuildRows();
@@ -236,6 +239,8 @@ public partial class SessionsListVM : ReactiveObject
             this.RaisePropertyChanged(nameof(IsEmpty));
             this.RaisePropertyChanged(nameof(HasSessions));
         };
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
     }
 
     private void RaiseStateProperties()
@@ -429,17 +434,37 @@ public partial class SessionsListVM : ReactiveObject
 
     private async Task AddNewHybridSession(HybridSessionModel hybridSessionModel)
     {
+        if (_coordinatorSession is not { } coordinator)
+            return;
+        var attachId = _attachId;
         var session = AddHybridSessionVM(hybridSessionModel);
-        var result = await LoadPeersAsync(_coordinatorSession!, session);
-        if (!result.IsSuccess)
+        bool IsCurrent() => attachId == _attachId && Sessions.Contains(session) && !session.IsLeaving;
+        var result = await LoadPeersAsync(coordinator, session, IsCurrent);
+        if (!result.IsSuccess && IsCurrent())
         {
             LogPeersRequestFailed(hybridSessionModel.Id, hybridSessionModel.Name, result);
             session.IsCorrupted = true;
         }
     }
 
-    // A session created just now has no peers yet, so there is nothing to load for it
-    private void OnHybridSessionAdded(HybridSessionModel session) => AddHybridSessionVM(session);
+    // This also announces an existing channel made visible again, with peers already inside.
+    private void OnHybridSessionAdded(HybridSessionModel session)
+    {
+        var attachId = _attachId;
+        Dispatcher.UIThread.Post(async () =>
+        {
+            if (attachId != _attachId || _coordinatorSession == null)
+                return;
+            try
+            {
+                await AddNewHybridSession(session);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to load participants of hybrid session {SessionId}.", session.Id);
+            }
+        });
+    }
 
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
@@ -549,6 +574,10 @@ public partial class SessionsListVM : ReactiveObject
     private IEnumerable<HybridSessionVM> HybridSessions => Sessions.OfType<HybridSessionVM>()
         .Concat(Sessions.OfType<ChatSessionVM>().Select(chat => chat.CallPeers).OfType<HybridSessionVM>());
 
+    /// <summary>The direct chat with a user, when the list has one.</summary>
+    public ChatSessionVM? FindDirectChat(int userId) => Sessions.OfType<ChatSessionVM>().FirstOrDefault(chat =>
+        chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(userId));
+
     /// <summary>A chat of the list by its id.</summary>
     public ChatSessionModel? FindChat(int chatId) => FindSession<ChatSessionVM>(chatId)?.Model as ChatSessionModel;
 
@@ -565,6 +594,9 @@ public partial class SessionsListVM : ReactiveObject
     /// <summary>Shows again what the current user may do, after their roles changed.</summary>
     private void ApplyAccess()
     {
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
+        this.RaisePropertyChanged(nameof(CanShowChannels));
         foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.CallPeers?.ApplyAccess(Access.Permissions);
         this.RaisePropertyChanged(nameof(CanCreateSession));
         this.RaisePropertyChanged(nameof(CanCreateCategory));

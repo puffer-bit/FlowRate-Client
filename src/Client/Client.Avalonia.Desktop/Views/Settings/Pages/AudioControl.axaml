@@ -36,7 +36,7 @@
                           SelectedItem="{Binding SelectedInputDevice}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
-                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
                                        Classes.unavailable="{Binding !IsAvailable}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
@@ -183,7 +183,7 @@
                           SelectedItem="{Binding SelectedOutputDevice}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="pagesVm:AudioInputDeviceItem">
-                            <text:MarqueeTextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
                                        Classes.unavailable="{Binding !IsAvailable}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
