@@ -8,7 +8,7 @@
     <Application.Resources>
         <ResourceDictionary>
              <ResourceDictionary.MergedDictionaries>
-                 <ResourceInclude Source="/Views/Common/Styles/UiResources.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/UiResources.axaml"/>
                  <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
                  <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
                  <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
@@ -66,8 +66,9 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Pickers/ColorPicker.axaml"/>
-        <StyleInclude Source="/Views/Common/Styles/UiControls.axaml"/>
-        <StyleInclude Source="/Views/Settings/Styles/ResponsiveSettings.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/UiControls.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Settings/Styles/ResponsiveSettings.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/Dialogs.axaml"/>
     </Application.Styles>
              
 

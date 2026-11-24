@@ -17,7 +17,7 @@ using Client.ViewModels.Main;
 
 namespace Client.Views.Main;
 
-internal partial class MainWindow : ViewWindow<MainWindowVM>
+internal partial class MainWindow : ViewWindow<MainWindowVM>, IMainWindow
 {
     // Corners of the window while it draws its own frame, as those of the dialogs
     private static readonly CornerRadius FrameCornerRadius = new(8);

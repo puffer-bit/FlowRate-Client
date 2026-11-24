@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
@@ -24,6 +24,7 @@ using Client.Application.Ports;
 using Client.Tools.Logging;
 using Client.Tools.AppInfo;
 using Client.Views.Common;
+using Client.Views.Shared.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Client.Application.Settings;
 using Client.Application.Sounds;
@@ -59,6 +60,11 @@ public partial class App : global::Avalonia.Application
         Services = InitDependencies()
             .AddClientLogging(Log.Logger)
             .BuildServiceProvider();
+
+        // What the views created by markup take from the application
+        ViewServices.Provider = Services;
+        Client.Views.Shared.Dialogs.DialogPresenter.Current = new Client.Views.Dialogs.WindowDialogPresenter();
+        DesktopHost.Current = new ProgramHost();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -152,6 +158,9 @@ public partial class App : global::Avalonia.Application
         services.AddSingleton<IScreenAwakeService, DesktopScreenAwakeService>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
+        // The players of the views know the sessions by their interfaces
+        services.AddSingleton<IChatAudioSession>(provider => provider.GetRequiredService<ChatAudioSession>());
+        services.AddSingleton<IChatVideoSession>(provider => provider.GetRequiredService<ChatVideoSession>());
 
         // Over the one of AddApplication, which does nothing
         if (!LaunchOptions.Current.DisableUpdates)

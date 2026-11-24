@@ -1,0 +1,56 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The shared message box (Client.Avalonia.Views.Common) sized for a finger. The backdrop and the
+         card around it are drawn by DialogFrame -->
+    <Style Selector=".messageBox TextBlock.dialogTitle">
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector=".messageBox Image.dialogIcon">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="40"/>
+    </Style>
+    <Style Selector=".messageBox StackPanel.dialogBody">
+        <Setter Property="Margin" Value="16, 0, 0, 0"/>
+    </Style>
+    <!-- Selecting with a finger fights scrolling; what can be copied has its button -->
+    <Style Selector=".messageBox SelectableTextBlock.dialogText">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector=".messageBox Button.dialogCopy">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0, -6, -6, -6"/>
+    </Style>
+    <Style Selector=".messageBox Button.dialogCopy > Image">
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
+    </Style>
+
+    <!-- The buttons share the width of the box equally, each tall enough for a finger. The answer the box
+         asks for stands last, under the right thumb -->
+    <Style Selector="ItemsControl.dialogButtons">
+        <Setter Property="Margin" Value="12, 20, 12, 16"/>
+        <Setter Property="FlowDirection" Value="RightToLeft"/>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <UniformGrid Rows="1"/>
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ItemsControl.dialogButtons Button">
+        <Setter Property="Margin" Value="4, 0"/>
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FlowDirection" Value="LeftToRight"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ItemsControl.dialogButtons Button TextBlock">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+</Styles>

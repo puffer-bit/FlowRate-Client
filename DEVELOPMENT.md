@@ -154,7 +154,11 @@ The code separates domain concepts and application use cases from persistence, n
 | `Client/Client.GStreamer` | Desktop media capture, processing, codec pipelines, and runtime loading. |
 | `Client/Client.OpenAL` | Desktop interface and notification audio. |
 | `Client/Client.Avalonia.ViewModels` | Shared view models and presentation services. |
-| `Client/Client.Avalonia.Desktop` | Desktop entry point, views, platform services, and packaging profiles. |
+| `Client/Client.Avalonia.Desktop` | Desktop entry point, main window, platform services, and packaging profiles. |
+| `Client/Client.Avalonia.Android` | Android entry point and platform services: notifications, calls, media, and what the mobile views ask of the phone. |
+| `Client/Client.Avalonia.Views.Common` | Views shared by every platform and the dialog contract (`IDialogPresenter`) the hosts implement. No windows and no platform APIs. |
+| `Client/Client.Avalonia.Views.Desktop` | The interface for a pointer and a large screen. Host services come through interfaces such as `IDesktopHost`. |
+| `Client/Client.Avalonia.Views.Mobile` | The interface for a finger and a phone screen. What it needs of the phone comes through `IMobilePlatform`. |
 | `Client/Client.Avalonia.Controls` | Reusable Avalonia controls, including shared menu components. |
 | `Client/Client.Avalonia.Styles` | Shared styles and theme resources. |
 | `Client/Client.Avalonia.Assets` | Shared icons, fonts, and application artwork. |
@@ -173,7 +177,7 @@ Repository-level files include [third-party notices](THIRD-PARTY-NOTICES.md), re
 
 Start with [AGENTS.md](AGENTS.md) for repository conventions. Write documentation and code comments in English. Keep changes aligned with the existing separation between application logic, platform services, and shared UI resources.
 
-For menu changes, use the shared `Flyout` and `MenuItemButton` components and existing styles. Use icons from the shared icon collection, with theme-aware brushes. Consult the existing [chat message flyout](src/Client/Client.Avalonia.Desktop/Views/Sessions/Chat/ChatMessageFlyout.axaml) before adding a menu.
+For menu changes, use the shared `Flyout` and `MenuItemButton` components and existing styles. Use icons from the shared icon collection, with theme-aware brushes. Consult the existing [chat message flyout](src/Client/Client.Avalonia.Views.Desktop/Views/Sessions/Chat/ChatMessageFlyout.axaml) before adding a menu.
 
 Run the test projects relevant to your change. UI, capture, audio-device, and native media changes also need manual checks on the affected platform; managed unit tests cannot establish driver or device compatibility.
 

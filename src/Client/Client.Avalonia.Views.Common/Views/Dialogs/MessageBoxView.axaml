@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:dialogVm="clr-namespace:Client.ViewModels.Dialogs;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="180"
+             x:Class="Client.Views.Shared.Dialogs.MessageBoxView"
+             x:CompileBindings="True" x:DataType="dialogVm:MessageBoxVM"
+             Classes="messageBox">
+
+    <!-- The same box on every platform. What differs is in the dialog styles of the platform: the sizes
+         (a finger needs larger targets than a pointer) and how the buttons are laid out -->
+    <Grid RowDefinitions="Auto, *, Auto">
+        <!-- The title bar of a window is not there when shown inside another window -->
+        <TextBlock Grid.Row="0" Classes="dialogTitle" Text="{Binding Title}" TextWrapping="Wrap"
+                   Margin="20, 16, 20, 0"/>
+
+        <!-- A long text, such as the details of a certificate, scrolls between the title and the buttons -->
+        <ScrollViewer Grid.Row="1" Margin="0, 12, 0, 0">
+            <Grid ColumnDefinitions="Auto, *" Margin="20, 0">
+                <Image Grid.Column="0" Classes="dialogIcon" VerticalAlignment="Top"
+                       Source="{Binding IconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                <StackPanel Grid.Column="1" Classes="dialogBody" Spacing="10" VerticalAlignment="Top">
+                    <SelectableTextBlock Classes="dialogText" Text="{Binding Text}" TextWrapping="Wrap"/>
+                    <!-- What the text is about, such as the address a link leads to -->
+                    <Border IsVisible="{Binding HasDetail}"
+                            Background="{DynamicResource MessageBoxDetailBrush}"
+                            CornerRadius="6" Padding="10, 8">
+                        <!-- What can be copied has a button for it: a phone has no selection to copy from -->
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                            <SelectableTextBlock Grid.Column="0" Classes="dialogText" VerticalAlignment="Center"
+                                                 Text="{Binding Detail}" TextWrapping="Wrap"/>
+                            <Button Grid.Column="1" Classes="borderless iconButton dialogCopy" VerticalAlignment="Top"
+                                    IsVisible="{Binding CanCopyDetail}" Click="OnCopyDetailClick"
+                                    ToolTip.Tip="{l:Text common.copy}" AutomationProperties.Name="{l:Text common.copy}">
+                                <Image Source="{StaticResource CopyIcon}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <ContentControl IsVisible="{Binding HasBanForm}" Content="{Binding BanForm}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="dialogVm:BanFormVM">
+                                <StackPanel Spacing="8" MinWidth="220">
+                                    <TextBlock Text="{l:Text ban.kind}"/>
+                                    <ComboBox ItemsSource="{Binding Kinds}" SelectedIndex="{Binding KindIndex}" HorizontalAlignment="Stretch"/>
+                                    <TextBlock Text="{l:Text ban.ip.description}" TextWrapping="Wrap" IsVisible="{Binding IsIp}"/>
+                                    <TextBox Text="{Binding Address}" PlaceholderText="{l:Text ban.ip.placeholder}" IsVisible="{Binding IsIp}"/>
+                                    <TextBlock Text="{l:Text ban.reason}"/>
+                                    <TextBox Text="{Binding Reason}" MaxLength="1000" AcceptsReturn="True" MinHeight="70" TextWrapping="Wrap"
+                                             TextAlignment="Left" HorizontalContentAlignment="Left" VerticalContentAlignment="Top"/>
+                                    <TextBlock Text="{l:Text ban.duration}"/>
+                                    <ComboBox ItemsSource="{Binding Durations}" SelectedIndex="{Binding DurationIndex}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                    <CheckBox IsVisible="{Binding HasCheckBox}"
+                              IsChecked="{Binding IsChecked}"
+                              Content="{Binding CheckBoxText}"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- The answer the box asks for is the filled button -->
+        <ItemsControl Grid.Row="2" Classes="dialogButtons" ItemsSource="{Binding ButtonsList}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="dialogVm:ButtonVM">
+                    <Button Classes.primary="{Binding IsDefault}"
+                            Command="{Binding Command}"
+                            IsDefault="{Binding IsDefault}" IsCancel="{Binding IsCancel}">
+                        <TextBlock Text="{Binding Text}"/>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

@@ -1,11 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using Client.Mobile.Platform;
 
 namespace Client.Droid.Platform.Media;
-
-internal enum CallAudioDeviceKind { Bluetooth, Wired, Usb, Speaker, Earpiece, Other }
-
-internal sealed record CallAudioDevice(string Key, int Id, CallAudioDeviceKind Kind, string Name);
 
 /// <summary>Keep an explicit choice while it is connected; otherwise prefer a headset to the phone.</summary>
 internal static class CallAudioRoutePolicy

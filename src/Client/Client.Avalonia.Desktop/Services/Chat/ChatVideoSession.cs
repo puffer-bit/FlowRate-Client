@@ -13,7 +13,7 @@ using Client.ViewModels.Sessions.Chat;
 namespace Client.Services.Chat;
 
 /// <summary>Owns video playback independently of virtualized message cards. Accessed on the UI thread.</summary>
-public sealed class ChatVideoSession : IDisposable, IChatMediaSession
+public sealed class ChatVideoSession : IDisposable, IChatVideoSession
 {
     private readonly IAudioSettingsRepository? _settings;
     private readonly SemaphoreSlim _saveLock = new(1, 1);

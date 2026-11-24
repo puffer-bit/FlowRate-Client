@@ -1,0 +1,40 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The shared message box (Client.Avalonia.Views.Common) sized for a pointer. The card around it
+         is drawn by DialogOverlay -->
+    <Style Selector=":is(UserControl).messageBox">
+        <Setter Property="MinWidth" Value="240"/>
+        <Setter Property="MaxWidth" Value="640"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector=".messageBox TextBlock.dialogTitle">
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector=".messageBox Image.dialogIcon">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+    </Style>
+    <Style Selector=".messageBox StackPanel.dialogBody">
+        <Setter Property="Margin" Value="20, 0, 0, 0"/>
+    </Style>
+    <Style Selector=".messageBox Button.dialogCopy > Image">
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+    </Style>
+
+    <!-- The buttons in a row at the right, as desktop dialogs have them -->
+    <Style Selector="ItemsControl.dialogButtons">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="12"/>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ItemsControl.dialogButtons Button">
+        <Setter Property="Margin" Value="0, 0, 8, 0"/>
+    </Style>
+</Styles>

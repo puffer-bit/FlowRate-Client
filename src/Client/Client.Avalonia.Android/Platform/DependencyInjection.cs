@@ -23,6 +23,9 @@ internal static class DependencyInjection
         services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
+        // The players of the views know the sessions by their interfaces
+        services.AddSingleton<Client.Services.IChatAudioSession>(provider => provider.GetRequiredService<ChatAudioSession>());
+        services.AddSingleton<Client.Services.IChatVideoSession>(provider => provider.GetRequiredService<ChatVideoSession>());
         services.AddSingleton<ISoundPlayer, AndroidSoundPlayer>();
         services.AddSingleton<IAudioDeviceProvider, NoAudioDeviceProvider>();
         services.AddSingleton<IMicrophoneTester, NoMicrophoneTester>();

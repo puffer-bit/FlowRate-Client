@@ -60,6 +60,8 @@
       <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
       <ProjectReference Include="..\Client.Avalonia.Video\Client.Avalonia.Video.csproj" />
       <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Views.Common\Client.Avalonia.Views.Common.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Views.Desktop\Client.Avalonia.Views.Desktop.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
       <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />

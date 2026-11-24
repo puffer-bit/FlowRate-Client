@@ -6,12 +6,15 @@ using Client.Api;
 using Client.Application;
 using Client.Avalonia.Localization;
 using Client.Droid.Platform;
-using Client.Droid.Views.Main;
+using Client.Mobile.Platform;
+using Client.Mobile.Views.Main;
 using Client.Infrastructure;
 using Client.Platform;
 using Client.Services;
 using Client.Tools.AppInfo;
 using Client.Tools.Logging;
+using Client.Views.Shared.Common;
+using Client.Views.Shared.Dialogs;
 using Client.ViewModels.Main;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -40,7 +43,16 @@ public partial class App : global::Avalonia.Application
                 .BuildServiceProvider();
 
             Services = services;
-            singleView.MainView = new MainView(services.GetRequiredService<MainWindowVM>(), services);
+
+            // What the shared views take from the application and the phone
+            ViewServices.Provider = services;
+            MobilePlatform.Current = new AndroidMobilePlatform();
+
+            var viewModel = services.GetRequiredService<MainWindowVM>();
+            var mainView = new MainView(viewModel, services);
+            DialogPresenter.Current = mainView.Dialogs;
+            _ = new AndroidMainViewIntegration(mainView, viewModel, services);
+            singleView.MainView = mainView;
         }
 
         base.OnFrameworkInitializationCompleted();

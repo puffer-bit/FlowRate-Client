@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
-        xmlns:mainViews="clr-namespace:Client.Views.Main"
+        xmlns:mainViews="clr-namespace:Client.Views.Main;assembly=Client.Avalonia.Views.Desktop"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Client.Views.Main.MainWindow"
         x:DataType="mainVm:MainWindowVM"
