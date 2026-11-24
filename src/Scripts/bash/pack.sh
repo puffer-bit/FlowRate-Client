@@ -102,6 +102,7 @@ PROJECTS=(
     Client/Client.WebRTC
     Client/Client.LibWebRTC
     Client/Client.GStreamer
+    Client/Database/Client.Database.Sqlite
     Client/Client.Package
 )
 

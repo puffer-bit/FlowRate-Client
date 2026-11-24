@@ -16,6 +16,7 @@
                                        Or '$(MSBuildProjectName)' == 'Client.WebRTC'
                                        Or '$(MSBuildProjectName)' == 'Client.LibWebRTC'
                                        Or '$(MSBuildProjectName)' == 'Client.GStreamer'
+                                       Or '$(MSBuildProjectName)' == 'Client.Database.Sqlite'
                                        Or '$(MSBuildProjectName)' == 'Client.Package'">true</IsFlowRatePackage>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
@@ -62,6 +63,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.LibWebRTC'">
         <Description>The libwebrtc voice and video transport of the FlowRate client, with the native library for linux-x64, win-x64 and osx-arm64.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Database.Sqlite'">
+        <Description>The SQLite storage of the FlowRate client: every repository the client libraries take, with migrations and encryption through SQLite3 Multiple Ciphers.</Description>
     </PropertyGroup>
     <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.GStreamer'">
         <Description>Audio and video of the FlowRate client through GStreamer: the runtime of the client from FlowRate.Client.GStreamer.Runtime.&lt;rid&gt;, or GStreamer installed on the system.</Description>
