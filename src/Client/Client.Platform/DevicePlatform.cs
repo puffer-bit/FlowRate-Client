@@ -9,7 +9,8 @@ namespace Client.Platform;
 public static class DevicePlatform
 {
     public static string Name =>
-        OperatingSystem.IsAndroid() ? "Android"
+        OperatingSystem.IsBrowser() ? "Browser"
+        : OperatingSystem.IsAndroid() ? "Android"
         : OperatingSystem.IsWindows() ? "Windows"
         : OperatingSystem.IsLinux() ? "Linux"
         : OperatingSystem.IsMacOS() ? "macOS"

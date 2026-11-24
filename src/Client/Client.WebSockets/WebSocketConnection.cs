@@ -38,10 +38,12 @@ public sealed class WebSocketConnection : IAsyncDisposable
     /// Status of the server's HTTP answer to the upgrade request, kept also when <see cref="ConnectAsync"/>
     /// failed, so a refusal can be told apart from an unreachable server. Zero when there was no answer.
     /// </summary>
-    public HttpStatusCode HandshakeStatusCode => _socket.HttpStatusCode;
+    // The browser tells nothing of the handshake response
+    public HttpStatusCode HandshakeStatusCode => OperatingSystem.IsBrowser() ? default : _socket.HttpStatusCode;
 
     /// <summary>Headers of that answer; null when there was no answer.</summary>
-    public IReadOnlyDictionary<string, IEnumerable<string>>? HandshakeResponseHeaders => _socket.HttpResponseHeaders;
+    public IReadOnlyDictionary<string, IEnumerable<string>>? HandshakeResponseHeaders =>
+        OperatingSystem.IsBrowser() ? null : _socket.HttpResponseHeaders;
 
     private readonly WebSocketConnectionOptions _options;
     private readonly ClientWebSocket _socket = new();
@@ -78,8 +80,12 @@ public sealed class WebSocketConnection : IAsyncDisposable
         if (Interlocked.Exchange(ref _connectStarted, 1) != 0)
             throw new InvalidOperationException("A WebSocketConnection connects only once; create a new one to reconnect.");
 
-        _socket.Options.KeepAliveInterval = TimeSpan.Zero;
-        _socket.Options.CollectHttpResponseDetails = true;
+        // The browser keeps the socket itself and has neither option
+        if (!OperatingSystem.IsBrowser())
+        {
+            _socket.Options.KeepAliveInterval = TimeSpan.Zero;
+            _socket.Options.CollectHttpResponseDetails = true;
+        }
         _options.Configure?.Invoke(_socket.Options);
 
         using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
