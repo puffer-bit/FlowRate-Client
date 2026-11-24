@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chrome="clr-namespace:Avalonia.Controls.Chrome;assembly=Avalonia.Controls"
              x:Class="Client.App"
              Name="FlowRate">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
@@ -27,6 +28,11 @@
         <FluentTheme />
         <Style Selector=":is(Window)">
             <Setter Property="Icon" Value="avares://Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico"/>
+        </Style>
+        <!-- In fullscreen Avalonia drops a title bar with caption buttons from the top edge on hover.
+             It is never shown, in any window: Escape leaves fullscreen -->
+        <Style Selector="WindowDrawnDecorations /template/ Panel[(chrome|WindowDecorationProperties.ElementRole)=TitleBar]:not(#PART_TitleBar)">
+            <Setter Property="IsVisible" Value="False"/>
         </Style>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Button.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/SecondaryButtonStyle.axaml"/>

@@ -12,7 +12,6 @@ using Avalonia.Threading;
 using Client.Avalonia.Localization;
 using Client.Services.Chat;
 using Client.ViewModels.Sessions.Chat;
-using Client.Views.Common;
 
 namespace Client.Views.Sessions.Chat;
 
@@ -26,7 +25,7 @@ public partial class ChatVideoPlayer : UserControl
     private bool _seeking;
     private bool _changingVolume;
     private bool _ready;
-    private FullscreenHost? _fullscreen;
+    private Window? _fullscreen;
     // The video being played has shown a frame of its own, which hides the frame it was sent with
     private volatile bool _framed;
 
@@ -53,10 +52,20 @@ public partial class ChatVideoPlayer : UserControl
             _fullscreen.Close();
             return;
         }
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+            return;
         ResetInteraction();
+        var window = new Window
+        {
+            DataContext = DataContext,
+            Title = (DataContext as ChatFileVM)?.FileName ?? string.Empty,
+            WindowState = WindowState.FullScreen,
+            Background = global::Avalonia.Media.Brushes.Black
+        };
+        _fullscreen = window;
         var inlineWidth = Width;
         var inlineHeight = Height;
-        // Keep the virtualized card in place while its content is shown over the window.
+        // Keep the virtualized card in place while its content belongs to the window.
         Width = Bounds.Width;
         Height = Bounds.Height;
         // Move the complete player so all controls keep the same playback session.
@@ -65,30 +74,28 @@ public partial class ChatVideoPlayer : UserControl
         PlayerBorder.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
         VideoFrame.IsExpanded = true;
         PlayerLayout.RowDefinitions = new RowDefinitions("*,Auto");
-        var fullscreen = FullscreenHost.Show(PlayerBorder, this);
-        if (fullscreen == null)
+        window.Content = PlayerBorder;
+        window.AddHandler(KeyDownEvent, (_, args) =>
         {
-            RestoreInline(inlineWidth, inlineHeight);
-            return;
-        }
-        _fullscreen = fullscreen;
-        fullscreen.Closed += () =>
+            if (args.Key != Key.Escape)
+                return;
+            args.Handled = true;
+            window.Close();
+        }, RoutingStrategies.Tunnel);
+        window.Closed += (_, _) =>
         {
+            window.Content = null;
             _fullscreen = null;
-            RestoreInline(inlineWidth, inlineHeight);
+            Width = inlineWidth;
+            Height = inlineHeight;
+            PlayerBorder.MaxWidth = (DataContext as ChatFileVM)?.PlayerCardWidth ?? 400;
+            PlayerBorder.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
+            VideoFrame.IsExpanded = false;
+            PlayerLayout.RowDefinitions = InlineRows();
+            Content = PlayerBorder;
+            _session?.RedisplayFrame();
         };
-        _session?.RedisplayFrame();
-    }
-
-    private void RestoreInline(double inlineWidth, double inlineHeight)
-    {
-        Width = inlineWidth;
-        Height = inlineHeight;
-        PlayerBorder.MaxWidth = (DataContext as ChatFileVM)?.PlayerCardWidth ?? 400;
-        PlayerBorder.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
-        VideoFrame.IsExpanded = false;
-        PlayerLayout.RowDefinitions = InlineRows();
-        Content = PlayerBorder;
+        window.Show(owner);
         _session?.RedisplayFrame();
     }
 
