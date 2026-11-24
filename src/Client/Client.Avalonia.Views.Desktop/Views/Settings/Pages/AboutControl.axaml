@@ -2,6 +2,7 @@
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:core="clr-namespace:Client.Core;assembly=Client.Core"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:releaseText="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
@@ -165,7 +166,8 @@
             <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
                 <Border Background="{DynamicResource SettingsCardBackgroundBrush}"
                         BorderBrush="{DynamicResource SettingsCardBorderBrush}" BorderThickness="1"
-                        CornerRadius="9" Padding="4" MaxWidth="300" HorizontalAlignment="Left">
+                        CornerRadius="9" Padding="4" MaxWidth="300" HorizontalAlignment="Left"
+                        IsVisible="{x:Static core:ApplicationRuntime.SupportsUpdates}">
                     <ListBox SelectedIndex="{Binding ChannelIndex}" Background="Transparent" Padding="0"
                              BorderThickness="0" MinWidth="190" SelectionMode="Single"
                              AutomationProperties.Name="{l:Text settings.about.releaseNotes.channel}">

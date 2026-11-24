@@ -110,8 +110,8 @@
                 </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>
-        <controls:SettingsHeader services:SettingText.Section="appearance.window"/>
-        <ui:SettingsCard>
+        <controls:SettingsHeader services:SettingText.Section="appearance.window" IsVisible="{Binding SupportsCustomTitleBar}"/>
+        <ui:SettingsCard IsVisible="{Binding SupportsCustomTitleBar}">
             <ui:SettingsRow services:SettingText.Key="appearance.customTitleBar">
                 <CheckBox IsChecked="{Binding UseCustomTitleBar}"/>
             </ui:SettingsRow>

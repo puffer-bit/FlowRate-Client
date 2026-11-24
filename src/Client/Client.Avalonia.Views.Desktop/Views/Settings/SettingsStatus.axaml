@@ -13,16 +13,33 @@
             <Setter Property="BorderBrush" Value="{DynamicResource WarningBannerBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
+        <Style Selector="Border.launchMode.browser">
+            <Setter Property="Background" Value="{DynamicResource InfoBannerBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InfoBannerBorderBrush}"/>
+        </Style>
     </UserControl.Styles>
     <StackPanel Spacing="8">
         <StackPanel.IsVisible>
             <MultiBinding Converter="{x:Static BoolConverters.Or}">
                 <Binding Path="IsSafeMode"/>
+                <Binding Path="IsBrowserMode"/>
                 <Binding Path="IsMediaDisabled"/>
                 <Binding Path="IsSoftwareRendering"/>
             </MultiBinding>
         </StackPanel.IsVisible>
         <WrapPanel ItemSpacing="8" LineSpacing="8">
+            <Border Classes="launchMode browser" IsVisible="{Binding IsBrowserMode}"
+                    AutomationProperties.Name="{l:Text settings.mode.browser.title}">
+                <ToolTip.Tip>
+                    <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{l:Text settings.mode.browser.description}"/>
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Image Width="16" Height="16" Source="{StaticResource BrowserIcon}"/>
+                    <TextBlock MaxWidth="160" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InfoBrush}"
+                               Text="{l:Text settings.mode.browser.title}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
             <Border Classes="launchMode" IsVisible="{Binding IsSafeMode}"
                     AutomationProperties.Name="{l:Text settings.mode.safe.title}">
                 <ToolTip.Tip>

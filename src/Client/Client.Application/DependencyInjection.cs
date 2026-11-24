@@ -34,7 +34,8 @@ public static class DependencyInjection
         services.AddSingleton<IDeviceKeyStore, Security.VaultDeviceKeyStore>();
 
         // A platform that updates the application itself registers its updater after this one
-        services.AddSingleton<IAppUpdater, NoAppUpdater>();
+        if (Client.Core.ApplicationRuntime.SupportsUpdates)
+            services.AddSingleton<IAppUpdater, NoAppUpdater>();
 
         // A platform that writes the statistics of the media somewhere registers its records after this one
         services.AddSingleton<IMediaPerfRecords>(NoMediaPerfRecords.Instance);

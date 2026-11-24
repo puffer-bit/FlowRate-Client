@@ -20,8 +20,8 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("appearance");
     public SettingTabType Type => SettingTabType.AppAppearance;
-    public IReadOnlyList<SettingAnchor> Anchors =>
-    [
+    public IReadOnlyList<SettingAnchor> Anchors => new SettingAnchor[]
+    {
         new("appearance.language", "settings.appearance.section.language"),
         new("appearance.theme", "settings.appearance.section.theme"),
         new("appearance.buttonColors", "settings.appearance.section.buttonColors"),
@@ -29,7 +29,9 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         new("appearance.scale", "settings.appearance.section.scale"),
         new("appearance.animations", "settings.appearance.section.animations"),
         new("appearance.window", "settings.appearance.section.window")
-    ];
+    }.Where(anchor => SupportsCustomTitleBar || anchor.SectionKey != "appearance.window").ToArray();
+
+    public bool SupportsCustomTitleBar => Client.Core.ApplicationRuntime.SupportsCustomTitleBar;
 
     public bool IsEnabled => true;
 
@@ -40,7 +42,8 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         ("window", ["customTitleBar"]),
         ("buttonColors", ["primaryColor", "secondaryColor", "dangerColor", "saveColor", "successColor", "warningColor",
             "errorColor", "resetColors"]),
-        ("animations", ["animations", "animationSpeed"]));
+        ("animations", ["animations", "animationSpeed"]))
+        .Where(entry => SupportsCustomTitleBar || entry.Key != "appearance.customTitleBar").ToArray();
 
     // Custom themes are not supported yet
     public ThemeType SelectedThemeType
@@ -278,6 +281,9 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
 
     private async Task ChangeTitleBarAsync(bool value)
     {
+        if (!SupportsCustomTitleBar)
+            return;
+
         ExperimentalFeatures.Apply(ExperimentalFeatures.IsEnabled, value);
         await _appearanceService.UpdateUseCustomTitleBarAsync(value);
     }

@@ -16,8 +16,9 @@ internal sealed class Program
         // Logs go to the console of the browser; there are no log files
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions { WriteToFiles = false, UseConsoleColors = false });
 
-        // No voice and no video in the browser: the same mode as --no-media on the desktop
-        MediaRuntime.Configure(["--no-media"]);
+        // Host-only mode: browser capabilities are independent of desktop launch overrides.
+        Client.Core.ApplicationRuntime.Configure(["--browser"]);
+        MediaRuntime.Configure([]);
         // Browser .NET has neither ECDsa nor AesGcm: BouncyCastle stands in for both
         Client.Application.Security.EcdsaKeys.Factory = () => new Platform.BouncyCastleECDsa();
         Client.Application.Security.AesGcmCiphers.Factory = (key, tagLength) => new Platform.BouncyCastleAesGcm(key, tagLength);

@@ -71,6 +71,8 @@
   "main.startup.development.hide": "No volver a mostrar",
   "main.startup.development.continue": "Continuar",
 
+  "settings.mode.browser.title": "Modo navegador",
+  "settings.mode.browser.description": "Estás usando la versión para navegador. Las sesiones de voz, la reproducción integrada de audio y vídeo y las actualizaciones de la aplicación no están disponibles.",
   "settings.mode.safe.title": "Modo seguro",
   "settings.mode.safe.description": "El modo seguro está activo (--safe-mode). Los medios, los atajos globales, las conexiones automáticas y la restauración de sesiones están desactivados en este inicio. Los ajustes guardados se conservan.",
   "settings.mode.software.title": "Sin aceleración por hardware",
@@ -1037,6 +1039,8 @@
   "settings.hotKeys.pressKeys": "Pulse las teclas…",
   "settings.hotKeys.typingWarning": "Esta tecla escribe un carácter: la acción también se activa mientras escribe.",
   "settings.hotKeys.waylandHint": "En Wayland una aplicación solo oye las teclas de sus propias ventanas. En otras aplicaciones los atajos funcionan solo si el sistema lo permite o la aplicación puede leer los dispositivos de entrada; si no, solo funcionan en la ventana.",
+  "settings.hotKeys.browserTitle": "Atajos globales no disponibles",
+  "settings.hotKeys.browserHint": "El navegador no puede recibir atajos fuera de esta aplicación. Los atajos globales están desactivados en la versión para navegador.",
   "settings.hotKeys.waylandTitle": "Wayland limita los atajos",
   "settings.hotKeys.macOSHint": "Para que los atajos funcionen en otras aplicaciones, permite FlowRate en Ajustes del Sistema → Privacidad y seguridad → Monitorización de entrada y reinícialo. Sin ello, los atajos solo funcionan en la ventana.",
   "settings.hotKeys.macOSTitle": "macOS pide permiso para los atajos globales",

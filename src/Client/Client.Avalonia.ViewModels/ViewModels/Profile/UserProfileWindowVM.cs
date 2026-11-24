@@ -388,6 +388,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     /// <summary>The icon of a system the server names, null for one without an icon.</summary>
     internal static string? PlatformIconKey(string platform) => platform switch
     {
+        "Browser" => "BrowserIcon",
         "Windows" => "WindowsIcon",
         "Linux" => "LinuxIcon",
         "macOS" => "MacOSIcon",

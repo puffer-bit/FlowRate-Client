@@ -78,7 +78,8 @@ public static class DependencyInjection
         services.AddSingleton<LastSessionKeeper>();
         services.AddSingleton<PeerStatsService>();
         services.AddSingleton<SessionListPreferences>();
-        services.AddSingleton<UpdaterVM>();
+        if (Client.Core.ApplicationRuntime.SupportsUpdates)
+            services.AddSingleton<UpdaterVM>();
 
         services.AddTransient<MainWindowVM>();
         services.AddTransient<ConnectWindowVM>();

@@ -130,7 +130,9 @@ public partial class MainWindowVM : ReactiveObject
     public UserCardVM UserCard { get; }
 
     /// <summary>The updater menu of the top bar.</summary>
-    public UpdaterVM Updater { get; }
+    public UpdaterVM? Updater { get; }
+
+    public bool CanUpdate => Client.Core.ApplicationRuntime.SupportsUpdates;
 
     public bool IsConnected
     {
@@ -298,11 +300,11 @@ public partial class MainWindowVM : ReactiveObject
         ChatSessionServices chatServices,
         Func<HybridSessionServices> hybridServices,
         LastSessionKeeper lastSession,
-        UpdaterVM updater,
         ILoggerFactory loggerFactory,
         Func<ConnectWindowVM> createConnectWindow,
         Func<SettingsWindowVM> createSettings,
-        Client.Application.Sounds.ISoundService? callSounds = null)
+        Client.Application.Sounds.ISoundService? callSounds = null,
+        UpdaterVM? updater = null)
     {
         ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
@@ -526,7 +528,8 @@ public partial class MainWindowVM : ReactiveObject
         await HideStartupScreenAsync(fadeOutStartupScreen);
 
         // Not awaited: a slow network must not hold the auto connection back
-        _ = Updater.CheckOnStartupAsync();
+        if (CanUpdate && Updater is { } updater)
+            _ = updater.CheckOnStartupAsync();
 
         if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
             && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled

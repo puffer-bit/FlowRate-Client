@@ -77,7 +77,8 @@ public class AboutControlVM : ReactiveObject, ISettingVM, IDisposable
         Version = version;
         PlatformDetails = systemDescription ?? RuntimeInformation.OSDescription;
         Libraries = FindLibraries();
-        ReleaseHistory = new ReleaseHistoryVM(releaseNotes, updatePreferences);
+        ReleaseHistory = new ReleaseHistoryVM(releaseNotes,
+            Client.Core.ApplicationRuntime.SupportsUpdates ? updatePreferences : null);
 
         LoadCommand = ReactiveCommand.CreateFromTask(() => Task.CompletedTask);
     }

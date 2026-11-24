@@ -1969,6 +1969,18 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Blue globe (browser version). Source: Icons/Settings/BrowserIcon.svg -->
+    <DrawingImage x:Key="BrowserIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M12 3 A9 9 0 1 1 12 21 A9 9 0 1 1 12 3 Z M12 3 C7.5 7.5 7.5 16.5 12 21 C16.5 16.5 16.5 7.5 12 3 Z M3 12 H21 M4.5 7.5 H19.5 M4.5 16.5 H19.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#00B4FF" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Four panes, one of them blue (Windows settings). Source: Icons/Settings/WindowsIcon.svg -->
     <DrawingImage x:Key="WindowsIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

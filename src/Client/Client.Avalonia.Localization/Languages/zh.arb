@@ -71,6 +71,8 @@
   "main.startup.development.hide": "不再显示",
   "main.startup.development.continue": "继续",
 
+  "settings.mode.browser.title": "浏览器模式",
+  "settings.mode.browser.description": "你正在使用浏览器版本。语音会话、内置音视频播放和应用更新不可用。",
   "settings.mode.safe.title": "安全模式",
   "settings.mode.safe.description": "安全模式已启用 (--safe-mode)。本次启动已禁用媒体、全局快捷键、自动连接和会话恢复。已保存的设置保持不变。",
   "settings.mode.software.title": "无硬件加速",
@@ -1037,6 +1039,8 @@
   "settings.hotKeys.pressKeys": "请按下按键…",
   "settings.hotKeys.typingWarning": "此按键会输入字符：打字时也会切换该操作。",
   "settings.hotKeys.waylandHint": "在 Wayland 下，应用只能听到自己窗口中的按键。只有在系统允许或应用可以读取输入设备时，快捷键才会在其他应用中生效；否则只在窗口中有效。",
+  "settings.hotKeys.browserTitle": "全局快捷键不可用",
+  "settings.hotKeys.browserHint": "浏览器无法接收此应用之外的快捷键。浏览器版本已禁用全局快捷键。",
   "settings.hotKeys.waylandTitle": "Wayland 限制快捷键",
   "settings.hotKeys.macOSHint": "要在其他应用中使用快捷键，请在 系统设置 → 隐私与安全性 → 输入监控 中允许 FlowRate，然后重新启动它。否则快捷键只在窗口中有效。",
   "settings.hotKeys.macOSTitle": "macOS 需要授权才能使用全局快捷键",

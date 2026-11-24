@@ -47,7 +47,8 @@ public class HotKeysService : IHotKeysService
     }
 
     public bool IsHeardGlobally(HotKeyAction action) =>
-        Backend != GlobalHotKeysBackend.None
+        Client.Core.ApplicationRuntime.SupportsGlobalHotKeys
+        && Backend != GlobalHotKeysBackend.None
         && Current is { IsEnabled: true, IsGlobalEnabled: true }
         && Current.Get(action).IsGlobal;
 
