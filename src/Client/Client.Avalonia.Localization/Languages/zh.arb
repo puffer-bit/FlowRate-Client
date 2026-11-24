@@ -1178,6 +1178,9 @@
   "settings.accounting.certificatesHint": "证书仅对某个地址以及在该地址上响应的协调器受信任。系统能够验证的证书（例如 Let's Encrypt 的证书）不会显示在这里：它们无需确认。",
   "settings.accounting.unnamedServer": "未命名的服务器",
 
+  "settings.behavior.section.playback": "播放",
+  "settings.behavior.keepScreenOn.title": "观看直播时保持屏幕常亮",
+  "settings.behavior.keepScreenOn.description": "观看屏幕共享或摄像头时，防止屏幕自动休眠。",
   "settings.behavior.name": "应用行为",
   "settings.behavior.section.autoConnection": "自动连接",
   "settings.behavior.autoConnect.title": "应用启动时自动连接",

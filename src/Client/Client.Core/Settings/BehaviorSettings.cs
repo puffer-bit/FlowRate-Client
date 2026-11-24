@@ -6,6 +6,8 @@ namespace Client.Core.Settings;
 /// </summary>
 public class BehaviorSettings
 {
+    public bool KeepScreenOnWhileWatching { get; set; } = true;
+
     public bool IsAutoConnectEnabled { get; set; }
 
     public bool IsFallbackConnectionEnabled { get; set; } = false;

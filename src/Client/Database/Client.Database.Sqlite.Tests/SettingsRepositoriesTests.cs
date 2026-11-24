@@ -553,6 +553,7 @@ public class SettingsRepositoriesTests
         Assert.True(settings.IsUpdateCheckOnStartupEnabled);
         Assert.Equal(UpdateChannel.Release, settings.UpdateChannel);
         Assert.Equal(BehaviorSettings.DefaultQuickReaction, settings.QuickReaction);
+        Assert.True(settings.KeepScreenOnWhileWatching);
     }
 
     [Fact]
@@ -570,7 +571,8 @@ public class SettingsRepositoriesTests
             CloseButtonAction = CloseButtonAction.MinimizeToTray,
             IsUpdateCheckOnStartupEnabled = false,
             UpdateChannel = UpdateChannel.Dev,
-            QuickReaction = "🔥"
+            QuickReaction = "🔥",
+            KeepScreenOnWhileWatching = false
         });
         var settings = await repository.GetAsync();
 
@@ -582,6 +584,7 @@ public class SettingsRepositoriesTests
         Assert.False(settings.IsUpdateCheckOnStartupEnabled);
         Assert.Equal(UpdateChannel.Dev, settings.UpdateChannel);
         Assert.Equal("🔥", settings.QuickReaction);
+        Assert.False(settings.KeepScreenOnWhileWatching);
     }
 
     [Fact]

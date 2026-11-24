@@ -6,6 +6,8 @@ namespace Client.Application.Settings;
 
 public class BehaviorService : IBehaviorService
 {
+    public event Action<BehaviorSettings>? SettingsChanged;
+
     private readonly IBehaviorSettingsRepository _behaviorSettingsRepository;
     private readonly IAccountingSettingsRepository _accountingSettingsRepository;
     
@@ -40,6 +42,7 @@ public class BehaviorService : IBehaviorService
     public async Task SaveSettingsAsync(BehaviorSettings settings)
     {
         await _behaviorSettingsRepository.SaveAsync(settings);
+        SettingsChanged?.Invoke(settings);
     }
     
     public async Task SetLastIdentityAsync((string CoordinatorId, int UserId) lastIdentity)

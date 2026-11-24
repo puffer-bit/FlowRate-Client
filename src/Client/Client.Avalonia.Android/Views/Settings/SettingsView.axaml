@@ -507,6 +507,12 @@
         <!-- ====== Behavior: without the tray, which Android does not have ====== -->
         <ui:SettingsPage Grid.Row="2" x:Name="BehaviorPage" IsVisible="False"
                          x:DataType="pagesVm:BehaviorControlVM">
+            <controls:SettingsHeader services:SettingText.Section="behavior.playback"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="behavior.keepScreenOn">
+                    <ToggleSwitch IsChecked="{Binding KeepScreenOnWhileWatching}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
             <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
             <ui:SettingsCard>
                 <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">

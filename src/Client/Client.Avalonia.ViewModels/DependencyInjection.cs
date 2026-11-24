@@ -71,7 +71,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IDismissedPromptsRepository>(),
             provider.GetRequiredService<ICoordinatorStateRepository>(),
             provider.GetService<ICameraDeviceProvider>(),
-            provider.GetRequiredService<ICameraPreferencesRepository>()));
+            provider.GetRequiredService<ICameraPreferencesRepository>(),
+            provider.GetService<IScreenAwakeService>()));
         // Resolved when a hybrid session is entered, see HybridSessionServices
         services.AddSingleton<Func<HybridSessionServices>>(provider => provider.GetRequiredService<HybridSessionServices>);
         services.AddSingleton<LastSessionKeeper>();

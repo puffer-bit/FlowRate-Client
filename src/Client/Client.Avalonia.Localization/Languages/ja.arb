@@ -1178,6 +1178,9 @@
   "settings.accounting.certificatesHint": "証明書は、特定のアドレスと、そこで応答したコーディネーターに対して信頼されます。Let's Encrypt の証明書など、システムが検証できる証明書は表示されません。確認が不要なためです。",
   "settings.accounting.unnamedServer": "名前のないサーバー",
 
+  "settings.behavior.section.playback": "再生",
+  "settings.behavior.keepScreenOn.title": "配信の視聴中は画面をオンにする",
+  "settings.behavior.keepScreenOn.description": "画面共有やカメラの視聴中に画面が自動的にスリープするのを防ぎます。",
   "settings.behavior.name": "アプリの動作",
   "settings.behavior.section.autoConnection": "自動接続",
   "settings.behavior.autoConnect.title": "アプリ起動時に自動接続",

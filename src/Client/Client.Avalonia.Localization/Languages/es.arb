@@ -1178,6 +1178,9 @@
   "settings.accounting.certificatesHint": "Un certificado es de confianza para una dirección y para el coordinador que respondió en ella. Los certificados que el sistema verifica, por ejemplo los de Let's Encrypt, no aparecen: no necesitan confirmación.",
   "settings.accounting.unnamedServer": "Servidor sin nombre",
 
+  "settings.behavior.section.playback": "Reproducción",
+  "settings.behavior.keepScreenOn.title": "Mantener la pantalla encendida al ver transmisiones",
+  "settings.behavior.keepScreenOn.description": "Evitar que la pantalla se apague automáticamente al ver una pantalla compartida o una cámara.",
   "settings.behavior.name": "Comportamiento de la aplicación",
   "settings.behavior.section.autoConnection": "Conexión automática",
   "settings.behavior.autoConnect.title": "Conexión automática al iniciar la aplicación",

@@ -28,6 +28,22 @@ namespace Client.Droid;
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
 public class MainActivity : AvaloniaMainActivity
 {
+    private static bool _screenAwakeRequired;
+
+    internal static void SetScreenAwakeRequired(bool required)
+    {
+        _screenAwakeRequired = required;
+        Current?.ApplyScreenAwake();
+    }
+
+    private void ApplyScreenAwake()
+    {
+        if (_screenAwakeRequired && IsInFront)
+            Window?.AddFlags(WindowManagerFlags.KeepScreenOn);
+        else
+            Window?.ClearFlags(WindowManagerFlags.KeepScreenOn);
+    }
+
     private const int NotificationPermissionRequest = 1001;
     // A request of the media by the permission it asks for
     private static readonly Dictionary<string, int> MediaPermissionRequests = new()
@@ -176,6 +192,7 @@ public class MainActivity : AvaloniaMainActivity
     {
         base.OnStart();
         SetIsInFront(true);
+        ApplyScreenAwake();
     }
 
     protected override void OnStop()
@@ -184,6 +201,7 @@ public class MainActivity : AvaloniaMainActivity
         // Once the user has left, the lock screen protects the application again
         SetOverLockScreen(false);
         SetIsInFront(false);
+        ApplyScreenAwake();
         base.OnStop();
     }
 
@@ -198,6 +216,7 @@ public class MainActivity : AvaloniaMainActivity
             _mediaPermissions.Clear();
         }
 
+        Window?.ClearFlags(WindowManagerFlags.KeepScreenOn);
         if (ReferenceEquals(Current, this))
             Current = null;
 

@@ -12,6 +12,24 @@ namespace Client.Application.Tests;
 public class BehaviorAutoConnectionTests
 {
     [Fact]
+    public async Task ScreenAwakePreferenceLoadsSavesAndResetsWithBehaviorSettings()
+    {
+        var behavior = new BehaviorStub { Settings = new() { KeepScreenOnWhileWatching = false } };
+        var vm = new BehaviorControlVM(behavior, new AccountingStub([]));
+
+        await vm.LoadCommand.Execute();
+        Assert.False(vm.KeepScreenOnWhileWatching);
+        vm.KeepScreenOnWhileWatching = true;
+        Assert.True(behavior.Settings.KeepScreenOnWhileWatching);
+        vm.KeepScreenOnWhileWatching = false;
+        Assert.False(behavior.Settings.KeepScreenOnWhileWatching);
+        await vm.ResetAllAsync();
+        Assert.True(vm.KeepScreenOnWhileWatching);
+        Assert.True(behavior.Settings.KeepScreenOnWhileWatching);
+        Assert.Contains(vm.SearchEntries, entry => entry.Key == "behavior.keepScreenOn");
+    }
+
+    [Fact]
     public async Task LoadingRestoresExactIdentityWithoutChangingSavedTarget()
     {
         var server = Server("first", 1, 2);
@@ -110,6 +128,8 @@ public class BehaviorAutoConnectionTests
 
     private sealed class BehaviorStub : IBehaviorService
     {
+        public event Action<BehaviorSettings>? SettingsChanged { add { } remove { } }
+        public BehaviorSettings Settings { get; set; } = new();
         public (SavedCoordinatorModel Coordinator, SavedUserModel User)? Target { get; set; }
         public List<(string, int)?> Writes { get; } = [];
         public Task<(SavedCoordinatorModel Coordinator, SavedUserModel User)?> GetAutoConnectInstance() => Task.FromResult(Target);
@@ -120,8 +140,12 @@ public class BehaviorAutoConnectionTests
             return Task.CompletedTask;
         }
         public Task RemoveLastIdentityAsync() { Writes.Add(null); Target = null; return Task.CompletedTask; }
-        public Task<BehaviorSettings> GetSettingsAsync() => Task.FromResult(new BehaviorSettings());
-        public Task SaveSettingsAsync(BehaviorSettings settings) => Task.CompletedTask;
+        public Task<BehaviorSettings> GetSettingsAsync() => Task.FromResult(Settings);
+        public Task SaveSettingsAsync(BehaviorSettings settings)
+        {
+            Settings = settings;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class AccountingStub(IReadOnlyList<SavedCoordinatorModel> servers) : IAccountingService
