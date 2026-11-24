@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Client.Application.Security;
 
 namespace Client.Application.Sync;
 
@@ -62,7 +63,7 @@ public static class AccountBackupFile
             nonce.CopyTo(span[(Magic.Length + SaltLength)..]);
             var tag = span.Slice(Magic.Length + SaltLength + NonceLength, TagLength);
             var cipher = span[(Magic.Length + SaltLength + NonceLength + TagLength)..];
-            using var aes = new AesGcm(key, TagLength);
+            using var aes = AesGcmCiphers.Create(key, TagLength);
             // The header is authenticated too
             aes.Encrypt(nonce, plain, cipher, tag, span[..(Magic.Length + SaltLength)]);
             return file;
@@ -90,7 +91,7 @@ public static class AccountBackupFile
         var key = HKDF.DeriveKey(HashAlgorithmName.SHA256, backupKey, 32, salt, Info);
         try
         {
-            using var aes = new AesGcm(key, TagLength);
+            using var aes = AesGcmCiphers.Create(key, TagLength);
             aes.Decrypt(nonce, cipher, tag, plain, span[..(Magic.Length + SaltLength)]);
             var backup = JsonSerializer.Deserialize(plain, AccountBackupJsonContext.Default.AccountBackup);
             return backup is { Version: <= AccountBackup.CurrentVersion } ? backup : null;

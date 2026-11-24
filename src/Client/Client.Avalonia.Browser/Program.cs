@@ -18,7 +18,9 @@ internal sealed class Program
 
         // No voice and no video in the browser: the same mode as --no-media on the desktop
         MediaRuntime.Configure(["--no-media"]);
+        // Browser .NET has neither ECDsa nor AesGcm: BouncyCastle stands in for both
         Client.Application.Security.EcdsaKeys.Factory = () => new Platform.BouncyCastleECDsa();
+        Client.Application.Security.AesGcmCiphers.Factory = (key, tagLength) => new Platform.BouncyCastleAesGcm(key, tagLength);
 
         return BuildAvaloniaApp().StartBrowserAppAsync("out");
     }

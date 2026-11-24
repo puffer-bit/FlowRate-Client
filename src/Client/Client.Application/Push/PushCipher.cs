@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Client.Application.Security;
 using Client.Core.Push;
 
 namespace Client.Application.Push;
@@ -25,7 +26,7 @@ public static class PushCipher
 
             var plaintext = new byte[sealedMessage.Length - NonceLength - TagLength];
 
-            using var aes = new AesGcm(key, TagLength);
+            using var aes = AesGcmCiphers.Create(key, TagLength);
             aes.Decrypt(sealedMessage.AsSpan(0, NonceLength), sealedMessage.AsSpan(NonceLength, plaintext.Length),
                 sealedMessage.AsSpan(NonceLength + plaintext.Length), plaintext);
 
