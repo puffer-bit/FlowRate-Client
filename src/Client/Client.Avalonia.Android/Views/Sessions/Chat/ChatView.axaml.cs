@@ -82,8 +82,9 @@ public partial class ChatView : UserControl
         if (message is not { IsSystem: false, CanReact: true } || QuickReaction is not { } quickReaction)
             return;
 
-        // The first tap was waiting to open the menu: this one is a reaction instead
+        // Cancel before awaiting the reaction preference so a slow read cannot open the tap menu.
         _pendingTapMenu?.Cancel();
+        TryCloseMenu();
         e.Handled = true;
         var emoji = await quickReaction();
         message.ToggleReaction(ChatReactionEmoji.IsSupported(emoji) ? emoji : BehaviorSettings.DefaultQuickReaction);
@@ -128,7 +129,11 @@ public partial class ChatView : UserControl
         };
         MessageInput.GotFocus += (_, _) => UpdateMentionPicker();
         MessageInput.LostFocus += (_, _) => Chat?.Composer.MentionPicker.Close();
-        DetachedFromVisualTree += (_, _) => Chat?.Composer.MentionPicker.Close();
+        DetachedFromVisualTree += (_, _) =>
+        {
+            Chat?.Composer.MentionPicker.Close();
+            _pendingTapMenu?.Cancel();
+        };
         DataContextChanged += (_, _) =>
         {
             _mentionPicker?.Close();
@@ -221,6 +226,7 @@ public partial class ChatView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        _pendingTapMenu?.Cancel();
 
         // The menu is about a message of the chat that was shown
         TryCloseMenu();
@@ -254,11 +260,16 @@ public partial class ChatView : UserControl
     private long _lastScrollTime;
     private bool _isPressDuringScroll;
     private CancellationTokenSource? _pendingTapMenu;
-    // How long a tap waits for a second one, about the double tap time of Android
-    private static readonly TimeSpan DoubleTapWait = TimeSpan.FromMilliseconds(300);
+    private PointerType _tapPointerType = PointerType.Touch;
 
-    private void OnMessagesPressed(object? sender, PointerPressedEventArgs e) =>
+    private void OnMessagesPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // DoubleTapped is raised on the second press. Cancel the first tap here too, before its
+        // delay can resume while that second press is still being routed.
+        _pendingTapMenu?.Cancel();
+        _tapPointerType = e.Pointer.Type;
         _isPressDuringScroll = Environment.TickCount64 - _lastScrollTime < ScrollSettleMilliseconds;
+    }
 
     // A tap on a message opens its menu. What has a tap of its own keeps it: a button, such as an image,
     // a file, a reaction or the quoted message, a link or a mention in the text, the avatar and the name
@@ -287,12 +298,13 @@ public partial class ChatView : UserControl
         _pendingTapMenu?.Cancel();
 
         // A second tap may follow for the quick reaction: the menu waits until it can no longer come
-        if (message.CanReact && QuickReaction != null)
         {
             var pending = _pendingTapMenu = new CancellationTokenSource();
             try
             {
-                await Task.Delay(DoubleTapWait, pending.Token);
+                var wait = global::Avalonia.Application.Current?.PlatformSettings?.GetDoubleTapTime(_tapPointerType)
+                    ?? TimeSpan.FromMilliseconds(500);
+                await Task.Delay(wait, pending.Token);
             }
             catch (OperationCanceledException)
             {
@@ -302,6 +314,7 @@ public partial class ChatView : UserControl
             {
                 if (ReferenceEquals(_pendingTapMenu, pending))
                     _pendingTapMenu = null;
+                pending.Dispose();
             }
 
             if (TopLevel.GetTopLevel(source) == null || MessageMenu.IsOpen)

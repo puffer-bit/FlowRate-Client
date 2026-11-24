@@ -1,20 +1,52 @@
 using System;
+using System.Reactive.Disposables;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using System.Linq;
 using Client.Avalonia.Styles.Animation;
 using Client.ViewModels.Sessions.Chat;
+using ReactiveUI.Primitives;
 
 namespace Client.Droid.Views.Sessions.Chat;
 
 public partial class ChatMessageView : UserControl
 {
+    private readonly SerialDisposable _copySubscription = new();
+
     public ChatMessageView()
     {
         InitializeComponent();
         AddHandler(ContextRequestedEvent, OnContextRequested, RoutingStrategies.Tunnel);
+    }
+
+    // Code panels copy directly, before a message menu has ever been opened. Recycled rows must
+    // handle their current message only and release the handler when they leave the visual tree.
+    private void FollowClipboard()
+    {
+        _copySubscription.Disposable = this.IsAttachedToVisualTree() && DataContext is ChatMessageVM message
+            ? message.CopyMessageInteraction.RegisterHandler(async interaction =>
+            {
+                if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                    await clipboard.SetTextAsync(interaction.Input);
+                interaction.SetOutput(RxVoid.Default);
+            })
+            : null;
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        FollowClipboard();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _copySubscription.Disposable = null;
+        base.OnDetachedFromVisualTree(e);
     }
 
     private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
@@ -54,6 +86,7 @@ public partial class ChatMessageView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        FollowClipboard();
 
         if (DataContext is ChatMessageVM vm && vm.TakeLiveArrival())
         {
