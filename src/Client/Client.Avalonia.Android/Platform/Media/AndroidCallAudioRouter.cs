@@ -5,17 +5,15 @@ using Android.Content;
 using Android.Media;
 using Android.OS;
 using Android.Util;
+using Client.Mobile.Platform;
 
 namespace Client.Droid.Platform.Media;
-
-internal sealed record CallAudioState(IReadOnlyList<CallAudioDevice> Devices, string? PreferredKey,
-    CallAudioDevice? ActiveDevice, bool IsInCall, bool IsSwitching, bool HasError);
 
 /// <summary>
 /// Process-wide call routing, independent of the activity and surviving replacement WebRTC peers.
 /// All AudioManager state changes run on Android's main thread. A snapshot is safe to read from the UI.
 /// </summary>
-internal sealed class AndroidCallAudioRouter
+internal sealed class AndroidCallAudioRouter : ICallAudioRoutes
 {
     private static readonly Lazy<AndroidCallAudioRouter> Shared = new(() => new());
     public static AndroidCallAudioRouter Instance => Shared.Value;

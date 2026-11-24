@@ -1,4 +1,5 @@
 using Client.Droid.Platform.Media;
+using Client.Mobile.Platform;
 using Xunit;
 
 namespace Client.Application.Tests;

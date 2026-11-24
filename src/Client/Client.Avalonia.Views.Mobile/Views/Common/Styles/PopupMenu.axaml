@@ -1,0 +1,118 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+        xmlns:views="clr-namespace:Client.Mobile.Views.Common">
+
+    <!-- The card that every menu of the application is: the same corners, shadow and items wherever it opens -->
+    <Style Selector="Border.menu-card">
+        <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="BoxShadow" Value="{DynamicResource DialogShadow}"/>
+    </Style>
+
+    <!-- Items tall enough for a finger; the desktop menu keeps its 32 -->
+    <Style Selector="Border.menu-card menus|MenuItemButton">
+        <Setter Property="MinHeight" Value="44"/>
+        <Setter Property="Padding" Value="12,4"/>
+        <Setter Property="FontSize" Value="15"/>
+    </Style>
+
+    <!-- A caption inside a menu, as the flyouts have it -->
+    <Style Selector="Border.menu-card TextBlock.menuLabel">
+        <Setter Property="Margin" Value="12,4,12,2"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+
+    <Style Selector="views|PopupMenu">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <!-- Takes the pointer input beside the card; a tap on it dismisses the menu -->
+                    <Border Name="PART_Backdrop" Background="Transparent"/>
+
+                    <views:PopupMenuPanel Anchor="{TemplateBinding Anchor}">
+                        <Border Name="PART_Card" Classes="menu-card" MinWidth="220" MaxWidth="340">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                            </ScrollViewer>
+                        </Border>
+                    </views:PopupMenuPanel>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="views|PopupMenu:open">
+        <Setter Property="IsHitTestVisible" Value="True"/>
+    </Style>
+
+    <!-- A menu with fields or a slider is wider -->
+    <Style Selector="views|PopupMenu.wide /template/ Border#PART_Card">
+        <Setter Property="MinWidth" Value="320"/>
+        <Setter Property="MaxWidth" Value="420"/>
+    </Style>
+
+    <!-- Closed, the card is shrunk into the corner it grows out of and cannot be seen -->
+    <Style Selector="views|PopupMenu /template/ Border#PART_Card">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="RenderTransform" Value="scale(0.8)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="views|PopupMenu:open /template/ Border#PART_Card">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+
+    <!-- The menu of a message: the screen dims, the message is lifted over it with the reactions above
+         and what can be done with it below -->
+    <Style Selector="views|MessageMenu">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="views|MessageMenu:open">
+        <Setter Property="IsHitTestVisible" Value="True"/>
+    </Style>
+    <Style Selector="views|MessageMenu > Border.message-menu-backdrop">
+        <Setter Property="Background" Value="{DynamicResource DialogBackdropBrush}"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="views|MessageMenu:open > Border.message-menu-backdrop">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="views|MessageMenu > :is(Control).message-menu-part">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="RenderTransform" Value="scale(0.9)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="views|MessageMenu:open > :is(Control).message-menu-part">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+
+    <!-- A reaction already put on the message stands out in the row -->
+    <Style Selector="views|MessageMenu Button.quick-reaction.selected">
+        <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+    </Style>
+</Styles>

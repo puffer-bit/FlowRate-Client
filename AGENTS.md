@@ -26,7 +26,8 @@ Project paths in this table are relative to `src/`.
 | Infrastructure | `Client/Client.Infrastructure` | Media cache, release-note retrieval, and storage composition. |
 | Media | `Client/Client.GStreamer`, `Client/Client.LibWebRTC`, `Client/Client.OpenAL` | Media pipelines, the libwebrtc transport, native integration, and interface sounds. |
 | Presentation | `Client/Client.Avalonia.ViewModels`, `Client/Client.Avalonia.Controls`, `Client/Client.Avalonia.Styles`, `Client/Client.Avalonia.Assets`, `Client/Client.Avalonia.Localization`, `Client/Client.Avalonia.Video` | Shared presentation logic, controls, themes, resources, translations, and video rendering. |
-| Hosts | `Client/Client.Avalonia.Desktop`, `Client/Client.Avalonia.Android` | Application entry points, composition, views, and platform services. |
+| Views | `Client/Client.Avalonia.Views.Common`, `Client/Client.Avalonia.Views.Desktop`, `Client/Client.Avalonia.Views.Mobile` | Views shared by every platform, the desktop interface, and the mobile interface. No platform APIs: hosts provide them through `IDialogPresenter`, `IDesktopHost`, and `IMobilePlatform`. |
+| Hosts | `Client/Client.Avalonia.Desktop`, `Client/Client.Avalonia.Android` | Application entry points, composition, the desktop main window, and platform services. |
 | Platform | `Client/Client.Platform` | Operating-system helpers the libraries share: native environment variables, the platform name, and native log categories. No dependencies. |
 | Host utilities | `Client/Client.Tools` | Logging setup, launch options, application paths, and build information of the client hosts. |
 
@@ -80,7 +81,7 @@ Consult the relevant design and runtime documentation before changing media beha
 - New and modified menus must strictly match the existing flyout style, including icons, colors, spacing, dimensions, corner radii, and hover, pressed, focus, and disabled states.
 - Use the shared `Flyout` and `MenuItemButton` components and the existing styles in `src/Client/Client.Avalonia.Styles/Styles/FlyoutStyle.axaml` and `src/Client/Client.Avalonia.Controls/Controls/Menus/MenuItemButton.axaml`. Do not replace them with standard `ContextMenu` / `MenuItem` controls or separate styling.
 - Use icons from the shared `src/Client/Client.Avalonia.Assets/IconImages.axaml` collection. Add new icons to that collection following its conventions; neutral colors must follow the theme through shared brush resources.
-- Before implementing a menu, consult existing client flyouts, such as `src/Client/Client.Avalonia.Desktop/Views/Sessions/Chat/ChatMessageFlyout.axaml`.
+- Before implementing a menu, consult existing client flyouts, such as `src/Client/Client.Avalonia.Views.Desktop/Views/Sessions/Chat/ChatMessageFlyout.axaml`.
 - Reuse shared controls and theme resources for other interface changes. Preserve runtime theme switching, keyboard navigation, and the existing layout conventions.
 - Keep user-facing text focused on user actions and outcomes; expose implementation details only where they help explain a diagnostic or a meaningful choice.
 

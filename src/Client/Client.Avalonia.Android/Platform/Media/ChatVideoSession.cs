@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Client.Droid.Platform.Media;
 
 /// <summary>Owns chat playback independently of virtualized message cards. Accessed on the UI thread.</summary>
-public sealed class ChatVideoSession : IDisposable, IChatMediaSession
+public sealed class ChatVideoSession : IDisposable, IChatVideoSession
 {
     private readonly IAudioSettingsRepository _settings;
     private readonly ILogger<ChatVideoSession> _logger;
