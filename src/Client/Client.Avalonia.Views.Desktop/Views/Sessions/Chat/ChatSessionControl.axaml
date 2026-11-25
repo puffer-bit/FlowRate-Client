@@ -11,6 +11,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             xmlns:common="clr-namespace:Client.Views.Common"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:DataType="chatVm:ActiveChatSessionVM"
              x:Class="Client.Views.Sessions.Chat.ChatSessionControl">
@@ -21,20 +22,6 @@
         </DataTemplate>
     </Control.DataTemplates>
     
-    <UserControl.Styles>
-        <Style Selector="Border.chat-viewers-panel">
-            <Setter Property="Width" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Width" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border.chat-viewers-panel.open">
-            <Setter Property="Width" Value="{StaticResource ChatSidePanelWidth}"/>
-        </Style>
-    </UserControl.Styles>
-
     <Grid RowDefinitions="Auto, *, Auto" ColumnDefinitions="*, Auto">
         <ContentControl
             Grid.Row="0" Grid.ColumnSpan="2"
@@ -114,17 +101,17 @@
             <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
         </Panel>
 
-        <!-- Both lists use the same column beside the timeline and composer. -->
-        <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="2"
-                Classes="chat-viewers-panel" Classes.open="{Binding StatusBar.IsSidePanelOpen}"
-                ClipToBounds="True" IsHitTestVisible="{Binding StatusBar.IsSidePanelOpen}">
-            <Grid Width="{StaticResource ChatSidePanelWidth}" HorizontalAlignment="Left">
+        <!-- Both lists use the same column beside the timeline and composer: the side panel of every
+             session, which slides open and is resized by its left edge -->
+        <common:SidePanelHost Grid.Column="1" Grid.Row="1" Grid.RowSpan="2" PanelKey="chat"
+                              IsOpen="{Binding StatusBar.IsSidePanelOpen}">
+            <Grid>
                 <Panel IsVisible="{Binding StatusBar.Viewers.IsOpen}">
                     <chatViews:ChatViewersPanel DataContext="{Binding StatusBar.Viewers}"/>
                 </Panel>
                 <chatViews:ChatPinnedMessagesPanel IsVisible="{Binding StatusBar.IsPinsOpen}"/>
             </Grid>
-        </Border>
+        </common:SidePanelHost>
 
         <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag
              moves the zoomed one, a click beside it or Esc closes it -->

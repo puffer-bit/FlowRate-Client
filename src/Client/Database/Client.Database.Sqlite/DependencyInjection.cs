@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<IChatAttachmentPreferencesRepository, ChatAttachmentPreferencesRepository>();
         services.AddSingleton<ICollapsedSectionsRepository, CollapsedSectionsRepository>();
         services.AddSingleton<IDismissedPromptsRepository, DismissedPromptsRepository>();
+        services.AddSingleton<IPanelWidthsRepository, PanelWidthsRepository>();
         services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();
         services.AddSingleton<IUserNotesRepository, UserNotesRepository>();
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();

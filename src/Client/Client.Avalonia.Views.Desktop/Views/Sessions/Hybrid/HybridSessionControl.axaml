@@ -11,6 +11,7 @@
     xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
     xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
     xmlns:hybridViews="clr-namespace:Client.Views.Sessions.Hybrid"
+    xmlns:common="clr-namespace:Client.Views.Common"
     mc:Ignorable="d"
     x:DataType="hybridVm:ActiveHybridSessionVM"
     x:Class="Client.Views.Sessions.Hybrid.HybridSessionControl">
@@ -32,17 +33,16 @@
         <!-- MAIN AREA. The backdrop lies only under it: under the header it would show through
              the header while the session fades, which tints it -->
         <Grid x:Name="MainArea" Grid.Row="1" Background="{DynamicResource SessionBackdropBrush}">
-            <!-- The panel keeps its width in pixels as the window is resized; the splitter widens it -->
+            <!-- The panel keeps its width in pixels as the window is resized; its left edge widens it -->
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="320"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="0"/>
             </Grid.ColumnDefinitions>
             
             <!-- The glows of the backdrop. They are laid out on a canvas of a fixed size that is
                  stretched to fill the area, so the picture and the paths of the glows grow with
                  it. They start partly outside the canvas, the panel cuts the rest off -->
-            <Panel Grid.ColumnSpan="3" IsHitTestVisible="False" ClipToBounds="True">
+            <Panel Grid.ColumnSpan="2" IsHitTestVisible="False" ClipToBounds="True">
                 <Viewbox Stretch="UniformToFill">
                     <Canvas x:Name="Backdrop" Width="1280" Height="720" anim:ShownState.Track="True">
                         <Ellipse x:Name="FarGlow" Width="900" Height="900"
@@ -161,19 +161,10 @@
 
             </Grid>
 
-            <!-- SPLITTER -->
-            <GridSplitter
-                Grid.Column="1"
-                Width="4"
-                Margin="-2,0"
-                Background="Transparent"
-                ResizeDirection="Columns"
-                IsVisible="{Binding IsUserListVisible}"/>
-
-            <!-- USER LIST. It fills its column, so dragging the splitter widens it -->
-            <hybridViews:HybridSessionPeersPanel
-                Grid.Column="2"
-                IsVisible="{Binding IsUserListVisible}"/>
+            <!-- USER LIST: the side panel of every session, as the members and the pins of a chat -->
+            <common:SidePanelHost Grid.Column="1" PanelKey="hybrid" IsOpen="{Binding IsUserListVisible}">
+                <hybridViews:HybridSessionPeersPanel/>
+            </common:SidePanelHost>
         </Grid>
     </Grid>
 </UserControl>
