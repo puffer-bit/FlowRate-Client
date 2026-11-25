@@ -47,9 +47,7 @@
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped"
                                 UserName="{Binding SenderName}"
                                 IsDeleted="{Binding IsSenderDeleted}"
-                                AvatarUrl="{Binding SenderAvatarUrl}"
-                                Status="{Binding SenderStatus}"
-                                IsMobile="{Binding SenderIsMobile}"/>
+                                AvatarUrl="{Binding SenderAvatarUrl}"/>
 
             <StackPanel Grid.Column="1" Classes="msg-content">
 

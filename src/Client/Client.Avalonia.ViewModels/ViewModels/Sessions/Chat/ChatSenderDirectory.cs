@@ -169,8 +169,6 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.SenderName = GetName(senderId);
         messageVm.IsSenderDeleted = _deleted.Contains(senderId);
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
-        messageVm.SenderStatus = _statuses.TryGetValue(senderId, out var status) ? status : null;
-        messageVm.SenderIsMobile = _mobile.Contains(senderId);
         messageVm.SenderColor = GetColor(senderId);
         messageVm.SystemParts = ChatSystemMessageText.Parts(messageVm.Message,
             id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),

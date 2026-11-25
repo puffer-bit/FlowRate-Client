@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Client.Core.Chat;
 using Client.Services;
 using ReactiveUI;
-using Shared.Enums.User;
 
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -194,22 +193,6 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     /// The avatar of the author, known together with the name.
     /// </summary>
     public string? SenderAvatarUrl
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>
-    /// The status of the author, known together with the name.
-    /// </summary>
-    public UserStatus? SenderStatus
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>The author is online from a phone.</summary>
-    public bool SenderIsMobile
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
