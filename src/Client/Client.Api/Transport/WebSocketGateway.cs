@@ -55,21 +55,26 @@ internal partial class WebSocketGateway : IWebSocketGateway
             return false;
         }
 
+        // The browser checks the certificate itself and sets no request headers: the version goes in the query
+        var isBrowser = OperatingSystem.IsBrowser();
         var options = new WebSocketConnectionOptions
         {
             Configure = socketOptions =>
             {
+                if (isBrowser)
+                    return;
                 socketOptions.RemoteCertificateValidationCallback = ValidateCertificate;
                 socketOptions.SetRequestHeader(ProtocolVersion.Header, ProtocolVersion.Format(ProtocolVersion.Current));
             }
         };
+        var query = isBrowser ? $"?{ProtocolVersion.Header}={ProtocolVersion.Format(ProtocolVersion.Current)}" : "";
 
         var connection = new WebSocketConnection(options);
         connection.MessageReceived += ProcessMessage;
 
         try
         {
-            await connection.ConnectAsync(new Uri($"wss://{address}:{port}/"), cancellationToken);
+            await connection.ConnectAsync(new Uri($"wss://{address}:{port}/{query}"), cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -98,7 +103,7 @@ internal partial class WebSocketGateway : IWebSocketGateway
         // Subscribed only once connected, so a failed attempt is reported by its result, not as a lost connection
         connection.Disconnected += ProcessDisconnection;
         Connection = connection;
-        return new TransportConnectResult(true, IsCertificateVerified: isCertificateVerified);
+        return new TransportConnectResult(true, IsCertificateVerified: isCertificateVerified || isBrowser);
     }
 
     public Task DisconnectAsync() => CloseConnectionAsync();

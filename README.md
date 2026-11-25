@@ -200,6 +200,8 @@ Unknown arguments, repeated options, and invalid or missing values stop startup 
 
 `--no-media` avoids loading GStreamer and libwebrtc. Microphone and video settings are unavailable, voice sessions cannot be joined or restored, and chat media uses downloadable files. Restart without the option to restore media.
 
+The WebAssembly host sets its own internal `--browser` argument. Desktop launches reject this argument; browser mode cannot be enabled in a desktop build. The settings header identifies browser mode with a blue indicator in the same style as the launch-mode notices. Browser mode currently disables voice and video media and global hotkeys. It hides tray and custom title bar settings and omits the application updater, update checks, and update controls. Browser updates come from reloading the hosted application.
+
 Safe mode does not automatically enable software rendering; combine `--safe-mode --software-rendering` when investigating both startup and graphics problems.
 
 ## Troubleshooting

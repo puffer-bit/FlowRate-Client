@@ -27,7 +27,8 @@ namespace Client.ViewModels.Settings;
 public class SettingsWindowVM : ReactiveObject, IDisposable
 {
     public bool IsSafeMode => LaunchOptions.Current.SafeMode;
-    public bool IsMediaDisabled => !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
+    public bool IsBrowserMode => Client.Core.ApplicationRuntime.IsBrowser;
+    public bool IsMediaDisabled => !IsBrowserMode && !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
     public bool IsSoftwareRendering => !HardwareAcceleration.IsEnabled;
     public bool IsSoftwareRenderingForced => HardwareAcceleration.IsForcedOff;
 

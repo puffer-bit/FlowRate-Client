@@ -18,14 +18,18 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 {
     public string Name => SettingText.TabName("behavior");
     public SettingTabType Type => SettingTabType.AppBehavior;
-    public IReadOnlyList<SettingAnchor> Anchors =>
-    [
+    public IReadOnlyList<SettingAnchor> Anchors => new SettingAnchor[]
+    {
         new("behavior.playback", "settings.behavior.section.playback"),
         new("behavior.autoConnection", "settings.behavior.section.autoConnection"),
         new("behavior.manualConnection", "settings.behavior.section.manualConnection"),
         new("behavior.tray", "settings.behavior.section.tray"),
         new("behavior.updates", "settings.behavior.section.updates")
-    ];
+    }.Where(anchor => (SupportsUpdates || anchor.SectionKey != "behavior.updates")
+        && (SupportsTray || anchor.SectionKey != "behavior.tray")).ToArray();
+
+    public bool SupportsUpdates => Client.Core.ApplicationRuntime.SupportsUpdates;
+    public bool SupportsTray => Client.Core.ApplicationRuntime.SupportsTray;
 
     public bool IsEnabled => true;
 
@@ -34,7 +38,10 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         ("autoConnection", ["autoConnect", "server", "identity"]),
         ("manualConnection", ["fallbackServers", "fallbackWarning", "propagatedWarning"]),
         ("tray", ["closeAction"]),
-        ("updates", ["updateCheck", "updateChannel"]));
+        ("updates", ["updateCheck", "updateChannel"]))
+        .Where(entry => SupportsUpdates || entry.Key is not ("behavior.updateCheck" or "behavior.updateChannel"))
+        .Where(entry => SupportsTray || entry.Key != "behavior.closeAction")
+        .ToArray();
 
     public bool KeepScreenOnWhileWatching
     {

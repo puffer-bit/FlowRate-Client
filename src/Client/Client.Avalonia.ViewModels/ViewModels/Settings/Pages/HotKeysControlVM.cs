@@ -29,6 +29,7 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
     ];
 
     public bool IsEnabled => true;
+    public bool IsBrowserMode => Client.Core.ApplicationRuntime.IsBrowser;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("hotKeys",
         ("general", ["enabled", "global"]),
@@ -42,8 +43,14 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public bool IsGlobalEnabled
     {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        get => Client.Core.ApplicationRuntime.SupportsGlobalHotKeys && field;
+        set
+        {
+            if (!Client.Core.ApplicationRuntime.SupportsGlobalHotKeys && !_isUpdating)
+                return;
+
+            this.RaiseAndSetIfChanged(ref field, value);
+        }
     }
 
     public IReadOnlyList<HotKeyItemVM> Items { get; }
@@ -121,7 +128,8 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
     private HotKeysSettings ToSettings() => new()
     {
         IsEnabled = AreHotKeysEnabled,
-        IsGlobalEnabled = IsGlobalEnabled,
+        IsGlobalEnabled = Client.Core.ApplicationRuntime.SupportsGlobalHotKeys
+            ? IsGlobalEnabled : _hotKeysService.Current.IsGlobalEnabled,
         // Whether the keys are heard in other applications is one switch for all of them
         Bindings = Items.Select(item => new HotKeyBinding(item.Action, item.Gesture?.ToString())).ToList()
     };

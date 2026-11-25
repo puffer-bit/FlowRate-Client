@@ -120,8 +120,8 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
-        <controls:SettingsHeader services:SettingText.Section="behavior.tray"/>
-        <ui:SettingsCard>
+        <controls:SettingsHeader services:SettingText.Section="behavior.tray" IsVisible="{Binding SupportsTray}"/>
+        <ui:SettingsCard IsVisible="{Binding SupportsTray}">
             <ui:SettingsRow services:SettingText.Key="behavior.closeAction">
                 <!-- Items are in the order of CloseButtonAction -->
                 <ComboBox MinWidth="180" SelectedIndex="{Binding CloseButtonActionIndex}">
@@ -131,10 +131,10 @@
                 </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>
-        <hints:HintBlock Text="{l:Text settings.behavior.trayHint}"/>
+        <hints:HintBlock Text="{l:Text settings.behavior.trayHint}" IsVisible="{Binding SupportsTray}"/>
 
-        <controls:SettingsHeader services:SettingText.Section="behavior.updates"/>
-        <ui:SettingsCard>
+        <controls:SettingsHeader services:SettingText.Section="behavior.updates" IsVisible="{Binding SupportsUpdates}"/>
+        <ui:SettingsCard IsVisible="{Binding SupportsUpdates}">
             <ui:SettingsRow services:SettingText.Key="behavior.updateCheck" IsEnabled="{x:Static services:LaunchSettings.CanUpdate}">
                 <CheckBox IsChecked="{Binding IsUpdateCheckOnStartupEnabled}"/>
             </ui:SettingsRow>
@@ -146,6 +146,6 @@
                 </ComboBox>
             </ui:SettingsRow>
         </ui:SettingsCard>
-        <hints:HintBlock Text="{l:Text settings.behavior.updateChannelHint}"/>
+        <hints:HintBlock Text="{l:Text settings.behavior.updateChannelHint}" IsVisible="{Binding SupportsUpdates}"/>
     </ui:SettingsPage>
 </UserControl>

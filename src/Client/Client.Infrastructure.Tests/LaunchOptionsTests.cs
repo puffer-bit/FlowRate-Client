@@ -88,6 +88,7 @@ public sealed class LaunchOptionsTests
     [InlineData("--allow-multiple-instances=true")]
     [InlineData("--allow-multiple-instances", "--allow-multiple-instances")]
     [InlineData("--unknown")]
+    [InlineData("--browser")]
     [InlineData("--data-dir")]
     [InlineData("--data-dir=")]
     [InlineData("--lang", "--safe-mode")]

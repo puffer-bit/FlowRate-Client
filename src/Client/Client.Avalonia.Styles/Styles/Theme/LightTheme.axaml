@@ -209,7 +209,10 @@
             <SolidColorBrush x:Key="KeycapBorderBrush" Color="{DynamicResource ColorOverlayMedium}" />
             <!-- Keys are hints next to the label: well below secondary text, barely outlined -->
             <SolidColorBrush x:Key="KeycapForegroundBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />
-            <!-- A warning banner: a faint yellow plate with a yellow outline -->
+            <!-- Informational and warning launch badges share the same plate and outline. -->
+            <SolidColorBrush x:Key="InfoBrush" Color="#1565C0" />
+            <SolidColorBrush x:Key="InfoBannerBackgroundBrush" Color="#1565C0" Opacity="0.12" />
+            <SolidColorBrush x:Key="InfoBannerBorderBrush" Color="#1565C0" Opacity="0.6" />
             <SolidColorBrush x:Key="WarningBannerBackgroundBrush" Color="{DynamicResource ColorWarning}" Opacity="0.12" />
             <SolidColorBrush x:Key="WarningBannerBorderBrush" Color="{DynamicResource ColorWarning}" Opacity="0.6" />
             <!-- The field that shows and records the keys of a hot key: outlined in the accent, fully while recording -->

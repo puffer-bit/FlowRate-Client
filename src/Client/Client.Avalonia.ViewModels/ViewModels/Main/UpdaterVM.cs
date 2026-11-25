@@ -63,7 +63,7 @@ public sealed partial class UpdaterVM : ReactiveObject
     /// <summary>
     /// Whether this copy can update itself; a build run from the sources cannot.
     /// </summary>
-    public bool IsSupported => _updater.IsSupported;
+    public bool IsSupported => Client.Core.ApplicationRuntime.SupportsUpdates && _updater.IsSupported;
 
     /// <summary>
     /// A newer release is there, downloaded or not: the menu button shows a mark.
@@ -151,6 +151,9 @@ public sealed partial class UpdaterVM : ReactiveObject
 
     private async Task CheckAsync(bool isQuiet)
     {
+        if (!IsSupported)
+            return;
+
         State = UpdaterState.Checking;
 
         try
@@ -183,7 +186,7 @@ public sealed partial class UpdaterVM : ReactiveObject
 
     private async Task DownloadAsync()
     {
-        if (Update is not { } update)
+        if (!IsSupported || Update is not { } update)
             return;
 
         Progress = 0;
@@ -212,7 +215,7 @@ public sealed partial class UpdaterVM : ReactiveObject
 
     private void Restart()
     {
-        if (Update is not { } update)
+        if (!IsSupported || Update is not { } update)
             return;
 
         try

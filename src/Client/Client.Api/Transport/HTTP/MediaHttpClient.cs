@@ -41,18 +41,23 @@ internal sealed partial class MediaHttpClient : IDisposable
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
     public MediaHttpClient(string address, int port, string? trustedFingerprint, TokenSource tokens, ILogger logger)
-        : this(new SocketsHttpHandler
-        {
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            Proxy = WebSocketRouteProxy.Instance,
-            SslOptions =
-            {
-                RemoteCertificateValidationCallback = (_, certificate, _, errors) =>
-                    ServerCertificateCheck.IsTrusted(certificate, errors, trustedFingerprint, out _)
-            }
-        }, new Uri($"https://{address}:{port}/"), tokens, logger, Task.Delay)
+        : this(OperatingSystem.IsBrowser() ? new HttpClientHandler() : CreateHandler(trustedFingerprint),
+            new Uri($"https://{address}:{port}/"), tokens, logger, Task.Delay)
     {
     }
+
+    // The browser makes its requests itself and checks the certificate itself
+    [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+    private static SocketsHttpHandler CreateHandler(string? trustedFingerprint) => new()
+    {
+        ConnectTimeout = TimeSpan.FromSeconds(10),
+        Proxy = WebSocketRouteProxy.Instance,
+        SslOptions =
+        {
+            RemoteCertificateValidationCallback = (_, certificate, _, errors) =>
+                ServerCertificateCheck.IsTrusted(certificate, errors, trustedFingerprint, out _)
+        }
+    };
 
     internal MediaHttpClient(HttpMessageHandler handler, Uri baseAddress, TokenSource tokens, ILogger logger,
         Func<TimeSpan, CancellationToken, Task> delay)

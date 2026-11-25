@@ -71,6 +71,8 @@
   "main.startup.development.hide": "今後表示しない",
   "main.startup.development.continue": "続行",
 
+  "settings.mode.browser.title": "ブラウザーモード",
+  "settings.mode.browser.description": "ブラウザー版を使用しています。音声セッション、内蔵の音声・動画再生、アプリの更新は利用できません。",
   "settings.mode.safe.title": "セーフモード",
   "settings.mode.safe.description": "セーフモードが有効です (--safe-mode)。今回の起動では、メディア、グローバルショートカット、自動接続、セッション復元が無効です。保存済みの設定は保持されます。",
   "settings.mode.software.title": "ハードウェアアクセラレーションなし",
@@ -1037,6 +1039,8 @@
   "settings.hotKeys.pressKeys": "キーを押してください…",
   "settings.hotKeys.typingWarning": "このキーは文字を入力します。入力中にも操作が切り替わります。",
   "settings.hotKeys.waylandHint": "Wayland では、アプリは自分のウィンドウのキーしか検知できません。他のアプリでショートカットが使えるのは、システムが許可している場合か、アプリが入力デバイスを読み取れる場合だけです。それ以外はウィンドウ内でのみ使えます。",
+  "settings.hotKeys.browserTitle": "グローバルホットキーは利用できません",
+  "settings.hotKeys.browserHint": "ブラウザーはこのアプリの外でホットキーを受け取れません。ブラウザー版ではグローバルホットキーが無効になっています。",
   "settings.hotKeys.waylandTitle": "Wayland ではショートカットが制限されます",
   "settings.hotKeys.macOSHint": "他のアプリでショートカットを使うには、システム設定 → プライバシーとセキュリティ → 入力監視 で FlowRate を許可して再起動してください。許可しない場合、ショートカットはウィンドウ内でのみ使えます。",
   "settings.hotKeys.macOSTitle": "macOS ではグローバルショートカットに許可が必要です",

@@ -12,7 +12,7 @@ public sealed class VaultDeviceKeyStore(ISecretVault vault) : IDeviceKeyStore
 {
     public async Task<byte[]> CreateAsync(string name, CancellationToken cancellationToken = default)
     {
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var key = EcdsaKeys.Generate();
         var privateKey = key.ExportPkcs8PrivateKey();
         try
         {
@@ -34,8 +34,7 @@ public sealed class VaultDeviceKeyStore(ISecretVault vault) : IDeviceKeyStore
         var privateKey = Convert.FromBase64String(stored);
         try
         {
-            using var key = ECDsa.Create();
-            key.ImportPkcs8PrivateKey(privateKey, out _);
+            using var key = EcdsaKeys.ImportPkcs8(privateKey);
             return Sign(key, data);
         }
         finally
@@ -61,7 +60,7 @@ public sealed class InMemoryDeviceKeyStore : IDeviceKeyStore
 
     public Task<byte[]> CreateAsync(string name, CancellationToken cancellationToken = default)
     {
-        var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var key = EcdsaKeys.Generate();
         if (_keys.TryRemove(name, out var previous))
             previous.Dispose();
         _keys[name] = key;

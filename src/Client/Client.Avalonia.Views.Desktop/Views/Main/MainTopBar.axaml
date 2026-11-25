@@ -2,6 +2,7 @@
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:core="clr-namespace:Client.Core;assembly=Client.Core"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
              xmlns:common="clr-namespace:Client.Views.Common"
              xmlns:chat="clr-namespace:Client.Views.Sessions.Chat"
@@ -72,7 +73,7 @@
             </Button>
 
             <!-- The dot tells that a newer release is there; the first line of the menu says what the updater knows -->
-            <Button Classes="topBar" DataContext="{Binding Updater}">
+            <Button Classes="topBar" IsVisible="{x:Static core:ApplicationRuntime.SupportsUpdates}" DataContext="{Binding Updater}">
                 <StackPanel x:DataType="mainVm:UpdaterVM" Orientation="Horizontal" Spacing="6">
                     <Panel>
                         <Image Source="{StaticResource DownloadIcon}"/>

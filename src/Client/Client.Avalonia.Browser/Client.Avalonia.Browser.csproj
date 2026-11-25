@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+    <!-- A test host for the browser: the desktop views over WebAssembly, without voice and video.
+         The page is the main view; dialogs are drawn inside it, as in the desktop window -->
+    <PropertyGroup>
+        <TargetFramework>net10.0-browser</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <RootNamespace>Client.Browser</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <!-- SQLite3 Multiple Ciphers is a static library for WebAssembly, linked into dotnet.native.wasm -->
+        <WasmBuildNative>true</WasmBuildNative>
+        <!-- Without AOT the code runs in the IL interpreter of the browser runtime: dialogs and lists
+             stutter. A Release publish compiles it to WebAssembly (several minutes); Debug stays fast to build -->
+        <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
+        <!-- MessageParser serializes BaseMessage through reflection -->
+        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+        <Version>0.7.1</Version>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+        <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
+        <!-- The native Skia of the SkiaSharp the view models take, not the older one of Avalonia.Skia -->
+        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+        <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.148.0" />
+    </ItemGroup>
+
+    <!-- No Client.GStreamer, Client.LibWebRTC or Client.OpenAL: what the view models need of them is
+         in the Platform folder and does nothing -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
+        <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
+        <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Views.Common\Client.Avalonia.Views.Common.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Views.Desktop\Client.Avalonia.Views.Desktop.csproj" />
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+        <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
+        <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
+    </ItemGroup>
+
+</Project>

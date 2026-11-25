@@ -189,7 +189,7 @@ internal static class P256
         {
             var d = new BigInteger(seed, isUnsigned: true, isBigEndian: true) % (N - 1) + 1;
             var (x, y) = Multiply(d, G);
-            return ECDsa.Create(new ECParameters
+            return EcdsaKeys.Import(new ECParameters
             {
                 Curve = ECCurve.NamedCurves.nistP256,
                 D = RecoveryPhrase.ToFixedBytes(d, 32),

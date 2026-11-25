@@ -70,6 +70,8 @@
   "main.startup.development.hide": "Do not show again",
   "main.startup.development.continue": "Continue",
 
+  "settings.mode.browser.title": "Browser mode",
+  "settings.mode.browser.description": "You are using the browser version. Voice sessions, built-in audio and video playback, and application updates are unavailable.",
   "settings.mode.safe.title": "Safe mode",
   "settings.mode.safe.description": "Safe mode is active (--safe-mode). Media, global hotkeys, automatic connections and session restoration are disabled for this launch. Saved settings are preserved.",
   "settings.mode.software.title": "No hardware acceleration",
@@ -1601,6 +1603,8 @@
   "settings.hotKeys.pressKeys": "Press the keys…",
   "settings.hotKeys.typingWarning": "This key types a character: the action is also toggled while you type.",
   "settings.hotKeys.waylandHint": "On Wayland an application hears only the keys of its own windows. In other applications the hotkeys work only if the system allows it or the application can read the input devices; otherwise they work only in the window.",
+  "settings.hotKeys.browserTitle": "Global hotkeys are unavailable",
+  "settings.hotKeys.browserHint": "The browser cannot receive hotkeys outside this application. Global hotkeys are disabled in the browser version.",
   "settings.hotKeys.waylandTitle": "Wayland limits hotkeys",
   "settings.hotKeys.macOSHint": "To hear the hotkeys in other applications, allow FlowRate in System Settings → Privacy & Security → Input Monitoring and restart it. Without it the hotkeys work only in the window.",
   "settings.hotKeys.macOSTitle": "macOS asks permission for global hotkeys",

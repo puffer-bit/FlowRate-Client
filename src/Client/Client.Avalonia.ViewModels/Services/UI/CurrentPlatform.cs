@@ -11,7 +11,8 @@ public static class CurrentPlatform
     /// The name of the system. A proper name, the same in every language.
     /// </summary>
     public static string Name { get; } =
-        OperatingSystem.IsAndroid() ? "Android"
+        OperatingSystem.IsBrowser() ? "Browser"
+        : OperatingSystem.IsAndroid() ? "Android"
         : OperatingSystem.IsWindows() ? "Windows"
         : OperatingSystem.IsLinux() ? "Linux"
         : OperatingSystem.IsMacOS() ? "macOS"
@@ -23,7 +24,8 @@ public static class CurrentPlatform
     /// or null for a platform without one.
     /// </summary>
     public static string? IconKey { get; } =
-        OperatingSystem.IsAndroid() ? "AndroidIcon"
+        OperatingSystem.IsBrowser() ? "BrowserIcon"
+        : OperatingSystem.IsAndroid() ? "AndroidIcon"
         : OperatingSystem.IsWindows() ? "WindowsIcon"
         : OperatingSystem.IsLinux() ? "LinuxIcon"
         : OperatingSystem.IsMacOS() ? "MacOSIcon"
