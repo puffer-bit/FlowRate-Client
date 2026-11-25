@@ -134,9 +134,12 @@ The client libraries are also published to nuget.org as `FlowRate.*` packages, f
 ```bash
 bash src/Scripts/bash/pack.sh                    # 0.0.0-local.<date> into artifacts/packages
 bash src/Scripts/bash/pack.sh 0.1.0 /tmp/feed
+bash src/Scripts/bash/pack.sh --gstreamer-runtime linux-x64   # FlowRate.Client.GStreamer.Runtime.linux-x64
 ```
 
 The output folder works as a local feed (`dotnet nuget add source <folder> --name flowrate-local`) for a bot developed against unpublished changes. Pushing a tag `sdk-v<version>` runs the tests, packs every package with that version, and publishes them through `.github/workflows/packages.yml` with nuget.org Trusted Publishing: no stored API key, only a policy on nuget.org and the `NUGET_USER` secret (the nuget.org profile name), see the comment at the top of the workflow. The package version is separate from the client version.
+
+The GStreamer runtime of the client goes out as `FlowRate.Client.GStreamer.Runtime.<rid>` (linux-x64, win-x64, osx-arm64), packed from `src/Client/Client.GStreamer/Build/artifacts/<rid>`: locally from a runtime built there, in CI from `.github/actions/gstreamer-runtime`, which `build.yml` takes too. Its version is that of GStreamer (`GSTREAMER_RUNTIME_VERSION` in `packages.yml`), published on the same `sdk-v*` tag and skipped while nuget.org has it; see `src/Client/Client.GStreamer/Build/package/README.md`.
 
 ## Architecture and repository layout
 
