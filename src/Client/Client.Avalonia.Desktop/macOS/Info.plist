@@ -28,6 +28,9 @@
     <string>public.app-category.social-networking</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <!-- App Nap throttles a hidden, idle application until its voice stops both ways -->
+    <key>LSAppNapIsDisabled</key>
+    <true/>
     <!-- Without these the system gives the application neither the microphone nor the camera -->
     <key>NSMicrophoneUsageDescription</key>
     <string>FlowRate sends your voice in voice sessions.</string>

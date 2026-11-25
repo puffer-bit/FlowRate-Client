@@ -50,4 +50,5 @@ public sealed record HybridSessionServices(
     ICoordinatorStateRepository CoordinatorStates,
     ICameraDeviceProvider? Cameras = null,
     ICameraPreferencesRepository? CameraPreferences = null,
-    IScreenAwakeService? ScreenAwake = null);
+    IScreenAwakeService? ScreenAwake = null,
+    IProcessActivityService? ProcessActivity = null);

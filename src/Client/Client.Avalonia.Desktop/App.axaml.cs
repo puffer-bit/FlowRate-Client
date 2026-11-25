@@ -156,6 +156,8 @@ public partial class App : global::Avalonia.Application
 
         services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<IScreenAwakeService, DesktopScreenAwakeService>();
+        if (OperatingSystem.IsMacOS())
+            services.AddSingleton<IProcessActivityService, MacProcessActivityService>();
         services.AddSingleton<ChatAudioSession>();
         services.AddSingleton<ChatVideoSession>();
         // The players of the views know the sessions by their interfaces
