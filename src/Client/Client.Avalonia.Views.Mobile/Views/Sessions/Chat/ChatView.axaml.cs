@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -66,7 +67,59 @@ public partial class ChatView : UserControl
     private void OnEmojiPickerOpened(object? sender, EventArgs e)
     {
         _emojiPickerFlyout = sender as Flyout;
+        if (_emojiPickerFlyout != null)
+        {
+            _emojiPickerFlyout.Closed -= OnEmojiPickerClosed;
+            _emojiPickerFlyout.Closed += OnEmojiPickerClosed;
+        }
+
+        _emojiInputPane = TopLevel.GetTopLevel(this)?.InputPane;
+        if (_emojiInputPane != null)
+            _emojiInputPane.StateChanged += OnEmojiInputPaneChanged;
+
         AllEmoji.Open(_recentEmoji);
+        FitEmojiPickerAboveKeyboard(_emojiInputPane is { State: InputPaneState.Open } pane ? pane.OccludedRect.Y : null);
+    }
+
+    // How far the picker keeps from the keyboard and from the top of the screen
+    private const double EmojiPickerKeyboardMargin = 8;
+    private IInputPane? _emojiInputPane;
+
+    private void OnEmojiPickerClosed(object? sender, EventArgs e)
+    {
+        if (_emojiInputPane != null)
+            _emojiInputPane.StateChanged -= OnEmojiInputPaneChanged;
+        _emojiInputPane = null;
+        FitEmojiPickerAboveKeyboard(null);
+    }
+
+    // The search field opens the keyboard, which is drawn over the popup: the picker moves up above it
+    private void OnEmojiInputPaneChanged(object? sender, InputPaneStateEventArgs e) =>
+        FitEmojiPickerAboveKeyboard(e.NewState == InputPaneState.Open ? e.EndRect.Y : null);
+
+    private void FitEmojiPickerAboveKeyboard(double? keyboardTop)
+    {
+        if (_emojiPickerFlyout is not { } flyout)
+            return;
+
+        var popup = flyout.Popup;
+        if (keyboardTop is not { } bottomLimit || TopLevel.GetTopLevel(AllEmoji) is not { } topLevel
+            || AllEmoji.TranslatePoint(default, topLevel) is not { } shownTop)
+        {
+            popup.VerticalOffset = 0;
+            AllEmoji.ClearValue(MaxHeightProperty);
+            return;
+        }
+
+        // Where the picker is without the shift, and the room between the top of the screen and the keyboard
+        var top = shownTop.Y - popup.VerticalOffset;
+        var topLimit = (topLevel.InsetsManager?.SafeAreaPadding.Top ?? 0) + EmojiPickerKeyboardMargin;
+        bottomLimit -= EmojiPickerKeyboardMargin;
+
+        var height = Math.Max(0, Math.Min(AllEmoji.Height, bottomLimit - topLimit));
+        AllEmoji.MaxHeight = height;
+        // Up only, and never past the top of the screen
+        popup.VerticalOffset = Math.Max(topLimit - top, Math.Min(0, bottomLimit - (top + height)));
     }
 
     private async void OnMessageDoubleTapped(object? sender, TappedEventArgs e)
