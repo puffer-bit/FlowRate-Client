@@ -28,7 +28,6 @@ public class UserCardVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(Presence));
-            this.RaisePropertyChanged(nameof(AvatarStatus));
             this.RaisePropertyChanged(nameof(StatusText));
             this.RaisePropertyChanged(nameof(StatusIconKey));
         }
@@ -36,12 +35,6 @@ public class UserCardVM : ReactiveObject
 
     /// <summary>The status shown on the card: offline while not connected.</summary>
     public UserStatus Presence => IsReady ? Status : UserStatus.Offline;
-
-    /// <summary>
-    /// The badge on the own avatar: none while simply online, which the user knows anyway and which
-    /// would be a second green dot beside the one of the connection; the other statuses are worth seeing.
-    /// </summary>
-    public UserStatus? AvatarStatus => Presence == UserStatus.Online ? null : Presence;
 
     /// <summary>The icon of <see cref="Status"/>, for the menu that changes it.</summary>
     public string StatusIconKey => $"Status{Status}Icon";
@@ -72,7 +65,6 @@ public class UserCardVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(Presence));
-            this.RaisePropertyChanged(nameof(AvatarStatus));
             this.RaisePropertyChanged(nameof(StatusText));
         }
     }

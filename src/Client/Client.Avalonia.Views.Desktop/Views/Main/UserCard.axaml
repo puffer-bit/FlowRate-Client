@@ -39,7 +39,7 @@
             <avatars:UserAvatar Grid.Column="0" Width="32" Height="32"
                                 UserName="{Binding Username}"
                                 AvatarUrl="{Binding AvatarUrl}"
-                                Status="{Binding AvatarStatus}"
+                                Status="{Binding Presence}"
                                 IsMobile="{Binding IsMobile}"
                                 VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
