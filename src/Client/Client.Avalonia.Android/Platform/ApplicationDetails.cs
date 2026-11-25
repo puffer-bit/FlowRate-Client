@@ -17,7 +17,11 @@ internal static class ApplicationDetails
     public static string Version =>
         AppInformation.WithBuildNumber(PackageVersion, typeof(ApplicationDetails).Assembly);
 
-    private static string PackageVersion
+    /// <summary>
+    /// The version name of the installed package alone, "0.7.1": what the server is told, as the desktop
+    /// tells it. The shared helper reads the entry assembly, which Android does not have.
+    /// </summary>
+    public static string PackageVersion
     {
         get
         {

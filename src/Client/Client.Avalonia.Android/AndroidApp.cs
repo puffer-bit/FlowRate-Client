@@ -6,6 +6,7 @@ using Avalonia.Android;
 using Client.Avalonia.Icons;
 using Client.Droid.Platform;
 using Client.Services.Logging;
+using Client.Tools.AppInfo;
 using ReactiveUI.Avalonia;
 
 namespace Client.Droid;
@@ -21,6 +22,7 @@ public class AndroidApp : AvaloniaAndroidApplication<App>
     {
         // First of all, so that the start of the interface or of a push is in the journal too
         AndroidLogging.Start();
+        AppInformation.ClientVersion = ApplicationDetails.PackageVersion;
 
         base.OnCreate();
     }

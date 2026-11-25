@@ -9,8 +9,17 @@ public static class AppInformation
     /// </summary>
     public const string RepositoryUrl = "https://github.com/puffer-bit/FlowRate-Client";
 
+    /// <summary>
+    /// The version a host knows better than the entry assembly: Android has no entry assembly and gives the
+    /// version name of its package here at its start.
+    /// </summary>
+    public static string? ClientVersion { get; set; }
+
     public static string GetClientVersion()
     {
+        if (ClientVersion is { } known)
+            return known;
+
         var version = Assembly.GetEntryAssembly()?.GetName().Version;
         return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
