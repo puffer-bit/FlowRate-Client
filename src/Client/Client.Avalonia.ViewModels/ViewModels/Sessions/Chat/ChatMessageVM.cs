@@ -14,8 +14,40 @@ using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Chat;
 
-public class ChatMessageVM : ReactiveObject, IMessageListItemVM
+public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia.Controls.Chat.IChatOpenTraceItem
 {
+    string Client.Avalonia.Controls.Chat.IChatOpenTraceItem.TraceDescription
+    {
+        get
+        {
+            if (IsSystem)
+                return "system";
+
+            var parts = new List<string> { Message.IsMine ? "mine" : "other's" };
+            if (Message.IsDeleted)
+                parts.Add("deleted");
+            if (Body is { } body)
+                parts.Add(IsJumboEmoji ? "jumbo emoji" : $"text {body.Text.Length} chars, {body.Text.Count(c => c == '\n') + 1} lines, {body.Mentions.Count} mentions");
+            else if (HasText)
+                parts.Add("text not rendered yet");
+            if (HasReply)
+                parts.Add("reply");
+            if (HasCommandResult)
+                parts.Add("command result");
+            if (Message.LinkPreview != null)
+                parts.Add("link preview");
+            if (HasImages)
+                parts.Add($"{Images.Count} images");
+            if (HasFiles)
+                parts.Add($"{Files.Count} files ({Files.Count(file => file.IsMedia)} media)");
+            if (HasReactions)
+                parts.Add($"{Message.Reactions.Count} reactions");
+            if (IsPinned)
+                parts.Add("pinned");
+            return string.Join(", ", parts);
+        }
+    }
+
     public DateTimeOffset LocalSentTime => Message.SentTime.ToLocalTime();
 
     private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(1.5);
@@ -32,10 +64,12 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
                 CommandResult = result != null && result.IsValid() ? new ChatCommandResultVM(result) : null;
                 this.RaisePropertyChanged(nameof(CommandResult));
                 this.RaisePropertyChanged(nameof(HasCommandResult));
+                this.RaisePropertyChanged(nameof(WithCommandResult));
                 this.RaisePropertyChanged(nameof(HasPlainText));
             }
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(IsSystem));
+            this.RaisePropertyChanged(nameof(AsSystem));
             this.RaisePropertyChanged(nameof(SystemEventKind));
             SystemParts = ChatSystemMessageText.Parts(value, _ => null);
             this.RaisePropertyChanged(nameof(LocalSentTime));
@@ -45,6 +79,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
             this.RaisePropertyChanged(nameof(Reactions));
             this.RaisePropertyChanged(nameof(ReactionChoices));
             this.RaisePropertyChanged(nameof(HasReactions));
+            this.RaisePropertyChanged(nameof(WithReactions));
             this.RaisePropertyChanged(nameof(ReactionDetails));
             this.RaisePropertyChanged(nameof(CanShowReaders));
             this.RaisePropertyChanged(nameof(CanDelete));
@@ -149,7 +184,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public void TogglePinned() => _ = TogglePinnedAsync();
     private async Task TogglePinnedAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
         await SetPinStateAsync(!IsPinned);
     }
 
@@ -336,6 +371,19 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public Func<Uri, Task<bool>> ConfirmOpenLink { get; }
 
     public Interaction<RxVoid, RxVoid> CloseFlyoutInteraction { get; } = new();
+
+    // An action may come with no menu open, such as a reply by a swipe, and then no view handles the
+    // interaction: unhandled, it throws, and the action would be lost without a word
+    private async Task CloseFlyoutAsync()
+    {
+        try
+        {
+            await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        }
+        catch (UnhandledInteractionException<RxVoid, RxVoid>)
+        {
+        }
+    }
     public Interaction<string, RxVoid> CopyMessageInteraction { get; } = new();
     public Interaction<ChatImageVM, RxVoid> CopyImageInteraction { get; } = new();
     public Interaction<ChatImageVM, RxVoid> SaveImageInteraction { get; } = new();
@@ -348,7 +396,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     private async Task GoToMessageAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
         _jumpToMessageCommand.Execute(Message.Id).Subscribe();
     }
 
@@ -496,6 +544,18 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     public bool HasReactions => Message.Reactions.Count > 0;
 
+    // ----- The parts of a row that a view builds only for a message that has them -----
+    // Each is the message itself while it has the part, else null: a content presenter bound to it
+    // makes the part from its template for a value and nothing for null, where a hidden part would
+    // be built, styled and bound for every message all the same
+
+    public ChatMessageVM? AsSystem => IsSystem ? this : null;
+    public ChatMessageVM? WithReply => HasReply ? this : null;
+    public ChatMessageVM? WithCommandResult => HasCommandResult ? this : null;
+    public ChatMessageVM? WithImages => HasImages ? this : null;
+    public ChatMessageVM? WithFiles => HasFiles ? this : null;
+    public ChatMessageVM? WithReactions => HasReactions ? this : null;
+
     public string? ReactionError
     {
         get;
@@ -516,7 +576,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private async Task ReactAsync(string emoji, bool closeMenu)
     {
         if (closeMenu)
-            await CloseFlyoutInteraction.Handle(RxVoid.Default);
+            await CloseFlyoutAsync();
         if (!CanReact || _isSettingReaction)
             return;
 
@@ -641,7 +701,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     private async Task DeleteMessage()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (!CanDelete)
             return;
@@ -651,7 +711,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     private async Task CopyMessage()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (CopyText != null)
             await CopyMessageInteraction.Handle(CopyText);
@@ -659,7 +719,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     private async Task CopyLinkAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (CopyLinkText != null)
             await CopyMessageInteraction.Handle(CopyLinkText);
@@ -668,7 +728,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private async Task CopyImageAsync()
     {
         var image = CopyImageTarget;
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (image != null)
             await CopyImageInteraction.Handle(image);
@@ -677,7 +737,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private async Task SaveImageAsAsync()
     {
         var image = CopyImageTarget;
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (image != null)
             await SaveImageInteraction.Handle(image);
@@ -686,7 +746,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     private async Task SaveFileAsAsync()
     {
         var file = ContextFile;
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         if (file is { IsDownloading: false })
             file.DownloadCommand.Execute().Subscribe();
@@ -694,21 +754,21 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
 
     private async Task ViewProfileAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         OpenSenderProfile();
     }
 
     private async Task StartReplyAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         _replyCommand.Execute(Message).Subscribe();
     }
 
     private async Task StartEditAsync()
     {
-        await CloseFlyoutInteraction.Handle(RxVoid.Default);
+        await CloseFlyoutAsync();
 
         _editCommand.Execute(Message).Subscribe();
     }

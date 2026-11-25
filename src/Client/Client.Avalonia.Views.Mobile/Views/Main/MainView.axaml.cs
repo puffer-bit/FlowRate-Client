@@ -19,6 +19,7 @@ using Avalonia.Threading;
 using Client.Application.Ports;
 using Client.Application.Settings;
 using Client.Application.Sounds;
+using Client.Avalonia.Controls.Chat;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
@@ -28,6 +29,7 @@ using Client.Services;
 using Client.ViewModels.Dialogs;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions.Chat;
+using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,10 +58,15 @@ public partial class MainView : UserControl
     private readonly IServiceProvider? _services;
     private TopLevel? _topLevel;
     private IInputPane? _inputPane;
+    private IInsetsManager? _insets;
     private IActivatableLifetime? _activatable;
 
     // Where the open keyboard starts, in the coordinates of the top level; null while it is closed
     private double? _keyboardTop;
+    // The application is behind another one, from leaving it until coming back
+    private bool _isInBackground;
+    // What the application keeps above the keyboard at least, whatever place the keyboard is said to have
+    private const double MinRoomAboveKeyboard = 120;
     private bool _isInitialized;
 
     // Moves the open session sideways while it comes in or goes out
@@ -108,6 +115,11 @@ public partial class MainView : UserControl
 
         // Shown over the session and the home screen
         SheetLayer.Children.Add(_chatView.DetachMessageMenu());
+
+        // Null and not left unset: the chat view would take the main view model from the tree
+        _chatView.DataContext = null;
+        _chatView.IsVisible = false;
+        Screen.Children.Add(_chatView);
     }
 
     /// <param name="services">Where the settings take the services they change.</param>
@@ -165,6 +177,11 @@ public partial class MainView : UserControl
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
             .Subscribe(_ => Dispatcher.UIThread.Post(ShowCurrentScreen));
 
+        // The hidden chat view keeps the last chat, so that opening it again costs nothing; it lets go
+        // of a chat that is closed, and of every chat of a connection that is gone
+        viewModel.WatchProperty(nameof(MainWindowVM.OpenedSessions), vm => vm.OpenedSessions)
+            .Subscribe(opened => Dispatcher.UIThread.Post(() => FollowOpenedSessions(opened)));
+
         // The menu of the server is about the server we are connected to
         viewModel.ServerTitle.WatchProperty(nameof(ServerTitleVM.IsReady), title => title.IsReady)
             .Where(isReady => !isReady)
@@ -185,6 +202,11 @@ public partial class MainView : UserControl
         _inputPane = _topLevel?.InputPane;
         if (_inputPane != null)
             _inputPane.StateChanged += OnInputPaneStateChanged;
+
+        // Told of every change of the insets, the keyboard among them, also of one made without animation
+        _insets = _topLevel?.InsetsManager;
+        if (_insets != null)
+            _insets.SafeAreaChanged += OnSafeAreaChanged;
 
         _activatable = global::Avalonia.Application.Current?.TryGetFeature<IActivatableLifetime>();
         if (_activatable != null)
@@ -208,6 +230,8 @@ public partial class MainView : UserControl
             _topLevel.BackRequested -= OnBackRequested;
         if (_inputPane != null)
             _inputPane.StateChanged -= OnInputPaneStateChanged;
+        if (_insets != null)
+            _insets.SafeAreaChanged -= OnSafeAreaChanged;
         if (_activatable != null)
         {
             _activatable.Activated -= OnAppActivated;
@@ -215,6 +239,7 @@ public partial class MainView : UserControl
         }
         _topLevel = null;
         _inputPane = null;
+        _insets = null;
         _activatable = null;
         _keyboardTop = null;
         MakeRoomForKeyboard();
@@ -238,24 +263,24 @@ public partial class MainView : UserControl
     {
         if (e.Kind != ActivationKind.Background)
             return;
+        _isInBackground = true;
         _keyboardTop = null;
         MakeRoomForKeyboard();
     }
 
-    // A keyboard that does come back opens with its animation; one that does not leaves no room behind
+    // A keyboard that comes back with the app may do it without its animation, which the input pane
+    // does not report: the room is worked out again from where the keyboard is
     private void OnAppActivated(object? sender, ActivatedEventArgs e)
     {
         if (e.Kind != ActivationKind.Background)
             return;
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_inputPane is { State: not InputPaneState.Open })
-            {
-                _keyboardTop = null;
-                MakeRoomForKeyboard();
-            }
-        }, DispatcherPriority.Background);
+        _isInBackground = false;
+        Dispatcher.UIThread.Post(MakeRoomForKeyboard, DispatcherPriority.Background);
     }
+
+    // Raised before the input pane takes its new state from the same insets: the room is worked out after it
+    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e) =>
+        Dispatcher.UIThread.Post(MakeRoomForKeyboard);
 
     // The system changes the padding as its bars come and go, which moves the edge the room is counted from
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -275,11 +300,19 @@ public partial class MainView : UserControl
         // The pane may have closed without telling, see OnAppDeactivated
         if (_inputPane is { State: not InputPaneState.Open })
             _keyboardTop = null;
+        // The keyboard is open with no animation that told of it, e.g. back with the app from the
+        // background: its place is read from the insets
+        // Only in front: a window going away or not yet back has no size to count from
+        else if (_keyboardTop == null && !_isInBackground && _topLevel is { ClientSize.Height: > 0 } topLevel
+                 && _inputPane is { State: InputPaneState.Open, OccludedRect: { Height: > 0 } occluded }
+                 && occluded.Y > 0 && occluded.Bottom <= topLevel.ClientSize.Height + 1)
+            _keyboardTop = occluded.Y;
 
         if (_keyboardTop is { } top && _topLevel != null
             && this.TranslatePoint(new Point(0, Bounds.Height), _topLevel) is { } bottom)
         {
-            covered = Math.Max(0, bottom.Y - Padding.Bottom - top);
+            // A keyboard never takes the whole screen: a wrong place must not leave the application without room
+            covered = Math.Clamp(bottom.Y - Padding.Bottom - top, 0, Math.Max(0, Bounds.Height - MinRoomAboveKeyboard));
         }
 
         if (Root != null && Root.Margin.Bottom != covered)
@@ -313,15 +346,23 @@ public partial class MainView : UserControl
                 _chatDialogs.Disposable = chat.ShowMessageBox.RegisterHandler(async context =>
                     context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));
             }
+            else if (!_chatView.IsVisible)
+            {
+                // The same chat comes back from the home screen: it opens at its newest message, as
+                // any chat does
+                _chatView.ScrollToNewest();
+            }
 
-            Screen.Content = _chatView;
+            ChatOpenTrace.Mark("chat view bound");
+            _chatView.IsVisible = true;
+            ShowHybridView(false);
             ShowScreen();
             return;
         }
 
         if (_viewModel?.CurrentContent is ActiveHybridSessionVM hybrid)
         {
-            ReleaseChat();
+            _chatView.IsVisible = false;
 
             if (!ReferenceEquals(_hybridView.DataContext, hybrid))
             {
@@ -334,7 +375,7 @@ public partial class MainView : UserControl
 
             // Shown since it was joined, so its row is in the list already
             _hybridView.ShowPeers(FindListSession(hybrid.Model.Id)?.Peers);
-            Screen.Content = _hybridView;
+            ShowHybridView(true);
             ShowScreen();
             return;
         }
@@ -351,6 +392,38 @@ public partial class MainView : UserControl
     {
         _chatView.DataContext = null;
         _chatDialogs.Disposable = null;
+    }
+
+    private readonly SerialDisposable _openedSessions = new();
+
+    private void FollowOpenedSessions(OpenedSessions? opened)
+    {
+        if (_chatView.DataContext != null && _viewModel?.CurrentContent != _chatView.DataContext)
+            ReleaseChat();
+
+        if (opened == null)
+        {
+            _openedSessions.Disposable = null;
+            return;
+        }
+
+        void OnSessionClosed(IMainWindowContentVM session) => Dispatcher.UIThread.Post(() =>
+        {
+            if (ReferenceEquals(_chatView.DataContext, session) && _viewModel?.CurrentContent != session)
+                ReleaseChat();
+        });
+
+        opened.SessionClosed += OnSessionClosed;
+        _openedSessions.Disposable = Disposable.Create(() => opened.SessionClosed -= OnSessionClosed);
+    }
+
+    // The view of a voice session is in the tree only while it is shown, as it always was
+    private void ShowHybridView(bool show)
+    {
+        if (show && !Screen.Children.Contains(_hybridView))
+            Screen.Children.Add(_hybridView);
+        else if (!show)
+            Screen.Children.Remove(_hybridView);
     }
 
     private void ShowScreen()
@@ -419,8 +492,8 @@ public partial class MainView : UserControl
         }
 
         Screen.IsVisible = false;
-        Screen.Content = null;
-        ReleaseChat();
+        _chatView.IsVisible = false;
+        ShowHybridView(false);
     }
 
     // The menu of the server we are connected to, or the connect form while there is none

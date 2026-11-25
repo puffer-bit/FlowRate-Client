@@ -76,7 +76,7 @@ public static class ChatUserMenu
     }
 
     public static bool TryOpenContext(ChatMessageVM message, Control avatar, Control name, TextBlock text,
-        ContextRequestedEventArgs e)
+        ContextRequestedEventArgs e, double reach = 0)
     {
         foreach (var target in new[] { avatar, name })
         {
@@ -90,7 +90,7 @@ public static class ChatUserMenu
         }
 
         if (e.TryGetPosition(text, out var textPosition)
-            && ChatMessageText.GetMentionAt(text, textPosition) is { UserId: { } userId } span)
+            && ChatMessageText.GetMentionAt(text, textPosition, reach) is { UserId: { } userId } span)
         {
             var body = ChatMessageText.GetText(text)!;
             Open(text, message, userId, body.Substring(span.Start + 1, span.Length - 1));

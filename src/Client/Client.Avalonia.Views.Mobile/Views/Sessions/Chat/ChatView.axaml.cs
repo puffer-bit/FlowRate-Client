@@ -182,11 +182,7 @@ public partial class ChatView : UserControl
         };
         MessageInput.GotFocus += (_, _) => UpdateMentionPicker();
         MessageInput.LostFocus += (_, _) => Chat?.Composer.MentionPicker.Close();
-        DetachedFromVisualTree += (_, _) =>
-        {
-            Chat?.Composer.MentionPicker.Close();
-            _pendingTapMenu?.Cancel();
-        };
+        DetachedFromVisualTree += (_, _) => OnLeft();
         DataContextChanged += (_, _) =>
         {
             _mentionPicker?.Close();
@@ -219,6 +215,25 @@ public partial class ChatView : UserControl
         // The panel is built with the template of the list, so its event is caught on the list
         MessagesList.AddHandler(MessageListPanel.ScrollStateChangedEvent, (_, _) => OnScrollStateChanged());
     }
+
+    // The root view hides the chat rather than taking it out of the tree
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == IsVisibleProperty && !IsVisible)
+            OnLeft();
+    }
+
+    private void OnLeft()
+    {
+        Chat?.Composer.MentionPicker.Close();
+        _pendingTapMenu?.Cancel();
+    }
+
+    /// <summary>
+    /// Shows the newest message of the chat; for the chat that was shown last and is opened again.
+    /// </summary>
+    public void ScrollToNewest() => ScrollToEnd();
 
     /// <summary>
     /// Raised by the back button of the header.
@@ -387,7 +402,9 @@ public partial class ChatView : UserControl
         if (ancestors.OfType<TextBlock>().FirstOrDefault(block => ChatMessageText.GetBody(block) != null) is { } text)
         {
             var position = e.GetPosition(text);
-            if (ChatMessageText.GetLinkAt(text, position) != null || ChatMessageText.GetMentionAt(text, position) != null)
+            // The same reach as the text gives a finger, or a tap beside a link would open it and the menu too
+            if (ChatMessageText.GetLinkAt(text, position, ChatMessageText.TouchReach) != null
+                || ChatMessageText.GetMentionAt(text, position, ChatMessageText.TouchReach) != null)
                 return;
         }
 

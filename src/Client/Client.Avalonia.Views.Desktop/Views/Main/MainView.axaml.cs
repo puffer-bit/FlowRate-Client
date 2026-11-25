@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Client.Services;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
@@ -18,7 +19,10 @@ using Client.Views.Sessions.Chat;
 using Client.Views.Sessions.Hybrid;
 using Client.Views.Settings;
 using Client.Views.Common;
+using Client.Avalonia.Controls.Chat;
 using Client.ViewModels.Main;
+using Client.ViewModels.Sessions;
+using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.Views.Main;
@@ -80,6 +84,13 @@ public partial class MainView : ViewControl<MainWindowVM>
 
             ViewModel!.ShowMessageBox.RegisterMessageBoxHandler(this).DisposeWith(disposables);
             ViewModel!.AskDatabasePassword.RegisterDatabasePasswordHandler(this).DisposeWith(disposables);
+
+            ObservableExtensions.Subscribe(ViewModel!.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent),
+                ShowContent).DisposeWith(disposables);
+            var openedSessions = new System.Reactive.Disposables.SerialDisposable().DisposeWith(disposables);
+            ObservableExtensions.Subscribe(ViewModel!.WatchProperty(nameof(MainWindowVM.OpenedSessions), vm => vm.OpenedSessions),
+                opened => Dispatcher.UIThread.Post(() => openedSessions.Disposable = FollowOpenedSessions(opened)))
+                .DisposeWith(disposables);
 
             // Content shown fullscreen takes the place of the side panel too
             ObservableExtensions.Subscribe(ViewModel!.WatchProperty(nameof(MainWindowVM.IsContentFullScreen), vm => vm.IsContentFullScreen),
@@ -145,8 +156,66 @@ public partial class MainView : ViewControl<MainWindowVM>
 
     private void ApplyContentFullScreen(bool isFullScreen)
     {
-        Grid.SetColumn(MainContentControl, isFullScreen ? 0 : 2);
-        Grid.SetColumnSpan(MainContentControl, isFullScreen ? 3 : 1);
+        foreach (var host in new[] { MainContentControl, ChatContentControl })
+        {
+            Grid.SetColumn(host, isFullScreen ? 0 : 2);
+            Grid.SetColumnSpan(host, isFullScreen ? 3 : 1);
+        }
+    }
+
+    // Made with the first chat shown, and kept for every chat after it
+    private ChatSessionControl? _chatView;
+
+    private void ShowContent(IMainWindowContentVM? content)
+    {
+        // A session that ends changes the content from the thread its event came on
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ShowContent(ViewModel?.CurrentContent));
+            return;
+        }
+
+        if (content is ActiveChatSessionVM chat)
+        {
+            // The chat is given before the view joins the tree, which would give it the main view model
+            if (_chatView == null)
+            {
+                _chatView = new ChatSessionControl { DataContext = chat };
+                ChatContentControl.Content = _chatView;
+            }
+            else if (!ReferenceEquals(_chatView.DataContext, chat))
+                _chatView.DataContext = chat;
+            // The same chat comes back after something else: it opens at its newest message, as any chat does
+            else if (!ChatContentControl.IsVisible)
+                _chatView.ScrollToNewest();
+
+            ChatOpenTrace.Mark("chat view bound");
+            MainContentControl.Content = null;
+            ChatContentControl.IsVisible = true;
+            return;
+        }
+
+        ChatContentControl.IsVisible = false;
+        MainContentControl.Content = content;
+    }
+
+    // The hidden chat view lets go of a chat that is closed, and of every chat of a connection that is gone
+    private IDisposable? FollowOpenedSessions(OpenedSessions? opened)
+    {
+        if (_chatView?.DataContext is { } shown && ViewModel?.CurrentContent != shown)
+            _chatView.DataContext = null;
+
+        if (opened == null)
+            return null;
+
+        void OnSessionClosed(IMainWindowContentVM session) => Dispatcher.UIThread.Post(() =>
+        {
+            if (_chatView != null && ReferenceEquals(_chatView.DataContext, session) && ViewModel?.CurrentContent != session)
+                _chatView.DataContext = null;
+        });
+
+        opened.SessionClosed += OnSessionClosed;
+        return System.Reactive.Disposables.Disposable.Create(() => opened.SessionClosed -= OnSessionClosed);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

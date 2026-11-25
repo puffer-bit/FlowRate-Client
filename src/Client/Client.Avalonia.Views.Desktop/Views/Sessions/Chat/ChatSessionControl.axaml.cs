@@ -134,6 +134,11 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
         });
     }
 
+    /// <summary>
+    /// Shows the newest message; for the chat that was shown last and is opened again.
+    /// </summary>
+    public void ScrollToNewest() => _scroll.ScrollToEnd();
+
     private async Task<IReadOnlyList<PickedFile>> PickFiles()
     {
         var storage = TopLevel.GetTopLevel(this)?.StorageProvider;

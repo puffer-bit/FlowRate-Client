@@ -320,6 +320,7 @@ public partial class MainWindowVM : ReactiveObject
         _createConnectWindow = createConnectWindow;
         _createSettings = createSettings;
         _logger = loggerFactory.CreateLogger<MainWindowVM>();
+        Client.Avalonia.Controls.Chat.ChatOpenTrace.Sink = LogChatOpen;
         Notifications = new NotificationCenterVM(notifications);
         hotKeys.Triggered += OnHotKey;
 
@@ -746,6 +747,7 @@ public partial class MainWindowVM : ReactiveObject
         switch (content)
         {
             case ActiveChatSessionVM chat:
+                Client.Avalonia.Controls.Chat.ChatOpenTrace.Begin($"#{chat.Id}, {chat.Messages.Count} rows loaded");
                 SessionsList.SetShownSession(chat.Id, false);
                 // Let the new content complete layout and rendering before starting history work.
                 Dispatcher.UIThread.Post(() =>

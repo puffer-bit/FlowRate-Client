@@ -14,6 +14,16 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     </PropertyGroup>
 
+    <!-- A Release build compiles ahead of time every method, not only those of the profile the SDK
+         ships: that profile covers a generic app start, so the views, Avalonia and the rest ran on the
+         Mono JIT, whose code is much slower. The .apk grows and the build takes longer.
+         Phones only: x86_64 serves the emulator alone, and with the code compiled ahead of time it
+         would double the .apk. A Debug build keeps it, for the emulator -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+        <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.1.2" />
         <PackageReference Include="Avalonia.Android" Version="12.1.2" />

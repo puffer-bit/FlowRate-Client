@@ -54,13 +54,13 @@ public partial class ChatMessageView : UserControl
         if (DataContext is not ChatMessageVM vm)
             return;
         if (vm.IsSystem) { e.Handled = true; return; }
-        if (ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e))
+        if (ChatUserMenu.TryOpenContext(vm, SenderAvatar, NameTextBlock, MessageTextBlock, e, ChatMessageText.TouchReach))
             return;
 
         vm.CopyImageTarget = (e.Source as global::Avalonia.Visual)?.GetSelfAndVisualAncestors()
             .OfType<Control>().Select(control => control.DataContext).OfType<ChatImageVM>().FirstOrDefault();
         vm.CopyLinkText = e.TryGetPosition(MessageTextBlock, out var position)
-            ? ChatMessageText.GetLinkAt(MessageTextBlock, position)
+            ? ChatMessageText.GetLinkAt(MessageTextBlock, position, ChatMessageText.TouchReach)
             : null;
     }
 
