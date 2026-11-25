@@ -11,6 +11,7 @@ using Client.Avalonia.Controls.Avatars;
 using Client.Avalonia.Controls.Images;
 using Client.ViewModels.Sessions.Chat;
 using Client.Views.Shared.Chat;
+using Client.Views.Profile;
 using Client.Views.Sessions.Chat;
 
 namespace Client.Views.Common;
@@ -22,7 +23,10 @@ internal static class DesktopImagePreview
         ChatLinkPreviewCard.ImageOpener = OpenLink;
         InputElement.TappedEvent.AddClassHandler<UserAvatar>((avatar, e) =>
         {
+            // Only the big avatar of a profile opens: everywhere else a tap on an avatar means its
+            // user (a message opens the profile), not the picture
             if (avatar.Picture == null || avatar.Overlay?.IsVisible == true ||
+                !avatar.GetVisualAncestors().Any(parent => parent is UserProfileView or ChatInfoView) ||
                 avatar.GetVisualAncestors().Any(parent => parent is AvatarEditor) ||
                 (e.Source as Visual)?.GetSelfAndVisualAncestors().TakeWhile(parent => parent != avatar)
                     .Any(parent => parent is Button) == true)
