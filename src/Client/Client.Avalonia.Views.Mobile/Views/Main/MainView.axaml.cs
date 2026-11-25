@@ -47,7 +47,11 @@ namespace Client.Mobile.Views.Main;
 public partial class MainView : UserControl
 {
     private readonly MainWindowVM? _viewModel;
-    private readonly ChatView _chatView = new();
+    // Made anew for every other chat that is opened: a view that showed one chat kept rows of it in its
+    // list, and they came up over the next chat. The same chat opened again keeps its view
+    private ChatView _chatView;
+    private bool _isChatViewUsed;
+    private Func<Task<string>>? _quickReaction;
     private readonly HybridSessionView _hybridView = new();
 
     // The chat on screen asks for its message boxes itself; the registration follows the chat
@@ -113,14 +117,34 @@ public partial class MainView : UserControl
         // Menus open where they were asked for
         PopupMenu.TrackPresses(this);
 
-        // Shown over the session and the home screen
-        SheetLayer.Children.Add(_chatView.DetachMessageMenu());
-
-        // Null and not left unset: the chat view would take the main view model from the tree
-        _chatView.DataContext = null;
-        _chatView.IsVisible = false;
-        Screen.Children.Add(_chatView);
+        _chatView = AddChatView();
     }
+
+    private ChatView AddChatView()
+    {
+        // Null and not left unset: the chat view would take the main view model from the tree
+        var view = new ChatView { DataContext = null, IsVisible = false, QuickReaction = _quickReaction };
+        view.BackRequested += OnChatBackRequested;
+
+        // Shown over the session and the home screen
+        SheetLayer.Children.Add(view.DetachMessageMenu());
+        // Under the view of a voice session
+        Screen.Children.Insert(0, view);
+        return view;
+    }
+
+    private void ReplaceChatView()
+    {
+        _chatView.BackRequested -= OnChatBackRequested;
+        _chatView.DataContext = null;
+        Screen.Children.Remove(_chatView);
+        SheetLayer.Children.Remove(_chatView.DetachMessageMenu());
+
+        _chatView = AddChatView();
+        _isChatViewUsed = false;
+    }
+
+    private void OnChatBackRequested() => _viewModel?.ShowHome();
 
     /// <param name="services">Where the settings take the services they change.</param>
     public MainView(MainWindowVM viewModel, IServiceProvider services) : this()
@@ -128,9 +152,9 @@ public partial class MainView : UserControl
         _viewModel = viewModel;
         _services = services;
         DataContext = viewModel;
-        _chatView.BackRequested += viewModel.ShowHome;
         var behavior = services.GetRequiredService<IBehaviorService>();
-        _chatView.QuickReaction = async () => (await behavior.GetSettingsAsync()).QuickReaction;
+        _quickReaction = async () => (await behavior.GetSettingsAsync()).QuickReaction;
+        _chatView.QuickReaction = _quickReaction;
         Sessions.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatRequested += chat => viewModel.SessionsList.SelectedSession = chat;
@@ -177,7 +201,7 @@ public partial class MainView : UserControl
         viewModel.WatchProperty(nameof(MainWindowVM.CurrentContent), vm => vm.CurrentContent)
             .Subscribe(_ => Dispatcher.UIThread.Post(ShowCurrentScreen));
 
-        // The hidden chat view keeps the last chat, so that opening it again costs nothing; it lets go
+        // The hidden chat view keeps the last chat, so that opening it again costs little; it lets go
         // of a chat that is closed, and of every chat of a connection that is gone
         viewModel.WatchProperty(nameof(MainWindowVM.OpenedSessions), vm => vm.OpenedSessions)
             .Subscribe(opened => Dispatcher.UIThread.Post(() => FollowOpenedSessions(opened)));
@@ -342,6 +366,9 @@ public partial class MainView : UserControl
         {
             if (!ReferenceEquals(_chatView.DataContext, chat))
             {
+                if (_isChatViewUsed)
+                    ReplaceChatView();
+                _isChatViewUsed = true;
                 _chatView.DataContext = chat;
                 _chatDialogs.Disposable = chat.ShowMessageBox.RegisterHandler(async context =>
                     context.SetOutput(await _navigation.ShowMessageBoxAsync(context.Input)));

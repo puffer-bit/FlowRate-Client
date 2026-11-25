@@ -7,6 +7,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Client.Avalonia.Controls.Chat;
 using Client.Avalonia.Styles.Animation;
 
@@ -138,6 +139,16 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
 
         double viewport = availableSize.Height;
         bool isViewportFinite = !double.IsInfinity(viewport);
+
+        // A scroll viewer measures a list that was just made without a height limit: it takes the list for a
+        // logically scrolled one only after the first ScrollInvalidated. Every row would be made for that
+        // pass, so none is; the scroll state raised from the arrange makes it measure again with its height
+        if (!isViewportFinite && this.GetVisualParent() is ItemsPresenter presenter
+            && presenter.GetVisualParent() is ScrollContentPresenter)
+        {
+            _isScrollStateDirty = true;
+            return new Size(FiniteOrZero(availableSize.Width), 0);
+        }
 
         _measureStart = Stopwatch.GetTimestamp();
         // Without a height limit every row has to be laid out, so there is nothing to defer
