@@ -265,8 +265,8 @@
             <main:CallBar x:Name="CallBar" Grid.Row="4"/>
         </Grid>
 
-        <!-- The session that is open. The chat view never leaves it, it is only hidden: back in the tree
-             it would have its styles and templates built again for every chat opened -->
+        <!-- The session that is open. The chat view stays in it, hidden, while its chat is open, so that
+             the chat comes back at once; another chat gets a new chat view -->
         <Panel Grid.Row="0" x:Name="Screen" IsVisible="False" Background="{DynamicResource GeneralBrush}"/>
 
         <!-- The connect form, the profile, the settings and the form of a new session take the whole screen, over the session and
