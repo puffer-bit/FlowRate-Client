@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
@@ -97,6 +98,7 @@ public sealed class DragGesture
 
         _pointer = e.Pointer;
         _source = e.Source as Visual;
+        HoldOffScrolling(_source);
         _start = e.GetPosition(_host);
         _isDragging = false;
         _isRejected = false;
@@ -189,6 +191,24 @@ public sealed class DragGesture
         var (firstTime, firstOffset) = _samples[0];
         var (lastTime, lastOffset) = _samples[^1];
         return lastTime > firstTime ? (lastOffset - firstOffset) * 1000 / (lastTime - firstTime) : 0;
+    }
+
+    // A list under the finger starts scrolling after a few pixels across the axis and from then on takes
+    // every move, before the drag could tell where the finger is going: it waits until the drag has decided.
+    // Going across, the drag gives up at the lock distance and the list scrolls right after
+    private void HoldOffScrolling(Visual? source)
+    {
+        for (var visual = source; visual != null && !ReferenceEquals(visual, _host); visual = visual.GetVisualParent())
+        {
+            if (visual is not InputElement element)
+                continue;
+
+            foreach (var recognizer in element.GestureRecognizers)
+            {
+                if (recognizer is ScrollGestureRecognizer scroll && scroll.ScrollStartDistance <= LockDistance)
+                    scroll.ScrollStartDistance = (int)LockDistance + 1;
+            }
+        }
     }
 
     // What has a drag of its own along the axis keeps the finger
