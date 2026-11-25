@@ -158,6 +158,9 @@ public partial class ChatView : UserControl
         MessagesList.AddHandler(TappedEvent, OnMessageTapped);
         MessagesList.AddHandler(ContextRequestedEvent, OnMessageContextRequested);
         MessagesList.AddHandler(PointerPressedEvent, OnMessagesPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        MessagesList.AddHandler(PointerReleasedEvent, OnMessagesReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        MessagesList.AddHandler(PointerCaptureLostEvent, OnMessagesCaptureLost, handledEventsToo: true);
+        MessagesList.AddHandler(ContextRequestedEvent, OnMessagesContextRequesting, RoutingStrategies.Tunnel, handledEventsToo: true);
         MessagesList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => _lastScrollTime = Environment.TickCount64);
 
         // The panel is built with the template of the list, so its event is caught on the list
@@ -261,14 +264,60 @@ public partial class ChatView : UserControl
     private bool _isPressDuringScroll;
     private CancellationTokenSource? _pendingTapMenu;
     private PointerType _tapPointerType = PointerType.Touch;
+    // A finger is on the list and its release has not come yet
+    private bool _isTouchDown;
+    // The system took the finger, e.g. for the back gesture: there is no release, and the long press
+    // that Avalonia keeps timing would open the menu of a message nobody is holding any more
+    private bool _isTouchCanceled;
+    // The long press has acted: lifting the finger must not also tap what is under it, such as a picture
+    private bool _isHoldConsumed;
 
     private void OnMessagesPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (e.Pointer.Type == PointerType.Touch)
+        {
+            _isTouchDown = true;
+            _isTouchCanceled = false;
+            _isHoldConsumed = false;
+        }
+
         // DoubleTapped is raised on the second press. Cancel the first tap here too, before its
         // delay can resume while that second press is still being routed.
         _pendingTapMenu?.Cancel();
         _tapPointerType = e.Pointer.Type;
         _isPressDuringScroll = Environment.TickCount64 - _lastScrollTime < ScrollSettleMilliseconds;
+    }
+
+    private void OnMessagesReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.Pointer.Type != PointerType.Touch || !_isTouchDown)
+            return;
+
+        _isTouchDown = false;
+        if (_isHoldConsumed)
+        {
+            _isHoldConsumed = false;
+            e.Handled = true;
+        }
+    }
+
+    // A release comes before the capture ends; a capture that ends without one was taken by the system
+    private void OnMessagesCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (e.Pointer.Type != PointerType.Touch || !_isTouchDown)
+            return;
+
+        _isTouchDown = false;
+        _isTouchCanceled = true;
+    }
+
+    // Before the message and the list act on a long press
+    private void OnMessagesContextRequesting(object? sender, ContextRequestedEventArgs e)
+    {
+        if (_isTouchCanceled)
+            e.Handled = true;
+        else if (_isTouchDown)
+            _isHoldConsumed = true;
     }
 
     // A tap on a message opens its menu. What has a tap of its own keeps it: a button, such as an image,
