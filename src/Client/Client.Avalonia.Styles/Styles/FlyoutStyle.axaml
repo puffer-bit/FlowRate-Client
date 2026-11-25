@@ -20,6 +20,22 @@
         <Setter Property="MinWidth" Value="112"/>
     </Style>
 
+    <!-- A menu made of several cards, e.g. the readers of a message above its actions: the presenter
+         itself is only the space they lie in -->
+    <Style Selector="FlyoutPresenter.message-menu">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="FlyoutPresenter Border.menu-island">
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+    </Style>
+
     <!-- Splits a menu into groups -->
     <Style Selector="FlyoutPresenter Separator">
         <Setter Property="Height" Value="1"/>

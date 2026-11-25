@@ -18,7 +18,7 @@
              x:Name="MessageView">
     
     <UserControl.ContextFlyout>
-        <Flyout Placement="BottomEdgeAlignedRight" 
+        <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterClasses="message-menu"
                 Opening="FlyoutBase_OnOpening"
                 Opened="FlyoutBase_OnOpened"
                 Closed="FlyoutBase_OnClosed"/>
