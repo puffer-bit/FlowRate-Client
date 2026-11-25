@@ -817,14 +817,14 @@
 
                         <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
                                               IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
+                        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
+                                              Command="{Binding StartReply}"/>
                         <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
                                       IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
                                       Command="{Binding TogglePinned}"/>
                         <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
                                       IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
                                       Command="{Binding TogglePinned}"/>
-                        <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
-                                              Command="{Binding StartReply}"/>
                         <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
                                               IsVisible="{Binding CanEdit}"
                                               Command="{Binding StartEdit}"/>
