@@ -38,9 +38,17 @@ internal static class InWindowDialog
         overlay.Closed += value => result.TrySetResult(value is TResult typed ? typed : dismissedResult);
         overlay.Dismissed += () => result.TrySetResult(dismissedResult);
         
+        // Avalonia creates the overlay layer on first use, still without a size: laid out at 0×0, the
+        // first dialog would be centered on the top left corner of the window. A layout pass sizes it
+        if (overlayLayer.Bounds.Width <= 0 || overlayLayer.Bounds.Height <= 0)
+            topLevel.UpdateLayout();
+
         // The overlay layer does not stretch its children, so the backdrop follows its size
         using var size = overlayLayer.GetObservable(Visual.BoundsProperty).Subscribe(bounds =>
         {
+            // An empty size would lay the dialog out at the corner; the next layout pass brings the real one
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
             overlay.Width = bounds.Width;
             overlay.Height = bounds.Height;
         });
