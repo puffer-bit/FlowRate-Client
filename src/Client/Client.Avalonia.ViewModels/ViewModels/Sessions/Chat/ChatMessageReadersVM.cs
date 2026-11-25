@@ -91,7 +91,7 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
         _receipts = receipts;
         _senders = senders;
         _receipts.PeerRead += OnPeerRead;
-        _senders.Changed += Rebuild;
+        _senders.Changed += OnSendersChanged;
     }
 
     public Task LoadAsync() => _load ??= LoadCoreAsync();
@@ -162,6 +162,8 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
             _readers[userId] = readAt;
     }
 
+    private void OnSendersChanged(IReadOnlyCollection<int>? userIds) => Rebuild();
+
     private void Rebuild()
     {
         if (_isDisposed)
@@ -182,6 +184,6 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
             return;
         _isDisposed = true;
         _receipts.PeerRead -= OnPeerRead;
-        _senders.Changed -= Rebuild;
+        _senders.Changed -= OnSendersChanged;
     }
 }

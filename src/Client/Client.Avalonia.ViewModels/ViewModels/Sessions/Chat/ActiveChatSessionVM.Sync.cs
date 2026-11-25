@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Chat;
+using Client.Avalonia.Controls.Chat;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Services;
@@ -45,6 +46,8 @@ public partial class ActiveChatSessionVM
         if (_isDisposed)
             return;
 
+        ChatOpenTrace.Mark($"first page fetched {(cached != null ? "from the cache" : "from the server")}: " +
+            $"{page?.Messages.Count ?? 0} messages");
         await UiThread.RunAsync(() =>
         {
             if (_isDisposed)
@@ -52,7 +55,8 @@ public partial class ActiveChatSessionVM
 
             if (page != null)
             {
-                AddMessages(CurrentPage(page.Messages));
+                using (ChatOpenTrace.Measure("adding the first page"))
+                    AddMessages(CurrentPage(page.Messages));
                 HistoryBoundsChanged();
                 _revision = page.Revision;
             }

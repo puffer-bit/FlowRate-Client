@@ -39,9 +39,10 @@ public sealed class ChatSenderDirectory : IDisposable
     private readonly EventSubscriptions _subscriptions = new();
 
     /// <summary>
-    /// Something shown of the users has changed; raised on the UI thread.
+    /// Something shown of the users has changed; raised on the UI thread with the users it concerns,
+    /// or null when it may concern any of them (roles, permissions).
     /// </summary>
-    public event Action? Changed;
+    public event Action<IReadOnlyCollection<int>?>? Changed;
 
     public ChatSenderDirectory(ICoordinatorSession session, int currentUserId)
     {
@@ -82,7 +83,7 @@ public sealed class ChatSenderDirectory : IDisposable
                         MarkDeleted(userId);
                 }
 
-                Changed?.Invoke();
+                Changed?.Invoke(userIds);
             });
         }
         finally
@@ -122,19 +123,19 @@ public sealed class ChatSenderDirectory : IDisposable
 
         Remember(user);
         // Any message may mention the user, not only theirs
-        Changed?.Invoke();
+        Changed?.Invoke([user.Id]);
     });
 
     // Raised on the socket thread
     private void OnUserDeleted(int userId) => Dispatcher.UIThread.Post(() =>
     {
         MarkDeleted(userId);
-        Changed?.Invoke();
+        Changed?.Invoke([userId]);
     });
 
     // Raised on the transport thread; the names, colors or order of the roles may have changed
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
-        Dispatcher.UIThread.Post(() => Changed?.Invoke());
+        Dispatcher.UIThread.Post(() => Changed?.Invoke(null));
 
     private void Remember(UserModel user)
     {
@@ -190,7 +191,37 @@ public sealed class ChatSenderDirectory : IDisposable
     public ChatMessageBody RenderBody(string text) =>
         ChatMessageBody.Create(text, GetMentionName, _currentUserId, UnknownName);
 
-    public string RenderText(string text) => ChatMarkdown.Render(RenderBody(text)).Text;
+    // Quotes are rendered again each time a name changes; a body that came out the same keeps its text
+    private readonly Dictionary<ChatMessageBody, string> _renderedTexts = new();
+
+    public string RenderText(string text)
+    {
+        var body = RenderBody(text);
+        if (!_renderedTexts.TryGetValue(body, out var rendered))
+        {
+            rendered = ChatMarkdown.Render(body).Text;
+            _renderedTexts[body] = rendered;
+        }
+
+        return rendered;
+    }
+
+    /// <summary>
+    /// Whether a change of <paramref name="userIds"/> shows in the message: its author, the author of
+    /// what it answers, the users of its system text and reactions, and those mentioned.
+    /// </summary>
+    public static bool Concerns(ChatMessageVM message, IReadOnlyCollection<int> userIds)
+    {
+        var shown = new HashSet<int>();
+        CollectUserIds(message, shown);
+        foreach (var userId in userIds)
+        {
+            if (shown.Contains(userId))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The name as it is known, or null.

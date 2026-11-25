@@ -26,6 +26,11 @@
     <Style Selector=":is(TextBlock).msg-body Run.link.hover">
         <Setter Property="TextDecorations" Value="Underline"/>
     </Style>
+    <!-- Under a finger: the tap is seen to hit the link before it is let go -->
+    <Style Selector=":is(TextBlock).msg-body Run.link.pressed">
+        <Setter Property="TextDecorations" Value="Underline"/>
+        <Setter Property="Background" Value="{DynamicResource MentionBackgroundBrush}"/>
+    </Style>
     <!-- A mentioned name; the current user's own stands out more -->
     <Style Selector=":is(TextBlock).msg-body Run.mention">
         <Setter Property="Foreground" Value="{DynamicResource MentionTextBrush}"/>

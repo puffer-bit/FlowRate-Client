@@ -19,4 +19,7 @@ public partial class MainWindowVM
 
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Auto connection attempt {Attempt} failed")]
     private partial void LogAutoConnectAttemptFailed(Exception exception, string coordinator, int attempt);
+
+    [LoggerMessage(LogLevel.Information, "{Line}")]
+    private partial void LogChatOpen(string line);
 }

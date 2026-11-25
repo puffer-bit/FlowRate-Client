@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -6,6 +7,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Client.Avalonia.Controls.Chat;
 using Client.Avalonia.Styles.Animation;
 
 namespace Client.Avalonia.Controls.Panels;
@@ -17,6 +19,9 @@ namespace Client.Avalonia.Controls.Panels;
 /// passes: it is worked out from a visible row (the anchor) and the place that row had on screen, so rows
 /// added, removed or resized above the anchor change the offset and never move what the user is looking at.
 /// While the list is scrolled to its end it stays there whatever happens to the rows.
+/// New rows are made within a time budget per layout pass, outwards from the anchor: what does not fit
+/// comes in the next frames, so a chat with heavy rows opens or scrolls without holding a frame. The
+/// anchor keeps its place while the rows around it fill in.
 /// </summary>
 public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScrollable
 {
@@ -43,6 +48,8 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
     // Measuring rows replaces estimated heights, which can move the limits of the offset;
     // the layout is repeated until the offset fits them
     private const int MaxLayoutPasses = 8;
+    // How long one layout pass may spend making new rows off screen; the rows on screen are made whatever they cost
+    private const double RealizeBudgetMilliseconds = 8;
 
     private enum Alignment
     {
@@ -71,6 +78,13 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
     private double _extent;
     private double _viewport;
     private double _width;
+
+    private long _measureStart;
+    private bool _isBudgeted;
+    private bool _hasDeferredRows;
+    private bool _isContinuationScheduled;
+    private bool _isTraceEndRequested;
+    private int _realizedInPass;
 
     private bool _isScrollStateDirty;
     private bool _isScrollStateEventPending;
@@ -125,6 +139,12 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
         double viewport = availableSize.Height;
         bool isViewportFinite = !double.IsInfinity(viewport);
 
+        _measureStart = Stopwatch.GetTimestamp();
+        // Without a height limit every row has to be laid out, so there is nothing to defer
+        _isBudgeted = isViewportFinite;
+        _hasDeferredRows = false;
+        _realizedInPass = 0;
+
         if (count == 0)
         {
             RecycleAllRows();
@@ -167,10 +187,12 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
             double top = anchorTop;
             double bottom = anchorTop + anchorHeight;
 
-            while (first > 0 && top > -Reach(first - 1, viewport))
+            // A row that would be on screen is always made: the screen is shown full at once, and only
+            // the rows kept past its edges for scrolling wait for the next frames
+            while (first > 0 && top > -Reach(first - 1, viewport) && CanMeasureRow(first - 1, isOnScreen: top > 0))
                 top -= MeasureRow(--first, constraint);
 
-            while (last < count - 1 && bottom < viewport + Reach(last + 1, viewport))
+            while (last < count - 1 && bottom < viewport + Reach(last + 1, viewport) && CanMeasureRow(last + 1, isOnScreen: bottom < viewport))
                 bottom += MeasureRow(++last, constraint);
 
             double anchorY = SumHeights(0, anchor);
@@ -197,6 +219,10 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
         _stickToEnd = offset >= extent - viewport - EndTolerance;
         SetScrollState(offset, extent, viewport, availableSize.Width);
         PickAnchor();
+
+        if (_hasDeferredRows)
+            ScheduleContinuation();
+        TraceLayout(count, isViewportFinite);
 
         double width = availableSize.Width;
         if (double.IsInfinity(width))
@@ -322,6 +348,61 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
         return null;
     }
 
+    // A row that exists is only measured again; a new one is made when it is on screen, or while the pass has time left
+    private bool CanMeasureRow(int index, bool isOnScreen)
+    {
+        if (!_isBudgeted || isOnScreen || ContainerFromIndex(index) != null
+            || Stopwatch.GetElapsedTime(_measureStart).TotalMilliseconds < RealizeBudgetMilliseconds)
+            return true;
+
+        _hasDeferredRows = true;
+        return false;
+    }
+
+    // The rows left out are made in the next frame, which lays the list out again from its anchor
+    private void ScheduleContinuation()
+    {
+        if (_isContinuationScheduled)
+            return;
+
+        _isContinuationScheduled = true;
+        void Continue()
+        {
+            _isContinuationScheduled = false;
+            InvalidateMeasure();
+        }
+
+        if (TopLevel.GetTopLevel(this) is { } topLevel)
+            topLevel.RequestAnimationFrame(_ => Continue());
+        else
+            Dispatcher.UIThread.Post(Continue, DispatcherPriority.Background);
+    }
+
+    private void TraceLayout(int count, bool isViewportFinite)
+    {
+        if (!ChatOpenTrace.IsActive)
+            return;
+
+        if (_realizedInPass > 0 || !isViewportFinite)
+        {
+            ChatOpenTrace.Mark($"list layout of {count} rows: {_realizedInPass} made in " +
+                $"{Stopwatch.GetElapsedTime(_measureStart).TotalMilliseconds:F1} ms" +
+                (_hasDeferredRows ? ", the rest in the next frame" : "") +
+                (isViewportFinite ? "" : ", no height limit: every row laid out"));
+        }
+
+        // The opening is over with the first frame that shows all the rows it needs
+        if (count > 0 && !_hasDeferredRows && !_isTraceEndRequested && TopLevel.GetTopLevel(this) is { } topLevel)
+        {
+            _isTraceEndRequested = true;
+            topLevel.RequestAnimationFrame(_ =>
+            {
+                _isTraceEndRequested = false;
+                ChatOpenTrace.End("first frame with the messages");
+            });
+        }
+    }
+
     private double MeasureRow(int index, Size constraint)
     {
         if (_rows.Count == 0)
@@ -340,11 +421,35 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
         }
 
         int slot = index - _firstRow;
-        var row = _rows[slot] ??= RealizeRow(index);
+        long traceStart = 0;
+        if (_rows[slot] == null)
+        {
+            if (ChatOpenTrace.IsActive)
+                traceStart = Stopwatch.GetTimestamp();
+            _rows[slot] = RealizeRow(index);
+            _realizedInPass++;
+        }
+
+        var row = _rows[slot]!;
 
         row.Measure(constraint);
         _heights[index] = row.DesiredSize.Height;
+
+        if (traceStart != 0)
+            TraceRow(index, traceStart);
         return _heights[index];
+    }
+
+    // How a row that was not there got its view, for the trace
+    private string _rowSource = "";
+
+    // The view of a row is built in its first measure, so the time covers both
+    private void TraceRow(int index, long start)
+    {
+        var item = Items[index];
+        var description = item is IChatOpenTraceItem traced ? traced.TraceDescription : item?.GetType().Name ?? "null";
+        ChatOpenTrace.Mark($"row {index} ({_rowSource}) took {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms, " +
+            $"{_heights[index]:F0} px: {description}");
     }
 
     private double Reach(int index, double viewport)
@@ -537,6 +642,7 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
 
         if (!generator.NeedsContainer(item, index, out var recycleKey))
         {
+            _rowSource = "item is its own row";
             var control = (Control)item!;
             if (!control.IsSet(RecycleKeyProperty))
             {
@@ -561,6 +667,7 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
         // into it, so the data template reuses that view instead of building a new one
         if (row is ContentPresenter { IsVisible: false } presenter)
         {
+            _rowSource = "view reused";
             presenter.Content = item;
             generator.PrepareItemContainer(presenter, item, index);
             presenter.IsVisible = true;
@@ -568,6 +675,7 @@ public class MessageListPanel : VirtualizingPanel, ILogicalScrollable, IPixelScr
             return presenter;
         }
 
+        _rowSource = row == null ? "new view" : "container reused";
         if (row == null)
         {
             row = generator.CreateContainer(item, index, recycleKey);

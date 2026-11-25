@@ -223,7 +223,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         var currentUser = coordinatorSession.GetCurrentUser();
         _currentUserId = currentUser.Id;
         _senders = new ChatSenderDirectory(coordinatorSession, currentUser.Id);
-        _senders.Changed += ApplySenders;
+        _senders.Changed += OnSendersChanged;
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
@@ -517,11 +517,41 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _ = ResolveSendersAsync(addedVms);
         foreach (var messageVm in addedVms)
             _senders.Apply(messageVm);
+        ParseTextsInBackground(addedVms);
 
         _timeline.AddRange(addedVms);
         this.RaisePropertyChanged(nameof(HasMessages));
         UpdateReading();
         return addedVms.Count;
+    }
+
+    // A row parses its text when it is first shown, on the UI thread. Parsed here off it, newest first
+    // as the list shows them, the rows are left only their inlines to build; the parse is remembered
+    // for the body, which stays the same object while the names in it do not change
+    private static void ParseTextsInBackground(List<ChatMessageVM> messages)
+    {
+        var bodies = new List<ChatMessageBody>(messages.Count);
+        for (int i = messages.Count - 1; i >= 0; i--)
+        {
+            if (messages[i].Body is { } body)
+                bodies.Add(body);
+        }
+
+        if (bodies.Count > 0)
+            _ = Task.Run(() =>
+            {
+                foreach (var body in bodies)
+                {
+                    try
+                    {
+                        ChatMarkdown.Render(body);
+                    }
+                    catch (Exception)
+                    {
+                        // Only a head start: the row parses the text again and meets the same failure
+                    }
+                }
+            });
     }
 
     /// <summary>
@@ -564,10 +594,18 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         return _senders.ResolveAsync(userIds);
     }
 
-    private void ApplySenders()
+    private void ApplySenders() => ApplySenders(null);
+
+    // A user changes often, e.g. with every status: only the messages that show them are rendered again
+    private void OnSendersChanged(IReadOnlyCollection<int>? userIds) => ApplySenders(userIds);
+
+    private void ApplySenders(IReadOnlyCollection<int>? userIds)
     {
         foreach (var messageVm in _messageVms.Values)
-            _senders.Apply(messageVm);
+        {
+            if (userIds == null || ChatSenderDirectory.Concerns(messageVm, userIds))
+                _senders.Apply(messageVm);
+        }
 
         Composer.ApplySenders();
         UpdateTypingNames();

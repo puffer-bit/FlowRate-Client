@@ -132,11 +132,19 @@
                                     Title="{l:Text main.noSession.title}"
                                     Text="{l:Text main.noSession.text}"/>
 
+            <!-- The content other than a chat; filled from the code, see MainView.ShowContent -->
             <ContentControl x:Name="MainContentControl"
                             Grid.Column="2"
                             HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"/>
+
+            <!-- The chat shown. Its view is only hidden while something else is shown: built anew it
+                 would cost the styles and templates of the whole chat each time one is opened -->
+            <ContentControl x:Name="ChatContentControl"
+                            Grid.Column="2"
+                            HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            Content="{Binding CurrentContent}"/>
+                            IsVisible="False"/>
         </Grid>
         
         <!-- Notifications of the whole application, over whatever the window shows -->

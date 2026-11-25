@@ -30,6 +30,13 @@ public static class ChatMessageText
 {
     // A press that travels further than this is a selection or a scroll, not a click
     private const double ClickTolerance = 4;
+    // A finger trembles more than a mouse, and covers more than the point it is said to touch
+    private const double TapTolerance = 12;
+
+    /// <summary>
+    /// How far from a link or a mention a finger still hits it: the exact letters are hard to tap.
+    /// </summary>
+    public const double TouchReach = 12;
 
     public static readonly AttachedProperty<IBrush?> CodeBlockBackgroundProperty =
         AvaloniaProperty.RegisterAttached<TextBlock, IBrush?>("CodeBlockBackground", typeof(ChatMessageText));
@@ -94,27 +101,26 @@ public static class ChatMessageText
     /// The destination of the link at a point of the text block, or null when
     /// there is none there.
     /// </summary>
-    public static string? GetLinkAt(TextBlock textBlock, Point position)
+    public static string? GetLinkAt(TextBlock textBlock, Point position, double reach = 0)
     {
         if (textBlock.GetValue(StateProperty) is not { } state)
             return null;
 
-        int link = FindLink(textBlock, state, position);
+        int link = FindLink(textBlock, state, position, reach);
         return link >= 0 ? state.Links[link].Uri.AbsoluteUri : null;
     }
 
-    public static ChatMentionSpan? GetMentionAt(TextBlock textBlock, Point position)
+    /// <summary>
+    /// The mention of a user at a point of the text block, or within <paramref name="reach"/> of it.
+    /// </summary>
+    public static ChatMentionSpan? GetMentionAt(TextBlock textBlock, Point position, double reach = 0)
     {
         if (textBlock.GetValue(StateProperty)?.Document is not { } body || body.Mentions.Count == 0)
             return null;
 
-        int character = FindCharacter(textBlock, position);
-        foreach (var mention in body.Mentions)
-        {
-            if (mention.UserId != null && character >= mention.Start && character < mention.End)
-                return mention;
-        }
-        return null;
+        var mentions = body.Mentions.Where(mention => mention.UserId != null).ToList();
+        int index = FindSpan(textBlock, position, reach, mentions.Count, i => (mentions[i].Start, mentions[i].End));
+        return index >= 0 ? mentions[index] : null;
     }
 
     static ChatMessageText()
@@ -237,8 +243,14 @@ public static class ChatMessageText
 
         // Which link it is gets asked on the release, where the pointer is known to have stayed
         var point = e.GetCurrentPoint(textBlock);
+        bool isTouch = e.Pointer.Type == PointerType.Touch;
         state.IsPressed = point.Properties.IsLeftButtonPressed;
         state.PressedAt = point.Position;
+        state.Reach = isTouch ? TouchReach : 0;
+        state.Tolerance = isTouch ? TapTolerance : ClickTolerance;
+
+        // A finger sees the link it is on lit, before it is let go
+        SetPressed(state, state.IsPressed && isTouch ? FindLink(textBlock, state, point.Position, state.Reach) : -1);
     }
 
     private static void OnPointerMoved(object? sender, PointerEventArgs e)
@@ -248,13 +260,16 @@ public static class ChatMessageText
 
         var position = e.GetPosition(textBlock);
 
-        if (state.IsPressed && !IsNear(position, state.PressedAt))
+        if (state.IsPressed && !IsNear(position, state.PressedAt, state.Tolerance))
+        {
             state.IsPressed = false;
+            SetPressed(state, -1);
+        }
 
         // A finger has no hover: the link would stay underlined after the tap
         if (e.Pointer.Type != PointerType.Touch)
         {
-            SetHovered(textBlock, state, FindLink(textBlock, state, position));
+            SetHovered(textBlock, state, FindLink(textBlock, state, position, 0));
             if (GetMentionAt(textBlock, position) != null)
                 textBlock.Cursor = new Cursor(StandardCursorType.Hand);
             else if (state.Hovered < 0)
@@ -269,19 +284,20 @@ public static class ChatMessageText
 
         bool isPressed = state.IsPressed;
         state.IsPressed = false;
+        SetPressed(state, -1);
 
         if (!isPressed || e.InitialPressMouseButton != MouseButton.Left)
             return;
 
         var position = e.GetPosition(textBlock);
-        if (!IsNear(position, state.PressedAt))
+        if (!IsNear(position, state.PressedAt, state.Tolerance))
             return;
 
         // A double click selects the word under it; the user is selecting, not following the link
         if (textBlock is SelectableTextBlock { SelectionStart: var start, SelectionEnd: var end } && start != end)
             return;
 
-        if (GetMentionAt(textBlock, position) is { UserId: { } userId } mention
+        if (GetMentionAt(textBlock, position, state.Reach) is { UserId: { } userId } mention
             && textBlock.DataContext is ChatMessageVM message)
         {
             string name = GetText(textBlock)!.Substring(mention.Start + 1, mention.Length - 1);
@@ -290,7 +306,7 @@ public static class ChatMessageText
             return;
         }
 
-        int link = FindLink(textBlock, state, position);
+        int link = FindLink(textBlock, state, position, state.Reach);
         if (link < 0)
             return;
 
@@ -318,7 +334,22 @@ public static class ChatMessageText
     private static void OnPressCancelled(object? sender, RoutedEventArgs e)
     {
         if (sender is TextBlock textBlock && textBlock.GetValue(StateProperty) is { } state)
+        {
             state.IsPressed = false;
+            SetPressed(state, -1);
+        }
+    }
+
+    private static void SetPressed(LinkState state, int link)
+    {
+        if (state.Pressed == link)
+            return;
+
+        if (state.Pressed >= 0)
+            foreach (var run in state.Runs[state.Pressed]) run.Classes.Remove("pressed");
+        if (link >= 0)
+            foreach (var run in state.Runs[link]) run.Classes.Add("pressed");
+        state.Pressed = link;
     }
 
     private static void SetHovered(TextBlock textBlock, LinkState state, int link)
@@ -338,21 +369,51 @@ public static class ChatMessageText
             textBlock.ClearValue(InputElement.CursorProperty);
     }
 
-    // The index of the link under the point, or -1
-    private static int FindLink(TextBlock textBlock, LinkState state, Point position)
+    // The index of the link under the point, or the nearest one within the reach; -1 when there is none
+    private static int FindLink(TextBlock textBlock, LinkState state, Point position, double reach)
     {
-        if (state.Links.Count == 0)
+        var links = state.Links;
+        return FindSpan(textBlock, position, reach, links.Count, i => (links[i].Start, links[i].End));
+    }
+
+    // The span with the character under the point, else the span whose letters are nearest the point
+    // and no further than the reach
+    private static int FindSpan(TextBlock textBlock, Point position, double reach, int count, Func<int, (int Start, int End)> span)
+    {
+        if (count == 0)
             return -1;
 
         int character = FindCharacter(textBlock, position);
-
-        for (int i = 0; i < state.Links.Count; i++)
+        for (int i = 0; i < count; i++)
         {
-            if (character >= state.Links[i].Start && character < state.Links[i].End)
+            var (start, end) = span(i);
+            if (character >= start && character < end)
                 return i;
         }
 
-        return -1;
+        if (reach <= 0)
+            return -1;
+
+        var point = position - new Point(textBlock.Padding.Left, textBlock.Padding.Top);
+        int nearest = -1;
+        double nearestDistance = reach;
+        for (int i = 0; i < count; i++)
+        {
+            var (start, end) = span(i);
+            foreach (var rect in textBlock.TextLayout.HitTestTextRange(start, end - start))
+            {
+                double dx = Math.Max(0, Math.Max(rect.Left - point.X, point.X - rect.Right));
+                double dy = Math.Max(0, Math.Max(rect.Top - point.Y, point.Y - rect.Bottom));
+                double distance = Math.Sqrt(dx * dx + dy * dy);
+                if (distance <= nearestDistance)
+                {
+                    nearest = i;
+                    nearestDistance = distance;
+                }
+            }
+        }
+
+        return nearest;
     }
 
     private static int FindCharacter(TextBlock textBlock, Point position)
@@ -366,8 +427,8 @@ public static class ChatMessageText
         return hit.IsInside ? hit.CharacterHit.FirstCharacterIndex : -1;
     }
 
-    private static bool IsNear(Point a, Point b) =>
-        Math.Abs(a.X - b.X) <= ClickTolerance && Math.Abs(a.Y - b.Y) <= ClickTolerance;
+    private static bool IsNear(Point a, Point b, double tolerance) =>
+        Math.Abs(a.X - b.X) <= tolerance && Math.Abs(a.Y - b.Y) <= tolerance;
 
     // What the text block shows now. The views are recycled, so one state serves many messages
     private sealed class LinkState
@@ -378,6 +439,11 @@ public static class ChatMessageText
         public bool IsPressed { get; set; }
         public Point PressedAt { get; set; }
         public int Hovered { get; set; } = -1;
+        // The link lit under a finger, or -1
+        public int Pressed { get; set; } = -1;
+        // How far from a link the press still hits it, and how far it may travel: a finger gets more
+        public double Reach { get; set; }
+        public double Tolerance { get; set; } = ClickTolerance;
 
         public void Reset(ChatMarkdownDocument document, List<Run>[] runs)
         {
@@ -385,6 +451,7 @@ public static class ChatMessageText
             Runs = runs;
             IsPressed = false;
             Hovered = -1;
+            Pressed = -1;
         }
     }
 }
