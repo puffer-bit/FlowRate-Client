@@ -47,7 +47,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     private bool IsClosed { get; set; }
     private readonly ScreenAwakeSession? _screenAwake;
     // Held for the whole session: App Nap would mute a hidden, idle client both ways
-    private readonly IDisposable? _voiceActivity;
+    private readonly IDisposable? _processActivity;
     private DispatcherTimer? _callDurationTimer;
     private void UpdateCallDuration()
     {
@@ -161,7 +161,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
     {
         if (services.ScreenAwake is { } screenAwake)
             _screenAwake = new ScreenAwakeSession(ScreenStreams, screenAwake);
-        _voiceActivity = services.ProcessActivity?.BeginVoiceActivity();
+        _processActivity = services.ProcessActivity?.BeginVoiceActivity();
         _coordinatorStates = services.CoordinatorStates;
         _mediaCapabilities = services.MediaCapabilities;
         _screenShareSettings = services.ScreenShareSettings;
@@ -774,7 +774,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
             return;
         IsClosed = true;
         _screenAwake?.Dispose();
-        _voiceActivity?.Dispose();
+        _processActivity?.Dispose();
 
         _callDurationTimer?.Stop();
         _subscriptions.Dispose();
