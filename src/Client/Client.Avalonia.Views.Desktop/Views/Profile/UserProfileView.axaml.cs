@@ -1,3 +1,5 @@
+using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Client.Views.Dialogs;
 using Client.Views.Common;
 using ReactiveUI;
@@ -11,6 +13,15 @@ internal partial class UserProfileView : ViewControl<UserProfileWindowVM>
     public UserProfileView()
     {
         InitializeComponent();
+
+        // The note sets its text before it is ever focused, and its caret would pull the profile down to it;
+        // the profile opens from its top
+        NoteInput.AddHandler(RequestBringIntoViewEvent, (_, e) =>
+        {
+            if (!NoteInput.IsKeyboardFocusWithin)
+                e.Handled = true;
+        }, RoutingStrategies.Bubble);
+        Loaded += (_, _) => Dispatcher.UIThread.Post(ContentScroll.ScrollToHome, DispatcherPriority.Background);
 
         this.WhenActivated(disposables =>
         {

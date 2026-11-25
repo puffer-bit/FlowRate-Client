@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 
 namespace Client.Mobile.Views.Profile;
@@ -11,6 +12,15 @@ public partial class ProfileView : UserControl
     public ProfileView()
     {
         InitializeComponent();
+
+        // The note sets its text before it is ever focused, and its caret would pull the profile down to it;
+        // the profile opens from its top
+        NoteInput.AddHandler(RequestBringIntoViewEvent, (_, e) =>
+        {
+            if (!NoteInput.IsKeyboardFocusWithin)
+                e.Handled = true;
+        }, RoutingStrategies.Bubble);
+        Loaded += (_, _) => Dispatcher.UIThread.Post(ContentScroll.ScrollToHome, DispatcherPriority.Background);
     }
 
     /// <summary>

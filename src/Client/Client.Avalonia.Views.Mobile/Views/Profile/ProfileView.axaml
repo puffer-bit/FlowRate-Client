@@ -82,7 +82,7 @@
 
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="ContentScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="16,20,16,28" Spacing="14">
 
                 <!-- Who it is: the avatar, the name and the status in the middle; while editing the name is a
@@ -275,7 +275,8 @@
                             <loadingIndicators:ProgressRing Grid.Column="1" Width="16" Height="16" MinWidth="0" MinHeight="0"
                                                             IsIndeterminate="True" BorderThickness="2" IsVisible="{Binding Note.IsBusy}"/>
                         </Grid>
-                        <TextBox Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                        <TextBox x:Name="NoteInput"
+                                 Text="{Binding Note.Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="64" MaxHeight="120" VerticalContentAlignment="Top"
                                  IsEnabled="{Binding Note.IsLoaded}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
