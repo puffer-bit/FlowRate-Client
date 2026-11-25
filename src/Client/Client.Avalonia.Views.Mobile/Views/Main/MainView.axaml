@@ -139,7 +139,8 @@
                     </Grid>
                 </Button>
 
-                <!-- The personal chats or the sessions of the server; the icon shows where a tap leads -->
+                <!-- The personal chats or the sessions of the server; the icon shows where a tap leads, the dot
+                     whether something is unread there -->
                 <Button Grid.Column="1" Classes="borderless home-action"
                         Command="{Binding ServerTitle.ToggleListModeCommand}">
                     <Button.IsVisible>
@@ -155,6 +156,11 @@
                         <Image Width="22" Height="22" Source="{StaticResource SendIcon}"
                                IsVisible="{Binding !SessionsList.IsPrivateMode}"
                                ToolTip.Tip="{l:Text privateChats.showPrivate}"/>
+                        <!-- The list it leads to has unread messages; red for mentions -->
+                        <Ellipse Classes="unread-dot" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,-1,-3,0"
+                                 Classes.mention="{Binding SessionsList.SwitchTargetHasMentions}"
+                                 IsVisible="{Binding SessionsList.SwitchTargetHasUnread}"/>
                     </Panel>
                 </Button>
 
@@ -517,6 +523,10 @@
                         <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}" Content="{l:Text peer.ban}"
                                               IsVisible="{Binding CanBan}" Command="{Binding Ban}" Click="OnPeerMenuClick"/>
                     </StackPanel>
+                    <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                                          IsVisible="{Binding CanOpenDirectChat}"
+                                          Command="{Binding OpenDirectChatCommand}" CommandParameter="{Binding PeerData.UserId}"
+                                          Click="OnPeerMenuClick"/>
                     <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
                                           Command="{Binding ViewProfileCommand}" CommandParameter="{Binding PeerData.UserId}"
                                           Click="OnPeerMenuClick"/>

@@ -66,13 +66,6 @@
             </Grid>
         </Border>
 
-        <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text privateChats.showChannels}"
-                              IsVisible="{Binding SessionList.CanShowChannels}"
-                              menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
-        <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.showPrivate}"
-                              IsVisible="{Binding !SessionList.IsPrivateMode}"
-                              menus:FlyoutMenu.CloseOnClick="True" Command="{Binding ToggleListModeCommand}"/>
-        <Separator IsVisible="{Binding SessionList.Access.CanViewServerChannels}"/>
         <menus:MenuItemButton Icon="{StaticResource PlusIcon}" Content="{l:Text main.createSession}"
                               menus:FlyoutMenu.CloseOnClick="True"
                               IsVisible="{Binding SessionList.CanCreateSession}"

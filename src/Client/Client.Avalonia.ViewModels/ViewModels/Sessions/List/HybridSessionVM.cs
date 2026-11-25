@@ -141,6 +141,9 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
     private readonly IScreenWatchService _screenWatch;
     private readonly PeerStatsService _peerStats;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+
+    /// <summary>Given to the peers for their menus: the direct chat with them.</summary>
+    public ReactiveCommand<int, RxVoid>? OpenDirectChatCommand { get; init; }
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
@@ -226,6 +229,7 @@ public class HybridSessionVM : ReactiveObject, ISessionVM
         var added = new PeerVM(peerModel, peerModel.UserId == _currentUserId, _playbackService,
             _viewProfileCommand, ToggleScreenWatch, KickPeer, BanPeer, AdmitPeer, PokePeer)
         {
+            OpenDirectChatCommand = OpenDirectChatCommand,
             IsInEnteredSession = IsEntered,
             IsWatchingScreen = _screenWatch.IsWatching(Model.Id, peerModel.UserId),
             GetConnectionStats = () => _peerStats.Get(Model.Id, peerModel.UserId)

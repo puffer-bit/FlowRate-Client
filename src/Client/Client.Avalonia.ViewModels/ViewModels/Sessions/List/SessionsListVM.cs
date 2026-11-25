@@ -85,10 +85,56 @@ public partial class SessionsListVM : ReactiveObject
             this.RaisePropertyChanged(nameof(CanCreateCategory));
             RebuildRows();
             RaiseStateProperties();
+            RaiseSwitchProperties();
             if (CoordinatorInstanceId is { } id) _ = _preferences.SavePrivateModeAsync(id, value);
         }
     }
     public void ToggleListMode() => IsPrivateMode = !IsPrivateMode;
+
+    // What the personal chats and the chats of the server hold unread, by the rules of the chat counters
+    private bool _privateHasUnread, _privateHasMentions, _channelsHasUnread, _channelsHasMentions;
+
+    /// <summary>
+    /// The list the switcher leads to has unread messages: its button lights up.
+    /// </summary>
+    public bool SwitchTargetHasUnread => IsPrivateMode ? _channelsHasUnread : _privateHasUnread;
+
+    /// <summary>
+    /// The list the switcher leads to has unread mentions: its mark takes the mention color.
+    /// </summary>
+    public bool SwitchTargetHasMentions => IsPrivateMode ? _channelsHasMentions : _privateHasMentions;
+
+    private void RefreshSwitchUnread()
+    {
+        bool privateUnread = false, privateMentions = false, channelsUnread = false, channelsMentions = false;
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+        {
+            if (chat.IsPrivate)
+            {
+                privateUnread |= chat.HasUnread;
+                privateMentions |= chat.MentionCount > 0;
+            }
+            else
+            {
+                channelsUnread |= chat.HasUnread;
+                channelsMentions |= chat.MentionCount > 0;
+            }
+        }
+
+        if (privateUnread == _privateHasUnread && privateMentions == _privateHasMentions
+            && channelsUnread == _channelsHasUnread && channelsMentions == _channelsHasMentions)
+            return;
+
+        (_privateHasUnread, _privateHasMentions) = (privateUnread, privateMentions);
+        (_channelsHasUnread, _channelsHasMentions) = (channelsUnread, channelsMentions);
+        RaiseSwitchProperties();
+    }
+
+    private void RaiseSwitchProperties()
+    {
+        this.RaisePropertyChanged(nameof(SwitchTargetHasUnread));
+        this.RaisePropertyChanged(nameof(SwitchTargetHasMentions));
+    }
 
     /// <summary>What the current user may do; the list offers only that.</summary>
     public AccessVM Access { get; }
@@ -159,6 +205,9 @@ public partial class SessionsListVM : ReactiveObject
     private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
     private readonly ReactiveCommand<int, RxVoid> _deleteSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+
+    /// <summary>Opens the direct chat with a user; offered in the menus of the peers.</summary>
+    public ReactiveCommand<int, RxVoid>? OpenDirectChatCommand { get; init; }
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
@@ -514,7 +563,10 @@ public partial class SessionsListVM : ReactiveObject
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
             _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
-            _banUserCommand, _admitPeerCommand, _pokePeerCommand);
+            _banUserCommand, _admitPeerCommand, _pokePeerCommand)
+        {
+            OpenDirectChatCommand = OpenDirectChatCommand
+        };
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);

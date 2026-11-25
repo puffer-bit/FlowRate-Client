@@ -186,7 +186,11 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public bool IsSenderDeleted
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanWriteToSender));
+        }
     }
 
     /// <summary>
@@ -605,6 +609,15 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM
     public void SaveFileAs() => _ = SaveFileAsAsync();
 
     public void ViewProfile() => _ = ViewProfileAsync();
+
+    /// <summary>The message menu offers a direct chat with the author: someone else, still there.</summary>
+    public bool CanWriteToSender => !IsSenderDeleted && CanOpenDirectChat(Message.SenderUserId);
+
+    public void WriteToSender()
+    {
+        if (CanWriteToSender)
+            OpenDirectChat(Message.SenderUserId);
+    }
 
     public void OpenSenderProfile()
     {

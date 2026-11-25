@@ -371,7 +371,10 @@ public partial class MainWindowVM : ReactiveObject
             playback, voiceActivity, screenWatch, peerStats, listPreferences,
             ChatReads,
             Access,
-            loggerFactory.CreateLogger<SessionsListVM>());
+            loggerFactory.CreateLogger<SessionsListVM>())
+        {
+            OpenDirectChatCommand = _users.OpenDirectChatCommand
+        };
         ServerTitle = new ServerTitleVM(CreateSessionCommand, SessionsList.CreateCategoryCommand,
             OpenServerSettingsCommand, DisconnectCommand, _users.ManageSecurityCommand, Access)
         { SessionList = SessionsList };

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -36,55 +37,101 @@
         <Style Selector="Button.serverTitle:flyout-open Path.chevron">
             <Setter Property="RenderTransform" Value="rotate(180deg)"/>
         </Style>
+
+        <!-- The switch between the personal chats and the channels, as on the phone -->
+        <Style Selector="Button.listSwitch">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Something is unread in the list the switch leads to; red for mentions -->
+        <Style Selector="Ellipse.unread-dot">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="Fill" Value="{DynamicResource UnreadBadgeBrush}"/>
+        </Style>
+        <Style Selector="Ellipse.unread-dot.mention">
+            <Setter Property="Fill" Value="{DynamicResource MentionBadgeBrush}"/>
+        </Style>
     </UserControl.Styles>
 
-    <Button Classes="ghost serverTitle"
-            HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Stretch"
-            VerticalAlignment="Center"
-            IsEnabled="{Binding IsReady}"
-            ToolTip.Tip="{Binding Address}"
-            AutomationProperties.Name="{Binding Address}">
+    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="2">
+        <Button Grid.Column="0" Classes="ghost serverTitle"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                VerticalAlignment="Center"
+                IsEnabled="{Binding IsReady}"
+                ToolTip.Tip="{Binding Address}"
+                AutomationProperties.Name="{Binding Address}">
 
-        <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedLeft">
-                <mainViews:ServerTitleFlyout/>
-            </Flyout>
-        </Button.Flyout>
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                    <mainViews:ServerTitleFlyout/>
+                </Flyout>
+            </Button.Flyout>
 
-        <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
 
-            <!-- Takes the place the avatar has in the user card -->
-            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="{StaticResource SurfaceCornerRadius}"
-                    Background="{DynamicResource DarkBackgroundBrush}"
-                    VerticalAlignment="Center">
-                <Panel>
-                    <Image Width="18" Height="18" Source="{StaticResource ServerIcon}"
-                           IsVisible="{Binding IsReady}"/>
-                    <Image Width="18" Height="18" Source="{StaticResource DashInCircleIcon}"
-                           IsVisible="{Binding !IsReady}"/>
-                </Panel>
-            </Border>
+                <!-- Takes the place the avatar has in the user card -->
+                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="{StaticResource SurfaceCornerRadius}"
+                        Background="{DynamicResource DarkBackgroundBrush}"
+                        VerticalAlignment="Center">
+                    <Panel>
+                        <Image Width="18" Height="18" Source="{StaticResource ServerIcon}"
+                               IsVisible="{Binding IsReady}"/>
+                        <Image Width="18" Height="18" Source="{StaticResource DashInCircleIcon}"
+                               IsVisible="{Binding !IsReady}"/>
+                    </Panel>
+                </Border>
 
-            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayName}"
-                                       FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis"/>
-                <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayAddress}"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       FontSize="11"
-                                       TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayName}"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"/>
+                    <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayAddress}"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
 
-            <Path Grid.Column="2" Classes="chevron"
-                  Width="10" Height="6" Margin="0,0,4,0"
-                  VerticalAlignment="Center"
-                  Stretch="Uniform"
-                  Data="M0,0 L5,5 L10,0"
-                  Stroke="{DynamicResource SecondaryTextBrush}"
-                  StrokeThickness="1.5"
-                  StrokeLineCap="Round"
-                  StrokeJoin="Round"/>
-        </Grid>
-    </Button>
+                <Path Grid.Column="2" Classes="chevron"
+                      Width="10" Height="6" Margin="0,0,4,0"
+                      VerticalAlignment="Center"
+                      Stretch="Uniform"
+                      Data="M0,0 L5,5 L10,0"
+                      Stroke="{DynamicResource SecondaryTextBrush}"
+                      StrokeThickness="1.5"
+                      StrokeLineCap="Round"
+                      StrokeJoin="Round"/>
+            </Grid>
+        </Button>
+
+        <!-- The personal chats or the channels of the server; the icon shows where a click leads, the dot
+             whether something is unread there -->
+        <Button Grid.Column="1" Classes="ghost listSwitch"
+                Command="{Binding ToggleListModeCommand}">
+            <Button.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsReady"/>
+                    <Binding Path="SessionList.Access.CanViewServerChannels"/>
+                </MultiBinding>
+            </Button.IsVisible>
+            <Panel>
+                <Image Width="20" Height="20" Source="{StaticResource HashIcon}"
+                       IsVisible="{Binding SessionList.IsPrivateMode}"
+                       ToolTip.Tip="{l:Text privateChats.showChannels}"/>
+                <Image Width="20" Height="20" Source="{StaticResource SendIcon}"
+                       IsVisible="{Binding !SessionList.IsPrivateMode}"
+                       ToolTip.Tip="{l:Text privateChats.showPrivate}"/>
+                <Ellipse Classes="unread-dot" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-2,-4,0"
+                         Classes.mention="{Binding SessionList.SwitchTargetHasMentions}"
+                         IsVisible="{Binding SessionList.SwitchTargetHasUnread}"/>
+            </Panel>
+        </Button>
+    </Grid>
 </UserControl>

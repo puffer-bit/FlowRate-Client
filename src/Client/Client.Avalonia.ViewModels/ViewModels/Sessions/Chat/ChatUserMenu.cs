@@ -1,5 +1,8 @@
+using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Media;
 using Client.Avalonia.Controls.Menus;
 using Client.Avalonia.Localization;
@@ -9,7 +12,9 @@ namespace Client.ViewModels.Sessions.Chat;
 /// <summary>The same user actions for authors and mentions on both clients.</summary>
 public static class ChatUserMenu
 {
-    public static void Open(Control target, ChatMessageVM message, int userId, string? name, bool isDeleted = false)
+    /// <param name="picked">Called once an action is picked, e.g. to close the menu the target is in.</param>
+    public static void Open(Control target, ChatMessageVM message, int userId, string? name, bool isDeleted = false,
+        Action? picked = null)
     {
         var profile = new MenuItemButton
         {
@@ -33,24 +38,41 @@ public static class ChatUserMenu
 
         var menu = new Flyout
         {
-            Content = new StackPanel { Spacing = 2, Children = { profile, direct, mention } }
+            Content = new StackPanel { Spacing = 2, Children = { mention, direct, profile } }
         };
         profile.Click += (_, _) =>
         {
             menu.Hide();
+            picked?.Invoke();
             message.OpenUserProfile(userId);
         };
         direct.Click += (_, _) =>
         {
             menu.Hide();
+            picked?.Invoke();
             message.OpenDirectChat(userId);
         };
         mention.Click += (_, _) =>
         {
             menu.Hide();
+            picked?.Invoke();
             message.MentionUser(userId, name!);
         };
         menu.ShowAt(target, true);
+    }
+
+    /// <summary>
+    /// A row of the readers of a message was pressed, by any button or a tap: the menu of that reader.
+    /// </summary>
+    public static void OpenForReader(Control row, PointerReleasedEventArgs e, Action? picked = null)
+    {
+        if (row.DataContext is not ChatMessageReaderVM reader
+            || row.GetVisualAncestors().OfType<Control>().Select(c => c.DataContext)
+                .OfType<ChatMessageVM>().FirstOrDefault() is not { } message)
+            return;
+
+        Open(row, message, reader.UserId, reader.Name, picked: picked);
+        e.Handled = true;
     }
 
     public static bool TryOpenContext(ChatMessageVM message, Control avatar, Control name, TextBlock text,

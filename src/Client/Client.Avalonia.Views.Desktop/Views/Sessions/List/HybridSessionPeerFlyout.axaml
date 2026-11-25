@@ -192,6 +192,11 @@
             </StackPanel>
         </StackPanel>
 
+        <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              IsVisible="{Binding CanOpenDirectChat}"
+                              Command="{Binding OpenDirectChatCommand}"
+                              CommandParameter="{Binding PeerData.UserId}"/>
         <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
                               menus:FlyoutMenu.CloseOnClick="True"
                               Command="{Binding ViewProfileCommand}"

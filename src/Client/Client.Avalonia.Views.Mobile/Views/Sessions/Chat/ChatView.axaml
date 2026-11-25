@@ -780,14 +780,18 @@
                             <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="chatVm:ChatMessageReaderVM">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
-                                            <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
-                                                                AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
-                                                       FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                        </Grid>
+                                        <!-- Any press on a reader opens the same menu as an author in the chat -->
+                                        <Border Classes="reader-row" Background="Transparent" Cursor="Hand" CornerRadius="6"
+                                                PointerReleased="OnReaderPointerReleased">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
+                                                <avatars:UserAvatar Width="28" Height="28" UserName="{Binding Name}"
+                                                                    AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                           FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -848,6 +852,9 @@
                                                   IsVisible="{Binding HasContextFile}"
                                                   IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
                                                   Command="{Binding SaveFileAs}"/>
+                            <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                                                  IsVisible="{Binding CanWriteToSender}"
+                                                  Command="{Binding WriteToSender}"/>
                             <!-- The profile is also where a user is renamed -->
                             <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}"
                                                   IsEnabled="{Binding !IsSenderDeleted}"

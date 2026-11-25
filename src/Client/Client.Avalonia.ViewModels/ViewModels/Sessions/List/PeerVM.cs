@@ -205,6 +205,11 @@ public class PeerVM : ReactiveObject
 
     public ReactiveCommand<int, RxVoid> ViewProfileCommand { get; }
 
+    /// <summary>Opens the direct chat with the peer; the menu offers it above the profile.</summary>
+    public ReactiveCommand<int, RxVoid>? OpenDirectChatCommand { get; init; }
+
+    public bool CanOpenDirectChat => !IsCurrentUser && OpenDirectChatCommand != null;
+
     public double MaxVolume => IsOverdriveEnabled ? PeerPlayback.OverdriveMaxVolume : PeerPlayback.NormalMaxVolume;
 
     private readonly IPeerPlaybackService _playbackService;

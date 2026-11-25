@@ -492,6 +492,13 @@ public partial class ChatView : UserControl
         return true;
     }
 
+    // A tap on a reader of an own message: the same menu as on an author in the chat
+    private void OnReaderPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (sender is Control row)
+            ChatUserMenu.OpenForReader(row, e, () => TryCloseMenu());
+    }
+
     private void OnSelectMessageTextClick(object? sender, RoutedEventArgs e)
     {
         if (MessageMenu.DataContext is not ChatMessageVM message || string.IsNullOrEmpty(message.Message.TextContent?.Text))

@@ -62,6 +62,7 @@ public partial class SessionsListVM
         _shownLayout = SessionLayout.Empty;
         while (MoveTargets.Count > 1)
             MoveTargets.RemoveAt(MoveTargets.Count - 1);
+        RefreshSwitchUnread();
     }
 
     private void SetLayout(SessionLayout layout, IEnumerable<int> collapsedCategoryIds)
@@ -99,6 +100,7 @@ public partial class SessionsListVM
         if (!PrivateChats.SequenceEqual(privateChats))
             PrivateChats = privateChats;
         RaiseStateProperties();
+        RefreshSwitchUnread();
 
         if (IsPrivateMode)
         {
@@ -298,6 +300,8 @@ public partial class SessionsListVM
 
             header.SetCounts(unread, mentions);
         }
+
+        RefreshSwitchUnread();
     }
 
     private void ToggleCategoryCollapse(SessionCategoryVM category)
