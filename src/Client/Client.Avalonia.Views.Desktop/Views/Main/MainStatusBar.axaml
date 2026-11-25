@@ -12,8 +12,9 @@
              x:Class="Client.Views.Main.MainStatusBar">
 
     <UserControl.Styles>
-        <Style Selector="Ellipse.connectionDot"><Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/></Style>
-        <Style Selector="Ellipse.connectionDot.offline"><Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/></Style>
+        <!-- Quiet while all is well; only a lost connection stands out -->
+        <Style Selector="Ellipse.connectionDot"><Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}"/></Style>
+        <Style Selector="Ellipse.connectionDot.offline"><Setter Property="Fill" Value="{DynamicResource WarningBrush}"/></Style>
     </UserControl.Styles>
     <Border Height="28" Padding="12,0"
             Background="{DynamicResource GeneralBrush}"
