@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -55,6 +56,7 @@ public partial class MainView : UserControl
     private readonly IServiceProvider? _services;
     private TopLevel? _topLevel;
     private IInputPane? _inputPane;
+    private IActivatableLifetime? _activatable;
 
     // Where the open keyboard starts, in the coordinates of the top level; null while it is closed
     private double? _keyboardTop;
@@ -184,6 +186,13 @@ public partial class MainView : UserControl
         if (_inputPane != null)
             _inputPane.StateChanged += OnInputPaneStateChanged;
 
+        _activatable = global::Avalonia.Application.Current?.TryGetFeature<IActivatableLifetime>();
+        if (_activatable != null)
+        {
+            _activatable.Activated += OnAppActivated;
+            _activatable.Deactivated += OnAppDeactivated;
+        }
+
         // The view comes back to the tree when the activity is created again; the application is loaded once
         if (!_isInitialized && _viewModel != null)
         {
@@ -199,8 +208,14 @@ public partial class MainView : UserControl
             _topLevel.BackRequested -= OnBackRequested;
         if (_inputPane != null)
             _inputPane.StateChanged -= OnInputPaneStateChanged;
+        if (_activatable != null)
+        {
+            _activatable.Activated -= OnAppActivated;
+            _activatable.Deactivated -= OnAppDeactivated;
+        }
         _topLevel = null;
         _inputPane = null;
+        _activatable = null;
         _keyboardTop = null;
         MakeRoomForKeyboard();
 
@@ -215,6 +230,31 @@ public partial class MainView : UserControl
             MobilePlatform.Current?.DismissTextMenu();
         _keyboardTop = e.NewState == InputPaneState.Open ? e.EndRect.Y : null;
         MakeRoomForKeyboard();
+    }
+
+    // Leaving for another application hides the keyboard without its animation, and the input pane
+    // reports a change only with one: the room it took would stay empty at the bottom on return
+    private void OnAppDeactivated(object? sender, ActivatedEventArgs e)
+    {
+        if (e.Kind != ActivationKind.Background)
+            return;
+        _keyboardTop = null;
+        MakeRoomForKeyboard();
+    }
+
+    // A keyboard that does come back opens with its animation; one that does not leaves no room behind
+    private void OnAppActivated(object? sender, ActivatedEventArgs e)
+    {
+        if (e.Kind != ActivationKind.Background)
+            return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_inputPane is { State: not InputPaneState.Open })
+            {
+                _keyboardTop = null;
+                MakeRoomForKeyboard();
+            }
+        }, DispatcherPriority.Background);
     }
 
     // The system changes the padding as its bars come and go, which moves the edge the room is counted from
@@ -232,6 +272,10 @@ public partial class MainView : UserControl
 
         // Counted from where the content ends, not from the edge of the screen: the gesture area
         // under the content is a part of what the keyboard takes
+        // The pane may have closed without telling, see OnAppDeactivated
+        if (_inputPane is { State: not InputPaneState.Open })
+            _keyboardTop = null;
+
         if (_keyboardTop is { } top && _topLevel != null
             && this.TranslatePoint(new Point(0, Bounds.Height), _topLevel) is { } bottom)
         {
