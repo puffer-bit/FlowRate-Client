@@ -82,8 +82,6 @@ public sealed class RoleEditorVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool CanDelete => CanEdit && !IsEveryone;
-
     public bool IsDirty
     {
         get;
@@ -165,7 +163,6 @@ public sealed class RoleEditorVM : ReactiveObject
     private void ApplyAccess(CoordinatorPermissions permissions)
     {
         CanEdit = Role != null && permissions.CanManage(Role);
-        this.RaisePropertyChanged(nameof(CanDelete));
 
         // A permission the role has may stay; only the ones of the current user may be added
         foreach (var option in Permissions)
@@ -185,6 +182,8 @@ public sealed class RoleEditorVM : ReactiveObject
 
     private void OnEdited()
     {
+        // Followed by the dot of the header
+        this.RaisePropertyChanged(nameof(SelectedColor));
         if (_isLoading || Permissions == null)
             return;
 

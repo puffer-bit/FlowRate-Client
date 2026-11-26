@@ -78,7 +78,7 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
 
     public ReactiveCommand<RxVoid, RxVoid> CreateCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
-    public ReactiveCommand<RxVoid, RxVoid> DeleteCommand { get; }
+    public ReactiveCommand<RoleRowVM, RxVoid> DeleteCommand { get; }
     public ReactiveCommand<RoleRowVM, RxVoid> MoveUpCommand { get; }
     public ReactiveCommand<RoleRowVM, RxVoid> MoveDownCommand { get; }
 
@@ -96,8 +96,7 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
                 nameof(RoleEditorVM.CanEdit), nameof(RoleEditorVM.NameError))
             .Select(editor => editor is { IsDirty: true, IsChangedElsewhere: false, CanEdit: true, NameError: null });
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
-        DeleteCommand = ReactiveCommand.CreateFromTask(DeleteAsync,
-            Editor.WatchProperties(nameof(RoleEditorVM.CanDelete)).Select(editor => editor.CanDelete));
+        DeleteCommand = ReactiveCommand.CreateFromTask<RoleRowVM>(DeleteAsync);
         MoveUpCommand = ReactiveCommand.CreateFromTask<RoleRowVM>(row => MoveAsync(row, 1));
         MoveDownCommand = ReactiveCommand.CreateFromTask<RoleRowVM>(row => MoveAsync(row, -1));
         ReloadCommand = ReactiveCommand.Create(() => Editor.Load(SelectedRole?.Role, _coordinatorSession.Permissions));
@@ -132,7 +131,7 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
             {
                 var index = movable.IndexOf(role);
                 var canManage = permissions.CanManage(role);
-                Roles.Add(new RoleRowVM(role, canManage,
+                Roles.Add(new RoleRowVM(this, role, canManage,
                     canMoveUp: !role.IsEveryone && canManage && index > 0 && permissions.CanManage(movable[index - 1]),
                     canMoveDown: !role.IsEveryone && canManage && index >= 0 && index < movable.Count - 1));
             }
@@ -193,11 +192,12 @@ public sealed class RolesTabVM : ReactiveObject, IDisposable
             Editor.Load(saved, _coordinatorSession.Permissions);
     }
 
-    private async Task DeleteAsync()
+    private async Task DeleteAsync(RoleRowVM row)
     {
-        if (Editor.Role is not { } role)
+        if (!row.CanDelete)
             return;
 
+        var role = row.Role;
         if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Format("serverSettings.roles.delete.question", ("name", role.Name)),
                 Strings.Get("serverSettings.roles.delete.title"))) != Result.Yes)
