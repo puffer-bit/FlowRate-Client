@@ -20,7 +20,10 @@ public class UserCardVM : ReactiveObject
 
     public string StatusText => UserStatusText.Of(Presence);
 
-    /// <summary>The status the user picked.</summary>
+    /// <summary>
+    /// The status the user picked, or idle or sleeping instead of online while all their devices are idle, as the
+    /// server shows it to them.
+    /// </summary>
     public UserStatus Status
     {
         get;
