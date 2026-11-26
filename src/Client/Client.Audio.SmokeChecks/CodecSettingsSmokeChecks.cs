@@ -24,7 +24,6 @@ internal static class CodecSettingsSmokeChecks
         foreach (var (codec, factory, bitrateProperty, value) in new[]
         {
             (VideoCodec.H264, "openh264enc", "bitrate", "1500000"),
-            (VideoCodec.AV1, "svtav1enc", "target-bitrate", "1500"),
             (VideoCodec.VP8, "vp8enc", "target-bitrate", "1500000"),
             (VideoCodec.VP9, "vp9enc", "target-bitrate", "1500000")
         })

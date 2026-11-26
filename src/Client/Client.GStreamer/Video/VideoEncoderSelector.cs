@@ -158,8 +158,8 @@ public static class VideoEncoderSelector
             ? [VideoToolbox("vtenc_h264_hw"), OpenH264]
             : [Nvidia("nvcudah264enc"), NvidiaLegacy("nvh264enc"), Va("vah264enc"), Va("vah264lpenc"), OpenH264],
         VideoCodec.AV1 => OperatingSystem.IsWindows()
-            ? [Nvidia("nvd3d11av1enc"), Qsv("qsvav1enc"), Amf("amfav1enc"), SvtAv1]
-            : [Nvidia("nvcudaav1enc"), Nvidia("nvav1enc"), Va("vaav1enc"), Va("vaav1lpenc"), SvtAv1],
+            ? [Nvidia("nvd3d11av1enc"), Qsv("qsvav1enc"), Amf("amfav1enc")]
+            : [Nvidia("nvcudaav1enc"), Nvidia("nvav1enc"), Va("vaav1enc"), Va("vaav1lpenc")],
         VideoCodec.VP8 => [Vpx("vp8enc")],
         VideoCodec.VP9 => OperatingSystem.IsWindows()
             ? [Qsv("qsvvp9enc"), Vpx("vp9enc")]
@@ -229,12 +229,10 @@ public static class VideoEncoderSelector
         [("bitrate", Format(kbps * 1000)), ("usage-type", "screen"), ("rate-control", "bitrate"), ("complexity", "low")],
         [("gop-size", "2147483647"), ("scene-change-detection", "false")]);
 
-    // Presets 10 and above are the real-time ones. An intra period of -1 is the keyframe at the start
-    // alone, where the automatic one put in more
-    private static readonly Candidate SvtAv1 = new("svtav1enc", false, kbps =>
-        [("target-bitrate", Format(kbps)), ("preset", "12"),
-         ("parameters-string", "pred-struct=1:rc=2:lookahead=0")],
-        [("intra-period-length", "-1")]);
+    // AV1 has no software encoder. svtav1enc of the bundled runtime (GStreamer 1.28.7, SVT-AV1 3.1.2)
+    // encodes one frame in the low-delay structure, which CBR needs, and then blocks for good in
+    // svt_av1_enc_get_packet: it does not answer keyframe requests, and stopping it hangs. The
+    // random-access structure runs, but holds frames back for a whole mini-GOP
 
     // libvpx takes bit/s; deadline=1 is its real-time mode. Its own keyframes, one each 128 frames,
     // would be a burst about every second at a high frame rate

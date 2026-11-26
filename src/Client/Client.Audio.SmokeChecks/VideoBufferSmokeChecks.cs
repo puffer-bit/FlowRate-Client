@@ -23,7 +23,6 @@ internal static class VideoBufferSmokeChecks
         CheckEncodingAndDecoding(VideoCodec.H264, "openh264enc");
         CheckEncodingAndDecoding(VideoCodec.VP8, "vp8enc");
         CheckEncodingAndDecoding(VideoCodec.VP9, "vp9enc");
-        CheckEncodingAndDecoding(VideoCodec.AV1, "svtav1enc");
         Console.WriteLine("Video buffer smoke checks passed.");
     }
 
