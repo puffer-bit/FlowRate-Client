@@ -58,7 +58,6 @@ public partial class ChatVideoPlayer : UserControl
         {
             DataContext = DataContext,
             Title = (DataContext as ChatFileVM)?.FileName ?? string.Empty,
-            WindowState = WindowState.FullScreen,
             Background = global::Avalonia.Media.Brushes.Black
         };
         _fullscreen = window;
@@ -94,7 +93,7 @@ public partial class ChatVideoPlayer : UserControl
             Content = PlayerBorder;
             _session?.RedisplayFrame();
         };
-        window.Show(owner);
+        FullscreenWindow.Show(window, owner);
         _session?.RedisplayFrame();
     }
 

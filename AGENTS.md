@@ -1,6 +1,6 @@
 ﻿# FlowRate Client
 
-FlowRate Client is a Windows, Linux, and Android application for voice sessions, screen sharing, and chat on self-hosted FlowRate servers. The client is built with .NET 10 and Avalonia, with ReactiveUI for presentation logic.
+FlowRate Client is a Windows, macOS, Linux, and Android application for voice sessions, screen sharing, and chat on self-hosted FlowRate servers. The client is built with .NET 10 and Avalonia, with ReactiveUI for presentation logic.
 
 This repository contains the client. Shared protocol definitions are maintained in the `src/Shared` Git submodule. The main solution is `src/FlowRateClient.sln`.
 
@@ -103,7 +103,7 @@ Consult the relevant design and runtime documentation before changing media beha
 
 ## Distribution
 
-- Desktop distribution supports Windows x64 and Linux x64, with JIT and NativeAOT variants. Android is distributed as an APK.
+- Desktop distribution supports Windows x64, macOS arm64 (Apple silicon), and Linux x64, with JIT and NativeAOT variants. The macOS build is signed ad hoc only. Android is distributed as an APK.
 - Installed desktop packages use Velopack updates. Standalone archives require manual replacement.
 - Preserve platform, runtime variant, and release/development channel separation in update behavior.
 - Keep launch options temporary: they must not overwrite saved preferences, and application-triggered restarts must preserve applicable overrides.

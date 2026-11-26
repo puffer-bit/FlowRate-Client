@@ -2,6 +2,7 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Client.Views.Shared.Common;
 
 namespace Client.Views.Sessions.Chat;
 
@@ -25,7 +26,7 @@ internal partial class ImagePreviewView : UserControl
     {
         if (_leaveFullscreen != null) { _leaveFullscreen(); return; }
         if (_fullscreen != null || Preview == null || TopLevel.GetTopLevel(this) is not Window owner) return;
-        var window = new Window { WindowState = WindowState.FullScreen, Title = Preview.FileName };
+        var window = new Window { Title = Preview.FileName };
         window.Content = new ImagePreviewView { DataContext = Preview, _leaveFullscreen = window.Close };
         _fullscreen = window;
         IsVisible = false;
@@ -35,6 +36,6 @@ internal partial class ImagePreviewView : UserControl
         {
             if (key.Key == Key.Escape) { window.Close(); key.Handled = true; }
         }, RoutingStrategies.Tunnel);
-        window.Show(owner);
+        FullscreenWindow.Show(window, owner);
     }
 }

@@ -13,7 +13,7 @@
 
 Voice, screen sharing, and chat for communities running their own FlowRate server.
 
-FlowRate Client is a desktop application for Windows and Linux. Connect to your community’s server to exchange messages, join voice sessions, and share your screen.
+FlowRate Client is a desktop application for Windows, macOS, and Linux. Connect to your community’s server to exchange messages, join voice sessions, and share your screen.
 
 You need a running FlowRate server to connect. Ask your community administrator for its address and any required password.
 
@@ -84,6 +84,7 @@ The packaging scripts target the following platforms:
 |---|---|---|
 | Windows x64 | `Setup.exe`, standalone `.zip` | Installed packages support automatic updates. |
 | Linux x64 | `.AppImage`, standalone `.tar.gz` | Installed packages support automatic updates. |
+| macOS arm64 (Apple silicon) | `Setup.pkg`, `FlowRate.app` in a standalone `.zip` | Installed packages support automatic updates. Signed ad hoc only: allow the first start in System Settings → Privacy & Security, or run `xattr -dr com.apple.quarantine FlowRate.app`. |
 
 Choose an asset for your platform from [GitHub Releases](https://github.com/puffer-bit/FlowRate-Client/releases). Available assets depend on the release. Desktop JIT and NativeAOT variants use separate update channels.
 
@@ -145,6 +146,7 @@ The desktop data directory contains `client.db`, logs, media cache, sound packs,
 |---|---|
 | Windows | `%LocalAppData%\FlowRate` |
 | Linux | The .NET `LocalApplicationData` directory plus `FlowRate`, normally `~/.local/share/FlowRate` |
+| macOS | `~/Library/Application Support/FlowRate` |
 
 Choose another directory with `--data-dir`:
 

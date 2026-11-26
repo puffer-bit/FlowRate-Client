@@ -9,6 +9,7 @@ using Client.Avalonia.Controls.Icons;
 using Client.Avalonia.Controls.Images;
 using Client.Avalonia.Localization;
 using Client.ViewModels.Sessions.Chat;
+using Client.Views.Shared.Common;
 
 namespace Client.Views.Shared.Chat;
 
@@ -43,12 +44,12 @@ internal static class LinkImageLightbox
         {
             var window = new Window
             {
-                Title = preview.Title ?? preview.SiteName, WindowState = WindowState.FullScreen,
+                Title = preview.Title ?? preview.SiteName,
                 Content = layout, Background = Brushes.Black
             };
             window.Closed += (_, _) => preview.Hide();
             dismiss = window.Close;
-            window.Show(owner);
+            FullscreenWindow.Show(window, owner);
         }
         else
         {
