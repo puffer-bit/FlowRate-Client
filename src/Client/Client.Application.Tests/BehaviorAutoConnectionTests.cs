@@ -47,35 +47,38 @@ public class BehaviorAutoConnectionTests
     }
 
     [Fact]
-    public async Task LoadingRestoresExactIdentityWithoutChangingSavedTarget()
+    public async Task LoadingRestoresExactIdentityWithoutChangingSavedChoice()
     {
         var server = Server("first", 1, 2);
-        var behavior = new BehaviorStub { Target = (server, server.Users[1]) };
+        var behavior = new BehaviorStub { Choice = new AutoConnectChoice("first", 2) };
         var vm = new BehaviorControlVM(behavior, new AccountingStub([server, Server("empty")]));
 
         await vm.LoadCommand.Execute();
 
         Assert.Same(server, vm.SelectedServer);
         Assert.Same(server.Users[1], vm.SelectedIdentity);
-        Assert.Single(vm.SavedServers);
+        Assert.True(vm.IsIdentitySelectable);
+        // The last server first, then the servers with an account
+        Assert.Equal([vm.LastServer, server], vm.SavedServers);
+        Assert.Equal([vm.LastIdentity, ..server.Users], vm.Identities);
         Assert.Empty(behavior.Writes);
     }
 
     [Fact]
-    public async Task ChangingServerReplacesIdentityEvenWhenUserIdsMatch()
+    public async Task ChangingServerStartsFromItsLastIdentity()
     {
         var first = Server("first", 1);
         var second = Server("second", 1, 2);
-        var behavior = new BehaviorStub { Target = (first, first.Users[0]) };
+        var behavior = new BehaviorStub { Choice = new AutoConnectChoice("first", 1) };
         var vm = new BehaviorControlVM(behavior, new AccountingStub([first, second]));
         await vm.LoadCommand.Execute();
 
         vm.SelectedServer = second;
-        Assert.Same(second.Users[0], vm.SelectedIdentity);
-        Assert.Equal(("second", 1), behavior.Writes.Last());
+        Assert.Same(vm.LastIdentity, vm.SelectedIdentity);
+        Assert.Equal(new AutoConnectChoice("second", null), behavior.Writes.Last());
 
         vm.SelectedIdentity = second.Users[1];
-        Assert.Equal(("second", 2), behavior.Writes.Last());
+        Assert.Equal(new AutoConnectChoice("second", 2), behavior.Writes.Last());
 
         // Reopening the tab restores the persisted pair without writing it again.
         var count = behavior.Writes.Count;
@@ -85,18 +88,79 @@ public class BehaviorAutoConnectionTests
     }
 
     [Fact]
-    public async Task MissingTargetLeavesSelectionEmptyUntilUserChoosesServer()
+    public async Task LastServerComesWithItsLastIdentityOnly()
     {
         var server = Server("first", 1);
-        var behavior = new BehaviorStub();
+        var behavior = new BehaviorStub { Choice = new AutoConnectChoice("first", 1) };
         var vm = new BehaviorControlVM(behavior, new AccountingStub([server]));
         await vm.LoadCommand.Execute();
 
-        Assert.Null(vm.SelectedServer);
-        Assert.Null(vm.SelectedIdentity);
-        Assert.Empty(behavior.Writes);
-        vm.SelectedServer = server;
-        Assert.Equal(("first", 1), Assert.Single(behavior.Writes));
+        vm.SelectedServer = vm.LastServer;
+
+        Assert.False(vm.IsIdentitySelectable);
+        Assert.Equal([vm.LastIdentity], vm.Identities);
+        Assert.Same(vm.LastIdentity, vm.SelectedIdentity);
+        Assert.Equal(AutoConnectChoice.Last, Assert.Single(behavior.Writes));
+    }
+
+    [Fact]
+    public async Task NothingPickedOrPickedAndGoneShowsTheLastOnes()
+    {
+        var server = Server("first", 1);
+        foreach (var choice in new[] { AutoConnectChoice.Last, new AutoConnectChoice("gone", 4), new AutoConnectChoice("first", 9) })
+        {
+            var behavior = new BehaviorStub { Choice = choice };
+            var vm = new BehaviorControlVM(behavior, new AccountingStub([server]));
+            await vm.LoadCommand.Execute();
+
+            Assert.Same(choice.CoordinatorId == "first" ? server : vm.LastServer, vm.SelectedServer);
+            Assert.Same(vm.LastIdentity, vm.SelectedIdentity);
+            Assert.Empty(behavior.Writes);
+        }
+    }
+
+    [Fact]
+    public async Task ResetFollowsTheLastConnectionAgain()
+    {
+        var server = Server("first", 1);
+        var behavior = new BehaviorStub { Choice = new AutoConnectChoice("first", 1) };
+        var vm = new BehaviorControlVM(behavior, new AccountingStub([server]));
+        await vm.LoadCommand.Execute();
+
+        await vm.ResetAllAsync();
+
+        Assert.Same(vm.LastServer, vm.SelectedServer);
+        Assert.Equal(AutoConnectChoice.Last, behavior.Choice);
+        Assert.True(behavior.Settings.IsAutoConnectEnabled);
+    }
+
+    [Theory]
+    [InlineData(null, "connect.identity.lost.noDevice")]
+    [InlineData(LoginLostReason.Revoked, "connect.identity.lost.revoked")]
+    [InlineData(LoginLostReason.NotFound, "connect.identity.lost.notFound")]
+    [InlineData(LoginLostReason.LoggedOut, "connect.identity.lost.loggedOut")]
+    public async Task ConnectWindowTellsWhyASavedAccountHasToLogInAgain(LoginLostReason? reason, string key)
+    {
+        await TestUiThread.RunAsync(() =>
+        {
+            var vm = new ConnectWindowVM(new AccountingStub([]), null!, new BehaviorStub());
+            vm.SelectedIdentity = new SavedUserModel
+            {
+                CoordinatorId = "server", Id = 1, Username = "Alice", LoginLostReason = reason
+            };
+            Assert.Equal(Client.Avalonia.Localization.Strings.Get(key), vm.IdentityError);
+            Assert.True(vm.IsLoginFormVisible);
+
+            // An account that can log in, and the entries that are not accounts, show nothing
+            vm.SelectedIdentity = new SavedUserModel
+            {
+                CoordinatorId = "server", Id = 1, Username = "Alice", DeviceId = Guid.NewGuid(), DeviceKey = "key"
+            };
+            Assert.Null(vm.IdentityError);
+            vm.SelectedIdentity = vm.ExistingAccount;
+            Assert.Null(vm.IdentityError);
+            vm.CancelTasks();
+        });
     }
 
     [Theory]
@@ -137,6 +201,49 @@ public class BehaviorAutoConnectionTests
         });
     }
 
+    [Fact]
+    public async Task LoginWindowOpensOnTheAccountThatHasToLogInAgain()
+    {
+        var startup = new SavedCoordinatorModel
+        {
+            CoordinatorId = "startup", Address = "startup.local", Port = 26666, SaveOrder = 1,
+            Users =
+            [
+                new SavedUserModel { CoordinatorId = "startup", Id = 1, Username = "Bob" },
+                new SavedUserModel { CoordinatorId = "startup", Id = 3, Username = "Carol", LoginLostReason = LoginLostReason.Revoked }
+            ]
+        };
+        var latest = new SavedCoordinatorModel
+        {
+            CoordinatorId = "latest", Address = "latest.local", Port = 27777, SaveOrder = 3,
+            Users = [new SavedUserModel { CoordinatorId = "latest", Id = 2, Username = "Alice" }]
+        };
+        ConnectWindowVM? vm = null;
+        await TestUiThread.RunAsync(() =>
+        {
+            vm = new ConnectWindowVM(new AccountingStub([latest, startup]), null!, new BehaviorStub());
+            vm.PreferAccount("startup", 3);
+        });
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            var loaded = false;
+            await TestUiThread.RunAsync(() =>
+            {
+                Dispatcher.UIThread.RunJobs();
+                loaded = vm!.SelectedSavedServer != null && !vm.IsLoadingIdentities && vm.SelectedIdentity != null;
+            });
+            if (loaded) break;
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+        await TestUiThread.RunAsync(() =>
+        {
+            Assert.Equal("startup", vm!.SelectedSavedServer?.CoordinatorId);
+            Assert.Equal(3, vm.SelectedIdentity?.Id);
+            Assert.Equal(Client.Avalonia.Localization.Strings.Get("connect.identity.lost.revoked"), vm.IdentityError);
+            vm.CancelTasks();
+        });
+    }
+
     private static SavedCoordinatorModel Server(string id, params int[] users) => new()
     {
         CoordinatorId = id, Address = "localhost", Port = 26666,
@@ -148,15 +255,22 @@ public class BehaviorAutoConnectionTests
         public event Action<BehaviorSettings>? SettingsChanged { add { } remove { } }
         public BehaviorSettings Settings { get; set; } = new();
         public (SavedCoordinatorModel Coordinator, SavedUserModel User)? Target { get; set; }
-        public List<(string, int)?> Writes { get; } = [];
+        public AutoConnectChoice Choice { get; set; } = AutoConnectChoice.Last;
+        public List<AutoConnectChoice> Writes { get; } = [];
+        public List<(string, int)> Connections { get; } = [];
         public Task<(SavedCoordinatorModel Coordinator, SavedUserModel User)?> GetAutoConnectInstance() => Task.FromResult(Target);
-        public Task SetLastIdentityAsync((string CoordinatorId, int UserId) identity)
+        public Task<AutoConnectChoice> GetAutoConnectChoiceAsync() => Task.FromResult(Choice);
+        public Task SetAutoConnectChoiceAsync(AutoConnectChoice choice)
         {
-            Writes.Add(identity);
-            Target = (Server(identity.CoordinatorId, identity.UserId), new SavedUserModel { Id = identity.UserId });
+            Writes.Add(choice);
+            Choice = choice;
             return Task.CompletedTask;
         }
-        public Task RemoveLastIdentityAsync() { Writes.Add(null); Target = null; return Task.CompletedTask; }
+        public Task RecordConnectionAsync(string coordinatorId, int userId)
+        {
+            Connections.Add((coordinatorId, userId));
+            return Task.CompletedTask;
+        }
         public Task<BehaviorSettings> GetSettingsAsync() => Task.FromResult(Settings);
         public Task SaveSettingsAsync(BehaviorSettings settings)
         {
@@ -173,7 +287,7 @@ public class BehaviorAutoConnectionTests
         public Task RemoveUserIdentityAsync(string coordinatorId, int userId) => throw new NotSupportedException();
         public Task SaveCoordinatorInstanceAsync(SavedCoordinatorModel instanceModel, SavedUserModel userModel) => throw new NotSupportedException();
         public Task RemoveCoordinatorInstanceAsync(string coordinatorId) => throw new NotSupportedException();
-        public Task ForgetDeviceAsync(string coordinatorId, int userId) => throw new NotSupportedException();
+        public Task ForgetDeviceAsync(string coordinatorId, int userId, LoginLostReason reason) => throw new NotSupportedException();
         public Task KeepRecoveryPhraseAsync(string coordinatorId, int userId, string phrase) => throw new NotSupportedException();
         public Task<string?> GetRecoveryPhraseAsync(string coordinatorId, int userId) => throw new NotSupportedException();
         public Task ConfirmRecoveryPhraseSavedAsync(string coordinatorId, int userId, bool keepOnDevice) => throw new NotSupportedException();

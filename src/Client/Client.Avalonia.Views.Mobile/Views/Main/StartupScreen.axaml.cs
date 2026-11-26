@@ -42,5 +42,11 @@ internal partial class StartupScreen : UserControl
             viewModel.ContinueStartup();
     }
 
+    private void OnSkipConnectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowVM viewModel)
+            viewModel.SkipStartupConnection();
+    }
+
     private void OnExitClick(object? sender, RoutedEventArgs e) => MobilePlatform.Current?.Exit(removeFromRecents: true);
 }

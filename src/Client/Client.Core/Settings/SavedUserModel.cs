@@ -52,6 +52,9 @@ public class SavedUserModel
     /// <summary>The account can log in without asking: it has a device here, or an identity to move over.</summary>
     public bool CanLogIn => DeviceId != null && DeviceKey != null || !string.IsNullOrEmpty(UserIdentity);
 
+    /// <summary>Why the account lost its device here; null while it has one, or when nothing is known.</summary>
+    public LoginLostReason? LoginLostReason { get; init; }
+
     /// <summary>
     /// The avatar the user had when last seen; not saved with the account itself.
     /// </summary>
@@ -64,7 +67,7 @@ public class SavedUserModel
     public string? EntryIconKey { get; init; }
 
     /// <summary>The same account once its device here was ended: it has to log in again.</summary>
-    public SavedUserModel WithoutDevice() => new()
+    public SavedUserModel WithoutDevice(LoginLostReason reason) => new()
     {
         Id = Id,
         CoordinatorLabel = CoordinatorLabel,
@@ -75,6 +78,7 @@ public class SavedUserModel
         BackupKey = BackupKey,
         IsRecoveryPhraseSaved = IsRecoveryPhraseSaved,
         AvatarUrl = AvatarUrl,
-        EntryIconKey = EntryIconKey
+        EntryIconKey = EntryIconKey,
+        LoginLostReason = reason
     };
 }

@@ -91,20 +91,20 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             });
     }
 
-    public async Task<(string CoordinatorId, int UserId)?> GetAutoConnectInstanceAsync()
+    public async Task<AutoConnectChoice> GetAutoConnectChoiceAsync()
     {
         await using var connection = await _database.OpenAsync();
 
         var row = await connection.QueryFirstOrDefaultAsync<AutoConnectRow>(
             "SELECT AutoConnectCoordinatorId, AutoConnectUserId FROM BehaviorSettings WHERE Id = 1");
 
-        if (row is not { AutoConnectCoordinatorId: { } coordinatorId, AutoConnectUserId: { } userId })
-            return null;
-
-        return (coordinatorId, userId);
+        // An account without its server cannot be told apart from another server's: the whole choice is the last one
+        return row is { AutoConnectCoordinatorId: { } coordinatorId }
+            ? new AutoConnectChoice(coordinatorId, row.AutoConnectUserId)
+            : AutoConnectChoice.Last;
     }
 
-    public async Task SetAutoConnectInstanceAsync((string CoordinatorId, int UserId)? identity)
+    public async Task SetAutoConnectChoiceAsync(AutoConnectChoice choice)
     {
         await using var connection = await _database.OpenAsync();
 
@@ -114,7 +114,17 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             ON CONFLICT (Id) DO UPDATE SET
                 AutoConnectCoordinatorId = excluded.AutoConnectCoordinatorId,
                 AutoConnectUserId = excluded.AutoConnectUserId
-            """, new { coordinatorId = identity?.CoordinatorId, userId = identity?.UserId });
+            """, new { coordinatorId = choice.CoordinatorId, userId = choice.CoordinatorId == null ? null : choice.UserId });
+    }
+
+    public async Task<(string CoordinatorId, int? UserId)?> GetLastConnectionAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+
+        var row = await connection.QueryFirstOrDefaultAsync<LastConnectionRow>(
+            "SELECT LastCoordinatorId, LastUserId FROM BehaviorSettings WHERE Id = 1");
+
+        return row is { LastCoordinatorId: { } coordinatorId } ? (coordinatorId, row.LastUserId) : null;
     }
 }
 
@@ -124,3 +134,5 @@ internal sealed record BehaviorSettingsRow(bool IsAutoConnectEnabled, bool IsFal
     bool IsAutoIdleEnabled, int IdleAfterMinutes, int SleepAfterMinutes, bool KeepActiveDuringCalls);
 
 internal sealed record AutoConnectRow(string? AutoConnectCoordinatorId, int? AutoConnectUserId);
+
+internal sealed record LastConnectionRow(string? LastCoordinatorId, int? LastUserId);

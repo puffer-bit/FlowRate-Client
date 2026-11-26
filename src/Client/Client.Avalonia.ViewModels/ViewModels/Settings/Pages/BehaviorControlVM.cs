@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
+using Client.Avalonia.Localization;
 using Client.Core.Settings;
 using Client.Services;
 using ReactiveUI;
@@ -127,6 +128,19 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 
     public IReadOnlyList<string> QuickReactionChoices => ChatReactionEmoji.All;
 
+    /// <summary>The entry that follows the server of the last successful connection.</summary>
+    public SavedCoordinatorModel LastServer { get; } = new()
+    {
+        Name = Strings.Get("settings.behavior.server.last")
+    };
+
+    /// <summary>The entry that follows the account that last connected to the server.</summary>
+    public SavedUserModel LastIdentity { get; } = new()
+    {
+        Username = Strings.Get("settings.behavior.identity.last"), EntryIconKey = "RecentEmojiIcon"
+    };
+
+    /// <summary><see cref="LastServer"/>, then the saved servers that have an account.</summary>
     public IReadOnlyList<SavedCoordinatorModel> SavedServers
     {
         get;
@@ -138,20 +152,54 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         get;
         set
         {
-            if (ReferenceEquals(field, value))
+            // The list drops its selection while it is replaced; that is not the user's choice
+            if (value == null || ReferenceEquals(field, value))
                 return;
             this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(Identities));
-            SelectedIdentity = value?.Users.FirstOrDefault();
+            Identities = ReferenceEquals(value, LastServer)
+                ? [LastIdentity]
+                : [LastIdentity, ..value.Users];
+            this.RaisePropertyChanged(nameof(IsIdentitySelectable));
+            SelectedIdentity = LastIdentity;
+            SaveChoice();
         }
     }
 
-    public IReadOnlyList<SavedUserModel> Identities => SelectedServer?.Users ?? [];
+    /// <summary><see cref="LastIdentity"/>, then the accounts of the server picked.</summary>
+    public IReadOnlyList<SavedUserModel> Identities
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
+    /// <summary>The last server comes with its last account: only a server picked offers its accounts.</summary>
+    public bool IsIdentitySelectable => SelectedServer != null && !ReferenceEquals(SelectedServer, LastServer);
 
     public SavedUserModel? SelectedIdentity
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            // The list drops its selection while it is replaced; that is not the user's choice
+            if (value == null || ReferenceEquals(field, value))
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            SaveChoice();
+        }
+    }
+
+    // What the server and account lists stand for, written one at a time and only when it changes
+    private readonly System.Reactive.Subjects.Subject<AutoConnectChoice> _choices = new();
+
+    private void SaveChoice()
+    {
+        if (_isUpdating)
+            return;
+        var server = SelectedServer is { } picked && !ReferenceEquals(picked, LastServer) ? picked.CoordinatorId : null;
+        var user = server != null && SelectedIdentity is { } identity && !ReferenceEquals(identity, LastIdentity)
+            ? identity.Id
+            : (int?)null;
+        _choices.OnNext(new AutoConnectChoice(server, user));
     }
 
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
@@ -172,11 +220,9 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 
         ObserveSettingsChanges();
 
-        this.WatchProperty(nameof(SelectedIdentity), x => x.SelectedIdentity)
-            .Where(_ => !_isUpdating)
-            .Select(identity => Observable.FromAsync(() => identity == null
-                ? _behaviorService.RemoveLastIdentityAsync()
-                : _behaviorService.SetLastIdentityAsync((identity.CoordinatorId, identity.Id))))
+        _choices
+            .DistinctUntilChanged()
+            .Select(choice => Observable.FromAsync(() => _behaviorService.SetAutoConnectChoiceAsync(choice)))
             .Concat()
             .Subscribe();
     }
@@ -211,11 +257,14 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         try
         {
             Apply(await _behaviorService.GetSettingsAsync());
-            var saved = await _behaviorService.GetAutoConnectInstance();
-            SavedServers = (await _accountingService.GetAllSavedCoordinatorsAsync())
-                .Where(server => server.Users.Count > 0).ToList();
-            SelectedServer = SavedServers.FirstOrDefault(server => server.CoordinatorId == saved?.Coordinator.CoordinatorId);
-            SelectedIdentity = SelectedServer?.Users.FirstOrDefault(user => user.Id == saved?.User.Id);
+            var choice = await _behaviorService.GetAutoConnectChoiceAsync();
+            SavedServers = [LastServer, ..(await _accountingService.GetAllSavedCoordinatorsAsync())
+                .Where(server => server.Users.Count > 0)];
+            // A server or account picked that is gone shows as the last one, which is what the start connects to
+            SelectedServer = SavedServers.FirstOrDefault(server =>
+                choice.CoordinatorId != null && server.CoordinatorId == choice.CoordinatorId) ?? LastServer;
+            SelectedIdentity = Identities.FirstOrDefault(user =>
+                choice.UserId != null && !ReferenceEquals(user, LastIdentity) && user.Id == choice.UserId) ?? LastIdentity;
         }
         finally
         {
@@ -279,5 +328,9 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         _isUpdating = false;
 
         await _behaviorService.SaveSettingsAsync(defaults);
+        await _behaviorService.SetAutoConnectChoiceAsync(AutoConnectChoice.Last);
+        _isUpdating = true;
+        SelectedServer = LastServer;
+        _isUpdating = false;
     }
 }

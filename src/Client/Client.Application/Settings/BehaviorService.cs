@@ -20,19 +20,38 @@ public class BehaviorService : IBehaviorService
 
     public async Task<(SavedCoordinatorModel Coordinator, SavedUserModel User)?> GetAutoConnectInstance()
     {
-        var identityPairIds = await _behaviorSettingsRepository.GetAutoConnectInstanceAsync();
+        var choice = await _behaviorSettingsRepository.GetAutoConnectChoiceAsync();
+        var last = await _behaviorSettingsRepository.GetLastConnectionAsync();
 
-        if (identityPairIds != null)
-        {
-            var identityPair = await _accountingSettingsRepository.GetCoordinatorInstanceAsync(
-                identityPairIds.Value);
+        // A picked server that is gone gives way to the last one
+        var coordinator = choice.CoordinatorId is { } picked
+            ? await _accountingSettingsRepository.GetCoordinatorAsync(picked)
+            : null;
+        var isPicked = coordinator != null;
+        if (coordinator == null && last is { CoordinatorId: var lastCoordinatorId })
+            coordinator = await _accountingSettingsRepository.GetCoordinatorAsync(lastCoordinatorId);
 
-            if (identityPair != null)
-                return identityPair.Value;
-        }
-        
-        return null;
+        if (coordinator == null || coordinator.Users.Count == 0)
+            return null;
+
+        // The account picked, then the last one of the server, then one that can log in without asking
+        int? userId = isPicked && choice.UserId != null ? choice.UserId
+            : coordinator.LastUserId ?? (last?.CoordinatorId == coordinator.CoordinatorId ? last?.UserId : null);
+        var user = coordinator.Users.FirstOrDefault(account => account.Id == userId)
+                   ?? coordinator.Users.FirstOrDefault(account => account.CanLogIn)
+                   ?? coordinator.Users[0];
+
+        return (coordinator, user);
     }
+
+    public Task<AutoConnectChoice> GetAutoConnectChoiceAsync() =>
+        _behaviorSettingsRepository.GetAutoConnectChoiceAsync();
+
+    public Task SetAutoConnectChoiceAsync(AutoConnectChoice choice) =>
+        _behaviorSettingsRepository.SetAutoConnectChoiceAsync(choice);
+
+    public Task RecordConnectionAsync(string coordinatorId, int userId) =>
+        _accountingSettingsRepository.SetLastConnectionAsync(coordinatorId, userId);
 
     public async Task<BehaviorSettings> GetSettingsAsync()
     {
@@ -43,29 +62,5 @@ public class BehaviorService : IBehaviorService
     {
         await _behaviorSettingsRepository.SaveAsync(settings);
         SettingsChanged?.Invoke(settings);
-    }
-    
-    public async Task SetLastIdentityAsync((string CoordinatorId, int UserId) lastIdentity)
-    {
-        var savedCoordinator = await _accountingSettingsRepository.GetCoordinatorAsync(lastIdentity.CoordinatorId);
-        
-        if (savedCoordinator != null)
-        {
-            var savedCoordinatorInstanceIds = await _accountingSettingsRepository.GetCoordinatorInstanceAsync
-                ((savedCoordinator.CoordinatorId, lastIdentity.UserId));
-            
-            if (savedCoordinatorInstanceIds != null)
-                await _behaviorSettingsRepository.SetAutoConnectInstanceAsync((savedCoordinator.CoordinatorId, 
-                    lastIdentity.UserId));
-            
-            return;
-        }
-
-        throw new ArgumentException($"{nameof(savedCoordinator)} does not exist in database");
-    }
-    
-    public async Task RemoveLastIdentityAsync()
-    {
-        await _behaviorSettingsRepository.SetAutoConnectInstanceAsync(null);
     }
 }

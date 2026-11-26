@@ -60,8 +60,22 @@ public class ConnectWindowVM : ReactiveObject
 
             this.RaisePropertyChanged(nameof(IsLoginFormVisible));
             this.RaisePropertyChanged(nameof(IsRegistering));
+            this.RaisePropertyChanged(nameof(IdentityError));
         }
     }
+
+    /// <summary>
+    /// Why the saved account picked has to log in again, shown in red under the list; null when it can log in.
+    /// </summary>
+    public string? IdentityError => IsSaved(SelectedIdentity) && !SelectedIdentity!.CanLogIn
+        ? Strings.Get(SelectedIdentity.LoginLostReason switch
+        {
+            LoginLostReason.Revoked => "connect.identity.lost.revoked",
+            LoginLostReason.NotFound => "connect.identity.lost.notFound",
+            LoginLostReason.LoggedOut => "connect.identity.lost.loggedOut",
+            _ => "connect.identity.lost.noDevice"
+        })
+        : null;
 
     public bool IsIdentitiesSelectable => Identities.Count > 1;
 
@@ -349,10 +363,13 @@ public class ConnectWindowVM : ReactiveObject
         {
             var savedServers = await _accountingService.GetAllSavedCoordinatorsAsync();
 
-            var lastServer = savedServers.MaxBy(server => server.SaveOrder);
-
             Dispatcher.UIThread.Post(() =>
             {
+                // The account the window was opened for, else the server connected to last. Read on the UI thread,
+                // after whoever made the window had the chance to call PreferAccount
+                var lastServer = savedServers.FirstOrDefault(server => server.CoordinatorId == _preferredAccount?.CoordinatorId)
+                                 ?? savedServers.MaxBy(server => server.SaveOrder);
+
                 foreach (var server in savedServers)
                     SavedServers.Add(new SavedServerItem(server.CoordinatorId, server.Name, UriParsing.FormatHost(server.Address), server.Port));
 
@@ -364,6 +381,15 @@ public class ConnectWindowVM : ReactiveObject
     }
 
     private bool _deviceLinkCancelled;
+
+    // The saved account the window is opened for, when the one connected to at start has to log in again
+    private (string CoordinatorId, int UserId)? _preferredAccount;
+
+    /// <summary>
+    /// Opens the window on a saved account rather than on the server connected to last. Called right after the window
+    /// is made, before its saved servers are listed.
+    /// </summary>
+    public void PreferAccount(string coordinatorId, int userId) => _preferredAccount = (coordinatorId, userId);
 
     private async Task ConnectAsync()
     {
@@ -471,7 +497,7 @@ public class ConnectWindowVM : ReactiveObject
     {
         try
         {
-            await _accountingService.ForgetDeviceAsync(identity.CoordinatorId, identity.Id);
+            await _accountingService.ForgetDeviceAsync(identity.CoordinatorId, identity.Id, LoginLostReason.NotFound);
         }
         catch (Exception)
         {
@@ -481,7 +507,7 @@ public class ConnectWindowVM : ReactiveObject
         var index = Identities.IndexOf(identity);
         if (index < 0)
             return;
-        var ended = identity.WithoutDevice();
+        var ended = identity.WithoutDevice(LoginLostReason.NotFound);
         Identities[index] = ended;
         if (ReferenceEquals(SelectedIdentity, identity) || SelectedIdentity == null)
             SelectedIdentity = ended;
@@ -596,9 +622,8 @@ public class ConnectWindowVM : ReactiveObject
                             && saved.CoordinatorId == coordinatorSessionModel.Id) is { IsRecoveryPhraseSaved: true }
                 });
 
-            // Keep the explicit startup target when another server is connected manually.
-            if (await _behaviorService.GetAutoConnectInstance() == null)
-                await _behaviorService.SetLastIdentityAsync((coordinatorSessionModel.Id, userModel.Id));
+            // The startup connection follows the last one unless the user picked another in the settings
+            await _behaviorService.RecordConnectionAsync(coordinatorSessionModel.Id, userModel.Id);
         }
         catch (Exception e)
         {
@@ -686,7 +711,11 @@ public class ConnectWindowVM : ReactiveObject
             var coordinators = IsAddressValid
                 ? await _accountingService.GetSavedCoordinatorsAsync(_parsedAddress!, _parsedPort!.Value)
                 : [];
-            var lastIdentity = await _behaviorService.GetAutoConnectInstance();
+            // The account the window is opened for, else the one that last connected to the server used last
+            var lastIdentity = _preferredAccount
+                ?? (coordinators.MaxBy(coordinator => coordinator.SaveOrder) is { LastUserId: { } lastUserId } latest
+                    ? (latest.CoordinatorId, lastUserId)
+                    : ((string CoordinatorId, int UserId)?)null);
 
             // A lookup for an endpoint typed in the meantime owns the list now
             if (lookup != _identitiesLookup)
@@ -702,7 +731,7 @@ public class ConnectWindowVM : ReactiveObject
                                 ? $"{coordinator.Name}, {coordinator.CoordinatorId}" : coordinator.Name
                         : null;
                     Identities.Add(match);
-                    if (lastIdentity != null && match.CoordinatorId == lastIdentity.Value.Coordinator.CoordinatorId && match.Id == lastIdentity.Value.User.Id)
+                    if (lastIdentity != null && match.CoordinatorId == lastIdentity.Value.CoordinatorId && match.Id == lastIdentity.Value.UserId)
                         SelectedIdentity = match;
                 }
             }

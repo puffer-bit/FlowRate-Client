@@ -88,6 +88,12 @@ internal partial class StartupScreen : UserControl
             vm.ContinueStartup();
     }
 
+    private void OnSkipConnectionClick(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is Client.ViewModels.Main.MainWindowVM vm)
+            vm.SkipStartupConnection();
+    }
+
     private void OnExitClick(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is

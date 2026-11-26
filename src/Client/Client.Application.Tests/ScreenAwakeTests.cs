@@ -137,8 +137,9 @@ public sealed class ScreenAwakeTests
             return Task.CompletedTask;
         }
         public Task<(SavedCoordinatorModel Coordinator, SavedUserModel User)?> GetAutoConnectInstance() => Task.FromResult<(SavedCoordinatorModel, SavedUserModel)?>(null);
-        public Task SetLastIdentityAsync((string CoordinatorId, int UserId) identity) => Task.CompletedTask;
-        public Task RemoveLastIdentityAsync() => Task.CompletedTask;
+        public Task<AutoConnectChoice> GetAutoConnectChoiceAsync() => Task.FromResult(AutoConnectChoice.Last);
+        public Task SetAutoConnectChoiceAsync(AutoConnectChoice choice) => Task.CompletedTask;
+        public Task RecordConnectionAsync(string coordinatorId, int userId) => Task.CompletedTask;
     }
 
     private sealed class Playback : IPeerPlaybackService

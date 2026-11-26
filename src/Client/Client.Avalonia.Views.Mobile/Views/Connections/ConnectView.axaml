@@ -102,7 +102,8 @@
                         <TextBlock Classes="fieldLabel" Text="{l:Text connect.field.identity}"/>
                         <ComboBox HorizontalAlignment="Stretch"
                                   ItemsSource="{Binding Identities}"
-                                  SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
+                                  SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}"
+                                  Classes.invalid="{Binding IdentityError, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="models:SavedUserModel">
                                     <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
@@ -133,6 +134,9 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+                        <!-- Why the saved account has to log in again -->
+                        <TextBlock Classes="fieldError" Text="{Binding IdentityError}" TextWrapping="Wrap"
+                                   IsVisible="{Binding IdentityError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                         <hints:HintBlock Text="{l:Text connect.identity.newHint}"
                                          IsVisible="{Binding IsRegistering}"/>
                     </StackPanel>

@@ -528,7 +528,11 @@
                     <ComboBox.SelectionBoxItemTemplate>
                         <DataTemplate x:DataType="models:SavedCoordinatorModel">
                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
-                                <Image Width="20" Height="20" Source="{StaticResource PlanetIcon}"/>
+                                <!-- The last server shows a clock in place of the planet -->
+                                <Panel>
+                                    <Image Width="20" Height="20" Source="{StaticResource PlanetIcon}" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <Image Width="20" Height="20" Source="{StaticResource RecentEmojiIcon}" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                </Panel>
                                 <Panel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
                                                IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
@@ -541,12 +545,15 @@
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="models:SavedCoordinatorModel">
                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                                <Image Width="24" Height="24" VerticalAlignment="Center" Source="{StaticResource PlanetIcon}"/>
+                                <Panel VerticalAlignment="Center">
+                                    <Image Width="24" Height="24" Source="{StaticResource PlanetIcon}" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <Image Width="24" Height="24" Source="{StaticResource RecentEmojiIcon}" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                </Panel>
                                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                     <TextBlock FontWeight="SemiBold" Text="{Binding Name}"
                                                IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <TextBlock Classes="hint"><Run Text="{Binding Address}"/><Run Text=":"/><Run Text="{Binding Port}"/></TextBlock>
-                                    <TextBlock Classes="hint" Text="{Binding CoordinatorId}"/>
+                                    <TextBlock Classes="hint" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{Binding Address}"/><Run Text=":"/><Run Text="{Binding Port}"/></TextBlock>
+                                    <TextBlock Classes="hint" Text="{Binding CoordinatorId}" IsVisible="{Binding CoordinatorId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -559,12 +566,19 @@
                 <ComboBox Width="180" HorizontalAlignment="Right"
                           PlaceholderText="{l:Text settings.behavior.identity.placeholder}"
                           ItemsSource="{Binding Identities}"
+                          IsEnabled="{Binding IsIdentitySelectable}"
                           SelectedItem="{Binding SelectedIdentity, Mode=TwoWay}">
                     <ComboBox.SelectionBoxItemTemplate>
                         <DataTemplate x:DataType="models:SavedUserModel">
                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
-                                <avatars:UserAvatar Width="22" Height="22" UserName="{Binding Username}"
-                                                    Coordinator="{Binding CoordinatorId}" AvatarUrl="{Binding AvatarUrl}"/>
+                                <Panel Width="22" Height="22">
+                                    <avatars:UserAvatar Width="22" Height="22" UserName="{Binding Username}"
+                                                        Coordinator="{Binding CoordinatorId}" AvatarUrl="{Binding AvatarUrl}"
+                                                        IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                    <Image Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Source="{Binding EntryIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                                           IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </Panel>
                                 <TextBlock Grid.Column="1" Text="{Binding SelectionLabel}" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"/>
                             </Grid>
@@ -573,17 +587,29 @@
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="models:SavedUserModel">
                                 <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
+                                    <!-- The last account shows an icon in place of the avatar -->
                                     <avatars:UserAvatar Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
                                                         UserName="{Binding Username}"
                                                         Coordinator="{Binding CoordinatorId}"
-                                                        AvatarUrl="{Binding AvatarUrl}"/>
+                                                        AvatarUrl="{Binding AvatarUrl}"
+                                                        IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                    <Border Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center"
+                                            IsVisible="{Binding EntryIconKey, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <Image Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Source="{Binding EntryIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+                                    </Border>
                                     <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                                         <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                                                    Text="{Binding SelectionLabel}"/>
-                                        <!-- Show only the edges of the credential to distinguish saved identities. -->
-                                        <TextBlock Classes="hint" TextWrapping="NoWrap"
-                                                   Text="{l:Text connect.identity.needsLogin}"
-                                                   IsVisible="{Binding !CanLogIn}"/>
+                                        <!-- A saved account without a device here has to log in again -->
+                                        <TextBlock Classes="hint" TextWrapping="NoWrap" Text="{l:Text connect.identity.needsLogin}">
+                                            <TextBlock.IsVisible>
+                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                    <Binding Path="CoordinatorId" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                                    <Binding Path="!CanLogIn"/>
+                                                </MultiBinding>
+                                            </TextBlock.IsVisible>
+                                        </TextBlock>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

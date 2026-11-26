@@ -345,19 +345,124 @@ public class AccountingSettingsRepositoryTests
         await repository.SaveUserAsync(Identity(1));
         await repository.SaveUserAsync(Identity(2));
         await repository.SaveUserAsync(new SavedUserModel { CoordinatorId = "other", Id = 1, UserIdentity = "other", Username = "other" });
-        await behavior.SetAutoConnectInstanceAsync(("coordinator", 1));
+        await behavior.SetAutoConnectChoiceAsync(new AutoConnectChoice("coordinator", 1));
 
         await repository.DeleteUserAsync("coordinator", 1);
 
         var coordinator = await repository.GetCoordinatorAsync("coordinator");
         Assert.Equal(2, Assert.Single(coordinator!.Users).Id);
         Assert.Single((await repository.GetCoordinatorAsync("other"))!.Users);
-        Assert.Null(await behavior.GetAutoConnectInstanceAsync());
+        Assert.Equal(AutoConnectChoice.Last, await behavior.GetAutoConnectChoiceAsync());
 
-        await behavior.SetAutoConnectInstanceAsync(("other", 1));
+        await behavior.SetAutoConnectChoiceAsync(new AutoConnectChoice("other", 1));
         await repository.DeleteUserAsync("coordinator", 2);
         Assert.Empty((await repository.GetCoordinatorAsync("coordinator"))!.Users);
-        Assert.Equal(("other", 1), await behavior.GetAutoConnectInstanceAsync());
+        Assert.Equal(new AutoConnectChoice("other", 1), await behavior.GetAutoConnectChoiceAsync());
+    }
+
+    [Fact]
+    public async Task DeletingTheChosenServer_FallsBackToTheLastOne()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        var behavior = new BehaviorSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveCoordinatorAsync(Coordinator("other"));
+        await behavior.SetAutoConnectChoiceAsync(new AutoConnectChoice("other", null));
+
+        await repository.DeleteCoordinatorAsync("coordinator");
+        Assert.Equal(new AutoConnectChoice("other", null), await behavior.GetAutoConnectChoiceAsync());
+
+        await repository.DeleteCoordinatorAsync("other");
+        Assert.Equal(AutoConnectChoice.Last, await behavior.GetAutoConnectChoiceAsync());
+    }
+
+    [Fact]
+    public async Task LastConnection_IsRecordedOverallAndForTheServer()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        var behavior = new BehaviorSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveCoordinatorAsync(Coordinator("other"));
+
+        Assert.Null(await behavior.GetLastConnectionAsync());
+
+        await repository.SetLastConnectionAsync("coordinator", 2);
+        await repository.SetLastConnectionAsync("other", 5);
+
+        Assert.Equal(("other", (int?)5), await behavior.GetLastConnectionAsync());
+        Assert.Equal(2, (await repository.GetCoordinatorAsync("coordinator"))!.LastUserId);
+        Assert.Equal(5, (await repository.GetCoordinatorAsync("other"))!.LastUserId);
+    }
+
+    [Fact]
+    public async Task ForgottenDevice_KeepsWhyUntilTheAccountHasADeviceAgain()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        var device = Guid.NewGuid();
+        await repository.SaveUserAsync(new SavedUserModel
+        {
+            CoordinatorId = "coordinator", Id = 1, Username = "user1", DeviceId = device, DeviceKey = "key"
+        });
+
+        await repository.SetDeviceAsync("coordinator", 1, null, null, LoginLostReason.Revoked);
+        var lost = Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users);
+        Assert.False(lost.CanLogIn);
+        Assert.Equal(LoginLostReason.Revoked, lost.LoginLostReason);
+
+        // Saved again without a device, as by a connection that only read it: the reason stays
+        await repository.SaveUserAsync(new SavedUserModel { CoordinatorId = "coordinator", Id = 1, Username = "user1" });
+        Assert.Equal(LoginLostReason.Revoked,
+            Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users).LoginLostReason);
+
+        // A new login brings a device: the reason goes
+        await repository.SaveUserAsync(new SavedUserModel
+        {
+            CoordinatorId = "coordinator", Id = 1, Username = "user1", DeviceId = Guid.NewGuid(), DeviceKey = "new"
+        });
+        Assert.Null(Assert.Single((await repository.GetCoordinatorAsync("coordinator"))!.Users).LoginLostReason);
+    }
+
+    [Theory]
+    [InlineData(null, null, "coordinator", 2)]
+    [InlineData("other", null, "other", 7)]
+    [InlineData("other", 8, "other", 8)]
+    [InlineData("gone", 1, "coordinator", 2)]
+    public async Task StartupConnection_FollowsTheChoiceThenTheLastConnection(string? chosenServer, int? chosenUser,
+        string expectedServer, int expectedUser)
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        var behavior = new BehaviorSettingsRepository(database.Database);
+        var service = new BehaviorService(behavior, repository);
+        await repository.SaveCoordinatorAsync(Coordinator());
+        await repository.SaveCoordinatorAsync(Coordinator("other"));
+        foreach (var (server, user) in new[] { ("coordinator", 1), ("coordinator", 2), ("other", 7), ("other", 8) })
+            await repository.SaveUserAsync(new SavedUserModel
+            {
+                CoordinatorId = server, Id = user, Username = $"user{user}", DeviceId = Guid.NewGuid(), DeviceKey = "k"
+            });
+        await repository.SetLastConnectionAsync("other", 7);
+        await repository.SetLastConnectionAsync("coordinator", 2);
+        await behavior.SetAutoConnectChoiceAsync(new AutoConnectChoice(chosenServer, chosenUser));
+
+        var target = await service.GetAutoConnectInstance();
+
+        Assert.Equal(expectedServer, target?.Coordinator.CoordinatorId);
+        Assert.Equal(expectedUser, target?.User.Id);
+    }
+
+    [Fact]
+    public async Task StartupConnection_IsNothingWithoutAnyConnection()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AccountingSettingsRepository(database.Database);
+        var service = new BehaviorService(new BehaviorSettingsRepository(database.Database), repository);
+
+        Assert.Null(await service.GetAutoConnectInstance());
     }
 }
 

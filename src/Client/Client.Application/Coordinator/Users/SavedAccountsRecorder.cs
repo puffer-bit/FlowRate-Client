@@ -1,5 +1,6 @@
 using Client.Core.Users;
 using Client.Application.Ports.Repositories;
+using Client.Application.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Application.Coordinator.Users;
@@ -38,7 +39,7 @@ public sealed partial class SavedAccountsRecorder
         };
         // The session dropped the key already; the saved account needs a login from now on
         session.DeviceEnded += reason => _ = WriteAsync(session, (coordinatorId, userId) =>
-            _accountingSettings.SetDeviceAsync(coordinatorId, userId, null, null));
+            _accountingSettings.SetDeviceAsync(coordinatorId, userId, null, null, LoginLostReasons.From(reason)));
     }
 
     private async Task WriteAsync(ICoordinatorSession session, Func<string, int, Task> write)

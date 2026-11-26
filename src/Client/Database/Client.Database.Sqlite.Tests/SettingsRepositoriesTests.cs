@@ -545,7 +545,8 @@ public class SettingsRepositoriesTests
 
         var settings = await new BehaviorSettingsRepository(database.Database).GetAsync();
 
-        Assert.False(settings.IsAutoConnectEnabled);
+        // A new installation connects to the last server at start
+        Assert.True(settings.IsAutoConnectEnabled);
         Assert.False(settings.IsFallbackConnectionEnabled);
         Assert.True(settings.IsFallbackConnectionWarningEnabled);
         Assert.True(settings.IsPropagatedConnectionWarningEnabled);
@@ -600,22 +601,29 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
-    public async Task AutoConnectInstanceIsKeptApartFromTheSettings()
+    public async Task AutoConnectChoiceIsKeptApartFromTheSettings()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
         var repository = new BehaviorSettingsRepository(database.Database);
         await repository.SaveAsync(new BehaviorSettings { CloseButtonAction = CloseButtonAction.Exit });
 
-        Assert.Null(await repository.GetAutoConnectInstanceAsync());
+        Assert.Equal(AutoConnectChoice.Last, await repository.GetAutoConnectChoiceAsync());
 
-        await repository.SetAutoConnectInstanceAsync(("coordinator", 7));
-
-        Assert.Equal(("coordinator", 7), await repository.GetAutoConnectInstanceAsync());
+        await repository.SetAutoConnectChoiceAsync(new AutoConnectChoice("coordinator", 7));
+        Assert.Equal(new AutoConnectChoice("coordinator", 7), await repository.GetAutoConnectChoiceAsync());
         Assert.Equal(CloseButtonAction.Exit, (await repository.GetAsync()).CloseButtonAction);
 
-        await repository.SetAutoConnectInstanceAsync(null);
+        await repository.SetAutoConnectChoiceAsync(new AutoConnectChoice("coordinator", null));
+        Assert.Equal(new AutoConnectChoice("coordinator", null), await repository.GetAutoConnectChoiceAsync());
 
-        Assert.Null(await repository.GetAutoConnectInstanceAsync());
+        // An account without its server means nothing: the whole choice is the last one
+        await repository.SetAutoConnectChoiceAsync(new AutoConnectChoice(null, 7));
+        Assert.Equal(AutoConnectChoice.Last, await repository.GetAutoConnectChoiceAsync());
+
+        // Saving the preferences leaves the choice alone
+        await repository.SetAutoConnectChoiceAsync(new AutoConnectChoice("coordinator", 7));
+        await repository.SaveAsync(new BehaviorSettings());
+        Assert.Equal(new AutoConnectChoice("coordinator", 7), await repository.GetAutoConnectChoiceAsync());
     }
 
     [Fact]

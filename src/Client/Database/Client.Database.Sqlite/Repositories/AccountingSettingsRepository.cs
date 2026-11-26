@@ -7,12 +7,12 @@ namespace Client.Database.Sqlite.Repositories;
 internal sealed class AccountingSettingsRepository : IAccountingSettingsRepository
 {
     private const string SelectCoordinators =
-        "SELECT CoordinatorId, Name, Address, Port, SaveOrder FROM SavedCoordinators";
+        "SELECT CoordinatorId, Name, Address, Port, SaveOrder, LastUserId FROM SavedCoordinators";
 
     // The avatar is what the remembered users know about the same user
     private const string SelectIdentities = """
         SELECT CoordinatorId, UserId, UserIdentity, Username, Password, AccountPassword, SessionToken, DeviceId,
-            DeviceKey, IsRecoveryPhraseSaved,
+            DeviceKey, IsRecoveryPhraseSaved, LoginLostReason,
             (SELECT AvatarUrl FROM RememberedUsers
              WHERE RememberedUsers.CoordinatorInstanceId = SavedIdentities.CoordinatorId
                AND RememberedUsers.UserId = SavedIdentities.UserId) AS AvatarUrl
@@ -94,7 +94,9 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
                 SessionToken = excluded.SessionToken,
                 DeviceId = excluded.DeviceId,
                 DeviceKey = excluded.DeviceKey,
-                IsRecoveryPhraseSaved = excluded.IsRecoveryPhraseSaved
+                IsRecoveryPhraseSaved = excluded.IsRecoveryPhraseSaved,
+                -- A device logs in again: why the earlier one was lost no longer matters
+                LoginLostReason = CASE WHEN excluded.DeviceId IS NULL THEN LoginLostReason END
             """, new
         {
             model.CoordinatorId,
@@ -109,14 +111,30 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
         });
     }
 
-    public async Task SetDeviceAsync(string coordinatorId, int userId, Guid? deviceId, string? deviceKey)
+    public async Task SetDeviceAsync(string coordinatorId, int userId, Guid? deviceId, string? deviceKey,
+        LoginLostReason? lostReason = null)
     {
         await using var connection = await _database.OpenAsync();
 
         await connection.ExecuteAsync("""
-            UPDATE SavedIdentities SET DeviceId = @deviceId, DeviceKey = @deviceKey
+            UPDATE SavedIdentities SET DeviceId = @deviceId, DeviceKey = @deviceKey, LoginLostReason = @lostReason
             WHERE CoordinatorId = @coordinatorId AND UserId = @userId
-            """, new { coordinatorId, userId, deviceId = deviceId?.ToString(), deviceKey });
+            """, new
+        {
+            coordinatorId, userId, deviceId = deviceId?.ToString(), deviceKey,
+            lostReason = deviceId == null ? (int?)lostReason : null
+        });
+    }
+
+    public async Task SetLastConnectionAsync(string coordinatorId, int userId)
+    {
+        await using var connection = await _database.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        await connection.ExecuteAsync("""
+            UPDATE SavedCoordinators SET LastUserId = @userId WHERE CoordinatorId = @coordinatorId;
+            UPDATE BehaviorSettings SET LastCoordinatorId = @coordinatorId, LastUserId = @userId WHERE Id = 1;
+            """, new { coordinatorId, userId }, transaction);
+        transaction.Commit();
     }
 
     public async Task SetRecoveryPhraseSavedAsync(string coordinatorId, int userId, bool isSaved)
@@ -181,9 +199,14 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
     {
         await using var connection = await _database.OpenAsync();
 
-        // The identities go with it through the foreign key
-        await connection.ExecuteAsync(
-            "DELETE FROM SavedCoordinators WHERE CoordinatorId = @coordinatorId", new { coordinatorId });
+        using var transaction = connection.BeginTransaction();
+        // The identities go with it through the foreign key; a startup connection picked for it follows the last one
+        await connection.ExecuteAsync("""
+            DELETE FROM SavedCoordinators WHERE CoordinatorId = @coordinatorId;
+            UPDATE BehaviorSettings SET AutoConnectCoordinatorId = NULL, AutoConnectUserId = NULL
+            WHERE AutoConnectCoordinatorId = @coordinatorId;
+            """, new { coordinatorId }, transaction);
+        transaction.Commit();
     }
 
     public async Task<DatabaseSettings> GetDatabaseSettingsAsync()
@@ -229,7 +252,8 @@ internal sealed class AccountingSettingsRepository : IAccountingSettingsReposito
     }
 }
 
-internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, string Address, int Port, long SaveOrder)
+internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, string Address, int Port, long SaveOrder,
+    int? LastUserId)
 {
     public SavedCoordinatorModel ToModel(IEnumerable<SavedIdentityRow> identities) => new()
     {
@@ -238,6 +262,7 @@ internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, s
         Address = Address,
         Port = Port,
         SaveOrder = SaveOrder,
+        LastUserId = LastUserId,
         Users = identities.Select(identity => identity.ToModel()).ToList()
     };
 }
@@ -245,7 +270,7 @@ internal sealed record SavedCoordinatorRow(string CoordinatorId, string? Name, s
 /// <param name="Password">The server password the earlier client kept here; moved to the secret vault at start.</param>
 internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string UserIdentity, string Username,
     string? Password, string? AccountPassword, string? SessionToken, string? DeviceId, string? DeviceKey,
-    bool IsRecoveryPhraseSaved, string? AvatarUrl)
+    bool IsRecoveryPhraseSaved, int? LoginLostReason, string? AvatarUrl)
 {
     public SavedUserModel ToModel() => new()
     {
@@ -259,6 +284,7 @@ internal sealed record SavedIdentityRow(string CoordinatorId, int UserId, string
         DeviceId = Guid.TryParse(DeviceId, out var deviceId) ? deviceId : null,
         DeviceKey = DeviceKey,
         IsRecoveryPhraseSaved = IsRecoveryPhraseSaved,
+        LoginLostReason = (LoginLostReason?)LoginLostReason,
         AvatarUrl = AvatarUrl
     };
 }
