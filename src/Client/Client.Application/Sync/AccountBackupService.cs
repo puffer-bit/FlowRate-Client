@@ -56,7 +56,9 @@ public sealed partial class AccountBackupService(
             Port = server.Port,
             ServerName = server.Name,
             Notes = new Dictionary<int, string>(await notes.GetAllAsync(coordinatorId)),
-            MutedChats = (await mutedChats.GetAsync(coordinatorId)).ToList(),
+            // A mute for a while is over soon, so only those until the user ends them are kept
+            MutedChats = (await mutedChats.GetUntilAsync(coordinatorId))
+                .Where(mute => mute.Value == null).Select(mute => mute.Key).Order().ToList(),
             ExportedAt = DateTimeOffset.UtcNow,
             DeviceId = user.DeviceId
         };

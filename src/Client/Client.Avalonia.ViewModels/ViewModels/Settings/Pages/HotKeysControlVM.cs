@@ -32,7 +32,8 @@ public class HotKeysControlVM : ReactiveObject, ISettingVM, IDisposable
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("hotKeys",
         ("general", ["enabled", "global"]),
-        ("actions", ["toggleMicrophone", "toggleSound"]));
+        ("actions", ["toggleMicrophone", "toggleSound", "pushToTalk", "toggleAfk", "toggleScreenShare", "leaveSession",
+            "acceptCall", "declineCall"]));
 
     public bool AreHotKeysEnabled
     {

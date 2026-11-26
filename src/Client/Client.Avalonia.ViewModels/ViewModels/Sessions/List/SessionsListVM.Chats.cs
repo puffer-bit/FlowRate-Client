@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -10,6 +12,7 @@ using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
 using Client.ViewModels.Dialogs;
+using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Create;
 using ReactiveUI;
 using Shared.Enums;
@@ -31,7 +34,7 @@ public partial class SessionsListVM
         if (FindSession<ChatSessionVM>(chatSessionModel.Id) == null) AddChatSession(chatSessionModel, false);
     });
 
-    private void AddChatSession(ChatSessionModel chatSessionModel, bool isMuted)
+    private void AddChatSession(ChatSessionModel chatSessionModel, bool isMuted, DateTimeOffset? mutedUntil = null)
     {
         var model = new ChatSessionVM(
             chatSessionModel,
@@ -41,15 +44,19 @@ public partial class SessionsListVM
             _editPermissionsCommand,
             _leaveChatCommand)
         {
-            IsMuted = isMuted,
             EditSessionCommand = _editSessionCommand
         };
+        if (CoordinatorInstanceId is { } coordinatorInstanceId)
+            model.Draft = Drafts?.Get(coordinatorInstanceId, chatSessionModel.Id);
         if (_readTracker.Get(chatSessionModel.Id) is { } readState)
             model.ApplyReadState(readState);
         model.ApplyAccess(Access.Permissions);
         model.EditGroupCommand = ReactiveCommand.CreateFromTask(() => EditGroup(model));
         model.LeaveGroupCommand = ReactiveCommand.CreateFromTask(() => LeaveGroup(model));
         model.CallCommand = ReactiveCommand.CreateFromTask(() => CallAsync(model.Model.Id));
+        model.MuteForCommand = ReactiveCommand.CreateFromTask<string?>(minutes => MuteChatFor(model, minutes));
+        if (isMuted)
+            ApplyChatMute(model, mutedUntil);
 
         MarkShown(model);
         if (_coordinatorSession?.ChatCalls.GetValueOrDefault(chatSessionModel.Id) is { } running)
@@ -91,7 +98,10 @@ public partial class SessionsListVM
     private void RemoveChatSession(int sessionId)
     {
         if (CoordinatorInstanceId is { } coordinatorInstanceId)
+        {
             _ = _preferences.SaveChatMuteAsync(coordinatorInstanceId, sessionId, false);
+            Drafts?.Remove(coordinatorInstanceId, sessionId);
+        }
 
         RemoveSession(sessionId);
     }
@@ -118,14 +128,93 @@ public partial class SessionsListVM
         chat.PeerIsMobile = other.IsMobile;
     }
 
+    // Unmutes a muted chat, mutes another one until the user turns its notifications on
     private async Task ToggleChatMute(int chatId)
     {
         if (CoordinatorInstanceId is not { } coordinatorInstanceId || FindSession<ChatSessionVM>(chatId) is not { } chat)
             return;
 
-        chat.IsMuted = !chat.IsMuted;
+        var isMuted = !chat.IsMuted;
+        if (isMuted)
+            ApplyChatMute(chat, null);
+        else
+            EndChatMute(chat);
         RefreshCategoryCounts();
-        await _preferences.SaveChatMuteAsync(coordinatorInstanceId, chatId, chat.IsMuted);
+        await _preferences.SaveChatMuteAsync(coordinatorInstanceId, chatId, isMuted);
+    }
+
+    /// <param name="minutes">How long the chat stays muted; empty for until the user turns the notifications on.</param>
+    private async Task MuteChatFor(ChatSessionVM chat, string? minutes)
+    {
+        if (CoordinatorInstanceId is not { } coordinatorInstanceId)
+            return;
+
+        DateTimeOffset? until = int.TryParse(minutes, NumberStyles.None, CultureInfo.InvariantCulture, out var count) && count > 0
+            ? DateTimeOffset.UtcNow.AddMinutes(count)
+            : null;
+        ApplyChatMute(chat, until);
+        RefreshCategoryCounts();
+        await _preferences.SaveChatMuteAsync(coordinatorInstanceId, chat.Model.Id, true, until);
+    }
+
+    // A mute for a while ends by itself; what is saved is past its time then and is not read again
+    private void ApplyChatMute(ChatSessionVM chat, DateTimeOffset? until)
+    {
+        chat.MuteEnd?.Dispose();
+        chat.MuteEnd = null;
+        chat.IsMuted = true;
+        chat.MutedUntil = until;
+        if (until is not { } end)
+            return;
+
+        // A timer's interval is limited; a longer mute is looked at again when this one fires
+        var delay = end - DateTimeOffset.UtcNow;
+        var step = delay < MaxMuteTimerStep ? delay : MaxMuteTimerStep;
+        if (step < TimeSpan.Zero)
+            step = TimeSpan.Zero;
+        chat.MuteEnd = DispatcherTimer.RunOnce(() =>
+        {
+            if (chat.MutedUntil != end)
+                return;
+            if (DateTimeOffset.UtcNow < end)
+            {
+                ApplyChatMute(chat, end);
+                return;
+            }
+
+            EndChatMute(chat);
+            RefreshCategoryCounts();
+        }, step);
+    }
+
+    private static readonly TimeSpan MaxMuteTimerStep = TimeSpan.FromDays(1);
+
+    private static void EndChatMute(ChatSessionVM chat)
+    {
+        chat.MuteEnd?.Dispose();
+        chat.MuteEnd = null;
+        chat.IsMuted = false;
+        chat.MutedUntil = null;
+    }
+
+    /// <summary>The texts typed in chats and not sent, which the chats of the list show.</summary>
+    public ChatDrafts? Drafts
+    {
+        get;
+        set
+        {
+            if (field != null)
+                field.Changed -= OnDraftChanged;
+            field = value;
+            if (value != null)
+                value.Changed += OnDraftChanged;
+        }
+    }
+
+    private void OnDraftChanged(string coordinatorInstanceId, int chatId, string? text)
+    {
+        if (coordinatorInstanceId == CoordinatorInstanceId && FindSession<ChatSessionVM>(chatId) is { } chat)
+            chat.Draft = text;
     }
 
     public Interaction<CreateSessionWindowVM, RxVoid>? ShowGroupEditor { get; set; }

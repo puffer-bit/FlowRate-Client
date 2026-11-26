@@ -32,6 +32,10 @@
         <Style Selector="Button.callAction /template/ ContentPresenter">
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <!-- We talk and nobody hears it: the microphone blinks, switched at once and not faded -->
+        <Style Selector="Button.callAction.mutedSpeech /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+        </Style>
     </UserControl.Styles>
 
     <!-- The voice session we are in, at the bottom of the home screen: its state, and the microphone, the
@@ -112,6 +116,7 @@
             </Button>
 
             <Button Grid.Column="1" Classes="callAction"
+                    Classes.mutedSpeech="{Binding StatusBar.IsMicrophoneWarningLit}"
                     Command="{Binding StatusBar.ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
                 <Image Width="20" Height="20"

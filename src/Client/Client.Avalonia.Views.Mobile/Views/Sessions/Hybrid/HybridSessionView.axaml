@@ -27,6 +27,11 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
+        <!-- We talk and nobody hears it: the microphone blinks, switched at once and not faded -->
+        <Style Selector="Button.voice-action.mutedSpeech /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+        </Style>
+
         <!-- Small round buttons over and under a screen -->
         <Style Selector="Button.screen-action">
             <Setter Property="Width" Value="40"/>
@@ -317,7 +322,8 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12,0,20">
-            <Button Classes="voice-action" Command="{Binding StatusBar.ToggleMicrophoneCommand}"
+            <Button Classes="voice-action" Classes.mutedSpeech="{Binding StatusBar.IsMicrophoneWarningLit}"
+                    Command="{Binding StatusBar.ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}">
                 <Image Width="24" Height="24" Source="{Binding StatusBar.MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
             </Button>

@@ -325,7 +325,12 @@ public partial class MainWindowVM : ReactiveObject
         _logger = loggerFactory.CreateLogger<MainWindowVM>();
         Client.Avalonia.Controls.Chat.ChatOpenTrace.Sink = LogChatOpen;
         Notifications = new NotificationCenterVM(notifications);
+        _hotKeys = hotKeys;
         hotKeys.Triggered += OnHotKey;
+        hotKeys.Released += OnHotKeyReleased;
+        hotKeys.SettingsChanged += () => Dispatcher.UIThread.Post(ApplyPushToTalk);
+        behaviorService.SettingsChanged += settings =>
+            Dispatcher.UIThread.Post(() => ApplyMutedSpeechWarnings(HybridSession, settings));
 
         var isConnected = this.WatchProperty(nameof(IsConnected), vm => vm.IsConnected);
         _users = new UserActions(() => _coordinatorSession, () => User, isConnected, avatars, notifications, Access,
@@ -384,6 +389,7 @@ public partial class MainWindowVM : ReactiveObject
         { SessionList = SessionsList };
         SessionsList.ShowGroupEditor = ShowCreateSessionWindow;
         SessionsList.Avatars = _avatars;
+        SessionsList.Drafts = chatServices.Drafts;
         SessionsList.MovePeerCommand = _users.MovePeerCommand;
         _users.OpenDirectChat = user => OpenDirectChatAsync(user, call: false);
         _users.CallUser = user => OpenDirectChatAsync(user, call: true);
@@ -406,23 +412,70 @@ public partial class MainWindowVM : ReactiveObject
         remove => _pushReporter.Reported -= value;
     }
 
+    private readonly IHotKeysService _hotKeys;
+
     /// <summary>
-    /// A hot key acts on the hybrid session we are in, as its button does, and on nothing without one.
+    /// A hot key acts on the hybrid session we are in, as its button does, and on nothing without one. The
+    /// keys of a call act on the call ringing now.
     /// </summary>
     private void OnHotKey(HotKeyAction action)
     {
+        switch (action)
+        {
+            case HotKeyAction.AcceptCall:
+                _ = AnswerRingingCallAsync(global::Shared.Models.DataTransferObjects.ChatCallAction.Join);
+                return;
+            case HotKeyAction.DeclineCall:
+                _ = AnswerRingingCallAsync(global::Shared.Models.DataTransferObjects.ChatCallAction.Decline);
+                return;
+        }
+
         if (HybridSession is not { } session)
             return;
+
+        if (action == HotKeyAction.PushToTalk)
+        {
+            session.SetPushToTalkHeld(true);
+            return;
+        }
 
         System.Windows.Input.ICommand command = action switch
         {
             HotKeyAction.ToggleMicrophone => session.StatusBar.ToggleMicrophoneCommand,
             HotKeyAction.ToggleSound => session.StatusBar.ToggleSoundCommand,
+            HotKeyAction.ToggleAfk => session.StatusBar.ToggleAfkCommand,
+            HotKeyAction.ToggleScreenShare => session.StatusBar.ToggleScreenShareCommand,
+            HotKeyAction.LeaveSession => session.StatusBar.CloseCommand,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
 
         if (command.CanExecute(null))
             command.Execute(null);
+    }
+
+    private void OnHotKeyReleased(HotKeyAction action)
+    {
+        if (action == HotKeyAction.PushToTalk)
+            HybridSession?.SetPushToTalkHeld(false);
+    }
+
+    // Push to talk is on while it has keys, and follows them when they change
+    private void ApplyPushToTalk() => HybridSession?.SetPushToTalkEnabled(_hotKeys.Current.IsPushToTalkEnabled);
+
+    private static void ApplyMutedSpeechWarnings(ActiveHybridSessionVM? session, BehaviorSettings settings) =>
+        session?.SetMutedSpeechWarnings(settings.IsMutedMicrophoneWarningEnabled, settings.IsPushToTalkWarningEnabled);
+
+    private async Task LoadMutedSpeechWarningsAsync(ActiveHybridSessionVM session)
+    {
+        try
+        {
+            ApplyMutedSpeechWarnings(session, await _behaviorService.GetSettingsAsync());
+        }
+        catch (Exception exception)
+        {
+            // The warnings stay on, as they are by default
+            _logger.LogWarning(exception, "Failed to read the warnings of talking while muted");
+        }
     }
 
     public async Task Initialize(Action? onInitialized = null, Func<Task>? fadeOutStartupScreen = null)
@@ -664,9 +717,14 @@ public partial class MainWindowVM : ReactiveObject
         _ => "main.startup.internalError"
     };
 
-    private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel) =>
-        new(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand, _users.KickPeerCommand,
-            _users.AdmitPeerCommand);
+    private ActiveHybridSessionVM CreateHybridSession(HybridSessionModel sessionModel)
+    {
+        var session = new ActiveHybridSessionVM(sessionModel, _coordinatorSession!, _hybridServices(), ToggleFullscreenCommand,
+            _users.KickPeerCommand, _users.AdmitPeerCommand);
+        session.SetPushToTalkEnabled(_hotKeys.Current.IsPushToTalkEnabled);
+        _ = LoadMutedSpeechWarningsAsync(session);
+        return session;
+    }
 
     private void OnSessionClosed(IMainWindowContentVM session)
     {

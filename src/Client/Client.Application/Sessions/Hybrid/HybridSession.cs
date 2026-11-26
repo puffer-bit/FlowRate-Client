@@ -183,6 +183,11 @@ public partial class HybridSession : IHybridSession
         transport.InboundsReady += inboundIds => ResumeInbounds(transport, inboundIds);
         transport.VideoCaptureFailed += outboundId => _ = Task.Run(() => HandleCameraCaptureFailedAsync(transport, outboundId));
         transport.SpeakingChanged += (userId, isSpeaking) => OnSpeakingChanged(transport, userId, isSpeaking);
+        transport.MutedSpeakingChanged += isSpeaking =>
+        {
+            if (transport == _webRTCService && !IsDisposed)
+                MutedSpeakingChanged?.Invoke(isSpeaking);
+        };
         transport.StatsSampled += sample =>
         {
             if (transport == _webRTCService && !IsDisposed)
@@ -336,6 +341,7 @@ public partial class HybridSession : IHybridSession
 
         _voiceOutbound = outbound;
         IsMicrophoneMuted = false;
+        ApplyOutboundMute();
         LogVoiceStarted(Model.Id, outbound.SSRC);
 
         // Silenced here whatever the server answers, the others only see it later in that case
@@ -624,10 +630,41 @@ public partial class HybridSession : IHybridSession
         if (!result.IsSuccess)
             return result;
 
-        _webRTCService.SetOutboundMuted(outbound.Id, false);
         IsMicrophoneMuted = false;
+        ApplyOutboundMute();
 
         return RequestResult.Success;
+    }
+
+    public event Action<bool>? MutedSpeakingChanged;
+
+    public bool IsPushToTalkEnabled
+    {
+        get;
+        set
+        {
+            field = value;
+            ApplyOutboundMute();
+        }
+    }
+
+    public bool IsPushToTalkHeld
+    {
+        get;
+        set
+        {
+            field = value;
+            ApplyOutboundMute();
+        }
+    }
+
+    /// <summary>
+    /// Silences the running microphone here while it is muted, or while push to talk is on and its key is not held.
+    /// </summary>
+    private void ApplyOutboundMute()
+    {
+        if (_voiceOutbound is { } outbound)
+            _webRTCService.SetOutboundMuted(outbound.Id, IsMicrophoneMuted || (IsPushToTalkEnabled && !IsPushToTalkHeld));
     }
 
     public bool IsSoundMuted => _isSoundMuted;

@@ -31,6 +31,16 @@ public interface IWebRTCTransport : IDisposable
     event Action<int, bool>? SpeakingChanged;
 
     /// <summary>
+    /// Raised with true when we keep talking into our microphone while it is muted, and with false
+    /// once we stop or it is turned on. Raised on a timer thread.
+    /// </summary>
+    event Action<bool>? MutedSpeakingChanged
+    {
+        add { }
+        remove { }
+    }
+
+    /// <summary>
     /// Raised with the user and the source of a video track for every frame of it: decoded frames
     /// of the inbound tracks, and the preview of our own outbound ones. Raised on a thread of the
     /// track, and the pixels are only valid during the call.

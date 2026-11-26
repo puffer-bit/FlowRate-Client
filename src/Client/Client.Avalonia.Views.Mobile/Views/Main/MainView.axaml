@@ -400,7 +400,7 @@
                     <!-- One item, shown by the state it would change -->
                     <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
                                           IsVisible="{Binding !IsMuted}"
-                                          Click="OnToggleChatMuteClick"/>
+                                          Click="OnMuteChatClick"/>
                     <menus:MenuItemButton Icon="{StaticResource BellIcon}" Content="{l:Text sessions.unmuteNotifications}"
                                           IsVisible="{Binding IsMuted}"
                                           Click="OnToggleChatMuteClick"/>
@@ -575,6 +575,27 @@
             </common:PopupMenu>
 
             <!-- Where a session goes: a step up or down, or into a category. The data context is the session -->
+            <!-- How long the notifications of a chat stay muted -->
+            <common:PopupMenu x:Name="ChatMuteMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:ChatSessionVM">
+                <StackPanel Spacing="2">
+                    <TextBlock Margin="12,8,12,10" FontSize="16" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               Text="{l:Text sessions.muteNotifications}"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.mute.for15Minutes}" Command="{Binding MuteForCommand}" CommandParameter="15"
+                                          Click="OnChatMuteChoiceClick"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.mute.for1Hour}" Command="{Binding MuteForCommand}" CommandParameter="60"
+                                          Click="OnChatMuteChoiceClick"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.mute.for8Hours}" Command="{Binding MuteForCommand}" CommandParameter="480"
+                                          Click="OnChatMuteChoiceClick"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.mute.for24Hours}" Command="{Binding MuteForCommand}" CommandParameter="1440"
+                                          Click="OnChatMuteChoiceClick"/>
+                    <menus:MenuItemButton Content="{l:Text sessions.mute.untilTurnedOn}" Command="{Binding MuteForCommand}" CommandParameter=""
+                                          Click="OnChatMuteChoiceClick"/>
+                </StackPanel>
+            </common:PopupMenu>
+
             <common:PopupMenu x:Name="SessionMoveMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ISessionVM">

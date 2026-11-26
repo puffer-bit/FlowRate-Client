@@ -439,6 +439,8 @@ public partial class SessionsListVM : ReactiveObject
 
                 var coordinatorInstanceId = coordinatorSession.GetCurrentUser().CoordinatorInstanceId;
                 var mutedChatIds = await _preferences.LoadMutedChatsAsync(coordinatorInstanceId);
+                if (Drafts != null)
+                    await Drafts.LoadAsync(coordinatorInstanceId);
                 var collapsedCategoryIds = await _preferences.LoadCollapsedCategoriesAsync(coordinatorInstanceId);
                 var privateMode = await _preferences.LoadPrivateModeAsync(coordinatorInstanceId);
                 if (attachId != _attachId) return;
@@ -457,11 +459,11 @@ public partial class SessionsListVM : ReactiveObject
                         await AddNewHybridSession(hybridSessionModel);
                     else if (sessionModel.SessionType == SessionType.Chat
                              && sessionModel is ChatSessionModel chatSessionModel)
-                        AddChatSession(chatSessionModel, mutedChatIds.Contains(chatSessionModel.Id));
+                        AddChatSession(chatSessionModel, mutedChatIds.TryGetValue(chatSessionModel.Id, out var mutedUntil), mutedUntil);
                 }
 
                 // Chats deleted while we were away
-                foreach (var chatId in mutedChatIds)
+                foreach (var chatId in mutedChatIds.Keys)
                 {
                     if (!Sessions.Any(session => session is ChatSessionVM && session.Model.Id == chatId))
                         _ = _preferences.SaveChatMuteAsync(coordinatorInstanceId, chatId, false);

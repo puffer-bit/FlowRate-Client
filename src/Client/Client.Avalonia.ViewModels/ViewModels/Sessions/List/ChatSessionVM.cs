@@ -28,6 +28,7 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
             if (value is ChatSessionModel { Kind: ChatKind.Group } group)
                 AvatarUrl = group.AvatarUrl;
             this.RaisePropertyChanged(nameof(IsPrivate));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
             this.RaisePropertyChanged(nameof(IsDirect));
             this.RaisePropertyChanged(nameof(IsGroup));
             this.RaisePropertyChanged(nameof(CanCall));
@@ -125,8 +126,33 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             RaiseUnreadProperties();
+            this.RaisePropertyChanged(nameof(ShowsDraft));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
         }
     }
+
+    /// <summary>The text typed in the chat and not sent, with its mentions as tokens; null when there is none.</summary>
+    public string? Draft
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(DraftPreview));
+            this.RaisePropertyChanged(nameof(ShowsDraft));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
+        }
+    }
+
+    /// <summary>The draft on one line, in the place of the last message of a chat that is not shown.</summary>
+    public string DraftPreview => Draft?.Replace('\n', ' ').Replace('\r', ' ') ?? string.Empty;
+
+    public bool ShowsDraft => Draft != null && !IsShown;
+
+    // A run of the line cannot take a localized text from the markup
+    public string DraftLabel => Strings.Get("sessions.draft");
+
+    public bool ShowsLastMessagePreview => IsPrivate && !ShowsDraft;
 
     public bool IsLeaving
     {
@@ -198,8 +224,41 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
         {
             this.RaiseAndSetIfChanged(ref field, value);
             RaiseUnreadProperties();
+            this.RaisePropertyChanged(nameof(MutedToolTip));
         }
     }
+
+    /// <summary>
+    /// When a mute for a while ends; null while not muted or muted until the user turns the notifications on.
+    /// </summary>
+    public DateTimeOffset? MutedUntil
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MutedToolTip));
+        }
+    }
+
+    /// <summary>The tip of the crossed bell: until when the chat stays muted.</summary>
+    public string MutedToolTip => MutedUntil is { } until
+        ? Strings.Format("sessions.notificationsMutedUntil", ("time", MuteEndText(until.ToLocalTime())))
+        : Strings.Get("sessions.notificationsMuted");
+
+    // The time alone today, with the date on another day
+    private static string MuteEndText(DateTimeOffset until) => until.Date == DateTimeOffset.Now.Date
+        ? until.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)
+        : Strings.FormatDateTime(until);
+
+    /// <summary>
+    /// Mutes the chat for the number of minutes given as the parameter, or until the user turns the
+    /// notifications on with an empty one.
+    /// </summary>
+    public ReactiveCommand<string?, RxVoid>? MuteForCommand { get; set; }
+
+    // Ends a mute for a while when its time comes
+    internal IDisposable? MuteEnd { get; set; }
 
     /// <summary>
     /// Messages of others after the read position of the user, up to <see cref="ChatReadState.MaxCount"/>.
@@ -280,11 +339,17 @@ public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
     }
 
     private void OnLanguageChanged() => global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        this.RaisePropertyChanged(nameof(LastMessagePreview)));
+    {
+        this.RaisePropertyChanged(nameof(LastMessagePreview));
+        this.RaisePropertyChanged(nameof(MutedToolTip));
+        this.RaisePropertyChanged(nameof(DraftLabel));
+    });
 
     public void Dispose()
     {
         Strings.LanguageChanged -= OnLanguageChanged;
+        MuteEnd?.Dispose();
+        MuteForCommand?.Dispose();
         EditGroupCommand?.Dispose();
         CallCommand?.Dispose();
         LeaveGroupCommand?.Dispose();

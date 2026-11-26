@@ -513,6 +513,14 @@
                     <ToggleSwitch IsChecked="{Binding KeepScreenOnWhileWatching}"/>
                 </ui:SettingsRow>
             </ui:SettingsCard>
+            <!-- The microphone button blinks when we talk and nobody hears it; the phone has no push to talk -->
+            <controls:SettingsHeader services:SettingText.Section="behavior.warnings"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="behavior.mutedMicrophoneWarning">
+                    <ToggleSwitch IsChecked="{Binding IsMutedMicrophoneWarningEnabled}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
             <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
             <ui:SettingsCard>
                 <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">

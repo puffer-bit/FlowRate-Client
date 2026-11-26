@@ -229,8 +229,12 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
             services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions,
             // In a direct chat or a group only its members can be mentioned
-            () => _model.IsPrivate ? _model.MemberIds : null);
+            () => _model.IsPrivate ? _model.MemberIds : null, services.Drafts, currentUser.CoordinatorInstanceId);
 
+        // A newer message of the user may not be loaded while an older part of the history is shown
+        Composer.FindLastEditableMessage = () => HasNewerMessages ? null : _messageVms.Values
+            .Where(message => message.CanEdit && !message.Message.IsDeleted)
+            .MaxBy(message => message.Message.Id)?.Message;
         ApplyAccess(coordinatorSession.Permissions);
         IsConnected = coordinatorSession.ConnectionStatus == CoordinatorState.Connected;
 

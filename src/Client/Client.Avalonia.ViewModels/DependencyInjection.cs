@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Main;
 using Client.ViewModels.Sessions;
+using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
 using Client.ViewModels.Settings;
@@ -43,6 +44,7 @@ public static class DependencyInjection
             provider.GetService<IChatAttachmentPreferencesRepository>(), provider.GetService<ILogger<ChatAttachmentOptions>>(),
             provider.GetService<IVideoPreparer>()));
 
+        services.AddSingleton<ChatDrafts>();
         services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(
             provider.GetRequiredService<IChatCacheStore>(),
@@ -52,7 +54,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IMediaCache>(),
             provider.GetRequiredService<IAppearanceService>(),
             provider.GetRequiredService<ChatReceipts>(),
-            provider.GetRequiredService<ChatAttachmentOptions>()));
+            provider.GetRequiredService<ChatAttachmentOptions>(),
+            provider.GetRequiredService<ChatDrafts>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),

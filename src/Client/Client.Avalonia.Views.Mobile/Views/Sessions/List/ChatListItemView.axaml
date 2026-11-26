@@ -25,8 +25,13 @@
 
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                     <TextBlock Classes="sessionName" FontSize="16" Classes.unread="{Binding HasUnread}" Text="{Binding DisplayName}"/>
-                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}" FontSize="12"
+                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding ShowsLastMessagePreview}" FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+                    <!-- What was typed and not sent takes the place of the last message -->
+                    <TextBlock IsVisible="{Binding ShowsDraft}" FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding DraftLabel}" Foreground="{DynamicResource ErrorBrush}"/><Run Text="{Binding DraftPreview}"/>
+                    </TextBlock>
                 </StackPanel>
 
 

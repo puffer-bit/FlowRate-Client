@@ -539,6 +539,36 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task AMuteForAWhileEndsByItself()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var time = new SetTime(DateTimeOffset.FromUnixTimeSeconds(1_000_000));
+        var repository = new MutedChatsRepository(database.Database, time);
+        var until = time.Now.AddHours(1);
+
+        await repository.SetAsync("coordinator-a", 7, true, until);
+        await repository.SetAsync("coordinator-a", 3, true);
+
+        Assert.Equal([3, 7], await repository.GetAsync("coordinator-a"));
+        var mutes = await repository.GetUntilAsync("coordinator-a");
+        Assert.Null(mutes[3]);
+        Assert.Equal(until, mutes[7]);
+
+        time.Now = until;
+        Assert.Equal([3], await repository.GetAsync("coordinator-a"));
+
+        // Muting again for good drops the end
+        await repository.SetAsync("coordinator-a", 7, true);
+        Assert.Null((await repository.GetUntilAsync("coordinator-a"))[7]);
+    }
+
+    private sealed class SetTime(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
     public async Task BehaviorSettingsStartWithTheDefaults()
     {
         await using var database = await TestDatabase.CreateMigratedAsync();
@@ -559,6 +589,8 @@ public class SettingsRepositoriesTests
         Assert.Equal(BehaviorSettings.DefaultIdleAfterMinutes, settings.IdleAfterMinutes);
         Assert.Equal(BehaviorSettings.DefaultSleepAfterMinutes, settings.SleepAfterMinutes);
         Assert.False(settings.KeepActiveDuringCalls);
+        Assert.True(settings.IsMutedMicrophoneWarningEnabled);
+        Assert.True(settings.IsPushToTalkWarningEnabled);
     }
 
     [Fact]
@@ -581,7 +613,9 @@ public class SettingsRepositoriesTests
             IsAutoIdleEnabled = false,
             IdleAfterMinutes = 30,
             SleepAfterMinutes = 0,
-            KeepActiveDuringCalls = true
+            KeepActiveDuringCalls = true,
+            IsMutedMicrophoneWarningEnabled = false,
+            IsPushToTalkWarningEnabled = false
         });
         var settings = await repository.GetAsync();
 
@@ -598,6 +632,8 @@ public class SettingsRepositoriesTests
         Assert.Equal(30, settings.IdleAfterMinutes);
         Assert.Equal(0, settings.SleepAfterMinutes);
         Assert.True(settings.KeepActiveDuringCalls);
+        Assert.False(settings.IsMutedMicrophoneWarningEnabled);
+        Assert.False(settings.IsPushToTalkWarningEnabled);
     }
 
     [Fact]

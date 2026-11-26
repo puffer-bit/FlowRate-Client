@@ -22,7 +22,8 @@ public sealed record ChatSessionServices(
     IMediaCache MediaCache,
     IAppearanceService? Appearance = null,
     ChatReceipts? Receipts = null,
-    ChatAttachmentOptions? AttachmentOptions = null);
+    ChatAttachmentOptions? AttachmentOptions = null,
+    Client.ViewModels.Sessions.Chat.ChatDrafts? Drafts = null);
 
 /// <summary>
 /// The services the hybrid session we are in uses. Resolved only when a session is entered: a

@@ -17,24 +17,25 @@ public sealed partial class SessionListPreferences(IMutedChatsRepository mutedCh
     private const string CollapsedCategoryKeyPrefix = "sessionCategory:";
     private readonly ILogger _logger = logger;
 
-    public async Task<IReadOnlyCollection<int>> LoadMutedChatsAsync(string coordinatorInstanceId)
+    /// <summary>The chats muted now, with the time each mute ends at, null for one the user ends.</summary>
+    public async Task<IReadOnlyDictionary<int, DateTimeOffset?>> LoadMutedChatsAsync(string coordinatorInstanceId)
     {
         try
         {
-            return (await mutedChats.GetAsync(coordinatorInstanceId)).ToHashSet();
+            return await mutedChats.GetUntilAsync(coordinatorInstanceId);
         }
         catch (Exception exception)
         {
             LogMutedChatsLoadFailed(exception);
-            return [];
+            return new Dictionary<int, DateTimeOffset?>();
         }
     }
 
-    public async Task SaveChatMuteAsync(string coordinatorInstanceId, int chatId, bool isMuted)
+    public async Task SaveChatMuteAsync(string coordinatorInstanceId, int chatId, bool isMuted, DateTimeOffset? until = null)
     {
         try
         {
-            await mutedChats.SetAsync(coordinatorInstanceId, chatId, isMuted);
+            await mutedChats.SetAsync(coordinatorInstanceId, chatId, isMuted, until);
         }
         catch (Exception exception)
         {

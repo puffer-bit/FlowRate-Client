@@ -206,6 +206,8 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
                 () => hybridSession.VideoDecodingChanged -= OnVideoDecoding)
             .Add(() => hybridSession.StatsSampled += OnStatsSampled, () => hybridSession.StatsSampled -= OnStatsSampled)
             .Add(() => hybridSession.PerfSampled += OnPerfSampled, () => hybridSession.PerfSampled -= OnPerfSampled)
+            .Add(() => hybridSession.MutedSpeakingChanged += OnMutedSpeakingChanged,
+                () => hybridSession.MutedSpeakingChanged -= OnMutedSpeakingChanged)
             .Add(() => _screenWatch.Requested += OnScreenWatchRequested, () => _screenWatch.Requested -= OnScreenWatchRequested)
             .Add(() => _playbackService.Changed += OnPlaybackChanged, () => _playbackService.Changed -= OnPlaybackChanged)
             .Add(() => coordinatorSession.HybridSessionReconfigured += OnSessionReconfigured,
@@ -778,6 +780,7 @@ public partial class ActiveHybridSessionVM : ReactiveObject, IMainWindowContentV
 
         _callDurationTimer?.Stop();
         _subscriptions.Dispose();
+        StatusBar.IsMutedSpeechDetected = false;
         _peerStats.Clear(Model.Id);
 
         // Not when the call already let us go: kicked, ended or taken over by another device

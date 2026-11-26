@@ -47,6 +47,8 @@ public sealed partial class LibWebRTCTransport : IWebRTCTransport
     private readonly MediaPerfSampler _perfSampler = new();
     private readonly StatsSchedule _statsSchedule = new();
     private readonly SpeakingDetector _speaking = new();
+    // Touched under _lock
+    private readonly MutedSpeechDetector _mutedSpeech = new();
 
     private IMediaPeer? _peer;
     private TransportParameters? _transportParameters;
@@ -67,6 +69,7 @@ public sealed partial class LibWebRTCTransport : IWebRTCTransport
     public event Action<DtlsParameters>? LocalDtlsParametersReady;
     public event Action<WebRTCConnectionState>? ConnectionStateChanged;
     public event Action<int, bool>? SpeakingChanged;
+    public event Action<bool>? MutedSpeakingChanged;
     public event Action<int, MediaSourceType, RawVideoFrame>? VideoFrameReady;
     public event Action<int, MediaSourceType, VideoDecoding>? VideoDecodingChanged;
 

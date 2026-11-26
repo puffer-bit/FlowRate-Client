@@ -120,9 +120,17 @@ public sealed partial class LibWebRTCTransport
     private void UpdateSpeaking(IReadOnlyList<VoiceLevel> levels)
     {
         List<int> speakers = [];
+        bool? mutedSpeech;
 
         lock (_lock)
         {
+            // The microphone keeps capturing while muted: its level tells that the user talks to nobody
+            var isMutedLoud = _isMicrophoneMuted && _outbounds.Count > 0 && levels.Any(level =>
+                level.Mid == null && level.Level >= SpeakingDetector.SpeakingLevel);
+            mutedSpeech = _isMicrophoneMuted
+                ? _mutedSpeech.Update(isMutedLoud, Environment.TickCount64)
+                : _mutedSpeech.Reset();
+
             foreach (var (mid, level) in levels)
             {
                 if (level < SpeakingDetector.SpeakingLevel)
@@ -143,11 +151,20 @@ public sealed partial class LibWebRTCTransport
 
         foreach (var (userId, isSpeaking) in _speaking.Update(speakers))
             SpeakingChanged?.Invoke(userId, isSpeaking);
+
+        if (mutedSpeech is { } isMutedSpeaking)
+            MutedSpeakingChanged?.Invoke(isMutedSpeaking);
     }
 
     private void ReportEveryoneSilent()
     {
         foreach (var userId in _speaking.Reset())
             SpeakingChanged?.Invoke(userId, false);
+
+        bool? mutedSpeech;
+        lock (_lock)
+            mutedSpeech = _mutedSpeech.Reset();
+        if (mutedSpeech == false)
+            MutedSpeakingChanged?.Invoke(false);
     }
 }

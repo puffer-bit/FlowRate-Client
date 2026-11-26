@@ -134,10 +134,34 @@
                         </menus:MenuItemButton>
                         <!-- One item, shown by the state it would change -->
                         <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
-                                              menus:FlyoutMenu.CloseOnClick="True"
-                                              IsVisible="{Binding !DataContext.IsMuted, ElementName=Root}"
-                                              Command="{Binding DataContext.ToggleMuteCommand, ElementName=Root}"
-                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                                              IsVisible="{Binding !DataContext.IsMuted, ElementName=Root}">
+                            <menus:MenuItemButton.Flyout>
+                                <Flyout Placement="RightEdgeAlignedTop">
+                                    <StackPanel Spacing="2">
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for15Minutes}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="15"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for1Hour}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="60"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for8Hours}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="480"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for24Hours}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="1440"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.untilTurnedOn}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter=""/>
+                                    </StackPanel>
+                                </Flyout>
+                            </menus:MenuItemButton.Flyout>
+                        </menus:MenuItemButton>
                         <menus:MenuItemButton Icon="{StaticResource BellIcon}" Content="{l:Text sessions.unmuteNotifications}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding DataContext.IsMuted, ElementName=Root}"
@@ -190,8 +214,13 @@
                                               Classes.callActive="{Binding HasActiveCall}"
                                               ToolTip.Tip="{Binding DisplayName}"/>
                     </Grid>
-                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding IsPrivate}"
+                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding ShowsLastMessagePreview}"
                                Classes="sessionPreview" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    <!-- What was typed and not sent takes the place of the last message -->
+                    <TextBlock IsVisible="{Binding ShowsDraft}" Classes="sessionPreview" FontSize="12"
+                               TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding DraftLabel}" Foreground="{DynamicResource ErrorBrush}"/><Run Text="{Binding DraftPreview}"/>
+                    </TextBlock>
                 </StackPanel>
                 
 
@@ -202,7 +231,7 @@
                     <Panel>
                     <Image Width="18" Height="18"
                            IsVisible="{Binding ShowsMutedMark}"
-                           ToolTip.Tip="{l:Text sessions.notificationsMuted}"
+                           ToolTip.Tip="{Binding MutedToolTip}"
                            Source="{StaticResource CrossedBellIcon}"/>
                     <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
                         <TextBlock Text="{Binding UnreadCountText}"/>

@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddSingleton<IPanelWidthsRepository, PanelWidthsRepository>();
         services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();
         services.AddSingleton<IUserNotesRepository, UserNotesRepository>();
+        services.AddSingleton<IChatDraftsRepository, ChatDraftsRepository>();
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
         services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
         services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();

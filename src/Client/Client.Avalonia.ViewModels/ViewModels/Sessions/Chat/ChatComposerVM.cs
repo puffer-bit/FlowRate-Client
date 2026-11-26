@@ -57,6 +57,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             OnTypingInputChanged();
             OnLinkInputChanged();
             OnAppLinkInputChanged();
+            OnDraftInputChanged();
             this.RaisePropertyChanged(nameof(RemainingCharacters));
             this.RaisePropertyChanged(nameof(IsLengthCounterVisible));
             // A failed send is about the text that was there; editing it starts over
@@ -345,9 +346,12 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     public ChatComposerVM(int chatId, string chatName, bool isAttachmentsAllowed, ICoordinatorSession session,
         int currentUserId, IChatMediaUploader mediaUploader, IChatImageService images, ChatSenderDirectory senders,
         Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null,
-        Func<IReadOnlyCollection<int>?>? mentionableMembers = null)
+        Func<IReadOnlyCollection<int>?>? mentionableMembers = null, ChatDrafts? drafts = null,
+        string? coordinatorInstanceId = null)
     {
         ArgumentNullException.ThrowIfNull(session);
+        _drafts = coordinatorInstanceId != null ? drafts : null;
+        _coordinatorInstanceId = coordinatorInstanceId ?? string.Empty;
         _attachmentOptions = attachmentOptions;
         if (attachmentOptions != null)
         {
@@ -410,6 +414,9 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                     _ = options.SetDefaultsAsync(options.Defaults with { VideoSide = side });
             },
             this.WatchProperties(nameof(CanChooseVideoDefaults)).Select(vm => vm.CanChooseVideoDefaults));
+
+        if (_drafts != null)
+            _ = RestoreDraftAsync();
     }
 
     /// <summary>
@@ -504,6 +511,23 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         EditPreview = new ChatReplyPreviewVM(messageModel, isEdit: true);
         EditPreview.RenderText(_senders.RenderText);
         SetRestoredText(MentionPicker.Decode(messageModel.TextContent.Text, _senders.FindName));
+    }
+
+    /// <summary>The newest message of the user that can be edited, when the newest messages are loaded.</summary>
+    public Func<ChatMessageModel?>? FindLastEditableMessage { get; set; }
+
+    /// <summary>
+    /// Up in an empty input edits the last message of the user, as in Discord and Telegram.
+    /// </summary>
+    /// <returns>False when the input is not empty or there is no message to edit.</returns>
+    public bool TryEditLastMessage()
+    {
+        if (!string.IsNullOrEmpty(InputtedText) || HasAttachments || IsEditingMessage || IsMessageSending
+            || !IsConnected || !CanWrite || FindLastEditableMessage?.Invoke() is not { } message)
+            return false;
+
+        StartEdit(message);
+        return IsEditingMessage;
     }
 
     private void EndEdit()
@@ -821,6 +845,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     {
         StopTyping();
         _typingDisposed = true;
+        FlushDraft();
         _sendCancellation?.Cancel();
         DisposeLinkPreview();
         if (_attachmentOptions != null)

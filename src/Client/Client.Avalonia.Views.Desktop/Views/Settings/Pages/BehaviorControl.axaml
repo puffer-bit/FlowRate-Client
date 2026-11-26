@@ -69,6 +69,16 @@
                 <CheckBox IsChecked="{Binding KeepActiveDuringCalls}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
+        <!-- The microphone button blinks when we talk and nobody hears it -->
+        <controls:SettingsHeader services:SettingText.Section="behavior.warnings"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.mutedMicrophoneWarning">
+                <CheckBox IsChecked="{Binding IsMutedMicrophoneWarningEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.pushToTalkWarning">
+                <CheckBox IsChecked="{Binding IsPushToTalkWarningEnabled}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
         <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>
         <ui:SettingsCard IsEnabled="{x:Static services:LaunchSettings.CanAutoConnect}">
             <ui:SettingsRow services:SettingText.Key="behavior.autoConnect">

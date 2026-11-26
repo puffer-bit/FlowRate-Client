@@ -43,6 +43,10 @@
         <Style Selector="Button.barAction.afk /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AfkActiveBackgroundBrush}"/>
         </Style>
+        <!-- We talk and nobody hears it: the microphone blinks, switched at once and not faded -->
+        <Style Selector="Button.barAction.mutedSpeech /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+        </Style>
         <Style Selector=":is(Button).barAction Image">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
@@ -96,7 +100,7 @@
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,10,0" VerticalAlignment="Center">
 
             <!-- What we send -->
-            <Button Classes="barAction"
+            <Button Classes="barAction" Classes.mutedSpeech="{Binding IsMicrophoneWarningLit}"
                     Command="{Binding ToggleMicrophoneCommand}"
                     ToolTip.Tip="{l:Text main.voice.toggleMicrophone}"
                     AutomationProperties.Name="{l:Text main.voice.toggleMicrophone}">

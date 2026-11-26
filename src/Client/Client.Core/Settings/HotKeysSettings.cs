@@ -4,7 +4,15 @@ namespace Client.Core.Settings;
 public enum HotKeyAction
 {
     ToggleMicrophone = 1,
-    ToggleSound = 2
+    ToggleSound = 2,
+
+    /// <summary>Held to talk: while it has keys the microphone sends only while they are held.</summary>
+    PushToTalk = 3,
+    ToggleAfk = 4,
+    ToggleScreenShare = 5,
+    LeaveSession = 6,
+    AcceptCall = 7,
+    DeclineCall = 8
 }
 
 /// <summary>How the hot keys are heard outside of the window of the application.</summary>
@@ -42,7 +50,17 @@ public sealed record HotKeyBinding(HotKeyAction Action, string? Gesture, bool Is
 /// </summary>
 public sealed record HotKeysSettings
 {
-    public static IReadOnlyList<HotKeyAction> Actions { get; } = [HotKeyAction.ToggleMicrophone, HotKeyAction.ToggleSound];
+    public static IReadOnlyList<HotKeyAction> Actions { get; } =
+    [
+        HotKeyAction.ToggleMicrophone, HotKeyAction.ToggleSound, HotKeyAction.PushToTalk, HotKeyAction.ToggleAfk,
+        HotKeyAction.ToggleScreenShare, HotKeyAction.LeaveSession, HotKeyAction.AcceptCall, HotKeyAction.DeclineCall
+    ];
+
+    /// <summary>Acts while its keys are held, so their release is reported as well.</summary>
+    public static bool IsHeld(HotKeyAction action) => action == HotKeyAction.PushToTalk;
+
+    /// <summary>Push to talk has keys and the hot keys are on.</summary>
+    public bool IsPushToTalkEnabled => IsEnabled && Get(HotKeyAction.PushToTalk).Gesture != null;
 
     public bool IsEnabled { get; init; } = true;
 

@@ -21,7 +21,8 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             SELECT IsAutoConnectEnabled, IsFallbackConnectionEnabled, IsFallbackConnectionWarningEnabled,
                    IsPropagatedConnectionWarningEnabled, CloseButtonAction, IsUpdateCheckOnStartupEnabled,
                    UpdateChannel, QuickReaction, KeepScreenOnWhileWatching, IsAutoIdleEnabled, IdleAfterMinutes,
-                   SleepAfterMinutes, KeepActiveDuringCalls
+                   SleepAfterMinutes, KeepActiveDuringCalls, IsMutedMicrophoneWarningEnabled,
+                   IsPushToTalkWarningEnabled
             FROM BehaviorSettings WHERE Id = 1
             """);
 
@@ -42,7 +43,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             IsAutoIdleEnabled = row.IsAutoIdleEnabled,
             IdleAfterMinutes = row.IdleAfterMinutes,
             SleepAfterMinutes = row.SleepAfterMinutes,
-            KeepActiveDuringCalls = row.KeepActiveDuringCalls
+            KeepActiveDuringCalls = row.KeepActiveDuringCalls,
+            IsMutedMicrophoneWarningEnabled = row.IsMutedMicrophoneWarningEnabled,
+            IsPushToTalkWarningEnabled = row.IsPushToTalkWarningEnabled
         };
     }
 
@@ -54,11 +57,13 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             INSERT INTO BehaviorSettings (Id, IsAutoConnectEnabled, IsFallbackConnectionEnabled,
                 IsFallbackConnectionWarningEnabled, IsPropagatedConnectionWarningEnabled, CloseButtonAction,
                 IsUpdateCheckOnStartupEnabled, UpdateChannel, QuickReaction, KeepScreenOnWhileWatching,
-                IsAutoIdleEnabled, IdleAfterMinutes, SleepAfterMinutes, KeepActiveDuringCalls)
+                IsAutoIdleEnabled, IdleAfterMinutes, SleepAfterMinutes, KeepActiveDuringCalls,
+                IsMutedMicrophoneWarningEnabled, IsPushToTalkWarningEnabled)
             VALUES (1, @IsAutoConnectEnabled, @IsFallbackConnectionEnabled,
                 @IsFallbackConnectionWarningEnabled, @IsPropagatedConnectionWarningEnabled, @CloseButtonAction,
                 @IsUpdateCheckOnStartupEnabled, @UpdateChannel, @QuickReaction, @KeepScreenOnWhileWatching,
-                @IsAutoIdleEnabled, @IdleAfterMinutes, @SleepAfterMinutes, @KeepActiveDuringCalls)
+                @IsAutoIdleEnabled, @IdleAfterMinutes, @SleepAfterMinutes, @KeepActiveDuringCalls,
+                @IsMutedMicrophoneWarningEnabled, @IsPushToTalkWarningEnabled)
             ON CONFLICT (Id) DO UPDATE SET
                 IsAutoConnectEnabled = excluded.IsAutoConnectEnabled,
                 IsFallbackConnectionEnabled = excluded.IsFallbackConnectionEnabled,
@@ -72,7 +77,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 IsAutoIdleEnabled = excluded.IsAutoIdleEnabled,
                 IdleAfterMinutes = excluded.IdleAfterMinutes,
                 SleepAfterMinutes = excluded.SleepAfterMinutes,
-                KeepActiveDuringCalls = excluded.KeepActiveDuringCalls
+                KeepActiveDuringCalls = excluded.KeepActiveDuringCalls,
+                IsMutedMicrophoneWarningEnabled = excluded.IsMutedMicrophoneWarningEnabled,
+                IsPushToTalkWarningEnabled = excluded.IsPushToTalkWarningEnabled
             """, new
             {
                 settings.IsAutoConnectEnabled,
@@ -87,7 +94,9 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 settings.IsAutoIdleEnabled,
                 settings.IdleAfterMinutes,
                 settings.SleepAfterMinutes,
-                settings.KeepActiveDuringCalls
+                settings.KeepActiveDuringCalls,
+                settings.IsMutedMicrophoneWarningEnabled,
+                settings.IsPushToTalkWarningEnabled
             });
     }
 
@@ -131,7 +140,8 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
 internal sealed record BehaviorSettingsRow(bool IsAutoConnectEnabled, bool IsFallbackConnectionEnabled,
     bool IsFallbackConnectionWarningEnabled, bool IsPropagatedConnectionWarningEnabled, int CloseButtonAction,
     bool IsUpdateCheckOnStartupEnabled, int UpdateChannel, string QuickReaction, bool KeepScreenOnWhileWatching,
-    bool IsAutoIdleEnabled, int IdleAfterMinutes, int SleepAfterMinutes, bool KeepActiveDuringCalls);
+    bool IsAutoIdleEnabled, int IdleAfterMinutes, int SleepAfterMinutes, bool KeepActiveDuringCalls,
+    bool IsMutedMicrophoneWarningEnabled, bool IsPushToTalkWarningEnabled);
 
 internal sealed record AutoConnectRow(string? AutoConnectCoordinatorId, int? AutoConnectUserId);
 

@@ -68,6 +68,21 @@ public interface IHybridSession : IDisposable
     Task<RequestResult> SetMicrophoneMutedAsync(bool isMuted);
 
     /// <summary>
+    /// Push to talk: the microphone, on as the server sees it, sends only while <see cref="IsPushToTalkHeld"/>.
+    /// The others see it on and hear silence, as with a closed voice gate.
+    /// </summary>
+    bool IsPushToTalkEnabled { get; set; }
+
+    /// <summary>The key of push to talk is held.</summary>
+    bool IsPushToTalkHeld { get; set; }
+
+    /// <summary>
+    /// Raised with true when we keep talking while the microphone is muted or push to talk is not held,
+    /// and with false once we stop. Raised on any thread.
+    /// </summary>
+    event Action<bool>? MutedSpeakingChanged;
+
+    /// <summary>
     /// Whether the voices of the session are silenced. Kept over a reconnect, unlike the server,
     /// which has to be told again.
     /// </summary>

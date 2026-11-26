@@ -23,6 +23,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     [
         new("behavior.playback", "settings.behavior.section.playback"),
         new("behavior.status", "settings.behavior.section.status"),
+        new("behavior.warnings", "settings.behavior.section.warnings"),
         new("behavior.autoConnection", "settings.behavior.section.autoConnection"),
         new("behavior.manualConnection", "settings.behavior.section.manualConnection"),
         new("behavior.tray", "settings.behavior.section.tray"),
@@ -34,6 +35,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("behavior",
         ("playback", ["keepScreenOn"]),
         ("status", ["autoIdle", "idleAfter", "sleepAfter", "keepActiveInCalls"]),
+        ("warnings", ["mutedMicrophoneWarning", "pushToTalkWarning"]),
         ("autoConnection", ["autoConnect", "server", "identity"]),
         ("manualConnection", ["fallbackServers", "fallbackWarning", "propagatedWarning"]),
         ("tray", ["closeAction"]),
@@ -70,6 +72,20 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     } = 1;
 
     public bool KeepActiveDuringCalls
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>The microphone button blinks when we talk with the microphone off.</summary>
+    public bool IsMutedMicrophoneWarningEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>The microphone button blinks when we talk without holding the key of push to talk.</summary>
+    public bool IsPushToTalkWarningEnabled
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -236,6 +252,8 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
                 nameof(IdleAfterIndex),
                 nameof(SleepAfterIndex),
                 nameof(KeepActiveDuringCalls),
+                nameof(IsMutedMicrophoneWarningEnabled),
+                nameof(IsPushToTalkWarningEnabled),
                 nameof(IsAutoConnectedEnabled),
                 nameof(IsAutoConnectedToFallbackServersEnabled),
                 nameof(IsFallbackConnectionWarningEnabled),
@@ -279,6 +297,8 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IdleAfterMinutes = ChoiceAt(IdleAfterChoices, IdleAfterIndex, BehaviorSettings.DefaultIdleAfterMinutes),
         SleepAfterMinutes = ChoiceAt(SleepAfterChoices, SleepAfterIndex, BehaviorSettings.DefaultSleepAfterMinutes),
         KeepActiveDuringCalls = KeepActiveDuringCalls,
+        IsMutedMicrophoneWarningEnabled = IsMutedMicrophoneWarningEnabled,
+        IsPushToTalkWarningEnabled = IsPushToTalkWarningEnabled,
         IsAutoConnectEnabled = IsAutoConnectedEnabled,
         IsFallbackConnectionEnabled = IsAutoConnectedToFallbackServersEnabled,
         IsFallbackConnectionWarningEnabled = IsFallbackConnectionWarningEnabled,
@@ -298,6 +318,8 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IdleAfterIndex = IndexOf(IdleAfterChoices, settings.IdleAfterMinutes, BehaviorSettings.DefaultIdleAfterMinutes);
         SleepAfterIndex = IndexOf(SleepAfterChoices, settings.SleepAfterMinutes, BehaviorSettings.DefaultSleepAfterMinutes);
         KeepActiveDuringCalls = settings.KeepActiveDuringCalls;
+        IsMutedMicrophoneWarningEnabled = settings.IsMutedMicrophoneWarningEnabled;
+        IsPushToTalkWarningEnabled = settings.IsPushToTalkWarningEnabled;
         IsAutoConnectedEnabled = settings.IsAutoConnectEnabled;
         IsAutoConnectedToFallbackServersEnabled = settings.IsFallbackConnectionEnabled;
         IsFallbackConnectionWarningEnabled = settings.IsFallbackConnectionWarningEnabled;

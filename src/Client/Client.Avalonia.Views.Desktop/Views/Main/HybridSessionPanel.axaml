@@ -58,6 +58,10 @@
             <Style Selector="Button.hybridAction.leave:pointerover /template/ ContentPresenter">
                 <Setter Property="Background" Value="{DynamicResource ColorDangerBase}"/>
             </Style>
+            <!-- We talk and nobody hears it: the microphone blinks, switched at once and not faded -->
+            <Style Selector="Button.hybridAction.mutedSpeech /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+            </Style>
         </Border.Styles>
 
         <Grid RowDefinitions="Auto,Auto" RowSpacing="8"
@@ -124,6 +128,7 @@
 
             <UniformGrid Grid.Row="1" Rows="1" Columns="4" ColumnSpacing="6">
                 <Button Classes="hybridAction"
+                        Classes.mutedSpeech="{Binding StatusBar.IsMicrophoneWarningLit, FallbackValue=False}"
                         Command="{Binding StatusBar.ToggleMicrophoneCommand, FallbackValue={x:Null}}"
                         ToolTip.Tip="{l:Text main.voice.toggleMicrophone}"
                         AutomationProperties.Name="{l:Text main.voice.toggleMicrophone}">

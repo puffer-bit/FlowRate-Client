@@ -64,6 +64,20 @@ public partial class MainWindowVM
         _callRinging = _callSounds?.PlayLoop(Client.Application.Sounds.SoundEvent.CallIncoming);
     }
 
+    /// <summary>Accepts or declines the call ringing now, for its hot keys; without one nothing happens.</summary>
+    private async Task AnswerRingingCallAsync(ChatCallAction action)
+    {
+        if (_shownCall is not { } callId || _coordinatorSession is not { } coordinator)
+            return;
+
+        var call = coordinator.ChatCalls.Values.FirstOrDefault(ringing => ringing.CallId == callId);
+        if (call == null || !IsRingingFor(call))
+            return;
+
+        DismissCallToast();
+        await ChangeCallAsync(call, action);
+    }
+
     private void DismissCallToast()
     {
         _callRinging?.Dispose();

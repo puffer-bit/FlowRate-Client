@@ -208,6 +208,414 @@
                     </StackPanel>
                 </StackPanel>
             </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.pushToTalk" Icon="{StaticResource MicrophoneIcon}" DataContext="{Binding Items[2]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleAfk" Icon="{StaticResource AfkIcon}" DataContext="{Binding Items[3]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.toggleScreenShare" Icon="{StaticResource ScreenShareIcon}" DataContext="{Binding Items[4]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.leaveSession" Icon="{StaticResource DoorWithRedArrowIcon}" DataContext="{Binding Items[5]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.acceptCall" Icon="{StaticResource ChatCallStartedIcon}" DataContext="{Binding Items[6]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="hotKeys.declineCall" Icon="{StaticResource ChatCallEndedIcon}" DataContext="{Binding Items[7]}">
+                <StackPanel Spacing="6" HorizontalAlignment="Right" x:DataType="pagesVm:HotKeyItemVM">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                        <!-- Its place is kept while nothing is assigned, so the field does not move -->
+                        <Panel Width="28" VerticalAlignment="Center">
+                            <Button Classes="ghost" IsVisible="{Binding HasGesture}"
+                                    Command="{Binding ClearCommand}" ToolTip.Tip="{l:Text common.clear}"
+                                    AutomationProperties.Name="{l:Text common.clear}">
+                                <Image Width="14" Height="14" Source="{StaticResource CloseIcon}"/>
+                            </Button>
+                        </Panel>
+                        <!-- The field shows the keys; a click on it records new ones, another click cancels -->
+                        <Button Classes="hotKeyField" Classes.recording="{Binding IsRecording}"
+                                Command="{Binding RecordCommand}"
+                                ToolTip.Tip="{l:Text settings.hotKeys.recordTip}">
+                            <Panel>
+                                <ItemsControl ItemsSource="{Binding Keycaps}" HorizontalAlignment="Center">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="menus:GestureKey">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="+" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           IsVisible="{Binding !IsFirst}"/>
+                                                <Border MinWidth="26" Padding="6,1" CornerRadius="4" BorderThickness="1,1,1,2"
+                                                        BorderBrush="{DynamicResource KeycapBorderBrush}"
+                                                        Background="{DynamicResource KeycapBackgroundBrush}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="placeholder" Text="{l:Text settings.hotKeys.notAssigned}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="!HasGesture"/>
+                                            <Binding Path="!IsRecording"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Classes="placeholder recording" IsVisible="{Binding IsRecording}"
+                                           Text="{l:Text settings.hotKeys.pressKeys}"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" MaxWidth="380"
+                                IsVisible="{Binding IsTypingKey}">
+                        <Image Width="14" Height="14" VerticalAlignment="Top" Margin="0,1,0,0"
+                               Source="{StaticResource WarningIcon}"/>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" MaxWidth="360"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Text="{l:Text settings.hotKeys.typingWarning}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:SettingsRow>
         </ui:SettingsCard>
     </ui:SettingsPage>
 </UserControl>

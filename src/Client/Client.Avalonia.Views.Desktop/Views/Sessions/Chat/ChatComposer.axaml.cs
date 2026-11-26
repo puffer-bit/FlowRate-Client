@@ -258,6 +258,14 @@ internal partial class ChatComposer : ViewControl<ChatComposerVM>
             return;
         }
 
+        // Up in an empty input edits the last message of the user; the caret goes to the end of its text
+        if (e.Key == Key.Up && e.KeyModifiers == KeyModifiers.None && ViewModel?.TryEditLastMessage() == true)
+        {
+            MessageInput.CaretIndex = MessageInput.Text?.Length ?? 0;
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
             if (ViewModel != null)

@@ -48,6 +48,26 @@ public class HotKeysServiceTests
     }
 
     [Fact]
+    public async Task PushToTalk_IsOnWhileItHasKeys_AndOnlyItReportsReleases()
+    {
+        var released = new List<HotKeyAction>();
+        _service.Released += released.Add;
+        Assert.False(_service.Current.IsPushToTalkEnabled);
+
+        var settings = Assigned().With(new HotKeyBinding(HotKeyAction.PushToTalk, "Space"));
+        await _service.SaveSettingsAsync(settings);
+        Assert.True(_service.Current.IsPushToTalkEnabled);
+
+        _service.RaiseRelease(HotKeyAction.ToggleMicrophone);
+        _service.RaiseRelease(HotKeyAction.PushToTalk);
+        Assert.Equal([HotKeyAction.PushToTalk], released);
+
+        // Turned off, the keys are kept but push to talk is not on
+        await _service.SaveSettingsAsync(settings with { IsEnabled = false });
+        Assert.False(_service.Current.IsPushToTalkEnabled);
+    }
+
+    [Fact]
     public async Task Raise_DoesNothing_WhenTurnedOffSuspendedOrNotAssigned()
     {
         await _service.SaveSettingsAsync(Assigned() with { IsEnabled = false });

@@ -34,6 +34,12 @@ public class BehaviorSettings
     /// <summary>Whether the status stays online during a call, when listening without touching anything.</summary>
     public bool KeepActiveDuringCalls { get; set; }
 
+    /// <summary>Whether the microphone button blinks when we talk with the microphone off.</summary>
+    public bool IsMutedMicrophoneWarningEnabled { get; set; } = true;
+
+    /// <summary>Whether the microphone button blinks when we talk without holding the key of push to talk.</summary>
+    public bool IsPushToTalkWarningEnabled { get; set; } = true;
+
     public const int DefaultIdleAfterMinutes = 10;
     public const int DefaultSleepAfterMinutes = 120;
 

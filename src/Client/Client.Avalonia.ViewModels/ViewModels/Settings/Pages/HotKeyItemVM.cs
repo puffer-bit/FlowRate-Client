@@ -62,6 +62,12 @@ public class HotKeyItemVM : ReactiveObject
         {
             HotKeyAction.ToggleMicrophone => "hotKeys.toggleMicrophone",
             HotKeyAction.ToggleSound => "hotKeys.toggleSound",
+            HotKeyAction.PushToTalk => "hotKeys.pushToTalk",
+            HotKeyAction.ToggleAfk => "hotKeys.toggleAfk",
+            HotKeyAction.ToggleScreenShare => "hotKeys.toggleScreenShare",
+            HotKeyAction.LeaveSession => "hotKeys.leaveSession",
+            HotKeyAction.AcceptCall => "hotKeys.acceptCall",
+            HotKeyAction.DeclineCall => "hotKeys.declineCall",
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
 

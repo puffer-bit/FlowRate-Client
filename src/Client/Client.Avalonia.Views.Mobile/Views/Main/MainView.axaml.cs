@@ -99,6 +99,7 @@ public partial class MainView : UserControl
         ServerMenu.Dismissed += () => TryCloseServerMenu();
         ChatMenu.Dismissed += () => TryCloseChatMenu();
         SessionMoveMenu.Dismissed += () => TryClose(SessionMoveMenu);
+        ChatMuteMenu.Dismissed += () => TryClose(ChatMuteMenu);
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
         StatusMenu.Dismissed += () => TryClose(StatusMenu);
         PeerMenu.Dismissed += () => TryClose(PeerMenu);
@@ -740,6 +741,21 @@ public partial class MainView : UserControl
         TryCloseServerMenu();
         _viewModel?.ServerTitle.CreateCategoryCommand.Execute().Subscribe();
     }
+
+    // The menu of the chat gives way to the choice of how long it stays muted
+    private void OnMuteChatClick(object? sender, RoutedEventArgs e)
+    {
+        var chat = ChatMenu.DataContext as ChatSessionVM;
+        TryCloseChatMenu();
+
+        if (chat == null)
+            return;
+        ChatMuteMenu.DataContext = chat;
+        ChatMuteMenu.IsOpen = true;
+    }
+
+    // The command of the item mutes the chat
+    private void OnChatMuteChoiceClick(object? sender, RoutedEventArgs e) => TryClose(ChatMuteMenu);
 
     private void OnToggleChatMuteClick(object? sender, RoutedEventArgs e)
     {
