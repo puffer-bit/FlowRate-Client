@@ -23,14 +23,14 @@
         <!-- The avatar column stays in continuations, so their text lines up with the first message -->
         <Panel>
             <!-- Built for a system message only -->
-            <ContentPresenter Content="{Binding AsSystem}" IsVisible="{Binding IsSystem}">
-                <ContentPresenter.ContentTemplate>
+            <events:MessagePart Content="{Binding AsSystem}" IsVisible="{Binding IsSystem}">
+                <events:MessagePart.ContentTemplate>
                     <DataTemplate DataType="chatVm:ChatMessageVM">
                         <events:ChatSystemMessageView CenterInlineUsers="True" Parts="{Binding SystemParts}" OpenUserCommand="{Binding OpenSystemUserCommand}"
                                                       Kind="{Binding SystemEventKind}" Time="{Binding LocalSentTime}"/>
                     </DataTemplate>
-                </ContentPresenter.ContentTemplate>
-            </ContentPresenter>
+                </events:MessagePart.ContentTemplate>
+            </events:MessagePart>
         <Grid ColumnDefinitions="46, *, Auto" IsVisible="{Binding !IsSystem}">
 
             <!-- Own messages of direct chats and groups: one check when sent, two once someone read it;
@@ -77,8 +77,8 @@
                 </StackPanel>
 
                 <!-- Built for a reply only. A tap on the quote goes to the message it quotes -->
-                <ContentPresenter Content="{Binding WithReply}" IsVisible="{Binding HasReply}">
-                    <ContentPresenter.ContentTemplate>
+                <events:MessagePart Content="{Binding WithReply}" IsVisible="{Binding HasReply}">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatMessageVM">
                             <Button Classes="msg-reply"
                                     Classes.deleted="{Binding Reply.IsDeleted, FallbackValue=False}"
@@ -101,12 +101,12 @@
                                 </Border>
                             </Button>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
 
                 <!-- Built for the result of a command only -->
-                <ContentPresenter Content="{Binding WithCommandResult}" IsVisible="{Binding HasCommandResult}">
-                    <ContentPresenter.ContentTemplate>
+                <events:MessagePart Content="{Binding WithCommandResult}" IsVisible="{Binding HasCommandResult}">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatMessageVM">
                             <Border Background="{DynamicResource MsgReplyBrush}"
                                     Padding="6,3" CornerRadius="5" HorizontalAlignment="Left">
@@ -130,8 +130,8 @@
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
 
                 <!-- Not selectable: a drag over the text scrolls the list.
                      An edited message ends with a pencil, right after its last word -->
@@ -147,21 +147,20 @@
                     <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
                 </text:TrailingMarkPanel>
 
-                <!-- The preview of the first link, put into the message by the server a moment after it.
-                     A bare presenter: a content control would apply its template to every message -->
-                <ContentPresenter Content="{Binding LinkPreview}" IsVisible="{Binding HasLinkPreview}"
-                                  HorizontalAlignment="Left" HorizontalContentAlignment="Left">
-                    <ContentPresenter.ContentTemplate>
+                <!-- The preview of the first link, put into the message by the server a moment after it -->
+                <events:MessagePart Content="{Binding LinkPreview}" IsVisible="{Binding HasLinkPreview}"
+                                  HorizontalAlignment="Left">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatLinkPreviewVM">
                             <sharedChat:ChatLinkPreviewCard/>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
 
                 <!-- The reduced copies; a tap opens the image itself over the chat -->
                 <!-- Built for a message with images only -->
-                <ContentPresenter Content="{Binding WithImages}" IsVisible="{Binding HasImages}">
-                    <ContentPresenter.ContentTemplate>
+                <events:MessagePart Content="{Binding WithImages}" IsVisible="{Binding HasImages}">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatMessageVM">
                             <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}">
                                 <ItemsControl.ItemsPanel>
@@ -188,13 +187,13 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
 
                 <!-- The first tap downloads an attachment; its check mark signals that another tap opens it -->
                 <!-- Built for a message with files only -->
-                <ContentPresenter Content="{Binding WithFiles}" IsVisible="{Binding HasFiles}">
-                    <ContentPresenter.ContentTemplate>
+                <events:MessagePart Content="{Binding WithFiles}" IsVisible="{Binding HasFiles}">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatMessageVM">
                             <ItemsControl Classes="msg-files" ItemsSource="{Binding Files}">
                                 <ItemsControl.ItemTemplate>
@@ -237,11 +236,11 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
                 <!-- Built for a message with reactions only -->
-                <ContentPresenter Content="{Binding WithReactions}" IsVisible="{Binding HasReactions}">
-                    <ContentPresenter.ContentTemplate>
+                <events:MessagePart Content="{Binding WithReactions}" IsVisible="{Binding HasReactions}">
+                    <events:MessagePart.ContentTemplate>
                         <DataTemplate DataType="chatVm:ChatMessageVM">
                             <ItemsControl ItemsSource="{Binding Reactions}"
                                           IsEnabled="{Binding CanReact}" Margin="0,4,0,0">
@@ -261,8 +260,8 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </DataTemplate>
-                    </ContentPresenter.ContentTemplate>
-                </ContentPresenter>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
                 <TextBlock Text="{Binding PinError}" IsVisible="{Binding HasPinError}"
                            FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                 <Image Source="{StaticResource PinIcon}" Width="14" Height="14"
