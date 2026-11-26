@@ -10,8 +10,11 @@ public class FramePacerTests
 
     private readonly List<string> _released = [];
 
+    // A manual clock: wall-clock spinning made the timing assertions fail on busy CI runners
+    private long _now = Stopwatch.GetTimestamp();
+
     private FramePacer<string> CreatePacer(bool isTimed = true, int bufferFrames = 2) =>
-        new(_released.Add) { IsTimed = isTimed, BufferFrames = bufferFrames };
+        new(_released.Add) { IsTimed = isTimed, BufferFrames = bufferFrames, Clock = () => _now };
 
     [Fact]
     public void UntimedShowsTheNewestAndReleasesTheRest()
@@ -178,11 +181,6 @@ public class FramePacerTests
         Assert.Equal(0, pacer.Stats.LateMs);
     }
 
-    private static void SpinFor(long nanoseconds)
-    {
-        var until = Stopwatch.GetTimestamp() + (long)(nanoseconds * (Stopwatch.Frequency / 1e9));
-
-        while (Stopwatch.GetTimestamp() < until)
-            Thread.SpinWait(50);
-    }
+    private void SpinFor(long nanoseconds) =>
+        _now += (long)(nanoseconds * (Stopwatch.Frequency / 1e9));
 }

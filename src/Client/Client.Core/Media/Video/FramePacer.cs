@@ -76,6 +76,9 @@ public sealed class FramePacer<T> : IDisposable where T : class
     /// <summary>How many frames of room are kept in the delay.</summary>
     public int BufferFrames { get; set; } = 2;
 
+    /// <summary>The time source in <see cref="Stopwatch"/> ticks; tests replace it to avoid wall-clock timing.</summary>
+    public Func<long> Clock { get; init; } = Stopwatch.GetTimestamp;
+
     /// <summary>
     /// Takes a frame. The pacer owns it from now on and gives it back through the release callback
     /// unless <see cref="Pick"/> hands it out.
@@ -83,7 +86,7 @@ public sealed class FramePacer<T> : IDisposable where T : class
     /// <param name="timestamp">The timestamp of the frame in nanoseconds, or -1.</param>
     public void Enqueue(T frame, long timestamp)
     {
-        var now = Stopwatch.GetTimestamp();
+        var now = Clock();
         List<T>? dropped = null;
 
         lock (_lock)
@@ -136,7 +139,7 @@ public sealed class FramePacer<T> : IDisposable where T : class
     /// </summary>
     public T? Pick()
     {
-        var now = Stopwatch.GetTimestamp();
+        var now = Clock();
         T? picked = null;
         List<T>? dropped = null;
 
@@ -220,7 +223,7 @@ public sealed class FramePacer<T> : IDisposable where T : class
                     _rateClock.Restart();
                 }
 
-                var lateMs = Stopwatch.GetTimestamp() - _lateSeenAt <= DelayWindowTicks
+                var lateMs = Clock() - _lateSeenAt <= DelayWindowTicks
                     ? _lateTicks * 1000.0 / Stopwatch.Frequency
                     : 0;
 

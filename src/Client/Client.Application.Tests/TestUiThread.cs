@@ -55,5 +55,9 @@ internal static class TestUiThread
 
 public sealed class TestUiThreadFixture
 {
-    public TestUiThreadFixture() => TestUiThread.Initialize();
+    public TestUiThreadFixture()
+    {
+        OrderedTestScheduler.Install();
+        TestUiThread.Initialize();
+    }
 }
