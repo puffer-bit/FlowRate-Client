@@ -10,8 +10,9 @@ namespace Client.Services.Platform;
 
 /// <summary>
 /// The time since the last input in the whole system: GetLastInputInfo on Windows, the HID event source on macOS,
-/// the XScreenSaver extension on X11 and the Mutter idle monitor on GNOME Wayland. Elsewhere, such as other Wayland
-/// compositors, the idle time is not known and the status never turns idle.
+/// the XScreenSaver extension on X11, the Mutter idle monitor on GNOME Wayland and the ext-idle-notify-v1 protocol on
+/// other Wayland compositors (KDE and the like). Where none answers, the idle time is not known and the status never
+/// turns idle.
 /// </summary>
 public sealed partial class DesktopUserIdleProvider : IUserIdleProvider, IDisposable
 {
@@ -22,6 +23,7 @@ public sealed partial class DesktopUserIdleProvider : IUserIdleProvider, IDispos
     private readonly ILogger<DesktopUserIdleProvider> _logger;
     private readonly X11Idle? _x11;
     private readonly MutterIdle? _mutter;
+    private readonly WaylandIdle? _wayland;
     private bool _failed;
 
     public DesktopUserIdleProvider(ILogger<DesktopUserIdleProvider> logger)
@@ -30,9 +32,16 @@ public sealed partial class DesktopUserIdleProvider : IUserIdleProvider, IDispos
         if (!OperatingSystem.IsLinux())
             return;
 
-        // XWayland sees only the input of X clients, so a Wayland session asks the compositor
+        // XWayland sees only the input of X clients, so a Wayland session asks the compositor: GNOME over its own
+        // idle monitor, the others over the Wayland protocol, with the monitor as the last try
         if (Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is { Length: > 0 })
-            _mutter = new MutterIdle(logger);
+        {
+            var desktop = Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "";
+            if (!desktop.Contains("GNOME", StringComparison.OrdinalIgnoreCase))
+                _wayland = WaylandIdle.TryOpen(logger);
+            if (_wayland == null)
+                _mutter = new MutterIdle(logger);
+        }
         else if (Environment.GetEnvironmentVariable("DISPLAY") is { Length: > 0 })
             _x11 = X11Idle.TryOpen(logger);
     }
@@ -57,7 +66,7 @@ public sealed partial class DesktopUserIdleProvider : IUserIdleProvider, IDispos
                 return TimeSpan.FromSeconds(CGEventSourceSecondsSinceLastEventType(HIDSystemState, AnyInputEventType));
 
             if (OperatingSystem.IsLinux())
-                return _x11?.GetIdleTime() ?? _mutter?.GetIdleTime();
+                return _x11?.GetIdleTime() ?? _wayland?.GetIdleTime() ?? _mutter?.GetIdleTime();
         }
         catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException)
         {
@@ -71,6 +80,7 @@ public sealed partial class DesktopUserIdleProvider : IUserIdleProvider, IDispos
     public void Dispose()
     {
         _x11?.Dispose();
+        _wayland?.Dispose();
         _mutter?.Dispose();
     }
 
