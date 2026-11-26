@@ -224,6 +224,9 @@ public partial class MainWindowVM
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
+            // Calls in chats are hybrid sessions too
+            .Add(() => _autoIdle?.Attach(session, () => OpenedSessions?.IsInHybridSession == true),
+                () => _autoIdle?.Detach())
             .Add(() => session.ChatCallFailed += OnChatCallFailed, () => session.ChatCallFailed -= OnChatCallFailed)
             .Add(() => session.ChatCallChanged += OnChatCallChanged,
                 () => { session.ChatCallChanged -= OnChatCallChanged; DismissCallToast(); })

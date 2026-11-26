@@ -154,6 +154,9 @@ public interface ICoordinatorGateway : IDisposable
     /// <summary>Sets the status of the current user.</summary>
     Task<UserModel> SetStatus(UserStatus status);
 
+    /// <summary>Sets how long this device has gone without input.</summary>
+    Task SetIdleLevel(IdleLevel level);
+
     /// <summary>Bans, freezes or reinstates another user.</summary>
     /// <returns>The user as the server has them now, when the state was set.</returns>
     Task<UserModel> SetUserState(int userId, UserState state);

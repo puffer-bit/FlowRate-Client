@@ -91,6 +91,8 @@ public partial class App : global::Avalonia.Application
             desktop.Exit += (_, _) =>
             {
                 Services.GetRequiredService<IScreenAwakeService>().Dispose();
+                Services.GetRequiredService<AutoIdleService>().Dispose();
+                Services.GetRequiredService<DesktopUserIdleProvider>().Dispose();
                 globalHotKeys.Dispose();
                 Services.GetRequiredService<ChatAudioSession>().Dispose();
                 Services.GetRequiredService<ChatVideoSession>().Dispose();
@@ -156,6 +158,9 @@ public partial class App : global::Avalonia.Application
 
         services.AddSingleton<Client.Services.ChatMediaPlayback>();
         services.AddSingleton<IScreenAwakeService, DesktopScreenAwakeService>();
+        services.AddSingleton<DesktopUserIdleProvider>();
+        services.AddSingleton<IUserIdleProvider>(provider => provider.GetRequiredService<DesktopUserIdleProvider>());
+        services.AddSingleton<AutoIdleService>();
         if (OperatingSystem.IsMacOS())
             services.AddSingleton<IProcessActivityService, MacProcessActivityService>();
         services.AddSingleton<ChatAudioSession>();

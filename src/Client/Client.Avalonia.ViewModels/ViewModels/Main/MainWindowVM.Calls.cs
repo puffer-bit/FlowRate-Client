@@ -19,6 +19,7 @@ namespace Client.ViewModels.Main;
 public partial class MainWindowVM
 {
     private readonly Client.Application.Sounds.ISoundService? _callSounds;
+    private readonly AutoIdleService? _autoIdle;
     public event Action<Client.Core.Push.PushPayload>? CallNotificationReceived;
     public bool UsesSystemIncomingCallSound { get; set; }
 

@@ -172,6 +172,8 @@
             
             <!-- Вспомогательные системные цвета -->
             <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}" />
+            <!-- Sleeping status: a moon-blue crescent and its snore, apart from the yellow of away -->
+            <SolidColorBrush x:Key="StatusSleepingBrush" Color="#4A74D9" />
             <SolidColorBrush x:Key="AfkActiveBackgroundBrush" Color="#806515" />
             <!-- Scroll bar thumb: faint at rest, brighter under the pointer, accent while dragged -->
             <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{DynamicResource ColorTextMedium}" Opacity="0.6" />

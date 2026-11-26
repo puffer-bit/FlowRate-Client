@@ -20,7 +20,8 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
         var row = await connection.QueryFirstOrDefaultAsync<BehaviorSettingsRow>("""
             SELECT IsAutoConnectEnabled, IsFallbackConnectionEnabled, IsFallbackConnectionWarningEnabled,
                    IsPropagatedConnectionWarningEnabled, CloseButtonAction, IsUpdateCheckOnStartupEnabled,
-                   UpdateChannel, QuickReaction, KeepScreenOnWhileWatching
+                   UpdateChannel, QuickReaction, KeepScreenOnWhileWatching, IsAutoIdleEnabled, IdleAfterMinutes,
+                   SleepAfterMinutes, KeepActiveDuringCalls
             FROM BehaviorSettings WHERE Id = 1
             """);
 
@@ -37,7 +38,11 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
             IsUpdateCheckOnStartupEnabled = row.IsUpdateCheckOnStartupEnabled,
             UpdateChannel = (UpdateChannel)row.UpdateChannel,
             QuickReaction = row.QuickReaction,
-            KeepScreenOnWhileWatching = row.KeepScreenOnWhileWatching
+            KeepScreenOnWhileWatching = row.KeepScreenOnWhileWatching,
+            IsAutoIdleEnabled = row.IsAutoIdleEnabled,
+            IdleAfterMinutes = row.IdleAfterMinutes,
+            SleepAfterMinutes = row.SleepAfterMinutes,
+            KeepActiveDuringCalls = row.KeepActiveDuringCalls
         };
     }
 
@@ -48,10 +53,12 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
         await connection.ExecuteAsync("""
             INSERT INTO BehaviorSettings (Id, IsAutoConnectEnabled, IsFallbackConnectionEnabled,
                 IsFallbackConnectionWarningEnabled, IsPropagatedConnectionWarningEnabled, CloseButtonAction,
-                IsUpdateCheckOnStartupEnabled, UpdateChannel, QuickReaction, KeepScreenOnWhileWatching)
+                IsUpdateCheckOnStartupEnabled, UpdateChannel, QuickReaction, KeepScreenOnWhileWatching,
+                IsAutoIdleEnabled, IdleAfterMinutes, SleepAfterMinutes, KeepActiveDuringCalls)
             VALUES (1, @IsAutoConnectEnabled, @IsFallbackConnectionEnabled,
                 @IsFallbackConnectionWarningEnabled, @IsPropagatedConnectionWarningEnabled, @CloseButtonAction,
-                @IsUpdateCheckOnStartupEnabled, @UpdateChannel, @QuickReaction, @KeepScreenOnWhileWatching)
+                @IsUpdateCheckOnStartupEnabled, @UpdateChannel, @QuickReaction, @KeepScreenOnWhileWatching,
+                @IsAutoIdleEnabled, @IdleAfterMinutes, @SleepAfterMinutes, @KeepActiveDuringCalls)
             ON CONFLICT (Id) DO UPDATE SET
                 IsAutoConnectEnabled = excluded.IsAutoConnectEnabled,
                 IsFallbackConnectionEnabled = excluded.IsFallbackConnectionEnabled,
@@ -61,7 +68,11 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 IsUpdateCheckOnStartupEnabled = excluded.IsUpdateCheckOnStartupEnabled,
                 UpdateChannel = excluded.UpdateChannel,
                 QuickReaction = excluded.QuickReaction,
-                KeepScreenOnWhileWatching = excluded.KeepScreenOnWhileWatching
+                KeepScreenOnWhileWatching = excluded.KeepScreenOnWhileWatching,
+                IsAutoIdleEnabled = excluded.IsAutoIdleEnabled,
+                IdleAfterMinutes = excluded.IdleAfterMinutes,
+                SleepAfterMinutes = excluded.SleepAfterMinutes,
+                KeepActiveDuringCalls = excluded.KeepActiveDuringCalls
             """, new
             {
                 settings.IsAutoConnectEnabled,
@@ -72,7 +83,11 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
                 settings.IsUpdateCheckOnStartupEnabled,
                 UpdateChannel = (int)settings.UpdateChannel,
                 settings.QuickReaction,
-                settings.KeepScreenOnWhileWatching
+                settings.KeepScreenOnWhileWatching,
+                settings.IsAutoIdleEnabled,
+                settings.IdleAfterMinutes,
+                settings.SleepAfterMinutes,
+                settings.KeepActiveDuringCalls
             });
     }
 
@@ -105,6 +120,7 @@ internal sealed class BehaviorSettingsRepository : IBehaviorSettingsRepository
 
 internal sealed record BehaviorSettingsRow(bool IsAutoConnectEnabled, bool IsFallbackConnectionEnabled,
     bool IsFallbackConnectionWarningEnabled, bool IsPropagatedConnectionWarningEnabled, int CloseButtonAction,
-    bool IsUpdateCheckOnStartupEnabled, int UpdateChannel, string QuickReaction, bool KeepScreenOnWhileWatching);
+    bool IsUpdateCheckOnStartupEnabled, int UpdateChannel, string QuickReaction, bool KeepScreenOnWhileWatching,
+    bool IsAutoIdleEnabled, int IdleAfterMinutes, int SleepAfterMinutes, bool KeepActiveDuringCalls);
 
 internal sealed record AutoConnectRow(string? AutoConnectCoordinatorId, int? AutoConnectUserId);
