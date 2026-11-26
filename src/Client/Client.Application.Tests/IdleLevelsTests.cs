@@ -35,12 +35,12 @@ public class IdleLevelsTests
     }
 
     [Fact]
-    public void Call_KeepsActive_UnlessTheUserLetsIt()
+    public void Call_KeepsActive_OnlyWhenTheUserAsks()
     {
-        Assert.Equal(IdleLevel.Active, IdleLevels.Of(TimeSpan.FromHours(5), Defaults, isInCall: true));
+        Assert.Equal(IdleLevel.Sleeping, IdleLevels.Of(TimeSpan.FromHours(5), Defaults, isInCall: true));
 
-        var settings = new BehaviorSettings { KeepActiveDuringCalls = false };
-        Assert.Equal(IdleLevel.Sleeping, IdleLevels.Of(TimeSpan.FromHours(5), settings, isInCall: true));
+        var settings = new BehaviorSettings { KeepActiveDuringCalls = true };
+        Assert.Equal(IdleLevel.Active, IdleLevels.Of(TimeSpan.FromHours(5), settings, isInCall: true));
     }
 
     [Fact]

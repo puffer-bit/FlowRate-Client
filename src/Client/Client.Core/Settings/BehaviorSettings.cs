@@ -32,7 +32,7 @@ public class BehaviorSettings
     public int SleepAfterMinutes { get; set; } = DefaultSleepAfterMinutes;
 
     /// <summary>Whether the status stays online during a call, when listening without touching anything.</summary>
-    public bool KeepActiveDuringCalls { get; set; } = true;
+    public bool KeepActiveDuringCalls { get; set; }
 
     public const int DefaultIdleAfterMinutes = 10;
     public const int DefaultSleepAfterMinutes = 120;

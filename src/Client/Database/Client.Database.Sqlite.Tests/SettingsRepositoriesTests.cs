@@ -558,7 +558,7 @@ public class SettingsRepositoriesTests
         Assert.True(settings.IsAutoIdleEnabled);
         Assert.Equal(BehaviorSettings.DefaultIdleAfterMinutes, settings.IdleAfterMinutes);
         Assert.Equal(BehaviorSettings.DefaultSleepAfterMinutes, settings.SleepAfterMinutes);
-        Assert.True(settings.KeepActiveDuringCalls);
+        Assert.False(settings.KeepActiveDuringCalls);
     }
 
     [Fact]
@@ -581,7 +581,7 @@ public class SettingsRepositoriesTests
             IsAutoIdleEnabled = false,
             IdleAfterMinutes = 30,
             SleepAfterMinutes = 0,
-            KeepActiveDuringCalls = false
+            KeepActiveDuringCalls = true
         });
         var settings = await repository.GetAsync();
 
@@ -597,7 +597,7 @@ public class SettingsRepositoriesTests
         Assert.False(settings.IsAutoIdleEnabled);
         Assert.Equal(30, settings.IdleAfterMinutes);
         Assert.Equal(0, settings.SleepAfterMinutes);
-        Assert.False(settings.KeepActiveDuringCalls);
+        Assert.True(settings.KeepActiveDuringCalls);
     }
 
     [Fact]
