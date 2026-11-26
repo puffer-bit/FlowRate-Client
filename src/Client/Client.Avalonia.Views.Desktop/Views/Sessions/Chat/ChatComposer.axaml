@@ -41,6 +41,16 @@
                          detached; the part that is folded is cut off, not drawn over the input -->
                     <chatViews:ChatReplyBar/>
 
+                    <!-- The card of the flowrate:// link being typed, as the message will show it -->
+                    <ContentControl Margin="10,8,6,0" HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                                    Content="{Binding ComposerAppLink}" IsVisible="{Binding IsAppLinkBarVisible}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="chatVm:ChatAppLinkVM">
+                                <sharedChat:ChatAppLinkCard/>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+
                     <!-- The preview of the link being typed, as the message will show it; closing it
                          sends the message without one -->
                     <Grid ColumnDefinitions="Auto, *, Auto" Margin="10,8,6,0"

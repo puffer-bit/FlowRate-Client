@@ -41,6 +41,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(InputWatermark));
             RaiseLinkPreviewBar();
+            this.RaisePropertyChanged(nameof(IsAppLinkBarVisible));
             if (!value) StopTyping();
         }
     } = true;
@@ -55,6 +56,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             this.RaiseAndSetIfChanged(ref field, value);
             OnTypingInputChanged();
             OnLinkInputChanged();
+            OnAppLinkInputChanged();
             this.RaisePropertyChanged(nameof(RemainingCharacters));
             this.RaisePropertyChanged(nameof(IsLengthCounterVisible));
             // A failed send is about the text that was there; editing it starts over

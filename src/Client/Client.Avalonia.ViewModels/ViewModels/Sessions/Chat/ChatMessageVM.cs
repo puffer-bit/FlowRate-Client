@@ -36,6 +36,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
                 parts.Add("command result");
             if (Message.LinkPreview != null)
                 parts.Add("link preview");
+            if (_appLink != null)
+                parts.Add("app link");
             if (HasImages)
                 parts.Add($"{Images.Count} images");
             if (HasFiles)
@@ -92,8 +94,32 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
                 _linkPreview = null;
             this.RaisePropertyChanged(nameof(LinkPreview));
             this.RaisePropertyChanged(nameof(HasLinkPreview));
+            _appLink = null;
+            _isAppLinkRead = false;
+            this.RaisePropertyChanged(nameof(AppLink));
+            this.RaisePropertyChanged(nameof(HasAppLink));
         }
     }
+
+    private ChatAppLinkVM? _appLink;
+    private bool _isAppLinkRead;
+
+    /// <summary>The card of the first <c>flowrate://</c> link of the text, made on the client.</summary>
+    public ChatAppLinkVM? AppLink
+    {
+        get
+        {
+            if (_isAppLinkRead)
+                return _appLink;
+
+            _isAppLinkRead = true;
+            return _appLink = Message.IsDeleted || Message.TextContent?.CommandResult != null
+                ? null
+                : ChatAppLinkVM.FromText(Message.TextContent?.Text);
+        }
+    }
+
+    public bool HasAppLink => AppLink != null;
 
     private ChatLinkPreviewVM? _linkPreview;
 

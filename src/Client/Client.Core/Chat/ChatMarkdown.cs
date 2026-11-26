@@ -320,7 +320,7 @@ public static class ChatMarkdown
                     links.Add(displayedLink);
             }
 
-            foreach (var link in ChatLinks.Find(projection.Text))
+            foreach (var link in ChatLinks.Find(projection.Text).Concat(ChatAppLinks.Find(projection.Text)))
             {
                 bool overlapsLink = links.Any(existing => existing.Start < link.End && link.Start < existing.End);
                 if (!projection.IntersectsCode(link.Start, link.End) && !overlapsLink && !IntersectsMention(link))

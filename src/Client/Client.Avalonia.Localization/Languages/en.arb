@@ -1427,6 +1427,15 @@
   "chat.cancelReply": "Cancel reply (Esc)",
   "chat.linkPreview.loading": "Loading link preview…",
   "chat.linkPreview.close": "Send without link preview",
+  "chat.appLink.connect.title": "Server invite",
+  "chat.appLink.login.title": "Log in to a server",
+  "chat.appLink.device.title": "Device approval",
+  "chat.appLink.connect.action": "Connect",
+  "chat.appLink.login.action": "Log in",
+  "chat.appLink.login.description": "The link carries a one-time login code.",
+  "chat.appLink.certificate": "The link carries the server's certificate fingerprint.",
+  "chat.appLink.device.warning": "A device can't be approved from a chat. If it's yours, open Security → Add a device and enter the code by hand. Never enter someone else's code: their device would get into your account.",
+  "chat.appLink.device.code": "Code",
   "chat.input.watermark": "Message {chat}",
   "@chat.input.watermark": {
     "placeholders": {

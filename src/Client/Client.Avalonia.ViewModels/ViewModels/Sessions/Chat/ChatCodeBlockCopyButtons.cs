@@ -1,12 +1,8 @@
 using System;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media.TextFormatting;
-using Client.Avalonia.Localization;
+using Client.Avalonia.Controls.Buttons;
 
 namespace Client.ViewModels.Sessions.Chat;
 
@@ -75,55 +71,18 @@ public sealed class ChatCodeBlockCopyButtons : Canvas
         var index = 0;
         foreach (var (text, bounds) in ChatMessageText.GetCodeBlocks(target))
         {
-            Button button;
+            CopyButton button;
             if (index < Children.Count)
-                button = (Button)Children[index];
+                button = (CopyButton)Children[index];
             else
             {
-                var icon = new Image { Width = 14, Height = 14 };
-                icon.Bind(Image.SourceProperty, new DynamicResourceExtension("CopyIcon"));
-                button = new Button
-                {
-                    Content = icon,
-                    Width = ButtonSize,
-                    Height = ButtonSize,
-                    Padding = new Thickness(0),
-                    MinWidth = 0, MinHeight = 0,
-                    CornerRadius = new CornerRadius(4),
-                    Classes = { "ghost" }
-                };
-                button.Bind(ToolTip.TipProperty, Strings.Observe("chat.input.copy"));
-                button.Bind(AutomationProperties.NameProperty, Strings.Observe("chat.input.copy"));
-                int feedbackVersion = 0;
-                button.Click += async (_, e) =>
-                {
-                    e.Handled = true;
-                    if (Target?.DataContext is ChatMessageVM message && button.Tag is string code)
-                    {
-                        int version = ++feedbackVersion;
-                        var body = ChatMessageText.GetBody(Target);
-                        icon.Bind(Image.SourceProperty, new DynamicResourceExtension("CopyIcon"));
-                        await message.CopyMessageInteraction.Handle(code);
-                        if (version != feedbackVersion || !Children.Contains(button)
-                            || button.Tag is not string currentCode || currentCode != code
-                            || Target is not { } currentTarget || !ReferenceEquals(body, ChatMessageText.GetBody(currentTarget)))
-                            return;
-
-                        icon.Bind(Image.SourceProperty, new DynamicResourceExtension("MarkIcon"));
-                        await Task.Delay(TimeSpan.FromSeconds(1.5));
-                        if (version == feedbackVersion)
-                            icon.Bind(Image.SourceProperty, new DynamicResourceExtension("CopyIcon"));
-                    }
-                };
+                button = new CopyButton();
                 Children.Add(button);
             }
-            if (!Equals(button.Tag, text) && button.Content is Image image)
-                image.Bind(Image.SourceProperty, new DynamicResourceExtension("CopyIcon"));
-            button.Tag = text;
+            button.Text = text;
             double size = Math.Min(ButtonSize, Math.Max(12, bounds.Height - 2 * ButtonInset));
             button.Width = button.Height = size;
-            if (button.Content is Image copyImage)
-                copyImage.Width = copyImage.Height = Math.Min(14, size - 4);
+            button.IconSize = Math.Min(14, size - 4);
             SetLeft(button, Math.Max(0, bounds.Right - size - ButtonInset));
             SetTop(button, Math.Max(0, bounds.Top + ButtonInset));
             index++;

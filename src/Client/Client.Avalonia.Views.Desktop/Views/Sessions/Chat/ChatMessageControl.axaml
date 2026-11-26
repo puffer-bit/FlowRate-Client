@@ -133,6 +133,16 @@
                     </ContentControl.ContentTemplate>
                 </ContentControl>
 
+                <!-- The card of the first flowrate:// link, made on the client -->
+                <ContentControl Content="{Binding AppLink}" IsVisible="{Binding HasAppLink}"
+                                HorizontalAlignment="Left" HorizontalContentAlignment="Left">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatAppLinkVM">
+                            <sharedChat:ChatAppLinkCard/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+
                 <!-- The reduced copies; a click opens the image itself over the chat -->
                 <ItemsControl Classes="msg-images" ItemsSource="{Binding Images}" IsVisible="{Binding HasImages}">
                     <ItemsControl.ItemsPanel>

@@ -157,6 +157,16 @@
                     </events:MessagePart.ContentTemplate>
                 </events:MessagePart>
 
+                <!-- The card of the first flowrate:// link, made on the client -->
+                <events:MessagePart Content="{Binding AppLink}" IsVisible="{Binding HasAppLink}"
+                                  HorizontalAlignment="Left">
+                    <events:MessagePart.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatAppLinkVM">
+                            <sharedChat:ChatAppLinkCard/>
+                        </DataTemplate>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
+
                 <!-- The reduced copies; a tap opens the image itself over the chat -->
                 <!-- Built for a message with images only -->
                 <events:MessagePart Content="{Binding WithImages}" IsVisible="{Binding HasImages}">

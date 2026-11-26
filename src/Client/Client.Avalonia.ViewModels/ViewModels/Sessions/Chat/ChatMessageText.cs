@@ -107,7 +107,12 @@ public static class ChatMessageText
             return null;
 
         int link = FindLink(textBlock, state, position, reach);
-        return link >= 0 ? state.Links[link].Uri.AbsoluteUri : null;
+        if (link < 0)
+            return null;
+
+        // A link of the application is copied as written: its scheme is not one the system normalizes
+        var uri = state.Links[link].Uri;
+        return ChatAppLinks.IsAppLink(uri) ? uri.OriginalString : uri.AbsoluteUri;
     }
 
     /// <summary>
@@ -138,7 +143,8 @@ public static class ChatMessageText
     {
         var document = GetBody(textBlock) is { } body
             ? ChatMarkdown.Render(body)
-            : new ChatMarkdownDocument(text ?? "", mentions, ChatLinks.Find(text), []);
+            : new ChatMarkdownDocument(text ?? "", mentions,
+                ChatLinks.Find(text).Concat(ChatAppLinks.Find(text)).OrderBy(link => link.Start).ToArray(), []);
         var state = textBlock.GetValue(StateProperty);
         if (state == null)
         {
@@ -315,6 +321,14 @@ public static class ChatMessageText
 
     private static async Task OpenAsync(TextBlock textBlock, Uri uri)
     {
+        // A link of the application opens here, not through the system, and asks nothing: it only fills in a form
+        // the user confirms. An approval of a device is never one of the links, so it cannot get here
+        if (ChatAppLinks.IsAppLink(uri))
+        {
+            ChatAppLinkVM.Open(uri.OriginalString);
+            return;
+        }
+
         if (GetLinkConfirmation(textBlock) is { } confirm && !await confirm(uri))
             return;
 

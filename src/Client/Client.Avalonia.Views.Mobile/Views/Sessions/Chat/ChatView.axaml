@@ -462,6 +462,16 @@
                     </Button>
                 </Grid>
 
+                <!-- The card of the flowrate:// link being typed, as the message will show it -->
+                <ContentControl Margin="14,8,6,0" HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                                Content="{Binding Composer.ComposerAppLink}" IsVisible="{Binding Composer.IsAppLinkBarVisible}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatAppLinkVM">
+                            <sharedChat:ChatAppLinkCard/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+
                 <!-- The preview of the link being typed, as the message will show it; closing it
                      sends the message without one -->
                 <Grid ColumnDefinitions="Auto, *, Auto" Margin="14,8,6,0"
