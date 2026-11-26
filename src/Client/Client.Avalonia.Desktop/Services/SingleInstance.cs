@@ -29,7 +29,15 @@ internal sealed class SingleInstance : IDisposable
         // macOS, whose $TMPDIR alone takes about 50: the full hash of the user makes it too long
         var user = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.UserName)))[..16];
         _pipeName = $"FlowRate.Desktop.{user}";
-        _mutex = new Mutex(false, _pipeName);
+        // A named mutex is scoped to the session by default, and on Unix that is the process session
+        // (getsid): every terminal, and every launch from the desktop menu, has its own one, so a second
+        // instance never saw the first. The pipe is per user anyway, so the mutex is too there.
+        // On Windows the session is the logon session, which stays the scope there
+        _mutex = new Mutex(false, _pipeName, new NamedWaitHandleOptions
+        {
+            CurrentUserOnly = true,
+            CurrentSessionOnly = OperatingSystem.IsWindows(),
+        });
         try
         {
             IsPrimary = _mutex.WaitOne(0);
