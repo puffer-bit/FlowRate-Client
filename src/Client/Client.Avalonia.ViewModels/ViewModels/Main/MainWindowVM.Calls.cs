@@ -12,6 +12,7 @@ using Client.Services;
 using Client.ViewModels.Notifications;
 using Client.ViewModels.Sessions.Hybrid;
 using Shared.Enums;
+using Shared.Enums.User;
 using Shared.Models.DataTransferObjects;
 
 namespace Client.ViewModels.Main;
@@ -52,6 +53,7 @@ public partial class MainWindowVM
         _callRinging?.Dispose();
         _callRinging = null;
         if (_notifications.IsSoundMuted || _shownCall is not { } shown || _coordinatorSession == null
+            || _coordinatorSession.GetCurrentUser().Status == UserStatus.DoNotDisturb
             || _coordinatorSession.ChatCalls.Values.FirstOrDefault(c => c.CallId == shown) is not { } call
             || !IsRingingFor(call)) return;
         if (UsesSystemIncomingCallSound && !IsWindowActive)

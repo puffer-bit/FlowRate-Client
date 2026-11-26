@@ -104,6 +104,12 @@ public partial class SessionsListVM : ReactiveObject
     /// </summary>
     public bool SwitchTargetHasMentions => IsPrivateMode ? _channelsHasMentions : _privateHasMentions;
 
+    /// <summary>
+    /// Some chat, personal or of the server, has unread messages by the rules of the chat counters: the tray
+    /// icon shows it.
+    /// </summary>
+    public bool HasUnread => _privateHasUnread || _channelsHasUnread;
+
     private void RefreshSwitchUnread()
     {
         bool privateUnread = false, privateMentions = false, channelsUnread = false, channelsMentions = false;
@@ -125,9 +131,12 @@ public partial class SessionsListVM : ReactiveObject
             && channelsUnread == _channelsHasUnread && channelsMentions == _channelsHasMentions)
             return;
 
+        var hadUnread = HasUnread;
         (_privateHasUnread, _privateHasMentions) = (privateUnread, privateMentions);
         (_channelsHasUnread, _channelsHasMentions) = (channelsUnread, channelsMentions);
         RaiseSwitchProperties();
+        if (HasUnread != hadUnread)
+            this.RaisePropertyChanged(nameof(HasUnread));
     }
 
     private void RaiseSwitchProperties()

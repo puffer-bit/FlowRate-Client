@@ -68,6 +68,32 @@ internal static class TrayIconRenderer
         return icon;
     }
 
+    private static readonly Color UnreadDot = Color.Parse("#F23F43");
+    private static readonly Color UnreadDotRing = Color.Parse("#1E1F22");
+
+    /// <summary>
+    /// The icon of the application drawn anew, with a dot in its corner for unread messages if asked.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public static WindowIcon Copy(Bitmap source, bool withUnreadDot)
+    {
+        var bitmap = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));
+        using (var context = bitmap.CreateDrawingContext())
+        {
+            context.DrawImage(source, new Rect(0, 0, Size, Size));
+            if (withUnreadDot)
+            {
+                // A dark ring keeps the dot apart from the icon under it on any tray
+                const double radius = Size * 0.2;
+                var center = new Point(Size - radius - 2, Size - radius - 2);
+                context.DrawEllipse(new SolidColorBrush(UnreadDot), new Pen(new SolidColorBrush(UnreadDotRing), 3),
+                    center, radius, radius);
+            }
+        }
+
+        return new WindowIcon(bitmap);
+    }
+
     private static Bitmap Render(TrayVoiceState state)
     {
         var bitmap = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));

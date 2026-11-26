@@ -9,12 +9,14 @@ using Client.Core.Push;
 using Client.Core.Users;
 using Client.ViewModels.Sessions.List;
 using Microsoft.Extensions.Logging;
+using Shared.Enums.User;
 
 namespace Client.ViewModels.Main;
 
 /// <summary>
 /// Turns messages somebody else sent to a chat that is not muted into the form a push carries,
-/// for a platform that notifies about them while off the screen.
+/// for a platform that notifies about them while off the screen. Nothing is reported while the user is in
+/// do not disturb.
 /// </summary>
 /// <param name="connection">The coordinator session and its id, or null while not connected.</param>
 /// <param name="findChat">The chat of the list by its id.</param>
@@ -43,8 +45,10 @@ public sealed partial class ChatPushReporter(
                 if (connection() is not ({ } session, { } coordinatorId))
                     return;
 
-                var currentUserId = session.GetCurrentUser().Id;
-                if (message.SenderUserId == currentUserId)
+                var currentUser = session.GetCurrentUser();
+                var currentUserId = currentUser.Id;
+                // Do not disturb silences everything, mentions too
+                if (message.SenderUserId == currentUserId || currentUser.Status == UserStatus.DoNotDisturb)
                     return;
 
                 // A mention is reported also from a muted chat
