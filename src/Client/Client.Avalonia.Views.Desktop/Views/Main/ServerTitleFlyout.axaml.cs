@@ -19,4 +19,10 @@ public partial class ServerTitleFlyout : UserControl
         if ((DataContext as ServerTitleVM)?.Address is { } address)
             await ClipboardAccess.SetTextAsync(null, address);
     }
+
+    private async void CopyLink_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((DataContext as ServerTitleVM)?.ServerLink is { } link)
+            await ClipboardAccess.SetTextAsync(null, link);
+    }
 }

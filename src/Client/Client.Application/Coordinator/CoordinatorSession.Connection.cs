@@ -70,7 +70,13 @@ public partial class CoordinatorSession
 
     public string? ConnectedAddress => _address is { } address ? $"{address}:{_port}" : null;
 
+    public string? ConnectedHost => _address;
+
+    public int ConnectedPort => _port;
+
     public bool IsCertificateVerified { get; private set; }
+
+    public string? TrustedFingerprint { get; private set; }
 
     // Everything below belongs to the loop
     private ConnectionPhase _phase = ConnectionPhase.Idle;
@@ -695,6 +701,7 @@ public partial class CoordinatorSession
         UntrustedCertificate = null;
         CoordinatorMismatch = null;
         IsCertificateVerified = connectResult.IsCertificateVerified;
+        TrustedFingerprint = connectResult.IsCertificateVerified ? null : trusted?.Fingerprint;
 
         try
         {

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Client.Mobile.Platform;
 using Client.ViewModels.Profile;
 
 namespace Client.Mobile.Views.Profile;
@@ -21,6 +22,12 @@ public partial class AccountSecurityView : UserControl
         base.OnDataContextChanged(e);
         if (DataContext is AccountSecurityVM security)
             security.TogglePhraseVisibility = true;
+    }
+
+    private async void OnScanLinkClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AccountSecurityVM viewModel && MobilePlatform.Current is { } platform)
+            await viewModel.ScanLinkCodeAsync(platform.ScanQrCodeAsync);
     }
 
     private async void OnCopyPhraseClick(object? sender, RoutedEventArgs e)

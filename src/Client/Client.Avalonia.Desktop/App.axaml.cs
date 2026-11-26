@@ -65,6 +65,14 @@ public partial class App : global::Avalonia.Application
         ViewServices.Provider = Services;
         Client.Views.Shared.Dialogs.DialogPresenter.Current = new Client.Views.Dialogs.WindowDialogPresenter();
         DesktopHost.Current = new ProgramHost();
+
+        // macOS hands flowrate:// links to the running application as an activation, also the one it starts with
+        if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
+            activatable.Activated += (_, e) =>
+            {
+                if (e is ProtocolActivatedEventArgs { Uri: { } uri })
+                    IncomingLinks.Post(uri.OriginalString);
+            };
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

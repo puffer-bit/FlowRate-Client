@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Coordinator;
+using Client.Application.Links;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
@@ -185,6 +186,52 @@ public sealed class AccountSecurityVM : ReactiveObject
     }
 
     public bool IsLinkInfoShown => LinkInfo != null;
+
+    // A link pasted or scanned whole gives the code it carries
+    private string LinkCodeToSend => FlowRateLinks.DeviceLinkCode(LinkCode);
+
+    /// <summary>
+    /// Reads the QR code a new device shows with the scanner of the phone, and looks the device up.
+    /// </summary>
+    public async Task ScanLinkCodeAsync(Func<Task<string?>> scan)
+    {
+        string? text;
+        try
+        {
+            text = await scan();
+        }
+        catch (Exception exception)
+        {
+            Error = Strings.Format("link.scan.unavailable", ("error", exception.Message));
+            return;
+        }
+
+        if (text == null)
+            return;
+        if (FlowRateLinks.Parse(text) is not DeviceLinkApproval approval)
+        {
+            Error = Strings.Get("link.scan.notDeviceLink");
+            return;
+        }
+
+        LinkCode = approval.Code;
+        ConfirmCommand.Execute().Subscribe();
+    }
+
+    /// <summary>
+    /// Loads the dialog on the approval of a new device with its code, from a link or a scan, and looks the device up;
+    /// the user approves it once its details are shown. Called in place of <see cref="LoadCommand"/>.
+    /// </summary>
+    public void StartLink(string code)
+    {
+        Begin(Change.LinkDevice);
+        LinkCode = code;
+        LoadCommand.Execute().Subscribe(_ =>
+        {
+            if (Current == Change.LinkDevice && LinkInfo == null)
+                ConfirmCommand.Execute().Subscribe();
+        });
+    }
 
     public string LinkInfoText => LinkInfo is not { } info ? "" : Strings.Format("accountSecurity.link.info",
         ("device", info.DeviceName ?? "?"), ("platform", info.Platform ?? "?"), ("address", info.Address ?? "?"));
@@ -422,7 +469,7 @@ public sealed class AccountSecurityVM : ReactiveObject
 
         await RunAsync(async () =>
         {
-            var result = await _session.ApproveDeviceLink(LinkCode, false);
+            var result = await _session.ApproveDeviceLink(LinkCodeToSend, false);
             if (result.IsSuccess)
                 Back();
             return result;
@@ -507,13 +554,13 @@ public sealed class AccountSecurityVM : ReactiveObject
                 }
                 case Change.LinkDevice when LinkInfo == null:
                 {
-                    var (result, info) = await _session.GetDeviceLinkInfo(LinkCode);
+                    var (result, info) = await _session.GetDeviceLinkInfo(LinkCodeToSend);
                     LinkInfo = info;
                     return result;
                 }
                 case Change.LinkDevice:
                 {
-                    var result = await _session.ApproveDeviceLink(LinkCode, true);
+                    var result = await _session.ApproveDeviceLink(LinkCodeToSend, true);
                     if (!result.IsSuccess)
                         return result;
 

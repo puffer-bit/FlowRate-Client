@@ -95,4 +95,18 @@ public sealed class LaunchOptionsTests
     [InlineData("--safe-mode", "--safe-mode")]
     public void InvalidArguments_FailClearly(params string[] args) =>
         Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(args));
+
+    [Fact]
+    public void Link_IsKeptForTheApplication()
+    {
+        var options = LaunchOptions.Parse(["--minimized", "flowrate://connect?host=chat.example.com"]);
+        Assert.True(options.Minimized);
+        Assert.Equal("flowrate://connect?host=chat.example.com", options.Link);
+    }
+
+    [Fact]
+    public void Link_IsOnlyOne()
+    {
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["flowrate://a", "flowrate://b"]));
+    }
 }

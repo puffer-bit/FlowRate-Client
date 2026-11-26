@@ -436,7 +436,14 @@
 
                     <StackPanel Spacing="6" IsVisible="{Binding IsLinkCodeAsked}" IsEnabled="{Binding !IsBusy}">
                         <TextBlock Classes="fieldLabel" Text="{l:Text accountSecurity.link.code}"/>
-                        <TextBox Text="{Binding LinkCode}" MaxLength="40" PlaceholderText="{l:Text accountSecurity.link.codePlaceholder}" MinHeight="44"/>
+                        <!-- The QR code the new device shows is scanned instead of typing its code -->
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                            <TextBox Text="{Binding LinkCode}" MaxLength="40" PlaceholderText="{l:Text accountSecurity.link.codePlaceholder}" MinHeight="44"/>
+                            <Button Grid.Column="1" MinHeight="44" MinWidth="44" Click="OnScanLinkClick"
+                                    ToolTip.Tip="{l:Text link.scan}">
+                                <Image Width="20" Height="20" Source="{StaticResource QrCodeIcon}"/>
+                            </Button>
+                        </Grid>
                         <StackPanel Spacing="6" IsVisible="{Binding IsLinkInfoShown}">
                             <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding LinkInfoText}"/>
                             <Button MinHeight="44" Command="{Binding DeclineLinkCommand}">

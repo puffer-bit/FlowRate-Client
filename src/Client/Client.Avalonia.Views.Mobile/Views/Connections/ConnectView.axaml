@@ -42,6 +42,15 @@
                 <!-- Form -->
                 <StackPanel Spacing="20" IsEnabled="{Binding !IsBusy}">
 
+                    <!-- A QR code of a server or a login code fills the form in -->
+                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="44"
+                            Click="OnScanClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Image Width="18" Height="18" VerticalAlignment="Center" Source="{StaticResource QrCodeIcon}"/>
+                            <TextBlock VerticalAlignment="Center" Text="{l:Text link.scan}"/>
+                        </StackPanel>
+                    </Button>
+
                     <ComboBox ItemsSource="{Binding SavedServers}" SelectedItem="{Binding SelectedSavedServer}"
                               IsVisible="{Binding !!SavedServers.Count}" HorizontalAlignment="Stretch">
                         <ComboBox.ItemTemplate>
@@ -170,7 +179,7 @@
                 <!-- The code this phone shows while another device of the account is to approve it -->
                 <StackPanel Spacing="12" HorizontalAlignment="Center" IsVisible="{Binding IsDeviceLinkCodeShown}">
                     <TextBlock Classes="fieldLabel" HorizontalAlignment="Center" Text="{l:Text connect.link.title}"/>
-                    <images:QrCode Width="220" Height="220" HorizontalAlignment="Center" Text="{Binding DeviceLinkCode.QrText}"/>
+                    <images:QrCode Width="220" Height="220" HorizontalAlignment="Center" Text="{Binding DeviceLinkQrText}"/>
                     <SelectableTextBlock HorizontalAlignment="Center" FontSize="28" FontWeight="SemiBold"
                                          Text="{Binding DeviceLinkCode.Code}"/>
                     <TextBlock Classes="hint" TextWrapping="Wrap" TextAlignment="Center" Text="{l:Text connect.link.hint}"/>

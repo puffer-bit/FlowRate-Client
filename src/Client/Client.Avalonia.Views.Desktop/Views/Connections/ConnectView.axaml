@@ -180,7 +180,7 @@
             <StackPanel Margin="{StaticResource DialogBodyMargin}" Spacing="12" HorizontalAlignment="Center"
                         VerticalAlignment="Center">
                 <TextBlock Classes="fieldLabel" HorizontalAlignment="Center" Text="{l:Text connect.link.title}"/>
-                <images:QrCode Width="200" Height="200" HorizontalAlignment="Center" Text="{Binding DeviceLinkCode.QrText}"/>
+                <images:QrCode Width="200" Height="200" HorizontalAlignment="Center" Text="{Binding DeviceLinkQrText}"/>
                 <SelectableTextBlock HorizontalAlignment="Center" FontSize="28" FontWeight="SemiBold"
                                      Text="{Binding DeviceLinkCode.Code}"/>
                 <TextBlock Classes="hint" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="340"

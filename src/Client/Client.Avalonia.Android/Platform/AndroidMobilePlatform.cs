@@ -1,3 +1,4 @@
+using Android.Content;
 using Android.Content.PM;
 using Client.Droid.Platform.Media;
 using Client.Mobile.Platform;
@@ -32,4 +33,17 @@ internal sealed class AndroidMobilePlatform : IMobilePlatform
         if (MainActivity.Current is { } activity)
             activity.RequestedOrientation = landscape ? ScreenOrientation.SensorLandscape : ScreenOrientation.Unspecified;
     }
+
+    public void ShareText(string text, string title)
+    {
+        if (MainActivity.Current is not { } activity)
+            return;
+
+        var send = new Intent(Intent.ActionSend);
+        send.SetType("text/plain");
+        send.PutExtra(Intent.ExtraText, text);
+        activity.StartActivity(Intent.CreateChooser(send, title));
+    }
+
+    public System.Threading.Tasks.Task<string?> ScanQrCodeAsync() => QrScanner.ScanAsync();
 }

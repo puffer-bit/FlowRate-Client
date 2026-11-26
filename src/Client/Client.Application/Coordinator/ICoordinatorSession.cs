@@ -42,6 +42,18 @@ public interface ICoordinatorSession : IDisposable
     /// </summary>
     bool IsCertificateVerified { get; }
 
+    /// <summary>The host given to <see cref="Connect"/>, as it was typed; null before the first call.</summary>
+    string? ConnectedHost { get; }
+
+    /// <summary>The port given to <see cref="Connect"/>.</summary>
+    int ConnectedPort { get; }
+
+    /// <summary>
+    /// The certificate the user trusted by hand that the last connection was made with, so a link to the server can
+    /// carry it; null when the system verified the certificate.
+    /// </summary>
+    string? TrustedFingerprint { get; }
+
     event Action<CoordinatorState>? StateChanged; 
 
     /// <summary>

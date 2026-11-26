@@ -26,8 +26,15 @@ sealed class Program
         AppRestart.WaitForPreviousProcess();
 
         // First of all: the installer and the updater start the application to run its hooks, and it
-        // exits right after them. A downloaded update the user did not restart into is applied here too
-        VelopackApp.Build().Run();
+        // exits right after them. A downloaded update the user did not restart into is applied here too.
+        // On Windows they also point flowrate:// links at the installed copy
+        var velopack = VelopackApp.Build();
+        if (OperatingSystem.IsWindows())
+            velopack = velopack
+                .OnAfterInstallFastCallback(_ => Client.Services.WindowsLinkScheme.Register())
+                .OnAfterUpdateFastCallback(_ => Client.Services.WindowsLinkScheme.Register())
+                .OnBeforeUninstallFastCallback(_ => Client.Services.WindowsLinkScheme.Unregister());
+        velopack.Run();
 
         try
         {
@@ -54,7 +61,7 @@ sealed class Program
         {
             try
             {
-                if (!instance.RequestLaunchAsync().GetAwaiter().GetResult())
+                if (!instance.RequestLaunchAsync(LaunchOptions.Current.Link).GetAwaiter().GetResult())
                     return;
             }
             catch (Exception e) when (e is System.IO.IOException or OperationCanceledException
@@ -67,6 +74,9 @@ sealed class Program
             }
         }
         Instance = instance;
+
+        // Opened once the main window is up, which takes it before connecting anywhere
+        Client.Services.IncomingLinks.Post(LaunchOptions.Current.Link);
 
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions

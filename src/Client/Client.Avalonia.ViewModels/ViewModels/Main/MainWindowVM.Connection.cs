@@ -208,7 +208,9 @@ public partial class MainWindowVM
     private Task ConnectToCoordinator() => ConnectToCoordinator(null);
 
     /// <param name="account">The saved account the connect window opens on, instead of the server connected to last.</param>
-    private async Task ConnectToCoordinator((string CoordinatorId, int UserId)? account)
+    /// <param name="prepare">Fills the connect window in before it is shown, as a link does.</param>
+    private async Task ConnectToCoordinator((string CoordinatorId, int UserId)? account,
+        Action<ConnectWindowVM>? prepare = null)
     {
         if (_coordinatorSession != null &&
             _coordinatorSession.ConnectionStatus != CoordinatorState.Connected)
@@ -223,6 +225,7 @@ public partial class MainWindowVM
         var connectWindow = _createConnectWindow();
         if (account is var (coordinatorId, userId))
             connectWindow.PreferAccount(coordinatorId, userId);
+        prepare?.Invoke(connectWindow);
         var newCoordinator = await ShowConnectWindow.Handle(connectWindow);
         if (newCoordinator is { ConnectionStatus: CoordinatorState.Connected })
         {

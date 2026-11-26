@@ -26,6 +26,9 @@ namespace Client.Droid;
     // Never panned by the system when the keyboard opens: the root view makes room for it itself
     WindowSoftInputMode = SoftInput.AdjustResize,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
+// flowrate:// links, from a browser, a message or the camera, open the application on what they ask for
+[IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataScheme = Client.Application.Links.FlowRateLinks.Scheme)]
 public class MainActivity : AvaloniaMainActivity
 {
     private static bool _screenAwakeRequired;
@@ -151,6 +154,7 @@ public class MainActivity : AvaloniaMainActivity
         {
             ShowOverLockScreenForCall(Intent);
             RequestChat(Intent);
+            OpenLink(Intent);
         }
     }
 
@@ -159,6 +163,14 @@ public class MainActivity : AvaloniaMainActivity
         base.OnNewIntent(intent);
         ShowOverLockScreenForCall(intent);
         RequestChat(intent);
+        OpenLink(intent);
+    }
+
+    // Kept until the main window takes it when the application is still starting
+    private static void OpenLink(Intent? intent)
+    {
+        if (intent?.Action == Intent.ActionView && intent.DataString is { } link)
+            Client.Services.IncomingLinks.Post(link);
     }
 
     /// <summary>

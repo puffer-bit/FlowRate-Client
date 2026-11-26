@@ -540,9 +540,12 @@ public partial class MainWindowVM : ReactiveObject
             return hiding;
         };
 
+        // A link the application was opened with to connect somewhere takes the place of the saved server
+        var startupLink = ListenForLinks();
+
         Task connecting = Task.CompletedTask;
         var skipped = CancellationToken.None;
-        if (await GetStartupConnectionAsync() is var (coordinator, user))
+        if (!ReplacesStartupConnection(startupLink) && await GetStartupConnectionAsync() is var (coordinator, user))
         {
             _startupConnection = new CancellationTokenSource();
             skipped = _startupConnection.Token;
@@ -563,6 +566,13 @@ public partial class MainWindowVM : ReactiveObject
 
         // Not awaited: a slow network must not hold anything back
         _ = Updater.CheckOnStartupAsync();
+
+        // Not awaited either: the start is not over until the user is done with the form the link opens. A link to
+        // approve a device waits for the saved server, which it needs
+        if (startupLink != null)
+            _ = OpenLinkAfterStartupAsync(startupLink, connecting, skipped);
+        else
+            _startupOver.TrySetResult();
 
         // The start is over once the connection is, as before: what the host does next (a call from a notification)
         // must not connect alongside it. A skipped one ends by itself and connects nothing

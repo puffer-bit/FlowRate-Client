@@ -19,6 +19,12 @@ public sealed record LaunchOptions
     public string? Language { get; init; }
     public string? DataDirectory { get; init; }
     public LogEventLevel? LogLevel { get; init; }
+
+    /// <summary>
+    /// The flowrate:// link the system started the application with, opening it from a browser or a message; the
+    /// application only reads it after the start, so it is not checked here.
+    /// </summary>
+    public string? Link { get; init; }
     public bool PreventAutoConnect => NoAutoConnect || SafeMode;
     public bool DisableMedia => NoMedia || SafeMode;
     public string SettingsNotice => string.Join(" ", new[]
@@ -37,6 +43,15 @@ public sealed record LaunchOptions
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < args.Count; i++)
         {
+            if (args[i].StartsWith("flowrate:", StringComparison.OrdinalIgnoreCase)
+                || args[i].StartsWith("flowrate-link:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (options.Link != null)
+                    throw new ArgumentException("Specify one link only.");
+                options = options with { Link = args[i] };
+                continue;
+            }
+
             var parts = args[i].Split('=', 2);
             var name = parts[0];
             if (!seen.Add(name))
@@ -98,6 +113,7 @@ public sealed record LaunchOptions
           --lang CODE           en, ru, es, ja, zh
           --help, -h            Show this help and exit
           --version             Show the version and exit
+          flowrate://...        Open a FlowRate link (the system passes it when a link is opened)
         Value options also accept --name=value. Overrides are not saved.
         """;
 }

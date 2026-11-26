@@ -244,6 +244,54 @@ public class BehaviorAutoConnectionTests
         });
     }
 
+    [Fact]
+    public async Task LoginLinkFillsTheFormWithItsServerAndCode()
+    {
+        ConnectWindowVM? vm = null;
+        await TestUiThread.RunAsync(() =>
+        {
+            vm = new ConnectWindowVM(new AccountingStub([Server("saved", 1)]), null!, new BehaviorStub());
+            vm.OpenLink(new Client.Application.Links.LoginLink("chat.example.com", 5000, null, "ABCD-EFGH-JKMN"));
+        });
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            var loaded = false;
+            await TestUiThread.RunAsync(() =>
+            {
+                Dispatcher.UIThread.RunJobs();
+                loaded = !vm!.IsLoadingIdentities && vm.SelectedIdentity != null;
+            });
+            if (loaded) break;
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+        await TestUiThread.RunAsync(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            // The saved server of the last connection does not take the place of the server of the link
+            Assert.Equal("chat.example.com", vm!.ServerAddress);
+            Assert.Equal("5000", vm.Port);
+            Assert.Same(vm.ExistingAccount, vm.SelectedIdentity);
+            Assert.True(vm.IsCodeLogin);
+            Assert.Equal("ABCD-EFGH-JKMN", vm.LoginCodeText);
+            vm.CancelTasks();
+        });
+    }
+
+    [Fact]
+    public async Task ScanOfANewDeviceDoesNotFillTheConnectForm()
+    {
+        await TestUiThread.RunAsync(() =>
+        {
+            var vm = new ConnectWindowVM(new AccountingStub([]), null!, new BehaviorStub());
+            Assert.False(vm.OpenScanned("flowrate-link:ABCD-EFGH"));
+            Assert.False(vm.OpenScanned("https://example.com"));
+            Assert.True(vm.OpenScanned("flowrate://connect?host=chat.example.com"));
+            Assert.Equal("chat.example.com", vm.ServerAddress);
+            Assert.Null(vm.Port);
+            vm.CancelTasks();
+        });
+    }
+
     private static SavedCoordinatorModel Server(string id, params int[] users) => new()
     {
         CoordinatorId = id, Address = "localhost", Port = 26666,

@@ -749,6 +749,15 @@ public partial class MainView : UserControl
             chat.ToggleMuteCommand.Execute(chat.Model.Id).Subscribe();
     }
 
+    // A link that fills in the connect form on another device; the share sheet of the phone sends it on
+    private void OnShareServerLinkClick(object? sender, RoutedEventArgs e)
+    {
+        TryCloseServerMenu();
+
+        if (_viewModel?.ServerTitle is { ServerLink: { } link } title)
+            MobilePlatform.Current?.ShareText(link, title.DisplayName);
+    }
+
     private async void OnCopyAddressClick(object? sender, RoutedEventArgs e)
     {
         TryCloseServerMenu();
