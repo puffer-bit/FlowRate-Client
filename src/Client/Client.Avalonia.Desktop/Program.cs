@@ -86,6 +86,7 @@ sealed class Program
         });
         ClientLogging.LogUnhandledExceptions();
         ClientLogging.LogStartup(AppInformation.GetClientBuildVersion());
+        RegisterLinkScheme();
 
         try
         {
@@ -114,6 +115,24 @@ sealed class Program
         {
             Log.CloseAndFlush();
         }
+    }
+
+    /// <summary>
+    /// Points flowrate:// links at this client on every start, so that running it once is enough. The installer and
+    /// flowrate-linux.sh do it too; macOS takes the scheme from Info.plist and Android from the manifest. Development
+    /// builds leave the links to the installed client.
+    /// </summary>
+    private static void RegisterLinkScheme()
+    {
+#if !DEBUG
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            if (OperatingSystem.IsWindows())
+                Client.Services.WindowsLinkScheme.Register();
+            else if (OperatingSystem.IsLinux())
+                Client.Services.LinuxLinkScheme.Register();
+        });
+#endif
     }
 
     internal static void RestartWithoutMedia() => AppRestart.WithoutMedia();
