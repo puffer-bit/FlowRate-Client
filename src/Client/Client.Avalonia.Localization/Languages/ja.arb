@@ -561,7 +561,7 @@
   "serverSettings.info.lastStarted": "前回の起動",
   "serverSettings.sfu.section.nodes": "ノード",
   "main.server.copyAddress": "アドレスをコピー",
-  "main.server.shareLink": "サーバーのリンクを共有",
+  "main.server.shareLink": "サーバーの QR コード",
   "main.server.shareLink.hint": "スマートフォンのカメラまたは FlowRate でスキャンすると、このサーバーへの接続画面が開きます。",
   "main.server.copyLink": "リンクをコピー",
   "link.scan": "QR コードをスキャン",

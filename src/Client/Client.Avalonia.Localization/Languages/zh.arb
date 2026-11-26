@@ -561,7 +561,7 @@
   "serverSettings.info.lastStarted": "上次启动",
   "serverSettings.sfu.section.nodes": "节点",
   "main.server.copyAddress": "复制地址",
-  "main.server.shareLink": "分享服务器链接",
+  "main.server.shareLink": "服务器二维码",
   "main.server.shareLink.hint": "用手机相机或在 FlowRate 中扫描，即可打开连接到此服务器的界面。",
   "main.server.copyLink": "复制链接",
   "link.scan": "扫描二维码",

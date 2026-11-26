@@ -546,7 +546,7 @@
   "serverSettings.info.lastStarted": "Последний запуск",
   "serverSettings.sfu.section.nodes": "Ноды",
   "main.server.copyAddress": "Скопировать адрес",
-  "main.server.shareLink": "Поделиться ссылкой на сервер",
+  "main.server.shareLink": "QR-код сервера",
   "main.server.shareLink.hint": "Отсканируйте камерой телефона или в FlowRate, чтобы открыть подключение к этому серверу.",
   "main.server.copyLink": "Скопировать ссылку",
   "link.scan": "Сканировать QR-код",

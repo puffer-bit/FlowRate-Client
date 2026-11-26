@@ -742,7 +742,7 @@
   "serverSettings.info.lastStarted": "Last started",
   "serverSettings.sfu.section.nodes": "Nodes",
   "main.server.copyAddress": "Copy address",
-  "main.server.shareLink": "Share server link",
+  "main.server.shareLink": "Server QR code",
   "main.server.shareLink.hint": "Scan it with a phone camera or in FlowRate to open the connect form for this server.",
   "main.server.copyLink": "Copy link",
   "link.scan": "Scan QR code",

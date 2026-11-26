@@ -561,7 +561,7 @@
   "serverSettings.info.lastStarted": "Último inicio",
   "serverSettings.sfu.section.nodes": "Nodos",
   "main.server.copyAddress": "Copiar dirección",
-  "main.server.shareLink": "Compartir enlace del servidor",
+  "main.server.shareLink": "Código QR del servidor",
   "main.server.shareLink.hint": "Escanéalo con la cámara del teléfono o en FlowRate para abrir la conexión a este servidor.",
   "main.server.copyLink": "Copiar enlace",
   "link.scan": "Escanear código QR",
