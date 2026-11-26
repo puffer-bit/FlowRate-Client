@@ -26,8 +26,15 @@ sealed class Program
         AppRestart.WaitForPreviousProcess();
 
         // First of all: the installer and the updater start the application to run its hooks, and it
-        // exits right after them. A downloaded update the user did not restart into is applied here too
-        VelopackApp.Build().Run();
+        // exits right after them. A downloaded update the user did not restart into is applied here too.
+        // On Windows they also point flowrate:// links at the installed copy
+        var velopack = VelopackApp.Build();
+        if (OperatingSystem.IsWindows())
+            velopack = velopack
+                .OnAfterInstallFastCallback(_ => Client.Services.WindowsLinkScheme.Register())
+                .OnAfterUpdateFastCallback(_ => Client.Services.WindowsLinkScheme.Register())
+                .OnBeforeUninstallFastCallback(_ => Client.Services.WindowsLinkScheme.Unregister());
+        velopack.Run();
 
         try
         {
@@ -54,7 +61,7 @@ sealed class Program
         {
             try
             {
-                if (!instance.RequestLaunchAsync().GetAwaiter().GetResult())
+                if (!instance.RequestLaunchAsync(LaunchOptions.Current.Link).GetAwaiter().GetResult())
                     return;
             }
             catch (Exception e) when (e is System.IO.IOException or OperationCanceledException
@@ -68,6 +75,9 @@ sealed class Program
         }
         Instance = instance;
 
+        // Opened once the main window is up, which takes it before connecting anywhere
+        Client.Services.IncomingLinks.Post(LaunchOptions.Current.Link);
+
         // Before Avalonia, so that a crash at any point of the start is written to the log files too
         Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
         {
@@ -76,6 +86,7 @@ sealed class Program
         });
         ClientLogging.LogUnhandledExceptions();
         ClientLogging.LogStartup(AppInformation.GetClientBuildVersion());
+        RegisterLinkScheme();
 
         try
         {
@@ -104,6 +115,24 @@ sealed class Program
         {
             Log.CloseAndFlush();
         }
+    }
+
+    /// <summary>
+    /// Points flowrate:// links at this client on every start, so that running it once is enough. The installer and
+    /// flowrate-linux.sh do it too; macOS takes the scheme from Info.plist and Android from the manifest. Development
+    /// builds leave the links to the installed client.
+    /// </summary>
+    private static void RegisterLinkScheme()
+    {
+#if !DEBUG
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            if (OperatingSystem.IsWindows())
+                Client.Services.WindowsLinkScheme.Register();
+            else if (OperatingSystem.IsLinux())
+                Client.Services.LinuxLinkScheme.Register();
+        });
+#endif
     }
 
     internal static void RestartWithoutMedia() => AppRestart.WithoutMedia();

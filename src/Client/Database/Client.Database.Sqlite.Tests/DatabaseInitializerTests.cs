@@ -22,7 +22,30 @@ public class DatabaseInitializerTests
         Assert.True(settings.IsAutoConnectEnabled);
         Assert.Equal(Client.Core.Settings.CloseButtonAction.Exit, settings.CloseButtonAction);
         Assert.Equal("🔥", settings.QuickReaction);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
+    }
+
+    [Fact]
+    public async Task ExistingInstallationsKeepAutoConnectWhileNewOnesHaveItOn()
+    {
+        await using var existing = await TestDatabase.CreateAtVersionAsync(42);
+        await existing.ExecuteAsync("""
+            INSERT INTO SavedCoordinators (CoordinatorId, Name, Address, Port, SaveOrder) VALUES ('old', NULL, 'a', 1, 1);
+            INSERT INTO SavedCoordinators (CoordinatorId, Name, Address, Port, SaveOrder) VALUES ('recent', NULL, 'b', 1, 2);
+            """);
+        Assert.Equal(DatabaseState.NoError,
+            await new DatabaseInitializer(existing.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync());
+        var behavior = new Client.Database.Sqlite.Repositories.BehaviorSettingsRepository(existing.Database);
+
+        Assert.False((await behavior.GetAsync()).IsAutoConnectEnabled);
+        // The server saved most recently stands for the last connection, its account unknown
+        Assert.Equal(("recent", (int?)null), await behavior.GetLastConnectionAsync());
+
+        await using var empty = await TestDatabase.CreateAtVersionAsync(42);
+        Assert.Equal(DatabaseState.NoError,
+            await new DatabaseInitializer(empty.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync());
+        Assert.True((await new Client.Database.Sqlite.Repositories.BehaviorSettingsRepository(empty.Database).GetAsync())
+            .IsAutoConnectEnabled);
     }
 
     [Fact]
@@ -67,7 +90,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal("wal", await database.ScalarAsync("PRAGMA journal_mode"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT COUNT(*) FROM AudioSettings"));
     }
@@ -83,7 +106,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.0, await database.ScalarAsync("SELECT ChatAudioVolume FROM AudioSettings"));
         Assert.Equal(1.5, await database.ScalarAsync("SELECT InputVolume FROM AudioSettings"));
         Assert.Equal(0.4, await database.ScalarAsync("SELECT SoundsVolume FROM AudioSettings"));
@@ -100,7 +123,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1.0, await database.ScalarAsync("SELECT ChatVideoVolume FROM AudioSettings"));
         Assert.Equal(0.25, await database.ScalarAsync("SELECT ChatAudioVolume FROM AudioSettings"));
     }
@@ -129,7 +152,7 @@ public class DatabaseInitializerTests
         Assert.Equal(DatabaseState.NoError, state);
         Assert.True(File.Exists(database.FilePath + ".ef-backup"));
         Assert.Null(await database.ScalarAsync("SELECT name FROM sqlite_master WHERE name = '__EFMigrationsHistory'"));
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
     }
 
     [Fact]
@@ -142,7 +165,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
         Assert.Equal(1L, await database.ScalarAsync("SELECT MediaPerfOverlay FROM DebugSettings"));
         Assert.Equal(31L, await database.ScalarAsync("SELECT MediaPerfSections FROM DebugSettings"));
         Assert.Equal(3L, await database.ScalarAsync("SELECT LibWebRTCLogLevel FROM DebugSettings"));
@@ -165,7 +188,7 @@ public class DatabaseInitializerTests
         var state = await new DatabaseInitializer(database.Database, NullLogger<DatabaseInitializer>.Instance).VerifyDatabaseAsync();
 
         Assert.Equal(DatabaseState.NoError, state);
-        Assert.Equal(42L, await database.ScalarAsync("PRAGMA user_version"));
+        Assert.Equal(43L, await database.ScalarAsync("PRAGMA user_version"));
         var repository = new Client.Database.Sqlite.Repositories.AccountingSettingsRepository(database.Database);
         var coordinator = await repository.GetCoordinatorAsync("replacement");
         Assert.Equal("replacement", coordinator!.CoordinatorId);

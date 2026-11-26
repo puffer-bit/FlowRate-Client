@@ -21,8 +21,10 @@ public interface IAccountingService
 
     Task RemoveCoordinatorInstanceAsync(string coordinatorId);
 
-    /// <summary>The device of the account ended: its key goes, and the account needs a login.</summary>
-    Task ForgetDeviceAsync(string coordinatorId, int userId);
+    /// <summary>
+    /// The device of the account ended for <paramref name="reason"/>: its key goes, and the account needs a login.
+    /// </summary>
+    Task ForgetDeviceAsync(string coordinatorId, int userId, LoginLostReason reason);
 
     /// <summary>Keeps a new recovery phrase of the account until the user confirms saving it.</summary>
     Task KeepRecoveryPhraseAsync(string coordinatorId, int userId, string phrase);

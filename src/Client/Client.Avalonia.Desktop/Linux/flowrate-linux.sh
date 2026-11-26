@@ -179,7 +179,7 @@ fi
 quoted=$(printf '%s' "$executable" | sed -e 's/[\\"`$]/\\&/g')
 
 write_entry() {
-    local file=$1 arguments=$2
+    local file=$1 arguments=$2 extra=${3:-}
     mkdir -p "$(dirname "$file")"
     cat > "$file" <<EOF
 [Desktop Entry]
@@ -195,10 +195,13 @@ Categories=Network;InstantMessaging;Chat;
 Keywords=voice;chat;call;messenger;
 StartupWMClass=$WM_CLASS
 StartupNotify=true
+$extra
 EOF
 }
 
-write_entry "$desktop_file" ""
+# The menu entry opens flowrate:// links too: the link comes as the argument (%u) and goes on to a running client
+write_entry "$desktop_file" " %u" "MimeType=x-scheme-handler/flowrate;"
+command -v xdg-mime >/dev/null && xdg-mime default "$APP_ID.desktop" x-scheme-handler/flowrate 2>/dev/null || true
 # With neither option the start at login of an earlier install stays, pointing at the new client
 [[ -z "$autostart" && -f "$autostart_file" ]] && autostart=1
 if [[ "$autostart" == 1 ]]; then

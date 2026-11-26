@@ -14,6 +14,11 @@
         <Style Selector="StackPanel.warningLeaving">
             <Setter Property="Opacity" Value="0"/>
         </Style>
+        <!-- Keeps its room while hidden, so the logo does not move when the connection starts or ends -->
+        <Style Selector="Button.skipHidden">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -42,6 +47,17 @@
                        FontSize="13"
                        HorizontalAlignment="Center"
                        Foreground="{DynamicResource SecondaryTextBrush}"/>
+            <!-- Stops waiting for the saved server: the interface opens offline -->
+            <Button Content="{l:Text main.startup.skipConnection}" HorizontalAlignment="Center" MinWidth="110"
+                    IsVisible="{Binding !IsDevelopmentWarningShown}"
+                    Classes.skipHidden="{Binding !IsStartupConnecting}"
+                    Click="OnSkipConnectionClick">
+                <Button.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                    </Transitions>
+                </Button.Transitions>
+            </Button>
             <StackPanel IsVisible="{Binding IsDevelopmentWarningShown}" MaxWidth="460" Margin="24,0" Spacing="16"
                         Classes.warningLeaving="{Binding IsDevelopmentWarningLeaving}"
                         IsHitTestVisible="{Binding !IsDevelopmentWarningLeaving}">

@@ -56,8 +56,14 @@ internal sealed class SingleInstance : IDisposable
             activate();
     }
 
+    // A request to show the window; one with a link carries it after its length
+    private const byte ActivateRequest = 1;
+    private const byte ActivateWithLinkRequest = 2;
+    private const int MaxLinkBytes = 8 * 1024;
+
     // Only the primary process decides whether another instance may start.
-    public async Task<bool> RequestLaunchAsync()
+    /// <param name="link">A flowrate:// link the system started this process with, handed to the primary one.</param>
+    public async Task<bool> RequestLaunchAsync(string? link = null)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut,
@@ -69,7 +75,17 @@ internal sealed class SingleInstance : IDisposable
             return true;
         if (OperatingSystem.IsWindows())
             AllowSetForegroundWindow(BitConverter.ToInt32(response));
-        await pipe.WriteAsync(new byte[] { 1 }, timeout.Token).ConfigureAwait(false);
+        var linkBytes = link == null ? null : Encoding.UTF8.GetBytes(link);
+        if (linkBytes is { Length: > 0 and <= MaxLinkBytes })
+        {
+            var request = new byte[1 + sizeof(int) + linkBytes.Length];
+            request[0] = ActivateWithLinkRequest;
+            BitConverter.GetBytes(linkBytes.Length).CopyTo(request, 1);
+            linkBytes.CopyTo(request, 1 + sizeof(int));
+            await pipe.WriteAsync(request, timeout.Token).ConfigureAwait(false);
+        }
+        else
+            await pipe.WriteAsync(new byte[] { ActivateRequest }, timeout.Token).ConfigureAwait(false);
         var acknowledgement = new byte[1];
         await pipe.ReadExactlyAsync(acknowledgement, timeout.Token).ConfigureAwait(false);
         return false;
@@ -95,8 +111,21 @@ internal sealed class SingleInstance : IDisposable
                     continue;
                 var request = new byte[1];
                 await pipe.ReadExactlyAsync(request, requestTimeout.Token).ConfigureAwait(false);
-                if (request[0] != 1)
+                if (request[0] is not (ActivateRequest or ActivateWithLinkRequest))
                     continue;
+
+                if (request[0] == ActivateWithLinkRequest)
+                {
+                    var length = new byte[sizeof(int)];
+                    await pipe.ReadExactlyAsync(length, requestTimeout.Token).ConfigureAwait(false);
+                    var size = BitConverter.ToInt32(length);
+                    if (size is <= 0 or > MaxLinkBytes)
+                        continue;
+                    var link = new byte[size];
+                    await pipe.ReadExactlyAsync(link, requestTimeout.Token).ConfigureAwait(false);
+                    // Kept until the main window listens, when it comes while the application starts
+                    IncomingLinks.Post(Encoding.UTF8.GetString(link));
+                }
 
                 Action? activate;
                 lock (_gate)

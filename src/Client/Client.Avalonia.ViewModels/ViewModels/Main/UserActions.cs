@@ -166,7 +166,12 @@ public sealed class UserActions
     public AccountSecurityHooks? SecurityHooks { get; set; }
 
     // What the user logs in with; loaded as the dialog opens
-    private async Task ManageSecurity()
+    private Task ManageSecurity() => ManageSecurity(null);
+
+    /// <summary>Opens the account security dialog on the approval of the new device that shows the code.</summary>
+    public Task ApproveDeviceLink(string code) => ManageSecurity(code);
+
+    private async Task ManageSecurity(string? linkCode)
     {
         var hooks = SecurityHooks;
         var vm = new AccountSecurityVM(Session)
@@ -176,7 +181,10 @@ public sealed class UserActions
             LoadRecoveryPhrase = hooks?.LoadRecoveryPhrase,
             LoggedOut = hooks?.LoggedOut
         };
-        vm.LoadCommand.Execute().Subscribe();
+        if (linkCode != null)
+            vm.StartLink(linkCode);
+        else
+            vm.LoadCommand.Execute().Subscribe();
         await _showAccountSecurity.Handle(vm);
     }
 

@@ -42,8 +42,4 @@ public sealed record DeviceLinkLoginPlan(bool Temporary = false) : LoginPlan(Tem
 public sealed record LegacyLoginPlan(string Identity, string? SessionToken, string? AccountPassword) : LoginPlan;
 
 /// <summary>The code a new device shows to be added by a device of the account.</summary>
-/// <param name="QrText">What the QR code holds: <c>flowrate-link:</c> and the code.</param>
-public sealed record DeviceLinkCode(string Code, DateTimeOffset ExpiresAt)
-{
-    public string QrText => "flowrate-link:" + Code;
-}
+public sealed record DeviceLinkCode(string Code, DateTimeOffset ExpiresAt);

@@ -8,7 +8,7 @@ public class BehaviorSettings
 {
     public bool KeepScreenOnWhileWatching { get; set; } = true;
 
-    public bool IsAutoConnectEnabled { get; set; }
+    public bool IsAutoConnectEnabled { get; set; } = true;
 
     public bool IsFallbackConnectionEnabled { get; set; } = false;
     public bool IsFallbackConnectionWarningEnabled { get; set; } = true;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Chat;
@@ -527,25 +528,94 @@ public partial class MainWindowVM : ReactiveObject
         if (onInitialized != null)
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
 
-        // The desktop transition holds a snapshot of the main interface. Start connection-driven
-        // content changes after it completes so revealing the live interface cannot jump.
-        await HideStartupScreenAsync(fadeOutStartupScreen);
+        // The startup screen stays while the saved server is connected to, so the interface shows up connected.
+        // Message boxes and login prompts lie over the screen; the connect window needs the interface and takes
+        // the screen away first, as does the user skipping the connection.
+        var revealed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task? hiding = null;
+        _revealStartup = () =>
+        {
+            hiding ??= HideStartupScreenAsync(fadeOutStartupScreen);
+            revealed.TrySetResult();
+            return hiding;
+        };
 
-        // Not awaited: a slow network must not hold the auto connection back
+        // A link the application was opened with to connect somewhere takes the place of the saved server
+        var startupLink = ListenForLinks();
+
+        Task connecting = Task.CompletedTask;
+        var skipped = CancellationToken.None;
+        if (!ReplacesStartupConnection(startupLink) && await GetStartupConnectionAsync() is var (coordinator, user))
+        {
+            _startupConnection = new CancellationTokenSource();
+            skipped = _startupConnection.Token;
+            IsStartupConnecting = true;
+            connecting = AutoConnectToCoordinator(coordinator, user, skipped);
+            await Task.WhenAny(connecting, revealed.Task, Task.Delay(Timeout.Infinite, skipped)
+                .ContinueWith(_ => { }, TaskScheduler.Default));
+            IsStartupConnecting = false;
+            _startupConnection = null;
+            if (skipped.IsCancellationRequested && _coordinatorSession == null)
+                await SetStatus("main.status.offline", false);
+        }
+
+        // The desktop transition holds a snapshot of the main interface: it is taken once the connection, if any,
+        // has filled it, so revealing the live interface cannot jump
+        await _revealStartup();
+        _revealStartup = null;
+
+        // Not awaited: a slow network must not hold anything back
         _ = Updater.CheckOnStartupAsync();
 
-        if (!Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
-            && (await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
-            && await _behaviorService.GetAutoConnectInstance() is { } autoConnect)
-        {
-            // The account is read again with its secrets: the server password is kept in the vault, not in the
-            // database the auto connection instance comes from
-            var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
-                .FirstOrDefault(server => server.CoordinatorId == autoConnect.Coordinator.CoordinatorId);
-            var user = saved?.Users.FirstOrDefault(account => account.Id == autoConnect.User.Id);
-            await AutoConnectToCoordinator(saved ?? autoConnect.Coordinator, user ?? autoConnect.User);
-        }
+        // Not awaited either: the start is not over until the user is done with the form the link opens. A link to
+        // approve a device waits for the saved server, which it needs
+        if (startupLink != null)
+            _ = OpenLinkAfterStartupAsync(startupLink, connecting, skipped);
+        else
+            _startupOver.TrySetResult();
+
+        // The start is over once the connection is, as before: what the host does next (a call from a notification)
+        // must not connect alongside it. A skipped one ends by itself and connects nothing
+        if (!skipped.IsCancellationRequested)
+            await connecting;
     }
+
+    /// <summary>The saved server and account to connect to at start, with their secrets; null for none.</summary>
+    private async Task<(SavedCoordinatorModel Coordinator, SavedUserModel User)?> GetStartupConnectionAsync()
+    {
+        if (Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect
+            || !(await _behaviorService.GetSettingsAsync()).IsAutoConnectEnabled
+            || await _behaviorService.GetAutoConnectInstance() is not { } autoConnect)
+            return null;
+
+        // The account is read again with its secrets: the server password is kept in the vault, not in the
+        // database the auto connection instance comes from
+        var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
+            .FirstOrDefault(server => server.CoordinatorId == autoConnect.Coordinator.CoordinatorId);
+        var user = saved?.Users.FirstOrDefault(account => account.Id == autoConnect.User.Id);
+        return (saved ?? autoConnect.Coordinator, user ?? autoConnect.User);
+    }
+
+    // Takes the startup screen away while the start connects: set only until the start is over
+    private Func<Task>? _revealStartup;
+
+    // Cancelled by the skip button of the startup screen
+    private CancellationTokenSource? _startupConnection;
+
+    /// <summary>The startup screen waits for the saved server, and offers to skip it.</summary>
+    public bool IsStartupConnecting
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Stops waiting for the saved server at start: the interface opens offline.</summary>
+    public void SkipStartupConnection() => _startupConnection?.Cancel();
+
+    /// <summary>
+    /// Takes the startup screen away before something only the interface can show; nothing once the start is over.
+    /// </summary>
+    private Task RevealStartupAsync() => _revealStartup?.Invoke() ?? Task.CompletedTask;
 
     // The content under the screen has been laid out all along, so the screen leaves at once; it is out
     // of the window after its fade, so its ring stops turning

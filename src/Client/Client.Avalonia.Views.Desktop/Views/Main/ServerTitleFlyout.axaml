@@ -4,6 +4,7 @@
              xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
              x:DataType="mainVm:ServerTitleVM"
              x:Class="Client.Views.Main.ServerTitleFlyout"
              Width="256">
@@ -89,6 +90,19 @@
         <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
                               menus:FlyoutMenu.CloseOnClick="True"
                               Click="CopyAddress_Click"/>
+
+        <!-- A link to the server, with its QR code for a phone: it fills in the connect form there -->
+        <menus:MenuItemButton Icon="{StaticResource QrCodeIcon}" Content="{l:Text main.server.shareLink}"
+                              IsVisible="{Binding HasServerLink}"
+                              Command="{Binding ToggleServerLinkCommand}"/>
+        <StackPanel IsVisible="{Binding IsServerLinkShown}" Spacing="6" Margin="8,2,8,4">
+            <images:QrCode Width="200" Height="200" HorizontalAlignment="Center" Text="{Binding ServerLink}"/>
+            <TextBlock Classes="infoLabel" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                       Text="{l:Text main.server.shareLink.hint}"/>
+            <menus:MenuItemButton Icon="{StaticResource FormatLinkIcon}" Content="{l:Text main.server.copyLink}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Click="CopyLink_Click"/>
+        </StackPanel>
 
         <Separator/>
 

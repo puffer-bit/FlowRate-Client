@@ -336,6 +336,9 @@
                                           Click="OnManageSecurityClick"/>
                     <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text main.server.copyAddress}"
                                           Click="OnCopyAddressClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource QrCodeIcon}" Content="{l:Text main.server.shareLink}"
+                                          IsVisible="{Binding ServerTitle.HasServerLink}"
+                                          Click="OnShareServerLinkClick"/>
 
                     <Separator/>
 

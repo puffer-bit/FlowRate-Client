@@ -37,27 +37,34 @@ public partial class MainWindowVM
 
     private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(() => Strings.Get(key), isActive);
 
-    private async Task AutoConnectToCoordinator(SavedCoordinatorModel coordinator, SavedUserModel user)
+    /// <param name="skipped">
+    /// Cancelled when the user skips the connection at start: whatever is left of it is given up without a word.
+    /// </param>
+    private async Task AutoConnectToCoordinator(SavedCoordinatorModel coordinator, SavedUserModel user,
+        CancellationToken skipped = default)
     {
         string Connecting() => Strings.Format("main.status.connecting", ("host", coordinator.Address),
             ("port", coordinator.Port), ("user", user.Username));
 
-        // An account without a device here logs in again: the connect window opens with its name filled in
+        // An account without a device here logs in again: the connect window opens on it, and tells why
         if (LoginPlan.For(user) is not { } plan)
         {
-            await ConnectToCoordinator();
+            await RevealStartupAsync();
+            await ConnectToCoordinator((coordinator.CoordinatorId, user.Id));
             return;
         }
 
+        StartupStage = Strings.Format("main.startup.stage.connecting", ("host", coordinator.Name is { Length: > 0 } name
+            ? name : coordinator.Address));
         await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
-        if (!await ConnectWithRetriesAsync(session, coordinator, user, plan))
+        if (!await ConnectWithRetriesAsync(session, coordinator, user, plan, skipped))
             return;
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
-            if (!await CertificateTrustMessages.ConfirmTrustAsync(session, ShowMessageBox))
+            if (!await CertificateTrustMessages.ConfirmTrustAsync(session, ShowMessageBox) || skipped.IsCancellationRequested)
             {
                 await SetStatus("main.status.offline", false);
                 session.Dispose();
@@ -65,20 +72,19 @@ public partial class MainWindowVM
             }
 
             await StatusLine.SetAsync(Connecting, true);
-            if (!await ConnectWithRetriesAsync(session, coordinator, user, plan))
+            if (!await ConnectWithRetriesAsync(session, coordinator, user, plan, skipped))
                 return;
         }
 
-        // The device ended while the app was closed: the user logs in again
+        // The device ended while the app was closed: the user logs in again, told why in the connect window
         if (session.ConnectionStatus == CoordinatorState.DeviceEnded)
         {
             session.Dispose();
             // The saved account is marked before the connect window lists it
-            await _accounting.ForgetDeviceAsync(coordinator.CoordinatorId, user.Id);
+            await _accounting.ForgetDeviceAsync(coordinator.CoordinatorId, user.Id, LoginLostReason.NotFound);
             await SetStatus("main.status.offline", false);
-            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
-                Strings.Get("main.deviceEnded.notFound"), Strings.Get("main.deviceEnded.title")));
-            await ConnectToCoordinator();
+            await RevealStartupAsync();
+            await ConnectToCoordinator((coordinator.CoordinatorId, user.Id));
             return;
         }
 
@@ -93,6 +99,14 @@ public partial class MainWindowVM
                         Strings.Get(session.ConnectionStatus == CoordinatorState.PasskeyRequired
                             ? "connect.failed.passkeyRequired"
                             : "main.autoConnect.failed"), Strings.Get("main.autoConnect.failedTitle")));
+            session.Dispose();
+            return;
+        }
+
+        // Skipped while the login was finishing: the interface is offline already
+        if (skipped.IsCancellationRequested || _coordinatorSession != null)
+        {
+            await session.Disconnect();
             session.Dispose();
             return;
         }
@@ -113,6 +127,7 @@ public partial class MainWindowVM
                 RecoveryPhrase = newPhrase,
                 IsRecoveryPhraseSaved = newPhrase == null && user.IsRecoveryPhraseSaved
             });
+            await _behaviorService.RecordConnectionAsync(coordinator.CoordinatorId, credentials.Id);
         }
         catch (Exception exception)
         {
@@ -140,10 +155,10 @@ public partial class MainWindowVM
 
     /// <returns>
     /// False when another connection took the place of this one meanwhile, made by the user from the
-    /// connect window: the session is disposed and there is nothing to tell.
+    /// connect window, or when the user skipped it at start: the session is disposed and there is nothing to tell.
     /// </returns>
     private async Task<bool> ConnectWithRetriesAsync(ICoordinatorSession session, SavedCoordinatorModel coordinator,
-        SavedUserModel user, LoginPlan plan)
+        SavedUserModel user, LoginPlan plan, CancellationToken skipped)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -158,7 +173,7 @@ public partial class MainWindowVM
                 LogAutoConnectAttemptFailed(exception, coordinator.CoordinatorId, attempt);
             }
 
-            if (_coordinatorSession != null)
+            if (_coordinatorSession != null || skipped.IsCancellationRequested)
             {
                 session.Dispose();
                 return false;
@@ -170,11 +185,19 @@ public partial class MainWindowVM
             var delay = AutoConnectRetryDelays[attempt - 1];
             LogAutoConnectRetry(coordinator.CoordinatorId, attempt, session.ConnectionStatus, delay);
             var next = attempt + 1;
+            StartupStage = Strings.Format("main.startup.stage.connectingAttempt", ("attempt", next));
             await StatusLine.SetAsync(() => Strings.Format("main.status.autoConnectAttempt",
                 ("host", coordinator.Address), ("port", coordinator.Port), ("attempt", next)), true);
-            await Task.Delay(delay);
+            try
+            {
+                await Task.Delay(delay, skipped);
+            }
+            catch (OperationCanceledException)
+            {
+                // Told by the skip itself
+            }
 
-            if (_coordinatorSession != null)
+            if (_coordinatorSession != null || skipped.IsCancellationRequested)
             {
                 session.Dispose();
                 return false;
@@ -182,7 +205,12 @@ public partial class MainWindowVM
         }
     }
 
-    private async Task ConnectToCoordinator()
+    private Task ConnectToCoordinator() => ConnectToCoordinator(null);
+
+    /// <param name="account">The saved account the connect window opens on, instead of the server connected to last.</param>
+    /// <param name="prepare">Fills the connect window in before it is shown, as a link does.</param>
+    private async Task ConnectToCoordinator((string CoordinatorId, int UserId)? account,
+        Action<ConnectWindowVM>? prepare = null)
     {
         if (_coordinatorSession != null &&
             _coordinatorSession.ConnectionStatus != CoordinatorState.Connected)
@@ -194,7 +222,11 @@ public partial class MainWindowVM
             _connectionCancellationSource = new();
         }
 
-        var newCoordinator = await ShowConnectWindow.Handle(_createConnectWindow());
+        var connectWindow = _createConnectWindow();
+        if (account is var (coordinatorId, userId))
+            connectWindow.PreferAccount(coordinatorId, userId);
+        prepare?.Invoke(connectWindow);
+        var newCoordinator = await ShowConnectWindow.Handle(connectWindow);
         if (newCoordinator is { ConnectionStatus: CoordinatorState.Connected })
         {
             _coordinatorSession = newCoordinator;
@@ -288,7 +320,7 @@ public partial class MainWindowVM
         async () =>
         {
             if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
-                await _accounting.ForgetDeviceAsync(coordinatorId, userId);
+                await _accounting.ForgetDeviceAsync(coordinatorId, userId, LoginLostReason.LoggedOut);
             Dispatcher.UIThread.Post(() => _ = Disconnect());
         });
 

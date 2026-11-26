@@ -101,12 +101,12 @@ public sealed partial class AccountingService : IAccountingService
         await _repository.DeleteCoordinatorAsync(coordinatorId);
     }
 
-    public async Task ForgetDeviceAsync(string coordinatorId, int userId)
+    public async Task ForgetDeviceAsync(string coordinatorId, int userId, LoginLostReason reason)
     {
         var saved = await _repository.GetCoordinatorInstanceAsync((coordinatorId, userId));
         if (saved?.User.DeviceKey is { } key)
             await DeleteDeviceKeyAsync(key);
-        await _repository.SetDeviceAsync(coordinatorId, userId, null, null);
+        await _repository.SetDeviceAsync(coordinatorId, userId, null, null, reason);
     }
 
     public async Task KeepRecoveryPhraseAsync(string coordinatorId, int userId, string phrase)
@@ -183,6 +183,7 @@ public sealed partial class AccountingService : IAccountingService
             UserIdentity = user.UserIdentity,
             SessionToken = user.SessionToken,
             AccountPassword = user.AccountPassword,
+            LoginLostReason = user.LoginLostReason,
             AvatarUrl = user.AvatarUrl
         };
     }

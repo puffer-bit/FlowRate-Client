@@ -9,6 +9,9 @@ public class SavedCoordinatorModel
 
     /// <summary>Increasing order of successful connections saved for this server.</summary>
     public long SaveOrder { get; init; }
+
+    /// <summary>The account that last connected to this server; null before the first connection is recorded.</summary>
+    public int? LastUserId { get; init; }
     
     public List<SavedUserModel> Users { get; init; } = new();
 }

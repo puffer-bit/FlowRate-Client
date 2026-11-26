@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
+using Client.Application.Links;
 using Client.Application.Ports;
 using Client.Application.Security;
 using Client.Application.Settings;
@@ -60,8 +61,22 @@ public class ConnectWindowVM : ReactiveObject
 
             this.RaisePropertyChanged(nameof(IsLoginFormVisible));
             this.RaisePropertyChanged(nameof(IsRegistering));
+            this.RaisePropertyChanged(nameof(IdentityError));
         }
     }
+
+    /// <summary>
+    /// Why the saved account picked has to log in again, shown in red under the list; null when it can log in.
+    /// </summary>
+    public string? IdentityError => IsSaved(SelectedIdentity) && !SelectedIdentity!.CanLogIn
+        ? Strings.Get(SelectedIdentity.LoginLostReason switch
+        {
+            LoginLostReason.Revoked => "connect.identity.lost.revoked",
+            LoginLostReason.NotFound => "connect.identity.lost.notFound",
+            LoginLostReason.LoggedOut => "connect.identity.lost.loggedOut",
+            _ => "connect.identity.lost.noDevice"
+        })
+        : null;
 
     public bool IsIdentitiesSelectable => Identities.Count > 1;
 
@@ -148,10 +163,19 @@ public class ConnectWindowVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(IsDeviceLinkCodeShown));
+            this.RaisePropertyChanged(nameof(DeviceLinkQrText));
         }
     }
 
     public bool IsDeviceLinkCodeShown => DeviceLinkCode != null;
+
+    /// <summary>
+    /// What the QR code of <see cref="DeviceLinkCode"/> holds: a link with the code and the server this device waits on,
+    /// which a phone of the account scans.
+    /// </summary>
+    public string? DeviceLinkQrText => DeviceLinkCode is { } code && _parsedAddress != null
+        ? FlowRateLinks.DeviceLink(code.Code, _parsedAddress, _parsedPort == DefaultPort ? null : _parsedPort)
+        : null;
 
     private static bool IsSaved(SavedUserModel? identity) => identity is { CoordinatorId.Length: > 0 };
 
@@ -349,10 +373,13 @@ public class ConnectWindowVM : ReactiveObject
         {
             var savedServers = await _accountingService.GetAllSavedCoordinatorsAsync();
 
-            var lastServer = savedServers.MaxBy(server => server.SaveOrder);
-
             Dispatcher.UIThread.Post(() =>
             {
+                // The account the window was opened for, else the server connected to last. Read on the UI thread,
+                // after whoever made the window had the chance to call PreferAccount
+                var lastServer = savedServers.FirstOrDefault(server => server.CoordinatorId == _preferredAccount?.CoordinatorId)
+                                 ?? savedServers.MaxBy(server => server.SaveOrder);
+
                 foreach (var server in savedServers)
                     SavedServers.Add(new SavedServerItem(server.CoordinatorId, server.Name, UriParsing.FormatHost(server.Address), server.Port));
 
@@ -364,6 +391,110 @@ public class ConnectWindowVM : ReactiveObject
     }
 
     private bool _deviceLinkCancelled;
+
+    // The saved account the window is opened for, when the one connected to at start has to log in again
+    private (string CoordinatorId, int UserId)? _preferredAccount;
+
+    /// <summary>
+    /// Opens the window on a saved account rather than on the server connected to last. Called right after the window
+    /// is made, before its saved servers are listed.
+    /// </summary>
+    public void PreferAccount(string coordinatorId, int userId) => _preferredAccount = (coordinatorId, userId);
+
+    // The server a link opened the window on, with the certificate it vouches for
+    private (string Host, int Port, string Fingerprint)? _linkCertificate;
+
+    // The one-time code of a login link, picked again whenever the accounts of the server are listed
+    private string? _linkLoginCode;
+
+    /// <summary>
+    /// Fills the form from a link or a scanned code: the server, and the login code of a login link. Nothing connects
+    /// until the user does, since any page can open a link.
+    /// </summary>
+    public void OpenLink(FlowRateLink link)
+    {
+        string host;
+        int? port;
+        string? fingerprint;
+        string? code = null;
+        switch (link)
+        {
+            case ConnectLink connect:
+                (host, port, fingerprint) = (connect.Host, connect.Port, connect.Fingerprint);
+                break;
+            case LoginLink login:
+                (host, port, fingerprint, code) = (login.Host, login.Port, login.Fingerprint, login.Code);
+                break;
+            default:
+                return;
+        }
+
+        _linkLoginCode = code;
+        SelectedSavedServer = null;
+        Port = port is { } given && given != DefaultPort ? given.ToString() : null;
+        ServerAddress = host;
+
+        _linkCertificate = fingerprint != null && _parsedAddress != null && _parsedPort is { } parsedPort
+            ? (_parsedAddress, parsedPort, fingerprint)
+            : null;
+        if (code != null && !IsLoadingIdentities)
+            PickLinkLogin();
+    }
+
+    /// <summary>
+    /// Fills the form from the text of a scanned QR code.
+    /// </summary>
+    /// <returns>False when the code holds no server to connect to.</returns>
+    public bool OpenScanned(string? text)
+    {
+        if (FlowRateLinks.Parse(text) is not { } link || link is not (ConnectLink or LoginLink))
+            return false;
+
+        OpenLink(link);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads a QR code with the scanner of the phone and fills the form from it, telling the user what went wrong.
+    /// </summary>
+    public async Task ScanAsync(Func<Task<string?>> scan)
+    {
+        string? text;
+        try
+        {
+            text = await scan();
+        }
+        catch (Exception exception)
+        {
+            await HandleConnectionError(Strings.Format("link.scan.unavailable", ("error", exception.Message)));
+            return;
+        }
+
+        if (text == null || OpenScanned(text))
+            return;
+
+        await HandleConnectionError(Strings.Get(FlowRateLinks.Parse(text) is DeviceLinkApproval
+            ? "link.scan.deviceLinkHere"
+            : "link.scan.notRecognized"));
+    }
+
+    private void PickLinkLogin()
+    {
+        if (_linkLoginCode is not { } code)
+            return;
+
+        SelectedIdentity = ExistingAccount;
+        LoginMethod = ExistingLoginMethod.LoginCode;
+        LoginCodeText = code;
+    }
+
+    // The certificate a link vouched for is trusted without asking, on the server of the link only and never in place
+    // of one trusted before: a changed certificate is asked about as always
+    private bool IsVouchedByLink(UntrustedCertificate untrusted) =>
+        !untrusted.IsChanged
+        && _linkCertificate is var (host, port, fingerprint)
+        && host == _parsedAddress && port == _parsedPort
+        && FlowRateLinks.IsSameFingerprint(fingerprint, untrusted.Certificate.Fingerprint);
 
     private async Task ConnectAsync()
     {
@@ -471,7 +602,7 @@ public class ConnectWindowVM : ReactiveObject
     {
         try
         {
-            await _accountingService.ForgetDeviceAsync(identity.CoordinatorId, identity.Id);
+            await _accountingService.ForgetDeviceAsync(identity.CoordinatorId, identity.Id, LoginLostReason.NotFound);
         }
         catch (Exception)
         {
@@ -481,7 +612,7 @@ public class ConnectWindowVM : ReactiveObject
         var index = Identities.IndexOf(identity);
         if (index < 0)
             return;
-        var ended = identity.WithoutDevice();
+        var ended = identity.WithoutDevice(LoginLostReason.NotFound);
         Identities[index] = ended;
         if (ReferenceEquals(SelectedIdentity, identity) || SelectedIdentity == null)
             SelectedIdentity = ended;
@@ -528,7 +659,9 @@ public class ConnectWindowVM : ReactiveObject
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
-            if (!await ConfirmCertificateAsync(session))
+            if (session.UntrustedCertificate is { } untrusted && IsVouchedByLink(untrusted))
+                await session.TrustCertificateAsync(untrusted);
+            else if (!await ConfirmCertificateAsync(session))
                 return false;
 
             ConnectionStatus = Strings.Get("main.status.waitingForServer");
@@ -596,9 +729,8 @@ public class ConnectWindowVM : ReactiveObject
                             && saved.CoordinatorId == coordinatorSessionModel.Id) is { IsRecoveryPhraseSaved: true }
                 });
 
-            // Keep the explicit startup target when another server is connected manually.
-            if (await _behaviorService.GetAutoConnectInstance() == null)
-                await _behaviorService.SetLastIdentityAsync((coordinatorSessionModel.Id, userModel.Id));
+            // The startup connection follows the last one unless the user picked another in the settings
+            await _behaviorService.RecordConnectionAsync(coordinatorSessionModel.Id, userModel.Id);
         }
         catch (Exception e)
         {
@@ -686,7 +818,11 @@ public class ConnectWindowVM : ReactiveObject
             var coordinators = IsAddressValid
                 ? await _accountingService.GetSavedCoordinatorsAsync(_parsedAddress!, _parsedPort!.Value)
                 : [];
-            var lastIdentity = await _behaviorService.GetAutoConnectInstance();
+            // The account the window is opened for, else the one that last connected to the server used last
+            var lastIdentity = _preferredAccount
+                ?? (coordinators.MaxBy(coordinator => coordinator.SaveOrder) is { LastUserId: { } lastUserId } latest
+                    ? (latest.CoordinatorId, lastUserId)
+                    : ((string CoordinatorId, int UserId)?)null);
 
             // A lookup for an endpoint typed in the meantime owns the list now
             if (lookup != _identitiesLookup)
@@ -702,13 +838,14 @@ public class ConnectWindowVM : ReactiveObject
                                 ? $"{coordinator.Name}, {coordinator.CoordinatorId}" : coordinator.Name
                         : null;
                     Identities.Add(match);
-                    if (lastIdentity != null && match.CoordinatorId == lastIdentity.Value.Coordinator.CoordinatorId && match.Id == lastIdentity.Value.User.Id)
+                    if (lastIdentity != null && match.CoordinatorId == lastIdentity.Value.CoordinatorId && match.Id == lastIdentity.Value.UserId)
                         SelectedIdentity = match;
                 }
             }
 
             // "New" registers another user on the server, so it is picked only when nothing is saved for it
             SelectedIdentity ??= Identities.Count > 2 ? Identities[2] : Identities[0];
+            PickLinkLogin();
 
             this.RaisePropertyChanged(nameof(IsIdentitiesSelectable));
         }

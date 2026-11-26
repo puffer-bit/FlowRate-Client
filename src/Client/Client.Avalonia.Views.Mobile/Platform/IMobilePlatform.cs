@@ -31,7 +31,19 @@ public interface IMobilePlatform
 
     /// <summary>Turns the screen to landscape, or lets it follow the phone again.</summary>
     void SetLandscape(bool landscape);
+
+    /// <summary>Offers the text to the other applications of the phone, by the share sheet of the system.</summary>
+    void ShareText(string text, string title);
+
+    /// <summary>Reads a QR code with the camera, by the scanner of the system.</summary>
+    /// <returns>What the code holds; null when the user gave up.</returns>
+    /// <exception cref="QrScanUnavailableException">The phone has no scanner to offer.</exception>
+    System.Threading.Tasks.Task<string?> ScanQrCodeAsync();
 }
+
+/// <summary>The scanner of the system cannot be used: no camera, or the services it comes with are missing.</summary>
+public sealed class QrScanUnavailableException(string message, System.Exception? inner = null)
+    : System.Exception(message, inner);
 
 /// <summary>The platform of the mobile views.</summary>
 public static class MobilePlatform

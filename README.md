@@ -107,6 +107,20 @@ On Linux, `flowrate-linux.sh` adds FlowRate to the application menu with its ico
 
 For a server running on the same machine with the default port, the address is `127.0.0.1:26666`.
 
+### Links and QR codes
+
+A `flowrate://` link or its QR code fills in a form; the client never connects or logs in until you confirm it there.
+
+| Link | Where it comes from | What it opens |
+|---|---|---|
+| `flowrate://connect?host=…&port=…&cert=…` | **Share server link** in the server menu: a QR code and a link on desktop, the share sheet on Android. | The connection dialog on that server. |
+| `flowrate://login?host=…&port=…&cert=…&code=…` | **Open in FlowRate** next to a one-time login code in the control panel. | The connection dialog on that server, logging in with the code. |
+| `flowrate://link?code=…&host=…&port=…` | The QR code a new device shows while it waits to be added by another device of the account. | **Security → Add device** with the code, on the device that scans it. |
+
+`cert` is the SHA-256 fingerprint of a certificate the system cannot verify. The client trusts it without asking only for the server of the link, and still warns when a server presents a different certificate than the one trusted before. Links carry no server password or account secret.
+
+On Android, the connection dialog and **Security → Add device** have a scan button that reads these QR codes with the code scanner of Google Play services. A phone camera opens the links as well. Desktop builds register the `flowrate` scheme: the Windows installer and updates do it, the macOS app declares it, and `flowrate-linux.sh` adds it to the menu entry. A link opened while FlowRate runs goes to the running window, and a connect or login link opened at start replaces the automatic connection.
+
 ## Chat and formatting
 
 The message editor supports these Markdown forms:
@@ -187,6 +201,7 @@ For independent test clients, give each process a separate `--data-dir`. Allowin
 | `--lang CODE` | Override the interface language with `en`, `ru`, `es`, `ja`, or `zh`. |
 | `--help`, `-h` | Print help and exit before opening application data. |
 | `--version` | Print the application version and exit before opening application data. |
+| `flowrate://…` | Open a [FlowRate link](#links-and-qr-codes); the system passes it when a link is opened. |
 
 Value options also accept `--name=value`. Options can be combined. Run the examples below from the extracted application directory:
 

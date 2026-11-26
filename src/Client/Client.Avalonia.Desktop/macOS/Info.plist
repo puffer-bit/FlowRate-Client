@@ -36,5 +36,17 @@
     <string>FlowRate sends your voice in voice sessions.</string>
     <key>NSCameraUsageDescription</key>
     <string>FlowRate shows your camera in voice sessions.</string>
+    <!-- flowrate:// links, from a browser or a message, open the application on what they ask for -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.flowrate.client.link</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>flowrate</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

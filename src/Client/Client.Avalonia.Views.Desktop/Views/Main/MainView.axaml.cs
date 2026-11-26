@@ -136,6 +136,10 @@ public partial class MainView : ViewControl<MainWindowVM>
             context.SetOutput(await DatabasePasswordInteraction.ShowAsync(context.Input, this));
         });
 
+        // The connection at start runs under the startup screen and may ask for a login: the prompt lies over the
+        // screen like the message boxes, ready before the view is activated
+        using var logins = viewModel.AskLogin.RegisterLoginPromptHandler(this);
+
         await viewModel.Initialize(show, () => StartupOverlay.FadeOutAsync(MainInterface));
     }
 

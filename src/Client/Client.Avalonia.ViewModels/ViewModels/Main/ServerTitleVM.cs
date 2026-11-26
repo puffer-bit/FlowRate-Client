@@ -4,6 +4,8 @@ using Client.Avalonia.Localization;
 using ReactiveUI;
 using Client.Core.Coordinator;
 using Client.Application.Coordinator;
+using Client.Application.Links;
+using Client.ViewModels.Connections;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Main;
@@ -44,6 +46,33 @@ public class ServerTitleVM : ReactiveObject
     }
 
     public string DisplayAddress => Address ?? Strings.Get("main.status.offline");
+
+    /// <summary>
+    /// The link that opens the connect form on this server, with the certificate trusted here by hand when the system
+    /// cannot verify it; null while offline. It carries no password or account.
+    /// </summary>
+    public string? ServerLink
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasServerLink));
+            if (value == null)
+                IsServerLinkShown = false;
+        }
+    }
+
+    public bool HasServerLink => ServerLink != null;
+
+    /// <summary>The menu shows the QR code of <see cref="ServerLink"/>.</summary>
+    public bool IsServerLinkShown
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public ReactiveCommand<RxVoid, RxVoid> ToggleServerLinkCommand { get; }
 
     public int MaxUsersOnline
     {
@@ -111,6 +140,7 @@ public class ServerTitleVM : ReactiveObject
         ReactiveCommand<RxVoid, RxVoid> manageSecurityCommand, AccessVM access)
     {
         ToggleListModeCommand = ReactiveCommand.Create(() => SessionList?.ToggleListMode());
+        ToggleServerLinkCommand = ReactiveCommand.Create(() => { IsServerLinkShown = HasServerLink && !IsServerLinkShown; });
         ManageSecurityCommand = manageSecurityCommand;
         Access = access;
         OpenSettingsCommand = openSettingsCommand;
@@ -146,6 +176,11 @@ public class ServerTitleVM : ReactiveObject
         Version = _coordinatorSession.CoordinatorModel?.ServerVersion;
         Name = _coordinatorSession.GetCoordinatorName();
         Address = _coordinatorSession.ConnectedAddress;
+        ServerLink = _coordinatorSession.ConnectedHost is { } host
+            ? FlowRateLinks.Connect(host,
+                _coordinatorSession.ConnectedPort == ConnectWindowVM.DefaultPort ? null : _coordinatorSession.ConnectedPort,
+                _coordinatorSession.TrustedFingerprint)
+            : null;
     }
     
     public void DetachCoordinator()
@@ -164,6 +199,7 @@ public class ServerTitleVM : ReactiveObject
         Version = null;
         Name = null;
         Address = null;
+        ServerLink = null;
     }
 
     // A new name or limit, saved from the control panel or by a user, shows at once
