@@ -21,6 +21,7 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     public IReadOnlyList<SettingAnchor> Anchors =>
     [
         new("behavior.playback", "settings.behavior.section.playback"),
+        new("behavior.status", "settings.behavior.section.status"),
         new("behavior.autoConnection", "settings.behavior.section.autoConnection"),
         new("behavior.manualConnection", "settings.behavior.section.manualConnection"),
         new("behavior.tray", "settings.behavior.section.tray"),
@@ -31,12 +32,43 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("behavior",
         ("playback", ["keepScreenOn"]),
+        ("status", ["autoIdle", "idleAfter", "sleepAfter", "keepActiveInCalls"]),
         ("autoConnection", ["autoConnect", "server", "identity"]),
         ("manualConnection", ["fallbackServers", "fallbackWarning", "propagatedWarning"]),
         ("tray", ["closeAction"]),
         ("updates", ["updateCheck", "updateChannel"]));
 
     public bool KeepScreenOnWhileWatching
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>The minutes without input after which the status turns idle, in the order of the view.</summary>
+    public static IReadOnlyList<int> IdleAfterChoices { get; } = [5, 10, 15, 30];
+
+    /// <summary>The minutes after which it turns sleeping, in the order of the view; 0 never does.</summary>
+    public static IReadOnlyList<int> SleepAfterChoices { get; } = [60, 120, 240, 0];
+
+    public bool IsAutoIdleEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    public int IdleAfterIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = 1;
+
+    public int SleepAfterIndex
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = 1;
+
+    public bool KeepActiveDuringCalls
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -154,6 +186,10 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         // Every change saves the whole tab, one save at a time
         this.WatchProperties(
                 nameof(KeepScreenOnWhileWatching),
+                nameof(IsAutoIdleEnabled),
+                nameof(IdleAfterIndex),
+                nameof(SleepAfterIndex),
+                nameof(KeepActiveDuringCalls),
                 nameof(IsAutoConnectedEnabled),
                 nameof(IsAutoConnectedToFallbackServersEnabled),
                 nameof(IsFallbackConnectionWarningEnabled),
@@ -190,6 +226,10 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     private BehaviorSettings ToSettings() => new()
     {
         KeepScreenOnWhileWatching = KeepScreenOnWhileWatching,
+        IsAutoIdleEnabled = IsAutoIdleEnabled,
+        IdleAfterMinutes = ChoiceAt(IdleAfterChoices, IdleAfterIndex, BehaviorSettings.DefaultIdleAfterMinutes),
+        SleepAfterMinutes = ChoiceAt(SleepAfterChoices, SleepAfterIndex, BehaviorSettings.DefaultSleepAfterMinutes),
+        KeepActiveDuringCalls = KeepActiveDuringCalls,
         IsAutoConnectEnabled = IsAutoConnectedEnabled,
         IsFallbackConnectionEnabled = IsAutoConnectedToFallbackServersEnabled,
         IsFallbackConnectionWarningEnabled = IsFallbackConnectionWarningEnabled,
@@ -205,6 +245,10 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
     private void Apply(BehaviorSettings settings)
     {
         KeepScreenOnWhileWatching = settings.KeepScreenOnWhileWatching;
+        IsAutoIdleEnabled = settings.IsAutoIdleEnabled;
+        IdleAfterIndex = IndexOf(IdleAfterChoices, settings.IdleAfterMinutes, BehaviorSettings.DefaultIdleAfterMinutes);
+        SleepAfterIndex = IndexOf(SleepAfterChoices, settings.SleepAfterMinutes, BehaviorSettings.DefaultSleepAfterMinutes);
+        KeepActiveDuringCalls = settings.KeepActiveDuringCalls;
         IsAutoConnectedEnabled = settings.IsAutoConnectEnabled;
         IsAutoConnectedToFallbackServersEnabled = settings.IsFallbackConnectionEnabled;
         IsFallbackConnectionWarningEnabled = settings.IsFallbackConnectionWarningEnabled;
@@ -213,6 +257,17 @@ public class BehaviorControlVM : ReactiveObject, ISettingVM
         IsUpdateCheckOnStartupEnabled = settings.IsUpdateCheckOnStartupEnabled;
         UpdateChannelIndex = (int)settings.UpdateChannel;
         QuickReaction = settings.QuickReaction;
+    }
+
+    // The list clears its selection while it is rebuilt; nothing chosen keeps the default
+    private static int ChoiceAt(IReadOnlyList<int> choices, int index, int fallback) =>
+        index >= 0 && index < choices.Count ? choices[index] : fallback;
+
+    // A value saved that the list does not offer shows the default
+    private static int IndexOf(IReadOnlyList<int> choices, int value, int fallback)
+    {
+        var index = choices.ToList().IndexOf(value);
+        return index >= 0 ? index : choices.ToList().IndexOf(fallback);
     }
 
     public async Task ResetAllAsync()

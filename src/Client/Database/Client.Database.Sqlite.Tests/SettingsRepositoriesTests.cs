@@ -554,6 +554,10 @@ public class SettingsRepositoriesTests
         Assert.Equal(UpdateChannel.Release, settings.UpdateChannel);
         Assert.Equal(BehaviorSettings.DefaultQuickReaction, settings.QuickReaction);
         Assert.True(settings.KeepScreenOnWhileWatching);
+        Assert.True(settings.IsAutoIdleEnabled);
+        Assert.Equal(BehaviorSettings.DefaultIdleAfterMinutes, settings.IdleAfterMinutes);
+        Assert.Equal(BehaviorSettings.DefaultSleepAfterMinutes, settings.SleepAfterMinutes);
+        Assert.True(settings.KeepActiveDuringCalls);
     }
 
     [Fact]
@@ -572,7 +576,11 @@ public class SettingsRepositoriesTests
             IsUpdateCheckOnStartupEnabled = false,
             UpdateChannel = UpdateChannel.Dev,
             QuickReaction = "🔥",
-            KeepScreenOnWhileWatching = false
+            KeepScreenOnWhileWatching = false,
+            IsAutoIdleEnabled = false,
+            IdleAfterMinutes = 30,
+            SleepAfterMinutes = 0,
+            KeepActiveDuringCalls = false
         });
         var settings = await repository.GetAsync();
 
@@ -585,6 +593,10 @@ public class SettingsRepositoriesTests
         Assert.Equal(UpdateChannel.Dev, settings.UpdateChannel);
         Assert.Equal("🔥", settings.QuickReaction);
         Assert.False(settings.KeepScreenOnWhileWatching);
+        Assert.False(settings.IsAutoIdleEnabled);
+        Assert.Equal(30, settings.IdleAfterMinutes);
+        Assert.Equal(0, settings.SleepAfterMinutes);
+        Assert.False(settings.KeepActiveDuringCalls);
     }
 
     [Fact]

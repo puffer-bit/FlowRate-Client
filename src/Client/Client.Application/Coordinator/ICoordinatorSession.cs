@@ -456,6 +456,12 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> SetStatus(UserStatus status);
 
     /// <summary>
+    /// Tells the server how long this device has gone without input. While the user picked online and every
+    /// device of theirs is idle, others see them idle or sleeping. Not saved: a new connection starts active.
+    /// </summary>
+    Task<RequestResult> SetIdleLevel(IdleLevel level);
+
+    /// <summary>
     /// Takes the avatar off a connected user. On success <see cref="UserUpdated"/> is raised.
     /// </summary>
     Task<RequestResult> ResetAvatar(int userId);

@@ -302,8 +302,10 @@ public partial class MainWindowVM : ReactiveObject
         ILoggerFactory loggerFactory,
         Func<ConnectWindowVM> createConnectWindow,
         Func<SettingsWindowVM> createSettings,
-        Client.Application.Sounds.ISoundService? callSounds = null)
+        Client.Application.Sounds.ISoundService? callSounds = null,
+        AutoIdleService? autoIdle = null)
     {
+        _autoIdle = autoIdle;
         ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
         _behaviorService = behaviorService;
         _accounting = accounting;

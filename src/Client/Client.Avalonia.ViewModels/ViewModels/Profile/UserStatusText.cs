@@ -12,6 +12,8 @@ public static class UserStatusText
         UserStatus.Away => "profile.status.away",
         UserStatus.DoNotDisturb => "profile.status.doNotDisturb",
         UserStatus.Invisible => "profile.status.invisible",
+        UserStatus.Idle => "profile.status.idle",
+        UserStatus.Sleeping => "profile.status.sleeping",
         _ => "profile.status.offline"
     });
 }

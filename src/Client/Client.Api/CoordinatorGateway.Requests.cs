@@ -216,6 +216,9 @@ internal partial class CoordinatorGateway
         return (await SendRequestAsync<CoordinatorSetAvatarResponse>(request)).User.ToModel();
     }
 
+    public Task SetIdleLevel(IdleLevel level) =>
+        SendRequestAsync<CoordinatorSetIdleResponse>(new CoordinatorSetIdleRequest(level));
+
     public async Task<UserModel> SetStatus(UserStatus status)
     {
         var request = new CoordinatorSetUserStatusRequest(status);

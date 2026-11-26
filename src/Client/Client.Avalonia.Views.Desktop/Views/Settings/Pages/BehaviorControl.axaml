@@ -11,6 +11,7 @@
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
              xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             xmlns:user="clr-namespace:Shared.Enums.User;assembly=Shared.Core"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Client.Views.Settings.Pages.BehaviorControl"
              x:DataType="pagesVm:BehaviorControlVM"
@@ -23,6 +24,49 @@
         <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="behavior.keepScreenOn">
                 <CheckBox IsChecked="{Binding KeepScreenOnWhileWatching}"/>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+        <controls:SettingsHeader services:SettingText.Section="behavior.status"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="behavior.autoIdle">
+                <CheckBox IsChecked="{Binding IsAutoIdleEnabled}"/>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.idleAfter"
+                            IsExpanded="{Binding IsAutoIdleEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <!-- How others see the status; large enough for the snore -->
+                    <avatars:UserAvatar Width="32" Height="32" VerticalAlignment="Center"
+                                        UserName="{l:Text profile.status.idle}"
+                                        Status="{x:Static user:UserStatus.Idle}"
+                                        ToolTip.Tip="{l:Text profile.status.idle}"/>
+                    <!-- Items are in the order of BehaviorControlVM.IdleAfterChoices -->
+                    <ComboBox MinWidth="180" SelectedIndex="{Binding IdleAfterIndex}">
+                        <ComboBoxItem Content="{l:Text settings.behavior.minutes5}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.minutes10}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.minutes15}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.minutes30}"/>
+                    </ComboBox>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.sleepAfter"
+                            IsExpanded="{Binding IsAutoIdleEnabled}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <avatars:UserAvatar Width="32" Height="32" VerticalAlignment="Center"
+                                        UserName="{l:Text profile.status.sleeping}"
+                                        Status="{x:Static user:UserStatus.Sleeping}"
+                                        ToolTip.Tip="{l:Text profile.status.sleeping}"/>
+                    <!-- Items are in the order of BehaviorControlVM.SleepAfterChoices -->
+                    <ComboBox MinWidth="180" SelectedIndex="{Binding SleepAfterIndex}">
+                        <ComboBoxItem Content="{l:Text settings.behavior.hours1}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.hours2}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.hours4}"/>
+                        <ComboBoxItem Content="{l:Text settings.behavior.never}"/>
+                    </ComboBox>
+                </StackPanel>
+            </ui:SettingsRow>
+            <ui:SettingsRow services:SettingText.Key="behavior.keepActiveInCalls"
+                            IsExpanded="{Binding IsAutoIdleEnabled}">
+                <CheckBox IsChecked="{Binding KeepActiveDuringCalls}"/>
             </ui:SettingsRow>
         </ui:SettingsCard>
         <controls:SettingsHeader services:SettingText.Section="behavior.autoConnection"/>

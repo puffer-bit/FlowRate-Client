@@ -2189,6 +2189,24 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Idle (no input for some minutes): the yellow crescent of away; the avatar adds a snore.
+         Source: Icons/Status/StatusIdleIcon.svg -->
+    <DrawingImage x:Key="StatusIdleIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource WarningBrush}" Geometry="M11.335,2.022 A10,10 0 1 1 2.022,11.335 A7,7 0 0 0 11.335,2.022 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Sleeping (no input for hours): the crescent in moon blue; the avatar adds a snore.
+         Source: Icons/Status/StatusSleepingIcon.svg -->
+    <DrawingImage x:Key="StatusSleepingIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Brush="{DynamicResource StatusSleepingBrush}" Geometry="M11.335,2.022 A10,10 0 1 1 2.022,11.335 A7,7 0 0 0 11.335,2.022 Z"/>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Do not disturb: a red dot with a bar cut out. Source: Icons/Status/StatusDoNotDisturbIcon.svg -->
     <DrawingImage x:Key="StatusDoNotDisturbIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

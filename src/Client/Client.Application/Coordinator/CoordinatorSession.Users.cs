@@ -120,6 +120,9 @@ public partial class CoordinatorSession
     public async Task<RequestResult> SetStatus(UserStatus status) =>
         (await SendAsync(() => _gateway.SetStatus(status))).Result;
 
+    public Task<RequestResult> SetIdleLevel(IdleLevel level) =>
+        SendAsync(() => _gateway.SetIdleLevel(level));
+
     public async Task<RequestResult> ResetAvatar(int userId) =>
         (await SendAsync(() => _gateway.SetAvatar(null, userId))).Result;
 
