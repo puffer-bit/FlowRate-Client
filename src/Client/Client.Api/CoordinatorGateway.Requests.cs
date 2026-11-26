@@ -202,6 +202,24 @@ internal partial class CoordinatorGateway
     public Task DeleteUser(int userId) =>
         SendRequestAsync<CoordinatorDeleteUserResponse>(new CoordinatorDeleteUserRequest(userId));
 
+    public async Task<IReadOnlyList<UserModel>> GetBots() =>
+        (await SendRequestAsync<CoordinatorBotsResponse>(new CoordinatorBotsRequest())).Bots
+        .Select(bot => bot.ToModel()).ToList();
+
+    public async Task<(UserModel Bot, BotLoginCodeDTO LoginCode)> CreateBot(string username, bool isDebug)
+    {
+        var response =
+            await SendRequestAsync<CoordinatorCreateBotResponse>(new CoordinatorCreateBotRequest(username, isDebug));
+        return (response.Bot.ToModel(), response.LoginCode);
+    }
+
+    public async Task<BotLoginCodeDTO> NewBotLoginCode(int botId, bool endDevices) =>
+        (await SendRequestAsync<CoordinatorBotLoginCodeResponse>(new CoordinatorBotLoginCodeRequest(botId, endDevices)))
+        .LoginCode;
+
+    public Task DeleteBot(int botId) =>
+        SendRequestAsync<CoordinatorDeleteBotResponse>(new CoordinatorDeleteBotRequest(botId));
+
     public async Task<UserModel> ChangeUsername(string username, int? userId = null)
     {
         var request = new CoordinatorChangeUsernameRequest(username, userId);

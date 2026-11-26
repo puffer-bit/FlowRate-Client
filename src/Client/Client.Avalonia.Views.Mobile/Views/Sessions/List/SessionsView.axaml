@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:listViews="clr-namespace:Client.Mobile.Views.Sessions.List"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
@@ -241,7 +242,7 @@
                                             <!-- The reason of an away user goes under the name, and stays readable -->
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <!-- The owner has a crown after the name -->
-                                                <Grid ColumnDefinitions="*, Auto" HorizontalAlignment="Left">
+                                                <Grid ColumnDefinitions="*, Auto, Auto" HorizontalAlignment="Left">
                                                     <TextBlock Grid.Column="0" Classes="peerName afkDim"
                                                                Classes.connecting="{Binding !IsConnected}"
                                                                TextTrimming="CharacterEllipsis"
@@ -249,6 +250,7 @@
                                                     <Image Grid.Column="1" Width="14" Height="14" Margin="4,0,0,0"
                                                            VerticalAlignment="Center" Source="{StaticResource CrownIcon}"
                                                            IsVisible="{Binding IsOwner}"/>
+                                                    <indicators:UserKindBadge Grid.Column="2" Margin="6,0,0,0" Kind="{Binding Kind}"/>
                                                 </Grid>
                                                 <TextBlock Text="{Binding AfkReason}"
                                                            IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"

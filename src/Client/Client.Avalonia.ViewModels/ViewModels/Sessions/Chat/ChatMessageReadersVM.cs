@@ -80,7 +80,8 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
     public bool IsEmpty => !IsLoading && !HasError && Items.Count == 0;
 
     /// <summary>The first time the message was read; what a direct chat shows next to its checks.</summary>
-    public DateTimeOffset? FirstReadAt => _readers.Values.Where(time => time.HasValue).Min();
+    public DateTimeOffset? FirstReadAt =>
+        _readers.Where(pair => pair.Value.HasValue && !_senders.IsBot(pair.Key)).Min(pair => pair.Value);
 
     public event Action? ReadersChanged;
 
@@ -169,7 +170,9 @@ public sealed class ChatMessageReadersVM : ReactiveObject, IDisposable
         if (_isDisposed)
             return;
         Items.Clear();
-        foreach (var (userId, readAt) in _readers.OrderBy(pair => pair.Value ?? DateTimeOffset.MinValue)
+        // Bots read everything they are sent, which tells the author nothing
+        foreach (var (userId, readAt) in _readers.Where(pair => !_senders.IsBot(pair.Key))
+                     .OrderBy(pair => pair.Value ?? DateTimeOffset.MinValue)
                      .ThenBy(pair => pair.Key))
             Items.Add(new ChatMessageReaderVM(userId, _senders.FindName(userId) ?? Strings.Get("chat.unknownUser"),
                 _senders.FindAvatarUrl(userId), _senders.FindStatus(userId), readAt, _senders.IsMobile(userId)));

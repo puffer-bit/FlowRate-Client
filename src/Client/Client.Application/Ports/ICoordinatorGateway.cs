@@ -164,6 +164,20 @@ public interface ICoordinatorGateway : IDisposable
     Task<System.Collections.Generic.IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>> GetBans();
     Task RevokeBan(Guid banId);
     Task DeleteUser(int userId);
+
+    /// <summary>The bots of the server, debug ones too.</summary>
+    Task<System.Collections.Generic.IReadOnlyList<UserModel>> GetBots();
+
+    /// <summary>Makes a bot owned by the current user, with its first login code.</summary>
+    Task<(UserModel Bot, Shared.Models.DataTransferObjects.BotLoginCodeDTO LoginCode)> CreateBot(string username,
+        bool isDebug);
+
+    /// <summary>
+    /// A new login code for a bot; with <paramref name="endDevices"/> its devices end and it is disconnected.
+    /// </summary>
+    Task<Shared.Models.DataTransferObjects.BotLoginCodeDTO> NewBotLoginCode(int botId, bool endDevices);
+
+    Task DeleteBot(int botId);
     Task<string?> RegisterPushToken(string token, PushPlatform platform, PushKey key);
     Task UnregisterPushToken(string token);
     Task<SessionModel> GetSessionInfo(int sessionId);

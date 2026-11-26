@@ -102,6 +102,13 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>How many bots may be made, 0 for none.</summary>
+    public decimal? MaxBots
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>One address on a line.</summary>
     public string AllowedIps
     {
@@ -216,6 +223,7 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         NewPassword = string.Empty;
         MaxOnlineUsers = settings.MaxOnlineUsers;
         MaxUsers = settings.MaxUsers;
+        MaxBots = settings.MaxBots;
         AllowedIps = string.Join(Environment.NewLine, settings.AllowedIps);
         HeartbeatIntervalSeconds = settings.HeartbeatIntervalSeconds;
         HeartbeatTimeoutSeconds = settings.HeartbeatTimeoutSeconds;
@@ -258,6 +266,7 @@ public sealed class CoordinatorSettingsFormVM : ReactiveObject
         RemovePassword = (PasswordChange)PasswordChangeIndex == PasswordChange.Remove,
         MaxOnlineUsers = ToInt(MaxOnlineUsers),
         MaxUsers = ToInt(MaxUsers),
+        MaxBots = ToInt(MaxBots),
         IsMotdEnabled = IsMotdEnabled,
         MotdText = OrNull(MotdText),
         AllowedIps = ToLines(AllowedIps),

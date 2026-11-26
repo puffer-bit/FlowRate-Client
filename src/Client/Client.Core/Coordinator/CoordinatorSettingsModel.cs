@@ -19,6 +19,9 @@ public sealed record CoordinatorSettingsModel
     public int MaxOnlineUsers { get; init; }
     public int MaxUsers { get; init; }
 
+    /// <summary>How many bots may be made, 0 for none; debug bots are not counted. 0 from servers without bots.</summary>
+    public int MaxBots { get; init; }
+
     public bool IsMotdEnabled { get; init; }
     public string? MotdText { get; init; }
 
@@ -78,6 +81,9 @@ public sealed record CoordinatorSettingsUpdate
 
     public int MaxOnlineUsers { get; init; }
     public int MaxUsers { get; init; }
+
+    /// <summary>How many bots may be made, 0 for none; null keeps the current limit.</summary>
+    public int? MaxBots { get; init; }
 
     public bool IsMotdEnabled { get; init; }
     public string? MotdText { get; init; }

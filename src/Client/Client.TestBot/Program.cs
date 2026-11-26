@@ -13,7 +13,9 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using Client.Application.Ports;
-using Client.Database.File;
+using Client.Application.Security;
+using Client.Database.Sqlite;
+using Client.TestBot.Accounts;
 
 BotOptions? options;
 
@@ -55,16 +57,52 @@ Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions
     MinimumLevel = options.Verbose ? LogEventLevel.Verbose : LogEventLevel.Information
 });
 
-// The same transient registrations the desktop client uses, so every bot gets its own connection
+var dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "FlowRate", "TestBot");
+
+// The same transient registrations the desktop client uses, so every bot gets its own connection. The accounts and
+// the keys of the devices go into the database of the bot, never into the keyring
 var services = new ServiceCollection()
     .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, AppInformation.GetClientVersion(),
         DevicePlatform.OsVersion, DevicePlatform.Architecture))
-    .AddFileDatabase(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FlowRate", "TestBot"))
+    .AddSqliteDatabase(dataDirectory)
+    .AddSingleton<ISecretVault>(provider => new DatabaseSecretVault(provider.GetRequiredService<ISecretsRepository>()))
+    .AddSingleton<IDeviceKeyStore, VaultDeviceKeyStore>()
+    .AddSingleton(provider => new BotAccountStore(provider.GetRequiredService<ISecretsRepository>(), dataDirectory))
     .AddClientLogging(Log.Logger)
     .BuildServiceProvider();
 
 var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Client.TestBot");
+
+var databaseState = await services.GetRequiredService<IDatabaseInitializer>().VerifyDatabaseAsync();
+if (databaseState != DatabaseState.NoError)
+{
+    ProgramLog.DatabaseFailed(logger, databaseState.ToString(), dataDirectory);
+    return 1;
+}
+
+await using var owner = options.BotAccounts || options.DeleteBots
+    ? new BotOwner(options, services, services.GetRequiredService<BotAccountStore>(),
+        services.GetRequiredService<ILogger<BotOwner>>())
+    : null;
+
+if (options.DeleteBots)
+{
+    try
+    {
+        ProgramLog.BotsDeleted(logger, await owner!.DeleteBotsAsync(CancellationToken.None));
+        return 0;
+    }
+    catch (InvalidOperationException exception)
+    {
+        ProgramLog.BotFailed(logger, exception.Message);
+        return 1;
+    }
+    finally
+    {
+        await Log.CloseAndFlushAsync();
+    }
+}
 
 if (!GstLoader.LoadGstreamer(services.GetRequiredService<ILogger<GstLoader>>()))
 {
@@ -118,7 +156,7 @@ Console.CancelKeyPress += (_, eventArgs) =>
 
 var stats = new LoadStats(services.GetRequiredService<ILogger<LoadStats>>());
 var bots = Enumerable.Range(0, options.Count)
-    .Select(index => new VoiceBot(index, options, ToneOf(index) ?? input, services, transports, stats))
+    .Select(index => new VoiceBot(index, options, ToneOf(index) ?? input, services, transports, stats, owner))
     .ToList();
 
 // Equal tones drift in phase against each other and their sum swells and fades, so each bot gets
