@@ -382,6 +382,10 @@ public partial class SessionsListVM : ReactiveObject
                 () => session.HybridSessionUpdated -= OnHybridSessionUpdated)
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
 
+        // The server tells of the running calls right after the login, before the list and the
+        // subscription above: they are taken from what the coordinator heard, with their peers
+        FollowCalls();
+
         await LoadReadStates(session, attachId);
     }
 
