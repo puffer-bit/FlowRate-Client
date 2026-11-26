@@ -229,6 +229,14 @@ public partial class MainWindowVM
         var newCoordinator = await ShowConnectWindow.Handle(connectWindow);
         if (newCoordinator is { ConnectionStatus: CoordinatorState.Connected })
         {
+            // The server connected so far is left only now, once the new one is there: a cancelled connect keeps it.
+            // Left as a disconnect leaves it, so its hybrid session, media and subscriptions do not outlive it
+            if (_coordinatorSession is { } previous && previous != newCoordinator)
+            {
+                await DisconnectFromCoordinator();
+                previous.Dispose();
+            }
+
             _coordinatorSession = newCoordinator;
             await FinalizeCoordinatorConnection();
         }
