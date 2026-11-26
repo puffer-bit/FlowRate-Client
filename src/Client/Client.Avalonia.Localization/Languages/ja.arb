@@ -1169,6 +1169,10 @@
   "settings.experimental.section.window": "ウィンドウ",
   "settings.experimental.customTitleBar.title": "独自のタイトルバー",
   "settings.experimental.customTitleBar.description": "ウィンドウのボタンをアプリの上部バーに表示し、システムのタイトルバーを隠します。オフにするとシステムのタイトルバーに戻ります。すぐに適用されます",
+  "settings.experimental.empty.title": "実験的な機能はありません",
+  "settings.experimental.empty.text": "実験はすべて通常の機能になったか、テストを乗り越えられませんでした。新しい実験はここに表示されます。アップデート後にのぞいてみてください",
+  "settings.about.inDevelopment.title": "アプリは開発中です",
+  "settings.about.inDevelopment.text": "一部の機能が動作しなかったり、バージョンごとに変わったりすることがあります。バグを見つけたりアイデアがあれば、開発者に伝えてください",
 
   "settings.accounting.name": "プロファイル、サーバー、セキュリティ",
   "settings.accounting.section.database": "データベースと ID",

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
              xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -117,6 +118,10 @@
     </UserControl.Styles>
 
     <ui:SettingsPage>
+        <!-- On top, before everything about the application: it is not finished yet -->
+        <banners:InfoBanner Margin="0,0,0,8"
+                            Header="{l:Text settings.about.inDevelopment.title}"
+                            Message="{l:Text settings.about.inDevelopment.text}"/>
         <controls:SettingsHeader services:SettingText.Section="about.application"/>
         <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="about.version">

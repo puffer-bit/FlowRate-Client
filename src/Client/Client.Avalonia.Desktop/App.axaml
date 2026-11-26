@@ -57,6 +57,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsPage.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsCard.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsRow.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Banners/InfoBanner.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Banners/WarningBanner.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Hints/HintBlock.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/EmptyStates/EmptyState.axaml"/>

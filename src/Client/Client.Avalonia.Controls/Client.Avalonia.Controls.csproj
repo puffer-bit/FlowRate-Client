@@ -18,6 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <AdditionalFiles Include="Controls\Banners\InfoBanner.axaml" />
       <AdditionalFiles Include="Controls\Banners\WarningBanner.axaml" />
       <AdditionalFiles Include="Controls\LoadingIndicators\ProgressRing.axaml" />
       <AdditionalFiles Include="Controls\LoadingIndicators\PulseLoadingIndicator.axaml" />

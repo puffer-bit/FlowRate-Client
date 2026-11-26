@@ -39,6 +39,7 @@
             
             <!-- Вспомогательные -->
             <Color x:Key="ColorWarning">#FFC107</Color>
+            <Color x:Key="ColorInfo">#2196F3</Color>
             <Color x:Key="ColorError">#FF5252</Color>
             <Color x:Key="ColorSuccess">#4CAF50</Color>
             
@@ -172,6 +173,7 @@
             
             <!-- Вспомогательные системные цвета -->
             <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}" />
+            <SolidColorBrush x:Key="InfoBrush" Color="{DynamicResource ColorInfo}" />
             <!-- Sleeping status: a moon-blue crescent and its snore, apart from the yellow of away -->
             <SolidColorBrush x:Key="StatusSleepingBrush" Color="#4A74D9" />
             <SolidColorBrush x:Key="AfkActiveBackgroundBrush" Color="#806515" />
@@ -214,6 +216,9 @@
             <!-- A warning banner: a faint yellow plate with a yellow outline -->
             <SolidColorBrush x:Key="WarningBannerBackgroundBrush" Color="{DynamicResource ColorWarning}" Opacity="0.12" />
             <SolidColorBrush x:Key="WarningBannerBorderBrush" Color="{DynamicResource ColorWarning}" Opacity="0.6" />
+            <!-- An info banner: the same plate in blue -->
+            <SolidColorBrush x:Key="InfoBannerBackgroundBrush" Color="{DynamicResource ColorInfo}" Opacity="0.12" />
+            <SolidColorBrush x:Key="InfoBannerBorderBrush" Color="{DynamicResource ColorInfo}" Opacity="0.6" />
             <!-- The field that shows and records the keys of a hot key: outlined in the accent, fully while recording -->
             <SolidColorBrush x:Key="HotKeyFieldBackgroundBrush" Color="{DynamicResource ColorOverlayMedium}" />
             <SolidColorBrush x:Key="HotKeyFieldBorderBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.5" />

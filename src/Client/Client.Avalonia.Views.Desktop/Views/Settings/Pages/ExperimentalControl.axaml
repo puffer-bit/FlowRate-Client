@@ -15,5 +15,21 @@
             </ui:SettingsRow>
         </ui:SettingsCard>
 
+        <!-- No experimental features at the moment: the free room of the page says so in large -->
+        <StackPanel Spacing="10" MaxWidth="460" Margin="24,56,24,24" HorizontalAlignment="Center">
+            <Image Width="128" Height="128" Margin="0,0,0,14" Opacity="0.85"
+                   Source="{StaticResource RadiationIcon}"/>
+            <TextBlock Text="{l:Text settings.experimental.empty.title}"
+                       FontSize="28"
+                       FontWeight="Bold"
+                       TextAlignment="Center"
+                       TextWrapping="WrapWithOverflow"
+                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock Text="{l:Text settings.experimental.empty.text}"
+                       FontSize="15"
+                       TextAlignment="Center"
+                       TextWrapping="WrapWithOverflow"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
     </ui:SettingsPage>
 </UserControl>

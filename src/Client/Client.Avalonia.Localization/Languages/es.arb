@@ -1169,6 +1169,10 @@
   "settings.experimental.section.window": "Ventana",
   "settings.experimental.customTitleBar.title": "Barra de título propia",
   "settings.experimental.customTitleBar.description": "Los botones de la ventana están en la barra superior de la aplicación y la barra de título del sistema se oculta. Desactívalo para recuperar la barra de título del sistema. Se aplica al instante",
+  "settings.experimental.empty.title": "No hay funciones experimentales",
+  "settings.experimental.empty.text": "Cada experimento se ha convertido en una función normal o no ha sobrevivido a las pruebas. Los nuevos aparecerán aquí: vuelve a mirar después de las actualizaciones",
+  "settings.about.inDevelopment.title": "La aplicación está en desarrollo",
+  "settings.about.inDevelopment.text": "Algunas cosas pueden no funcionar o cambiar de una versión a otra. Si encuentras un error o tienes una idea, cuéntaselo al desarrollador",
 
   "settings.accounting.name": "Perfiles, servidores y seguridad",
   "settings.accounting.section.database": "Base de datos e identidades",
