@@ -123,6 +123,15 @@ powershell -ExecutionPolicy Bypass -File src/Scripts/powershell/publish.ps1 -Aot
 
 The default target is `win-x64`. Follow the script prerequisites for Visual Studio C++ build tools and a Windows SDK when native build steps are needed.
 
+### macOS
+
+```bash
+bash src/Scripts/bash/publish.sh --target osx-arm64
+bash src/Scripts/bash/publish.sh --target osx-arm64 --aot
+```
+
+The `osx-arm64` build (Apple silicon) can only be made on macOS. Its GStreamer runtime is collected from the installed GStreamer framework (`src/Client/Client.GStreamer/Build/mac/collect.sh`). The package is signed ad hoc only.
+
 Cross-platform desktop packaging requires the other platform's prepared native runtime. NativeAOT builds must run on their target operating system. Prefer the matching host for each platform.
 
 Use `--dev` / `-Dev` for development builds and `--notes FILE` / `-Notes FILE` to supply release notes. Installed desktop packages use Velopack feeds with separate channels for Windows, Linux, JIT, NativeAOT, and development builds. See the script help before preparing a release.
