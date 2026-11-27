@@ -198,6 +198,7 @@
   "common.save": "保存",
   "common.saving": "保存中...",
   "common.close": "閉じる",
+  "common.share": "共有",
   "window.minimize": "最小化",
   "window.maximize": "最大化",
   "window.restore": "元に戻す",

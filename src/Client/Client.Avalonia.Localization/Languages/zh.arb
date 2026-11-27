@@ -198,6 +198,7 @@
   "common.save": "保存",
   "common.saving": "正在保存...",
   "common.close": "关闭",
+  "common.share": "分享",
   "window.minimize": "最小化",
   "window.maximize": "最大化",
   "window.restore": "还原",

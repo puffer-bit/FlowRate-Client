@@ -488,15 +488,22 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         .OrderBy(reaction => reaction.ReactedAt ?? DateTimeOffset.MinValue)
         .Select(reaction => new ChatReactionDetailVM(reaction.Emoji,
             _nameOf?.Invoke(reaction.UserId) ?? Strings.Get("chat.unknownUser"),
-            ChatReceiptTime.Format(reaction.ReactedAt)))
+            ChatReceiptTime.Format(reaction.ReactedAt), reaction.UserId,
+            _senders?.FindAvatarUrl(reaction.UserId), _senders?.FindStatus(reaction.UserId),
+            _senders?.IsMobile(reaction.UserId) ?? false))
         .ToList();
 
     private Func<int, string>? _nameOf;
+    private ChatSenderDirectory? _senders;
 
-    /// <summary>Names of the users who reacted, from the chat's directory; called again when they change.</summary>
-    public void ApplyUserNames(Func<int, string> nameOf)
+    /// <summary>
+    /// Names of the users who reacted, from the chat's directory, which also gives their avatars; called again
+    /// when they change.
+    /// </summary>
+    public void ApplyUserNames(Func<int, string> nameOf, ChatSenderDirectory? senders = null)
     {
         _nameOf = nameOf;
+        _senders = senders;
         if (Message.Reactions.Count == 0)
             return;
         this.RaisePropertyChanged(nameof(Reactions));

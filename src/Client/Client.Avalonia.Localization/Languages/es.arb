@@ -198,6 +198,7 @@
   "common.save": "Guardar",
   "common.saving": "Guardando...",
   "common.close": "Cerrar",
+  "common.share": "Compartir",
   "window.minimize": "Minimizar",
   "window.maximize": "Maximizar",
   "window.restore": "Restaurar",

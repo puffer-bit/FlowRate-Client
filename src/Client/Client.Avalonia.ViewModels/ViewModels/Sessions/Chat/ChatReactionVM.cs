@@ -1,4 +1,5 @@
 using System;
+using Shared.Enums.User;
 using ReactiveUI;
 using System.Threading.Tasks;
 
@@ -30,4 +31,5 @@ public sealed class ChatReactionVM(string emoji, int count, bool isMine, Func<st
 }
 
 /// <summary>One reaction of one user, for the list of who reacted.</summary>
-public sealed record ChatReactionDetailVM(string Emoji, string Name, string TimeText);
+public sealed record ChatReactionDetailVM(string Emoji, string Name, string TimeText, int UserId = 0,
+    string? AvatarUrl = null, UserStatus? Status = null, bool IsMobile = false);

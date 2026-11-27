@@ -455,6 +455,7 @@
   "common.save": "Save",
   "common.saving": "Saving...",
   "common.close": "Close",
+  "common.share": "Share",
   "window.minimize": "Minimize",
   "window.maximize": "Maximize",
   "window.restore": "Restore",

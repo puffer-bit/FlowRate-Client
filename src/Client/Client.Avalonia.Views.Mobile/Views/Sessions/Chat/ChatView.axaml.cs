@@ -173,6 +173,7 @@ public partial class ChatView : UserControl
             Ended = (_, _) => EndReplySwipe()
         };
         ViewersPanel.CloseRequested += () => TryCloseViewers();
+        MessageDetailsPanel.CloseRequested += () => TryCloseMessageDetails();
 
         // The mention list follows the word at the caret
         MessageInput.PropertyChanged += (_, e) =>
@@ -299,8 +300,9 @@ public partial class ChatView : UserControl
         base.OnDataContextChanged(e);
         _pendingTapMenu?.Cancel();
 
-        // The menu is about a message of the chat that was shown
+        // The menu and the page of a message are about a message of the chat that was shown
         TryCloseMenu();
+        TryCloseMessageDetails();
         _chatSubscriptions.Disposable = Chat is { } chat ? Follow(chat) : null;
     }
 
@@ -506,6 +508,34 @@ public partial class ChatView : UserControl
 
         MessageMenu.DataContext = message;
         MessageMenu.IsOpen = true;
+        return true;
+    }
+
+    private void OnReadersExpandClick(object? sender, RoutedEventArgs e) => OpenMessageDetails(false);
+
+    private void OnReactionsExpandClick(object? sender, RoutedEventArgs e) => OpenMessageDetails(true);
+
+    // The island of the menu opens to the whole chat, as in Telegram; the menu itself goes away
+    private void OpenMessageDetails(bool reactions)
+    {
+        if (MessageMenu.DataContext is not ChatMessageVM message)
+            return;
+
+        TryCloseMenu();
+        MessageDetailsPanel.ShowsReactions = reactions;
+        MessageDetailsPanel.DataContext = message;
+        MessageDetailsPage.IsVisible = true;
+    }
+
+    /// <summary>Closes the page of who read a message or reacted to it.</summary>
+    /// <returns>False when it was not open.</returns>
+    public bool TryCloseMessageDetails()
+    {
+        if (!MessageDetailsPage.IsVisible)
+            return false;
+
+        MessageDetailsPage.IsVisible = false;
+        MessageDetailsPanel.DataContext = null;
         return true;
     }
 

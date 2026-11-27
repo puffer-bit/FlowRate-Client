@@ -42,9 +42,9 @@ public partial class SessionsView : UserControl
     public event Action<ChatSessionVM>? ChatMenuRequested;
 
     /// <summary>
-    /// Raised by a long press on a voice session: its menu only moves it for now.
+    /// Raised by a long press on a voice session.
     /// </summary>
-    public event Action<ISessionVM>? SessionMoveMenuRequested;
+    public event Action<HybridSessionVM>? HybridMenuRequested;
 
     /// <summary>
     /// Raised by a tap on a peer of a voice session.
@@ -67,7 +67,7 @@ public partial class SessionsView : UserControl
                 ChatMenuRequested?.Invoke(chat);
                 break;
             case HybridSessionVM hybrid:
-                SessionMoveMenuRequested?.Invoke(hybrid);
+                HybridMenuRequested?.Invoke(hybrid);
                 break;
             case SessionCategoryVM { IsEditing: false } category:
                 CategoryMenuRequested?.Invoke(category);

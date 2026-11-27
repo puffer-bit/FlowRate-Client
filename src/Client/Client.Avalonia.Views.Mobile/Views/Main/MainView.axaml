@@ -393,10 +393,29 @@
                                    Text="{Binding DisplayName}"/>
                     </Grid>
 
-                    <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
-                                          IsVisible="{Binding CanEditGroup}" Command="{Binding EditGroupCommand}" Click="OnChatActionClick"/>
+                    <!-- The call of the chat: start it, or join the one going on -->
+                    <menus:MenuItemButton Icon="{StaticResource ChatCallStartedIcon}" Content="{Binding CallText}"
+                                          Command="{Binding CallCommand}" Click="OnChatActionClick">
+                        <menus:MenuItemButton.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="CanCall"/>
+                                <Binding Path="!HasActiveCall"/>
+                            </MultiBinding>
+                        </menus:MenuItemButton.IsVisible>
+                    </menus:MenuItemButton>
+                    <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{Binding CallText}"
+                                          Command="{Binding CallCommand}" Click="OnChatActionClick">
+                        <menus:MenuItemButton.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="CanCall"/>
+                                <Binding Path="HasActiveCall"/>
+                            </MultiBinding>
+                        </menus:MenuItemButton.IsVisible>
+                    </menus:MenuItemButton>
                     <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text privateChats.leaveGroup}"
                                           IsVisible="{Binding CanLeaveGroup}" Command="{Binding LeaveGroupCommand}" Click="OnChatActionClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                                          IsVisible="{Binding CanEditGroup}" Command="{Binding EditGroupCommand}" Click="OnChatActionClick"/>
                     <!-- One item, shown by the state it would change -->
                     <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
                                           IsVisible="{Binding !IsMuted}"
@@ -407,6 +426,12 @@
                     <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
                                           IsVisible="{Binding CanArrange}"
                                           Click="OnMoveChatClick"/>
+
+                    <Separator IsVisible="{Binding CanManage}"/>
+                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                          IsVisible="{Binding CanManage}"
+                                          Command="{Binding DeleteSessionCommand}" CommandParameter="{Binding Model.Id}"
+                                          Click="OnChatActionClick"/>
                 </StackPanel>
             </common:PopupMenu>
 
@@ -596,6 +621,40 @@
                 </StackPanel>
             </common:PopupMenu>
 
+            <!-- Menu of a voice session held in the list of sessions: the desktop flyout without the settings
+                 pages, which a phone does not have. The data context is the session -->
+            <common:PopupMenu x:Name="HybridSessionMenu"
+                               DataContext="{x:Null}"
+                               x:DataType="listVm:HybridSessionVM">
+                <StackPanel Spacing="2">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Margin="12,8,12,10">
+                        <Image Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center"
+                               Source="{StaticResource HybridSessionIcon}"/>
+                        <TextBlock Grid.Column="1" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                   Text="{Binding Model.Name}"/>
+                    </Grid>
+
+                    <!-- One item, shown by the state it would change -->
+                    <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{l:Text sessions.join}"
+                                          IsVisible="{Binding !IsEntered}" IsEnabled="{Binding CanJoin}"
+                                          Click="OnHybridJoinClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leave}"
+                                          IsVisible="{Binding IsEntered}"
+                                          Command="{Binding LeaveSessionCommand}" CommandParameter="{Binding Model.Id}"
+                                          Click="OnHybridActionClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
+                                          IsVisible="{Binding CanArrange}"
+                                          Click="OnMoveHybridClick"/>
+
+                    <Separator IsVisible="{Binding CanManage}"/>
+                    <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                          IsVisible="{Binding CanManage}"
+                                          Command="{Binding DeleteSessionCommand}" CommandParameter="{Binding Model.Id}"
+                                          Click="OnHybridActionClick"/>
+                </StackPanel>
+            </common:PopupMenu>
+
             <common:PopupMenu x:Name="SessionMoveMenu"
                                DataContext="{x:Null}"
                                x:DataType="listVm:ISessionVM">
@@ -604,8 +663,8 @@
                                TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                                Text="{Binding Model.Name}"/>
 
-                    <menus:MenuItemButton Content="{l:Text sessions.moveUp}" Click="OnMoveSessionUpClick"/>
-                    <menus:MenuItemButton Content="{l:Text sessions.moveDown}" Click="OnMoveSessionDownClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource UpArrowIcon}" Content="{l:Text sessions.moveUp}" Click="OnMoveSessionUpClick"/>
+                    <menus:MenuItemButton Icon="{StaticResource DownArrowIcon}" Content="{l:Text sessions.moveDown}" Click="OnMoveSessionDownClick"/>
 
                     <Separator/>
 
@@ -651,8 +710,8 @@
                     <StackPanel Spacing="2" IsVisible="{Binding CanManage}">
                         <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text sessions.category.rename}"
                                               Click="OnCategoryRenameClick"/>
-                        <menus:MenuItemButton Content="{l:Text sessions.moveUp}" Click="OnCategoryUpClick"/>
-                        <menus:MenuItemButton Content="{l:Text sessions.moveDown}" Click="OnCategoryDownClick"/>
+                        <menus:MenuItemButton Icon="{StaticResource UpArrowIcon}" Content="{l:Text sessions.moveUp}" Click="OnCategoryUpClick"/>
+                        <menus:MenuItemButton Icon="{StaticResource DownArrowIcon}" Content="{l:Text sessions.moveDown}" Click="OnCategoryDownClick"/>
 
                         <Separator/>
 

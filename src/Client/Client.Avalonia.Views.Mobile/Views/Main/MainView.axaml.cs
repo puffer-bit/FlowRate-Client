@@ -1,4 +1,6 @@
 using Client.Mobile.Views.Common;
+using Client.Mobile.Views.Dialogs;
+using Client.Views.Shared.Dialogs;
 using Client.Mobile.Views.Sessions.Chat;
 using Client.Mobile.Views.Sessions.Hybrid;
 using System;
@@ -98,6 +100,7 @@ public partial class MainView : UserControl
 
         ServerMenu.Dismissed += () => TryCloseServerMenu();
         ChatMenu.Dismissed += () => TryCloseChatMenu();
+        HybridSessionMenu.Dismissed += () => TryClose(HybridSessionMenu);
         SessionMoveMenu.Dismissed += () => TryClose(SessionMoveMenu);
         ChatMuteMenu.Dismissed += () => TryClose(ChatMuteMenu);
         CategoryMenu.Dismissed += () => TryClose(CategoryMenu);
@@ -159,7 +162,7 @@ public partial class MainView : UserControl
         Sessions.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatMenuRequested += OpenChatMenu;
         HomeChats.ChatRequested += chat => viewModel.SessionsList.SelectedSession = chat;
-        Sessions.SessionMoveMenuRequested += OpenSessionMoveMenu;
+        Sessions.HybridMenuRequested += OpenHybridMenu;
         Sessions.CategoryMenuRequested += OpenCategoryMenu;
         Sessions.PeerMenuRequested += OpenPeerMenu;
         _hybridView.PeerMenuRequested += OpenPeerMenu;
@@ -656,6 +659,31 @@ public partial class MainView : UserControl
         SessionMoveMenu.IsOpen = true;
     }
 
+    private void OpenHybridMenu(HybridSessionVM session)
+    {
+        HybridSessionMenu.DataContext = session;
+        HybridSessionMenu.IsOpen = true;
+    }
+
+    // The command of the item acts on the session
+    private void OnHybridActionClick(object? sender, RoutedEventArgs e) => TryClose(HybridSessionMenu);
+
+    private void OnHybridJoinClick(object? sender, RoutedEventArgs e)
+    {
+        TryClose(HybridSessionMenu);
+
+        if (HybridSessionMenu.DataContext is HybridSessionVM session)
+            session.Connect();
+    }
+
+    private void OnMoveHybridClick(object? sender, RoutedEventArgs e)
+    {
+        TryClose(HybridSessionMenu);
+
+        if (HybridSessionMenu.DataContext is HybridSessionVM session)
+            OpenSessionMoveMenu(session);
+    }
+
     private void OpenCategoryMenu(SessionCategoryVM category)
     {
         CategoryMenu.DataContext = category;
@@ -765,13 +793,13 @@ public partial class MainView : UserControl
             chat.ToggleMuteCommand.Execute(chat.Model.Id).Subscribe();
     }
 
-    // A link that fills in the connect form on another device; the share sheet of the phone sends it on
+    // The QR code of a link that fills in the connect form on another device; its share button sends the link on
     private void OnShareServerLinkClick(object? sender, RoutedEventArgs e)
     {
         TryCloseServerMenu();
 
-        if (_viewModel?.ServerTitle is { ServerLink: { } link } title)
-            MobilePlatform.Current?.ShareText(link, title.DisplayName);
+        if (_viewModel?.ServerTitle is { HasServerLink: true } title && DialogPresenter.Current is { } dialogs)
+            _ = dialogs.ShowAsync<object?>(new ServerLinkDialog { DataContext = title }, this, null);
     }
 
     private async void OnCopyAddressClick(object? sender, RoutedEventArgs e)
@@ -837,7 +865,8 @@ public partial class MainView : UserControl
         }
 
         // Menus close before navigating away from the current screen.
-        if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(SessionMoveMenu) || TryClose(CategoryMenu)
+        if (TryCloseServerMenu() || TryCloseChatMenu() || TryClose(HybridSessionMenu) || TryClose(SessionMoveMenu)
+            || TryClose(CategoryMenu)
             || TryClose(StatusMenu) || TryClose(PeerMenu) || TryClose(PokeMenu) || TryClose(AfkMenu)
             || TryClose(PeerStatsMenu) || TryClose(AudioDevicesMenu) || TryClose(SharedMenu))
         {
@@ -847,7 +876,8 @@ public partial class MainView : UserControl
 
         if (_viewModel?.CurrentContent != null)
         {
-            if (!_chatView.TryCloseMenu() && !_chatView.TryCloseViewers() && !_chatView.TryClosePinnedMessages())
+            if (!_chatView.TryCloseMenu() && !_chatView.TryCloseMessageDetails() && !_chatView.TryCloseViewers()
+                && !_chatView.TryClosePinnedMessages())
             {
                 _viewModel.ShowHome();
             }

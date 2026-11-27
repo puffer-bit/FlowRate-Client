@@ -1665,6 +1665,35 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Up arrow (move up). Source: Icons/ChatView/UpArrowIcon.svg -->
+    <DrawingImage x:Key="UpArrowIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M12,20 L12,4">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M6 10 L12 4 L18 10">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Three linked dots (share). Source: Icons/ShareIcon.svg -->
+    <DrawingImage x:Key="ShareIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M20,5.5 A2.5,2.5 0 1 1 15,5.5 A2.5,2.5 0 1 1 20,5.5 Z M9,12 A2.5,2.5 0 1 1 4,12 A2.5,2.5 0 1 1 9,12 Z M20,18.5 A2.5,2.5 0 1 1 15,18.5 A2.5,2.5 0 1 1 20,18.5 Z M8.7 10.7 L15.3 6.8 M8.7 13.3 L15.3 17.2">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Speech bubble with a blue plus in it (no messages yet). Source: Icons/ChatView/EmptyChat.svg -->
     <DrawingImage x:Key="EmptyChat">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">

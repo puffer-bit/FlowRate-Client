@@ -62,16 +62,24 @@ public static class ChatUserMenu
     }
 
     /// <summary>
-    /// A row of the readers of a message was pressed, by any button or a tap: the menu of that reader.
+    /// A row of the readers of a message, or of who reacted to it, was pressed, by any button or a tap: the menu
+    /// of that user.
     /// </summary>
     public static void OpenForReader(Control row, PointerReleasedEventArgs e, Action? picked = null)
     {
-        if (row.DataContext is not ChatMessageReaderVM reader
+        // A reader of the message, or a user who reacted to it
+        var user = row.DataContext switch
+        {
+            ChatMessageReaderVM reader => (reader.UserId, reader.Name),
+            ChatReactionDetailVM { UserId: > 0 } reaction => (reaction.UserId, reaction.Name),
+            _ => ((int, string)?)null
+        };
+        if (user is not { } who
             || row.GetVisualAncestors().OfType<Control>().Select(c => c.DataContext)
                 .OfType<ChatMessageVM>().FirstOrDefault() is not { } message)
             return;
 
-        Open(row, message, reader.UserId, reader.Name, picked: picked);
+        Open(row, message, who.Item1, who.Item2, picked: picked);
         e.Handled = true;
     }
 
