@@ -1874,6 +1874,28 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Keyboard with an orange space bar (hotkeys settings). Source: Icons/Settings/KeyboardIcon.svg -->
+    <DrawingImage x:Key="KeyboardIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 5 H19 A2.5 2.5 0 0 1 21.5 7.5 V16.5 A2.5 2.5 0 0 1 19 19 H5 A2.5 2.5 0 0 1 2.5 16.5 V7.5 A2.5 2.5 0 0 1 5 5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M6 9 H6.01 M9 9 H9.01 M12 9 H12.01 M15 9 H15.01 M18 9 H18.01 M7.5 12 H7.51 M10.5 12 H10.51 M13.5 12 H13.51 M16.5 12 H16.51">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.9" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 15.5 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#FF9800" Thickness="1.9" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- Yellow lightning (performance settings). Source: Icons/Settings/LightningIcon.svg -->
     <DrawingImage x:Key="LightningIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
