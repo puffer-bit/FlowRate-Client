@@ -19,6 +19,12 @@ internal static partial class ProgramLog
     [LoggerMessage(LogLevel.Information, "Starting {Count} bot(s) against {Host}:{Port}. Press Ctrl+C to stop")]
     public static partial void Starting(ILogger logger, int count, string host, int port);
 
+    [LoggerMessage(LogLevel.Error, "The database of the bot in {Directory} cannot be used: {State}")]
+    public static partial void DatabaseFailed(ILogger logger, string state, string directory);
+
+    [LoggerMessage(LogLevel.Information, "Deleted {Count} bot account(s)")]
+    public static partial void BotsDeleted(ILogger logger, int count);
+
     [LoggerMessage(LogLevel.Error, "{Error}")]
     public static partial void BotFailed(ILogger logger, string error);
 }

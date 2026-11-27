@@ -66,11 +66,26 @@ internal sealed record BotOptions
                                    received and decoded, so several bots do not fill the speakers.
           --create-session <name>  Join the voice session of that name, which the first bot
                                    creates when the server has none, e.g. a fresh local one.
+          --accounts <users|bots>  users: each bot registers an account of its own and logs in with
+                                   its recovery phrase. bots: each bot is a bot account named
+                                   "TestBot N", made by the owner (see --owner-code), and logs in
+                                   with a login code once and as its device from then on.
+                                   Default: users.
+          --owner-code <code>      Login code from the control panel for an account whose roles may
+                                   manage bots: it makes the bot accounts and renews their codes.
+                                   Needed once; the device of the owner is remembered.
+          --bot-kind <debug|bot>   Kind of the bot accounts the owner makes. Debug bots are marked
+                                   apart and do not count in the bot limit. Default: debug.
+          --bot-code <code>        Log in as a bot made in the settings of the server, with its login
+                                   code. Implies --accounts bots and --count 1; no owner is needed
+                                   while the device of the bot lasts.
+          --delete-bots            Delete the "TestBot N" accounts the owner made, forget them and
+                                   exit.
           --verbose                Log everything, including the WebRTC negotiation.
           --help                   Show this text.
 
-        Each bot keeps its user between runs; the identities are stored in
-        <local application data>/FlowRate/TestBot.
+        Each bot keeps its user between runs; the recovery phrases and devices are stored in the
+        SQLite database <local application data>/FlowRate/TestBot/client.db.
 
         Examples:
           Client.TestBot --server 127.0.0.1:26666 --tone 440
@@ -79,6 +94,9 @@ internal sealed record BotOptions
           Client.TestBot --server 127.0.0.1:26666 --count 90 --speakers 3
           Client.TestBot --server 127.0.0.1:26666 --count 200 --ramp 300 --speakers 10 \
             --screen --watch --chat-interval 5 --quiet
+          Client.TestBot --server 127.0.0.1:26666 --accounts bots --owner-code 1234-5678 --count 5
+          Client.TestBot --server 127.0.0.1:26666 --bot-code ABCD-EFGH --no-voice --chat-interval 10
+          Client.TestBot --server 127.0.0.1:26666 --delete-bots
         """;
 
     public required string Host { get; init; }
@@ -114,6 +132,17 @@ internal sealed record BotOptions
     public Client.Core.Settings.MediaPerfJournalMode PerfJournal { get; init; }
     public string? CreateSession { get; init; }
 
+    /// <summary>The bots log in as bot accounts rather than as accounts they register.</summary>
+    public bool BotAccounts { get; init; }
+
+    public string? OwnerCode { get; init; }
+
+    /// <summary>The bot accounts the owner makes are debug bots.</summary>
+    public bool DebugBots { get; init; } = true;
+
+    public string? BotCode { get; init; }
+    public bool DeleteBots { get; init; }
+
     /// <returns>The options, or null when help was requested.</returns>
     /// <exception cref="ArgumentException">An option is missing or malformed.</exception>
     public static BotOptions? Parse(IReadOnlyList<string> args)
@@ -137,6 +166,8 @@ internal sealed record BotOptions
         string? chat = null;
         double? chatSeconds = null;
         int ramp = 0, statsSeconds = 10;
+        bool botAccounts = false, debugBots = true, deleteBots = false;
+        string? ownerCode = null, botCode = null;
 
         for (var i = 0; i < args.Count; i++)
         {
@@ -258,6 +289,32 @@ internal sealed record BotOptions
                 case "--create-session":
                     createSession = Value();
                     break;
+                case "--accounts":
+                    botAccounts = Value() switch
+                    {
+                        "users" => false,
+                        "bots" => true,
+                        _ => throw new ArgumentException("--accounts must be users or bots")
+                    };
+                    break;
+                case "--owner-code":
+                    ownerCode = Value();
+                    break;
+                case "--bot-kind":
+                    debugBots = Value() switch
+                    {
+                        "debug" => true,
+                        "bot" => false,
+                        _ => throw new ArgumentException("--bot-kind must be debug or bot")
+                    };
+                    break;
+                case "--bot-code":
+                    botCode = Value();
+                    botAccounts = true;
+                    break;
+                case "--delete-bots":
+                    deleteBots = true;
+                    break;
                 default:
                     throw new ArgumentException($"Unknown option {name}");
             }
@@ -277,7 +334,10 @@ internal sealed record BotOptions
         if (chat != null && chatSeconds == null)
             throw new ArgumentException("--chat only applies to --chat-interval");
 
-        if (!voice && chatSeconds == null)
+        if (botCode != null && count > 1)
+            throw new ArgumentException("--bot-code logs in one bot, it only goes with --count 1");
+
+        if (!voice && chatSeconds == null && !deleteBots)
             throw new ArgumentException("--no-voice leaves nothing to do without --chat-interval");
 
         return new BotOptions
@@ -313,7 +373,12 @@ internal sealed record BotOptions
             StatsInterval = TimeSpan.FromSeconds(statsSeconds),
             Quiet = quiet,
             PerfJournal = perfJournal,
-            CreateSession = createSession
+            CreateSession = createSession,
+            BotAccounts = botAccounts,
+            OwnerCode = ownerCode,
+            DebugBots = debugBots,
+            BotCode = botCode,
+            DeleteBots = deleteBots
         };
     }
 

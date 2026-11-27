@@ -1,3 +1,4 @@
+using Shared.Enums.User;
 using Shared.Models.DataTransferObjects.ChatSession.Messages;
 using System;
 using System.Collections.Generic;
@@ -267,6 +268,13 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     /// The color of the highest colored role of the author, 0xRRGGBB; null keeps the usual one.
     /// </summary>
     public int? SenderColor
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>A person or a bot: a bot gets an icon next to its name.</summary>
+    public UserKind SenderKind
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);

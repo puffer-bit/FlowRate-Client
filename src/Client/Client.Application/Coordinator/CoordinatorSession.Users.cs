@@ -82,6 +82,18 @@ public partial class CoordinatorSession
     public Task<RequestResult> DeleteUser(int userId) =>
         SendAsync(() => _gateway.DeleteUser(userId));
 
+    public Task<RequestResult<IReadOnlyList<UserModel>>> GetBots() => SendAsync(() => _gateway.GetBots());
+
+    public Task<RequestResult<(UserModel Bot, Shared.Models.DataTransferObjects.BotLoginCodeDTO LoginCode)>> CreateBot(
+        string username, bool isDebug) =>
+        SendAsync(() => _gateway.CreateBot(username.Trim(), isDebug));
+
+    public Task<RequestResult<Shared.Models.DataTransferObjects.BotLoginCodeDTO>> NewBotLoginCode(int botId,
+        bool endDevices) =>
+        SendAsync(() => _gateway.NewBotLoginCode(botId, endDevices));
+
+    public Task<RequestResult> DeleteBot(int botId) => SendAsync(() => _gateway.DeleteBot(botId));
+
     /// <summary>
     /// Fails with <see cref="ErrorCode.UploadNotFound"/> when the image is empty or too large, or did not get to the server.
     /// </summary>

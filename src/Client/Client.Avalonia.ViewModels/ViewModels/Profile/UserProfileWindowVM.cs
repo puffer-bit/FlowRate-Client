@@ -135,6 +135,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     /// <summary>Online from a phone: the status badge is a phone.</summary>
     public bool IsMobile { get; }
 
+    /// <summary>A person or a bot: a bot gets an icon under its name.</summary>
+    public UserKind Kind { get; }
+
     /// <summary>The server tells the device: the user is online and not invisible, or it is our own profile.</summary>
     public bool HasDevice { get; }
 
@@ -238,6 +241,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         Name = user.Username;
         LastConnected = FormatTime(user.LastConnectionTime);
         IsMobile = user.IsMobile;
+        Kind = user.Kind;
         if (user.Device is { } device)
         {
             HasDevice = true;

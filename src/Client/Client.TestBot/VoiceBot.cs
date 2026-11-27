@@ -12,6 +12,7 @@ using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Application.Sessions.Hybrid;
 using Client.GStreamer.Video;
+using Client.TestBot.Accounts;
 
 namespace Client.TestBot;
 
@@ -30,7 +31,8 @@ internal sealed partial class VoiceBot
     private readonly IWebRTCTransportFactory _transports;
     private readonly ILogger<VoiceBot> _logger;
     private readonly LoadStats _stats;
-    private readonly IRecoveryPhraseStore _recoveryPhrases;
+    private readonly BotAccountStore _accounts;
+    private readonly BotOwner? _owner;
     private readonly string _profileId;
 
     private ICoordinatorSession? _coordinator;
@@ -58,8 +60,9 @@ internal sealed partial class VoiceBot
 
     private string Name => $"Bot {_index + 1}";
 
+    /// <param name="owner">Makes the bot accounts and gives them codes, with <see cref="BotOptions.BotAccounts"/>.</param>
     public VoiceBot(int index, BotOptions options, AudioInput input, IServiceProvider services,
-        IWebRTCTransportFactory transports, LoadStats stats)
+        IWebRTCTransportFactory transports, LoadStats stats, BotOwner? owner)
     {
         _stats = stats;
         _index = index;
@@ -68,8 +71,11 @@ internal sealed partial class VoiceBot
         _services = services;
         _transports = transports;
         _logger = services.GetRequiredService<ILogger<VoiceBot>>();
-        _recoveryPhrases = services.GetRequiredService<IRecoveryPhraseStore>();
-        _profileId = $"{options.Host}-{options.Port}-{index + 1}";
+        _accounts = services.GetRequiredService<BotAccountStore>();
+        _owner = owner;
+        _profileId = options.BotAccounts
+            ? BotOwner.BotProfileId(options, index)
+            : $"{options.Host}-{options.Port}-{index + 1}";
 
         _voiceActivity.Changed += (_, userId, isSpeaking) =>
         {
@@ -90,22 +96,13 @@ internal sealed partial class VoiceBot
     {
         _coordinator = ActivatorUtilities.CreateInstance<CoordinatorSession>(_services);
 
-        // The bot logs in with the recovery phrase of its account as a temporary device, which leaves no device
-        // behind; the first run registers the account
-        var phrase = _recoveryPhrases.Load(_profileId);
-        LoginPlan login = phrase != null ? new RecoveryLoginPlan(phrase, Temporary: true) : new RegisterLoginPlan();
         var connectStarted = Stopwatch.GetTimestamp();
-        await _coordinator.Connect(_options.Host, _options.Port, _options.Password, login);
+        var state = _options.BotAccounts
+            ? await ConnectAsBotAsync(_coordinator, cancellationToken)
+            : await ConnectAsUserAsync(_coordinator);
 
-        if (_coordinator is { ConnectionStatus: CoordinatorState.CertificateNotTrusted, UntrustedCertificate: { } untrusted })
-        {
-            Log($"trusting certificate {untrusted.Certificate.Fingerprint}");
-            await _coordinator.TrustCertificateAsync(untrusted);
-            await _coordinator.Connect(_options.Host, _options.Port, _options.Password, login);
-        }
-
-        if (_coordinator.ConnectionStatus != CoordinatorState.Connected)
-            throw new InvalidOperationException($"{Name}: failed to connect: {_coordinator.ConnectionStatus}");
+        if (state != CoordinatorState.Connected)
+            throw new InvalidOperationException($"{Name}: failed to connect: {state}");
 
         _stats.Connected(Stopwatch.GetElapsedTime(connectStarted));
         _isCounted = true;
@@ -124,8 +121,9 @@ internal sealed partial class VoiceBot
             }
         };
 
-        _recoveryPhrases.Save(_profileId, _coordinator.TakeNewRecoveryPhrase());
-        Log($"connected as {_coordinator.GetCurrentUser().Username}");
+        await _accounts.SavePhraseAsync(_profileId, _coordinator.TakeNewRecoveryPhrase());
+        var user = _coordinator.GetCurrentUser();
+        Log($"connected as {user.Username}{(user.IsBot ? $" ({user.Kind})" : string.Empty)}");
 
         if (_options.ChatInterval is { } chatInterval)
         {
@@ -170,6 +168,75 @@ internal sealed partial class VoiceBot
         catch (OperationCanceledException)
         {
         }
+    }
+
+    /// <summary>
+    /// Logs in with the recovery phrase of the account as a temporary device, which leaves no device behind; the
+    /// first run registers the account.
+    /// </summary>
+    private async Task<CoordinatorState> ConnectAsUserAsync(ICoordinatorSession coordinator)
+    {
+        var phrase = await _accounts.LoadPhraseAsync(_profileId);
+        LoginPlan login = phrase != null ? new RecoveryLoginPlan(phrase, Temporary: true) : new RegisterLoginPlan();
+        return await BotLogin.ConnectAsync(coordinator, _options, login, Log);
+    }
+
+    /// <summary>
+    /// Logs in as the bot account: as its saved device, or with a login code (the one given, or one from the owner)
+    /// which adds a device kept for the next runs. A device that has ended, because a new code was given or the bot
+    /// was deleted, is replaced through the owner once.
+    /// </summary>
+    private async Task<CoordinatorState> ConnectAsBotAsync(ICoordinatorSession coordinator,
+        CancellationToken cancellationToken)
+    {
+        var saved = await _accounts.LoadDeviceAsync(_profileId);
+        if (saved != null)
+        {
+            var state = await BotLogin.ConnectAsync(coordinator, _options,
+                new DeviceLoginPlan(saved.DeviceId, saved.KeyName), Log);
+            if (state != CoordinatorState.DeviceEnded)
+                return await KeepDeviceAsync(coordinator, state);
+
+            Log("the saved device has ended, logging in with a new code");
+            await _accounts.ForgetDeviceAsync(_profileId);
+        }
+
+        string code;
+        if (_options.BotCode != null && (saved == null || _owner == null))
+            code = _options.BotCode;
+        else if (_owner != null)
+            code = (await _owner.GetCodeAsync(_index, saved?.UserId, cancellationToken)).Code.Code;
+        else
+            throw new InvalidOperationException(
+                $"{Name}: no login code: give a new one with --bot-code, or an owner with --owner-code");
+
+        return await KeepDeviceAsync(coordinator,
+            await BotLogin.ConnectAsync(coordinator, _options, new LoginCodeLoginPlan(code), Log));
+    }
+
+    /// <summary>Remembers the device of a bot that logged in, and forgets it once the server ends it.</summary>
+    private async Task<CoordinatorState> KeepDeviceAsync(ICoordinatorSession coordinator, CoordinatorState state)
+    {
+        if (state != CoordinatorState.Connected)
+            return state;
+
+        if (BotLogin.DeviceOf(coordinator) is { } device)
+            await _accounts.SaveDeviceAsync(_profileId, device);
+
+        if (!coordinator.GetCurrentUser().IsBot)
+            Log("warning: the login code is of a person, not of a bot account");
+
+        coordinator.DeviceEnded += reason =>
+        {
+            Log($"the device was ended by the server: {reason?.ToString() ?? "unknown"}");
+            _ = _accounts.ForgetDeviceAsync(_profileId);
+        };
+        coordinator.UserDeleted += userId =>
+        {
+            if (userId == coordinator.GetCurrentUser().Id)
+                Log("the bot account was deleted");
+        };
+        return state;
     }
 
     private static async Task WaitForeverAsync(CancellationToken cancellationToken)

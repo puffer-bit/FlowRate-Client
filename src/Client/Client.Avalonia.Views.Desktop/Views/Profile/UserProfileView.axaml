@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:common="clr-namespace:Client.Views.Common"
@@ -85,6 +86,7 @@
                     <StackPanel Spacing="2" Margin="0,4,0,0" IsVisible="{Binding !IsEditing}">
                         <SelectableTextBlock FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"
                                              TextAlignment="Center" Text="{Binding Username}"/>
+                        <indicators:UserKindBadge Kind="{Binding Kind}" IconSize="24" HorizontalAlignment="Center"/>
                         <TextBlock Classes="hint" TextAlignment="Center" Text="{Binding StatusText}"/>
                     </StackPanel>
 

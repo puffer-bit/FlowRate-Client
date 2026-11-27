@@ -7,6 +7,16 @@ public class UserModel
     public required int Id { get; init; }
     public required string CoordinatorInstanceId { get; init; }
     public required string Username { get; init; }
+
+    /// <summary>A person, a bot or a debug bot; a person for servers that know no bots.</summary>
+    public UserKind Kind { get; init; }
+
+    /// <summary>The user who made the bot; null for people and for a bot whose maker was deleted.</summary>
+    public int? OwnerUserId { get; init; }
+
+    /// <summary>A bot of either kind, shown with an icon and left out of the readers of a message.</summary>
+    public bool IsBot => Kind.IsBot();
+
     public string? Ip { get; init; }
     public string? RegionName { get; init; }
     public string? RegionCode { get; init; }

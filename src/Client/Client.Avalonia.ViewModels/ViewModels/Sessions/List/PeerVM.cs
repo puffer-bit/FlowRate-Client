@@ -21,6 +21,9 @@ public class PeerVM : ReactiveObject
 
     public string DisplayedName => UserData == null ? PeerData.UserId.ToString() : UserData.Username;
 
+    /// <summary>A person or a bot: a bot gets an icon after its name.</summary>
+    public UserKind Kind => UserData?.Kind ?? UserKind.User;
+
     public bool IsBanned => UserData?.State == UserState.Banned;
     public bool IsFrozen => UserData?.State == UserState.Suspended;
 
@@ -428,6 +431,7 @@ public class PeerVM : ReactiveObject
     {
         UserData = userModel;
         this.RaisePropertyChanged(nameof(DisplayedName));
+        this.RaisePropertyChanged(nameof(Kind));
         this.RaisePropertyChanged(nameof(IsBanned));
         this.RaisePropertyChanged(nameof(IsFrozen));
         this.RaisePropertyChanged(nameof(PokeTitle));

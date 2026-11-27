@@ -22,7 +22,6 @@ Project paths in this table are relative to `src/`.
 | Application | `Client/Client.Application` | Coordinator and session workflows, application state, and service interfaces in `Ports/`. |
 | Network | `Client/Client.Api`, `Client/Client.WebSockets`, `Client/Client.WebRTC` | Server API, WebSocket messaging, and shared WebRTC negotiation support. |
 | Persistence | `Client/Database/Client.Database.Sqlite` | SQLite storage, repositories, encryption, and migrations. |
-| Bot persistence | `Client/Database/Client.Database.File` | Plaintext recovery phrase files and certificates held in memory for test hosts. |
 | Infrastructure | `Client/Client.Infrastructure` | Media cache, release-note retrieval, and storage composition. |
 | Media | `Client/Client.GStreamer`, `Client/Client.LibWebRTC`, `Client/Client.OpenAL` | Media pipelines, the libwebrtc transport, native integration, and interface sounds. |
 | Presentation | `Client/Client.Avalonia.ViewModels`, `Client/Client.Avalonia.Controls`, `Client/Client.Avalonia.Styles`, `Client/Client.Avalonia.Assets`, `Client/Client.Avalonia.Localization`, `Client/Client.Avalonia.Video` | Shared presentation logic, controls, themes, resources, translations, and video rendering. |
@@ -68,8 +67,8 @@ Consult the relevant design and runtime documentation before changing media beha
 ## Persistence and account data
 
 - Use the existing SQLite repositories and migration system in `Client/Database/Client.Database.Sqlite` for persistent state. Preserve compatibility with existing databases.
-- Database projects receive their data directory from the host through `AddSqliteDatabase` or `AddFileDatabase`; keep them independent of `Client.Tools` and host paths.
-- `Client.Database.File` implements only recovery phrase storage and trusted certificates for test hosts; it does not replace the full SQLite repositories. Preserve the existing `phrase-<profile>.txt` files when changing it.
+- Database projects receive their data directory from the host through `AddSqliteDatabase`; keep them independent of `Client.Tools` and host paths.
+- `Client.TestBot` keeps its accounts (recovery phrases, bot devices and their keys) in the secrets table of its own SQLite database, never in the keyring.
 - Keep database access compatible with NativeAOT and the project's Dapper AOT integration.
 - Database encryption is optional and uses SQLite3 Multiple Ciphers. Password storage uses platform secure storage where available.
 - Preserve the distinction between database protection, cached files, and network security. Database encryption does not cover every stored file or imply end-to-end message encryption.
@@ -94,7 +93,7 @@ Consult the relevant design and runtime documentation before changing media beha
 
 ## Validation
 
-- Validate changed behavior with the relevant existing test projects: `Client.Application.Tests`, `Client.Infrastructure.Tests`, `Client.Database.Sqlite.Tests`, `Client.Database.File.Tests`, `Client.WebSockets.Tests`, `Client.Avalonia.Localization.Tests`, and `Shared.Tests`.
+- Validate changed behavior with the relevant existing test projects: `Client.Application.Tests`, `Client.Infrastructure.Tests`, `Client.Database.Sqlite.Tests`, `Client.WebSockets.Tests`, `Client.Avalonia.Localization.Tests`, and `Shared.Tests`.
 - Keep automated tests independent of desktop media runtimes and Android services unless a check explicitly targets those integrations.
 - Use regression tests for meaningful changes to protocol handling, persistence, application state, and localization behavior.
 - UI, audio, capture, rendering, and native interoperability changes also require checks on the affected platforms. Unit tests alone do not establish device or driver compatibility.

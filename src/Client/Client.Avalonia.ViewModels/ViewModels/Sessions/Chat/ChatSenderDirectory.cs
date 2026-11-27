@@ -31,6 +31,7 @@ public sealed class ChatSenderDirectory : IDisposable
     private readonly Dictionary<int, UserStatus> _statuses = new();
     // Online from a phone
     private readonly HashSet<int> _mobile = [];
+    private readonly Dictionary<int, UserKind> _kinds = new();
     private readonly Dictionary<int, IReadOnlyList<int>> _roleIds = new();
     private readonly HashSet<int> _resolving = new();
     private readonly HashSet<int> _deleted = new();
@@ -118,6 +119,7 @@ public sealed class ChatSenderDirectory : IDisposable
             || (name == user.Username && _displayNames.GetValueOrDefault(user.Id) == DisplayNameOf(user) && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
                 && _statuses.GetValueOrDefault(user.Id) == user.Status
                 && _mobile.Contains(user.Id) == user.IsMobile
+                && _kinds.GetValueOrDefault(user.Id) == user.Kind
                 && _roleIds.GetValueOrDefault(user.Id, []).SequenceEqual(user.RoleIds)))
             return;
 
@@ -148,6 +150,7 @@ public sealed class ChatSenderDirectory : IDisposable
         else
             _mobile.Remove(user.Id);
         _roleIds[user.Id] = user.RoleIds;
+        _kinds[user.Id] = user.Kind;
     }
 
     private static string DisplayNameOf(UserModel user) =>
@@ -162,6 +165,7 @@ public sealed class ChatSenderDirectory : IDisposable
         _statuses.Remove(userId);
         _mobile.Remove(userId);
         _roleIds.Remove(userId);
+        _kinds.Remove(userId);
     }
 
     public void Apply(ChatMessageVM messageVm)
@@ -171,6 +175,7 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.IsSenderDeleted = _deleted.Contains(senderId);
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
         messageVm.SenderColor = GetColor(senderId);
+        messageVm.SenderKind = _kinds.GetValueOrDefault(senderId);
         messageVm.SystemParts = ChatSystemMessageText.Parts(messageVm.Message,
             id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),
             id => _displayNames.ContainsKey(id) && !_deleted.Contains(id));
@@ -232,6 +237,9 @@ public sealed class ChatSenderDirectory : IDisposable
 
     /// <summary>The user is online from a phone, as far as is known.</summary>
     public bool IsMobile(int userId) => _mobile.Contains(userId);
+
+    /// <summary>The user is a bot of either kind, as far as is known.</summary>
+    public bool IsBot(int userId) => _kinds.GetValueOrDefault(userId).IsBot();
 
     /// <summary>
     /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.

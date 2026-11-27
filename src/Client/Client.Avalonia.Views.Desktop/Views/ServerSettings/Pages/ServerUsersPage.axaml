@@ -1,4 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:buttons="clr-namespace:Client.Avalonia.Controls.Buttons;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
@@ -58,7 +60,85 @@
                 <NumericUpDown MinWidth="140" Minimum="1" Increment="1" FormatString="0"
                                Value="{Binding Form.MaxUsers}"/>
             </ui:SettingsRow>
+            <ui:SettingsRow Title="{l:Text serverSettings.users.maxBots}"
+                            Description="{l:Text serverSettings.users.maxBots.description}">
+                <NumericUpDown MinWidth="140" Minimum="0" Increment="1" FormatString="0"
+                               Value="{Binding Form.MaxBots}"/>
+            </ui:SettingsRow>
         </ui:SettingsCard>
+
+        <!-- The bots of the server, for users who may manage them: a new one shows its login code once -->
+        <StackPanel Spacing="8" IsVisible="{Binding Bots.CanManage}" IsEnabled="{Binding !Bots.IsBusy}">
+            <controls:SettingsHeader Text="{l:Text serverSettings.bots.title}" SectionKey="serverSettings.bots"/>
+            <ui:SettingsCard Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{l:Text serverSettings.bots.description}"/>
+                    <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
+                        <TextBox PlaceholderText="{l:Text serverSettings.bots.name}" Text="{Binding Bots.NewBotName}"/>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" Content="{l:Text serverSettings.bots.debug}"
+                                  IsChecked="{Binding Bots.NewBotIsDebug}"
+                                  ToolTip.Tip="{l:Text serverSettings.bots.debug.description}"/>
+                        <Button Grid.Column="2" Command="{Binding Bots.CreateCommand}"
+                                Content="{l:Text serverSettings.bots.create}"/>
+                    </Grid>
+                </StackPanel>
+            </ui:SettingsCard>
+
+            <Border Padding="12" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource WarningBrush}" IsVisible="{Binding Bots.HasCode}">
+                <StackPanel Spacing="6">
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Text="{Binding Bots.CodeText}"/>
+                    <Grid ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="8">
+                        <SelectableTextBlock FontFamily="monospace" FontSize="16" FontWeight="SemiBold"
+                                             VerticalAlignment="Center" Text="{Binding Bots.Code}"/>
+                        <buttons:CopyButton Grid.Column="1" VerticalAlignment="Center" Text="{Binding Bots.Code}"/>
+                        <Button Grid.Column="3" Classes="ghost" Command="{Binding Bots.HideCodeCommand}"
+                                Content="{l:Text common.hide}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{l:Text serverSettings.bots.empty}" HorizontalAlignment="Center" Margin="0,8"
+                       Foreground="{DynamicResource SecondaryTextBrush}" IsVisible="{Binding Bots.IsEmpty}"/>
+
+            <ItemsControl ItemsSource="{Binding Bots.Bots}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="serverSettingsVm:ServerBotRowVM">
+                        <ui:SettingsCard Padding="12">
+                            <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12">
+                                <avatars:UserAvatar Width="28" Height="28" VerticalAlignment="Center"
+                                                    UserName="{Binding Username}"
+                                                    AvatarUrl="{Binding AvatarUrl}"
+                                                    Status="{Binding Status}"
+                                                    StatusBackground="{DynamicResource SettingsCardBackgroundBrush}"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding Username}"/>
+                                        <indicators:UserKindBadge Kind="{Binding Kind}"/>
+                                    </StackPanel>
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{Binding OwnerText}"
+                                               IsVisible="{Binding OwnerText, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" VerticalAlignment="Center"
+                                        Command="{Binding NewCodeCommand}" CommandParameter="{Binding}"
+                                        Content="{l:Text serverSettings.bots.newCode}"/>
+                                <Button Grid.Column="3" VerticalAlignment="Center" Classes="danger"
+                                        Command="{Binding DeleteCommand}" CommandParameter="{Binding}"
+                                        Content="{l:Text serverSettings.bots.delete}"/>
+                            </Grid>
+                        </ui:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
 
         <!-- Every user of the server, by name -->
         <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
@@ -166,6 +246,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <text:MarqueeTextBlock Pause="0:0:0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                                Text="{Binding Username}"/>
+                                        <indicators:UserKindBadge Kind="{Binding Kind}"/>
                                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                             <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
                                                    IsVisible="{Binding IsBanned}" ToolTip.Tip="{Binding BanDetails, FallbackValue={l:Text serverSettings.users.banned}, TargetNullValue={l:Text serverSettings.users.banned}}"/>

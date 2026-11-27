@@ -78,6 +78,9 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
 
     public CoordinatorSettingsFormVM Form { get; }
 
+    /// <summary>The bots of the server, for users who may manage them.</summary>
+    public ServerBotsVM Bots { get; }
+
     /// <summary>The current page of users matching <see cref="Filter"/>, by name.</summary>
     public ObservableCollection<ServerUserRowVM> Users { get; } = new();
 
@@ -145,6 +148,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         Interaction<MessageBoxVM, Result> showMessageBox, ReactiveCommand<int, RxVoid> viewProfileCommand)
     {
         Form = form;
+        Bots = new ServerBotsVM(coordinatorSession, showMessageBox);
         _coordinatorSession = coordinatorSession;
         _showMessageBox = showMessageBox;
         _viewProfileCommand = viewProfileCommand;
@@ -179,6 +183,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     {
         Error = null;
         await LoadBansAsync();
+        await Bots.LoadAsync();
 
         var (result, users) = await _coordinatorSession.GetAllUsers();
         if (users == null)
@@ -357,5 +362,6 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         ToggleFreezeCommand.Dispose();
         ToggleBanCommand.Dispose();
         DeleteCommand.Dispose();
+        Bots.Dispose();
     }
 }

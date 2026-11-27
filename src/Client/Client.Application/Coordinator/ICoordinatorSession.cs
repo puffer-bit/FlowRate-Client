@@ -446,6 +446,24 @@ public interface ICoordinatorSession : IDisposable
     Task<RequestResult> RevokeBan(Guid banId);
     string? BanReason => null;
     Task<RequestResult> DeleteUser(int userId);
+
+    /// <summary>The bots of the server, for users who may manage them.</summary>
+    Task<RequestResult<System.Collections.Generic.IReadOnlyList<UserModel>>> GetBots();
+
+    /// <summary>
+    /// Makes a bot owned by the current user and answers its first login code; fails with
+    /// <see cref="ErrorCode.NameTaken"/> or <see cref="ErrorCode.BotLimitReached"/>.
+    /// </summary>
+    Task<RequestResult<(UserModel Bot, Shared.Models.DataTransferObjects.BotLoginCodeDTO LoginCode)>> CreateBot(
+        string username, bool isDebug);
+
+    /// <summary>
+    /// A new login code for a bot; with <paramref name="endDevices"/> its devices end and it is disconnected.
+    /// </summary>
+    Task<RequestResult<Shared.Models.DataTransferObjects.BotLoginCodeDTO>> NewBotLoginCode(int botId, bool endDevices);
+
+    /// <summary>Deletes a bot. On success <see cref="UserDeleted"/> is raised.</summary>
+    Task<RequestResult> DeleteBot(int botId);
     bool ValidateUsername(string username);
     
     Task<RequestResult> SetChatTyping(int sessionId, bool isTyping);

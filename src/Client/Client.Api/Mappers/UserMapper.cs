@@ -15,6 +15,8 @@ internal static class UserMapper
             Id = dto.Id,
             CoordinatorInstanceId = dto.CoordinatorInstanceId,
             Username = dto.Username,
+            Kind = dto.Kind,
+            OwnerUserId = dto.OwnerUserId,
             Ip = dto.Ip,
             RegionName = dto.RegionName,
             RegionCode = dto.RegionCode,

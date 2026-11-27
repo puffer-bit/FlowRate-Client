@@ -1,4 +1,5 @@
 <UserControl xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
@@ -72,6 +73,7 @@
                             </Style>
                         </TextBlock.Styles>
                     </TextBlock>
+                    <indicators:UserKindBadge Kind="{Binding SenderKind}"/>
                     <TextBlock Classes="msg-time"
                                Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
                 </StackPanel>

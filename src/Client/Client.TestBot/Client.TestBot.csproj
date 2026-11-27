@@ -12,7 +12,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
         <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
-        <ProjectReference Include="..\Database\Client.Database.File\Client.Database.File.csproj" />
+        <ProjectReference Include="..\Database\Client.Database.Sqlite\Client.Database.Sqlite.csproj" />
         <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
         <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
         <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />

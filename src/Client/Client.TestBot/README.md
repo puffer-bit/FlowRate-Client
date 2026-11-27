@@ -108,12 +108,14 @@ Every `--stats-interval` seconds the bots report their counters together:
 
 ## Behavior
 
-- **Identities.** Each bot keeps its user between runs instead of registering a new one. Identities
-  are recovered from plaintext recovery phrases stored per server and bot number in
-  `<LocalApplicationData>/FlowRate/TestBot/phrase-<host>-<port>-<n>.txt`. Delete the file to get a
-  new user. Storage is provided by `Client.Database.File`; TestBot supplies the data directory.
-- **Certificates.** The bot trusts whatever certificate the server presents, in memory only. It is
-  meant for test servers.
+- **Identities.** Each bot keeps its user between runs instead of registering a new one. With
+  `--accounts users` it logs in with the plaintext recovery phrase of its account; with
+  `--accounts bots` it is the bot account `TestBot <n>` and logs in as its saved device. Phrases and
+  devices are kept per server and bot number in the SQLite database
+  `<LocalApplicationData>/FlowRate/TestBot/client.db`, never in the keyring. Delete the database to
+  get new users; old `phrase-<host>-<port>-<n>.txt` files are moved into it on the first run.
+- **Certificates.** The bot trusts whatever certificate the server presents and remembers it in its
+  database. It is meant for test servers.
 - **Audio files.** A file is decoded once to raw 48 kHz mono S16LE and cached in the temp directory
   as `flowrate-audio-<hash>.pcm`; the cache key includes the path, size and modification time. The
   cached file is then played with `multifilesrc loop=true` and split into 20 ms buffers.
