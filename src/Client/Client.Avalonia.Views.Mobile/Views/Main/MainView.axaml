@@ -404,7 +404,7 @@
                             </MultiBinding>
                         </menus:MenuItemButton.IsVisible>
                     </menus:MenuItemButton>
-                    <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{Binding CallText}"
+                    <menus:MenuItemButton Icon="{StaticResource DoorEnterIcon}" Content="{Binding CallText}"
                                           Command="{Binding CallCommand}" Click="OnChatActionClick">
                         <menus:MenuItemButton.IsVisible>
                             <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -647,7 +647,7 @@
                     </Grid>
 
                     <!-- One item, shown by the state it would change -->
-                    <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{l:Text sessions.join}"
+                    <menus:MenuItemButton Icon="{StaticResource DoorEnterIcon}" Content="{l:Text sessions.join}"
                                           IsVisible="{Binding !IsEntered}" IsEnabled="{Binding CanJoin}"
                                           Click="OnHybridJoinClick"/>
                     <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text sessions.leave}"

@@ -100,7 +100,7 @@
                         AutomationProperties.Name="{Binding CallTip}">
                     <Panel>
                         <Image Source="{StaticResource ChatCallStartedIcon}" IsVisible="{Binding !IsCallRunning}"/>
-                        <Image Source="{StaticResource DoorWithGreenArrowIcon}" IsVisible="{Binding IsCallRunning}"/>
+                        <Image Source="{StaticResource DoorEnterIcon}" IsVisible="{Binding IsCallRunning}"/>
                     </Panel>
                 </Button>
                 <ToggleButton Classes="viewersToggle" Width="36" Height="36" Padding="8"

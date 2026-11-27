@@ -703,19 +703,18 @@
         </DrawingGroup>
     </DrawingImage>
 
-    <!-- Door with green arrow (enter). Source: Icons/DoorWithGreenArrowIcon.svg -->
-    <DrawingImage x:Key="DoorWithGreenArrowIcon">
+    <!-- Door with green arrow coming in (enter). Source: Icons/DoorEnterIcon.svg -->
+    <DrawingImage x:Key="DoorEnterIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
-            <GeometryDrawing Geometry="M12.5 3 H19 A1.5 1.5 0 0 1 20.5 4.5 V19.5 A1.5 1.5 0 0 1 19 21 H12.5 A1.5 1.5 0 0 1 11 19.5 V4.5 A1.5 1.5 0 0 1 12.5 3 Z">
+            <GeometryDrawing Geometry="M14 4 H19 A2 2 0 0 1 21 6 V18 A2 2 0 0 1 19 20 H14">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
-            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M12.7 12 A0.9 0.9 0 1 0 14.5 12 A0.9 0.9 0 1 0 12.7 12 Z"/>
-            <GeometryDrawing Geometry="M2.5 12 H9 M6 8.8 L9.2 12 L6 15.2">
+            <GeometryDrawing Geometry="M3 12 H15 M11 8 L15 12 L11 16">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#24E265" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                    <Pen Brush="#4CAF50" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>

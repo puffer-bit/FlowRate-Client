@@ -67,7 +67,7 @@ public static class IconKeys
         
         // Actions
         { IconType.Logout, "DoorWithRedArrowIcon" },
-        { IconType.Login, "DoorWithGreenArrowIcon" },
+        { IconType.Login, "DoorEnterIcon" },
         { IconType.KickFromSession, "BootKickIcon" },
         { IconType.Crush, "ExplodeIcon" },
         

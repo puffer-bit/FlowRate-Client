@@ -249,7 +249,7 @@
                     <Panel>
                         <Image Width="24" Height="24" Source="{StaticResource ChatCallStartedIcon}"
                                IsVisible="{Binding !StatusBar.IsCallRunning}"/>
-                        <Image Width="24" Height="24" Source="{StaticResource DoorWithGreenArrowIcon}"
+                        <Image Width="24" Height="24" Source="{StaticResource DoorEnterIcon}"
                                IsVisible="{Binding StatusBar.IsCallRunning}"/>
                     </Panel>
                 </Button>

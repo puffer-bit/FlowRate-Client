@@ -38,7 +38,7 @@ public class ConnectWindowVM : ReactiveObject
     /// <summary>The entry that logs in to an account this device does not know yet.</summary>
     public SavedUserModel ExistingAccount { get; } = new()
     {
-        Username = Strings.Get("connect.identity.existing"), EntryIconKey = "DoorWithGreenArrowIcon"
+        Username = Strings.Get("connect.identity.existing"), EntryIconKey = "DoorEnterIcon"
     };
 
     public SavedUserModel? SelectedIdentity

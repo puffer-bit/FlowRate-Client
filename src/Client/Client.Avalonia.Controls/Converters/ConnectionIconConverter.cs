@@ -10,7 +10,7 @@ public class ConnectionIconConverter : IValueConverter
     {
         bool isConnected = value is bool b && b;
 
-        return IconResources.Get(isConnected ? "DoorWithMarkIcon" : "DoorWithGreenArrowIcon");
+        return IconResources.Get(isConnected ? "DoorWithMarkIcon" : "DoorEnterIcon");
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

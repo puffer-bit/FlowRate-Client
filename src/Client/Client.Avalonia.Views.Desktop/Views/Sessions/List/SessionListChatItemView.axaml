@@ -69,7 +69,7 @@
                                 </MultiBinding>
                             </menus:MenuItemButton.IsVisible>
                         </menus:MenuItemButton>
-                        <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}"
+                        <menus:MenuItemButton Icon="{StaticResource DoorEnterIcon}"
                                               Content="{Binding DataContext.CallText, ElementName=Root}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               Command="{Binding DataContext.CallCommand, ElementName=Root}">
