@@ -366,6 +366,8 @@
   "connect.button": "连接",
   "connect.title": "连接到服务器",
   "connect.subtitle": "请输入连接协调器所需的信息。",
+  "connect.leaveServer.title": "当前连接将被断开",
+  "connect.leaveServer.text": "你将断开与当前服务器的连接并离开其语音频道，然后连接到新的服务器",
   "connect.password.placeholder": "可能不需要",
   "connect.saveToProfiles": "保存到“配置文件”",
 

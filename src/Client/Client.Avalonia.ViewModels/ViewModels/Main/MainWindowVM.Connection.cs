@@ -225,6 +225,9 @@ public partial class MainWindowVM
         var connectWindow = _createConnectWindow();
         if (account is var (coordinatorId, userId))
             connectWindow.PreferAccount(coordinatorId, userId);
+        // Only a connected server is left by a new connect: one still connecting was dropped above
+        if (_coordinatorSession is { ConnectionStatus: CoordinatorState.Connected })
+            connectWindow.WarnAboutLeavingConnectedServer();
         prepare?.Invoke(connectWindow);
         var newCoordinator = await ShowConnectWindow.Handle(connectWindow);
         if (newCoordinator is { ConnectionStatus: CoordinatorState.Connected })
