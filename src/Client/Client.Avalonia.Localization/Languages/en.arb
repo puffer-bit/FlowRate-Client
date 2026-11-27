@@ -199,6 +199,8 @@
   "connect.button": "Connect",
   "connect.title": "Connect to a server",
   "connect.subtitle": "Enter the details to connect to the coordinator.",
+  "connect.leaveServer.title": "The current connection will be closed",
+  "connect.leaveServer.text": "You will disconnect from the server you are connected to now and leave its voice channel, then connect to the new server",
   "connect.password.placeholder": "May not be required",
   "connect.saveToProfiles": "Save to \"Profiles\"",
   "rejection.title": "Request rejected",

@@ -364,6 +364,8 @@
   "connect.button": "Conectar",
   "connect.title": "Conectar con el servidor",
   "connect.subtitle": "Introduce los datos para conectar con el coordinador.",
+  "connect.leaveServer.title": "La conexión actual se cerrará",
+  "connect.leaveServer.text": "Te desconectarás del servidor al que estás conectado ahora y saldrás de su canal de voz, y después te conectarás al nuevo servidor",
   "connect.password.placeholder": "Puede que no haga falta",
   "connect.saveToProfiles": "Guardar en «Perfiles»",
 

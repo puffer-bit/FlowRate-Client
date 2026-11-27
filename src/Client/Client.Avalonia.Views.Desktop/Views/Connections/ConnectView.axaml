@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+        xmlns:banners="clr-namespace:Client.Avalonia.Controls.Banners;assembly=Client.Avalonia.Controls"
         xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
         xmlns:common="clr-namespace:Client.Views.Common"
         xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
@@ -29,6 +30,11 @@
 
         <!-- Form -->
         <StackPanel Grid.Row="2" Margin="{StaticResource DialogBodyMargin}" Spacing="18" IsEnabled="{Binding !IsBusy}">
+
+            <!-- On top, above the address: connecting here leaves the server connected now, with its voice -->
+            <banners:InfoBanner Header="{l:Text connect.leaveServer.title}"
+                                Message="{l:Text connect.leaveServer.text}"
+                                IsVisible="{Binding IsLeavingConnectedServer}"/>
 
             <!-- Address and port -->
             <StackPanel Spacing="6">

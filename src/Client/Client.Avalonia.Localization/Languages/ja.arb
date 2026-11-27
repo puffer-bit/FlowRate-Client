@@ -364,6 +364,8 @@
   "connect.button": "接続",
   "connect.title": "サーバーに接続",
   "connect.subtitle": "コーディネーターへの接続情報を入力してください。",
+  "connect.leaveServer.title": "現在の接続は切断されます",
+  "connect.leaveServer.text": "現在接続しているサーバーから切断され、ボイスチャンネルからも退出したうえで、新しいサーバーに接続します",
   "connect.password.placeholder": "不要な場合があります",
   "connect.saveToProfiles": "「プロファイル」に保存",
 

@@ -401,6 +401,14 @@ public class ConnectWindowVM : ReactiveObject
     /// </summary>
     public void PreferAccount(string coordinatorId, int userId) => _preferredAccount = (coordinatorId, userId);
 
+    /// <summary>
+    /// The window is opened while a server is connected: connecting here leaves it, with its voice, so the window warns
+    /// about it. Set right after the window is made, before it is shown.
+    /// </summary>
+    public bool IsLeavingConnectedServer { get; private set; }
+
+    public void WarnAboutLeavingConnectedServer() => IsLeavingConnectedServer = true;
+
     // The server a link opened the window on, with the certificate it vouches for
     private (string Host, int Port, string Fingerprint)? _linkCertificate;
 
