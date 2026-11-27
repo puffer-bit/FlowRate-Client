@@ -9,6 +9,7 @@ using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
+using Client.Services;
 using Client.ViewModels.Dialogs;
 using ReactiveUI;
 using Shared.Enums;
@@ -105,7 +106,7 @@ public sealed class ServerBotsVM : ReactiveObject, IDisposable
         _showMessageBox = showMessageBox;
         CanManage = coordinatorSession.Permissions.Has(Permission.ManageBots);
 
-        var canCreate = this.WhenAnyValue(vm => vm.NewBotName, name => !string.IsNullOrWhiteSpace(name));
+        var canCreate = this.WatchProperty(nameof(NewBotName), vm => !string.IsNullOrWhiteSpace(vm.NewBotName));
         CreateCommand = ReactiveCommand.CreateFromTask(CreateAsync, canCreate);
         NewCodeCommand = ReactiveCommand.CreateFromTask<ServerBotRowVM>(NewCodeAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask<ServerBotRowVM>(DeleteAsync);
