@@ -10,10 +10,21 @@ public static class AppDirectories
     /// </summary>
     public static string Data { get; private set; } = DefaultData;
 
+    /// <summary>
+    /// The name of the default folder. A debug build keeps its own, so a build from a branch with
+    /// newer migrations never upgrades the database of the installed release, and the two do not
+    /// share a GStreamer registry of different runtimes or write into the same logs.
+    /// </summary>
+#if DEBUG
+    public const string DefaultFolderName = "FlowRate-Dev";
+#else
+    public const string DefaultFolderName = "FlowRate";
+#endif
+
     private static string DefaultData => Path.Combine(
         System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData,
             System.Environment.SpecialFolderOption.DoNotVerify),
-        "FlowRate");
+        DefaultFolderName);
 
     /// <summary>Resolves the desktop data directory without accessing the filesystem.</summary>
     public static string ResolveDataDirectory(IReadOnlyList<string> args)

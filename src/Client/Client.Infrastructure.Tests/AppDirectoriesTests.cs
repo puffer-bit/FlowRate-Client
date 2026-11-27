@@ -9,7 +9,7 @@ public sealed class AppDirectoriesTests
     public void NoOption_UsesDefaultDirectory()
     {
         var expected = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData,
-            Environment.SpecialFolderOption.DoNotVerify), "FlowRate");
+            Environment.SpecialFolderOption.DoNotVerify), AppDirectories.DefaultFolderName);
         Assert.Equal(Path.GetFullPath(expected), AppDirectories.ResolveDataDirectory(["--no-media"]));
     }
 
