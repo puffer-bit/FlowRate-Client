@@ -4,6 +4,7 @@
              xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
              xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
              xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
              xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
              xmlns:views="clr-namespace:Client.Mobile.Views.Sessions.List"
@@ -500,8 +501,13 @@
                         <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
                                               Command="{Binding SelfSession.ToggleAfkCommand}"
                                               Click="OnPeerMenuClick" IsVisible="{Binding SelfSession.IsAfk}"/>
+                        <!-- Lit by how well we reach the server, as on the desktop -->
                         <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
-                                              Click="OnPeerSelfStatsClick"/>
+                                              Click="OnPeerSelfStatsClick">
+                            <menus:MenuItemButton.IconContent>
+                                <indicators:SignalIndicator Level="{Binding SelfSession.Stats.SignalLevel, FallbackValue=0}"/>
+                            </menus:MenuItemButton.IconContent>
+                        </menus:MenuItemButton>
                     </StackPanel>
 
                     <!-- The menu stays open while playback is adjusted. -->
@@ -511,8 +517,13 @@
                                               IsVisible="{Binding CanPoke}" Click="OnPeerPokeNowClick"/>
                         <menus:MenuItemButton Content="{l:Text peer.poke.withMessage}"
                                               IsVisible="{Binding CanPoke}" Click="OnPeerPokeClick"/>
+                        <!-- Lit by how the user reaches us -->
                         <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
-                                              IsVisible="{Binding CanShowConnectionStats}" Click="OnPeerStatsClick"/>
+                                              IsVisible="{Binding CanShowConnectionStats}" Click="OnPeerStatsClick">
+                            <menus:MenuItemButton.IconContent>
+                                <indicators:SignalIndicator Level="{Binding ConnectionStats.SignalLevel, FallbackValue=0}"/>
+                            </menus:MenuItemButton.IconContent>
+                        </menus:MenuItemButton>
                         <Grid ColumnDefinitions="*, Auto" Margin="12,6,12,0">
                             <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
                             <TextBlock Grid.Column="1"
