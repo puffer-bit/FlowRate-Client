@@ -30,8 +30,10 @@
         
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
              only the text inside a message can be selected for copying -->
+        <!-- "bubbles": the messages are drawn as in Telegram, chosen in the settings -->
         <ItemsControl Grid.Row="1"
                       x:Name="MessagesList"
+                      Classes.bubbles="{Binding IsBubbleLayout}"
                       IsVisible="{Binding HasMessages}"
                       ItemsSource="{Binding Messages}"
                       Margin="6">
@@ -61,6 +63,8 @@
             </ItemsControl.DataTemplates>
 
             <ItemsControl.Styles>
+                <!-- The rings of uploads and downloads of files, once for every message -->
+                <StyleInclude Source="avares://Client.Avalonia.Views.Common/Views/Chat/ChatFileRingStyle.axaml"/>
                 <!-- The spacing the rows had as list items -->
                 <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
                     <Setter Property="Margin" Value="0,2"/>
@@ -71,6 +75,7 @@
         <loadingIndicators:ChatSkeleton Grid.Row="1"
                                         Margin="6"
                                         VerticalAlignment="Stretch"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsInitialLoading}"/>
 
         <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
@@ -79,6 +84,7 @@
                                         VerticalAlignment="Top"
                                         Background="{DynamicResource GeneralBrush}"
                                         IsCompact="True"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsLoadingOlder}"/>
 
         <!-- Shown while the chat has no messages; laid out like the placeholder of the main window -->

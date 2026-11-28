@@ -24,7 +24,8 @@ public sealed record ChatSessionServices(
     ChatReceipts? Receipts = null,
     ChatAttachmentOptions? AttachmentOptions = null,
     Client.ViewModels.Sessions.Chat.ChatDrafts? Drafts = null,
-    Client.Application.Tasks.ITaskTracker? Tasks = null);
+    Client.Application.Tasks.ITaskTracker? Tasks = null,
+    Client.ViewModels.Sessions.Chat.ChatOutbox? Outbox = null);
 
 /// <summary>
 /// The services the hybrid session we are in uses. Resolved only when a session is entered: a

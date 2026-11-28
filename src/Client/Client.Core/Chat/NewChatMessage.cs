@@ -22,4 +22,10 @@ public class NewChatMessage
 
     /// <summary>The author closed the preview of the link in the composer.</summary>
     public bool IsLinkPreviewDisabled { get; init; }
+
+    /// <summary>
+    /// Made once for the message and kept for every attempt to send it: the message comes back with it, and a
+    /// server stores a repeat of it only once.
+    /// </summary>
+    public Guid ClientMessageId { get; init; } = Guid.NewGuid();
 }

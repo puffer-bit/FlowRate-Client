@@ -1,10 +1,12 @@
 <UserControl xmlns:volumeIcons="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Shared.Chat.ChatAudioPlayer"
              x:CompileBindings="True" x:DataType="vm:ChatFileVM">
+
     <Border Width="300" Padding="6" Margin="0,0,0,4" CornerRadius="6"
             Background="{DynamicResource ColorOverlayMedium}">
         <StackPanel Spacing="2">
@@ -15,14 +17,21 @@
                            Foreground="{DynamicResource SecondaryTextBrush}"/>
             </Grid>
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
-                <Button x:Name="PlayButton" Classes="ghost" Click="OnPlay" Width="24" Height="24" Padding="0"
-                        ToolTip.Tip="{l:Text chat.audio.play}">
-                    <Panel>
-                        <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="14" Height="14" IsVisible="False"/>
-                        <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="14" Height="14"/>
-                        <Image x:Name="PauseImage" Source="{StaticResource AudioPauseIcon}" Width="14" Height="14" IsVisible="False"/>
-                    </Panel>
-                </Button>
+                <!-- While the file comes, its download goes around the button, which stops it -->
+                <Panel>
+                    <Button x:Name="PlayButton" Classes="ghost" Click="OnPlay" Width="24" Height="24" Padding="0"
+                            ToolTip.Tip="{l:Text chat.audio.play}">
+                        <Panel>
+                            <Image x:Name="CancelImage" Source="{StaticResource CloseIcon}" Width="14" Height="14" IsVisible="False"/>
+                            <Image x:Name="PlayImage" Source="{StaticResource PlayIcon}" Width="14" Height="14"/>
+                            <Image x:Name="PauseImage" Source="{StaticResource AudioPauseIcon}" Width="14" Height="14" IsVisible="False"/>
+                        </Panel>
+                    </Button>
+                    <loadingIndicators:ProgressRing Classes="smooth file-ring" Width="24" Height="24"
+                                                    MinWidth="0" MinHeight="0" BorderThickness="2"
+                                                    Maximum="1" Value="{Binding Progress}"
+                                                    IsVisible="{Binding IsDownloading}"/>
+                </Panel>
                 <Slider x:Name="SeekSlider" Grid.Column="1" Minimum="0" Maximum="1" IsEnabled="False"
                         Height="24" VerticalAlignment="Center"
                         ValueChanged="OnSeek" ToolTip.Tip="{l:Text chat.audio.seek}"/>
@@ -49,8 +58,6 @@
             </Grid>
             <TextBlock Text="{l:Text chat.file.saved}" IsVisible="{Binding IsSaved}" FontSize="11"
                        Foreground="{DynamicResource SecondaryTextBrush}"/>
-            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="3"
-                         IsVisible="{Binding IsDownloading}"/>
             <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" FontSize="11"
                        Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/>
             <TextBlock x:Name="PlaybackError" Text="{l:Text chat.audio.failed}" IsVisible="False"

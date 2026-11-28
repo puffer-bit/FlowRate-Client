@@ -50,6 +50,15 @@
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
     </Style>
 
+    <!-- Why something did not work, at the top of a menu; aligned with the item labels -->
+    <Style Selector="FlyoutPresenter TextBlock.menuError">
+        <Setter Property="Margin" Value="8,4,8,4"/>
+        <Setter Property="MaxWidth" Value="260"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+
     <!-- A non-button row of a menu (a slider and the like), with the same side insets as the items -->
     <Style Selector="FlyoutPresenter :is(Control).menuRow">
         <Setter Property="Margin" Value="8,0"/>

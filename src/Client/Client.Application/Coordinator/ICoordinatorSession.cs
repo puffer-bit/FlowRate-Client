@@ -468,7 +468,12 @@ public interface ICoordinatorSession : IDisposable
     
     Task<RequestResult> SetChatTyping(int sessionId, bool isTyping);
 
-    Task<RequestResult> SendChatMessage(NewChatMessage message);
+    /// <summary>
+    /// Sends a new message. Sending it again after a failure, with the same
+    /// <see cref="NewChatMessage.ClientMessageId"/>, does not add it twice.
+    /// </summary>
+    /// <returns>The stored message on success; null from servers that do not send it back.</returns>
+    Task<RequestResult<ChatMessageModel?>> SendChatMessage(NewChatMessage message);
 
     /// <summary>
     /// Uploads a picture and puts it on the profile of the current user. On success

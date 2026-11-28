@@ -8,6 +8,13 @@ public interface IAppearanceService
     Task<bool> GetGroupOnlineChatUsersAsync();
     Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers);
 
+    /// <returns>How the messages of chats are drawn.</returns>
+    Task<Client.Core.Chat.ChatMessageLayout> GetChatMessageLayoutAsync();
+    Task UpdateChatMessageLayoutAsync(Client.Core.Chat.ChatMessageLayout layout);
+
+    /// <summary>The messages of chats are drawn otherwise from now on; open chats follow at once.</summary>
+    event Action<Client.Core.Chat.ChatMessageLayout>? ChatMessageLayoutChanged;
+
     Task<ThemeType> GetCurrentThemeTypeAsync();
     Task UpdateCurrentThemeTypeAsync(ThemeType themeType);
 

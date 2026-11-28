@@ -35,7 +35,7 @@ public sealed class ChatLinkPreviewTests
                         (string)args![1]! == Preview.Url ? Preview : (ChatLinkPreview?)null);
                 case "SendChatMessage":
                     Sent.Add((NewChatMessage)args![0]!);
-                    return Task.FromResult(new RequestResult(null));
+                    return Task.FromResult(new RequestResult<ChatMessageModel?>((ChatMessageModel?)null));
                 case "EditChatMessage":
                     Edits.Add((bool?)args![3]);
                     return Task.FromResult(new RequestResult(null));
@@ -43,6 +43,11 @@ public sealed class ChatLinkPreviewTests
                     return Task.FromResult(new RequestResult(null));
                 case "GetCurrentUser":
                     return new UserModel { Id = 1, Username = "me", CoordinatorInstanceId = "c" };
+                // The outbox sends while the connection is up
+                case "get_ConnectionStatus":
+                    return CoordinatorState.Connected;
+                case "get_CoordinatorModel":
+                    return null;
                 default:
                     if (method.Name.StartsWith("add_") || method.Name.StartsWith("remove_")) return null;
                     throw new InvalidOperationException(method.Name);

@@ -751,6 +751,9 @@ public partial class MainWindowVM
             OpenedSessions = sessions;
         }
 
+        // Messages left from the last run go without their chat being opened
+        _chatServices.Outbox?.Attach(session);
+
         // On the first connect nothing is open yet, but chats cached by an earlier run may be gone
         RestoreOpenedChats(OpenedSessions);
     }

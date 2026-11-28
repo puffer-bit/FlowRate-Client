@@ -13,6 +13,9 @@ public class ChatMessageModel
     public long Revision { get; init; }
 
     public required int SenderUserId { get; init; }
+
+    /// <summary>What the author's client gave the message when sending it; null from older clients and servers.</summary>
+    public Guid? ClientMessageId { get; init; }
     public required DateTimeOffset SentTime { get; init; }
     public DateTimeOffset? DelayedSentTime { get; init; }
     public DateTimeOffset? DisposeTime { get; init; }

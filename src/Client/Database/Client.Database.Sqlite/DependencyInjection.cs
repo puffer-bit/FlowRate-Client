@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IRememberedUsersRepository, RememberedUsersRepository>();
         services.AddSingleton<IUserNotesRepository, UserNotesRepository>();
         services.AddSingleton<IChatDraftsRepository, ChatDraftsRepository>();
+        services.AddSingleton<IChatOutboxRepository, ChatOutboxRepository>();
         services.AddSingleton<ITrustedCertificatesRepository, TrustedCertificatesRepository>();
         services.AddSingleton<IChatCacheRepository, ChatCacheRepository>();
         services.AddSingleton<IMutedChatsRepository, MutedChatsRepository>();

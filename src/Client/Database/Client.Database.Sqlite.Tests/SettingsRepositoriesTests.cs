@@ -31,6 +31,21 @@ public class SettingsRepositoriesTests
     }
 
     [Fact]
+    public async Task ChatMessageLayoutIsAListUntilBubblesAreChosen()
+    {
+        await using var database = await TestDatabase.CreateMigratedAsync();
+        var repository = new AppearanceSettingsRepository(database.Database);
+        Assert.Equal(Client.Core.Chat.ChatMessageLayout.List, await repository.GetChatMessageLayoutAsync());
+
+        await repository.UpdateLanguageAsync("ru");
+        await repository.UpdateChatMessageLayoutAsync(Client.Core.Chat.ChatMessageLayout.Bubbles);
+
+        var reopened = new AppearanceSettingsRepository(database.Database);
+        Assert.Equal(Client.Core.Chat.ChatMessageLayout.Bubbles, await reopened.GetChatMessageLayoutAsync());
+        Assert.Equal("ru", await reopened.GetLanguageAsync());
+    }
+
+    [Fact]
     public async Task ExistingDatabaseGainsChatViewerGroupingWithoutChangingAppearance()
     {
         await using var database = await TestDatabase.CreateAtVersionAsync(29);

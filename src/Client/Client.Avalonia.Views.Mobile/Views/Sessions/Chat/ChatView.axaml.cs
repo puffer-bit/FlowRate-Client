@@ -636,7 +636,7 @@ public partial class ChatView : UserControl
 
         var row = source?.GetSelfAndVisualAncestors().OfType<Control>()
             .FirstOrDefault(control => control.GetVisualParent() is MessageListPanel);
-        if (row?.DataContext is not ChatMessageVM { IsSystem: false } message)
+        if (row?.DataContext is not ChatMessageVM { CanReply: true } message)
             return false;
 
         _swipedRow = row;

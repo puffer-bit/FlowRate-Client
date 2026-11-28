@@ -57,9 +57,18 @@ public class ChatTimeline
     public void Remove(ChatMessageVM message)
     {
         var position = _messages.BinarySearch(message, MessageOrder);
+        // Equal times and ids cannot be told apart by the order: the row is the one holding this message
+        if (position >= 0 && !ReferenceEquals(_messages[position], message))
+            position = _messages.IndexOf(message);
         if (position < 0)
             return;
 
+        RemoveAt(position);
+    }
+
+    private void RemoveAt(int position)
+    {
+        var message = _messages[position];
         var date = message.LocalSentTime.Date;
         var day = FindDatePosition(date);
         var row = position + day + 1;
@@ -74,6 +83,39 @@ public class ChatTimeline
             _separators.RemoveAt(day);
             Items.RemoveAt(row - 1);
         }
+    }
+
+    /// <summary>
+    /// Puts a message in the row of another one, as the stored copy of a message takes the row it was shown in while
+    /// on its way. The row stays where it is when the order allows it; otherwise the message moves to its place.
+    /// </summary>
+    public void Replace(ChatMessageVM shown, ChatMessageVM replacement)
+    {
+        // Rows on their way are at the end, so the search starts there
+        var position = _messages.LastIndexOf(shown);
+        if (position < 0)
+        {
+            AddRange([replacement]);
+            return;
+        }
+
+        var date = shown.LocalSentTime.Date;
+        var fits = replacement.LocalSentTime.Date == date
+                   && (position == 0 || MessageOrder.Compare(_messages[position - 1], replacement) < 0)
+                   && (position == _messages.Count - 1 || MessageOrder.Compare(replacement, _messages[position + 1]) < 0);
+        if (!fits)
+        {
+            RemoveAt(position);
+            AddRange([replacement]);
+            return;
+        }
+
+        var row = position + FindDatePosition(date) + 1;
+        _messages[position] = replacement;
+        UpdateChain(position - 1);
+        UpdateChain(position);
+        UpdateChain(position + 1);
+        Items[row] = replacement;
     }
 
     public void Clear()

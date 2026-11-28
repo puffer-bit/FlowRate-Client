@@ -6,6 +6,7 @@ using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
+using Client.Core.Chat;
 using Client.Services;
 using ReactiveUI;
 
@@ -19,13 +20,15 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     public SettingTabType Type => SettingTabType.Experimental;
     public IReadOnlyList<SettingAnchor> Anchors =>
     [
-        new("experimental.general", "settings.experimental.section.general")
+        new("experimental.general", "settings.experimental.section.general"),
+        new("experimental.chat", "settings.experimental.section.chat")
     ];
 
     public bool IsEnabled => true;
 
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("experimental",
-        ("general", ["enable"]));
+        ("general", ["enable"]),
+        ("chat", ["messageLayout"]));
 
     /// <summary>
     /// The experimental features as a whole: while off, none of them works and their settings cannot
@@ -42,6 +45,27 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     } = ExperimentalFeatures.IsEnabled;
 
     public bool IsIconAgitated => IsExperimentalEnabled && Motion.IsEnabled;
+
+    /// <summary>
+    /// Messages are drawn in bubbles, as in Telegram, instead of a list, as in Discord. Kept with the appearance
+    /// settings; the chats draw bubbles only while the experimental features are on.
+    /// </summary>
+    public bool IsBubbleLayout
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MessageLayoutIndex));
+        }
+    }
+
+    // Index into the layout choices of the view, in the order of ChatMessageLayout
+    public int MessageLayoutIndex
+    {
+        get => (int)(IsBubbleLayout ? ChatMessageLayout.Bubbles : ChatMessageLayout.List);
+        set => IsBubbleLayout = value == (int)ChatMessageLayout.Bubbles;
+    }
 
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
 
@@ -61,6 +85,13 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
             .Select(values => Observable.FromAsync(() => ChangeAsync(values)))
             .Concat()
             .Subscribe();
+        // Open chats follow at once
+        this.WatchProperty(nameof(IsBubbleLayout), vm => vm.IsBubbleLayout)
+            .Where(_ => _isLoaded)
+            .Select(value => Observable.FromAsync(() => _appearanceService.UpdateChatMessageLayoutAsync(
+                value ? ChatMessageLayout.Bubbles : ChatMessageLayout.List)))
+            .Concat()
+            .Subscribe();
 
         // The icon stops and starts with the animations of the application, the moment they are switched
         Motion.Changed += OnMotionChanged;
@@ -74,6 +105,7 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
     private async Task LoadAsync()
     {
         IsExperimentalEnabled = await _appearanceService.GetIsExperimentalEnabledAsync();
+        IsBubbleLayout = await _appearanceService.GetChatMessageLayoutAsync() == ChatMessageLayout.Bubbles;
         _isLoaded = true;
     }
 
@@ -88,8 +120,10 @@ public class ExperimentalControlVM : ReactiveObject, ISettingVM, IDisposable
         // Applied here directly, so the change handler must not apply and save it a second time
         _isLoaded = false;
         IsExperimentalEnabled = false;
+        IsBubbleLayout = false;
         _isLoaded = true;
 
         await ChangeAsync(false);
+        await _appearanceService.UpdateChatMessageLayoutAsync(ChatMessageLayout.List);
     }
 }

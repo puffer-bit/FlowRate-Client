@@ -83,7 +83,7 @@ internal sealed partial class VoiceBot
 
         try
         {
-            result = await coordinator.SendChatMessage(new NewChatMessage
+            (result, _) = await coordinator.SendChatMessage(new NewChatMessage
             {
                 ChatId = _chatId,
                 SenderUserId = coordinator.GetCurrentUser().Id,

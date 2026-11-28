@@ -43,6 +43,7 @@ public partial class SettingsView : UserControl
     private readonly AudioControlVM? _audio;
     private readonly StorageControlVM? _storage;
     private readonly DebugAndLogsControlVM? _debug;
+    private readonly ExperimentalControlVM? _experimental;
     private readonly AccountingControlVM? _accounting;
     private readonly AboutControlVM? _about;
     private readonly Func<MessageBoxVM, Task<Result>>? _showMessageBox;
@@ -95,6 +96,7 @@ public partial class SettingsView : UserControl
         _storage = new StorageControlVM(services.GetRequiredService<IStorageService>(),
             services.GetRequiredService<IDebugAndLogService>());
         _debug = new DebugAndLogsControlVM(services.GetRequiredService<IDebugAndLogService>());
+        _experimental = new ExperimentalControlVM(services.GetRequiredService<IAppearanceService>());
         _accounting = new AccountingControlVM(services.GetRequiredService<IAccountingService>(),
             services.GetRequiredService<IDatabaseSecurityService>());
 
@@ -113,6 +115,7 @@ public partial class SettingsView : UserControl
         AudioPage.DataContext = _audio;
         StoragePage.DataContext = _storage;
         DebugPage.DataContext = _debug;
+        ExperimentalPage.DataContext = _experimental;
         AccountingPage.DataContext = _accounting;
         AboutPage.DataContext = _about;
 
@@ -121,6 +124,7 @@ public partial class SettingsView : UserControl
         _audio.LoadCommand.Execute().Subscribe();
         _storage.LoadCommand.Execute().Subscribe();
         _debug.LoadCommand.Execute().Subscribe();
+        _experimental.LoadCommand.Execute().Subscribe();
         _accounting.LoadCommand.Execute().Subscribe();
 
         _collapsedSectionsRepository = services.GetRequiredService<ICollapsedSectionsRepository>();
@@ -161,6 +165,7 @@ public partial class SettingsView : UserControl
     {
         _audio?.Dispose();
         _about?.Dispose();
+        _experimental?.Dispose();
     }
 
     /// <summary>
@@ -201,7 +206,8 @@ public partial class SettingsView : UserControl
 
         foreach (var (tab, page) in (ReadOnlySpan<(ISettingVM?, SettingsPage)>)
                  [(_appearance, AppearancePage), (_behavior, BehaviorPage), (_audio, AudioPage),
-                     (_storage, StoragePage), (_debug, DebugPage), (_accounting, AccountingPage), (_about, AboutPage)])
+                     (_storage, StoragePage), (_debug, DebugPage), (_experimental, ExperimentalPage), (_accounting, AccountingPage),
+                     (_about, AboutPage)])
         {
             if (tab == null)
                 continue;
@@ -278,6 +284,7 @@ public partial class SettingsView : UserControl
             AudioControlVM => (AudioPage, "settings.audio.name"),
             StorageControlVM => (StoragePage, "settings.storage.name"),
             DebugAndLogsControlVM => (DebugPage, "settings.debug.name"),
+            ExperimentalControlVM => (ExperimentalPage, "settings.experimental.name"),
             AboutControlVM => (AboutPage, "settings.about.name"),
             _ => (AccountingPage, "settings.accounting.name")
         };
@@ -333,7 +340,7 @@ public partial class SettingsView : UserControl
 
     private void ShowOnlyCurrent()
     {
-        foreach (var screen in (Control[])[Categories, AppearancePage, BehaviorPage, AudioPage, StoragePage, DebugPage, AccountingPage, AboutPage])
+        foreach (var screen in (Control[])[Categories, AppearancePage, BehaviorPage, AudioPage, StoragePage, DebugPage, ExperimentalPage, AccountingPage, AboutPage])
             screen.IsVisible = ReferenceEquals(screen, _shown);
     }
 
@@ -396,6 +403,9 @@ public partial class SettingsView : UserControl
             accounting.DeleteIdentityCommand.Execute(identity).Subscribe();
     }
 
+    private void OnExperimentalClick(object? sender, RoutedEventArgs e) =>
+        _ = ShowPageAsync(ExperimentalPage, "settings.experimental.name");
+
     private void OnAccountingClick(object? sender, RoutedEventArgs e) =>
         _ = ShowPageAsync(AccountingPage, "settings.accounting.name");
 
@@ -433,6 +443,8 @@ public partial class SettingsView : UserControl
             await _storage.ResetAllAsync();
         if (_debug != null)
             await _debug.ResetAllAsync();
+        if (_experimental != null)
+            await _experimental.ResetAllAsync();
         await _appearance.ResetAllAsync();
     }
 }

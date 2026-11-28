@@ -204,6 +204,41 @@ public sealed class ChatTimelineTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Replace_KeepsTheRow_WhenTheStoredMessageFitsThere()
+    {
+        var timeline = new ChatTimeline();
+        var first = Message(1, Start);
+        var outgoing = Message(-1, Start.AddMinutes(1));
+        timeline.AddRange([first, outgoing]);
+        var changes = Observe(timeline);
+
+        var stored = Message(2, Start.AddMinutes(1).AddSeconds(1));
+        timeline.Replace(outgoing, stored);
+
+        AssertTimeline(timeline, [first, stored]);
+        var change = Assert.Single(changes);
+        Assert.Equal(NotifyCollectionChangedAction.Replace, change.Action);
+        Assert.Equal(2, change.NewStartingIndex);
+    }
+
+    [Fact]
+    public void Replace_MovesTheMessage_WhenTheServerTimePutsItElsewhere()
+    {
+        var timeline = new ChatTimeline();
+        var first = Message(1, Start);
+        var other = Message(2, Start.AddMinutes(2), sender: 2);
+        var outgoing = Message(-1, Start.AddMinutes(3));
+        timeline.AddRange([first, other, outgoing]);
+
+        // The clock of the device was ahead: the server put the message before the other one
+        var stored = Message(3, Start.AddMinutes(1));
+        timeline.Replace(outgoing, stored);
+
+        AssertTimeline(timeline, [first, stored, other]);
+        Assert.DoesNotContain(outgoing, timeline.Items);
+    }
+
     private static List<NotifyCollectionChangedEventArgs> Observe(ChatTimeline timeline)
     {
         var changes = new List<NotifyCollectionChangedEventArgs>();

@@ -8,6 +8,11 @@
         <SolidColorBrush x:Key="MsgReplyHoverBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.18"/>
         <SolidColorBrush x:Key="MsgReplyPressedBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.26"/>
         <SolidColorBrush x:Key="MsgHighlightBrush" Color="{DynamicResource ColorPrimary}" Opacity="0.22"/>
+        <!-- Bubbles: the user's own in a deep accent with white text, dimmed while on their way; the others in
+             the color of raised surfaces -->
+        <SolidColorBrush x:Key="MsgBubbleMineBrush" Color="{DynamicResource SystemAccentColorDark2}"/>
+        <SolidColorBrush x:Key="MsgBubbleMinePendingBrush" Color="{DynamicResource SystemAccentColorDark2}" Opacity="0.55"/>
+        <SolidColorBrush x:Key="MsgBubbleMineMetaBrush" Color="White" Opacity="0.75"/>
     </Styles.Resources>
     
     <Style Selector="Button.msg-reaction">
@@ -487,4 +492,268 @@
         <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
     </Style>
 
+    <!-- An own message on its way is dimmed until the server has it; the rings of its files stay clear -->
+    <Style Selector="Border.msg-root.pending :is(TextBlock).msg-body">
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    <Style Selector="Border.msg-root.pending Button.msg-reply, Border.msg-root.pending Border.msg-link">
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+
+    <!-- Its mark in place of the receipt: a clock, or a red mark that opens the menu once it did not go -->
+    <Style Selector=":is(UserControl).msg-status-mark">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+    <Style Selector="Button.msg-send-status">
+        <Setter Property="Width" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Margin" Value="8,2,0,0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <!-- Only the mark itself: the plate, border and states of the global button styles would draw a square
+             around the round mark, and a frame under the pointer -->
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                  Background="Transparent"
+                                  HorizontalContentAlignment="Center"
+                                  VerticalContentAlignment="Center"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+
+    <!-- ===== Who wrote a message and when, in the list: the first message of a run shows the avatar and the
+         header, the others their time in place of the avatar ===== -->
+    <Style Selector="Border.msg-root :is(Control).msg-avatar">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Margin" Value="0,0,10,0"/>
+    </Style>
+    <Style Selector="Border.msg-root.seq-start :is(Control).msg-avatar">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector="Border.msg-root StackPanel.msg-header">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.msg-root.seq-start StackPanel.msg-header">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <!-- As wide as the avatar, so the time sits under its center -->
+    <Style Selector="Border.msg-root Panel.msg-continuation-time">
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Margin" Value="0,0,10,0"/>
+    </Style>
+    <Style Selector="Border.msg-root.seq-start Panel.msg-continuation-time">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.msg-root StackPanel.msg-trailing">
+        <Setter Property="Orientation" Value="Horizontal"/>
+        <Setter Property="Spacing" Value="6"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <!-- The parts of a bubble are not drawn in the list -->
+    <Style Selector="Border.msg-root StackPanel.msg-bubble-meta, Border.msg-root Path.msg-tail">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <!-- ===== Bubbles, as in Telegram: the list of the chat carries the class "bubbles" ===== -->
+    <Style Selector=".bubbles Border.msg-root">
+        <Setter Property="Padding" Value="6,1,14,1"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-start">
+        <Setter Property="Padding" Value="6,6,14,1"/>
+    </Style>
+    <!-- A bubble needs no row highlight under the pointer or the menu; a jump to it still shows where it is -->
+    <Style Selector=".bubbles Border.msg-root, .bubbles Border.msg-root:pointerover, .bubbles Border.msg-root:pressed, .bubbles Border.msg-root.has-opened-flyout, .bubbles Border.msg-root.mentioned">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.highlighted">
+        <Setter Property="Background" Value="{DynamicResource MsgHighlightBrush}"/>
+    </Style>
+
+    <!-- The avatar of the others stands at the last bubble of their run; a direct chat has none -->
+    <Style Selector=".bubbles Border.msg-root :is(Control).msg-avatar">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Width" Value="30"/>
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-end:not(.mine):not(.direct) :is(Control).msg-avatar">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <!-- Keeps the room of the avatar under the bubbles of a run of the others, unseen -->
+    <Style Selector=".bubbles Border.msg-root Panel.msg-continuation-time">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root:not(.mine):not(.direct) Panel.msg-continuation-time">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Width" Value="30"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
+    <!-- The name of the others opens their run, in groups and channels; the time is in the bubble -->
+    <Style Selector=".bubbles Border.msg-root StackPanel.msg-header">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-start:not(.mine):not(.direct) StackPanel.msg-header">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector=".bubbles StackPanel.msg-header TextBlock.msg-time">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Panel.msg-status-column">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <!-- The bubble: the user's own on the right -->
+    <Style Selector=".bubbles Panel.msg-bubble-host">
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="MaxWidth" Value="560"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Panel.msg-bubble-host">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-bubble">
+        <Setter Property="Padding" Value="10,6,10,5"/>
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+        <Setter Property="CornerRadius" Value="6,16,16,6"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-start Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,16,16,6"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="6,16,16,0"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,16,16,0"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Border.msg-bubble">
+        <Setter Property="Background" Value="{DynamicResource MsgBubbleMineBrush}"/>
+        <Setter Property="CornerRadius" Value="16,6,6,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine.seq-start Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,16,6,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,6,0,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,16,0,16"/>
+    </Style>
+    <!-- On its way: the bubble is dimmed, its text a little less -->
+    <Style Selector=".bubbles Border.msg-root.mine.pending Border.msg-bubble">
+        <Setter Property="Background" Value="{DynamicResource MsgBubbleMinePendingBrush}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.pending :is(TextBlock).msg-body">
+        <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine :is(TextBlock).msg-body">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- The tail of the last bubble of a run, on the side of its author -->
+    <Style Selector=".bubbles Border.msg-root.seq-end Path.msg-tail">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="Width" Value="9"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="Stretch" Value="None"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="-8,0,0,0"/>
+        <Setter Property="RenderTransform" Value="scale(-1, 1)"/>
+        <Setter Property="Fill" Value="{DynamicResource DarkBackgroundBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine.seq-end Path.msg-tail">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,-8,0"/>
+        <Setter Property="RenderTransform" Value="none"/>
+        <Setter Property="Fill" Value="{DynamicResource MsgBubbleMineBrush}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine.pending.seq-end Path.msg-tail">
+        <Setter Property="Fill" Value="{DynamicResource MsgBubbleMinePendingBrush}"/>
+    </Style>
+
+    <!-- The time and mark inside the bubble: after the last word, or on a line of their own without text -->
+    <Style Selector=".bubbles StackPanel.msg-bubble-meta">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="Orientation" Value="Horizontal"/>
+        <Setter Property="Spacing" Value="3"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="Margin" Value="4,0,0,-1"/>
+    </Style>
+    <Style Selector=".bubbles StackPanel.msg-meta-row">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.has-text StackPanel.msg-meta-row">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="StackPanel.msg-bubble-meta TextBlock.msg-bubble-time">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorOverlayGray}"/>
+    </Style>
+    <Style Selector="StackPanel.msg-bubble-meta Viewbox.msg-bubble-receipt">
+        <Setter Property="Width" Value="15"/>
+        <Setter Property="Height" Value="15"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel.msg-bubble-meta Path.msg-bubble-check">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Stroke" Value="{DynamicResource ColorOverlayGray}"/>
+        <Setter Property="StrokeThickness" Value="2.2"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+    </Style>
+    <Style Selector="StackPanel.msg-bubble-meta Button.msg-send-status.in-bubble">
+        <Setter Property="Width" Value="14"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel.msg-bubble-meta :is(UserControl).msg-bubble-status">
+        <Setter Property="Width" Value="14"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="Foreground" Value="{DynamicResource ColorOverlayGray}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine StackPanel.msg-bubble-meta TextBlock.msg-bubble-time">
+        <Setter Property="Foreground" Value="{DynamicResource MsgBubbleMineMetaBrush}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine StackPanel.msg-bubble-meta Path.msg-bubble-check, .bubbles Border.msg-root.mine Path.msg-edited">
+        <Setter Property="Stroke" Value="{DynamicResource MsgBubbleMineMetaBrush}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine StackPanel.msg-bubble-meta :is(UserControl).msg-bubble-status">
+        <Setter Property="Foreground" Value="{DynamicResource MsgBubbleMineMetaBrush}"/>
+    </Style>
+    <!-- Read: the second check in full white on the own bubble -->
+    <Style Selector=".bubbles Border.msg-root.mine StackPanel.msg-bubble-meta Viewbox.msg-bubble-receipt:nth-child(3) Path.msg-bubble-check">
+        <Setter Property="Stroke" Value="White"/>
+    </Style>
+
+    <!-- The date between the messages: two lines in the list, a pill among bubbles -->
+    <Style Selector="Border.date-pill">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="0,10"/>
+        <Setter Property="Padding" Value="10,3,10,4"/>
+        <Setter Property="CornerRadius" Value="11"/>
+        <Setter Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
+    </Style>
+    <Style Selector=".bubbles Border.date-pill">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector=".bubbles Grid.date-lines">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
 </Styles>

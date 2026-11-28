@@ -157,10 +157,22 @@ public class ChatStatusBarVM : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>The connection is down: what is sent waits in the chat until it is back.</summary>
+    public bool IsWaitingForNetwork
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(StatusText));
+        }
+    }
+
     /// <summary>
     /// The line under the chat name: what is going on right now, otherwise what the chat is about.
     /// </summary>
-    public string StatusText => _typingNames.Count > 0
+    public string StatusText => IsWaitingForNetwork ? Strings.Get("chat.outgoing.waitingForNetwork")
+        : _typingNames.Count > 0
         ? Strings.Format(_typingNames.Count == 1 ? "chat.typing.one" : "chat.typing.many",
             ("names", string.Join(", ", _typingNames)))
         : IsLoading ? Strings.Get("chat.loadingMessages")

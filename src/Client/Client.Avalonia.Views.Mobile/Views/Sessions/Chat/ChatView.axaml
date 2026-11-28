@@ -271,8 +271,10 @@
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items -->
+        <!-- "bubbles": the messages are drawn as in Telegram, chosen in the settings -->
         <ItemsControl Grid.Row="2"
                       x:Name="MessagesList"
+                      Classes.bubbles="{Binding IsBubbleLayout}"
                       IsVisible="{Binding HasMessages}"
                       ItemsSource="{Binding Messages}"
                       Margin="4,0">
@@ -297,15 +299,28 @@
                 </DataTemplate>
 
                 <DataTemplate DataType="{x:Type chatVm:ChatDateSeparatorVM}">
-                    <TextBlock Text="{Binding DateText}"
-                               Margin="0,10"
-                               HorizontalAlignment="Center"
-                               FontSize="12"
-                               FontWeight="Medium"/>
+                    <Panel>
+                        <!-- The date between two thin lines across the chat, as on desktop -->
+                        <Grid Classes="date-lines" ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="12,10">
+                            <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
+                                    Background="{DynamicResource DarkBackgroundBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding DateText}"
+                                       FontSize="12" FontWeight="Medium"
+                                       Foreground="{DynamicResource ColorOverlayGray}"/>
+                            <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
+                                    Background="{DynamicResource DarkBackgroundBrush}"/>
+                        </Grid>
+                        <!-- Among bubbles: the date on a pill in the middle -->
+                        <Border Classes="date-pill">
+                            <TextBlock Text="{Binding DateText}" FontSize="12" FontWeight="Medium"/>
+                        </Border>
+                    </Panel>
                 </DataTemplate>
             </ItemsControl.DataTemplates>
 
             <ItemsControl.Styles>
+                <!-- The rings of uploads and downloads of files, once for every message -->
+                <StyleInclude Source="avares://Client.Avalonia.Views.Common/Views/Chat/ChatFileRingStyle.axaml"/>
                 <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
                     <Setter Property="Margin" Value="0,2"/>
                 </Style>
@@ -325,6 +340,7 @@
         <loadingIndicators:ChatSkeleton Grid.Row="2"
                                         Margin="4,0"
                                         VerticalAlignment="Stretch"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsInitialLoading}"/>
 
         <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
@@ -333,6 +349,7 @@
                                         VerticalAlignment="Top"
                                         Background="{DynamicResource GeneralBrush}"
                                         IsCompact="True"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsLoadingOlder}"/>
 
         <!-- Shown while the chat has no messages -->
@@ -775,6 +792,20 @@
                  The header of an island opens the whole list on a page -->
             <DockPanel common:MessageMenu.Part="Actions" Classes="message-menu-part">
                 <!-- Who read an own message and when; only its author sees it -->
+                <!-- A message that did not go: why, and what can be done about it -->
+                <Border DockPanel.Dock="Top" Margin="0,0,0,8" Classes="menu-card" IsVisible="{Binding IsSendFailed}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding OutgoingStatusText}" Margin="12,6" FontSize="13" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ErrorBrush}"/>
+                        <menus:MenuItemButton Icon="{StaticResource ResetIcon}" Content="{l:Text chat.outgoing.retry}"
+                                              IsVisible="{Binding CanRetrySend}"
+                                              Command="{Binding RetrySend}"/>
+                        <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                              IsVisible="{Binding CanTakeBack}"
+                                              Command="{Binding TakeBack}"/>
+                    </StackPanel>
+                </Border>
+
                 <Border DockPanel.Dock="Top" Margin="0,0,0,8" Classes="menu-card" IsVisible="{Binding CanShowReaders}">
                     <StackPanel Margin="6,2" Spacing="2">
                         <Button Classes="borderless" Padding="0,4" HorizontalAlignment="Stretch"
@@ -861,13 +892,17 @@
                             <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
                                                   IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
                             <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}"
+                                                  IsVisible="{Binding CanReply}"
                                                   Command="{Binding StartReply}"/>
                             <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
-                                          IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                                          IsVisible="{Binding ShowsPinItem}" IsEnabled="{Binding CanPin}"
                                           Command="{Binding TogglePinned}"/>
                             <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
-                                          IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                                          IsVisible="{Binding ShowsUnpinItem}" IsEnabled="{Binding CanPin}"
                                           Command="{Binding TogglePinned}"/>
+                            <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                                  IsVisible="{Binding IsSending}" IsEnabled="{Binding CanTakeBack}"
+                                                  Command="{Binding TakeBack}"/>
                             <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}"
                                                   IsVisible="{Binding CanEdit}"
                                                   Command="{Binding StartEdit}"/>
@@ -898,7 +933,10 @@
                             <Separator IsVisible="{Binding CanDelete}"/>
 
                             <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
-                                                  IsVisible="{Binding CanDelete}"
+                                                  IsVisible="{Binding CanDeleteStored}"
+                                                  Command="{Binding Delete}"/>
+                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossIcon}" Content="{l:Text chat.outgoing.cancel}"
+                                                  IsVisible="{Binding CanCancelSend}"
                                                   Command="{Binding Delete}"/>
                         </StackPanel>
                     </ScrollViewer>

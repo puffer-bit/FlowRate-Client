@@ -61,6 +61,7 @@ for runtime requirements and validation commands. Android viewing depends on the
 - Exchange messages with Markdown formatting, mentions, images, and file attachments.
 - Play supported audio and video attachments inside the client when media is enabled.
 - Edit messages while preserving their original Markdown.
+- Send without waiting: a message appears in the chat at once, dimmed with a clock while its files are compressed and uploaded, and is replaced by the stored message once the server has it. Messages sent while the connection is down wait in the chat and go once it is back, also after a restart of the client. A message the server refuses shows a red mark with the reason and can be retried, put back into the input, or cancelled.
 - See a preview of the first link of a message: the site, title, description and picture, fetched by the server. The composer shows the preview while the link is typed; closing it sends the message without one.
 - Track unread messages and mute individual chats.
 - Create personal conversations and groups within a server. Switch between server channels and personal chats from the server name menu; the existing create-session action follows the selected list.
@@ -144,7 +145,7 @@ With `--no-media`, audio and video attachments appear as files to download or op
 
 Settings cover appearance, audio, video, screen sharing, hotkeys, behavior, storage, saved accounts, experimental features, and debug logs.
 
-Use appearance settings to adjust the theme and chat presentation. Audio settings separate voice devices and processing from interface sounds. Storage settings manage locally cached media; saved identities and database protection are managed separately from disposable media cache.
+Use appearance settings to adjust the theme and chat presentation. The experimental settings switch the message view between a list with avatars and names and bubbles with your own messages on the right and the time inside each bubble; bubbles are drawn only while experimental features are on. Audio settings separate voice devices and processing from interface sounds. Storage settings manage locally cached media; saved identities and database protection are managed separately from disposable media cache.
 
 Behavior → Playback includes **Keep the screen on while watching streams**, enabled by default. It applies immediately to shared-screen and camera viewing on Windows, macOS, Linux, and Android. Closing the last watched stream or disconnecting restores normal display sleep. Android also restores normal display sleep while the app is in the background. Linux requires a desktop portal with idle inhibition support.
 

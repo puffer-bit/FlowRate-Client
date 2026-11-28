@@ -2,6 +2,7 @@
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
@@ -14,9 +15,17 @@
              x:Class="Client.Mobile.Views.Sessions.Chat.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
 
+
     <!-- The message as the desktop shows it, with the time of a continuation always shown. The menu
          of a message is a sheet of the chat view, opened by a tap or a long press -->
+    <!-- A list item or a bubble, as on the desktop: the list of a chat in bubbles carries the class "bubbles" -->
     <Border Classes="msg-root"
+            Classes.pending="{Binding IsOutgoing}"
+            Classes.mine="{Binding Message.IsMine}"
+            Classes.seq-start="{Binding IsSequenceStart}"
+            Classes.seq-end="{Binding IsSequenceEnd}"
+            Classes.direct="{Binding IsDirectChat}"
+            Classes.has-text="{Binding HasPlainText}"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
             Classes.system="{Binding IsSystem}"
@@ -32,34 +41,43 @@
                     </DataTemplate>
                 </events:MessagePart.ContentTemplate>
             </events:MessagePart>
-        <Grid ColumnDefinitions="46, *, Auto" IsVisible="{Binding !IsSystem}">
+        <Grid ColumnDefinitions="Auto, *, Auto" IsVisible="{Binding !IsSystem}">
 
             <!-- Own messages of direct chats and groups: one check when sent, two once someone read it;
                  who and when is in the menu of the message -->
-            <Panel Grid.Column="2" IsVisible="{Binding HasDeliveryStatus}"
+            <Panel Grid.Column="2" Classes="msg-status-column">
+            <Panel IsVisible="{Binding HasDeliveryStatus}"
                    Width="16" Height="16" Margin="6,2,0,0" VerticalAlignment="Top">
                 <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
                 <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
             </Panel>
 
+            <!-- A message on its way: a clock, or a red mark once it did not go; a tap on the message opens
+                 what can be done about it -->
+            <sharedChat:ChatSendStatus Classes="msg-status-mark" IsVisible="{Binding IsOutgoing}"
+                                       Margin="6,2,0,0" VerticalAlignment="Top"/>
+            </Panel>
+
             <!-- A continuation shows its time in place of the avatar, always: a phone has no hover to reveal it.
                  The hidden text is one line of the message body, so the time is centered on that first line -->
-            <Panel Grid.Column="0" IsVisible="{Binding !IsSequenceStart}"
-                   Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Panel Grid.Column="0" Classes="msg-continuation-time"
+                   HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
                 <TextBlock Classes="msg-time" VerticalAlignment="Center" HorizontalAlignment="Center"
                            Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
             </Panel>
 
-            <avatars:UserAvatar Classes="msg-avatar" IsVisible="{Binding IsSequenceStart}"
+            <avatars:UserAvatar Classes="msg-avatar"
                                 x:Name="SenderAvatar" Tapped="OnAvatarTapped"
                                 UserName="{Binding SenderName}"
                                 IsDeleted="{Binding IsSenderDeleted}"
                                 AvatarUrl="{Binding SenderAvatarUrl}"/>
 
-            <StackPanel Grid.Column="1" Classes="msg-content">
+            <Panel Grid.Column="1" Classes="msg-bubble-host">
+            <Border Classes="msg-bubble">
+            <StackPanel Classes="msg-content">
 
-                <StackPanel Classes="msg-header" IsVisible="{Binding IsSequenceStart}">
+                <StackPanel Classes="msg-header">
                     <TextBlock Classes.is-me="{Binding Message.IsMine}" Classes="msg-username"
                                x:Name="NameTextBlock" Tapped="OnNameTapped"
                                Classes.deleted-user="{Binding IsSenderDeleted}"
@@ -146,7 +164,20 @@
                                    chatVm:ChatMessageText.LinkConfirmation="{Binding ConfirmOpenLink}"/>
                         <chatVm:ChatCodeBlockCopyButtons Target="{Binding #MessageTextBlock}"/>
                     </Grid>
-                    <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
+                    <!-- In a list only the pencil of an edited message; in a bubble also its time and mark -->
+                    <StackPanel Classes="msg-trailing">
+                        <Path Classes="msg-edited" IsVisible="{Binding Message.IsEdited}"/>
+                        <StackPanel Classes="msg-bubble-meta">
+                            <TextBlock Classes="msg-bubble-time" Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
+                            <Viewbox Classes="msg-bubble-receipt" IsVisible="{Binding IsDelivered}">
+                                <Path Classes="msg-bubble-check" Data="M5 12.5 L9.5 17 L19 7.5"/>
+                            </Viewbox>
+                            <Viewbox Classes="msg-bubble-receipt" IsVisible="{Binding IsRead}">
+                                <Path Classes="msg-bubble-check" Data="M1.5 12.5 L6 17 L15.5 7.5 M10.5 15.5 L12 17 L21.5 7.5"/>
+                            </Viewbox>
+                            <sharedChat:ChatSendStatus Classes="msg-bubble-status" IsVisible="{Binding IsOutgoing}"/>
+                        </StackPanel>
+                    </StackPanel>
                 </text:TrailingMarkPanel>
 
                 <!-- The preview of the first link, put into the message by the server a moment after it -->
@@ -183,7 +214,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="chatVm:ChatImageVM">
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}">
                                             <Button Classes="msg-image"
                                                     Width="{Binding TileWidth}" Height="{Binding TileHeight}"
                                                     chatVm:ChatImagePresence.Image="{Binding}"
@@ -212,19 +243,23 @@
                                     <DataTemplate DataType="chatVm:ChatFileVM">
                                         <Panel>
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}" IsVisible="{Binding IsAudio}">
                                             <views:ChatAudioPlayer/>
                                         </Viewbox>
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsVideo}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}" IsVisible="{Binding IsVideo}">
                                             <views:ChatVideoPlayer/>
                                         </Viewbox>
                                         <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
-                                                MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
+                                                MaxWidth="{Binding $parent[Grid].Bounds.Width}"
                                                 Command="{Binding OpenCommand}">
                                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                                 <Border Grid.Column="0" Classes="msg-file-icon">
                                                     <Panel>
+                                                        <loadingIndicators:ProgressRing Classes="smooth file-ring" Width="36" Height="36"
+                                                                                        MinWidth="0" MinHeight="0" BorderThickness="2.5"
+                                                                                        Maximum="1" Value="{Binding Progress}"
+                                                                                        IsVisible="{Binding IsDownloading}"/>
                                                         <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
                                                         <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
                                                         <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
@@ -239,7 +274,6 @@
                                                     </StackPanel>
                                                     <TextBlock Classes="msg-file-error" Text="{Binding Error}"
                                                                IsVisible="{Binding HasError}"/>
-                                                    <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Button>
@@ -247,6 +281,14 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </DataTemplate>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
+                <!-- The files of a message on its way, from the device, with their uploads -->
+                <events:MessagePart Content="{Binding WithOutgoingAttachments}" IsVisible="{Binding HasOutgoingAttachments}">
+                    <events:MessagePart.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatMessageVM">
+                            <sharedChat:ChatOutgoingAttachments/>
                         </DataTemplate>
                     </events:MessagePart.ContentTemplate>
                 </events:MessagePart>
@@ -280,7 +322,23 @@
                        HorizontalAlignment="Left" IsVisible="{Binding IsPinned}" ToolTip.Tip="{l:Text chat.pinned.title}"/>
                 <TextBlock Text="{Binding ReactionError}" IsVisible="{Binding HasReactionError}"
                            Foreground="{DynamicResource ErrorBrush}" FontSize="12" TextWrapping="Wrap"/>
+
+                <!-- A bubble without text ends with its time and mark on a line of their own -->
+                <StackPanel Classes="msg-bubble-meta msg-meta-row">
+                    <TextBlock Classes="msg-bubble-time" Text="{Binding LocalSentTime, StringFormat=\{0:HH:mm\}}"/>
+                    <Viewbox Classes="msg-bubble-receipt" IsVisible="{Binding IsDelivered}">
+                        <Path Classes="msg-bubble-check" Data="M5 12.5 L9.5 17 L19 7.5"/>
+                    </Viewbox>
+                    <Viewbox Classes="msg-bubble-receipt" IsVisible="{Binding IsRead}">
+                        <Path Classes="msg-bubble-check" Data="M1.5 12.5 L6 17 L15.5 7.5 M10.5 15.5 L12 17 L21.5 7.5"/>
+                    </Viewbox>
+                    <sharedChat:ChatSendStatus Classes="msg-bubble-status" IsVisible="{Binding IsOutgoing}"/>
+                </StackPanel>
             </StackPanel>
+            </Border>
+            <!-- The tail of the last bubble of a run -->
+            <Path Classes="msg-tail" Data="M0,0 C0,8 3,12 9,14 L0,14 Z"/>
+            </Panel>
         </Grid>
         </Panel>
     </Border>

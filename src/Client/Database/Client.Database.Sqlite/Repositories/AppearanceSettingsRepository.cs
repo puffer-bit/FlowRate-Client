@@ -1,4 +1,5 @@
 using Client.Application.Ports.Repositories;
+using Client.Core.Chat;
 using Client.Core.Settings.Themes;
 using Dapper;
 
@@ -142,6 +143,26 @@ internal sealed class AppearanceSettingsRepository : IAppearanceSettingsReposito
                 IsAnimationEnabled = excluded.IsAnimationEnabled,
                 AnimationSpeed = excluded.AnimationSpeed
             """, new { settings.IsEnabled, Speed = (int)settings.Speed });
+    }
+
+    public async Task<ChatMessageLayout> GetChatMessageLayoutAsync()
+    {
+        await using var connection = await _database.OpenAsync();
+
+        var layout = await connection.QueryFirstOrDefaultAsync<int?>(
+            "SELECT ChatMessageLayout FROM AppearanceSettings WHERE Id = 1");
+
+        return layout is { } value && Enum.IsDefined((ChatMessageLayout)value) ? (ChatMessageLayout)value : ChatMessageLayout.List;
+    }
+
+    public async Task UpdateChatMessageLayoutAsync(ChatMessageLayout layout)
+    {
+        await using var connection = await _database.OpenAsync();
+
+        await connection.ExecuteAsync("""
+            INSERT INTO AppearanceSettings (Id, ChatMessageLayout) VALUES (1, @layout)
+            ON CONFLICT (Id) DO UPDATE SET ChatMessageLayout = excluded.ChatMessageLayout
+            """, new { layout = (int)layout });
     }
 
     public async Task<int> GetInterfaceScaleAsync()

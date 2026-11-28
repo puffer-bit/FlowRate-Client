@@ -398,6 +398,16 @@
                             </Grid>
                         </StackPanel>
 
+                        <Button Classes="borderless category" Click="OnExperimentalClick">
+                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" Classes="category-icon">
+                                    <Image Source="{StaticResource RadiationIcon}"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{l:Text settings.experimental.name}"/>
+                                <Path Grid.Column="2" Classes="category-arrow"/>
+                            </Grid>
+                        </Button>
+
                         <!-- Has no settings yet, as on the desktop: listed, but cannot be opened -->
                         <Button Classes="borderless category" IsEnabled="False">
                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="12">
@@ -1062,6 +1072,29 @@
                        VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
             <Button Grid.Column="2" Content="{l:Text serverSettings.users.nextPage}" Command="{Binding CertificatesPage.NextPageCommand}"/>
         </Grid>
+        </ui:SettingsPage>
+
+        <!-- ====== Experimental features: the same as on the desktop ====== -->
+        <ui:SettingsPage Grid.Row="2" x:Name="ExperimentalPage" IsVisible="False"
+                         x:DataType="pagesVm:ExperimentalControlVM">
+            <controls:SettingsHeader services:SettingText.Section="experimental.general"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="experimental.enable">
+                    <ToggleSwitch IsChecked="{Binding IsExperimentalEnabled}"/>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
+            <!-- The features below cannot be changed while the experimental ones are off -->
+            <controls:SettingsHeader services:SettingText.Section="experimental.chat"/>
+            <ui:SettingsCard IsEnabled="{Binding IsExperimentalEnabled}">
+                <ui:SettingsRow services:SettingText.Key="experimental.messageLayout" ContentPlacement="Below">
+                    <!-- Items are in the order of ChatMessageLayout -->
+                    <ComboBox SelectedIndex="{Binding MessageLayoutIndex}">
+                        <ComboBoxItem Content="{l:Text settings.experimental.messageLayout.list}"/>
+                        <ComboBoxItem Content="{l:Text settings.experimental.messageLayout.bubbles}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
         </ui:SettingsPage>
 
         <!-- ====== About the application: the same facts as on the desktop ====== -->

@@ -57,7 +57,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool HasMessages => _messageVms.Count > 0 || IsInitialLoading;
+    public bool HasMessages => _messageVms.Count > 0 || _shownOutgoing.Count > 0 || IsInitialLoading;
 
     /// <summary>
     /// Set by the view when the newest messages are out of sight; shows the scroll-down button.
@@ -122,6 +122,13 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public bool IsImageViewerOpen => ImageViewer != null;
 
+    /// <summary>The messages are drawn in bubbles, as in Telegram, instead of a list; chosen in the settings.</summary>
+    public bool IsBubbleLayout
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>
     /// False while the coordinator connection is down: the chat stays open but nothing can be sent.
     /// </summary>
@@ -132,6 +139,9 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             Composer.IsConnected = value;
+            // Set before the status bar is made, by the constructor
+            if (StatusBar != null)
+                StatusBar.IsWaitingForNetwork = !value;
             foreach (var message in _messageVms.Values.Concat(PinnedMessages.Select(row => row.Content)))
                 message.RefreshReactionAccess();
         }
@@ -183,6 +193,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     {
         this.RaisePropertyChanged(nameof(HasNewerMessages));
         if (HasNewerMessages) IsScrolledUp = true;
+        SyncOutgoingRows();
         UpdateReading();
     }
 
@@ -227,11 +238,15 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _senders.Changed += OnSendersChanged;
         _tasks = services.Tasks;
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
+        _coordinatorInstanceId = currentUser.CoordinatorInstanceId;
+        _outbox = services.Outbox;
+        _outbox?.Attach(coordinatorSession);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
             services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions,
             // In a direct chat or a group only its members can be mentioned
-            () => _model.IsPrivate ? _model.MemberIds : null, services.Drafts, currentUser.CoordinatorInstanceId, services.Tasks);
+            () => _model.IsPrivate ? _model.MemberIds : null, services.Drafts, currentUser.CoordinatorInstanceId, services.Tasks,
+            services.Outbox);
 
         // A newer message of the user may not be loaded while an older part of the history is shown
         Composer.FindLastEditableMessage = () => HasNewerMessages ? null : _messageVms.Values
@@ -255,6 +270,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         };
         if (StatusBar.Viewers is { } viewers)
             viewers.GroupOwnerId = () => _model.Kind == ChatKind.Group ? _model.OwnerUserId : null;
+        StatusBar.IsWaitingForNetwork = !IsConnected;
         StatusBar.AttachCalling(coordinatorSession);
         this.WatchProperties(nameof(IsInitialLoading), nameof(IsLoadingOlder), nameof(IsLoadingNewer))
             .Select(vm => vm.IsInitialLoading || vm.IsLoadingOlder || vm.IsLoadingNewer)
@@ -289,6 +305,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
         _ = UpdateChatNameAsync(sessionModel);
         RestoreTyping();
+        AttachOutbox();
+        AttachMessageLayout(services.Appearance);
 
     }
 
@@ -448,6 +466,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
             ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer, _openDirectChatCommand)
         {
+            IsDirectChat = _model.Kind == ChatKind.Direct,
             IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
             IsPinAllowed = !_model.IsArchived,
             CanPinInDirectChat = _model.Kind == ChatKind.Direct,
@@ -497,6 +516,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private int AddMessages(IEnumerable<ChatMessageModel> models, bool isNew = false)
     {
         var addedVms = new List<ChatMessageVM>();
+        // Stored messages of this client that take the rows they were shown in while on their way
+        var replacing = new List<(ChatMessageVM Outgoing, ChatMessageVM Stored)>();
         foreach (var model in models)
         {
             if (model.IsDeleted || _deletedMessages.ContainsKey(model.Id)) continue;
@@ -513,22 +534,34 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             var messageVm = CreateMessageView(model, isNew);
             _messageVms.Add(model.Id, messageVm);
             _newestMessageId = Math.Max(_newestMessageId, model.Id);
-            addedVms.Add(messageVm);
+            if (TakeOutgoingRowOf(model) is { } outgoing)
+            {
+                // It is on screen already: no rising in again
+                messageVm.ReplacesOutgoing = true;
+                replacing.Add((outgoing, messageVm));
+            }
+            else
+            {
+                addedVms.Add(messageVm);
+            }
         }
 
-        if (addedVms.Count == 0)
+        if (addedVms.Count == 0 && replacing.Count == 0)
             return 0;
 
         // Started first, so the authors it looks up show no name instead of an unknown one
-        _ = ResolveSendersAsync(addedVms);
-        foreach (var messageVm in addedVms)
+        var created = addedVms.Concat(replacing.Select(pair => pair.Stored)).ToList();
+        _ = ResolveSendersAsync(created);
+        foreach (var messageVm in created)
             _senders.Apply(messageVm);
-        ParseTextsInBackground(addedVms);
+        ParseTextsInBackground(created);
 
+        foreach (var (outgoing, stored) in replacing)
+            _timeline.Replace(outgoing, stored);
         _timeline.AddRange(addedVms);
         this.RaisePropertyChanged(nameof(HasMessages));
         UpdateReading();
-        return addedVms.Count;
+        return created.Count;
     }
 
     // A row parses its text when it is first shown, on the UI thread. Parsed here off it, newest first
@@ -799,6 +832,8 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _subscriptions.Dispose();
         _senders.Dispose();
         DisposeReaders(_messageVms.Values);
+        foreach (var outgoing in _outgoingVms.Values)
+            outgoing.DetachOutgoing();
         _readTracker.SetReading(Id, false);
 
         Composer.Dispose();

@@ -240,7 +240,8 @@ public interface ICoordinatorGateway : IDisposable
         int messageId);
     Task SetChatTyping(int sessionId, bool isTyping);
 
-    Task SendChatMessage(int sessionId,
+    /// <returns>The stored message; null from servers that do not send it back.</returns>
+    Task<ChatMessageModel?> SendChatMessage(int sessionId,
         NewChatMessage newMessage);
     Task DeleteChatMessage(int sessionId,
         int messageId);
