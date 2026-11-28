@@ -87,7 +87,10 @@
         <ItemsControl Classes="msg-files" ItemsSource="{Binding OutgoingFiles}" IsVisible="{Binding HasOutgoingFiles}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ChatAttachmentVM">
+                    <!-- As wide as the row at most: the width of the list follows the card, and in a bubble the
+                         width of the bubble does too -->
                     <Button Classes="msg-file" Classes.error="{Binding HasError}"
+                            MaxWidth="{Binding $parent[Grid].Bounds.Width}"
                             Command="{Binding $parent[ItemsControl].((vm:ChatMessageVM)DataContext).Delete}"
                             ToolTip.Tip="{l:Text chat.outgoing.cancel}"
                             AutomationProperties.Name="{l:Text chat.outgoing.cancel}">

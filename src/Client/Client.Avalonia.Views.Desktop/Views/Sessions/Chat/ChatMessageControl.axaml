@@ -182,7 +182,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="chatVm:ChatImageVM">
                             <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                     MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}">
+                                     MaxWidth="{Binding $parent[Grid].Bounds.Width}">
                                 <Button Classes="msg-image"
                                         Width="{Binding TileWidth}" Height="{Binding TileHeight}"
                                         chatVm:ChatImagePresence.Image="{Binding}"
@@ -206,12 +206,12 @@
                         <DataTemplate DataType="chatVm:ChatFileVM">
                             <StackPanel>
                                 <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                         MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
+                                         MaxWidth="{Binding $parent[Grid].Bounds.Width}" IsVisible="{Binding IsAudio}">
                                     <chatViews:ChatAudioPlayer/>
                                 </Viewbox>
                                 <chatViews:ChatVideoPlayer IsVisible="{Binding IsVideo}"/>
                                 <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
-                                        MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
+                                        MaxWidth="{Binding $parent[Grid].Bounds.Width}"
                                         Command="{Binding OpenCommand}"
                                         ToolTip.Tip="{Binding ActionToolTip}">
                                     <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">

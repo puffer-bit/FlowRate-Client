@@ -212,7 +212,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="chatVm:ChatImageVM">
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}">
                                             <Button Classes="msg-image"
                                                     Width="{Binding TileWidth}" Height="{Binding TileHeight}"
                                                     chatVm:ChatImagePresence.Image="{Binding}"
@@ -241,15 +241,15 @@
                                     <DataTemplate DataType="chatVm:ChatFileVM">
                                         <Panel>
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsAudio}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}" IsVisible="{Binding IsAudio}">
                                             <views:ChatAudioPlayer/>
                                         </Viewbox>
                                         <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                                                 MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}" IsVisible="{Binding IsVideo}">
+                                                 MaxWidth="{Binding $parent[Grid].Bounds.Width}" IsVisible="{Binding IsVideo}">
                                             <views:ChatVideoPlayer/>
                                         </Viewbox>
                                         <Button IsVisible="{Binding !IsMedia}" Classes="msg-file" Classes.error="{Binding HasError}"
-                                                MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
+                                                MaxWidth="{Binding $parent[Grid].Bounds.Width}"
                                                 Command="{Binding OpenCommand}">
                                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                                 <Border Grid.Column="0" Classes="msg-file-icon">
