@@ -62,6 +62,8 @@ public partial class ActiveChatSessionVM
             }
 
             IsInitialLoading = false;
+            // The messages on their way waited for the history, to come after it
+            SyncOutgoingRows();
             _ = LoadPinnedMessagesAsync();
 
             // The cache is as old as the last run. A page from the server may still be older than
@@ -242,8 +244,7 @@ public partial class ActiveChatSessionVM
                 _seenRevision = 0;
                 _timeline.Clear();
                 _shownOutgoing.Clear();
-                SyncOutgoingRows();
-                this.RaisePropertyChanged(nameof(HasMessages));
+                // The messages on their way come back with the first page
                 IsInitialLoading = true;
             });
 

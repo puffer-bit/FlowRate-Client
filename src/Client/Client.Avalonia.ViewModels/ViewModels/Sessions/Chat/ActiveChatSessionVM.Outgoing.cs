@@ -99,11 +99,12 @@ public partial class ActiveChatSessionVM
 
     /// <summary>
     /// Shows the messages on their way when the list reaches the newest messages, and takes them out while it shows
-    /// older history.
+    /// older history. While the first page loads, the placeholder covers the list and they wait for the history,
+    /// so they come after it rather than alone above the placeholder.
     /// </summary>
     private void SyncOutgoingRows()
     {
-        if (HasNewerMessages)
+        if (HasNewerMessages || IsInitialLoading)
         {
             if (_shownOutgoing.Count == 0)
                 return;
