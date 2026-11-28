@@ -335,14 +335,14 @@
             <Image Width="20" Height="20" Source="{StaticResource ReplyIcon}"/>
         </Border>
 
-        <loadingIndicators:ChatSkeleton Grid.Row="2"
+        <loadingIndicators:ChatSkeleton Grid.Row="2" Classes="strong"
                                         Margin="4,0"
                                         VerticalAlignment="Stretch"
                                         IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsInitialLoading}"/>
 
         <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
-        <loadingIndicators:ChatSkeleton Grid.Row="2"
+        <loadingIndicators:ChatSkeleton Grid.Row="2" Classes="strong"
                                         Margin="4,0"
                                         VerticalAlignment="Top"
                                         Background="{DynamicResource GeneralBrush}"
