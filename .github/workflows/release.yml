@@ -1,8 +1,8 @@
-# Builds the desktop client for Linux and Windows and publishes it as a GitHub release, run by hand from the
+# Builds the desktop client for Linux, Windows and macOS and the Android .apk and publishes them as a GitHub release, run by hand from the
 # Actions tab: by default the pre-release v<version>-dev.<UTC yyMMddHHmm>, which clients set to the dev builds
 # update to; with prerelease off the release v<version>, which becomes the latest one and reaches every client.
 #
-# The build is build.yml; both platforms go to one release under one tag, on the commit that was built.
+# The build is build.yml; every platform goes to one release under one tag, on the commit that was built.
 # The description is the one GitHub generates (the changes since the previous release); nothing goes
 # into the packages.
 name: Release
@@ -26,10 +26,21 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  validate:
+    name: Validate
+    uses: ./.github/workflows/tests.yml
+
   build:
     name: Build
+    needs: validate
     uses: ./.github/workflows/build.yml
+    # Required for the called Android job to receive its environment secrets.
+    secrets: inherit
     with:
       aot: ${{ inputs.aot }}
       dev: ${{ inputs.prerelease }}
@@ -41,7 +52,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      # The files of both platforms side by side, as the release holds them
+      # The files of every platform side by side, as the release holds them
       - uses: actions/download-artifact@v8
         with:
           pattern: FlowRateClient-${{ needs.build.outputs.version }}-*

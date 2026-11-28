@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The description of the SFU side built out of its ORTC style parameters, which the libwebrtc
+         transport of every platform answers -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+    </ItemGroup>
+
+</Project>

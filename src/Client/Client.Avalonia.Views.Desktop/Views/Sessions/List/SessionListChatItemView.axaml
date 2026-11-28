@@ -1,0 +1,269 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.SessionListChatItemView"
+             x:DataType="listVm:ChatSessionVM"
+             d:DataContext="{d:DesignInstance Type=listVm:ChatSessionVM, IsDesignTimeCreatable=True}"
+             x:Name="Root">
+    
+    <Control.Resources>
+        <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
+    </Control.Resources>
+
+    <UserControl.Styles>
+        <!-- The mark of the settings tabs: points down while the call's peers are in, turns up when they are out -->
+        <Style Selector="Button.callPeersToggle Path.chevron">
+            <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.callPeersToggle.expanded Path.chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+    </UserControl.Styles>
+    
+    <Grid RowDefinitions="Auto, *" RowSpacing="2" IsVisible="{Binding CanView}"
+          anim:Presence.Leave="Fold"
+          anim:Presence.IsLeaving="{Binding IsLeaving}">
+        <Border Classes="sessionHeader"
+            Classes.entered="{Binding IsEntered}"
+            Classes.shown="{Binding IsShown}"
+            Classes.dragged="{Binding IsDragged}"
+            Tag="{Binding}">
+            <Border.ContextFlyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Spacing="2">
+                        <menus:MenuItemButton Icon="{StaticResource HashIcon}" Content="{l:Text sessions.openChat}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding !DataContext.IsShown, ElementName=Root}"
+                                              Command="{Binding DataContext.ShowSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource CollapseChatIcon}" Content="{l:Text sessions.collapseChat}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.IsShown, ElementName=Root}"
+                                              Command="{Binding DataContext.LeaveChatCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                        <!-- The call of the chat: start it, join it, or show it when we are in it -->
+                        <menus:MenuItemButton Icon="{StaticResource ChatCallStartedIcon}"
+                                              Content="{Binding DataContext.CallText, ElementName=Root}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding DataContext.CallCommand, ElementName=Root}">
+                            <menus:MenuItemButton.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="DataContext.CanCall" ElementName="Root"/>
+                                    <Binding Path="!DataContext.HasActiveCall" ElementName="Root"/>
+                                </MultiBinding>
+                            </menus:MenuItemButton.IsVisible>
+                        </menus:MenuItemButton>
+                        <menus:MenuItemButton Icon="{StaticResource DoorEnterIcon}"
+                                              Content="{Binding DataContext.CallText, ElementName=Root}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              Command="{Binding DataContext.CallCommand, ElementName=Root}">
+                            <menus:MenuItemButton.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="DataContext.CanCall" ElementName="Root"/>
+                                    <Binding Path="DataContext.HasActiveCall" ElementName="Root"/>
+                                </MultiBinding>
+                            </menus:MenuItemButton.IsVisible>
+                        </menus:MenuItemButton>
+                        <menus:MenuItemButton Icon="{StaticResource DoorWithRedArrowIcon}" Content="{l:Text privateChats.leaveGroup}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanLeaveGroup, ElementName=Root}"
+                                              Command="{Binding DataContext.LeaveGroupCommand, ElementName=Root}"/>
+                        <Separator/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text privateChats.editGroup}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditGroup, ElementName=Root}"
+                                              Command="{Binding DataContext.EditGroupCommand, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionSettings.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditSession, ElementName=Root}"
+                                              Command="{Binding DataContext.EditSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text sessionPermissions.title}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanEditPermissions, ElementName=Root}"
+                                              Command="{Binding DataContext.EditPermissionsCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model, ElementName=Root}"/>
+                        <menus:MenuItemButton Icon="{StaticResource ExpandIcon}" Content="{l:Text sessions.moveTo}"
+                                              IsVisible="{Binding DataContext.CanArrange, ElementName=Root}">
+                            <menus:MenuItemButton.Flyout>
+                                <Flyout Placement="RightEdgeAlignedTop">
+                                    <!-- The session goes along as the parameter, the template cannot name the view -->
+                                    <ItemsControl ItemsSource="{Binding DataContext.MoveTargets, ElementName=Root}"
+                                                  Tag="{Binding DataContext, ElementName=Root}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="2"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="listVm:MoveTargetVM">
+                                                <StackPanel>
+                                                    <menus:MenuItemButton Content="{l:Text sessions.category.none}"
+                                                                          Icon="{StaticResource DashInCircleIcon}"
+                                                                          IsVisible="{Binding IsUncategorized}"
+                                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                                          Command="{Binding MoveHereCommand}"
+                                                                          CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                                    <menus:MenuItemButton Content="{Binding Name}"
+                                                                          IsVisible="{Binding !IsUncategorized}"
+                                                                          menus:FlyoutMenu.CloseOnClick="True"
+                                                                          Command="{Binding MoveHereCommand}"
+                                                                          CommandParameter="{Binding $parent[ItemsControl].Tag}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Flyout>
+                            </menus:MenuItemButton.Flyout>
+                        </menus:MenuItemButton>
+                        <!-- One item, shown by the state it would change -->
+                        <menus:MenuItemButton Icon="{StaticResource CrossedBellIcon}" Content="{l:Text sessions.muteNotifications}"
+                                              IsVisible="{Binding !DataContext.IsMuted, ElementName=Root}">
+                            <menus:MenuItemButton.Flyout>
+                                <Flyout Placement="RightEdgeAlignedTop">
+                                    <StackPanel Spacing="2">
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for15Minutes}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="15"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for1Hour}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="60"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for8Hours}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="480"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.for24Hours}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter="1440"/>
+                                        <menus:MenuItemButton Content="{l:Text sessions.mute.untilTurnedOn}"
+                                                              menus:FlyoutMenu.CloseOnClick="True"
+                                                              Command="{Binding DataContext.MuteForCommand, ElementName=Root}"
+                                                              CommandParameter=""/>
+                                    </StackPanel>
+                                </Flyout>
+                            </menus:MenuItemButton.Flyout>
+                        </menus:MenuItemButton>
+                        <menus:MenuItemButton Icon="{StaticResource BellIcon}" Content="{l:Text sessions.unmuteNotifications}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.IsMuted, ElementName=Root}"
+                                              Command="{Binding DataContext.ToggleMuteCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                        <Separator IsVisible="{Binding DataContext.CanManage, ElementName=Root}"/>
+                        <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}"
+                                              menus:FlyoutMenu.CloseOnClick="True"
+                                              IsVisible="{Binding DataContext.CanManage, ElementName=Root}"
+                                              Command="{Binding DataContext.DeleteSessionCommand, ElementName=Root}"
+                                              CommandParameter="{Binding DataContext.Model.Id, ElementName=Root}"/>
+                    </StackPanel>
+                </Flyout>
+            </Border.ContextFlyout>
+            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="8">
+                <Image Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
+                       Source="{StaticResource HashIcon}" IsVisible="{Binding !IsPrivate}"/>
+                <!-- A direct chat shows the other member, a group its picture or the first letter of its name -->
+                <avatars:UserAvatar Grid.Column="0" Width="32" Height="32" VerticalAlignment="Center"
+                                    UserName="{Binding DisplayName}" AvatarUrl="{Binding AvatarUrl}"
+                                    Status="{Binding PeerStatus}"
+                                    IsMobile="{Binding PeerIsMobile}" IsVisible="{Binding IsPrivate}"/>
+
+                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <!-- A group says so before its name; a running call colors the name -->
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Image Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"
+                               Source="{StaticResource BaseUsersIcon}" IsVisible="{Binding IsGroup}"
+                               ToolTip.Tip="{l:Text privateChats.group}"/>
+                        <!-- Who is in the call: unfolds them under the chat as a voice channel shows its peers -->
+                        <Button Grid.Column="2" Classes="ghost callPeersToggle" Padding="4,0" Margin="4,0,0,0"
+                                CornerRadius="4" VerticalAlignment="Center"
+                                Classes.expanded="{Binding IsCallExpanded}"
+                                IsVisible="{Binding !!CallPeers.Peers.Count, FallbackValue=False}"
+                                Command="{Binding ToggleCallExpanded}"
+                                ToolTip.Tip="{l:Text sessions.participants}"
+                                AutomationProperties.Name="{l:Text sessions.participants}">
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <Image Width="12" Height="12" Opacity="0.7" Source="{StaticResource BaseUserIcon}"/>
+                                <TextBlock Classes="sessionCounter" Text="{Binding CallPeers.Peers.Count, FallbackValue=0}"/>
+                                <Path Classes="chevron" Width="10" Height="6" Stretch="None" Margin="2,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                      StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </StackPanel>
+                        </Button>
+                        <text:MarqueeTextBlock Pause="0:0:0" Grid.Column="1" Classes="sessionName" Text="{Binding DisplayName}"
+                                              Classes.unread="{Binding HasUnread}"
+                                              Classes.entered="{Binding IsEntered}"
+                                              Classes.callActive="{Binding HasActiveCall}"
+                                              ToolTip.Tip="{Binding DisplayName}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding LastMessagePreview}" IsVisible="{Binding ShowsLastMessagePreview}"
+                               Classes="sessionPreview" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    <!-- What was typed and not sent takes the place of the last message -->
+                    <TextBlock IsVisible="{Binding ShowsDraft}" Classes="sessionPreview" FontSize="12"
+                               TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding DraftLabel}" Foreground="{DynamicResource ErrorBrush}"/><Run Text="{Binding DraftPreview}"/>
+                    </TextBlock>
+                </StackPanel>
+                
+
+                <!-- Mentions take the place of the plain counter. A muted chat shows its crossed bell in
+                     the same place: it has no plain counter, and a mention outranks the bell -->
+                <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding LastMessageTime}" IsVisible="{Binding IsPrivate}" FontSize="10" Classes="sessionPreview"/>
+                    <Panel>
+                    <Image Width="18" Height="18"
+                           IsVisible="{Binding ShowsMutedMark}"
+                           ToolTip.Tip="{Binding MutedToolTip}"
+                           Source="{StaticResource CrossedBellIcon}"/>
+                    <Border Classes="unreadBadge" IsVisible="{Binding ShowsUnreadCount}">
+                        <TextBlock Text="{Binding UnreadCountText}"/>
+                    </Border>
+                    <Border Classes="unreadBadge mention" IsVisible="{Binding ShowsMentionCount}">
+                        <TextBlock Text="{Binding MentionCountText}"/>
+                    </Border>
+                </Panel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- The peers of the chat's call, with the rows and menus of a voice channel's peers. The line runs
+             down from the center of the chat's picture -->
+        <Border Grid.Row="1"
+                Classes="peersBranch"
+                Margin="23,0,0,4">
+            <Border.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsCallExpanded"/>
+                    <Binding Path="!!CallPeers.Peers.Count" FallbackValue="False"/>
+                </MultiBinding>
+            </Border.IsVisible>
+            <ListBox Classes="peersList"
+                     ItemsSource="{Binding CallPeers.Peers}"
+                     SelectedItem="{Binding CallPeers.SelectedPeer}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type listVm:PeerVM}">
+                        <listViews:HybridSessionPeer/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

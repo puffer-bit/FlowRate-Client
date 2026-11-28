@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 
@@ -43,7 +44,8 @@ public class TrailingMarkPanel : Panel
         mark.Measure(Size.Infinity);
         var markSize = mark.DesiredSize;
 
-        double markEnd = GetLastLine(text).End + Spacing + markSize.Width;
+        // Rounded up: a width rounded to pixels below the end would put the mark on a line that has no room
+        double markEnd = Math.Ceiling(GetLastLine(text).End + Spacing + markSize.Width);
         return markEnd <= availableSize.Width
             ? new Size(Math.Max(textSize.Width, markEnd), textSize.Height)
             : new Size(Math.Max(textSize.Width, markSize.Width), textSize.Height + markSize.Height);
@@ -67,8 +69,16 @@ public class TrailingMarkPanel : Panel
         var (end, lineHeight) = GetLastLine(text);
 
         double x = end + Spacing;
-        if (x + markSize.Width <= finalSize.Width)
+        // The line of its own exists only when the measure made room for it; a panel as wide as it asked, give or
+        // take a rounding, keeps the mark on the last line
+        bool hasRoomBelow = finalSize.Height >= textHeight + markSize.Height - 0.5;
+        if (x + markSize.Width <= finalSize.Width + 1 || !hasRoomBelow)
+        {
+            // A panel given less than it measured for (a recycled row while the list scrolls fast) keeps the mark
+            // inside its edge until the next pass lays it out for the new width
+            x = Math.Max(0, Math.Min(x, finalSize.Width - markSize.Width));
             mark.Arrange(new Rect(new Point(x, textHeight - lineHeight + (lineHeight - markSize.Height) / 2), markSize));
+        }
         else
             mark.Arrange(new Rect(new Point(0, textHeight), markSize));
 
@@ -78,7 +88,11 @@ public class TrailingMarkPanel : Panel
     // Where the last line of the text ends, from the left edge of the text block, and how tall that line is
     private static (double End, double Height) GetLastLine(Control text)
     {
-        if (text is not TextBlock textBlock || textBlock.TextLayout.TextLines.Count == 0)
+        // Message backgrounds share a grid with the text without changing its selection.
+        if (text is Grid grid && grid.Children.OfType<TextBlock>().FirstOrDefault() is { } child)
+            text = child;
+        // A text block waiting for its measure would build its layout from the empty Text and keep it
+        if (text is not TextBlock { IsMeasureValid: true } textBlock || textBlock.TextLayout.TextLines.Count == 0)
             return (text.DesiredSize.Width, text.DesiredSize.Height);
 
         var line = textBlock.TextLayout.TextLines[^1];

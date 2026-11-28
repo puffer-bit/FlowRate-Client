@@ -1,11 +1,35 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation">
 
     <!-- Every flyout is a menu card: rounded, thin border, items close to the edge.
          Menu items are MenuItemButton (Client.Avalonia.Controls), stacked with Spacing="2" -->
     <Style Selector="FlyoutPresenter">
+        <Setter Property="anim:Presence.Appear" Value="Fade"/>
+        <Setter Property="anim:Presence.Leave" Value="Fade"/>
+        <Setter Property="anim:Presence.Duration" Value="Short"/>
         <Setter Property="Padding" Value="4"/>
         <Setter Property="MinWidth" Value="200"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource FlyoutBackgroundBrush}"/>
+    </Style>
+
+    <Style Selector="FlyoutPresenter.reaction-picker">
+        <Setter Property="MinWidth" Value="112"/>
+    </Style>
+
+    <!-- A menu made of several cards, e.g. the readers of a message above its actions: the presenter
+         itself is only the space they lie in -->
+    <Style Selector="FlyoutPresenter.message-menu">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="FlyoutPresenter Border.menu-island">
+        <Setter Property="Padding" Value="4"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="BorderBrush" Value="{DynamicResource FlyoutBorderBrush}"/>
@@ -24,6 +48,15 @@
         <Setter Property="Margin" Value="8,4,8,0"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+    </Style>
+
+    <!-- Why something did not work, at the top of a menu; aligned with the item labels -->
+    <Style Selector="FlyoutPresenter TextBlock.menuError">
+        <Setter Property="Margin" Value="8,4,8,4"/>
+        <Setter Property="MaxWidth" Value="260"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
     </Style>
 
     <!-- A non-button row of a menu (a slider and the like), with the same side insets as the items -->

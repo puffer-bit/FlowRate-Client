@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.HybridSessionPeer"
+             x:DataType="listVm:PeerVM"
+             Background="Transparent"
+             Padding="4,3"
+             anim:Presence.Leave="Fold"
+             anim:Presence.IsLeaving="{Binding IsLeaving}"
+             Classes.afk="{Binding IsAfk}">
+    <UserControl.ContextFlyout>
+        <Flyout Placement="BottomEdgeAlignedRight">
+            <listViews:HybridSessionPeerFlyout/>
+        </Flyout>
+    </UserControl.ContextFlyout>
+    
+    <UserControl.Styles>
+        <!-- A user away from the keyboard fades out, except the AFK mark and screen watch button -->
+        <Style Selector="listViews|HybridSessionPeer :is(Control).afkDim">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="listViews|HybridSessionPeer.afk :is(Control).afkDim">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+        <Style Selector="Button.screenWatch">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.screenWatch:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PeerItemSelectedBrush}"/>
+        </Style>
+        <!-- A screen that is being watched stays visible at a glance -->
+        <Style Selector="Button.screenWatch.watching /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="28, *, Auto" VerticalAlignment="Center" ColumnSpacing="6">
+        <Panel Grid.Column="0" Classes="afkDim" Width="28" Height="28">
+            <avatars:UserAvatar UserName="{Binding UserData.Username}"
+                                IsAnimated="True"
+                                AvatarUrl="{Binding UserData.AvatarUrl}"
+                                IsSpeaking="{Binding IsSpeaking}"
+                                IsWaiting="{Binding IsWaiting}">
+                <avatars:UserAvatar.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding Path="IsConnected"/>
+                        <Binding Path="IsWaiting"/>
+                    </MultiBinding>
+                </avatars:UserAvatar.IsVisible>
+            </avatars:UserAvatar>
+
+            <loadingIndicators:ProgressRing
+                Width="16"
+                Height="16"
+                MinWidth="0"
+                MinHeight="0"
+                IsIndeterminate="True"
+                BorderThickness="2"
+                Foreground="{DynamicResource PrimaryTextBrush}">
+                <loadingIndicators:ProgressRing.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsConnected"/>
+                        <Binding Path="!IsWaiting"/>
+                    </MultiBinding>
+                </loadingIndicators:ProgressRing.IsVisible>
+            </loadingIndicators:ProgressRing>
+        </Panel>
+
+        <!-- The reason of an away user goes under the name, and stays readable while the rest fades -->
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
+                <!-- The owner of the group whose call this is -->
+                <Image Grid.Column="1" Width="14" Height="14" Margin="4,0,0,0" VerticalAlignment="Center"
+                                               Source="{StaticResource CrownIcon}"
+                       IsVisible="{Binding IsOwner}" ToolTip.Tip="{l:Text privateChats.owner}"/>
+                <text:MarqueeTextBlock Pause="0:0:0" Grid.Column="0" Classes="peerName afkDim"
+                                       Classes.connecting="{Binding !IsConnected}"
+                                       Text="{Binding DisplayedName}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <indicators:UserKindBadge Kind="{Binding Kind}"/>
+                    <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                           IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                    <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                           IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                </StackPanel>
+            </Grid>
+            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding AfkReason}"
+                                   IsVisible="{Binding AfkReason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <!-- The user shows a screen; everyone sees the mark, in the session or not. Inside the
+                 session it starts and stops watching that screen, outside it is only a mark -->
+            <Button Classes="screenWatch"
+                    Classes.watching="{Binding IsWatchingScreen}"
+                    IsVisible="{Binding IsSharingScreen}"
+                    IsHitTestVisible="{Binding CanWatchScreen}"
+                    Command="{Binding ToggleScreenWatch}">
+                <Image Width="20" Height="20" Source="{StaticResource ScreenShareIcon}"/>
+                <ToolTip.Tip>
+                    <Panel>
+                        <TextBlock Text="{l:Text hybrid.screen.sharing}" IsVisible="{Binding !CanWatchScreen}"/>
+                        <Panel IsVisible="{Binding CanWatchScreen}">
+                            <TextBlock Text="{l:Text hybrid.screen.watch}" IsVisible="{Binding !IsWatchingScreen}"/>
+                            <TextBlock Text="{l:Text hybrid.screen.stopWatching}" IsVisible="{Binding IsWatchingScreen}"/>
+                        </Panel>
+                    </Panel>
+                </ToolTip.Tip>
+            </Button>
+
+            <!-- The user stepped away from the keyboard: no microphone and no sound, so the mark stands
+                 for both of theirs; everyone sees it, with the reason in the hint -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource AfkIcon}"
+                   IsVisible="{Binding IsAfk}"
+                   ToolTip.Tip="{Binding AfkHint}"/>
+
+            <!-- The user turned their own microphone off; everyone sees it -->
+            <Image Width="20" Height="20"
+                   Source="{Binding MicrophoneIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"
+                   ToolTip.Tip="{l:Text peer.microphoneOff}">
+                <Image.IsVisible><MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="ShowsMicrophoneOff"/><Binding Path="!ShowsSoundOff"/>
+                </MultiBinding></Image.IsVisible>
+            </Image>
+
+            <!-- The user turned the sound of the session off and hears nobody; everyone sees it -->
+            <Image Width="20" Height="20"
+                   Source="{StaticResource CrossedHeadphonesIcon}"
+                   IsVisible="{Binding ShowsSoundOff}"
+                   ToolTip.Tip="{l:Text peer.soundOff}"/>
+
+            <!-- We turned this user's sound off; only here, the others still hear them -->
+            <Image Width="20" Height="20" Classes="afkDim"
+                   Source="{StaticResource CrossedNoVolumeIcon}"
+                   IsVisible="{Binding IsMuted}"
+                   ToolTip.Tip="{l:Text peer.soundMuted}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

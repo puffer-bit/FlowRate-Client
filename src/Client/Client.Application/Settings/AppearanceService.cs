@@ -6,6 +6,23 @@ namespace Client.Application.Settings;
 public class AppearanceService : IAppearanceService
 {
     private readonly IAppearanceSettingsRepository _appearanceSettingsRepository;
+
+    public Task<bool> GetGroupOnlineChatUsersAsync() =>
+        _appearanceSettingsRepository.GetGroupOnlineChatUsersAsync();
+
+    public Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers) =>
+        _appearanceSettingsRepository.UpdateGroupOnlineChatUsersAsync(groupOnlineUsers);
+
+    public event Action<Client.Core.Chat.ChatMessageLayout>? ChatMessageLayoutChanged;
+
+    public Task<Client.Core.Chat.ChatMessageLayout> GetChatMessageLayoutAsync() =>
+        _appearanceSettingsRepository.GetChatMessageLayoutAsync();
+
+    public async Task UpdateChatMessageLayoutAsync(Client.Core.Chat.ChatMessageLayout layout)
+    {
+        await _appearanceSettingsRepository.UpdateChatMessageLayoutAsync(layout);
+        ChatMessageLayoutChanged?.Invoke(layout);
+    }
     
     public AppearanceService(IAppearanceSettingsRepository appearanceSettingsRepository)
     {

@@ -1,21 +1,7 @@
 # Elements verify.sh expects in the bundle. Mirrors the lists in Loader/GstElementCheck.cs,
 # keep both in sync. Lines starting with '?' are optional: reported, but not fatal.
 
-# Transport
-webrtcbin
-rtpbin
-nicesrc
-nicesink
-dtlssrtpenc
-dtlssrtpdec
-sctpenc
-sctpdec
-
 # Voice
-opusenc
-opusdec
-rtpopuspay
-rtpopusdepay
 audioconvert
 audioresample
 audiomixer
@@ -40,6 +26,7 @@ capsfilter
 appsrc
 appsink
 fakesink
+clocksync
 
 # Video
 videoconvert
@@ -48,21 +35,44 @@ videorate
 h264parse
 openh264enc
 openh264dec
-rtph264pay
-rtph264depay
 av1parse
 svtav1enc
 dav1ddec
-rtpav1pay
-rtpav1depay
 vp8enc
 vp8dec
-rtpvp8pay
-rtpvp8depay
 ?vp9enc
 ?vp9dec
-?rtpvp9pay
-?rtpvp9depay
 
 # Screen capture, registered only when libpipewire is on the system
 ?pipewiresrc
+
+# Chat audio playback
+filesrc
+decodebin
+id3demux
+typefind
+mpegaudioparse
+mpg123audiodec
+wavparse
+
+# Chat video containers
+playbin
+qtdemux
+matroskademux
+avidemux
+
+# AAC audio in MP4 attachments
+fdkaacdec
+
+# Camera capture
+v4l2src
+jpegdec
+
+# Compressing chat videos before sending (Video/Transcoding)
+uridecodebin
+parsebin
+videoconvertscale
+mp4mux
+aacparse
+fdkaacenc
+opusenc

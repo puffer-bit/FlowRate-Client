@@ -2,6 +2,8 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shared.Enums;
+using Shared.Enums.WebRTC;
+using Client.Core.Sessions;
 using Shared.Models.Media;
 using Client.Core.Media;
 using Client.Core.Coordinator;
@@ -9,6 +11,8 @@ using Client.Core.Sessions.Hybrid;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
 using Client.Application.Sessions.Hybrid;
+using Client.GStreamer.Video;
+using Client.TestBot.Accounts;
 
 namespace Client.TestBot;
 
@@ -27,6 +31,9 @@ internal sealed partial class VoiceBot
     private readonly IWebRTCTransportFactory _transports;
     private readonly ILogger<VoiceBot> _logger;
     private readonly LoadStats _stats;
+    private readonly BotAccountStore _accounts;
+    private readonly BotOwner? _owner;
+    private readonly string _profileId;
 
     private ICoordinatorSession? _coordinator;
     private HybridSession? _session;
@@ -43,7 +50,7 @@ internal sealed partial class VoiceBot
     private readonly Lock _sharingUsersLock = new();
 
     // Frames received per user since the last report; touched on the threads of the video tracks
-    private readonly Dictionary<int, (int Count, int Width, int Height)> _receivedVideo = [];
+    private readonly Dictionary<int, ReceivedVideo> _receivedVideo = [];
     private readonly Lock _receivedVideoLock = new();
 
     // Users whose audio arrives right now, ourselves included; touched on a timer thread of the transport
@@ -53,8 +60,9 @@ internal sealed partial class VoiceBot
 
     private string Name => $"Bot {_index + 1}";
 
+    /// <param name="owner">Makes the bot accounts and gives them codes, with <see cref="BotOptions.BotAccounts"/>.</param>
     public VoiceBot(int index, BotOptions options, AudioInput input, IServiceProvider services,
-        IWebRTCTransportFactory transports, LoadStats stats)
+        IWebRTCTransportFactory transports, LoadStats stats, BotOwner? owner)
     {
         _stats = stats;
         _index = index;
@@ -63,6 +71,11 @@ internal sealed partial class VoiceBot
         _services = services;
         _transports = transports;
         _logger = services.GetRequiredService<ILogger<VoiceBot>>();
+        _accounts = services.GetRequiredService<BotAccountStore>();
+        _owner = owner;
+        _profileId = options.BotAccounts
+            ? BotOwner.BotProfileId(options, index)
+            : $"{options.Host}-{options.Port}-{index + 1}";
 
         _voiceActivity.Changed += (_, userId, isSpeaking) =>
         {
@@ -83,19 +96,13 @@ internal sealed partial class VoiceBot
     {
         _coordinator = ActivatorUtilities.CreateInstance<CoordinatorSession>(_services);
 
-        var identity = LoadIdentity();
         var connectStarted = Stopwatch.GetTimestamp();
-        await _coordinator.Connect(_options.Host, _options.Port, identity, _options.Password);
+        var state = _options.BotAccounts
+            ? await ConnectAsBotAsync(_coordinator, cancellationToken)
+            : await ConnectAsUserAsync(_coordinator);
 
-        if (_coordinator is { ConnectionStatus: CoordinatorState.CertificateNotTrusted, UntrustedCertificate: { } untrusted })
-        {
-            Log($"trusting certificate {untrusted.Certificate.Fingerprint}");
-            await _coordinator.TrustCertificateAsync(untrusted);
-            await _coordinator.Connect(_options.Host, _options.Port, identity, _options.Password);
-        }
-
-        if (_coordinator.ConnectionStatus != CoordinatorState.Connected)
-            throw new InvalidOperationException($"{Name}: failed to connect: {_coordinator.ConnectionStatus}");
+        if (state != CoordinatorState.Connected)
+            throw new InvalidOperationException($"{Name}: failed to connect: {state}");
 
         _stats.Connected(Stopwatch.GetElapsedTime(connectStarted));
         _isCounted = true;
@@ -114,8 +121,9 @@ internal sealed partial class VoiceBot
             }
         };
 
-        SaveIdentity(_coordinator.GetCurrentUserCredentials().UserIdentity);
-        Log($"connected as {_coordinator.GetCurrentUser().Username}");
+        await _accounts.SavePhraseAsync(_profileId, _coordinator.TakeNewRecoveryPhrase());
+        var user = _coordinator.GetCurrentUser();
+        Log($"connected as {user.Username}{(user.IsBot ? $" ({user.Kind})" : string.Empty)}");
 
         if (_options.ChatInterval is { } chatInterval)
         {
@@ -130,10 +138,13 @@ internal sealed partial class VoiceBot
         }
 
         _sessionModel = await FindSessionAsync(_coordinator);
-        _isScreenWanted = _options.Screen;
+        _isScreenWanted = _options.Screen && _options.ScreenDelay == null;
         _isWatchWanted = _options.Watch;
 
         await JoinSessionAsync(cancellationToken);
+
+        if (_options.ScreenDelay is { } screenDelay)
+            _ = StartScreenLaterAsync(screenDelay, cancellationToken);
 
         if (!_options.Quiet)
             _ = ReportVideoForeverAsync(cancellationToken);
@@ -157,6 +168,75 @@ internal sealed partial class VoiceBot
         catch (OperationCanceledException)
         {
         }
+    }
+
+    /// <summary>
+    /// Logs in with the recovery phrase of the account as a temporary device, which leaves no device behind; the
+    /// first run registers the account.
+    /// </summary>
+    private async Task<CoordinatorState> ConnectAsUserAsync(ICoordinatorSession coordinator)
+    {
+        var phrase = await _accounts.LoadPhraseAsync(_profileId);
+        LoginPlan login = phrase != null ? new RecoveryLoginPlan(phrase, Temporary: true) : new RegisterLoginPlan();
+        return await BotLogin.ConnectAsync(coordinator, _options, login, Log);
+    }
+
+    /// <summary>
+    /// Logs in as the bot account: as its saved device, or with a login code (the one given, or one from the owner)
+    /// which adds a device kept for the next runs. A device that has ended, because a new code was given or the bot
+    /// was deleted, is replaced through the owner once.
+    /// </summary>
+    private async Task<CoordinatorState> ConnectAsBotAsync(ICoordinatorSession coordinator,
+        CancellationToken cancellationToken)
+    {
+        var saved = await _accounts.LoadDeviceAsync(_profileId);
+        if (saved != null)
+        {
+            var state = await BotLogin.ConnectAsync(coordinator, _options,
+                new DeviceLoginPlan(saved.DeviceId, saved.KeyName), Log);
+            if (state != CoordinatorState.DeviceEnded)
+                return await KeepDeviceAsync(coordinator, state);
+
+            Log("the saved device has ended, logging in with a new code");
+            await _accounts.ForgetDeviceAsync(_profileId);
+        }
+
+        string code;
+        if (_options.BotCode != null && (saved == null || _owner == null))
+            code = _options.BotCode;
+        else if (_owner != null)
+            code = (await _owner.GetCodeAsync(_index, saved?.UserId, cancellationToken)).Code.Code;
+        else
+            throw new InvalidOperationException(
+                $"{Name}: no login code: give a new one with --bot-code, or an owner with --owner-code");
+
+        return await KeepDeviceAsync(coordinator,
+            await BotLogin.ConnectAsync(coordinator, _options, new LoginCodeLoginPlan(code), Log));
+    }
+
+    /// <summary>Remembers the device of a bot that logged in, and forgets it once the server ends it.</summary>
+    private async Task<CoordinatorState> KeepDeviceAsync(ICoordinatorSession coordinator, CoordinatorState state)
+    {
+        if (state != CoordinatorState.Connected)
+            return state;
+
+        if (BotLogin.DeviceOf(coordinator) is { } device)
+            await _accounts.SaveDeviceAsync(_profileId, device);
+
+        if (!coordinator.GetCurrentUser().IsBot)
+            Log("warning: the login code is of a person, not of a bot account");
+
+        coordinator.DeviceEnded += reason =>
+        {
+            Log($"the device was ended by the server: {reason?.ToString() ?? "unknown"}");
+            _ = _accounts.ForgetDeviceAsync(_profileId);
+        };
+        coordinator.UserDeleted += userId =>
+        {
+            if (userId == coordinator.GetCurrentUser().Id)
+                Log("the bot account was deleted");
+        };
+        return state;
     }
 
     private static async Task WaitForeverAsync(CancellationToken cancellationToken)
@@ -201,7 +281,7 @@ internal sealed partial class VoiceBot
         var joinStarted = Stopwatch.GetTimestamp();
         var (joinResult, transport) = await coordinator.JoinHybridSession(sessionModel.Id, session.ClientEpoch);
 
-        if (joinResult != HybridSessionJoinResult.NoError || transport == null)
+        if (!joinResult.IsSuccess)
             throw new InvalidOperationException($"{Name}: failed to join \"{sessionModel.Name}\": {joinResult}");
 
         session.Connect(transport);
@@ -216,7 +296,7 @@ internal sealed partial class VoiceBot
 
         var voiceResult = await session.StartVoiceShareAsync(_input, _options.Volume);
 
-        if (voiceResult != StartVoiceShareResult.NoError)
+        if (!voiceResult.IsSuccess)
             throw new InvalidOperationException($"{Name}: failed to start the voice: {voiceResult}");
 
         CountVoice(true);
@@ -253,7 +333,7 @@ internal sealed partial class VoiceBot
     {
         var (result, peers) = await coordinator.GetAllHybridSessionPeers(sessionId);
 
-        if (result != PeerListRequestResult.NoError || peers == null)
+        if (!result.IsSuccess || peers == null)
             return [];
 
         var self = coordinator.GetCurrentUser().Id;
@@ -307,7 +387,7 @@ internal sealed partial class VoiceBot
 
             var result = await session.SetScreenWatchAsync(userId, true);
 
-            Log(result == SetScreenShareWatchResult.NoError
+            Log(result.IsSuccess
                 ? $"watching the screen of user {userId}"
                 : $"failed to watch the screen of user {userId}: {result}");
         }
@@ -335,7 +415,7 @@ internal sealed partial class VoiceBot
                 {
                     var result = await session.SetScreenWatchAsync(userId, false);
 
-                    Log(result == SetScreenShareWatchResult.NoError
+                    Log(result.IsSuccess
                         ? $"stopped watching the screen of user {userId}"
                         : $"failed to stop watching the screen of user {userId}: {result}");
                 }
@@ -380,10 +460,10 @@ internal sealed partial class VoiceBot
     {
         var result = await _session!.StartVoiceShareAsync(_input, _options.Volume);
 
-        if (result == StartVoiceShareResult.NoError)
+        if (result.IsSuccess)
             CountVoice(true);
 
-        Log(result == StartVoiceShareResult.NoError
+        Log(result.IsSuccess
             ? $"reconnected, playing {Describe(_input)}"
             : $"reconnected, but failed to start the voice: {result}");
         await MuteIfListenerAsync();
@@ -397,7 +477,7 @@ internal sealed partial class VoiceBot
             return;
 
         var result = await _session.SetMicrophoneMutedAsync(true);
-        Log(result == SetMicrophoneMuteResult.NoError ? "muted: listener" : $"failed to mute: {result}");
+        Log(result.IsSuccess ? "muted: listener" : $"failed to mute: {result}");
     }
 
     private async Task StartScreenAsync()
@@ -407,12 +487,27 @@ internal sealed partial class VoiceBot
             new ScreenShareSettings { Framerate = _options.ScreenFramerate },
             _options.ScreenAudio ? new ToneAudioInput(660) : null);
 
-        if (result == StartScreenShareResult.NoError)
+        if (result.IsSuccess)
             CountScreen(true);
 
-        Log(result == StartScreenShareResult.NoError
+        Log(result.IsSuccess
             ? _options.ScreenAudio ? "sharing a test picture with a tone" : "sharing a test picture"
             : $"failed to share the screen: {result}");
+    }
+
+    private async Task StartScreenLaterAsync(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(delay, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        _isScreenWanted = true;
+        await StartScreenAsync();
     }
 
     private async Task ToggleScreenForeverAsync(TimeSpan interval, CancellationToken cancellationToken)
@@ -433,10 +528,10 @@ internal sealed partial class VoiceBot
 
                 var result = await _session!.StopScreenShareAsync();
 
-                if (result == StopScreenShareResult.NoError)
+                if (result.IsSuccess)
                     CountScreen(false);
 
-                Log(result == StopScreenShareResult.NoError
+                Log(result.IsSuccess
                     ? "stopped sharing the screen"
                     : $"failed to stop sharing the screen: {result}");
             }
@@ -448,12 +543,25 @@ internal sealed partial class VoiceBot
 
     private void OnVideoFrame(int userId, MediaSourceType source, RawVideoFrame frame)
     {
-        _stats.VideoFrame();
+        // Read before the frame is gone; the stamp says when the test picture was drawn, on this machine
+        var latency = frame.Gpu == null &&
+                      TestPatternStamp.TryRead(frame.DataPtr, frame.Width, frame.Height, frame.Stride, out var drawn)
+            ? (double?)(int)(TestPatternStamp.Now() - drawn)
+            : null;
+
+        // Our own preview never left the machine, so it stays out of the counters of all bots
+        _stats.VideoFrame(userId == _coordinator?.GetCurrentUser().Id ? null : latency);
 
         lock (_receivedVideoLock)
         {
-            _receivedVideo.TryGetValue(userId, out var received);
-            _receivedVideo[userId] = (received.Count + 1, frame.Width, frame.Height);
+            if (!_receivedVideo.TryGetValue(userId, out var received))
+                _receivedVideo[userId] = received = new ReceivedVideo();
+
+            received.Count++;
+            (received.Width, received.Height) = (frame.Width, frame.Height);
+
+            if (latency is { } milliseconds)
+                received.Latencies.Add(milliseconds);
         }
     }
 
@@ -470,7 +578,7 @@ internal sealed partial class VoiceBot
             {
                 await Task.Delay(interval, cancellationToken);
 
-                KeyValuePair<int, (int Count, int Width, int Height)>[] received;
+                KeyValuePair<int, ReceivedVideo>[] received;
 
                 lock (_receivedVideoLock)
                 {
@@ -478,9 +586,20 @@ internal sealed partial class VoiceBot
                     _receivedVideo.Clear();
                 }
 
+                var self = _coordinator?.GetCurrentUser().Id;
+
                 foreach (var (userId, video) in received)
-                    Log($"video of user {userId}: {video.Width}x{video.Height}, " +
-                        $"{video.Count / interval.TotalSeconds:0.#} fps");
+                {
+                    var latencies = video.Latencies.Order().ToArray();
+
+                    Log($"video of user {userId}{(userId == self ? " (own preview)" : "")}: " +
+                        $"{video.Width}x{video.Height}, {video.Count / interval.TotalSeconds:0.#} fps" +
+                        (latencies.Length == 0
+                            ? ""
+                            : $", latency p50 {LoadStats.Percentile(latencies, 0.5):0} ms, " +
+                              $"p95 {LoadStats.Percentile(latencies, 0.95):0} ms, max {latencies[^1]:0} ms" +
+                              (latencies.Length < video.Count ? $", {video.Count - latencies.Length} frames unstamped" : "")));
+                }
 
                 int[] heard;
 
@@ -504,7 +623,7 @@ internal sealed partial class VoiceBot
             var mute = !_session!.IsMicrophoneMuted;
             var result = await _session.SetMicrophoneMutedAsync(mute);
 
-            Log(result == SetMicrophoneMuteResult.NoError
+            Log(result.IsSuccess
                 ? (mute ? "muted" : "unmuted")
                 : $"failed to {(mute ? "mute" : "unmute")}: {result}");
         }
@@ -551,12 +670,10 @@ internal sealed partial class VoiceBot
 
     private async Task<HybridSessionModel> FindSessionAsync(ICoordinatorSession coordinator)
     {
-        var (result, sessions, _) = await coordinator.GetAllSessions();
+        var voiceSessions = await GetVoiceSessionsAsync(coordinator);
 
-        if (result != SessionRequestResult.NoError || sessions == null)
-            throw new InvalidOperationException($"{Name}: failed to get the session list: {result}");
-
-        var voiceSessions = sessions.Values.OfType<HybridSessionModel>().ToList();
+        if (_options.CreateSession is { } created)
+            return await FindOrCreateSessionAsync(coordinator, voiceSessions, created);
 
         if (voiceSessions.Count == 0)
             throw new InvalidOperationException($"{Name}: the server has no voice sessions");
@@ -572,36 +689,52 @@ internal sealed partial class VoiceBot
                    string.Join(", ", voiceSessions.Select(session => $"{session.Id} \"{session.Name}\"")));
     }
 
-    // Each bot keeps its own user between runs instead of registering a new one every time
-    private string IdentityPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FlowRate", "TestBot", $"identity-{_options.Host}-{_options.Port}-{_index + 1}.txt");
-
-    private string? LoadIdentity()
+    private async Task<List<HybridSessionModel>> GetVoiceSessionsAsync(ICoordinatorSession coordinator)
     {
-        try
-        {
-            return File.Exists(IdentityPath) ? File.ReadAllText(IdentityPath).Trim() : null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
+        var (result, (sessions, _)) = await coordinator.GetAllSessions();
+
+        if (!result.IsSuccess || sessions == null)
+            throw new InvalidOperationException($"{Name}: failed to get the session list: {result}");
+
+        return sessions.Values.OfType<HybridSessionModel>().ToList();
     }
 
-    private void SaveIdentity(string? identity)
+    /// <summary>
+    /// The session of --create-session: the first bot creates it when the server has none of that
+    /// name, the others wait for it to appear.
+    /// </summary>
+    private async Task<HybridSessionModel> FindOrCreateSessionAsync(ICoordinatorSession coordinator,
+        List<HybridSessionModel> voiceSessions, string name)
     {
-        if (string.IsNullOrWhiteSpace(identity))
-            return;
+        const int attempts = 20;
+        var interval = TimeSpan.FromMilliseconds(250);
 
-        try
+        for (var attempt = 0; ; attempt++)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(IdentityPath)!);
-            File.WriteAllText(IdentityPath, identity);
-        }
-        catch (IOException exception)
-        {
-            Log($"failed to save the identity: {exception.Message}");
+            if (voiceSessions.FirstOrDefault(session =>
+                    string.Equals(session.Name, name, StringComparison.OrdinalIgnoreCase)) is { } found)
+                return found;
+
+            if (attempt == 0 && _index == 0)
+            {
+                var result = await coordinator.CreateSession(new NewSessionModel(name, coordinator.GetCurrentUser().Id,
+                    new NewHybridSessionOptions(WebRTCEngine.Mediasoup, Shared.Validation.Limits.SessionCapacityMax)));
+
+                if (!(result.IsSuccess || result.Error == ErrorCode.NameTaken))
+                    throw new InvalidOperationException($"{Name}: failed to create the session \"{name}\": {result}");
+
+                Log($"created the session \"{name}\"");
+            }
+            else if (attempt >= attempts)
+            {
+                throw new InvalidOperationException($"{Name}: the session \"{name}\" did not appear");
+            }
+            else
+            {
+                await Task.Delay(interval);
+            }
+
+            voiceSessions = await GetVoiceSessionsAsync(coordinator);
         }
     }
 
@@ -664,4 +797,12 @@ internal sealed partial class VoiceBot
     // The bot reports progress as free text, it is a console tool
     [LoggerMessage(LogLevel.Information, "[{Bot}] {Message}")]
     private partial void LogBotMessage(string bot, string message);
+
+    private sealed class ReceivedVideo
+    {
+        public int Count;
+        public int Width;
+        public int Height;
+        public readonly List<double> Latencies = [];
+    }
 }

@@ -7,7 +7,7 @@ using Client.GStreamer.Interop;
 namespace Client.GStreamer.Audio;
 
 /// <summary>
-/// Lists capture devices through the GStreamer device monitor, which covers PipeWire and
+/// Lists capture and playback devices through the GStreamer device monitor, which covers PipeWire and
 /// PulseAudio on Linux and WASAPI on Windows. The same device objects can later create the
 /// source element for the voice pipeline, so the list shown in the settings is exactly what
 /// the capture side can open.
@@ -16,11 +16,13 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
 {
     
     // Properties that stay the same across reboots and replugging, in order of preference:
-    // PipeWire node name, WASAPI endpoint id, PulseAudio/ALSA names. The order matters: PipeWire
-    // also sets "device.id", but there it is a runtime object number that changes between runs.
+    // PipeWire node name, WASAPI endpoint id, PulseAudio/ALSA names, CoreAudio unique id. The order
+    // matters: PipeWire also sets "device.id", but there it is a runtime object number that changes
+    // between runs.
     private static readonly string[] StableIdProperties =
     [
         "node.name",
+        "unique-id",
         "device.id",
         "device.strid",
         "device.name",
@@ -41,6 +43,10 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
     private readonly ILogger<GstAudioDeviceProvider> _logger;
 
     public event Action? InputDevicesChanged;
+    public event Action? OutputDevicesChanged;
+    private volatile IReadOnlyList<AudioDeviceInfo> _outputDevices = [];
+    private string? _outputId;
+    private string? _outputName;
 
     public GstAudioDeviceProvider(ILogger<GstAudioDeviceProvider> logger)
     {
@@ -49,8 +55,54 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
 
     public IReadOnlyList<AudioDeviceInfo> GetInputDevices()
     {
+        if (!MediaRuntime.IsEnabled)
+            return [];
+
         EnsureStarted();
         return _inputDevices;
+    }
+
+    public IReadOnlyList<AudioDeviceInfo> GetOutputDevices()
+    {
+        if (!MediaRuntime.IsEnabled)
+            return [];
+        EnsureStarted();
+        return _outputDevices;
+    }
+
+    public void SetOutputVolume(double volume) => VoicePlaybackSink.SetVolume(volume);
+
+    public void SetOutputDevice(string? id, string? name)
+    {
+        lock (_startLock)
+        {
+            _outputId = id;
+            _outputName = name;
+            ApplyOutputDevice();
+        }
+    }
+
+    private void ApplyOutputDevice()
+    {
+        lock (_startLock)
+        {
+            if (!MediaRuntime.IsEnabled)
+                return;
+            if (_outputId == null)
+            {
+                VoicePlaybackSink.SelectDevice(null);
+                return;
+            }
+            EnsureStarted();
+            var devices = _monitor?.GetDevices().Where(IsOutputDevice).ToArray() ?? [];
+            var device = devices.FirstOrDefault(d => GetStableId(d) == _outputId)
+                ?? devices.FirstOrDefault(d => d.DisplayName == _outputName);
+            using var properties = device?.GetProperties();
+            // osxaudiosink is routed by the CoreAudio unique id, which is the stable id there
+            var target = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? device == null ? null : GetStableId(device)
+                : properties?.GetString("node.name") ?? properties?.GetString("device.name");
+            VoicePlaybackSink.SelectDevice(target);
+        }
     }
 
     private void EnsureStarted()
@@ -67,6 +119,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
             {
                 _monitor = DeviceMonitor.New();
                 _monitor.AddFilter("Audio/Source", null);
+                _monitor.AddFilter("Audio/Sink", null);
 
                 // Bus watches need a GLib main loop, which the app does not run, and sync handlers would
                 // run on the provider threads; see GstBusWatcher
@@ -81,6 +134,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
                 }
 
                 _inputDevices = ReadDevices(_monitor, _logger);
+                _outputDevices = ReadDevices(_monitor, _logger, true);
             }
             catch (Exception exception)
             {
@@ -116,7 +170,13 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
                     return;
 
                 _inputDevices = ReadDevices(monitor, _logger);
+                _outputDevices = ReadDevices(monitor, _logger, true);
             }
+
+            LogDevicesRefreshed(string.Join(", ", _inputDevices.Select(d => d.Name)));
+            
+            // On the thread pool an exception would end the process, a device change must not
+            ApplyOutputDevice();
         }
         catch (Exception exception)
         {
@@ -125,6 +185,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         }
         
         InputDevicesChanged?.Invoke();
+        OutputDevicesChanged?.Invoke();
     }
 
     /// <summary>
@@ -135,7 +196,8 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
     public Element? CreateInputElement(string? deviceId)
     {
         if (deviceId == null)
-            return ElementFactory.Make("autoaudiosrc", null);
+            return AudioDeviceLatency.ConfigureCapture(ElementFactory.Make(
+                OperatingSystem.IsWindows() ? "wasapi2src" : "autoaudiosrc", null));
         
         EnsureStarted();
         
@@ -150,7 +212,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         using (var output = element?.GetStaticPad("src"))
         {
             if (output != null)
-                return element;
+                return AudioDeviceLatency.ConfigureCapture(element);
         }
 
         // The PipeWire provider creates a pipewiresink for virtual sources ("Audio/Source/Virtual",
@@ -168,11 +230,14 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         
         source?.SetProperty("target-object", nodeName);
         
-        return source;
+        return AudioDeviceLatency.ConfigureCapture(source);
     }
 
     private static bool IsInputDevice(Device device)
     {
+        if (!device.DeviceClass.StartsWith("Audio/Source", StringComparison.Ordinal))
+            return false;
+
         // PulseAudio reports the monitors of output devices as sources too
         using var properties = device.GetProperties();
 
@@ -183,10 +248,13 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         return properties.GetString("device.class") != "monitor" && !IsSet(properties, WasapiLoopbackProperty);
     }
 
+    private static bool IsOutputDevice(Device device) =>
+        device.DeviceClass.StartsWith("Audio/Sink", StringComparison.Ordinal);
+
     private static bool IsSet(Structure properties, string field) =>
         properties.HasField(field) && properties.GetBoolean(field, out var value) && value;
 
-    private static IReadOnlyList<AudioDeviceInfo> ReadDevices(DeviceMonitor monitor, ILogger logger)
+    private static IReadOnlyList<AudioDeviceInfo> ReadDevices(DeviceMonitor monitor, ILogger logger, bool output = false)
     {
         var result = new List<AudioDeviceInfo>();
 
@@ -194,7 +262,7 @@ public sealed partial class GstAudioDeviceProvider : IAudioDeviceProvider, IDisp
         {
             using var properties = device.GetProperties();
             
-            if (!IsInputDevice(device))
+            if (output ? !IsOutputDevice(device) : !IsInputDevice(device))
                 continue;
 
             var id = GetStableId(device);

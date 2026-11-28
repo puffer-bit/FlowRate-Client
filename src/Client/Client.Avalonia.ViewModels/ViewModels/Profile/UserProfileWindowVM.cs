@@ -1,4 +1,5 @@
 using Client.Services;
+using Client.Application.Ports.Repositories;
 using Client.Avalonia.Localization;
 using System;
 using System.Collections.Generic;
@@ -11,8 +12,8 @@ using ReactiveUI;
 using Client.Core.Coordinator;
 using Client.Core.Users;
 using Client.ViewModels.Roles;
+using Client.ViewModels.Sessions.List;
 using Shared.Enums;
-using Shared.Enums.Coordinator;
 using Shared.Enums.User;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
@@ -27,11 +28,11 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable _disposables = new();
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
-    private readonly ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> _changeUsernameCommand;
-    private readonly ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> _setAvatarCommand;
-    private readonly ReactiveCommand<int, SetAvatarResult> _resetAvatarCommand;
+    private readonly ReactiveCommand<(int UserId, string Username), RequestResult> _changeUsernameCommand;
+    private readonly ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> _setAvatarCommand;
+    private readonly ReactiveCommand<int, RequestResult> _resetAvatarCommand;
     private readonly ReactiveCommand<(int UserId, int RoleId, bool Has),
-        (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)> _setUserRoleCommand;
+        RequestResult<IReadOnlyList<int>>> _setUserRoleCommand;
     private readonly ObservableAsPropertyHelper<bool> _isChangingRole;
 
     /// <summary>
@@ -82,6 +83,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     /// </summary>
     /// <summary>The status of the user when the profile was opened.</summary>
     public UserStatus Status { get; }
+    public string StatusText => UserStatusText.Of(Status);
 
     public string? AvatarUrl
     {
@@ -99,6 +101,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public string? ShownAvatarUrl => IsAvatarReset ? null : AvatarUrl;
 
     public AvatarPickerVM AvatarPicker { get; }
+    public UserNoteVM Note { get; }
 
     public bool IsBusy => _isBusy.Value;
 
@@ -111,6 +114,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public ObservableCollection<UserRoleVM> Roles { get; } = new();
 
     public bool HasRoles => Roles.Count > 0;
+    public IEnumerable<UserRoleVM> AssignedRoles => Roles.Where(role => role.IsAssigned);
+    public IEnumerable<UserRoleVM> ManageableRoles => Roles.Where(role => role.CanChange);
+    public bool CanManageRoles => Roles.Any(role => role.CanChange);
 
     public bool IsChangingRole => _isChangingRole.Value;
 
@@ -124,8 +130,24 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
     public int UserId { get; }
     public bool IsCurrentUser { get; }
-    public string FirstConnected { get; }
     public string LastConnected { get; }
+
+    /// <summary>Online from a phone: the status badge is a phone.</summary>
+    public bool IsMobile { get; }
+
+    /// <summary>A person or a bot: a bot gets an icon under its name.</summary>
+    public UserKind Kind { get; }
+
+    /// <summary>The server tells the device: the user is online and not invisible, or it is our own profile.</summary>
+    public bool HasDevice { get; }
+
+    /// <summary>The system of the device and its architecture, "Windows 11 (26100) · x64".</summary>
+    public string? DeviceSystem { get; }
+
+    /// <summary>The icon of the system of the device; null for a system without one.</summary>
+    public string? DeviceIconKey { get; }
+
+    public string? DeviceAppVersion { get; }
     public string NameHint => UsernameRules.Hint;
 
     public Interaction<RxVoid, RxVoid> CloseWindow { get; } = new();
@@ -136,19 +158,68 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
     public Interaction<RxVoid, RxVoid> FocusName { get; } = new();
 
     public ReactiveCommand<RxVoid, RxVoid> EditCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> ChangeAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> ResetAvatarCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CancelEditCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> WriteMessageCommand { get; }
+    public bool WantsDirectChat { get; private set; }
+    public bool CanWriteMessage => !IsCurrentUser;
+
+    /// <summary>Asked to call the user once the profile is closed.</summary>
+    public bool WantsCall { get; private set; }
+    public bool CanCall => !IsCurrentUser && Client.Core.Media.MediaRuntime.IsEnabled;
+    public ReactiveCommand<RxVoid, RxVoid> CallCommand { get; }
+
+    /// <summary>
+    /// The direct chat with the user, set before the profile shows: its notifications are muted from here.
+    /// Without one there is nothing to mute yet.
+    /// </summary>
+    public ChatSessionVM? DirectChat
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanMuteChat));
+            this.RaisePropertyChanged(nameof(IsChatMuted));
+            this.RaisePropertyChanged(nameof(HasActions));
+        }
+    }
+
+    public bool CanMuteChat => DirectChat != null && !IsCurrentUser;
+    public bool IsChatMuted => DirectChat?.IsMuted == true;
+    public ReactiveCommand<RxVoid, RxVoid> ToggleChatMuteCommand { get; }
+
+    /// <summary>The row of buttons under the name has something to show.</summary>
+    public bool HasActions => CanWriteMessage || CanCall || CanMuteChat || CanEdit;
 
     public UserProfileWindowVM(UserModel user, bool isCurrentUser, IAvatarService avatars,
-        ReactiveCommand<(int UserId, string Username), ChangeUsernameResult> changeUsernameCommand,
-        ReactiveCommand<PreparedAvatar, (SetAvatarResult Result, string? AvatarUrl)> setAvatarCommand,
-        ReactiveCommand<int, SetAvatarResult> resetAvatarCommand,
+        ReactiveCommand<(int UserId, string Username), RequestResult> changeUsernameCommand,
+        ReactiveCommand<PreparedAvatar, (RequestResult Result, string? AvatarUrl)> setAvatarCommand,
+        ReactiveCommand<int, RequestResult> resetAvatarCommand,
         CoordinatorPermissions permissions,
-        ReactiveCommand<(int UserId, int RoleId, bool Has), (CoordinatorRoleResult Result, IReadOnlyList<int>? RoleIds)>
-            setUserRoleCommand)
+        ReactiveCommand<(int UserId, int RoleId, bool Has), RequestResult<IReadOnlyList<int>>>
+            setUserRoleCommand, IUserNotesRepository userNotes, string coordinatorInstanceId)
     {
+        WriteMessageCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            WantsDirectChat = true;
+            await CloseWindow.Handle(RxVoid.Default);
+        });
+        CallCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            WantsCall = true;
+            await CloseWindow.Handle(RxVoid.Default);
+        });
+        ToggleChatMuteCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            if (DirectChat is not { } chat) return;
+            await chat.ToggleMuteCommand.Execute(chat.Model.Id);
+            this.RaisePropertyChanged(nameof(IsChatMuted));
+        });
+        Note = new UserNoteVM(userNotes, coordinatorInstanceId, user.Id);
         _changeUsernameCommand = changeUsernameCommand;
         _setUserRoleCommand = setUserRoleCommand;
         CanEdit = isCurrentUser || (permissions.Has(Permission.ManageUsers) && permissions.Outranks(user.RoleIds));
@@ -168,11 +239,30 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         IsCurrentUser = isCurrentUser;
         Username = user.Username;
         Name = user.Username;
-        FirstConnected = FormatTime(user.FirstConnectionTime);
         LastConnected = FormatTime(user.LastConnectionTime);
+        IsMobile = user.IsMobile;
+        Kind = user.Kind;
+        if (user.Device is { } device)
+        {
+            HasDevice = true;
+            DeviceSystem = string.Join(" · ", new[] { device.OsVersion ?? device.Platform, device.Architecture }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
+            DeviceIconKey = PlatformIconKey(device.Platform);
+            DeviceAppVersion = device.AppVersion;
+        }
 
         EditCommand = ReactiveCommand.CreateFromTask(StartEditingAsync,
             this.WatchProperty(nameof(IsEditing), vm => vm.IsEditing).Select(editing => !editing && CanEdit));
+        ChangeAvatarCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await AvatarPicker.ChooseAvatarCommand.Execute();
+            if (!IsEditing && (AvatarPicker.Picked != null || AvatarPicker.AvatarError != null))
+            {
+                Name = Username;
+                NameError = null;
+                IsEditing = true;
+            }
+        }, Observable.Return(IsCurrentUser));
         ToggleRoleCommand = ReactiveCommand.CreateFromTask<UserRoleVM>(ToggleRoleAsync);
         _isChangingRole = ToggleRoleCommand.IsExecuting.ToProperty(this, nameof(IsChangingRole));
 
@@ -182,7 +272,9 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
                     && (vm.Name.Trim() != vm.Username || vm.IsAvatarReset || avatar != null));
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, hasChanges);
 
-        var notBusy = SaveCommand.IsExecuting.Select(busy => !busy);
+        var notBusy = SaveCommand.IsExecuting.CombineLatest(
+            Note.WatchProperty(nameof(UserNoteVM.IsBusy), note => note.IsBusy),
+            (profileBusy, noteBusy) => !profileBusy && !noteBusy);
         ResetAvatarCommand = ReactiveCommand.Create(ResetAvatar,
             this.WatchProperty(nameof(IsAvatarReset), vm => vm.IsAvatarReset)
                 .CombineLatest(AvatarPicker.WatchProperty(nameof(AvatarPickerVM.Avatar), picker => picker.Avatar),
@@ -222,6 +314,8 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
         foreach (var each in Roles)
             each.IsAssigned = roleIds.Contains(each.Role.Id);
+
+        this.RaisePropertyChanged(nameof(AssignedRoles));
     }
 
     private async Task StartEditingAsync()
@@ -263,7 +357,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             NameError = UsernameRules.DescribeResult(result);
 
-            if (result != ChangeUsernameResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             Username = name;
@@ -275,7 +369,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             AvatarUrl = avatarUrl;
@@ -286,7 +380,7 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
 
             AvatarPicker.ShowResult(result);
 
-            if (result != SetAvatarResult.NoError)
+            if (!result.IsSuccess)
                 return;
 
             AvatarUrl = null;
@@ -295,21 +389,34 @@ public sealed class UserProfileWindowVM : ReactiveObject, IDisposable
         StopEditing();
     }
 
-    private static string FormatTime(DateTime time)
+    /// <summary>The icon of a system the server names, null for one without an icon.</summary>
+    internal static string? PlatformIconKey(string platform) => platform switch
+    {
+        "Windows" => "WindowsIcon",
+        "Linux" => "LinuxIcon",
+        "macOS" => "MacOSIcon",
+        "Android" => "AndroidIcon",
+        "iOS" => "IPhoneIcon",
+        _ => null
+    };
+
+    private static string FormatTime(DateTimeOffset time)
     {
         if (time == default)
             return Strings.Get("common.unknown");
 
-        var local = time.Kind == DateTimeKind.Utc ? time.ToLocalTime() : time;
-        return Strings.FormatDateTime(local);
+        return Strings.FormatDateTime(time.ToLocalTime());
     }
 
     public void Dispose()
     {
+        WriteMessageCommand.Dispose();
         _disposables.Dispose();
         _isBusy.Dispose();
         _isChangingRole.Dispose();
         ToggleRoleCommand.Dispose();
+        ChangeAvatarCommand.Dispose();
         AvatarPicker.Dispose();
+        Note.Dispose();
     }
 }

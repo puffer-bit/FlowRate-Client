@@ -1,0 +1,4 @@
+CREATE TABLE PanelWidths (
+    PanelKey TEXT NOT NULL PRIMARY KEY,
+    Width REAL NOT NULL
+) STRICT;

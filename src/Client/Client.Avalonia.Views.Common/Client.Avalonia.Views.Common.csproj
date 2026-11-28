@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Views every platform shows the same way, and what views need to show dialogs, whatever lays the
+         screen out: the desktop hosts (desktop, browser) and the mobile ones (Android, iOS) build on it.
+         No windows and no platform APIs here -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <RootNamespace>Client</RootNamespace>
+        <IsAotCompatible>true</IsAotCompatible>
+        <!-- Not compiled by default, as when the shared chat views were in Client.Avalonia.ViewModels: views
+             here ask for it themselves -->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.2" />
+        <PackageReference Include="ReactiveUI" Version="24.2.0" />
+        <PackageReference Include="System.Reactive" Version="6.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.Styles\Client.Avalonia.Styles.csproj" />
+        <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+    </ItemGroup>
+
+</Project>

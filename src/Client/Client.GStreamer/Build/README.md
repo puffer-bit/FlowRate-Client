@@ -32,7 +32,7 @@ The first run takes 30-60 minutes. Output:
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | builds on Ubuntu 22.04: dav1d, SVT-AV1, GStreamer, the PipeWire plugin, gst-plugins-rs (dav1d, rtp, audiofx). Versions are the `ARG`s at the top |
+| `Dockerfile` | builds on Ubuntu 22.04: dav1d, SVT-AV1, GStreamer, the PipeWire plugin, gst-plugins-rs (dav1d, audiofx). Versions are the `ARG`s at the top |
 | `meson-options.txt` | the GStreamer plugin set. Everything not listed is disabled |
 | `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
 | `collect.sh` | copies the installed build into the `gstreamer/` layout, adds non-system dependencies, sets RPATH to `$ORIGIN`, collects licenses |
@@ -65,6 +65,8 @@ libva itself is never bundled: it must match the VA drivers installed on the sys
 3. Check the license: `verify.sh` fails on a GPL plugin, `collect.sh` on a GPL library.
 4. Run `./build.sh`.
 
+AAC decoding for MP4 attachments uses `fdkaacdec` and the shared FDK AAC library built in the Dockerfile. Its Fraunhofer license text and source reference are included in the bundle. The codec is enabled after building that dependency, separately from `meson-options.txt`.
+
 ## Windows (win-x64)
 
 Run on Windows, no administrator rights needed:
@@ -75,10 +77,23 @@ powershell -ExecutionPolicy Bypass -File collect.ps1
 ```
 
 The runtime is taken unmodified from the official GStreamer MSVC build.
+Downloads and existing cached installers are checked against the official `.sha256sum` file before
+execution. Failed or incomplete downloads are retried up to three times; temporary downloads are
+only promoted to the installer cache after their checksum matches.
+The installer runs with `/TYPE=runtime /CURRENTUSER /portable=1`, so it only extracts the runtime
+into a temporary folder without registering an installation or changing environment variables.
+On failure, the last 100 lines of `install.log` are printed; Windows CI also uploads the full log
+as the `gstreamer-win-x64-installer-log` artifact when it exists.
+
+AAC decoding for MP4 attachments uses `mfaacdec` from the bundled `mediafoundation` plugin and the
+Windows Media Foundation AAC decoder. The official installer does not include `fdkaac`; the Windows
+bundle does not require the separate FDK AAC library used by the Linux build. `verify.ps1` requires
+`mfaacdec`, so missing Windows media components still fail verification rather than silently shipping
+without AAC support. The chat player's `playbin` selects the available decoder automatically.
 
 | File | Purpose |
 |---|---|
-| `collect.ps1` | the official installer (Inno Setup) cannot be unpacked without running it, so it installs it for the current user into a temporary folder, copies the plugins listed in `$plugins` together with the DLLs they import, collects licenses, uninstalls again, runs `verify.ps1` and packs the result |
+| `collect.ps1` | runs the official installer (Inno Setup) in portable runtime mode into a temporary folder, copies the plugins listed in `$plugins` together with the DLLs they import, collects licenses, removes the temporary files, runs `verify.ps1` and packs the result |
 | `verify.ps1` | checks the bundle with the environment the client sets and a PATH holding only the bundle and Windows: elements from `required-elements.txt`, every plugin loads from the bundle, no GPL |
 | `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
 
@@ -91,6 +106,22 @@ and the `windows` folder into Windows Sandbox and run there:
 ```powershell
 powershell -ExecutionPolicy Bypass -File verify.ps1 -Bundle <path to win-x64>
 ```
+
+## macOS (osx-arm64)
+
+Collected on macOS from the official GStreamer framework (the runtime `.pkg` of
+gstreamer.freedesktop.org, installed in `/Library/Frameworks/GStreamer.framework`). Nothing is built.
+
+| File | Purpose |
+|---|---|
+| `collect.sh` | copies the plugins listed in `plugins` together with the libraries they link through `@rpath`, keeps only their arm64 code, signs every file ad hoc, collects licenses and checks the bundle in isolation from the installed framework: elements from `required-elements.txt`, every plugin loads from the bundle, no library of the framework is loaded |
+| `required-elements.txt` | elements the bundle must contain (`?` marks optional ones). Keep in sync with `Loader/GstElementCheck.cs` |
+| `build-sck.sh` | builds `libflowrate_sck.dylib` from `Native/mac`: screens, windows and the sound of applications captured through ScreenCaptureKit for screen sharing, behind a C interface. The result in `prebuilt/osx-arm64/` is committed and copied next to the executable |
+
+Output: `artifacts/osx-arm64/`. The folders of the plugins and of the scanner are `lib/plugins` and
+`libexec/scanner`, not `gstreamer-1.0` as in the framework: `codesign` takes a folder with an extension
+inside `FlowRate.app` for a nested bundle and refuses to sign the application. Without the collected
+runtime, a macOS build of the client loads the installed framework instead.
 
 ## Publishing the client
 
@@ -126,6 +157,7 @@ nor GStreamer on the target machine.
 ./src/Scripts/bash/publish.sh --target win-x64         # on Linux: Windows build
 ./src/Scripts/bash/publish.sh --target all             # on Linux: both and the Android .apk
 ./src/Scripts/bash/publish.sh --aot                    # on Linux: linux-x64 compiled ahead of time
+./src/Scripts/bash/publish.sh --target osx-arm64       # on macOS: FlowRate.app, .pkg and update packages
 ```
 
 ```powershell
@@ -150,3 +182,11 @@ version or the plugin set changes:
 NTFS has no executable bit, so `publish.ps1` packs the Linux archive through `tar.exe` from an mtree
 file list that sets mode 0755 on every ELF file (the executable, createdump, gst-plugin-scanner, shared
 objects). Unpacked on Linux, the client starts as is.
+
+## The NuGet package for other hosts
+
+Hosts of the `FlowRate.*` libraries, such as bots, get the same runtime as the packages
+`FlowRate.Client.GStreamer.Runtime.<rid>`, made from `artifacts/<rid>` by
+`src/Scripts/bash/pack.sh --gstreamer-runtime <rid>` and published by `.github/workflows/packages.yml`.
+The package layout, its targets and its version are in `package/README.md`. In CI each runtime comes
+from `.github/actions/gstreamer-runtime`, the cache `build.yml` uses as well.

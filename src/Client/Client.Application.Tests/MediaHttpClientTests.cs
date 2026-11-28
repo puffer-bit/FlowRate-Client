@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net;
 using System.Text;
 using Client.Api.Transport.HTTP;
@@ -212,6 +213,34 @@ public class MediaHttpClientTests
         Assert.Equal(_content.Length, reported[^1]);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DownloadRange_WritesOnlyThatPart(bool serverIgnoresRange)
+    {
+        _server.Images["/media/files/31"] = _content;
+        _server.IgnoreRange = serverIgnoresRange;
+        using var destination = new MemoryStream();
+
+        var result = await _client.DownloadFileRangeAsync(31, 3, 5, destination, TestContext.Current.CancellationToken);
+
+        Assert.Equal(MediaTransferResult.NoError, result);
+        Assert.Equal(_content[3..8], destination.ToArray());
+    }
+
+    [Fact]
+    public async Task DownloadRange_ToTheEnd_StopsWithTheFile()
+    {
+        _server.Images["/media/files/31"] = _content;
+        using var destination = new MemoryStream();
+
+        var result = await _client.DownloadFileRangeAsync(31, _content.Length - 2, 100, destination,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(MediaTransferResult.NoError, result);
+        Assert.Equal(_content[^2..], destination.ToArray());
+    }
+
     [Fact]
     public async Task Download_WritesTheAvatar()
     {
@@ -268,6 +297,7 @@ public class MediaHttpClientTests
         /// <summary>Numbers of the PATCH requests the server takes but whose answer is lost.</summary>
         public HashSet<int> LoseAnswerOfPatches { get; set; } = [];
         public HttpStatusCode? RefuseCreationWith { get; set; }
+        public bool IgnoreRange { get; set; }
         public Action<int>? OnPatch { get; set; }
 
         public byte[] ContentOf(string id) => _uploads[id].Content.ToArray();
@@ -282,9 +312,19 @@ public class MediaHttpClientTests
 
             var path = request.RequestUri!.PathAndQuery;
             if (request.Method == HttpMethod.Get)
-                return Images.TryGetValue(path, out var image)
-                    ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) }
-                    : new HttpResponseMessage(HttpStatusCode.NotFound);
+            {
+                if (!Images.TryGetValue(path, out var image))
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                if (IgnoreRange || request.Headers.Range?.Ranges.SingleOrDefault() is not { From: { } from } range)
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) };
+                var to = Math.Min(image.Length - 1, range.To ?? image.Length - 1);
+                var part = new HttpResponseMessage(HttpStatusCode.PartialContent)
+                {
+                    Content = new ByteArrayContent(image[(int)from..((int)to + 1)])
+                };
+                part.Content.Headers.ContentRange = new ContentRangeHeaderValue(from, to, image.Length);
+                return part;
+            }
 
             if (request.Method == HttpMethod.Post)
             {

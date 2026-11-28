@@ -6,116 +6,192 @@ using Avalonia.Collections;
 namespace Client.ViewModels.Sessions.Chat;
 
 /// <summary>
-/// The rows the chat list shows: messages sorted by time, grouped into sender chains
-/// and split by date separators.
-/// Rows are updated in place rather than reloaded, so the list keeps its containers and
-/// scroll position when a page is prepended or a single message arrives.
+/// Messages ordered by time and id, with date separators and sender chains.
+/// Inserts and removals keep existing rows and update only the neighboring chains.
+/// Used on the UI thread only; message ids and sent times stay fixed while loaded.
 /// </summary>
 public class ChatTimeline
 {
-    // Messages from one sender closer than this are drawn as one chain
     private static readonly TimeSpan ChainGap = TimeSpan.FromMinutes(2);
+    private static readonly IComparer<ChatMessageVM> MessageOrder = Comparer<ChatMessageVM>.Create((left, right) =>
+    {
+        var time = left.Message.SentTime.CompareTo(right.Message.SentTime);
+        return time != 0 ? time : left.Message.Id.CompareTo(right.Message.Id);
+    });
 
     public AvaloniaList<IMessageListItemVM> Items { get; } = new();
 
-    // Separators are reused so that an update only touches rows that really changed
-    private readonly Dictionary<DateTime, ChatDateSeparatorVM> _separators = new();
+    private readonly List<ChatMessageVM> _messages = new();
+    private readonly SortedList<DateTimeOffset, ChatDateSeparatorVM> _separators = new();
 
-    public void Update(IEnumerable<ChatMessageVM> messages)
+    /// <summary>Adds messages not already in the timeline, sorting only the incoming batch.</summary>
+    public void AddRange(IReadOnlyList<ChatMessageVM> messages)
     {
-        var sorted = messages
-            .OrderBy(vm => vm.Message.SentTime)
-            .ThenBy(vm => vm.Message.Id)
-            .ToList();
+        if (messages.Count == 0)
+            return;
 
-        UpdateChains(sorted);
-        Apply(BuildRows(sorted));
-    }
-
-    private List<IMessageListItemVM> BuildRows(List<ChatMessageVM> sorted)
-    {
-        var rows = new List<IMessageListItemVM>(sorted.Count + 8);
-        var usedDates = new HashSet<DateTime>();
-
-        foreach (var messageVm in sorted)
+        if (messages.Count == 1)
         {
-            var messageDate = messageVm.Message.SentTime.Date;
-            if (usedDates.Add(messageDate))
-            {
-                if (!_separators.TryGetValue(messageDate, out var separator))
-                {
-                    separator = new ChatDateSeparatorVM(messageVm.Message.SentTime);
-                    _separators.Add(messageDate, separator);
-                }
-
-                rows.Add(separator);
-            }
-
-            rows.Add(messageVm);
+            InsertRange(FindPosition(messages[0]), messages);
+            return;
         }
 
-        foreach (var date in _separators.Keys.Where(date => !usedDates.Contains(date)).ToList())
-            _separators.Remove(date);
+        var added = messages.ToList();
+        added.Sort(MessageOrder);
+        var start = 0;
+        while (start < added.Count)
+        {
+            var position = FindPosition(added[start]);
+            var date = added[start].LocalSentTime.Date;
+            var end = start + 1;
+            // A run on one date before the next existing message is inserted in one notification.
+            while (end < added.Count && added[end].LocalSentTime.Date == date &&
+                   (position == _messages.Count || MessageOrder.Compare(added[end], _messages[position]) < 0))
+                end++;
 
-        return rows;
+            InsertRange(position, added.GetRange(start, end - start));
+            start = end;
+        }
+    }
+
+    public void Remove(ChatMessageVM message)
+    {
+        var position = _messages.BinarySearch(message, MessageOrder);
+        // Equal times and ids cannot be told apart by the order: the row is the one holding this message
+        if (position >= 0 && !ReferenceEquals(_messages[position], message))
+            position = _messages.IndexOf(message);
+        if (position < 0)
+            return;
+
+        RemoveAt(position);
+    }
+
+    private void RemoveAt(int position)
+    {
+        var message = _messages[position];
+        var date = message.LocalSentTime.Date;
+        var day = FindDatePosition(date);
+        var row = position + day + 1;
+        _messages.RemoveAt(position);
+        UpdateChain(position - 1);
+        UpdateChain(position);
+        Items.RemoveAt(row);
+
+        if ((position == 0 || _messages[position - 1].LocalSentTime.Date != date) &&
+            (position == _messages.Count || _messages[position].LocalSentTime.Date != date))
+        {
+            _separators.RemoveAt(day);
+            Items.RemoveAt(row - 1);
+        }
     }
 
     /// <summary>
-    /// Turns <see cref="Items"/> into <paramref name="rows"/> with removals and range inserts.
-    /// Rows keep their relative order between updates, so what stays is a subsequence of the new rows.
+    /// Puts a message in the row of another one, as the stored copy of a message takes the row it was shown in while
+    /// on its way. The row stays where it is when the order allows it; otherwise the message moves to its place.
     /// </summary>
-    private void Apply(List<IMessageListItemVM> rows)
+    public void Replace(ChatMessageVM shown, ChatMessageVM replacement)
     {
-        var keep = new HashSet<IMessageListItemVM>(rows, ReferenceEqualityComparer.Instance);
-        for (int i = Items.Count - 1; i >= 0; i--)
+        // Rows on their way are at the end, so the search starts there
+        var position = _messages.LastIndexOf(shown);
+        if (position < 0)
         {
-            if (!keep.Contains(Items[i]))
-                Items.RemoveAt(i);
+            AddRange([replacement]);
+            return;
         }
 
-        int target = 0;
-        int row = 0;
-        while (row < rows.Count)
+        var date = shown.LocalSentTime.Date;
+        var fits = replacement.LocalSentTime.Date == date
+                   && (position == 0 || MessageOrder.Compare(_messages[position - 1], replacement) < 0)
+                   && (position == _messages.Count - 1 || MessageOrder.Compare(replacement, _messages[position + 1]) < 0);
+        if (!fits)
         {
-            if (target < Items.Count && ReferenceEquals(Items[target], rows[row]))
-            {
-                target++;
-                row++;
-                continue;
-            }
-
-            int start = row;
-            while (row < rows.Count && !(target < Items.Count && ReferenceEquals(Items[target], rows[row])))
-                row++;
-
-            Items.InsertRange(target, rows.GetRange(start, row - start));
-            target += row - start;
+            RemoveAt(position);
+            AddRange([replacement]);
+            return;
         }
 
-        // Safety net for an order change the in-place update cannot express
-        if (Items.Count != rows.Count)
+        var row = position + FindDatePosition(date) + 1;
+        _messages[position] = replacement;
+        UpdateChain(position - 1);
+        UpdateChain(position);
+        UpdateChain(position + 1);
+        Items[row] = replacement;
+    }
+
+    public void Clear()
+    {
+        _messages.Clear();
+        _separators.Clear();
+        Items.Clear();
+    }
+
+    private int FindPosition(ChatMessageVM message)
+    {
+        // Incoming messages normally continue the tail; appending needs no search or shifts.
+        if (_messages.Count == 0 || MessageOrder.Compare(_messages[^1], message) < 0)
+            return _messages.Count;
+
+        var position = _messages.BinarySearch(message, MessageOrder);
+        return position < 0 ? ~position : position;
+    }
+
+    private int FindDatePosition(DateTimeOffset date)
+    {
+        var low = 0;
+        var high = _separators.Count;
+        while (low < high)
         {
-            Items.Clear();
-            Items.AddRange(rows);
+            var middle = low + (high - low) / 2;
+            if (_separators.Keys[middle] < date)
+                low = middle + 1;
+            else
+                high = middle;
+        }
+
+        return low;
+    }
+
+    private void InsertRange(int position, IReadOnlyList<ChatMessageVM> messages)
+    {
+        var date = messages[0].LocalSentTime.Date;
+        var day = FindDatePosition(date);
+        var row = position + day;
+        var hasSeparator = day < _separators.Count && _separators.Keys[day] == date;
+        if (hasSeparator)
+            row++;
+
+        _messages.InsertRange(position, messages);
+        for (var i = Math.Max(0, position - 1); i <= position + messages.Count && i < _messages.Count; i++)
+            UpdateChain(i);
+
+        if (hasSeparator)
+        {
+            Items.InsertRange(row, messages);
+        }
+        else
+        {
+            var separator = new ChatDateSeparatorVM(date);
+            _separators.Add(date, separator);
+            var rows = new List<IMessageListItemVM>(messages.Count + 1) { separator };
+            rows.AddRange(messages);
+            Items.InsertRange(row, rows);
         }
     }
 
-    private static void UpdateChains(List<ChatMessageVM> sorted)
+    private void UpdateChain(int position)
     {
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            var current = sorted[i];
-            var previous = i > 0 ? sorted[i - 1] : null;
-            var next = i < sorted.Count - 1 ? sorted[i + 1] : null;
+        if (position < 0 || position >= _messages.Count)
+            return;
 
-            current.IsSequenceStart = !(previous != null && !previous.Message.IsDeleted && IsChained(previous, current));
-            current.IsSequenceEnd = !(next != null && !next.Message.IsDeleted && IsChained(current, next));
-        }
+        var current = _messages[position];
+        var previous = position > 0 ? _messages[position - 1] : null;
+        var next = position + 1 < _messages.Count ? _messages[position + 1] : null;
+        current.IsSequenceStart = !(previous != null && !previous.Message.IsDeleted && IsChained(previous, current));
+        current.IsSequenceEnd = !(next != null && !next.Message.IsDeleted && IsChained(current, next));
     }
 
-    private static bool IsChained(ChatMessageVM earlier, ChatMessageVM later)
-    {
-        return earlier.Message.SenderUserId == later.Message.SenderUserId
-               && later.Message.SentTime - earlier.Message.SentTime <= ChainGap;
-    }
+    private static bool IsChained(ChatMessageVM earlier, ChatMessageVM later) =>
+        !earlier.Message.IsSystem && !later.Message.IsSystem &&
+        earlier.Message.SenderUserId == later.Message.SenderUserId &&
+        later.Message.SentTime - earlier.Message.SentTime <= ChainGap;
 }

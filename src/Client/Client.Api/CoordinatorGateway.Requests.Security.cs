@@ -1,6 +1,8 @@
 using Client.Api.Mappers;
-using Shared.Enums.User;
+using Shared.Models.DataTransferObjects;
+using Shared.Models.Requests.Coordinator.Devices;
 using Shared.Models.Requests.Coordinator.Security;
+using Shared.Models.Responses.Coordinator.Devices;
 using Shared.Models.Responses.Coordinator.Security;
 using Client.Core.Users;
 
@@ -8,37 +10,52 @@ namespace Client.Api;
 
 internal partial class CoordinatorGateway
 {
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> GetAccountSecurity() =>
+    public Task<AccountSecurity> GetAccountSecurity() =>
         SendSecurityRequestAsync(new UserSecurityInfoRequest());
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> SetAccountPassword(AccountProof proof,
-        string? newPassword) =>
+    public Task<IReadOnlyList<AccountDevice>> GetAccountDevices() =>
+        SendDevicesRequestAsync(new AccountDevicesRequest());
+
+    public Task<IReadOnlyList<AccountDevice>> RevokeAccountDevice(Guid? deviceId) =>
+        SendDevicesRequestAsync(new AccountDeviceRevokeRequest(deviceId));
+
+    public Task LogoutAsync() => SendRequestAsync<LogoutResponse>(new LogoutRequest());
+
+    public async Task<DeviceLinkInfo> GetDeviceLinkInfo(string code)
+    {
+        var response = await SendRequestAsync<DeviceLinkInfoResponse>(new DeviceLinkInfoRequest(code.Trim()));
+        return new DeviceLinkInfo(response.Device?.Name, response.Device?.Platform, response.Device?.AppVersion,
+            response.Address);
+    }
+
+    public Task ApproveDeviceLink(string code, bool approve) =>
+        SendRequestAsync<DeviceLinkApproveResponse>(new DeviceLinkApproveRequest(code.Trim(), approve));
+
+    public Task ResetRecoveryKeys(AccountProof proof, RecoveryKeysDTO keys) =>
+        SendRequestAsync<UserRecoveryKeyResetResponse>(new UserRecoveryKeyResetRequest(proof.ToDto(), keys));
+
+    private async Task<IReadOnlyList<AccountDevice>> SendDevicesRequestAsync(Shared.Models.Requests.Request request) =>
+        (await SendRequestAsync<AccountDevicesResponse>(request)).Devices.Select(device => device.ToModel()).ToList();
+
+    public Task<AccountSecurity> SetAccountPassword(AccountProof proof, string? newPassword) =>
         SendSecurityRequestAsync(new UserSetPasswordRequest(proof.ToDto(), newPassword));
 
-    public async Task<(UserSecurityResult Result, TwoFactorSetup? Setup)> SetupTwoFactor(AccountProof proof)
+    public async Task<TwoFactorSetup> SetupTwoFactor(AccountProof proof)
     {
         var response = await SendRequestAsync<UserTwoFactorSetupResponse>(new UserTwoFactorSetupRequest(proof.ToDto()));
 
-        return response is { Result: UserSecurityResult.NoError, Secret: { } secret, Uri: { } uri }
-            ? (response.Result, new TwoFactorSetup(secret, uri))
-            : (response.Result == UserSecurityResult.NoError ? UserSecurityResult.InternalError : response.Result, null);
+        return new TwoFactorSetup(response.Secret, response.Uri);
     }
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> EnableTwoFactor(string code) =>
+    public Task<AccountSecurity> EnableTwoFactor(string code) =>
         SendSecurityRequestAsync(new UserTwoFactorEnableRequest(code));
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> DisableTwoFactor(AccountProof proof) =>
+    public Task<AccountSecurity> DisableTwoFactor(AccountProof proof) =>
         SendSecurityRequestAsync(new UserTwoFactorDisableRequest(proof.ToDto()));
 
-    public Task<(UserSecurityResult Result, AccountSecurity? Security)> DeletePasskey(AccountProof proof,
-        int passkeyId) =>
+    public Task<AccountSecurity> DeletePasskey(AccountProof proof, int passkeyId) =>
         SendSecurityRequestAsync(new UserPasskeyDeleteRequest(proof.ToDto(), passkeyId));
 
-    private async Task<(UserSecurityResult Result, AccountSecurity? Security)> SendSecurityRequestAsync(
-        Shared.Models.Requests.Request request)
-    {
-        var response = await SendRequestAsync<UserSecurityResponse>(request);
-
-        return (response.Result, response.Security?.ToModel());
-    }
+    private async Task<AccountSecurity> SendSecurityRequestAsync(Shared.Models.Requests.Request request) =>
+        (await SendRequestAsync<UserSecurityResponse>(request)).Security.ToModel();
 }

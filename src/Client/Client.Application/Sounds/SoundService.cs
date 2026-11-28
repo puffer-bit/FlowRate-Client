@@ -70,6 +70,58 @@ public sealed partial class SoundService : ISoundService
             Preview(soundEvent);
     }
 
+    public IDisposable PlayLoop(SoundEvent soundEvent) => new RepeatingSound(this, soundEvent);
+
+    private sealed class RepeatingSound : IDisposable
+    {
+        private readonly SoundService _owner;
+        private readonly SoundEvent _event;
+        private readonly Timer _timer;
+        private SoundClip? _playing;
+        private bool _disposed;
+
+        public RepeatingSound(SoundService owner, SoundEvent soundEvent)
+        {
+            _owner = owner;
+            _event = soundEvent;
+            _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
+            Tick();
+        }
+
+        private void Tick()
+        {
+            lock (_owner._lock)
+            {
+                if (_disposed) return;
+                var delay = TimeSpan.FromSeconds(1);
+                try
+                {
+                    if (_owner.IsEnabled && !_owner._disabled.Contains(_event) && _owner.Volume > 0
+                        && _owner.GetClip(_event) is { } clip)
+                    {
+                        _playing = clip;
+                        _owner._player.Play(clip, _owner.Volume);
+                        delay += TimeSpan.FromSeconds((double)clip.Pcm.Length / (clip.SampleRate * clip.Channels * 2));
+                    }
+                }
+                catch (Exception ex) { _owner.LogPlayFailed(ex, _event); }
+                _timer.Change(delay, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_owner._lock)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                _timer.Dispose();
+                try { if (_playing != null) _owner._player.Stop(_playing); }
+                catch (Exception ex) { _owner.LogPlayFailed(ex, _event); }
+            }
+        }
+    }
+
     public void Preview(SoundEvent soundEvent)
     {
         var volume = _volume;

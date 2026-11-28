@@ -1,0 +1,230 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             xmlns:notificationVm="clr-namespace:Client.ViewModels.Notifications;assembly=Client.Avalonia.ViewModels"
+             xmlns:tasksVm="clr-namespace:Client.ViewModels.Tasks;assembly=Client.Avalonia.ViewModels"
+             xmlns:notificationViews="clr-namespace:Client.Views.Notifications"
+             xmlns:mainViews="clr-namespace:Client.Views.Main"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             x:DataType="mainVm:MainWindowVM"
+             x:Class="Client.Views.Main.MainStatusBar">
+
+    <UserControl.Styles>
+        <!-- Segments: small rounded buttons with room around them, lit by the
+             theme on hover -->
+        <Style Selector="Button.segment">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="2,3"/>
+            <Setter Property="MinWidth" Value="26"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.segment /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button.segment:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.segment:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.segment:flyout-open /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuItemPressedBrush}"/>
+        </Style>
+
+        <!-- The mark of a dev build: coloured whatever the theme -->
+        <Style Selector="Button.segment.dev">
+            <Setter Property="Background" Value="#68217A"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.segment.dev /template/ ContentPresenter">
+            <Setter Property="Background" Value="#68217A"/>
+        </Style>
+        <Style Selector="Button.segment.dev:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#7D2F91"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.segment.dev:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#561B66"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- The icons of the task segment cross-fade into each other: spinner, check, warning, list -->
+        <Style Selector=":is(Control).swap">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector=":is(Control).swap.on"><Setter Property="Opacity" Value="1"/></Style>
+
+        <Style Selector="TextBlock.segmentText">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBlock.segmentText.failed">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Height="30"
+            Background="{DynamicResource GeneralBrush}"
+            BorderBrush="{DynamicResource DarkBackgroundBrush}" BorderThickness="0,1,0,0"
+            IsVisible="{Binding !IsContentFullScreen}">
+        <Panel>
+            <!-- The mark of the build on the left, the segments on the right -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="4,0">
+
+                <!-- The build and the modes of this launch on the left -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <!-- Tells the build is not a release; opens the About tab of the settings -->
+                    <Button Classes="segment dev"
+                            IsVisible="{Binding IsDevBuild}"
+                            Command="{Binding OpenAboutCommand}"
+                            AutomationProperties.Name="{l:Text main.devBuild}">
+                        <ToolTip.Tip>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{l:Text main.devBuild.tip}" TextWrapping="Wrap" MaxWidth="320"/>
+                                <TextBlock Text="{Binding BuildVersion}" Opacity="0.7"/>
+                            </StackPanel>
+                        </ToolTip.Tip>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="14" Height="14" VerticalAlignment="Center" Source="{StaticResource DevBuildIcon}"/>
+                            <TextBlock FontSize="12" Foreground="White" VerticalAlignment="Center" Text="{l:Text main.devBuild}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- The modes of this launch, moved here from the title of the settings: the hover tells what each
+                         means, a click explains it in a message box -->
+                    <Button Classes="segment mode"
+                            IsVisible="{Binding IsSafeMode}"
+                            Command="{Binding ExplainSafeModeCommand}"
+                            AutomationProperties.Name="{l:Text settings.mode.safe.title}">
+                        <ToolTip.Tip>
+                            <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{Binding SafeModeText}"/>
+                        </ToolTip.Tip>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="14" Height="14" VerticalAlignment="Center" Source="{StaticResource WarningIcon}"/>
+                            <TextBlock Classes="segmentText" Foreground="{DynamicResource WarningBrush}"
+                                       Text="{l:Text settings.mode.safe.title}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="segment mode"
+                            IsVisible="{Binding IsMediaDisabled}"
+                            Command="{Binding ExplainMediaDisabledCommand}"
+                            AutomationProperties.Name="{l:Text media.disabled.title}">
+                        <ToolTip.Tip>
+                            <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{Binding MediaDisabledText}"/>
+                        </ToolTip.Tip>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="14" Height="14" VerticalAlignment="Center" Source="{StaticResource WarningIcon}"/>
+                            <TextBlock Classes="segmentText" Foreground="{DynamicResource WarningBrush}"
+                                       Text="{l:Text media.disabled.title}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="segment mode"
+                            IsVisible="{Binding IsSoftwareRendering}"
+                            Command="{Binding ExplainSoftwareRenderingCommand}"
+                            AutomationProperties.Name="{l:Text settings.mode.software.title}">
+                        <ToolTip.Tip>
+                            <TextBlock MaxWidth="320" TextWrapping="Wrap" Text="{Binding SoftwareRenderingText}"/>
+                        </ToolTip.Tip>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image Width="14" Height="14" VerticalAlignment="Center" Source="{StaticResource WarningIcon}"/>
+                            <TextBlock Classes="segmentText" Foreground="{DynamicResource WarningBrush}"
+                                       Text="{l:Text settings.mode.software.title}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- The uploads, downloads and compressions in progress: "⟳ 2 · 45%", the list on a click -->
+                <Panel Grid.Column="2" DataContext="{Binding Tasks}">
+                    <!-- Always there, so the list opens even when nothing runs -->
+                    <Button Classes="segment"
+                            x:DataType="tasksVm:TasksVM"
+                            ToolTip.Tip="{l:Text tasks.open}"
+                            AutomationProperties.Name="{l:Text tasks.open}">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedRight">
+                                <mainViews:TasksFlyout/>
+                            </Flyout>
+                        </Button.Flyout>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Panel Width="14" Height="14" VerticalAlignment="Center">
+                                <loadingIndicators:ProgressRing Width="14" Height="14" MinWidth="14" MinHeight="14"
+                                                                BorderThickness="2"
+                                                                IsIndeterminate="{Binding IsIndeterminate}"
+                                                                Minimum="0" Maximum="1"
+                                                                Value="{Binding Progress}"
+                                                                Classes="smooth swap"
+                                                                Classes.on="{Binding IsRunning}"
+                                                                Foreground="{DynamicResource ProgressRingBrush}"/>
+                                <Image Width="14" Height="14" Source="{StaticResource WarningIcon}"
+                                       Classes="swap" Classes.on="{Binding IsFailedOnly}"/>
+                                <Image Width="14" Height="14" Source="{StaticResource DoneCheckIcon}"
+                                       Classes="swap" Classes.on="{Binding IsDone}"/>
+                                <Image Width="16" Height="16" Margin="-1" Source="{StaticResource TasksIcon}"
+                                       Classes="swap" Classes.on="{Binding !HasItems}"/>
+                            </Panel>
+                            <!-- Nothing to count when idle or all is done: the icon stays alone in the middle -->
+                            <TextBlock Classes="segmentText" Classes.failed="{Binding IsFailedOnly}"
+                                       IsVisible="{Binding HasSummary}"
+                                       Text="{Binding SummaryText}"/>
+                        </StackPanel>
+                    </Button>
+                </Panel>
+
+                <!-- The ping; opens what is known about the connection -->
+                <Button Grid.Column="3" Classes="segment"
+                        IsVisible="{Binding IsConnected}"
+                        ToolTip.Tip="{l:Text main.connection.open}"
+                        AutomationProperties.Name="{l:Text main.connection.open}">
+                    <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedRight">
+                            <mainViews:ConnectionInfoFlyout DataContext="{Binding ConnectionInfo}"/>
+                        </Flyout>
+                    </Button.Flyout>
+                    <indicators:PingIndicator FontSize="12"
+                                              Foreground="{DynamicResource SecondaryTextBrush}"
+                                              RoundTrip="{Binding ServerRoundTrip}"/>
+                </Button>
+
+                <!-- The notification center: everything the corner of the window has shown. The dot tells
+                     that something came since it was last opened -->
+                <Button Grid.Column="4" Classes="segment"
+                        DataContext="{Binding Notifications}"
+                        ToolTip.Tip="{l:Text notification.center.title}"
+                        AutomationProperties.Name="{l:Text notification.center.title}">
+                    <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedRight">
+                            <notificationViews:NotificationCenter/>
+                        </Flyout>
+                    </Button.Flyout>
+                    <!-- The bell is drawn in the lower part of its icon, so it is lifted to sit in the middle of the bar -->
+                    <Panel x:DataType="notificationVm:NotificationCenterVM" Width="18" Height="18"
+                           RenderTransform="translateY(-2px)">
+                        <Image Width="18" Height="18" Source="{StaticResource BellIcon}"/>
+                        <Ellipse Width="7" Height="7"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,2,2,0"
+                                 Fill="{DynamicResource ButtonMainBrush}"
+                                 IsVisible="{Binding HasUnread}"/>
+                    </Panel>
+                </Button>
+
+            </Grid>
+        </Panel>
+    </Border>
+</UserControl>

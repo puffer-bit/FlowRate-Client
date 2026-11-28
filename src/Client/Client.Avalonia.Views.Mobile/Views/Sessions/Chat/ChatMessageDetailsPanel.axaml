@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Mobile.Views.Sessions.Chat.ChatMessageDetailsPanel"
+             x:DataType="chatVm:ChatMessageVM">
+    <!-- Who read a message, or who reacted to it, on a page of its own, as the islands of the message menu open
+         to the whole screen. The data context is the message -->
+    <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
+        <Grid RowDefinitions="Auto,*" RowSpacing="6">
+            <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Button Classes="borderless" Width="44" Height="44" Padding="12" Click="OnBackClick">
+                        <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+                    </Button>
+                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="ReadersTitle" Text="{l:Text chat.menu.readers}" FontSize="18"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="ReactionsTitle" Text="{l:Text chat.reaction.who}" FontSize="18"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    </Panel>
+                </Grid>
+                <StackPanel x:Name="ReadersState" Margin="6,0" Spacing="2">
+                    <TextBlock Text="{l:Text chat.readers.loading}" FontSize="13"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
+                    <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource ErrorBrush}"
+                               IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
+                    <TextBlock Text="{l:Text chat.readers.empty}" FontSize="13"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <Panel>
+                    <ItemsControl x:Name="ReadersList" ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatMessageReaderVM">
+                                <!-- Any press on a user opens the same menu as an author in the chat -->
+                                <Border Background="Transparent" CornerRadius="6" Padding="8,6" MinHeight="56"
+                                        PointerReleased="OnUserPointerReleased">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <avatars:UserAvatar Width="40" Height="40" UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl x:Name="ReactionsList" ItemsSource="{Binding ReactionDetails}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatReactionDetailVM">
+                                <Border Background="Transparent" CornerRadius="6" Padding="8,6" MinHeight="56"
+                                        PointerReleased="OnUserPointerReleased">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                                        <avatars:UserAvatar Width="40" Height="40" UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
+                                                   FontSize="22" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Panel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,3 +1,4 @@
+using Client.Core.Media;
 using Gst;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Video;
@@ -12,27 +13,24 @@ internal static partial class GstElementCheck
 {
     private static readonly string[] Required =
     [
-        // Transport
-        "webrtcbin", "rtpbin", "nicesrc", "nicesink", "dtlssrtpenc", "dtlssrtpdec", "sctpenc", "sctpdec",
         // Voice
-        "opusenc", "opusdec", "rtpopuspay", "rtpopusdepay",
         "audioconvert", "audioresample", "audiomixer", "audiodynamic", "volume", "valve", "autoaudiosrc", "autoaudiosink",
         // Generic
-        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink",
+        "queue", "tee", "capsfilter", "appsrc", "appsink", "fakesink", "clocksync",
         // Video
         "videoconvert", "videoscale", "videorate",
-        "h264parse", "openh264enc", "openh264dec", "rtph264pay", "rtph264depay",
-        "vp8enc", "vp8dec", "rtpvp8pay", "rtpvp8depay"
+        "h264parse", "openh264enc", "openh264dec",
+        "vp8enc", "vp8dec"
     ];
 
     // The bundle always has them; an installed runtime may lack the gst-plugins-rs part, and AV1 is then not offered
-    private static readonly string[] Av1 = ["av1parse", "svtav1enc", "dav1ddec", "rtpav1pay", "rtpav1depay"];
+    private static readonly string[] Av1 = ["av1parse", "svtav1enc", "dav1ddec"];
 
     private static readonly string[] RequiredWindows = ["d3d11screencapturesrc"];
 
     private static readonly string[] Optional =
     [
-        "vp9enc", "vp9dec", "rtpvp9pay", "rtpvp9depay",
+        "vp9enc", "vp9dec",
         // Required by the build scripts, but a runtime built before the voice gate lacks it, and the
         // microphone is then sent ungated
         "level",
@@ -41,11 +39,17 @@ internal static partial class GstElementCheck
         "webrtcdsp",
         // RNNoise, bundled since the neural noise suppression. Without it the neural levels run as
         // the moderate one of webrtcdsp and the voice gate goes by the level alone
-        "audiornnoise"
+        "audiornnoise",
+        // Older runtimes can still join calls; the chat player reports unavailable decoders.
+        "playbin", "qtdemux", "matroskademux", "avidemux", "filesrc", "decodebin", "id3demux", "typefind", "mpegaudioparse", "mpg123audiodec", "wavparse",
+        // Videos are sent as they are without them; Opus stands in for an AAC encoder the runtime lacks
+        "uridecodebin", "parsebin", "videoconvertscale", "mp4mux", "opusenc"
     ];
 
-    // Missing only without PipeWire on the system, then screen sharing on Wayland is impossible anyway
-    private static readonly string[] OptionalLinux = ["pipewiresrc"];
+    private static readonly string[] OptionalWindows = ["mfaacdec", "mfaacenc", "mfvideosrc", "jpegdec"];
+
+    // PipeWire needs system support; older Linux runtimes may also lack the chat AAC decoder.
+    private static readonly string[] OptionalLinux = ["pipewiresrc", "fdkaacdec", "fdkaacenc", "v4l2src", "jpegdec"];
 
     /// <summary>
     /// Logs what is missing and what encoders and decoders are available.
@@ -55,7 +59,8 @@ internal static partial class GstElementCheck
     public static bool Run(ILogger logger, bool isBundled)
     {
         var required = OperatingSystem.IsWindows() ? Required.Concat(RequiredWindows) : Required;
-        var optional = OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
+        var optional = OperatingSystem.IsWindows() ? Optional.Concat(OptionalWindows)
+            : OperatingSystem.IsLinux() ? Optional.Concat(OptionalLinux) : Optional;
         if (isBundled)
             required = required.Concat(Av1);
         else

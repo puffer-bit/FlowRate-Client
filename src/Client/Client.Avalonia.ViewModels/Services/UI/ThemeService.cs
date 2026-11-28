@@ -16,19 +16,27 @@ public class ThemeService : IThemeService
 {
     public void ApplyTheme(ThemeType themeType)
     {
-        SetThemeVariant(themeType == ThemeType.Light ? ThemeVariant.Light : ThemeVariant.Dark);
+        SetThemeVariant(themeType switch
+        {
+            ThemeType.System => ThemeVariant.Default,
+            ThemeType.Light => ThemeVariant.Light,
+            _ => ThemeVariant.Dark
+        });
     }
 
     private static void SetThemeVariant(ThemeVariant variant)
     {
-        // Theme dictionaries in DarkTheme/LightTheme.axaml are resolved by the application variant
-        Dispatcher.UIThread.Post(() =>
+        if (!Dispatcher.UIThread.CheckAccess())
         {
-            if (global::Avalonia.Application.Current is not { } app || app.RequestedThemeVariant == variant)
-                return;
+            Dispatcher.UIThread.Post(() => SetThemeVariant(variant));
+            return;
+        }
 
-            WindowCrossFade.Run(() => app.RequestedThemeVariant = variant);
-        });
+        // Theme dictionaries in DarkTheme/LightTheme.axaml are resolved by the application variant
+        if (global::Avalonia.Application.Current is not { } app || app.RequestedThemeVariant == variant)
+            return;
+
+        WindowCrossFade.Run(() => app.RequestedThemeVariant = variant);
     }
 
     // Shares of white and black that turn a chosen color into its hovered, pressed and disabled shades;
@@ -77,7 +85,12 @@ public class ThemeService : IThemeService
 
     public ThemeColors ResolveColors(CustomColors colors, ThemeType themeType)
     {
-        var variant = themeType == ThemeType.Light ? ThemeVariant.Light : ThemeVariant.Dark;
+        var variant = themeType switch
+        {
+            ThemeType.System => global::Avalonia.Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark,
+            ThemeType.Light => ThemeVariant.Light,
+            _ => ThemeVariant.Dark
+        };
 
         return new ThemeColors(
             ParseColor(colors.Primary) ?? FindThemeColor("ColorPrimary", variant),

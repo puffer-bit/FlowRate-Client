@@ -42,10 +42,10 @@ public class CoordinatorSessionSuspendTests
 
         public async Task WaitForAsync(CoordinatorState state)
         {
-            var deadline = DateTime.UtcNow + Soon;
+            var deadline = DateTimeOffset.UtcNow + Soon;
             while (session.ConnectionStatus != state)
             {
-                Assert.True(DateTime.UtcNow < deadline, $"Still {session.ConnectionStatus}, not {state}");
+                Assert.True(DateTimeOffset.UtcNow < deadline, $"Still {session.ConnectionStatus}, not {state}");
                 await Task.Delay(10, TestContext.Current.CancellationToken);
             }
         }
@@ -61,7 +61,7 @@ public class CoordinatorSessionSuspendTests
             SuspendDelay = suspendDelay ?? TimeSpan.Zero
         };
 
-        await session.Connect("server", 1, null, null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
 
         List<CoordinatorState> states = [];

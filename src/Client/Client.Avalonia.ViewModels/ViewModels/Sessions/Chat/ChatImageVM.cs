@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Client.Application.Coordinator;
 using Client.Core.Chat;
 using Client.Services;
@@ -12,11 +14,10 @@ namespace Client.ViewModels.Sessions.Chat;
 /// <summary>
 /// An image of a message: its reduced copy in a tile, opened in full by a click.
 /// </summary>
-public class ChatImageVM : ReactiveObject
+public class ChatImageVM : ReactiveObject, IShownImage
 {
     // The box an only image of a message is fitted into, and the side of a tile among several
     private const double SingleMaxSide = 320;
-    private const double SingleMinSide = 96;
     private const double TileSide = 152;
 
     // A GIF moves only in the file itself, which is downloaded for the tile up to this size
@@ -82,6 +83,32 @@ public class ChatImageVM : ReactiveObject
             Release(Preview);
     }
 
+    /// <summary>Loads a still frame of the original at full size for the clipboard.</summary>
+    public async Task<Bitmap?> LoadOriginalBitmapAsync()
+    {
+        var (result, path) = await _images.FetchOriginalAsync(_session, Image.Id);
+        if (result != MediaTransferResult.NoError || path == null)
+            return null;
+
+        return await ImageDecoding.RunAsync(() =>
+        {
+            using var content = File.OpenRead(path);
+            using var decoded = SkiaImages.Decode(content, int.MaxValue);
+            return decoded == null ? null : Pictures.ToBitmap(decoded.Bitmap);
+        });
+    }
+
+    /// <summary>Saves the original file, preserving its format and animation.</summary>
+    public async Task SaveOriginalAsync(Stream target)
+    {
+        var (result, path) = await _images.FetchOriginalAsync(_session, Image.Id);
+        if (result != MediaTransferResult.NoError || path == null)
+            throw new IOException("The original image could not be downloaded.");
+
+        await using var source = File.OpenRead(path);
+        await source.CopyToAsync(target);
+    }
+
     // The bitmap is native memory the collector does not count, so it is freed at once rather than
     // when the collector comes around to it; a render still drawing it holds a reference of its own
     private void Release(IImage? picture)
@@ -141,7 +168,6 @@ public class ChatImageVM : ReactiveObject
             return (SingleMaxSide, SingleMaxSide);
 
         var scale = Math.Min(1, Math.Min(SingleMaxSide / width, SingleMaxSide / height));
-        // A very long or very narrow picture still gets a tile that can be seen and clicked
-        return (Math.Max(SingleMinSide, Math.Round(width * scale)), Math.Max(SingleMinSide, Math.Round(height * scale)));
+        return (Math.Max(1, Math.Round(width * scale)), Math.Max(1, Math.Round(height * scale)));
     }
 }

@@ -34,6 +34,12 @@ internal sealed partial class PushReplyHttpTransport : IPushReplyTransport
                 ProtocolJsonContext.Default.PushMarkReadRequest),
             cancellationToken);
 
+    public Task<PushReplyResult> DeclineCallAsync(PushReplyTarget target, string? trustedFingerprint, Guid callId,
+        CancellationToken cancellationToken = default) =>
+        PostAsync(target, trustedFingerprint, PushEndpoints.DeclineCall,
+            JsonContent.Create(new PushDeclineCallRequest(callId), ProtocolJsonContext.Default.PushDeclineCallRequest),
+            cancellationToken);
+
     private async Task<PushReplyResult> PostAsync(PushReplyTarget target, string? trustedFingerprint, string path,
         HttpContent content, CancellationToken cancellationToken)
     {
@@ -41,6 +47,7 @@ internal sealed partial class PushReplyHttpTransport : IPushReplyTransport
         using var handler = new SocketsHttpHandler
         {
             ConnectTimeout = Timeout,
+            Proxy = WebSocketRouteProxy.Instance,
             SslOptions =
             {
                 RemoteCertificateValidationCallback = (_, certificate, _, errors) =>

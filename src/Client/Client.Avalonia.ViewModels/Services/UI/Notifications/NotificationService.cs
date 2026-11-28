@@ -51,6 +51,19 @@ public class NotificationService : ReactiveObject, INotificationService
 
     public void ClearHistory() => _history.Clear();
 
+    public ToastVM ShowActions(string title, string? message, string primaryLabel, Func<System.Threading.Tasks.Task> primary,
+        string secondaryLabel, Func<System.Threading.Tasks.Task> secondary, string? primaryIconKey = null, string? secondaryIconKey = null)
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        var toast = new ToastVM(NotificationType.Info, title, message, item => _notifications.Remove(item));
+        toast.SetActions(primaryLabel, primary, secondaryLabel, secondary, primaryIconKey, secondaryIconKey);
+        _notifications.Add(toast);
+        _history.Insert(0, toast);
+        while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
+        HasUnread = true;
+        return toast;
+    }
+
     public void Show(NotificationType type, string title, string? message = null, TimeSpan? lifetime = null)
     {
         if (!Dispatcher.UIThread.CheckAccess())
@@ -71,7 +84,7 @@ public class NotificationService : ReactiveObject, INotificationService
         var staying = 0;
         for (var index = _notifications.Count - 1; index >= 0; index--)
         {
-            if (_notifications[index].IsLeaving || _notifications[index].IsPointerOver)
+            if (_notifications[index].HasActions || _notifications[index].IsLeaving || _notifications[index].IsPointerOver)
                 continue;
 
             if (++staying > MaxVisible)

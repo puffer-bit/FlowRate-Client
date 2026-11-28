@@ -2,10 +2,11 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Chat;
+using Client.Avalonia.Controls.Chat;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
 using Client.Services;
-using Shared.Enums;
+using ReactiveUI;
 using Shared.Validation;
 
 namespace Client.ViewModels.Sessions.Chat;
@@ -34,17 +35,36 @@ public partial class ActiveChatSessionVM
     /// </summary>
     private async Task LoadInitialPage(bool fromCache)
     {
-        var cached = fromCache ? await _pager.LoadCachedAsync() : null;
-        var page = cached ?? await _pager.LoadOlderAsync(null);
+        // Even an async API can do synchronous disk work or request serialization before its
+        // first await. Keep the entire fetch off the UI thread, including cache hits.
+        var (cached, page) = await Task.Run(async () =>
+        {
+            var cachedPage = fromCache ? await _pager.LoadCachedAsync() : null;
+            var loadedPage = cachedPage ?? await _pager.LoadOlderAsync(null);
+            return (cachedPage, loadedPage);
+        });
+        if (_isDisposed)
+            return;
+
+        ChatOpenTrace.Mark($"first page fetched {(cached != null ? "from the cache" : "from the server")}: " +
+            $"{page?.Messages.Count ?? 0} messages");
         await UiThread.RunAsync(() =>
         {
+            if (_isDisposed)
+                return;
+
             if (page != null)
             {
-                AddMessages(page.Messages);
+                using (ChatOpenTrace.Measure("adding the first page"))
+                    AddMessages(CurrentPage(page.Messages));
+                HistoryBoundsChanged();
                 _revision = page.Revision;
             }
 
             IsInitialLoading = false;
+            // The messages on their way waited for the history, to come after it
+            SyncOutgoingRows();
+            _ = LoadPinnedMessagesAsync();
 
             // The cache is as old as the last run. A page from the server may still be older than
             // a notification that came while it was on its way
@@ -60,8 +80,18 @@ public partial class ActiveChatSessionVM
 
         Dispatcher.UIThread.Post(() =>
         {
+            RemoveTyping(message.SenderUserId);
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
+            if (_deletedMessages.ContainsKey(message.Id)) return;
+            if (_messageChanges.TryGetValue(message.Id, out var previous) && message.Revision <= previous.Revision) return;
+            _messageChanges[message.Id] = message;
+            if (HasNewerMessages)
+            {
+                UnreadBelowCount++;
+                if (message.IsMine) _ = GoToLatestAsync();
+                return;
+            }
             if (AddMessages([message], isNew: true) == 0)
                 return;
 
@@ -80,6 +110,7 @@ public partial class ActiveChatSessionVM
 
         Dispatcher.UIThread.Post(() =>
         {
+            // Reactions also arrive as message updates; typing ends through its own activity event.
             TrackRevision(message.Revision);
             _cache.Apply([message], _revision);
             ApplyChanges([message]);
@@ -95,6 +126,8 @@ public partial class ActiveChatSessionVM
         {
             TrackRevision(revision);
             _cache.Remove(messageId, _revision);
+            _deletedMessages[messageId] = revision;
+            RemovePinnedMessage(messageId);
             RemoveMessage(messageId);
         });
     }
@@ -107,6 +140,7 @@ public partial class ActiveChatSessionVM
             IsConnected = state == CoordinatorState.Connected;
             if (!IsConnected)
             {
+                ClearTyping();
                 _wasDisconnected = true;
                 return;
             }
@@ -116,6 +150,7 @@ public partial class ActiveChatSessionVM
 
             // Notifications sent while the connection was down are lost, so ask what they were about
             _wasDisconnected = false;
+            _ = LoadPinnedMessagesAsync();
             if (!IsInitialLoading)
                 RequestSync();
         });
@@ -163,7 +198,7 @@ public partial class ActiveChatSessionVM
 
                 var (result, changes) = await _coordinatorSession.RequestChatChanges(Id, _revision,
                     Limits.ChatHistoryMaxTake);
-                if (result != FetchMessagesResult.NoError || changes == null)
+                if (!result.IsSuccess || changes == null)
                     return;
 
                 // More was missed than one answer holds: the newest page is loaded anew rather than
@@ -196,15 +231,25 @@ public partial class ActiveChatSessionVM
     /// </summary>
     private async Task ReloadAsync()
     {
-        await UiThread.RunAsync(() =>
+        await _historyGate.WaitAsync();
+        try
         {
-            _messageVms.Clear();
-            _pager.Reset();
-            _seenRevision = 0;
-            RebuildTimeline();
-            IsInitialLoading = true;
-        });
+            if (_isDisposed) return;
+            await UiThread.RunAsync(() =>
+            {
+                DisposeReaders(_messageVms.Values);
+                _messageVms.Clear();
+                _newestMessageId = 0;
+                _pager.Reset();
+                _seenRevision = 0;
+                _timeline.Clear();
+                _shownOutgoing.Clear();
+                // The messages on their way come back with the first page
+                IsInitialLoading = true;
+            });
 
-        await LoadInitialPage(fromCache: false);
+            await LoadInitialPage(fromCache: false);
+        }
+        finally { _historyGate.Release(); }
     }
 }

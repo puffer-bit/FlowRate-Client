@@ -13,4 +13,5 @@ public record TransportConnectResult(
     string? ErrorMessage = null,
     ServerCertificateModel? RejectedCertificate = null,
     ProtocolMismatch? ProtocolMismatch = null,
-    bool IsCertificateVerified = false);
+    bool IsCertificateVerified = false,
+    string? BanReason = null);

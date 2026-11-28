@@ -25,6 +25,8 @@ public sealed partial class GlobalHotKeys : IDisposable
 
     // Touched only by the thread of the listener
     private readonly HashSet<PhysicalKey> _modifiersDown = [];
+    // The actions that act while held, by the key whose release ends them
+    private readonly Dictionary<HotKeyAction, PhysicalKey> _held = [];
 
     public GlobalHotKeys(IHotKeysService service, ILogger<GlobalHotKeys> logger)
     {
@@ -75,6 +77,8 @@ public sealed partial class GlobalHotKeys : IDisposable
                 listener = EvdevKeyListener.TryStart(OnKey) ?? (IGlobalKeyListener?)XInputKeyListener.TryStart(OnKey, OnModifierSync);
             else if (OperatingSystem.IsWindows())
                 listener = WindowsKeyListener.TryStart(OnKey);
+            else if (OperatingSystem.IsMacOS())
+                listener = MacKeyListener.TryStart(OnKey);
         }
         catch (Exception exception)
         {
@@ -93,6 +97,7 @@ public sealed partial class GlobalHotKeys : IDisposable
         if (!isDown)
         {
             _modifiersDown.Remove(key);
+            ReleaseHeld(key);
             return;
         }
 
@@ -109,8 +114,25 @@ public sealed partial class GlobalHotKeys : IDisposable
         var pressed = HotKeyGesture.Of(modifiers, key);
         foreach (var (gesture, action) in _bindings)
         {
-            if (gesture == pressed)
-                Dispatcher.UIThread.Post(() => _service.Raise(action));
+            if (gesture != pressed)
+                continue;
+
+            if (HotKeysSettings.IsHeld(action))
+                _held[action] = key;
+            Dispatcher.UIThread.Post(() => _service.Raise(action));
+        }
+    }
+
+    /// <summary>Ends the actions held by a key that was released.</summary>
+    private void ReleaseHeld(PhysicalKey key)
+    {
+        foreach (var (action, heldKey) in _held.ToList())
+        {
+            if (heldKey != key)
+                continue;
+
+            _held.Remove(action);
+            Dispatcher.UIThread.Post(() => _service.RaiseRelease(action));
         }
     }
 

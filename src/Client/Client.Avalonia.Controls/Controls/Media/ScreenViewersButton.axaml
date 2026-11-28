@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:media="clr-namespace:Client.Avalonia.Controls.Media"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             x:Class="Client.Avalonia.Controls.Media.ScreenViewersButton"
+             x:Name="Root"
+             x:DataType="media:ScreenViewersButton">
+    <Button Classes="borderless" Padding="4,0" MinHeight="28" Background="Transparent" BorderThickness="0"
+            HorizontalAlignment="Left" VerticalAlignment="Center"
+            IsVisible="{Binding #Root.HasViewers}"
+            ToolTip.Tip="{l:Text hybrid.screen.viewers}"
+            AutomationProperties.Name="{l:Text hybrid.screen.viewers}">
+        <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="2" MaxWidth="320">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,4,8,2">
+                        <Image Width="12" Height="12" Source="{DynamicResource EyeIcon}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{l:Text hybrid.screen.viewers}" FontSize="12"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    </StackPanel>
+                    <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding #Root.Audience}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="media:ScreenViewerItem">
+                                    <menus:MenuItemButton Content="{Binding Username}" ToolTip.Tip="{Binding Username}"
+                                                          anim:Presence.Appear="None" anim:Presence.Leave="None">
+                                        <menus:MenuItemButton.IconContent>
+                                            <avatars:UserAvatar Width="16" Height="16"
+                                                                UserName="{Binding Username}" AvatarUrl="{Binding AvatarUrl}"/>
+                                        </menus:MenuItemButton.IconContent>
+                                    </menus:MenuItemButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Flyout>
+        </Button.Flyout>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <ItemsControl ItemsSource="{Binding #Root.Preview}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="-8"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="media:ScreenViewerItem">
+                        <Border Width="28" Height="28" CornerRadius="14" BorderThickness="2"
+                                anim:Presence.Appear="None" anim:Presence.Leave="None"
+                                BorderBrush="{DynamicResource GeneralBrush}"
+                                Background="{DynamicResource GeneralBrush}">
+                            <avatars:UserAvatar Width="24" Height="24"
+                                                UserName="{Binding Username}" AvatarUrl="{Binding AvatarUrl}"/>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding #Root.OverflowText}" VerticalAlignment="Center" FontSize="12"
+                       IsVisible="{Binding #Root.OverflowText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+        </StackPanel>
+    </Button>
+</UserControl>

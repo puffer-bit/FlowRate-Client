@@ -1,0 +1,81 @@
+# The GStreamer runtime of one RID in src/Client/Client.GStreamer/Build/artifacts/<rid>, as the client
+# ships it: from the cache, or built when the cache has none. Taken by build.yml for the client and by
+# packages.yml for the FlowRate.Client.GStreamer.Runtime.<rid> packages, so both have the same runtime.
+#
+# Each runs on its own system: linux-x64 is built in Docker (30-60 minutes, ubuntu-22.04), win-x64 is
+# collected from the official installer on Windows, osx-arm64 from the official framework on macOS.
+# A change to the build scripts of a runtime (Build/<os>) builds it again.
+name: GStreamer runtime
+description: Restores or builds the GStreamer runtime of a RID in Client.GStreamer/Build/artifacts
+
+inputs:
+  rid:
+    description: linux-x64, win-x64 or osx-arm64
+    required: true
+  macos-version:
+    # Linux and Windows take theirs from their scripts (Build/linux/Dockerfile, Build/windows/collect.ps1)
+    description: The version of the official macOS framework osx-arm64 is collected from; a new one collects it again
+    default: 1.28.7
+
+runs:
+  using: composite
+  steps:
+    - name: GStreamer runtime cache (linux-x64)
+      if: inputs.rid == 'linux-x64'
+      uses: actions/cache@v6
+      with:
+        path: src/Client/Client.GStreamer/Build/artifacts/linux-x64
+        key: gstreamer-linux-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/linux/**') }}
+
+    - name: GStreamer runtime cache (win-x64)
+      if: inputs.rid == 'win-x64'
+      uses: actions/cache@v6
+      with:
+        path: src/Client/Client.GStreamer/Build/artifacts/win-x64
+        key: gstreamer-win-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/windows/**') }}
+
+    - name: GStreamer runtime cache (osx-arm64)
+      if: inputs.rid == 'osx-arm64'
+      uses: actions/cache@v6
+      with:
+        path: src/Client/Client.GStreamer/Build/artifacts/osx-arm64
+        key: gstreamer-osx-arm64-${{ inputs.macos-version }}-${{ hashFiles('src/Client/Client.GStreamer/Build/mac/**') }}
+
+    - name: Build the runtime (linux-x64)
+      if: inputs.rid == 'linux-x64'
+      shell: bash
+      run: |
+        build=src/Client/Client.GStreamer/Build
+        [[ -d "$build/artifacts/linux-x64/gstreamer" ]] || "$build/linux/build.sh"
+
+    - name: Collect the runtime (win-x64)
+      if: inputs.rid == 'win-x64'
+      shell: powershell
+      run: |
+        $build = "src\Client\Client.GStreamer\Build"
+        if (-not (Test-Path "$build\artifacts\win-x64\gstreamer")) { & "$build\windows\collect.ps1" }
+
+    # The runtime .pkg of gstreamer.freedesktop.org into /Library/Frameworks, which collect.sh copies the
+    # runtime from
+    - name: Collect the runtime (osx-arm64)
+      if: inputs.rid == 'osx-arm64'
+      shell: bash
+      env:
+        GSTREAMER_VERSION: ${{ inputs.macos-version }}
+      run: |
+        build=src/Client/Client.GStreamer/Build
+        [[ -d "$build/artifacts/osx-arm64/gstreamer" ]] && exit 0
+        pkg="$RUNNER_TEMP/gstreamer.pkg"
+        curl -fsSL --retry 3 -o "$pkg" \
+            "https://gstreamer.freedesktop.org/data/pkg/osx/$GSTREAMER_VERSION/gstreamer-1.0-$GSTREAMER_VERSION-universal.pkg"
+        sudo installer -pkg "$pkg" -target /
+        rm "$pkg"
+        /Library/Frameworks/GStreamer.framework/Versions/1.0/bin/gst-inspect-1.0 --version
+        "$build/mac/collect.sh"
+
+    - name: Unknown RID
+      if: inputs.rid != 'linux-x64' && inputs.rid != 'win-x64' && inputs.rid != 'osx-arm64'
+      shell: bash
+      run: |
+        echo "::error::No GStreamer runtime for ${{ inputs.rid }}, only linux-x64, win-x64 and osx-arm64"
+        exit 1

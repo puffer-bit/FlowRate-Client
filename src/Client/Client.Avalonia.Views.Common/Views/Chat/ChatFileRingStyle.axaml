@@ -1,0 +1,16 @@
+<!-- The upload or download of a file, on a ring around its icon or button: light on the card, so it is seen on a
+     phone, and white on the accent of an own bubble. Included by the controls that draw it: the default style of the
+     ring comes after the styles of the application and would win over them -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls">
+    <Style Selector="loadingIndicators|ProgressRing.file-ring">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine loadingIndicators|ProgressRing.file-ring">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="#40FFFFFF"/>
+    </Style>
+</Styles>

@@ -38,6 +38,12 @@ public interface IHotKeysService
     /// </summary>
     bool IsHeardGlobally(HotKeyAction action);
 
+    /// <summary>The keys of an action that acts while held were released, see <see cref="HotKeysSettings.IsHeld"/>.</summary>
+    event Action<HotKeyAction>? Released;
+
     /// <summary>Reports a press of the keys of an action.</summary>
     void Raise(HotKeyAction action);
+
+    /// <summary>Reports the release of the keys of an action that acts while held.</summary>
+    void RaiseRelease(HotKeyAction action);
 }

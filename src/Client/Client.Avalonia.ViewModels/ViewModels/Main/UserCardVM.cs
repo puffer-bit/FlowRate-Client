@@ -20,7 +20,10 @@ public class UserCardVM : ReactiveObject
 
     public string StatusText => UserStatusText.Of(Presence);
 
-    /// <summary>The status the user picked.</summary>
+    /// <summary>
+    /// The status the user picked, or idle or sleeping instead of online while all their devices are idle, as the
+    /// server shows it to them.
+    /// </summary>
     public UserStatus Status
     {
         get;
@@ -38,6 +41,13 @@ public class UserCardVM : ReactiveObject
 
     /// <summary>The icon of <see cref="Status"/>, for the menu that changes it.</summary>
     public string StatusIconKey => $"Status{Status}Icon";
+
+    /// <summary>The server shows the user online from a phone, this one or another.</summary>
+    public bool IsMobile
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public string? AvatarUrl
     {
@@ -93,6 +103,7 @@ public class UserCardVM : ReactiveObject
         Username = user.Username;
         AvatarUrl = user.AvatarUrl;
         Status = user.Status;
+        IsMobile = user.IsMobile;
         IsReady = true;
     }
 

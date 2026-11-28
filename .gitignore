@@ -3,6 +3,9 @@ bin/
 obj/
 TestResults/
 *.nupkg
+*.snupkg
+# Packages of Scripts/bash/pack.sh
+/artifacts/
 
 # IDE and editor state
 .idea/
@@ -25,6 +28,7 @@ Thumbs.db
 # GStreamer runtime produced by Client.GStreamer/Build scripts
 src/Client/Client.GStreamer/Build/artifacts/
 
+
 # Release archives produced by the publish scripts in src/Scripts
 dist/
 
@@ -37,3 +41,9 @@ src/Client/Client.TestBot/Assets/Audio/*.mp3
 # Local backups
 src/Client/Client.Avalonia.Assets/IconsBackup/
 *.bak
+
+# Android release signing: everything in the folder but the example (Signing/signing.env.example)
+/src/Client/Client.Avalonia.Android/Signing/*
+!/src/Client/Client.Avalonia.Android/Signing/signing.env.example
+*.keystore
+*.jks

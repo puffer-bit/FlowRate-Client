@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace Client.Avalonia.Controls.Menus;
 
@@ -29,11 +30,22 @@ public class MenuItemButton : Button
 
     private IDisposable? _submenuTimer;
 
+    public static readonly StyledProperty<bool> IsCheckedProperty =
+        AvaloniaProperty.Register<MenuItemButton, bool>(nameof(IsChecked));
+
+    public bool IsChecked { get => GetValue(IsCheckedProperty); set => SetValue(IsCheckedProperty, value); }
+
     public static readonly StyledProperty<IImage?> IconProperty =
         AvaloniaProperty.Register<MenuItemButton, IImage?>(nameof(Icon));
 
+    public static readonly StyledProperty<object?> IconContentProperty =
+        AvaloniaProperty.Register<MenuItemButton, object?>(nameof(IconContent));
+
     public static readonly StyledProperty<KeyGesture?> GestureProperty =
         AvaloniaProperty.Register<MenuItemButton, KeyGesture?>(nameof(Gesture));
+
+    public static readonly StyledProperty<bool> ShowGestureProperty =
+        AvaloniaProperty.Register<MenuItemButton, bool>(nameof(ShowGesture), true);
 
     public static readonly DirectProperty<MenuItemButton, IReadOnlyList<GestureKey>> GestureKeysProperty =
         AvaloniaProperty.RegisterDirect<MenuItemButton, IReadOnlyList<GestureKey>>(nameof(GestureKeys), o => o.GestureKeys);
@@ -48,10 +60,25 @@ public class MenuItemButton : Button
         set => SetValue(IconProperty, value);
     }
 
+    /// <summary>
+    /// A control in the place of the <see cref="Icon"/>, for an icon that changes with its data.
+    /// </summary>
+    public object? IconContent
+    {
+        get => GetValue(IconContentProperty);
+        set => SetValue(IconContentProperty, value);
+    }
+
     public KeyGesture? Gesture
     {
         get => GetValue(GestureProperty);
         set => SetValue(GestureProperty, value);
+    }
+
+    public bool ShowGesture
+    {
+        get => GetValue(ShowGestureProperty);
+        set => SetValue(ShowGestureProperty, value);
     }
 
     /// <summary>The gesture split into its keycaps, modifiers first</summary>
@@ -68,12 +95,30 @@ public class MenuItemButton : Button
         if (change.Property == GestureProperty)
             GestureKeys = Split(Gesture);
         else if (change.Property == FlyoutProperty)
+        {
+            if (change.OldValue is PopupFlyoutBase oldSubmenu)
+                oldSubmenu.Opening -= OnSubmenuOpening;
+            if (change.NewValue is PopupFlyoutBase newSubmenu)
+                newSubmenu.Opening += OnSubmenuOpening;
             PseudoClasses.Set(SubmenuPseudoClass, Flyout != null);
+        }
+    }
+
+    private void OnSubmenuOpening(object? sender, EventArgs e)
+    {
+        // Flyout copies its overlay settings to Popup before raising Opening, so update
+        // the actual popup here. The presenter belongs to the visual tree of the menu.
+        if (sender is PopupFlyoutBase submenu)
+            submenu.Popup.SetCurrentValue(Popup.OverlayInputPassThroughElementProperty,
+                this.FindAncestorOfType<FlyoutPresenter>());
     }
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
+
+        if (e.Pointer.Type != PointerType.Mouse)
+            return;
 
         CloseSiblingSubmenus();
         if (Flyout == null || Flyout.IsOpen)
@@ -145,14 +190,15 @@ public class MenuItemButton : Button
 
         var keys = new List<string>();
         var modifiers = gesture.KeyModifiers;
+        // Ctrl in a written shortcut is the command key, Cmd on macOS (see CommandModifier)
         if (modifiers.HasFlag(KeyModifiers.Control))
-            keys.Add("Ctrl");
+            keys.Add(OperatingSystem.IsMacOS() ? "Cmd" : "Ctrl");
         if (modifiers.HasFlag(KeyModifiers.Shift))
             keys.Add("Shift");
         if (modifiers.HasFlag(KeyModifiers.Alt))
             keys.Add("Alt");
         if (modifiers.HasFlag(KeyModifiers.Meta))
-            keys.Add(OperatingSystem.IsMacOS() ? "Cmd" : "Win");
+            keys.Add(OperatingSystem.IsMacOS() ? "Ctrl" : "Win");
         if (gesture.Key != Key.None)
             keys.Add(KeyLabel(gesture.Key));
         return keys.Select((label, i) => new GestureKey(label, i == 0)).ToList();

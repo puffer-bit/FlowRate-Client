@@ -1,0 +1,1 @@
+ALTER TABLE BehaviorSettings ADD COLUMN KeepScreenOnWhileWatching INTEGER NOT NULL DEFAULT 1;

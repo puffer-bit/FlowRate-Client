@@ -8,6 +8,18 @@ public class StringsTests : IDisposable
 {
     public void Dispose() => Strings.SetLanguage("en");
 
+    [Theory]
+    [InlineData("ru")]
+    [InlineData("es")]
+    [InlineData("ja")]
+    [InlineData("zh")]
+    public void AuthenticationFailure_HasATranslation(string language)
+    {
+        Strings.SetLanguage(language);
+        Assert.NotEqual(Strings.FindInvariant("connect.failed.authFailed"), Strings.Get("connect.failed.authFailed"));
+        Assert.NotEqual("connect.failed.authFailed", Strings.Get("connect.failed.authFailed"));
+    }
+
     [Fact]
     public void UnknownLanguageFallsBackToEnglish()
     {
@@ -125,7 +137,7 @@ public class StringsTests : IDisposable
     [Fact]
     public void LongDateTakesTheMonthFromTheTable()
     {
-        var date = new DateTime(2026, 10, 5);
+        var date = new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero);
 
         Assert.Equal("5 October 2026", Strings.FormatLongDate(date));
 

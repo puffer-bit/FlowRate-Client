@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Client.Application.Tasks;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Settings;
@@ -13,12 +14,11 @@ using Client.Core.Users;
 using Client.Services;
 using Client.ViewModels.Connections;
 using Client.ViewModels.Dialogs;
-using Client.ViewModels.Profile;
 using Client.ViewModels.Sessions;
 using Client.ViewModels.Sessions.Chat;
 using Client.ViewModels.Sessions.Hybrid;
 using Client.ViewModels.Sessions.List;
-using Result = Client.ViewModels.Dialogs.Result;
+using Shared.Enums;
 
 namespace Client.ViewModels.Main;
 
@@ -34,24 +34,69 @@ public partial class MainWindowVM
     // Rejections come in bursts, e.g. every request of a rate limited action; one message covers a burst
     private static readonly TimeSpan RejectionMessagePause = TimeSpan.FromSeconds(5);
     private bool _isRejectionMessageShown;
-    private DateTime _nextRejectionMessageTime;
+    private DateTimeOffset _nextRejectionMessageTime;
 
     private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(() => Strings.Get(key), isActive);
 
-    private async Task AutoConnectToCoordinator(SavedCoordinatorModel coordinator, SavedUserModel user)
+    // The connection being made or restored, in the task list, while the status line tells of it
+    private ITrackedTask? _connectionTask;
+
+    /// <summary>
+    /// Every step of a connection goes through the status line: while it says an action goes on, one task
+    /// follows it with the same text, from the first attempt to the connection or its end. Called on the UI thread.
+    /// </summary>
+    private void OnStatusChanged(string text, bool isActive)
+    {
+        if (isActive)
+        {
+            if (_connectionTask is { State: TrackedTaskState.Running } running)
+                running.SetTitle(text);
+            else
+                _connectionTask = _taskTracker.Begin(TrackedTaskKind.Connection, TrackedTaskStage.Connecting, text);
+            return;
+        }
+
+        if (_connectionTask is not { } task)
+            return;
+        _connectionTask = null;
+
+        if (IsConnected)
+            task.Complete();
+        else if (text == Strings.Get("main.status.connectionFailed"))
+            task.Fail(text);
+        // Skipped, left or given up: the message box or the user tells about it already
+        else
+            task.Dispose();
+    }
+
+    /// <param name="skipped">
+    /// Cancelled when the user skips the connection at start: whatever is left of it is given up without a word.
+    /// </param>
+    private async Task AutoConnectToCoordinator(SavedCoordinatorModel coordinator, SavedUserModel user,
+        CancellationToken skipped = default)
     {
         string Connecting() => Strings.Format("main.status.connecting", ("host", coordinator.Address),
             ("port", coordinator.Port), ("user", user.Username));
 
+        // An account without a device here logs in again: the connect window opens on it, and tells why
+        if (LoginPlan.For(user) is not { } plan)
+        {
+            await RevealStartupAsync();
+            await ConnectToCoordinator((coordinator.CoordinatorId, user.Id));
+            return;
+        }
+
+        StartupStage = Strings.Format("main.startup.stage.connecting", ("host", coordinator.Name is { Length: > 0 } name
+            ? name : coordinator.Address));
         await StatusLine.SetAsync(Connecting, true);
         var session = _coordinatorFactory.CreateCoordinatorSession();
         LoginPromptVM.Attach(session, AskLogin);
-        await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-            user.AccountPassword);
+        if (!await ConnectWithRetriesAsync(session, coordinator, user, plan, skipped))
+            return;
 
         if (session.ConnectionStatus == CoordinatorState.CertificateNotTrusted)
         {
-            if (!await CertificateTrustMessages.ConfirmTrustAsync(session, ShowMessageBox))
+            if (!await CertificateTrustMessages.ConfirmTrustAsync(session, ShowMessageBox) || skipped.IsCancellationRequested)
             {
                 await SetStatus("main.status.offline", false);
                 session.Dispose();
@@ -59,8 +104,20 @@ public partial class MainWindowVM
             }
 
             await StatusLine.SetAsync(Connecting, true);
-            await session.Connect(coordinator.Address, coordinator.Port, user.UserIdentity, user.Password,
-                user.AccountPassword);
+            if (!await ConnectWithRetriesAsync(session, coordinator, user, plan, skipped))
+                return;
+        }
+
+        // The device ended while the app was closed: the user logs in again, told why in the connect window
+        if (session.ConnectionStatus == CoordinatorState.DeviceEnded)
+        {
+            session.Dispose();
+            // The saved account is marked before the connect window lists it
+            await _accounting.ForgetDeviceAsync(coordinator.CoordinatorId, user.Id, LoginLostReason.NotFound);
+            await SetStatus("main.status.offline", false);
+            await RevealStartupAsync();
+            await ConnectToCoordinator((coordinator.CoordinatorId, user.Id));
+            return;
         }
 
         if (session.ConnectionStatus != CoordinatorState.Connected)
@@ -78,15 +135,114 @@ public partial class MainWindowVM
             return;
         }
 
-        // The password may have been typed, or found changed, on the way
-        if (session.AccountPasswordToSave != user.AccountPassword)
-            await SaveAccountPasswordAsync(session.CoordinatorModel!.Id, user.Id, session.AccountPasswordToSave);
+        // Skipped while the login was finishing: the interface is offline already
+        if (skipped.IsCancellationRequested || _coordinatorSession != null)
+        {
+            await session.Disconnect();
+            session.Dispose();
+            return;
+        }
+
+        try
+        {
+            // An account of the earlier protocol has just moved over: it has a device and a new recovery phrase now
+            var credentials = session.GetCurrentUserCredentials();
+            var newPhrase = session.TakeNewRecoveryPhrase();
+            await _accounting.SaveCoordinatorInstanceAsync(coordinator, new SavedUserModel
+            {
+                CoordinatorId = coordinator.CoordinatorId,
+                Id = credentials.Id,
+                Username = credentials.Username,
+                Password = user.Password,
+                DeviceId = credentials.DeviceId,
+                DeviceKey = credentials.DeviceKey,
+                RecoveryPhrase = newPhrase,
+                IsRecoveryPhraseSaved = newPhrase == null && user.IsRecoveryPhraseSaved
+            });
+            await _behaviorService.RecordConnectionAsync(coordinator.CoordinatorId, credentials.Id);
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinator.CoordinatorId);
+        }
 
         _coordinatorSession = session;
         await FinalizeCoordinatorConnection();
     }
 
-    private async Task ConnectToCoordinator()
+    // The network of a phone that has just woken up or moved to another one is often not there yet when
+    // the application starts, and a desktop may start before its network too: a failure the network can
+    // explain is tried again a few times before it is told
+    private static readonly TimeSpan[] AutoConnectRetryDelays =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(4),
+        TimeSpan.FromSeconds(8)
+    ];
+
+    private static bool CanRetryAutoConnect(CoordinatorState state) => state is CoordinatorState.Failed
+        or CoordinatorState.TimedOut or CoordinatorState.Disconnected or CoordinatorState.InternalServerError
+        or CoordinatorState.HeartbeatTimedOut or CoordinatorState.HeartbeatServerShutdown;
+
+    /// <returns>
+    /// False when another connection took the place of this one meanwhile, made by the user from the
+    /// connect window, or when the user skipped it at start: the session is disposed and there is nothing to tell.
+    /// </returns>
+    private async Task<bool> ConnectWithRetriesAsync(ICoordinatorSession session, SavedCoordinatorModel coordinator,
+        SavedUserModel user, LoginPlan plan, CancellationToken skipped)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await session.Connect(coordinator.Address, coordinator.Port, user.Password, plan,
+                    coordinator.CoordinatorId);
+            }
+            catch (Exception exception)
+            {
+                // The state of the session is Failed then, which is retried or told below
+                LogAutoConnectAttemptFailed(exception, coordinator.CoordinatorId, attempt);
+            }
+
+            if (_coordinatorSession != null || skipped.IsCancellationRequested)
+            {
+                session.Dispose();
+                return false;
+            }
+
+            if (!CanRetryAutoConnect(session.ConnectionStatus) || attempt > AutoConnectRetryDelays.Length)
+                return true;
+
+            var delay = AutoConnectRetryDelays[attempt - 1];
+            LogAutoConnectRetry(coordinator.CoordinatorId, attempt, session.ConnectionStatus, delay);
+            var next = attempt + 1;
+            StartupStage = Strings.Format("main.startup.stage.connectingAttempt", ("attempt", next));
+            await StatusLine.SetAsync(() => Strings.Format("main.status.autoConnectAttempt",
+                ("host", coordinator.Address), ("port", coordinator.Port), ("attempt", next)), true);
+            try
+            {
+                await Task.Delay(delay, skipped);
+            }
+            catch (OperationCanceledException)
+            {
+                // Told by the skip itself
+            }
+
+            if (_coordinatorSession != null || skipped.IsCancellationRequested)
+            {
+                session.Dispose();
+                return false;
+            }
+        }
+    }
+
+    private Task ConnectToCoordinator() => ConnectToCoordinator(null);
+
+    /// <param name="account">The saved account the connect window opens on, instead of the server connected to last.</param>
+    /// <param name="prepare">Fills the connect window in before it is shown, as a link does.</param>
+    private async Task ConnectToCoordinator((string CoordinatorId, int UserId)? account,
+        Action<ConnectWindowVM>? prepare = null)
     {
         if (_coordinatorSession != null &&
             _coordinatorSession.ConnectionStatus != CoordinatorState.Connected)
@@ -98,9 +254,24 @@ public partial class MainWindowVM
             _connectionCancellationSource = new();
         }
 
-        var newCoordinator = await ShowConnectWindow.Handle(_createConnectWindow());
+        var connectWindow = _createConnectWindow();
+        if (account is var (coordinatorId, userId))
+            connectWindow.PreferAccount(coordinatorId, userId);
+        // Only a connected server is left by a new connect: one still connecting was dropped above
+        if (_coordinatorSession is { ConnectionStatus: CoordinatorState.Connected })
+            connectWindow.WarnAboutLeavingConnectedServer();
+        prepare?.Invoke(connectWindow);
+        var newCoordinator = await ShowConnectWindow.Handle(connectWindow);
         if (newCoordinator is { ConnectionStatus: CoordinatorState.Connected })
         {
+            // The server connected so far is left only now, once the new one is there: a cancelled connect keeps it.
+            // Left as a disconnect leaves it, so its hybrid session, media and subscriptions do not outlive it
+            if (_coordinatorSession is { } previous && previous != newCoordinator)
+            {
+                await DisconnectFromCoordinator();
+                previous.Dispose();
+            }
+
             _coordinatorSession = newCoordinator;
             await FinalizeCoordinatorConnection();
         }
@@ -124,14 +295,24 @@ public partial class MainWindowVM
 
     private async Task FinalizeCoordinatorConnection()
     {
+        _deviceEnded = false;
         var session = _coordinatorSession!;
         LoginPromptVM.Attach(session, AskLogin);
         _coordinatorSubscriptions
-            .Add(() => session.AccountPasswordToSaveChanged += OnAccountPasswordToSaveChanged,
-                () => session.AccountPasswordToSaveChanged -= OnAccountPasswordToSaveChanged)
+            // Calls in chats are hybrid sessions too
+            .Add(() => _autoIdle?.Attach(session, () => OpenedSessions?.IsInHybridSession == true),
+                () => _autoIdle?.Detach())
+            .Add(() => session.ChatCallFailed += OnChatCallFailed, () => session.ChatCallFailed -= OnChatCallFailed)
+            .Add(() => session.ChatCallChanged += OnChatCallChanged,
+                () => { session.ChatCallChanged -= OnChatCallChanged; DismissCallToast(); })
             .Add(() => session.StateChanged += OnConnectionStateChanged, () => session.StateChanged -= OnConnectionStateChanged)
             .Add(() => session.ReconnectScheduled += OnReconnectScheduled, () => session.ReconnectScheduled -= OnReconnectScheduled)
             .Add(() => session.RequestRejected += OnRequestRejected, () => session.RequestRejected -= OnRequestRejected)
+            .Add(() => session.DeviceEnded += OnDeviceEnded, () => session.DeviceEnded -= OnDeviceEnded)
+            .Add(() => session.DeviceAdded += OnDeviceAdded, () => session.DeviceAdded -= OnDeviceAdded)
+            .Add(() => session.ServerRestart += OnServerRestart, () => session.ServerRestart -= OnServerRestart)
+            .Add(() => session.ServerRestartCancelled += OnServerRestartCancelled,
+                () => session.ServerRestartCancelled -= OnServerRestartCancelled)
             .Add(() => session.PermissionsChanged += OnPermissionsChanged, () => session.PermissionsChanged -= OnPermissionsChanged)
             .Add(() => session.CurrentUserChanged += OnCurrentUserChanged, () => session.CurrentUserChanged -= OnCurrentUserChanged)
             .Add(() => session.ServerRoundTripChanged += OnServerRoundTripChanged,
@@ -145,29 +326,77 @@ public partial class MainWindowVM
         _lastSession.Forget(session.CoordinatorModel?.Id);
 
         await RestoreCoordinatorData();
+        Dispatcher.UIThread.Post(() => _ = PromptRecoveryPhraseAsync());
     }
 
     private void UnsubscribeFromCoordinator() => _coordinatorSubscriptions.Clear();
 
-    // Raised on the thread of a login or of a change in the profile
-    private void OnAccountPasswordToSaveChanged(string? password)
+    /// <summary>The saved account of the session: its server and user, unless the device is temporary.</summary>
+    private (string CoordinatorId, int UserId)? SavedAccountOf(ICoordinatorSession? session)
     {
-        if (_coordinatorSession is not { CoordinatorModel.Id: var coordinatorId } session)
-            return;
-
-        var userId = session.GetCurrentUser().Id;
-        _ = SaveAccountPasswordAsync(coordinatorId, userId, password);
-    }
-
-    private async Task SaveAccountPasswordAsync(string coordinatorId, int userId, string? password)
-    {
+        if (session is not { CoordinatorModel.Id: var coordinatorId } || session.IsTemporaryDevice)
+            return null;
         try
         {
-            await _accounting.SetAccountPasswordAsync(coordinatorId, userId, password);
+            return (coordinatorId, session.GetCurrentUser().Id);
         }
-        catch (Exception e)
+        catch (InvalidOperationException)
         {
-            LogAccountPasswordSaveFailed(e, coordinatorId);
+            return null;
+        }
+    }
+
+    private AccountSecurityHooks CreateSecurityHooks() => new(
+        async phrase =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.KeepRecoveryPhraseAsync(coordinatorId, userId, phrase);
+        },
+        async keep =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.ConfirmRecoveryPhraseSavedAsync(coordinatorId, userId, keep);
+        },
+        async () => SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId)
+            ? await _accounting.GetRecoveryPhraseAsync(coordinatorId, userId)
+            : null,
+        async () =>
+        {
+            if (SavedAccountOf(_coordinatorSession) is (string coordinatorId, int userId))
+                await _accounting.ForgetDeviceAsync(coordinatorId, userId, LoginLostReason.LoggedOut);
+            Dispatcher.UIThread.Post(() => _ = Disconnect());
+        });
+
+    /// <summary>
+    /// Asks the user to save the recovery phrase of the account while it waits on this device: after the account was
+    /// registered or moved over, at each start until it is saved.
+    /// </summary>
+    private async Task PromptRecoveryPhraseAsync()
+    {
+        if (SavedAccountOf(_coordinatorSession) is not (string coordinatorId, int userId))
+            return;
+
+        try
+        {
+            var saved = (await _accounting.GetAllSavedCoordinatorsAsync())
+                .SelectMany(coordinator => coordinator.Users)
+                .FirstOrDefault(user => user.CoordinatorId == coordinatorId && user.Id == userId);
+            if (saved is not { IsRecoveryPhraseSaved: false, RecoveryPhrase: { } phrase })
+                return;
+
+            var box = new MessageBoxVM(Icon.KeyWarning, Buttons.OkCancel, Strings.Get("recoveryPhrase.save.text"),
+                Strings.Get("recoveryPhrase.save.title"))
+            {
+                Detail = Profile.AccountSecurityVM.NumberWords(phrase),
+                CopyText = phrase,
+                CheckBoxText = Strings.Get("recoveryPhrase.keepOnDevice")
+            };
+            if (await ShowMessageBox.Handle(box) == Result.Ok)
+                await _accounting.ConfirmRecoveryPhraseSavedAsync(coordinatorId, userId, box.IsChecked);
+        }
+        catch (Exception exception)
+        {
+            LogSuccessfulConnectionSaveFailed(exception, coordinatorId);
         }
     }
 
@@ -184,14 +413,19 @@ public partial class MainWindowVM
         _avatars.Attach(session);
         UserCard.AttachUser(User);
 
-        await SetStatus("main.status.retrievingSessions", true);
+        // Connected already: the loading of the sessions is a task with no share to tell, not a state of the connection
+        await SetStatus("main.status.connected", false);
         if (!IsRestoreCurrent(session, restoreId))
             return;
 
         SessionsList.ShowLoading();
-        await Task.Delay(700);
-        if (IsRestoreCurrent(session, restoreId))
-            await AttachSessionManager(session, restoreId);
+        if (!IsRestoreCurrent(session, restoreId))
+            return;
+
+        // Ends as canceled when the connection goes away during the load
+        using var task = _taskTracker.Begin(TrackedTaskKind.Loading, TrackedTaskStage.Loading,
+            Strings.Get("tasks.sessions"), session.GetCoordinatorName());
+        await AttachSessionManager(session, restoreId, task);
     }
 
     // The connection may be lost or closed at any await of a load: what comes after is somebody else's
@@ -218,6 +452,11 @@ public partial class MainWindowVM
     /// </summary>
     private async Task RestoreLastSessionAsync()
     {
+        if (Client.Tools.AppInfo.LaunchOptions.Current.PreventAutoConnect)
+        {
+            _lastSession.IsKept = false;
+            return;
+        }
         if (!_lastSession.IsKept)
             return;
 
@@ -269,7 +508,89 @@ public partial class MainWindowVM
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
         Dispatcher.UIThread.Post(() => Access.Update(permissions));
 
-    private void OnRequestRejected(RequestRejectedException exception)
+    // The session disconnects on its own; the user is told why it does not come back
+    // A warning stays until its time; going down now is told once, the status line shows the reconnect
+    private void OnServerRestart(ServerRestartEvent restart)
+    {
+        var kind = restart.Reason switch
+        {
+            ServerRestartReason.Update => "update",
+            ServerRestartReason.Shutdown => "shutdown",
+            _ => "restart"
+        };
+        if (restart.At is { } at)
+        {
+            var left = at - DateTimeOffset.UtcNow;
+            _notifications.Show(NotificationType.Warning,
+                Strings.Format($"server.restart.warning.{kind}",
+                    ("time", at.ToLocalTime().ToString("t", System.Globalization.CultureInfo.CurrentCulture))),
+                restart.Message, left > TimeSpan.FromSeconds(10) ? left : TimeSpan.FromSeconds(10));
+            return;
+        }
+
+        _notifications.Show(restart.Reason == ServerRestartReason.Shutdown ? NotificationType.Error : NotificationType.Warning,
+            Strings.Get($"server.restart.now.{kind}"), restart.Message);
+    }
+
+    private void OnServerRestartCancelled() =>
+        _notifications.Show(NotificationType.Info, Strings.Get("server.restart.cancelled"));
+
+    // The version a coordinator had when last seen in this run: a reconnect to a newer one says so
+    private (string Id, string Version)? _knownServerVersion;
+
+    private void NotifyServerUpdate(ICoordinatorSession session)
+    {
+        if (session.CoordinatorModel is not { Id: { } id, ServerVersion: { Length: > 0 } version })
+            return;
+        if (_knownServerVersion is { } known && known.Id == id && known.Version != version)
+            _notifications.Show(NotificationType.Info, Strings.Format("server.updated", ("version", version)));
+        _knownServerVersion = (id, version);
+    }
+
+    // Raised on any thread; the session dropped the key, and the saved account needs a login
+    private volatile bool _deviceEnded;
+
+    private void OnDeviceEnded(Shared.Enums.Auth.DeviceEndReason? reason)
+    {
+        _deviceEnded = true;
+        Dispatcher.UIThread.Post(async () =>
+        {
+            await SetStatus("main.status.offline", false);
+            await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
+                Strings.Get(reason == null ? "main.deviceEnded.notFound" : "main.deviceEnded.revoked"),
+                Strings.Get("main.deviceEnded.title")));
+        });
+    }
+
+    /// <summary>
+    /// A device was added to the account, maybe not by the user: they are asked, and "not me" removes it and offers a
+    /// new recovery phrase, which the one who added it may know.
+    /// </summary>
+    private void OnDeviceAdded(AccountDevice device)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            if (_coordinatorSession is not { } session)
+                return;
+
+            var method = Strings.Get("devices.addedBy." + device.AddedBy);
+            var answer = await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
+                Strings.Format("main.deviceAdded.question", ("device", device.DeviceName), ("platform", device.Platform),
+                    ("method", method), ("address", device.LastAddress ?? "?")),
+                Strings.Get("main.deviceAdded.title")));
+            if (answer != Result.No)
+                return;
+
+            var revoked = await session.RevokeAccountDevice(device.Id);
+            await ShowMessageBox.Handle(new MessageBoxVM(revoked.IsSuccess ? Icon.Info : Icon.Error, Buttons.Ok,
+                Strings.Get(revoked.IsSuccess ? "main.deviceAdded.removed" : "main.deviceAdded.removeFailed"),
+                Strings.Get("main.deviceAdded.title")));
+            // A new recovery phrase is made there: the one who added the device may know the old one
+            await _users.ManageSecurityCommand.Execute();
+        });
+    }
+
+    private void OnRequestRejected(RequestFailedException exception)
     {
         Dispatcher.UIThread.Post(async () =>
         {
@@ -277,7 +598,7 @@ public partial class MainWindowVM
             if (_coordinatorSession?.ConnectionStatus == CoordinatorState.Reconnecting)
                 return;
 
-            if (_isRejectionMessageShown || DateTime.UtcNow < _nextRejectionMessageTime)
+            if (_isRejectionMessageShown || DateTimeOffset.UtcNow < _nextRejectionMessageTime)
                 return;
 
             _isRejectionMessageShown = true;
@@ -285,12 +606,12 @@ public partial class MainWindowVM
             try
             {
                 await ShowMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.Ok,
-                    RequestRejectionMessages.Get(exception.Reason), RequestRejectionMessages.Title));
+                    RequestRejectionMessages.Get(exception.Code), RequestRejectionMessages.Title));
             }
             finally
             {
                 _isRejectionMessageShown = false;
-                _nextRejectionMessageTime = DateTime.UtcNow + RejectionMessagePause;
+                _nextRejectionMessageTime = DateTimeOffset.UtcNow + RejectionMessagePause;
             }
         });
     }
@@ -364,19 +685,27 @@ public partial class MainWindowVM
             });
     }
 
-    private async Task AttachSessionManager(ICoordinatorSession session, int restoreId)
+    private async Task AttachSessionManager(ICoordinatorSession session, int restoreId, ITrackedTask task)
     {
         try
         {
             await SessionsList.AttachCoordinator(session);
             if (!IsRestoreCurrent(session, restoreId))
                 return;
+            // Not awaited: the checks of the opened chats change once the positions of the others come
+            _ = _chatServices.Receipts?.AttachAsync(session);
 
             await ServerTitle.AttachCoordinator(session);
+            NotifyServerUpdate(session);
             AttachOpenedSessions(session);
-            await RestoreLastSessionAsync();
+            if (session.CurrentCall == null)
+                await RestoreLastSessionAsync();
+            // A push action may complete while the initial session list is still loading; rings shown then
+            // waited for the chats to be named
+            foreach (var call in session.ChatCalls.Values)
+                OnChatCallChanged(call);
             if (IsRestoreCurrent(session, restoreId))
-                await SetStatus("main.status.connected", false);
+                task.Complete();
         }
         catch (Exception e)
         {
@@ -388,6 +717,7 @@ public partial class MainWindowVM
             }
 
             LogSessionsInfoFailed(e, session.GetCoordinatorName());
+            task.Fail(Strings.Get("main.sessionsInfoFailed"));
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
                 Strings.Get("main.sessionsInfoFailed"), Strings.Get("common.error")));
 
@@ -401,6 +731,7 @@ public partial class MainWindowVM
     {
         DetachOpenedSessions();
         SessionsList.DetachCoordinator();
+        _chatServices.Receipts?.Detach();
         ServerTitle.DetachCoordinator();
     }
 
@@ -410,11 +741,18 @@ public partial class MainWindowVM
         if (OpenedSessions == null)
         {
             var sessions = new OpenedSessions(session, _chatServices, ChatReads, CreateHybridSession,
-                _users.ViewProfileCommand);
+                _users.ViewProfileCommand, _users.BanUserCommand, _users.UnbanUserCommand, _users.OpenDirectChatCommand);
+            sessions.RemoveFromGroup = SessionsList.RemoveFromGroupAsync;
+            sessions.ShowCallSession = ShowCallSession;
+            SessionsList.ShowCallSession = ShowCallSession;
             sessions.SessionClosed += OnSessionClosed;
             sessions.HybridSessionChanged += OnHybridSessionChanged;
+            sessions.HybridSessionMovedOut += OnHybridSessionMovedOut;
             OpenedSessions = sessions;
         }
+
+        // Messages left from the last run go without their chat being opened
+        _chatServices.Outbox?.Attach(session);
 
         // On the first connect nothing is open yet, but chats cached by an earlier run may be gone
         RestoreOpenedChats(OpenedSessions);
@@ -422,7 +760,7 @@ public partial class MainWindowVM
 
     private void RestoreOpenedChats(OpenedSessions sessions)
     {
-        if (!SessionsList.IsEmpty && !SessionsList.HasSessions)
+        if (SessionsList.State != Client.ViewModels.Sessions.List.SessionsListState.Loaded)
             return;
 
         sessions.CloseChatsExcept(SessionsList.Sessions
@@ -446,6 +784,7 @@ public partial class MainWindowVM
         sessions.Dispose();
         sessions.SessionClosed -= OnSessionClosed;
         sessions.HybridSessionChanged -= OnHybridSessionChanged;
+        sessions.HybridSessionMovedOut -= OnHybridSessionMovedOut;
     }
 
     /// <summary>
@@ -455,6 +794,7 @@ public partial class MainWindowVM
     /// </summary>
     public Task SuspendConnection() =>
         _coordinatorSession == null || OpenedSessions?.IsInHybridSession == true
+            || _coordinatorSession.CurrentCall != null
             ? Task.CompletedTask
             : _coordinatorSession.Suspend();
 
@@ -466,6 +806,7 @@ public partial class MainWindowVM
     // Raised on socket and thread pool threads
     private void OnConnectionStateChanged(CoordinatorState status)
     {
+        if (status != CoordinatorState.Connected) Dispatcher.UIThread.Post(DismissCallToast);
         switch (status)
         {
             case CoordinatorState.Connecting:
@@ -476,6 +817,12 @@ public partial class MainWindowVM
                 PostDisconnect(Strings.Get("main.reconnect.failed"));
                 return;
             // Only a reconnect reports it here, after the server rejected the credentials
+            case CoordinatorState.OnlineLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.onlineLimitReached"));
+                return;
+            case CoordinatorState.UserLimitReached:
+                PostDisconnect(Strings.Get("connect.failed.userLimitReached"));
+                return;
             case CoordinatorState.AuthenticationFailed:
                 PostDisconnect(Strings.Get("main.reconnect.loginRejected"));
                 return;
@@ -486,9 +833,12 @@ public partial class MainWindowVM
             case CoordinatorState.PasskeyRequired:
                 PostDisconnect(Strings.Get("main.reconnect.passkeyRequired"));
                 return;
+            // Told by OnDeviceEnded
+            case CoordinatorState.DeviceEnded:
+                return;
             // Only a reconnect reports it here: banned while online, the user is disconnected and comes back
             case CoordinatorState.Denied:
-                PostDisconnect(Strings.Get("main.reconnect.banned"));
+                PostDisconnect(Strings.Get("main.reconnect.banned") + (string.IsNullOrWhiteSpace(_coordinatorSession?.BanReason) ? "" : "\n" + _coordinatorSession.BanReason));
                 return;
             // Only a reconnect reports it here: the server was updated or rolled back while the user was online
             case CoordinatorState.ClientOutdated:
@@ -508,6 +858,11 @@ public partial class MainWindowVM
                     Icon.KeyWarning);
                 return;
             case CoordinatorState.Disconnected:
+                if (_deviceEnded)
+                {
+                    Dispatcher.UIThread.Post(() => _ = DisconnectFromCoordinator());
+                    return;
+                }
                 PostDisconnect(Strings.Get("main.serverShutDown"));
                 return;
         }

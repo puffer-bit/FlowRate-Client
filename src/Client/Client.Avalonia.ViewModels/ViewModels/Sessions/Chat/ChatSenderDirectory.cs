@@ -26,8 +26,12 @@ public sealed class ChatSenderDirectory : IDisposable
     private const string PendingMentionName = "…";
 
     private readonly Dictionary<int, string> _names = new();
+    private readonly Dictionary<int, string> _displayNames = new();
     private readonly Dictionary<int, string?> _avatars = new();
     private readonly Dictionary<int, UserStatus> _statuses = new();
+    // Online from a phone
+    private readonly HashSet<int> _mobile = [];
+    private readonly Dictionary<int, UserKind> _kinds = new();
     private readonly Dictionary<int, IReadOnlyList<int>> _roleIds = new();
     private readonly HashSet<int> _resolving = new();
     private readonly HashSet<int> _deleted = new();
@@ -36,9 +40,10 @@ public sealed class ChatSenderDirectory : IDisposable
     private readonly EventSubscriptions _subscriptions = new();
 
     /// <summary>
-    /// Something shown of the users has changed; raised on the UI thread.
+    /// Something shown of the users has changed; raised on the UI thread with the users it concerns,
+    /// or null when it may concern any of them (roles, permissions).
     /// </summary>
-    public event Action? Changed;
+    public event Action<IReadOnlyCollection<int>?>? Changed;
 
     public ChatSenderDirectory(ICoordinatorSession session, int currentUserId)
     {
@@ -79,7 +84,7 @@ public sealed class ChatSenderDirectory : IDisposable
                         MarkDeleted(userId);
                 }
 
-                Changed?.Invoke();
+                Changed?.Invoke(userIds);
             });
         }
         finally
@@ -93,7 +98,14 @@ public sealed class ChatSenderDirectory : IDisposable
     /// </summary>
     public static void CollectUserIds(ChatMessageVM message, HashSet<int> userIds)
     {
-        userIds.Add(message.Message.SenderUserId);
+        if (message.Message.SenderUserId > 0) userIds.Add(message.Message.SenderUserId);
+        if (message.Message.IsSystem && message.Message.SystemContent is { } content)
+        {
+            if (content.ActorUserId is > 0) userIds.Add(content.ActorUserId.Value);
+            if (content.SubjectUserId is > 0) userIds.Add(content.SubjectUserId.Value);
+        }
+        foreach (var reaction in message.Message.Reactions)
+            if (reaction.UserId > 0) userIds.Add(reaction.UserId);
         if (message.Reply?.SenderUserId is { } replySenderId)
             userIds.Add(replySenderId);
         userIds.UnionWith(ChatMessageBody.UserIdsIn(message.Message.TextContent?.Text));
@@ -104,42 +116,56 @@ public sealed class ChatSenderDirectory : IDisposable
     private void OnUserUpdated(UserModel user) => Dispatcher.UIThread.Post(() =>
     {
         if (!_names.TryGetValue(user.Id, out var name)
-            || (name == user.Username && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
+            || (name == user.Username && _displayNames.GetValueOrDefault(user.Id) == DisplayNameOf(user) && _avatars.GetValueOrDefault(user.Id) == user.AvatarUrl
                 && _statuses.GetValueOrDefault(user.Id) == user.Status
+                && _mobile.Contains(user.Id) == user.IsMobile
+                && _kinds.GetValueOrDefault(user.Id) == user.Kind
                 && _roleIds.GetValueOrDefault(user.Id, []).SequenceEqual(user.RoleIds)))
             return;
 
         Remember(user);
         // Any message may mention the user, not only theirs
-        Changed?.Invoke();
+        Changed?.Invoke([user.Id]);
     });
 
     // Raised on the socket thread
     private void OnUserDeleted(int userId) => Dispatcher.UIThread.Post(() =>
     {
         MarkDeleted(userId);
-        Changed?.Invoke();
+        Changed?.Invoke([userId]);
     });
 
     // Raised on the transport thread; the names, colors or order of the roles may have changed
     private void OnPermissionsChanged(CoordinatorPermissions permissions) =>
-        Dispatcher.UIThread.Post(() => Changed?.Invoke());
+        Dispatcher.UIThread.Post(() => Changed?.Invoke(null));
 
     private void Remember(UserModel user)
     {
         _names[user.Id] = user.Username;
+        _displayNames[user.Id] = DisplayNameOf(user);
         _avatars[user.Id] = user.AvatarUrl;
         _statuses[user.Id] = user.Status;
+        if (user.IsMobile)
+            _mobile.Add(user.Id);
+        else
+            _mobile.Remove(user.Id);
         _roleIds[user.Id] = user.RoleIds;
+        _kinds[user.Id] = user.Kind;
     }
+
+    private static string DisplayNameOf(UserModel user) =>
+        string.IsNullOrWhiteSpace(user.DisplayName) ? user.Username : user.DisplayName;
 
     private void MarkDeleted(int userId)
     {
         _deleted.Add(userId);
         _names[userId] = DeletedName;
+        _displayNames.Remove(userId);
         _avatars.Remove(userId);
         _statuses.Remove(userId);
+        _mobile.Remove(userId);
         _roleIds.Remove(userId);
+        _kinds.Remove(userId);
     }
 
     public void Apply(ChatMessageVM messageVm)
@@ -148,9 +174,13 @@ public sealed class ChatSenderDirectory : IDisposable
         messageVm.SenderName = GetName(senderId);
         messageVm.IsSenderDeleted = _deleted.Contains(senderId);
         messageVm.SenderAvatarUrl = _avatars.GetValueOrDefault(senderId);
-        messageVm.SenderStatus = _statuses.TryGetValue(senderId, out var status) ? status : null;
         messageVm.SenderColor = GetColor(senderId);
+        messageVm.SenderKind = _kinds.GetValueOrDefault(senderId);
+        messageVm.SystemParts = ChatSystemMessageText.Parts(messageVm.Message,
+            id => _deleted.Contains(id) ? DeletedName : _displayNames.GetValueOrDefault(id) ?? GetName(id),
+            id => _displayNames.ContainsKey(id) && !_deleted.Contains(id));
         messageVm.Body = messageVm.Message.TextContent is { } text ? RenderBody(text.Text) : null;
+        messageVm.ApplyUserNames(id => _deleted.Contains(id) ? DeletedName : GetName(id) ?? UnknownName, this);
 
         if (messageVm.Reply != null)
             Apply(messageVm.Reply);
@@ -166,12 +196,50 @@ public sealed class ChatSenderDirectory : IDisposable
     public ChatMessageBody RenderBody(string text) =>
         ChatMessageBody.Create(text, GetMentionName, _currentUserId, UnknownName);
 
-    public string RenderText(string text) => RenderBody(text).Text;
+    // Quotes are rendered again each time a name changes; a body that came out the same keeps its text
+    private readonly Dictionary<ChatMessageBody, string> _renderedTexts = new();
+
+    public string RenderText(string text)
+    {
+        var body = RenderBody(text);
+        if (!_renderedTexts.TryGetValue(body, out var rendered))
+        {
+            rendered = ChatMarkdown.Render(body).Text;
+            _renderedTexts[body] = rendered;
+        }
+
+        return rendered;
+    }
+
+    /// <summary>
+    /// Whether a change of <paramref name="userIds"/> shows in the message: its author, the author of
+    /// what it answers, the users of its system text and reactions, and those mentioned.
+    /// </summary>
+    public static bool Concerns(ChatMessageVM message, IReadOnlyCollection<int> userIds)
+    {
+        var shown = new HashSet<int>();
+        CollectUserIds(message, shown);
+        foreach (var userId in userIds)
+        {
+            if (shown.Contains(userId))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The name as it is known, or null.
     /// </summary>
     public string? FindName(int userId) => _names.GetValueOrDefault(userId);
+    public string? FindAvatarUrl(int userId) => _avatars.GetValueOrDefault(userId);
+    public UserStatus? FindStatus(int userId) => _statuses.TryGetValue(userId, out var status) ? status : null;
+
+    /// <summary>The user is online from a phone, as far as is known.</summary>
+    public bool IsMobile(int userId) => _mobile.Contains(userId);
+
+    /// <summary>The user is a bot of either kind, as far as is known.</summary>
+    public bool IsBot(int userId) => _kinds.GetValueOrDefault(userId).IsBot();
 
     /// <summary>
     /// The color of the highest role of the user that has one, 0xRRGGBB; null when none of them has.

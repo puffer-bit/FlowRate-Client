@@ -17,24 +17,25 @@ public sealed partial class SessionListPreferences(IMutedChatsRepository mutedCh
     private const string CollapsedCategoryKeyPrefix = "sessionCategory:";
     private readonly ILogger _logger = logger;
 
-    public async Task<IReadOnlyCollection<int>> LoadMutedChatsAsync(string coordinatorInstanceId)
+    /// <summary>The chats muted now, with the time each mute ends at, null for one the user ends.</summary>
+    public async Task<IReadOnlyDictionary<int, DateTimeOffset?>> LoadMutedChatsAsync(string coordinatorInstanceId)
     {
         try
         {
-            return (await mutedChats.GetAsync(coordinatorInstanceId)).ToHashSet();
+            return await mutedChats.GetUntilAsync(coordinatorInstanceId);
         }
         catch (Exception exception)
         {
             LogMutedChatsLoadFailed(exception);
-            return [];
+            return new Dictionary<int, DateTimeOffset?>();
         }
     }
 
-    public async Task SaveChatMuteAsync(string coordinatorInstanceId, int chatId, bool isMuted)
+    public async Task SaveChatMuteAsync(string coordinatorInstanceId, int chatId, bool isMuted, DateTimeOffset? until = null)
     {
         try
         {
-            await mutedChats.SetAsync(coordinatorInstanceId, chatId, isMuted);
+            await mutedChats.SetAsync(coordinatorInstanceId, chatId, isMuted, until);
         }
         catch (Exception exception)
         {
@@ -70,6 +71,18 @@ public sealed partial class SessionListPreferences(IMutedChatsRepository mutedCh
         {
             LogCategoryCollapseSaveFailed(exception, categoryId);
         }
+    }
+
+    public async Task<bool> LoadPrivateModeAsync(string coordinatorInstanceId)
+    {
+        try { return (await collapsedSections.GetAsync()).Contains($"privateChats:{coordinatorInstanceId}"); }
+        catch (Exception exception) { LogCollapsedCategoriesLoadFailed(exception); return false; }
+    }
+
+    public async Task SavePrivateModeAsync(string coordinatorInstanceId, bool enabled)
+    {
+        try { await collapsedSections.SetAsync($"privateChats:{coordinatorInstanceId}", enabled); }
+        catch (Exception exception) { LogCategoryCollapseSaveFailed(exception, 0); }
     }
 
     private static string CollapsedCategoryKey(string coordinatorInstanceId, int categoryId) =>

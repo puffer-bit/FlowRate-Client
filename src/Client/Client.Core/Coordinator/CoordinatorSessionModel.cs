@@ -15,9 +15,9 @@ public class CoordinatorSessionModel
     /// <summary>The OS and architecture the server runs on, such as "Linux x64".</summary>
     public string ServerPlatform { get; init; } = string.Empty;
         
-    public DateTime CreateTime { get; init; }
-    public DateTime FirstLaunchTime { get; init; }
-    public DateTime CurrentLaunchTime { get; init; }
+    public DateTimeOffset CreateTime { get; init; }
+    public DateTimeOffset FirstLaunchTime { get; init; }
+    public DateTimeOffset CurrentLaunchTime { get; init; }
     public int MaxOnlineUsers { get; init; }
     public int MaxUsers { get; init; }
     
@@ -25,4 +25,10 @@ public class CoordinatorSessionModel
 
     /// <summary>The revision of the stored settings these values come from.</summary>
     public long SettingsRevision { get; init; }
+
+    /// <summary>How images are compressed before they are sent, and whether they may go uncompressed.</summary>
+    public Chat.ImageCompressionPolicy ImagePolicy { get; init; } = Chat.ImageCompressionPolicy.Default;
+
+    /// <summary>How videos are compressed before they are sent, and whether they may go uncompressed.</summary>
+    public Chat.VideoCompressionPolicy VideoPolicy { get; init; } = Chat.VideoCompressionPolicy.Default;
 }

@@ -13,10 +13,15 @@ public class HybridSessionFactory : IHybridSessionFactory
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
     private readonly ILogger<HybridSession> _sessionLogger;
+    private readonly ILogger<MediaPerfJournal> _perfLogger;
+    private readonly IMediaPerfRecords _perfRecords;
 
     public HybridSessionFactory(IWebRTCTransportFactory transportFactory, IPeerPlaybackService peerPlayback,
-        IVoiceActivityService voiceActivity, IScreenWatchService screenWatch, ILogger<HybridSession> sessionLogger)
+        IVoiceActivityService voiceActivity, IScreenWatchService screenWatch, ILogger<HybridSession> sessionLogger,
+        ILogger<MediaPerfJournal> perfLogger, IMediaPerfRecords perfRecords)
     {
+        _perfLogger = perfLogger;
+        _perfRecords = perfRecords;
         _transportFactory = transportFactory;
         _peerPlayback = peerPlayback;
         _voiceActivity = voiceActivity;
@@ -28,5 +33,5 @@ public class HybridSessionFactory : IHybridSessionFactory
         ICoordinatorSession coordinatorSession,
         bool isPlaybackEnabled = true) =>
         new HybridSession(hybridSessionModel, coordinatorSession, _transportFactory, _sessionLogger, isPlaybackEnabled,
-            _peerPlayback, _voiceActivity, _screenWatch);
+            _peerPlayback, _voiceActivity, _screenWatch, _perfLogger, _perfRecords);
 }

@@ -47,7 +47,7 @@ public sealed partial class LastSessionKeeper(ICoordinatorStateRepository coordi
         try
         {
             await _write;
-            return await coordinatorStates.GetLastSessionAsync(coordinatorId);
+            return await Task.Run(() => coordinatorStates.GetLastSessionAsync(coordinatorId));
         }
         catch (Exception exception)
         {
@@ -60,11 +60,12 @@ public sealed partial class LastSessionKeeper(ICoordinatorStateRepository coordi
     {
         var previous = _write;
 
-        _write = WriteAsync();
+        // SQLite may perform all its I/O before returning an already completed task.
+        _write = Task.Run(WriteAsync);
 
         async Task WriteAsync()
         {
-            await previous;
+            await previous.ConfigureAwait(false);
 
             try
             {

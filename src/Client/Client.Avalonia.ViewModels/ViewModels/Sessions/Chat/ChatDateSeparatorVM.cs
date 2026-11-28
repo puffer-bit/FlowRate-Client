@@ -7,13 +7,10 @@ public class ChatDateSeparatorVM : IMessageListItemVM
 {
     public string DateText { get; set; }
     
-    public ChatDateSeparatorVM(DateTime dateTime)
+    public ChatDateSeparatorVM(DateTimeOffset dateTime)
     {
-        DateTime localDate = dateTime.Kind == DateTimeKind.Utc 
-            ? dateTime.ToLocalTime().Date 
-            : dateTime.Date;
-
-        DateTime today = DateTime.Today;
+        var localDate = dateTime.ToLocalTime().Date;
+        var today = DateTime.Today;
 
         if (localDate == today)
         {

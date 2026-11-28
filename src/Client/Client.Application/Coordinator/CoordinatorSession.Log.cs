@@ -1,4 +1,4 @@
-using Shared.Enums.Coordinator;
+using Shared.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Application.Coordinator;
@@ -84,6 +84,21 @@ public partial class CoordinatorSession
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] The account logs in with passkeys alone, which this client cannot use")]
     private partial void LogPasskeyLoginUnsupported(string coordinator);
 
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The server removed this device from the account: {Reason}")]
+    private partial void LogDeviceEnded(string coordinator, Shared.Enums.Auth.DeviceEndReason reason);
+
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The server does not know this device any more")]
+    private partial void LogDeviceNotFound(string coordinator);
+
+    [LoggerMessage(LogLevel.Warning, "[{Coordinator}] The key of this device is gone from the key store")]
+    private partial void LogDeviceKeyMissing(string coordinator);
+
+    [LoggerMessage(LogLevel.Warning, "[{Coordinator}] The key of the ended device could not be deleted: {Error}")]
+    private partial void LogDeviceKeyNotDeleted(string coordinator, string error);
+
+    [LoggerMessage(LogLevel.Information, "[{Coordinator}] The account moved over from its identity to a device")]
+    private partial void LogMovedOverToDevice(string coordinator);
+
     [LoggerMessage(LogLevel.Debug, "[{Coordinator}] Auth attempt timed out")]
     private partial void LogAuthTimedOut(string coordinator);
 
@@ -96,5 +111,5 @@ public partial class CoordinatorSession
         string answeredId);
 
     [LoggerMessage(LogLevel.Warning, "[{Coordinator}] Roles not loaded: {Result}")]
-    private partial void LogRolesNotLoaded(string coordinator, CoordinatorRoleResult result);
+    private partial void LogRolesNotLoaded(string coordinator, ErrorCode result);
 }

@@ -6,11 +6,11 @@ namespace Client.GStreamer.Video;
 /// <summary>
 /// A live source of a moving test picture, drawn here and pushed through appsrc: the bundled
 /// runtime carries no videotestsrc. A bar travels across a gradient, so a frozen or a torn stream
-/// is easy to tell from a working one.
+/// is easy to tell from a working one. The top row carries the time of drawing, see <see cref="TestPatternStamp"/>.
 /// </summary>
 internal sealed class TestPatternSource : IDisposable
 {
-    private const int Width = 640;
+    private const int Width = TestPatternStamp.Width;
     private const int Height = 360;
     private const int BarWidth = 40;
     private const string ElementName = "pattern";
@@ -56,6 +56,7 @@ internal sealed class TestPatternSource : IDisposable
         {
             background.CopyTo(frame, 0);
             DrawBar(frame, index * 8 % (Width - BarWidth));
+            TestPatternStamp.Write(frame, TestPatternStamp.Now());
 
             // Refused until the pipeline plays and after it stops; the next frame is tried again
             using (var buffer = Gst.Buffer.NewMemdup(frame))

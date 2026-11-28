@@ -10,6 +10,9 @@ using Client.Application.Push;
 using Client.Avalonia.Localization;
 using Client.Api;
 using Client.Infrastructure;
+using Client.Platform;
+using Client.Tools.AppInfo;
+using Client.Tools.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Client.Droid.Platform.Notifications;
@@ -26,10 +29,11 @@ internal static class PushMessageHandler
     /// The local storage and what a notification does without the interface: replies go over HTTP.
     /// </summary>
     public static readonly Lazy<ServiceProvider> Services = new(() => new ServiceCollection()
-        // The media cache, where the avatars are, asks for a logger
-        .AddLogging()
+        // The journal of the process, which the application object has started
+        .AddClientLogging(Serilog.Log.Logger)
         .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
-        .AddApi()
+        .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, ApplicationDetails.PackageVersion,
+            ApplicationDetails.SystemDescription, DevicePlatform.Architecture))
         .AddTransient<PushReplies>()
         .BuildServiceProvider());
 
@@ -38,6 +42,10 @@ internal static class PushMessageHandler
     /// are seen as they come and need no notification.
     /// </summary>
     public static (string CoordinatorInstanceId, int ChatId)? ChatOnScreen { get; set; }
+
+    public static Action<string, int, int>? ChatMarkedRead { get; set; }
+
+    public static Func<string, int, bool>? IsCallAccountOnScreen { get; set; }
 
     public static async Task HandleAsync(Context context, IDictionary<string, string> data)
     {
@@ -55,6 +63,14 @@ internal static class PushMessageHandler
         // A push opened by the key of one coordinator must not speak for another
         if (payload == null || payload.CoordinatorId != key.CoordinatorInstanceId)
             return;
+
+        if (payload.CallId != null)
+        {
+            if (key.UserId != payload.RecipientId) return;
+            Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
+            IncomingCallNotifications.Handle(context, payload);
+            return;
+        }
 
         if (ChatOnScreen == (payload.CoordinatorId, payload.ChatId))
             return;

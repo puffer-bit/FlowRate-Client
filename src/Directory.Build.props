@@ -1,0 +1,87 @@
+<Project>
+    <!-- The libraries published to nuget.org as FlowRate.<project>, for hosts other than the client
+         (bots); see Client/Client.Package/README.md. Everything else in the repository is not packable.
+         Shared.Core lives in the Shared submodule and is packed from here, with the version of the rest,
+         so its csproj stays untouched.
+
+         The packages are made by Scripts/bash/pack.sh, which passes FlowRateSdkVersion; a build
+         without it is the ordinary one and produces no documentation files. -->
+    <PropertyGroup>
+        <IsFlowRatePackage Condition="'$(MSBuildProjectName)' == 'Shared.Core'
+                                       Or '$(MSBuildProjectName)' == 'Client.Platform'
+                                       Or '$(MSBuildProjectName)' == 'Client.Core'
+                                       Or '$(MSBuildProjectName)' == 'Client.Application'
+                                       Or '$(MSBuildProjectName)' == 'Client.WebSockets'
+                                       Or '$(MSBuildProjectName)' == 'Client.Api'
+                                       Or '$(MSBuildProjectName)' == 'Client.WebRTC'
+                                       Or '$(MSBuildProjectName)' == 'Client.LibWebRTC'
+                                       Or '$(MSBuildProjectName)' == 'Client.GStreamer'
+                                       Or '$(MSBuildProjectName)' == 'Client.Database.Sqlite'
+                                       Or '$(MSBuildProjectName)' == 'Client.Package'">true</IsFlowRatePackage>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsFlowRatePackage)' == 'true'">
+        <IsPackable>true</IsPackable>
+        <PackageId>FlowRate.$(MSBuildProjectName)</PackageId>
+        <Authors>puffer-bit</Authors>
+        <Copyright>Copyright (c) 2026 puffer-bit</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/puffer-bit/FlowRate-Client</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/puffer-bit/FlowRate-Client</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>flowrate;voice;chat;webrtc;client;bot</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
+    <!-- What nuget.org shows under the name of each package -->
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Shared.Core'">
+        <Description>The FlowRate protocol shared by the server and the client: messages, models, permissions and validation.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Platform'">
+        <Description>Operating-system helpers of the FlowRate client libraries: native environment variables, the platform name, native log categories.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Core'">
+        <Description>Domain models, settings and media primitives of the FlowRate client.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Application'">
+        <Description>Coordinator and session workflows of the FlowRate client, and the ports a host implements.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.WebSockets'">
+        <Description>The WebSocket connection of the FlowRate client.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Api'">
+        <Description>The FlowRate server API over the protocol: requests, responses, heartbeat and server events.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.WebRTC'">
+        <Description>WebRTC negotiation shared by the FlowRate client transports.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.LibWebRTC'">
+        <Description>The libwebrtc voice and video transport of the FlowRate client, with the native library for linux-x64, win-x64 and osx-arm64.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.Database.Sqlite'">
+        <Description>The SQLite storage of the FlowRate client: every repository the client libraries take, with migrations and encryption through SQLite3 Multiple Ciphers.</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Client.GStreamer'">
+        <Description>Audio and video of the FlowRate client through GStreamer: the runtime of the client from FlowRate.Client.GStreamer.Runtime.&lt;rid&gt;, or GStreamer installed on the system.</Description>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsFlowRatePackage)' == 'true' And '$(FlowRateSdkVersion)' != ''">
+        <Version>$(FlowRateSdkVersion)</Version>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!-- The comments are written for the code, not as API reference: not every public member or
+             parameter has one, and some refer to members the file does not see -->
+        <NoWarn>$(NoWarn);CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1584;CS1587;CS1591;CS1711;CS1712;CS1734</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(IsFlowRatePackage)' == 'true'">
+        <None Include="$(MSBuildThisFileDirectory)Client/Client.Package/README.md" Pack="true" PackagePath="/" Visible="false" />
+        <None Include="$(MSBuildThisFileDirectory)Client/Client.Avalonia.Assets/AppIcons/Monitor/png/app-icon-128.png"
+              Pack="true" PackagePath="/icon.png" Visible="false" />
+    </ItemGroup>
+</Project>

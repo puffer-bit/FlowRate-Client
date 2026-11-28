@@ -1,5 +1,6 @@
 using Shared.Enums;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Shared.Enums.User;
 using Shared.Validation;
 using Client.Core.Settings;
@@ -24,8 +25,12 @@ public partial class CoordinatorSession
     public Task<IReadOnlyList<UserModel>> SearchUsers(string query, int limit) =>
         _usersDirectory.SearchAsync(query, limit);
 
-    public Task<(UsersRequestResult Result, IReadOnlyList<UserModel>? Users)> GetAllUsers() =>
-        SendAsync(_gateway.GetAllUsers, UsersRequestResult.Rejected, UsersRequestResult.TimedOut);
+    public Task<RequestResult<IReadOnlyList<UserModel>>> GetAllUsers() =>
+        SendAsync(_gateway.GetAllUsers);
+
+    public Task<RequestResult<IReadOnlyList<UserModel>>> SetChatViewersSubscription(int chatId,
+        Guid subscriptionId, bool subscribe) =>
+        SendAsync(() => _gateway.SetChatViewersSubscription(chatId, subscriptionId, subscribe));
 
     public UserModel GetCurrentUser() =>
         _currentUser ?? throw new InvalidOperationException("Not logged in to the coordinator");
@@ -33,64 +38,105 @@ public partial class CoordinatorSession
     public SavedUserModel GetCurrentUserCredentials() =>
         _currentUserCredentials ?? throw new InvalidOperationException("Not logged in to the coordinator");
 
-    public Task<ChangeUsernameResult> ChangeUsername(string username) =>
+    public Task<RequestResult> ChangeUsername(string username) =>
         ChangeUsername(null, username);
 
-    public Task<ChangeUsernameResult> ChangeUsername(int userId, string username) =>
+    public Task<RequestResult> ChangeUsername(int userId, string username) =>
         ChangeUsername((int?)userId, username);
 
-    private async Task<ChangeUsernameResult> ChangeUsername(int? userId, string username)
+    private async Task<RequestResult> ChangeUsername(int? userId, string username)
     {
         if (!ValidateUsername(username))
-            return ChangeUsernameResult.InvalidUsername;
+            return ErrorCode.InvalidValue;
 
-        var (result, _) = await SendAsync(() => _gateway.ChangeUsername(username.Trim(), userId),
-            ChangeUsernameResult.Rejected, ChangeUsernameResult.TimedOut);
-        
-        return result;
+        return (await SendAsync(() => _gateway.ChangeUsername(username.Trim(), userId))).Result;
     }
 
-    public async Task<ModerateUserResult> SetUserState(int userId, UserState state)
+    public string? BanReason { get; private set; }
+
+    public Task<RequestResult<IReadOnlyList<Shared.Models.DataTransferObjects.BanDTO>>> GetBans() =>
+        SendAsync(() => _gateway.GetBans());
+
+    public Task<RequestResult> RevokeBan(Guid banId) => SendAsync(() => _gateway.RevokeBan(banId));
+
+    public async Task<RequestResult> SetUserState(int userId, UserState state) =>
+        (await SendAsync(() => _gateway.SetUserState(userId, state))).Result;
+
+    public async Task<RequestResult> BanUser(int userId, BanKind kind, string? reason = null, DateTimeOffset? expiresAt = null,
+        string? address = null) =>
+        (await SendAsync(() => _gateway.BanUser(userId, kind, reason, expiresAt, address))).Result;
+
+    public async Task<RequestResult> UnbanUser(int userId)
     {
-        var (result, _) = await SendAsync(() => _gateway.SetUserState(userId, state),
-            ModerateUserResult.Rejected, ModerateUserResult.TimedOut);
-
-        return result;
+        var bans = await GetBans();
+        if (bans.Value is not { } list) return bans.Result;
+        foreach (var ban in list.Where(ban => ban.UserId == userId))
+        {
+            var result = await RevokeBan(ban.Id);
+            // A ban that expired in the meantime is lifted all the same
+            if (!result.IsSuccess && result.Error != ErrorCode.BanNotFound) return result;
+        }
+        return RequestResult.Success;
     }
 
-    public Task<ModerateUserResult> DeleteUser(int userId) =>
-        SendAsync(() => _gateway.DeleteUser(userId), ModerateUserResult.Rejected, ModerateUserResult.TimedOut);
+    public Task<RequestResult> DeleteUser(int userId) =>
+        SendAsync(() => _gateway.DeleteUser(userId));
 
-    public async Task<(SetAvatarResult Result, UserModel? User)> SetAvatar(byte[] image, string mimeType,
+    public Task<RequestResult<IReadOnlyList<UserModel>>> GetBots() => SendAsync(() => _gateway.GetBots());
+
+    public Task<RequestResult<(UserModel Bot, Shared.Models.DataTransferObjects.BotLoginCodeDTO LoginCode)>> CreateBot(
+        string username, bool isDebug) =>
+        SendAsync(() => _gateway.CreateBot(username.Trim(), isDebug));
+
+    public Task<RequestResult<Shared.Models.DataTransferObjects.BotLoginCodeDTO>> NewBotLoginCode(int botId,
+        bool endDevices) =>
+        SendAsync(() => _gateway.NewBotLoginCode(botId, endDevices));
+
+    public Task<RequestResult> DeleteBot(int botId) => SendAsync(() => _gateway.DeleteBot(botId));
+
+    /// <summary>
+    /// Fails with <see cref="ErrorCode.UploadNotFound"/> when the image is empty or too large, or did not get to the server.
+    /// </summary>
+    public async Task<RequestResult<UserModel>> SetAvatar(byte[] image, string mimeType,
         CancellationToken cancellationToken = default)
     {
+        if (await UploadAvatarAsync(image, mimeType, cancellationToken) is not { } uploadId)
+            return ErrorCode.UploadNotFound;
+
+        return await SendAsync(() => _gateway.SetAvatar(uploadId));
+    }
+
+    public async Task<RequestResult> SetGroupAvatar(int sessionId, byte[]? image, string? mimeType,
+        CancellationToken cancellationToken = default)
+    {
+        if (image == null)
+            return await SendAsync(() => _gateway.SetGroupAvatar(sessionId, null));
+
+        if (mimeType == null || await UploadAvatarAsync(image, mimeType, cancellationToken) is not { } uploadId)
+            return ErrorCode.UploadNotFound;
+
+        return await SendAsync(() => _gateway.SetGroupAvatar(sessionId, uploadId));
+    }
+
+    /// <summary>An avatar upload, user or group; null when it is empty, too large or did not get to the server.</summary>
+    private async Task<string?> UploadAvatarAsync(byte[] image, string mimeType, CancellationToken cancellationToken)
+    {
         if (image.Length is 0 or > Limits.AvatarMaxSize)
-            return (SetAvatarResult.UploadFailed, null);
+            return null;
 
         var upload = await _gateway.UploadMedia(new MediaUpload(null, MediaUploadKind.Avatar, mimeType, image.Length,
             () => Task.FromResult<Stream>(new MemoryStream(image, writable: false))), null, cancellationToken);
-        if (upload is not { Result: MediaTransferResult.NoError, UploadId: { } uploadId })
-            return (SetAvatarResult.UploadFailed, null);
-
-        return await SendAsync(() => _gateway.SetAvatar(uploadId),
-            SetAvatarResult.Rejected, SetAvatarResult.TimedOut);
+        return upload is { Result: MediaTransferResult.NoError, UploadId: { } uploadId } ? uploadId : null;
     }
 
-    public async Task<SetUserStatusResult> SetStatus(UserStatus status)
-    {
-        var (result, _) = await SendAsync(() => _gateway.SetStatus(status),
-            SetUserStatusResult.Rejected, SetUserStatusResult.TimedOut);
+    public async Task<RequestResult> SetStatus(UserStatus status) =>
+        (await SendAsync(() => _gateway.SetStatus(status))).Result;
 
-        return result;
-    }
+    public Task<RequestResult> SetIdleLevel(IdleLevel level) =>
+        SendAsync(() => _gateway.SetIdleLevel(level));
 
-    public async Task<SetAvatarResult> ResetAvatar(int userId)
-    {
-        var (result, _) = await SendAsync(() => _gateway.SetAvatar(null, userId),
-            SetAvatarResult.Rejected, SetAvatarResult.TimedOut);
-
-        return result;
-    }
+    public async Task<RequestResult> ResetAvatar(int userId) =>
+        (await SendAsync(() => _gateway.SetAvatar(null, userId))).Result;
 
     public bool ValidateUsername(string username)
     {
@@ -106,7 +152,7 @@ public partial class CoordinatorSession
         _usersDirectory.Upsert(user);
 
         if (user.Id == _currentUser?.Id)
-            SetCurrentUser(user, _currentUserCredentials!.UserIdentity);
+            SetCurrentUser(user);
 
         UserUpdated?.Invoke(user);
     }
@@ -117,14 +163,19 @@ public partial class CoordinatorSession
         UserDeleted?.Invoke(userId);
     }
 
-    private void SetCurrentUser(UserModel user, string userIdentity)
+    private void SetCurrentUser(UserModel user)
     {
         _currentUser = user;
+        var device = _loginPlan as DeviceLoginPlan;
         _currentUserCredentials = new SavedUserModel
         {
             Id = user.Id,
-            UserIdentity = userIdentity,
             Username = user.Username,
+            CoordinatorId = CoordinatorModel?.Id ?? _expectedCoordinatorId ?? string.Empty,
+            Password = _password,
+            DeviceId = device?.DeviceId,
+            DeviceKey = device?.KeyName,
+            BackupKey = _backupKey
         };
 
         // The roles of the user may have changed with it

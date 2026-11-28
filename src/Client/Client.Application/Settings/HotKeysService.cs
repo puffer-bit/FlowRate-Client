@@ -31,6 +31,7 @@ public class HotKeysService : IHotKeysService
 
     public event Action? SettingsChanged;
     public event Action<HotKeyAction>? Triggered;
+    public event Action<HotKeyAction>? Released;
 
     public async Task ApplyAsync()
     {
@@ -57,5 +58,12 @@ public class HotKeysService : IHotKeysService
             return;
 
         Triggered?.Invoke(action);
+    }
+
+    // A release always goes through: the press it ends may have come before the keys were turned off
+    public void RaiseRelease(HotKeyAction action)
+    {
+        if (HotKeysSettings.IsHeld(action))
+            Released?.Invoke(action);
     }
 }

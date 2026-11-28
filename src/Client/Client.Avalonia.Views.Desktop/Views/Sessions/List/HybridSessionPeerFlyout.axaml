@@ -1,0 +1,205 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Client.Views.Sessions.List.HybridSessionPeerFlyout"
+             x:DataType="listVm:PeerVM">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.volumePercent">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.volumePercent.amplified">
+            <Setter Property="Foreground" Value="{DynamicResource OverdriveBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="2">
+
+        <!-- Our own screen is watched the same way, as a preview -->
+        <StackPanel Spacing="2" IsVisible="{Binding CanWatchScreen}">
+            <menus:MenuItemButton Icon="{StaticResource EyeIcon}" Content="{l:Text hybrid.screen.watch}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleScreenWatch}"
+                                  IsVisible="{Binding !IsWatchingScreen}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedEyeIcon}" Content="{l:Text hybrid.screen.stopWatching}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding ToggleScreenWatch}"
+                                  IsVisible="{Binding IsWatchingScreen}"/>
+
+            <Separator/>
+        </StackPanel>
+
+        <StackPanel Spacing="2" IsVisible="{Binding SelfSession, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <menus:MenuItemButton Icon="{StaticResource CrossedMicrophoneIcon}" Content="{l:Text call.microphoneOff}"
+                                  Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                  IsVisible="{Binding SelfSession.IsMicrophoneOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource MicrophoneIcon}" Content="{l:Text call.microphoneOn}"
+                                  Command="{Binding SelfSession.ToggleMicrophoneCommand}"
+                                  IsVisible="{Binding !SelfSession.IsMicrophoneOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedHeadphonesIcon}" Content="{l:Text peer.muteSound}"
+                                  Command="{Binding SelfSession.ToggleSoundCommand}"
+                                  IsVisible="{Binding SelfSession.IsSoundOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource HeadphonesIcon}" Content="{l:Text peer.unmuteSound}"
+                                  Command="{Binding SelfSession.ToggleSoundCommand}"
+                                  IsVisible="{Binding !SelfSession.IsSoundOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource VideoCameraIcon}" Content="{l:Text camera.start}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleCameraCommand}"
+                                  IsVisible="{Binding !SelfSession.IsCameraOn}" IsEnabled="{Binding SelfSession.CanUseCamera}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedVideoCameraIcon}" Content="{l:Text camera.stop}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleCameraCommand}"
+                                  IsVisible="{Binding SelfSession.IsCameraOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.go}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Click="OnAfkClick"
+                                  IsVisible="{Binding !SelfSession.IsAfk}"/>
+            <menus:MenuItemButton Icon="{StaticResource AfkIcon}" Content="{l:Text hybrid.afk.back}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleAfkCommand}"
+                                  IsVisible="{Binding SelfSession.IsAfk}"/>
+            <menus:MenuItemButton Icon="{StaticResource ScreenShareIcon}" Content="{l:Text hybrid.screen.start}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleScreenShareCommand}"
+                                  IsVisible="{Binding !SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text hybrid.screen.change}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ChangeScreenShareCommand}"
+                                  IsVisible="{Binding SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Classes="danger" Icon="{StaticResource ScreenShareIcon}" Content="{l:Text hybrid.screen.stop}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Command="{Binding SelfSession.ToggleScreenShareCommand}"
+                                  IsVisible="{Binding SelfSession.IsScreenShareOn}"/>
+            <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                  menus:FlyoutMenu.CloseOnClick="True"
+                                  Click="OnSelfStatsClick">
+                <menus:MenuItemButton.IconContent>
+                    <indicators:SignalIndicator Level="{Binding SelfSession.Stats.SignalLevel, FallbackValue=0}"/>
+                </menus:MenuItemButton.IconContent>
+            </menus:MenuItemButton>
+            <Separator/>
+        </StackPanel>
+
+        <!-- Playback and moderation apply only to other participants. -->
+        <StackPanel Spacing="2" IsVisible="{Binding !IsCurrentUser}">
+
+            <!-- Only a peer of the session we are in; the message is asked in a card of its own -->
+            <StackPanel Spacing="2" IsVisible="{Binding CanPoke}">
+                <common:HoverActionMenuItem Icon="{StaticResource PokeIcon}" Content="{l:Text peer.poke}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      Click="OnPokeClick">
+                    <menus:MenuItemButton.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop"><listViews:PokeCard/></Flyout>
+                    </menus:MenuItemButton.Flyout>
+                </common:HoverActionMenuItem>
+
+                <Separator/>
+            </StackPanel>
+
+            <!-- Opened in a card of its own, like the poke -->
+            <StackPanel Spacing="2" IsVisible="{Binding CanShowConnectionStats}">
+                <!-- The same indicator as on our own statistics button, lit by how the user reaches us -->
+                <menus:MenuItemButton Content="{l:Text hybrid.stats.open}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      Click="OnStatsClick">
+                    <menus:MenuItemButton.IconContent>
+                        <indicators:SignalIndicator Level="{Binding ConnectionStats.SignalLevel, FallbackValue=0}"/>
+                    </menus:MenuItemButton.IconContent>
+                </menus:MenuItemButton>
+
+                <Separator/>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*, Auto" Margin="8,4,8,0">
+                <TextBlock Grid.Column="0" Text="{l:Text peer.volume}"/>
+                <TextBlock Grid.Column="1"
+                           Classes="volumePercent"
+                           Classes.amplified="{Binding IsAmplified}"
+                           Text="{Binding VolumePercentText}"/>
+            </Grid>
+
+            <Slider Classes="menuRow"
+                    Minimum="0"
+                    Maximum="{Binding MaxVolume}"
+                    Value="{Binding Volume}"
+                    IsEnabled="{Binding !IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource CrossedNoVolumeIcon}" Content="{l:Text peer.muteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource HighVolumeIcon}" Content="{l:Text peer.unmuteSound}"
+                                  Command="{Binding ToggleMute}"
+                                  IsVisible="{Binding IsMuted}"/>
+
+            <menus:MenuItemButton Icon="{StaticResource VolumeUpIcon}" Content="{l:Text peer.enableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding !IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+            <menus:MenuItemButton Icon="{StaticResource CrossedVolumeUpIcon}" Content="{l:Text peer.disableOverdrive}"
+                                  Command="{Binding ToggleOverdrive}"
+                                  IsVisible="{Binding IsOverdriveEnabled}"
+                                  IsEnabled="{Binding !IsMuted}"/>
+
+            <Separator/>
+
+            <!-- Hidden with its separator when the current user may do nothing to this one -->
+            <StackPanel Spacing="2">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding Path="CanApprove"/>
+                        <Binding Path="CanKick"/>
+                        <Binding Path="CanRemoveFromGroup"/>
+                        <Binding Path="CanBan"/>
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <!-- Only for a user waiting to be let in, and only to the host or roles that approve -->
+                <menus:MenuItemButton Icon="{StaticResource DoorWithMarkIcon}" Content="{l:Text peer.approve}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Approve}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text peer.reject}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanApprove}"
+                                      Command="{Binding Reject}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource BootKickIcon}" Content="{l:Text peer.kick}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanKick}"
+                                      Command="{Binding Kick}"/>
+                <!-- In a group call, for its owner -->
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text privateChats.removeMember}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanRemoveFromGroup}"
+                                      Command="{Binding RemoveFromGroup}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}" Content="{l:Text peer.ban}"
+                                      menus:FlyoutMenu.CloseOnClick="True"
+                                      IsVisible="{Binding CanBan}"
+                                      Command="{Binding Ban}"/>
+                <!-- Hidden until suspending and reporting are implemented -->
+                <menus:MenuItemButton Icon="{StaticResource DashInCircleIcon}" Content="{l:Text peer.suspend}"
+                                      IsVisible="False"/>
+                <menus:MenuItemButton Icon="{StaticResource WarningIcon}" Content="{l:Text peer.report}"
+                                      IsVisible="False"/>
+
+                <Separator/>
+            </StackPanel>
+        </StackPanel>
+
+        <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              IsVisible="{Binding CanOpenDirectChat}"
+                              Command="{Binding OpenDirectChatCommand}"
+                              CommandParameter="{Binding PeerData.UserId}"/>
+        <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
+                              menus:FlyoutMenu.CloseOnClick="True"
+                              Command="{Binding ViewProfileCommand}"
+                              CommandParameter="{Binding PeerData.UserId}"/>
+    </StackPanel>
+</UserControl>

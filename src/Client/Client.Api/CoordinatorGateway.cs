@@ -1,7 +1,7 @@
 using Client.Api.Mappers;
 using Client.Api.Protocol;
 using Client.Api.Transport;
-using Client.Core.Events;
+using Client.Core.Coordinator;
 using Shared.Models;
 using Client.Application.Ports;
 using Microsoft.Extensions.Logging;
@@ -24,12 +24,16 @@ internal partial class CoordinatorGateway : ICoordinatorGateway
     private readonly IWebSocketGateway _webSocketGateway;
     private CancellationTokenSource? _webSocketTokenSource;
 
+    private readonly ClientInfo _client;
+
     public CoordinatorGateway(
         IHeartbeatHandler heartbeatHandler,
         ResponseAwaiter responseAwaiter,
         IWebSocketGateway webSocketGateway,
+        ClientInfo client,
         ILogger<CoordinatorGateway> logger)
     {
+        _client = client;
         _responseAwaiter = responseAwaiter;
         _heartbeatHandler = heartbeatHandler;
         _logger = logger;

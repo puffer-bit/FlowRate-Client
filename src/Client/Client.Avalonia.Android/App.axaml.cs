@@ -6,9 +6,15 @@ using Client.Api;
 using Client.Application;
 using Client.Avalonia.Localization;
 using Client.Droid.Platform;
-using Client.Droid.Views;
+using Client.Mobile.Platform;
+using Client.Mobile.Views.Main;
 using Client.Infrastructure;
+using Client.Platform;
+using Client.Services;
+using Client.Tools.AppInfo;
 using Client.Tools.Logging;
+using Client.Views.Shared.Common;
+using Client.Views.Shared.Dialogs;
 using Client.ViewModels.Main;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -17,11 +23,14 @@ namespace Client.Droid;
 
 public partial class App : global::Avalonia.Application
 {
+    internal static IServiceProvider? Services { get; private set; }
+
     public override void Initialize()
     {
         Strings.SetLanguage(CultureInfo.CurrentUICulture.Name);
 
         AvaloniaXamlLoader.Load(this);
+        ApplicationFontResources.Initialize(this);
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -29,16 +38,21 @@ public partial class App : global::Avalonia.Application
         // Android has no windows: the application shows one root view
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
         {
-            // Before the container, so that every service gets a working logger from the start.
-            // The console ends up in logcat
-            Log.Logger = ClientLogging.CreateSerilogLogger(new LoggingOptions());
-            ClientLogging.LogUnhandledExceptions();
-
             var services = InitDependencies()
                 .AddClientLogging(Log.Logger)
                 .BuildServiceProvider();
 
-            singleView.MainView = new MainView(services.GetRequiredService<MainWindowVM>(), services);
+            Services = services;
+
+            // What the shared views take from the application and the phone
+            ViewServices.Provider = services;
+            MobilePlatform.Current = new AndroidMobilePlatform();
+
+            var viewModel = services.GetRequiredService<MainWindowVM>();
+            var mainView = new MainView(viewModel, services);
+            DialogPresenter.Current = mainView.Dialogs;
+            _ = new AndroidMainViewIntegration(mainView, viewModel, services);
+            singleView.MainView = mainView;
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -51,7 +65,8 @@ public partial class App : global::Avalonia.Application
         services
             // The place of the executable is read-only on Android; this is the data directory of the application
             .AddApplication(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
-            .AddApi()
+            .AddApi(new ClientInfo(DeviceInformation.Name, DevicePlatform.Name, ApplicationDetails.PackageVersion,
+                ApplicationDetails.SystemDescription, DevicePlatform.Architecture))
             .AddInfrastructure(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
             .AddAndroidPlatform();
 

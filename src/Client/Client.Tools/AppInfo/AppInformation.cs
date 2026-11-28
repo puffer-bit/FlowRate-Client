@@ -9,8 +9,17 @@ public static class AppInformation
     /// </summary>
     public const string RepositoryUrl = "https://github.com/puffer-bit/FlowRate-Client";
 
+    /// <summary>
+    /// The version a host knows better than the entry assembly: Android has no entry assembly and gives the
+    /// version name of its package here at its start.
+    /// </summary>
+    public static string? ClientVersion { get; set; }
+
     public static string GetClientVersion()
     {
+        if (ClientVersion is { } known)
+            return known;
+
         var version = Assembly.GetEntryAssembly()?.GetName().Version;
         return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
@@ -35,6 +44,13 @@ public static class AppInformation
         // Missing when the build was made outside a git repository
         return GetMetadataValue(assembly, "BuildCommit") is { } commit ? $"{version}({commit})" : version;
     }
+
+    /// <summary>
+    /// A build not meant as a release: anything but a release of the publish scripts, which marks it so. A dev
+    /// build of the scripts (-dev.&lt;stamp&gt;) and a build made locally, Release or Debug, are both.
+    /// </summary>
+    public static bool IsDevBuild(Assembly? assembly = null) =>
+        GetMetadataValue(assembly ?? Assembly.GetEntryAssembly(), "ReleaseBuild") != "true";
 
     public static string GetMetadataValue(string key) => GetMetadataValue(Assembly.GetEntryAssembly(), key) ?? "unknown";
 

@@ -14,7 +14,7 @@ internal partial class CoordinatorGateway
     private readonly SemaphoreSlim _mediaTokenLock = new(1, 1);
     private MediaHttpClient? _media;
     private string? _mediaToken;
-    private DateTime _mediaTokenExpiresAt;
+    private DateTimeOffset _mediaTokenExpiresAt;
 
     public Task<MediaUploadOutcome> UploadMedia(MediaUpload upload, IProgress<long>? progress,
         CancellationToken cancellationToken) =>
@@ -32,6 +32,24 @@ internal partial class CoordinatorGateway
         CancellationToken cancellationToken) =>
         _media is { } media
             ? media.DownloadFileAsync(fileId, destination, progress, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
+    public Task<MediaTransferResult> DownloadChatFileRange(int fileId, long offset, long length, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadFileRangeAsync(fileId, offset, length, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
+    public Task<MediaTransferResult> DownloadChatFilePreview(int fileId, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadFilePreviewAsync(fileId, destination, cancellationToken)
+            : Task.FromResult(MediaTransferResult.ConnectionFailed);
+
+    public Task<MediaTransferResult> DownloadLinkPreviewImage(int previewId, Stream destination,
+        CancellationToken cancellationToken) =>
+        _media is { } media
+            ? media.DownloadLinkPreviewImageAsync(previewId, destination, cancellationToken)
             : Task.FromResult(MediaTransferResult.ConnectionFailed);
 
     public Task<MediaTransferResult> DownloadAvatar(string avatarId, Stream destination,
@@ -60,15 +78,13 @@ internal partial class CoordinatorGateway
         await _mediaTokenLock.WaitAsync(cancellationToken);
         try
         {
-            if (!refresh && _mediaToken != null && DateTime.UtcNow < _mediaTokenExpiresAt - MediaTokenMargin)
+            if (!refresh && _mediaToken != null && DateTimeOffset.UtcNow < _mediaTokenExpiresAt - MediaTokenMargin)
                 return _mediaToken;
 
             var response = await SendRequestAsync<MediaTokenResponse>(new MediaTokenRequest());
-            if (response is not { Result: MediaTokenResult.NoError, Token: { } token, ExpiresAt: { } expiresAt })
-                return _mediaToken = null;
 
-            _mediaTokenExpiresAt = expiresAt.ToUniversalTime();
-            return _mediaToken = token;
+            _mediaTokenExpiresAt = response.ExpiresAt;
+            return _mediaToken = response.Token;
         }
         // No answer, a rejection or a lost connection: there is no token, and the transfer reports it
         catch (Exception exception) when (exception is not OperationCanceledException)

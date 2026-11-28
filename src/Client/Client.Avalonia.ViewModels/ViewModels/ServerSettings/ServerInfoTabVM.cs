@@ -16,6 +16,12 @@ public class ServerInfoTabVM : ReactiveObject
 
     public string? Version { get; }
 
+    public string? DatabaseProvider
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public string OnlineText { get; }
 
     public string? FirstStartedText { get; }
@@ -33,6 +39,6 @@ public class ServerInfoTabVM : ReactiveObject
     }
 
     // The server sends its times in UTC
-    private static string FormatTime(DateTime time) =>
-        DateTime.SpecifyKind(time, DateTimeKind.Utc).ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+    private static string FormatTime(DateTimeOffset time) =>
+        time.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
 }

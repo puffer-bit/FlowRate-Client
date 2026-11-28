@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
-using Client.Tools.Environment;
-using Client.Tools.AppInfo;
+using Client.Platform;
 using Microsoft.Extensions.Logging;
 using Client.GStreamer.Interop;
 
@@ -8,9 +7,14 @@ namespace Client.GStreamer.Loader;
 
 public partial class GstLoader
 {
+    /// <summary>
+    /// What the binding was initialized with, once the runtime is loaded.
+    /// </summary>
+    public static Gst.GstSharpOptions? Options { get; private set; }
+
     public static bool LoadGstreamer(ILogger logger)
     {
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return false;
 
         // Without a runtime the first call below fails with DllNotFoundException, so say why up front
@@ -25,9 +29,6 @@ public partial class GstLoader
 
         try
         {
-            INativeEnvironment.Set("NICE_DISABLE_IPV6", "1");
-            INativeEnvironment.Set("NICE_DISABLE_UPNP", "1");
-
             // The installed runtime keeps its own plugins and registry
             if (GstNativeLibraryResolver.BundledRoot is { } bundledRoot)
                 IsolateFromSystem(bundledRoot, logger);
@@ -38,9 +39,9 @@ public partial class GstLoader
             var options = new Gst.GstSharpOptions { NativeSearchPath = GstNativeLibraryResolver.LibraryDirectory };
             GstSharp.Initialize(options);
             Gst.App.GstApp.Initialize(options);
-            Gst.Sdp.GstSdp.Initialize(options);
-            Gst.WebRTC.GstWebRTC.Initialize(options);
+            Options = options;
             GstLogFilter.Install(logger);
+            GstNativeLog.OnLoaded();
 
             LogInitialized(logger, Gst.Global.VersionString(), GstNativeLibraryResolver.LibraryDirectory);
 
@@ -60,27 +61,29 @@ public partial class GstLoader
     /// </summary>
     private static void IsolateFromSystem(string bundledRoot, ILogger logger)
     {
-        var cacheDirectory = Path.Combine(AppDirectories.Data, "gstreamer");
+        var cacheDirectory = GStreamerSettings.CacheDirectory;
 
         // Loading no GIO modules at all: the system ones are built against the system GLib
         var emptyGioModules = Path.Combine(cacheDirectory, "gio-modules");
         Directory.CreateDirectory(emptyGioModules);
 
-        var scanner = Path.Combine(bundledRoot, "libexec", "gstreamer-1.0",
+        // The macOS runtime names its folders without a dot: codesign takes a folder with an
+        // extension inside an app bundle for a bundle of its own and refuses to sign the application
+        var scanner = Path.Combine(bundledRoot, "libexec", OperatingSystem.IsMacOS() ? "scanner" : "gstreamer-1.0",
             OperatingSystem.IsWindows() ? "gst-plugin-scanner.exe" : "gst-plugin-scanner");
 
-        var pluginPath = Path.Combine(bundledRoot, "lib", "gstreamer-1.0");
+        var pluginPath = Path.Combine(bundledRoot, "lib", OperatingSystem.IsMacOS() ? "plugins" : "gstreamer-1.0");
         if (OperatingSystem.IsLinux())
         {
             pluginPath += Path.PathSeparator + Path.Combine(bundledRoot, "lib", SelectVaPluginFolder(logger));
             pluginPath += Path.PathSeparator + Path.Combine(bundledRoot, "lib", SelectPipeWirePluginFolder(logger));
         }
 
-        INativeEnvironment.Set("GST_PLUGIN_SYSTEM_PATH_1_0", pluginPath);
-        INativeEnvironment.Set("GST_PLUGIN_PATH_1_0", "");
-        INativeEnvironment.Set("GST_PLUGIN_SCANNER_1_0", scanner);
-        INativeEnvironment.Set("GST_REGISTRY_1_0", Path.Combine(cacheDirectory, "registry.x86_64.bin"));
-        INativeEnvironment.Set("GIO_MODULE_DIR", emptyGioModules);
+        NativeEnvironment.SetVariable("GST_PLUGIN_SYSTEM_PATH_1_0", pluginPath);
+        NativeEnvironment.SetVariable("GST_PLUGIN_PATH_1_0", "");
+        NativeEnvironment.SetVariable("GST_PLUGIN_SCANNER_1_0", scanner);
+        NativeEnvironment.SetVariable("GST_REGISTRY_1_0", Path.Combine(cacheDirectory, "registry.x86_64.bin"));
+        NativeEnvironment.SetVariable("GIO_MODULE_DIR", emptyGioModules);
     }
 
     /// <summary>

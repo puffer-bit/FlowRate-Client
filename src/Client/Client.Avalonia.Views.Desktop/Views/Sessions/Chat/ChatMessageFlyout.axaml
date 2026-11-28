@@ -1,0 +1,141 @@
+<UserControl xmlns:sharedChat="clr-namespace:Client.Views.Shared.Chat;assembly=Client.Avalonia.Views.Common"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Chat.ChatMessageFlyout"
+             x:DataType="chatVm:ChatMessageVM">
+
+    <!-- The actions, and above them who read an own message as an island of its own, as on the phone -->
+    <StackPanel Spacing="6" MaxWidth="320">
+        <!-- Who read an own message and when; only its author sees it -->
+        <Border Classes="menu-island" IsVisible="{Binding CanShowReaders}">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="menuLabel" Text="{l:Text chat.menu.readers}"/>
+                <TextBlock Text="{l:Text chat.readers.loading}" Margin="8,4"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           IsVisible="{Binding Readers.IsLoading, FallbackValue=False}"/>
+                <TextBlock Text="{Binding Readers.Error, FallbackValue={x:Null}}" Margin="8,4" TextWrapping="Wrap"
+                           Foreground="{DynamicResource ErrorBrush}"
+                           IsVisible="{Binding Readers.HasError, FallbackValue=False}"/>
+                <TextBlock Text="{l:Text chat.readers.empty}" Margin="8,4"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           IsVisible="{Binding Readers.IsEmpty, FallbackValue=False}"/>
+                <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Readers.Items, FallbackValue={x:Null}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="chatVm:ChatMessageReaderVM">
+                                <!-- Any press on a reader opens the same menu as an author in the chat -->
+                                <Border Classes="reader-row" Background="Transparent" Cursor="Hand" CornerRadius="6"
+                                        PointerReleased="OnReaderPointerReleased">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="6,3">
+                                        <avatars:UserAvatar Width="24" Height="24" UserName="{Binding Name}"
+                                                            AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+        <!-- A message that did not go: why, and what can be done about it -->
+        <Border Classes="menu-island" IsVisible="{Binding IsSendFailed}">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="menuError" Text="{Binding OutgoingStatusText}"/>
+                <menus:MenuItemButton Icon="{StaticResource ResetIcon}" Content="{l:Text chat.outgoing.retry}"
+                                      IsVisible="{Binding CanRetrySend}"
+                                      Command="{Binding RetrySend}"/>
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                      IsVisible="{Binding CanTakeBack}"
+                                      Command="{Binding TakeBack}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
+        <Border Classes="menu-island">
+            <StackPanel Spacing="2">
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.goToMessage}"
+                                      IsVisible="{Binding IsPinnedListItem}" Command="{Binding GoToMessage}"/>
+                <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.menu.react}"
+                                      IsVisible="{Binding CanReact}">
+                    <menus:MenuItemButton.Flyout>
+                        <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="reaction-picker">
+                            <sharedChat:ChatReactionPicker/>
+                        </Flyout>
+                    </menus:MenuItemButton.Flyout>
+                </menus:MenuItemButton>
+
+                <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
+                                      IsVisible="{Binding CanReply}"
+                                      Command="{Binding StartReply}"/>
+                <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
+                                      IsVisible="{Binding ShowsPinItem}" IsEnabled="{Binding CanPin}"
+                                      Command="{Binding TogglePinned}"/>
+                <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
+                                      IsVisible="{Binding ShowsUnpinItem}" IsEnabled="{Binding CanPin}"
+                                      Command="{Binding TogglePinned}"/>
+                <!-- A message on its way that has not failed can still be taken back -->
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                      IsVisible="{Binding IsSending}" IsEnabled="{Binding CanTakeBack}"
+                                      Command="{Binding TakeBack}"/>
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"
+                                      IsVisible="{Binding CanEdit}"
+                                      Command="{Binding StartEdit}"/>
+
+                <!-- One copy item at a time: the selection when there is one, the whole text otherwise -->
+                <menus:MenuItemButton Icon="{StaticResource CopySelectionIcon}" Content="{l:Text chat.menu.copySelected}" Gesture="Ctrl+C"
+                                      IsVisible="{Binding IsTextSelected}"
+                                      IsEnabled="{Binding HasCopyText}"
+                                      Command="{Binding Copy}"/>
+                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyAll}" Gesture="Ctrl+C"
+                                      IsVisible="{Binding !IsTextSelected}"
+                                      IsEnabled="{Binding HasCopyText}"
+                                      Command="{Binding Copy}"/>
+
+                <!-- Only when the menu was opened over an image of the message -->
+                <menus:MenuItemButton Icon="{StaticResource CopyImageIcon}" Content="{l:Text chat.menu.copyImage}"
+                                      IsVisible="{Binding HasCopyImage}"
+                                      Command="{Binding CopyImage}"/>
+                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                      IsVisible="{Binding HasCopyImage}"
+                                      Command="{Binding SaveImageAs}"/>
+
+                <!-- Only when the menu was opened over a file of the message -->
+                <menus:MenuItemButton Icon="{StaticResource DownloadIcon}" Content="{l:Text chat.menu.saveFileAs}"
+                                      IsVisible="{Binding HasContextFile}"
+                                      IsEnabled="{Binding !ContextFile.IsDownloading, FallbackValue=False}"
+                                      Command="{Binding SaveFileAs}"/>
+
+                <!-- Only when the menu was opened over a link of the message -->
+                <menus:MenuItemButton Icon="{StaticResource CopyIcon}" Content="{l:Text chat.menu.copyLink}"
+                                      IsVisible="{Binding HasCopyLink}"
+                                      Command="{Binding CopyLink}"/>
+
+                <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                                      IsVisible="{Binding CanWriteToSender}"
+                                      Command="{Binding WriteToSender}"/>
+                <menus:MenuItemButton Icon="{StaticResource UserIcon}" Content="{l:Text peer.viewProfile}" Gesture="P"
+                                      IsEnabled="{Binding !IsSenderDeleted}"
+                                      Command="{Binding ViewProfile}"/>
+
+                <Separator IsVisible="{Binding CanDelete}"/>
+
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}" Gesture="Delete"
+                                      IsVisible="{Binding CanDeleteStored}"
+                                      Command="{Binding Delete}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossIcon}" Content="{l:Text chat.outgoing.cancel}" Gesture="Delete"
+                                      IsVisible="{Binding CanCancelSend}"
+                                      Command="{Binding Delete}"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

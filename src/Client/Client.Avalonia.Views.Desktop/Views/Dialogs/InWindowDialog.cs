@@ -1,0 +1,115 @@
+using System;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.VisualTree;
+
+namespace Client.Views.Dialogs;
+
+/// <summary>
+/// Shows dialogs inside the window of the requesting view rather than as windows of their own:
+/// on Wayland a window cannot be centered over its owner, tiling window managers turn it into a
+/// separate tile, and it may end up behind a fullscreen session.
+/// </summary>
+internal static class InWindowDialog
+{
+    /// <summary>
+    /// Shows <paramref name="content"/> over the window that hosts <paramref name="owner"/> until
+    /// the content calls <see cref="Close"/> or the user dismisses it.
+    /// </summary>
+    /// <param name="dismissedResult">Returned on Escape, and when the window closes underneath.</param>
+    /// <param name="fillWindow">See <see cref="DialogOverlay(Avalonia.Controls.Control,bool)"/>.</param>
+    /// <returns>The result passed to <see cref="Close"/>, or <paramref name="dismissedResult"/>.</returns>
+    public static async Task<TResult> ShowAsync<TResult>(Control content, Visual? owner, TResult dismissedResult,
+        bool fillWindow = false)
+    {
+        var topLevel = FindOwnerTopLevel(owner);
+        var overlayLayer = topLevel == null ? null : OverlayLayer.GetOverlayLayer(topLevel);
+
+        if (topLevel == null || overlayLayer == null)
+            throw new InvalidOperationException("There is no visible window to show the dialog in");
+        
+        var overlay = new DialogOverlay(content, fillWindow);
+        var result = new TaskCompletionSource<TResult>();
+        
+        overlay.Closed += value => result.TrySetResult(value is TResult typed ? typed : dismissedResult);
+        overlay.Dismissed += () => result.TrySetResult(dismissedResult);
+        
+        // Avalonia creates the overlay layer on first use, still without a size: laid out at 0×0, the
+        // first dialog would be centered on the top left corner of the window. A layout pass sizes it
+        if (overlayLayer.Bounds.Width <= 0 || overlayLayer.Bounds.Height <= 0)
+            topLevel.UpdateLayout();
+
+        // The overlay layer does not stretch its children, so the backdrop follows its size
+        using var size = overlayLayer.GetObservable(Visual.BoundsProperty).Subscribe(bounds =>
+        {
+            // An empty size would lay the dialog out at the corner; the next layout pass brings the real one
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                return;
+            overlay.Width = bounds.Width;
+            overlay.Height = bounds.Height;
+        });
+        
+        // Whoever awaits the answer must not hang when the window goes away underneath
+        void OnWindowClosed(object? sender, EventArgs e) => result.TrySetResult(dismissedResult);
+        var window = topLevel as Window;
+        
+        if (window != null)
+            window.Closed += OnWindowClosed;
+        
+        var previousFocus = topLevel.FocusManager?.GetFocusedElement() as InputElement;
+        overlayLayer.Children.Add(overlay);
+
+        try
+        {
+            return await result.Task;
+        }
+        finally
+        {
+            // A closed window is gone already, there is nothing left to animate
+            if (window is not { IsVisible: false })
+                await overlay.HideAsync();
+            
+            overlayLayer.Children.Remove(overlay);
+            
+            if (window != null)
+                window.Closed -= OnWindowClosed;
+            
+            previousFocus?.Focus();
+        }
+    }
+
+    /// <summary>
+    /// Closes the dialog that contains <paramref name="content"/> with <paramref name="result"/>.
+    /// </summary>
+    public static void Close(Visual content, object? result = null)
+    {
+        content.FindAncestorOfType<DialogOverlay>()?.Close(result);
+    }
+
+    /// <summary>
+    /// Whether a dialog can be shown for <paramref name="owner"/>, i.e. there is a window to show it in.
+    /// </summary>
+    public static bool CanShow(Visual? owner) => FindOwnerTopLevel(owner) != null;
+
+    private static TopLevel? FindOwnerTopLevel(Visual? owner)
+    {
+        // A popup is a top level of its own that closes as soon as it loses focus, so the dialog goes to
+        // the window behind it
+        if (owner != null && TopLevel.GetTopLevel(owner) is { IsVisible: true } topLevel and not PopupRoot)
+            return topLevel;
+
+        // A main window hidden to the tray keeps the dialog until the user brings it back
+        var main = global::Avalonia.Application.Current?.ApplicationLifetime switch
+        {
+            IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
+            ISingleViewApplicationLifetime singleView => TopLevel.GetTopLevel(singleView.MainView),
+            _ => null
+        };
+
+        return main != null && OverlayLayer.GetOverlayLayer(main) != null ? main : null;
+    }
+}

@@ -1,0 +1,220 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:serverSettingsVm="clr-namespace:Client.ViewModels.ServerSettings;assembly=Client.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:Client.Avalonia.Controls;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.ServerSettings.Pages.RolesPage"
+             x:DataType="serverSettingsVm:RolesTabVM"
+             x:Name="Root">
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsCardBorderBrush}"/>
+        </Style>
+        <!-- A role without a color shows a plain dot -->
+        <Style Selector="Ellipse.roleDot">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Fill" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+        <Style Selector="Ellipse.roleDot.headerDot">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+        </Style>
+        <Style Selector="Button.swatch">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="CornerRadius" Value="13"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <!-- The ellipses have no size of their own: centered, as every Button is, they shrink to nothing -->
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.swatch.selected">
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonMainBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.permissionDescription">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ui:SettingsPage>
+        <Grid x:Name="RolesLayout" ColumnDefinitions="230,*" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="16">
+            <StackPanel x:Name="RoleList" Spacing="10">
+                <Grid ColumnDefinitions="*, Auto">
+                    <controls:SettingsHeader Text="{l:Text serverSettings.roles.section.roles}"/>
+                    <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding CreateCommand}"
+                            IsVisible="{Binding CanCreate}" AutomationProperties.Name="{l:Text serverSettings.roles.create}">
+                        <common:ActionLabel Icon="{StaticResource PlusIcon}" Text="{l:Text serverSettings.roles.create}"/>
+                    </Button>
+                </Grid>
+
+                <TextBlock Text="{l:Text serverSettings.roles.hierarchyHint}" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <!-- Highest first: a role manages only the roles below it -->
+                <Border Classes="card" Padding="4">
+                    <ListBox MaxHeight="420" ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="serverSettingsVm:RoleRowVM">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10" Height="30" Background="Transparent">
+                                    <Grid.ContextFlyout>
+                                        <Flyout Placement="BottomEdgeAlignedRight">
+                                            <StackPanel Spacing="2">
+                                                <menus:MenuItemButton Content="{l:Text serverSettings.roles.moveUp}"
+                                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                                      IsEnabled="{Binding CanMoveUp}"
+                                                                      Command="{Binding MoveUp}">
+                                                    <!-- There is a down arrow only -->
+                                                    <menus:MenuItemButton.IconContent>
+                                                        <Image Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(180deg)"/>
+                                                    </menus:MenuItemButton.IconContent>
+                                                </menus:MenuItemButton>
+                                                <menus:MenuItemButton Icon="{StaticResource DownArrowIcon}"
+                                                                      Content="{l:Text serverSettings.roles.moveDown}"
+                                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                                      IsEnabled="{Binding CanMoveDown}"
+                                                                      Command="{Binding MoveDown}"/>
+                                                <Separator/>
+                                                <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}"
+                                                                      Content="{l:Text serverSettings.roles.delete}"
+                                                                      menus:FlyoutMenu.CloseOnClick="True"
+                                                                      IsEnabled="{Binding CanDelete}"
+                                                                      Command="{Binding Delete}"/>
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Grid.ContextFlyout>
+                                    <Panel VerticalAlignment="Center">
+                                        <Ellipse Classes="roleDot"
+                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                        <Ellipse Classes="roleDot"
+                                                 Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                 IsVisible="{Binding Color, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </Panel>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+            </StackPanel>
+            <StackPanel x:Name="RoleEditor" Grid.Column="1" Spacing="10">
+                <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource ErrorBrush}"
+                        IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Text="{Binding Error}"/>
+                </Border>
+
+                <!-- The chosen role; each change is saved on its own, apart from the settings of the other tabs -->
+                <StackPanel Spacing="8" IsVisible="{Binding Editor.HasRole}" IsEnabled="{Binding !IsBusy}">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="4">
+                            <!-- The dot follows the color being chosen, as the name follows the name being typed -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                <Panel VerticalAlignment="Center">
+                                    <Ellipse Classes="roleDot headerDot"
+                                             IsVisible="{Binding Editor.SelectedColor, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                    <Ellipse Classes="roleDot headerDot"
+                                             Fill="{Binding Editor.SelectedColor, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                             IsVisible="{Binding Editor.SelectedColor, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </Panel>
+                                <TextBlock Grid.Column="1" Text="{Binding Editor.Name}" FontSize="20" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <TextBlock Text="{l:Text serverSettings.roles.unsaved}" IsVisible="{Binding Editor.IsDirty}"
+                                       Foreground="{DynamicResource WarningBrush}" FontSize="12"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ghost" Command="{Binding ReloadCommand}"
+                                IsVisible="{Binding Editor.IsDirty}" Content="{l:Text common.cancel}"/>
+                        <Button Grid.Column="2" Classes="save" Command="{Binding SaveCommand}"
+                                IsVisible="{Binding Editor.CanEdit}" Content="{l:Text serverSettings.roles.save}"/>
+                    </Grid>
+
+                    <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                            BorderBrush="{DynamicResource WarningBrush}"
+                            IsVisible="{Binding Editor.IsChangedElsewhere}">
+                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                            <TextBlock TextWrapping="Wrap" FontSize="13" VerticalAlignment="Center"
+                                       Text="{l:Text serverSettings.roles.changedElsewhere}"/>
+                            <Button Grid.Column="1" Command="{Binding ReloadCommand}"
+                                    Content="{l:Text serverSettings.changedElsewhere.load}"/>
+                        </Grid>
+                    </Border>
+
+                    <hints:HintBlock Text="{l:Text serverSettings.roles.cannotEdit}" IsVisible="{Binding !Editor.CanEdit}"/>
+
+                    <Border Classes="card">
+                        <StackPanel Spacing="10" IsEnabled="{Binding Editor.CanEdit}">
+                            <StackPanel Spacing="6" IsVisible="{Binding !Editor.IsEveryone}">
+                                <TextBlock Classes="fieldLabel" Text="{l:Text serverSettings.roles.name}"/>
+                                <TextBox Text="{Binding Editor.Name}" MaxLength="32"
+                                         Classes.invalid="{Binding Editor.NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <TextBlock Classes="fieldError" Text="{Binding Editor.NameError}"
+                                           IsVisible="{Binding Editor.NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+                                <TextBlock Classes="fieldLabel" Text="{l:Text serverSettings.roles.color}"/>
+                                <ItemsControl ItemsSource="{Binding Editor.Colors}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel ItemSpacing="4" LineSpacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="serverSettingsVm:RoleColorVM">
+                                            <Button Classes="swatch" Classes.selected="{Binding IsSelected}"
+                                                    Command="{Binding Select}">
+                                                <Panel>
+                                                    <Ellipse Stroke="{DynamicResource ColorSwatchBorderBrush}" StrokeThickness="1"
+                                                             IsVisible="{Binding IsNone}"/>
+                                                    <Ellipse Fill="{Binding Color, Converter={x:Static converters:RoleColorConverter.Instance}}"
+                                                             IsVisible="{Binding !IsNone}"/>
+                                                </Panel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <hints:HintBlock Text="{l:Text serverSettings.roles.everyoneHint}" IsVisible="{Binding Editor.IsEveryone}"/>
+
+                            <TextBlock Classes="fieldLabel" Text="{l:Text serverSettings.roles.permissions}"/>
+                            <TextBox Classes="search" Text="{Binding Editor.PermissionSearch}"
+                                     PlaceholderText="{l:Text serverSettings.roles.searchPermissions}"/>
+                            <TextBlock Text="{l:Text settings.search.nothingFound}" IsVisible="{Binding Editor.HasNoMatchingPermissions}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <ItemsControl ItemsSource="{Binding Editor.FilteredPermissions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="serverSettingsVm:PermissionOptionVM">
+                                        <ui:SettingsRow Title="{Binding Title}" Description="{Binding Description}" IsEnabled="{Binding IsEnabled}">
+                                            <CheckBox IsChecked="{Binding IsChecked}" AutomationProperties.Name="{Binding Title}"/>
+                                        </ui:SettingsRow>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ui:SettingsPage>
+</UserControl>

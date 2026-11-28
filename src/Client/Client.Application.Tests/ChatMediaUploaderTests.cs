@@ -195,6 +195,29 @@ public class ChatMediaUploaderTests
         Assert.Equal(2, _fake.Uploads.Count);
     }
 
+    [Fact]
+    public async Task FileAnotherProgramHoldsLocked_IsReportedUnreadable()
+    {
+        var result = await _uploader.UploadFileAsync(_session, 3,
+            new ChatMediaSource("app-20261027.txt", Content.Length,
+                () => throw new IOException("The process cannot access the file because it is being used by another process.")),
+            _fileState, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ChatMediaUploadResult.Unreadable, result);
+        Assert.Null(_fileState.File);
+    }
+
+    [Fact]
+    public async Task ImageThatCannotBeRead_IsReportedUnreadable()
+    {
+        var result = await _uploader.UploadImageAsync(_session, 3,
+            new ChatMediaSource("cat.png", Content.Length, () => throw new UnauthorizedAccessException()),
+            _state, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ChatMediaUploadResult.Unreadable, result);
+        Assert.Null(_state.Image);
+    }
+
     private sealed class Collector(List<double> values) : IProgress<double>
     {
         public void Report(double value) => values.Add(value);
@@ -212,6 +235,115 @@ public class ChatMediaUploaderTests
             Calls++;
             return Task.FromResult(Result);
         }
+
+        public ImagePreview? FrameResult { get; set; } = new("image/webp", 320, 180, PreviewBytes, "image/webp");
+        public VideoFrameImage? LastFrame { get; private set; }
+
+        public Task<ImagePreview?> CreateAsync(VideoFrameImage frame, CancellationToken cancellationToken = default)
+        {
+            LastFrame = frame;
+            return Task.FromResult(FrameResult);
+        }
+    }
+
+    private sealed class FixedFrames : IVideoFrameGrabber
+    {
+        public bool IsAvailable { get; set; } = true;
+        public VideoFrameImage? Result { get; set; } = new(new byte[2 * 2 * 4], 2, 2, 90);
+        public List<string> Paths { get; } = [];
+
+        public Task<VideoFrameImage?> GrabAsync(string path, int maxSide, CancellationToken cancellationToken = default)
+        {
+            Paths.Add(path);
+            return Task.FromResult(Result);
+        }
+    }
+
+    private readonly FixedFrames _frames = new();
+
+    private Task<ChatMediaUploadResult> UploadVideoAsync(ChatMediaUploader uploader, string fileName = "clip.mp4",
+        string? localPath = "/videos/clip.mp4") =>
+        uploader.UploadFileAsync(_session, 3,
+            new ChatMediaSource(fileName, Content.Length, () => Task.FromResult<Stream>(new MemoryStream(Content)),
+                localPath),
+            _fileState, null, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task Video_GoesWithAFrameToBeShownBy()
+    {
+        var uploader = new ChatMediaUploader(_previewer, _frames);
+
+        Assert.Equal(ChatMediaUploadResult.NoError, await UploadVideoAsync(uploader));
+
+        Assert.Collection(_fake.Uploads,
+            video => Assert.Equal(MediaUploadKind.File, video.Kind),
+            frame =>
+            {
+                Assert.Equal(MediaUploadKind.ImagePreview, frame.Kind);
+                Assert.Equal("image/webp", frame.MimeType);
+            });
+        Assert.Equal(["/videos/clip.mp4"], _frames.Paths);
+        Assert.Equal(90, _previewer.LastFrame!.Rotation);
+        Assert.Equal("upload1", _fileState.File!.UploadId);
+        Assert.Equal("upload2", _fileState.File.PreviewUploadId);
+    }
+
+    [Theory]
+    [InlineData("notes.pdf", "/files/notes.pdf")]
+    [InlineData("clip.mp4", null)]
+    public async Task FileThatIsNoVideoOnDisk_GoesWithoutAFrame(string fileName, string? localPath)
+    {
+        var uploader = new ChatMediaUploader(_previewer, _frames);
+
+        Assert.Equal(ChatMediaUploadResult.NoError, await UploadVideoAsync(uploader, fileName, localPath));
+
+        Assert.Single(_fake.Uploads);
+        Assert.Empty(_frames.Paths);
+        Assert.Null(_fileState.File!.PreviewUploadId);
+    }
+
+    [Fact]
+    public async Task VideoWhoseFrameCannotBeHad_GoesWithoutOne()
+    {
+        _frames.Result = null;
+        var uploader = new ChatMediaUploader(_previewer, _frames);
+
+        Assert.Equal(ChatMediaUploadResult.NoError, await UploadVideoAsync(uploader));
+
+        Assert.Single(_fake.Uploads);
+        Assert.Null(_fileState.File!.PreviewUploadId);
+    }
+
+    [Fact]
+    public async Task VideoWhoseFrameTheServerRefuses_GoesWithoutOne()
+    {
+        var uploader = new ChatMediaUploader(_previewer, _frames);
+        _fake.Results.Enqueue(MediaTransferResult.NoError);
+        _fake.Results.Enqueue(MediaTransferResult.TooManyUploads);
+
+        Assert.Equal(ChatMediaUploadResult.NoError, await UploadVideoAsync(uploader));
+
+        Assert.Equal(2, _fake.Uploads.Count);
+        Assert.Null(_fileState.File!.PreviewUploadId);
+    }
+
+    [Fact]
+    public async Task VideoWhoseFrameIsCutOff_IsContinuedWithoutSendingItAgain()
+    {
+        var uploader = new ChatMediaUploader(_previewer, _frames);
+        _fake.Results.Enqueue(MediaTransferResult.NoError);
+        _fake.Results.Enqueue(MediaTransferResult.ConnectionFailed);
+
+        Assert.Equal(ChatMediaUploadResult.ConnectionFailed, await UploadVideoAsync(uploader));
+        Assert.Null(_fileState.File);
+
+        Assert.Equal(ChatMediaUploadResult.NoError, await UploadVideoAsync(uploader));
+        // The video stays where it was; only the frame goes on, and it was taken once
+        Assert.Equal(3, _fake.Uploads.Count);
+        Assert.Equal(MediaUploadKind.ImagePreview, _fake.Uploads[2].Kind);
+        Assert.Equal("upload2", _fake.Uploads[2].ResumeUploadId);
+        Assert.Single(_frames.Paths);
+        Assert.Equal("upload2", _fileState.File!.PreviewUploadId);
     }
 
     /// <summary>
@@ -229,6 +361,16 @@ public class ChatMediaUploaderTests
 
             var upload = (MediaUpload)args![0]!;
             Uploads.Add(upload);
+
+            // The client reads the bytes before it sends them, and fails as the source does
+            try
+            {
+                upload.OpenContent().GetAwaiter().GetResult().Dispose();
+            }
+            catch (Exception exception)
+            {
+                return Task.FromException<MediaUploadOutcome>(exception);
+            }
 
             var result = Results.TryDequeue(out var queued) ? queued : MediaTransferResult.NoError;
             var id = result is MediaTransferResult.NoError or MediaTransferResult.ConnectionFailed or MediaTransferResult.Canceled

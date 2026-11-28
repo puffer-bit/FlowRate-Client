@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Client.Mobile.Views.Common"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Mobile.Views.Sessions.Chat.ChatViewersPanel"
+             x:DataType="chatVm:ChatViewersVM">
+    <Border Background="{DynamicResource GeneralBrush}" Padding="8,8,8,6">
+        <Grid RowDefinitions="Auto,*" RowSpacing="6">
+            <StackPanel Spacing="4">
+                <!-- A page of its own: back, the title, and the options of the list at the right of the header -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Button Classes="borderless" Width="44" Height="44" Padding="12" Click="OnBackClick">
+                        <Image Width="22" Height="22" Source="{StaticResource DownArrowIcon}" RenderTransform="rotate(90deg)"/>
+                    </Button>
+                    <TextBlock Grid.Column="1" Text="{l:Text chat.viewers.title}" FontSize="18"
+                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="2" Classes="borderless" Padding="0" Width="44" Height="44"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            ToolTip.Tip="{l:Text chat.viewers.options}"
+                            AutomationProperties.Name="{l:Text chat.viewers.options}">
+                        <Image Width="20" Height="20" Source="{StaticResource MoreIcon}"/>
+                        <common:PopupMenus.Menu>
+                                <StackPanel Spacing="2">
+                                    <menus:MenuItemButton Command="{Binding ToggleGroupOnlineUsers}"
+                                                          Content="{l:Text chat.viewers.groupOnline}"
+                                                          IsChecked="{Binding GroupOnlineUsers}"/>
+                                </StackPanel>
+                        </common:PopupMenus.Menu>
+                    </Button>
+                </Grid>
+                <TextBlock Text="{l:Text chat.viewers.loading}" IsVisible="{Binding IsLoading}"
+                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <TextBlock Text="{l:Text chat.viewers.error}" IsVisible="{Binding HasError}"
+                           Margin="6,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Users}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="2"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="chatVm:ChatViewerVM">
+                            <StackPanel>
+                                <TextBlock Text="{l:Text profile.status.online}" IsVisible="{Binding ShowOnlineHeader}"
+                                           Margin="6,8,6,4" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <TextBlock Text="{l:Text profile.status.offline}" IsVisible="{Binding ShowOfflineHeader}"
+                                           Margin="6,8,6,4" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <Button Classes="borderless" Command="{Binding ViewProfile}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,6" MinHeight="56">
+                                <common:PopupMenus.ContextMenu>
+                                        <StackPanel Spacing="2">
+                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}"
+                                                                  Content="{l:Text privateChats.removeMember}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanRemoveFromGroup}" Command="{Binding RemoveFromGroup}"/>
+                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource HammerIcon}"
+                                                                  Content="{l:Text peer.ban}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanBan}" Command="{Binding Ban}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource HammerIcon}"
+                                                                  Content="{l:Text serverSettings.users.action.unban}" menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanUnban}" Command="{Binding Unban}"/>
+                                            <Separator IsVisible="{Binding HasDangerActions}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource MentionIcon}" Content="{l:Text chat.menu.mention}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True" IsEnabled="{Binding CanMention}"
+                                                                  Command="{Binding Mention}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource SendIcon}" Content="{l:Text privateChats.write}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True" IsVisible="{Binding CanOpenDirectChat}"
+                                                                  Command="{Binding OpenDirectChat}"/>
+                                            <menus:MenuItemButton Icon="{StaticResource BaseUserIcon}" Content="{l:Text peer.viewProfile}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                                  Command="{Binding ViewProfile}"/>
+                                        </StackPanel>
+                                </common:PopupMenus.ContextMenu>
+                                <Grid ColumnDefinitions="40,*" ColumnSpacing="8" Classes.banned="{Binding IsBanned}">
+                                    <Grid.Styles>
+                                        <Style Selector="Grid">
+                                            <Setter Property="Transitions">
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                                                </Transitions>
+                                            </Setter>
+                                        </Style>
+                                        <Style Selector="Grid.banned">
+                                            <Setter Property="Opacity" Value="0.35"/>
+                                        </Style>
+                                    </Grid.Styles>
+                                    <avatars:UserAvatar Width="40" Height="40" UserName="{Binding Username}"
+                                                        AvatarUrl="{Binding AvatarUrl}" Status="{Binding Status}" IsMobile="{Binding IsMobile}"/>
+                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <!-- The owner of the group -->
+                                        <Image Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center"
+                                               Source="{StaticResource CrownIcon}" IsVisible="{Binding IsOwner}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Classes.role-colored="{Binding RoleColor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <TextBlock.Styles>
+                                                <Style Selector="TextBlock.role-colored">
+                                                    <Setter Property="Foreground"
+                                                            Value="{Binding RoleColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                                                </Style>
+                                            </TextBlock.Styles>
+                                        </TextBlock>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <Image Width="16" Height="16" Source="{StaticResource HammerIcon}"
+                                                   IsVisible="{Binding IsBanned}" ToolTip.Tip="{l:Text serverSettings.users.banned}"/>
+                                            <Image Width="16" Height="16" Source="{StaticResource SnowflakeIcon}"
+                                                   IsVisible="{Binding IsFrozen}" ToolTip.Tip="{l:Text serverSettings.users.frozen}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

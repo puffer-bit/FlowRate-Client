@@ -1,0 +1,91 @@
+<UserControl xmlns:hints="clr-namespace:Client.Avalonia.Controls.Hints;assembly=Client.Avalonia.Controls"
+             xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="340"
+        x:Class="Client.Views.Sessions.Chat.ChatSessionSettingsView"
+        x:DataType="chatVm:ChatSessionSettingsWindowVM"
+        Background="{DynamicResource GeneralBrush}"
+        MaxWidth="440" HorizontalAlignment="Stretch"
+        MaxHeight="560">
+
+    <dialogs:DialogLayout>
+
+        <!-- Header -->
+        <dialogs:DialogHeader Grid.Row="0" Icon="{StaticResource GearIcon}"
+                             Title="{l:Text sessionSettings.title}" Subtitle="{l:Text session.type.chat}"/>
+
+        <Border Grid.Row="1" Classes="dialogSeparator"/>
+
+        <!-- Form -->
+        <common:StableScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel HorizontalAlignment="Stretch" Margin="20,16,4,16" Spacing="18" IsEnabled="{Binding !IsBusy}">
+
+                <!-- Name -->
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text profile.field.name}"/>
+                    <TextBox x:Name="NameInput"
+                             PlaceholderText="{l:Text createSession.name.watermark}"
+                             Text="{Binding Name}"
+                             Classes.invalid="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Classes="fieldError" Text="{Binding NameError}"
+                               IsVisible="{Binding NameError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="fieldLabel" Text="{l:Text createSession.field.description}"/>
+                    <TextBox Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             MinHeight="90" MaxHeight="180" MaxLength="{Binding DescriptionMaxLength}"
+                             PlaceholderText="{l:Text createSession.description.watermark}"
+                             Classes.invalid="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Classes="fieldError" Text="{Binding DescriptionError}"
+                               IsVisible="{Binding DescriptionError, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <!-- A failure that belongs to no single field -->
+                <Border Padding="10,8" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource ErrorBrush}"
+                        IsVisible="{Binding GeneralError, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto, *" ColumnSpacing="8">
+                        <Image Width="18" Height="18" VerticalAlignment="Top" Source="{StaticResource WarningIcon}"/>
+                        <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="13" Text="{Binding GeneralError}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </common:StableScrollViewer>
+
+        <Border Grid.Row="3" Classes="dialogSeparator"/>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" Classes="dialogFooter" ColumnDefinitions="*, Auto">
+            <SelectableTextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                                 Text="{Binding SessionId, StringFormat='ID: {0}'}"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Command="{Binding CloseCommand}" IsCancel="True" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.cancel}">
+                    <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.cancel}"/>
+                </Button>
+
+                <Button Classes="primary" Command="{Binding SaveCommand}" IsDefault="True" MinWidth="110" HorizontalContentAlignment="Center" AutomationProperties.Name="{l:Text common.save}">
+                    <Grid>
+                        <common:ActionLabel HorizontalAlignment="Center" IsVisible="{Binding !IsBusy}" Icon="{StaticResource DesktopSaveIcon}" Text="{l:Text common.save}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                    IsVisible="{Binding IsBusy}">
+                            <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0"
+                                                            IsIndeterminate="True" BorderThickness="2"
+                                                            Foreground="{DynamicResource OnAccentTextBrush}"/>
+                            <TextBlock Text="{l:Text common.saving}"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </dialogs:DialogLayout>
+</UserControl>

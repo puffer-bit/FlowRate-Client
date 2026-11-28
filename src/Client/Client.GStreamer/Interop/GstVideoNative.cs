@@ -150,30 +150,6 @@ internal static class GstVideoNative
         return true;
     }
 
-    [DllImport(NativeLibraries.GStreamer)]
-    private static extern void gst_pad_remove_probe(IntPtr pad, ulong id);
-
-    private const int ProbeBuffer = 1 << 4;
-    private const int ProbeBufferList = 1 << 5;
-    private const int ProbeDrop = 0;
-
-    /// <summary>
-    /// Drops what flows out of a pad until <see cref="RemoveProbe"/>, so the pad can be unlinked and
-    /// linked to something else meanwhile. A push into an unlinked pad fails with not-linked, which
-    /// stops the streaming thread behind it for good; a dropped buffer counts as delivered.
-    /// </summary>
-    public static unsafe ulong DropBuffers(Gst.Pad pad) =>
-        gst_pad_add_probe(pad.Handle, ProbeBuffer | ProbeBufferList, &OnBuffer, IntPtr.Zero, IntPtr.Zero);
-
-    public static void RemoveProbe(Gst.Pad pad, ulong id)
-    {
-        if (id != 0)
-            gst_pad_remove_probe(pad.Handle, id);
-    }
-
-    [UnmanagedCallersOnly]
-    private static int OnBuffer(IntPtr pad, IntPtr info, IntPtr data) => ProbeDrop;
-
     // Runs on a streaming thread: no wrappers, only the native calls. appsink itself refuses the
     // allocation query, so the probe answers it: no pool, only the meta
     [UnmanagedCallersOnly]

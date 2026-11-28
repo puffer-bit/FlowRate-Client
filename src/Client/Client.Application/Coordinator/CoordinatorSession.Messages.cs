@@ -1,4 +1,5 @@
-using Client.Core.Events;
+using Client.Core.Coordinator;
+using Shared.Enums;
 
 
 namespace Client.Application.Coordinator;
@@ -9,8 +10,40 @@ public partial class CoordinatorSession
     {
         switch (coordinatorEvent)
         {
-            case ServerClosingEvent:
+            case ChatCallChangedEvent call:
+                ApplyChatCall(call.Call, true);
+                break;
+            case BannedEvent banned:
+                Post(new BanReceived(banned.Reason));
+                break;
+
+            // A server turned off is not waited for; any other goes away for a moment
+            case ServerRestartEvent { At: null, Reason: ServerRestartReason.Shutdown } shutdown:
+                ServerRestart?.Invoke(shutdown);
                 _ = Disconnect();
+                break;
+            case ServerRestartEvent { At: null } restarting:
+                ServerRestart?.Invoke(restarting);
+                OnConnectionLost($"The server is going down ({restarting.Reason}). {restarting.Message}");
+                break;
+            case ServerRestartEvent warning:
+                ServerRestart?.Invoke(warning);
+                break;
+            case ServerRestartCancelledEvent:
+                ServerRestartCancelled?.Invoke();
+                break;
+
+            // The device is not one of the account any more: it stays out until the user logs in again
+            case DeviceEndedEvent ended:
+                LogDeviceEnded(LogName, ended.Reason);
+                OnDeviceEnded(ended.Reason);
+                _ = Disconnect();
+                break;
+            case DeviceAddedEvent added:
+                DeviceAdded?.Invoke(added.Device);
+                break;
+            case DeviceLinkCompletedEvent or DeviceLinkDeclinedEvent:
+                OnDeviceLinkEvent(coordinatorEvent);
                 break;
 
             case CoordinatorReconfiguredEvent reconfigured:
@@ -28,9 +61,6 @@ public partial class CoordinatorSession
                 ServerRoundTrip = measured.RoundTrip;
                 break;
 
-            case ServerRestartingEvent restarting:
-                OnConnectionLost($"The server is restarting. {restarting.Message}");
-                break;
             
             case RolesChangedEvent rolesChanged:
                 OnRolesChanged(rolesChanged.Roles);
@@ -70,11 +100,13 @@ public partial class CoordinatorSession
             
             case ChatMessageAddedEvent messageAdded:
                 messageAdded.Message.IsMine = messageAdded.Message.SenderUserId == GetCurrentUser().Id;
+                _chatTyping.Update(messageAdded.ChatId, messageAdded.Message.SenderUserId, false);
                 TextMessageAdded?.Invoke(messageAdded.ChatId, messageAdded.Message);
                 break;
 
             case ChatMessageEditedEvent messageEdited:
                 messageEdited.Message.IsMine = messageEdited.Message.SenderUserId == GetCurrentUser().Id;
+                // Reaction updates use this event too and must not stop the author's typing activity.
                 TextMessageEdited?.Invoke(messageEdited.ChatId, messageEdited.Message);
                 break;
 
@@ -82,8 +114,23 @@ public partial class CoordinatorSession
                 TextMessageDeleted?.Invoke(messageDeleted.ChatId, messageDeleted.MessageId, messageDeleted.Revision);
                 break;
 
+            case ChatUserTypingEvent typing:
+                if (ConnectionStatus != CoordinatorState.Connected || typing.UserId == GetCurrentUser().Id)
+                    break;
+                _chatTyping.Update(typing.ChatId, typing.UserId, typing.IsTyping);
+                ChatUserTyping?.Invoke(typing.ChatId, typing.UserId, typing.IsTyping);
+                break;
+
+            case ChatViewersChangedEvent viewers:
+                ChatViewersChanged?.Invoke(viewers);
+                break;
+
             case ChatReadStateChangedEvent readChanged:
                 ChatReadStateChanged?.Invoke(readChanged.State);
+                break;
+
+            case ChatPeerReadEvent peerRead:
+                ChatPeerRead?.Invoke(peerRead.Read);
                 break;
         }
     }

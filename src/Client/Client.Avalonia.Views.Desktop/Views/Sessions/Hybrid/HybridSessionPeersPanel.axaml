@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:hybridVm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:listVm="clr-namespace:Client.ViewModels.Sessions.List;assembly=Client.Avalonia.ViewModels"
+             xmlns:listViews="clr-namespace:Client.Views.Sessions.List"
+             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="450"
+             x:DataType="hybridVm:ActiveHybridSessionVM"
+             x:Class="Client.Views.Sessions.Hybrid.HybridSessionPeersPanel"
+             x:Name="Root"
+             Background="{DynamicResource GeneralBrush}">
+
+    <!-- The peers have the same rows and menus as under the session in the sessions list -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="8" Spacing="6">
+            <TextBlock Margin="4,0" Text="{l:Text privateChats.members}"
+                       Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+            <ListBox Classes="peersList"
+                     ItemsSource="{Binding PeerList.Peers}"
+                     SelectedItem="{Binding PeerList.SelectedPeer}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type listVm:PeerVM}">
+                        <listViews:HybridSessionPeer/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Members of the chat who are not in its call -->
+            <StackPanel Spacing="4" Margin="0,8,0,0" IsVisible="{Binding HasCallMembers}">
+                <Grid ColumnDefinitions="*,Auto" Margin="4,0">
+                    <TextBlock VerticalAlignment="Center" Text="{l:Text calls.notInCall}"
+                               Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+                    <Button Grid.Column="1" Classes="ghost" Padding="6,2" CornerRadius="6"
+                            Command="{Binding RingEveryone}"
+                            ToolTip.Tip="{l:Text calls.ringEveryone}"
+                            AutomationProperties.Name="{l:Text calls.ringEveryone}">
+                        <Image Width="16" Height="16" Source="{StaticResource ChatCallStartedIcon}"/>
+                    </Button>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding CallMembers}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="hybridVm:CallMemberVM">
+                            <Border Background="Transparent" CornerRadius="6" Padding="4,3">
+                                <Border.ContextFlyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Spacing="2">
+                                            <menus:MenuItemButton Icon="{StaticResource ChatCallStartedIcon}" Content="{l:Text calls.ringAgain}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsEnabled="{Binding !IsRinging}"
+                                                                  Command="{Binding Ring}"/>
+                                            <Separator IsVisible="{Binding CanRemoveFromGroup}"/>
+                                            <menus:MenuItemButton Classes="danger" Icon="{StaticResource DoorWithCrossIcon}" Content="{l:Text privateChats.removeMember}"
+                                                                  menus:FlyoutMenu.CloseOnClick="True"
+                                                                  IsVisible="{Binding CanRemoveFromGroup}"
+                                                                  Command="{Binding RemoveFromGroup}"/>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Border.ContextFlyout>
+                                <Grid ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
+                                    <!-- Members who are not rung fade out as users away from the keyboard do -->
+                                    <Grid.Styles>
+                                        <Style Selector=":is(Control).notRung">
+                                            <Setter Property="Transitions">
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                                                </Transitions>
+                                            </Setter>
+                                        </Style>
+                                        <Style Selector=":is(Control).notRung.dim">
+                                            <Setter Property="Opacity" Value="0.35"/>
+                                        </Style>
+                                    </Grid.Styles>
+                                    <avatars:UserAvatar Width="28" Height="28"
+                                                        Classes="notRung" Classes.dim="{Binding !IsRinging}"
+                                                        UserName="{Binding UserData.Username}"
+                                                        AvatarUrl="{Binding UserData.AvatarUrl}"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                Classes="notRung" Classes.dim="{Binding !IsRinging}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+
+                                            <text:MarqueeTextBlock Pause="0:0:0" Text="{Binding DisplayedName}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                            <Image Width="14" Height="14" VerticalAlignment="Center"
+                                                   Source="{StaticResource CrownIcon}" IsVisible="{Binding IsOwner}"
+                                                   ToolTip.Tip="{l:Text privateChats.owner}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding StatusText}" FontSize="10"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   Classes.ringing="{Binding IsRinging}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="ghost" Padding="4" CornerRadius="6"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding !IsRinging}"
+                                            Command="{Binding Ring}"
+                                            ToolTip.Tip="{l:Text calls.ringAgain}"
+                                            AutomationProperties.Name="{l:Text calls.ringAgain}">
+                                        <Image Width="16" Height="16" Source="{StaticResource ChatCallStartedIcon}"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

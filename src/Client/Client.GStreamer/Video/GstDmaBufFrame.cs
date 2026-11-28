@@ -18,15 +18,16 @@ internal sealed class GstDmaBufFrame : DmaBufVideoFrame
         _sample = sample;
     }
 
-    /// <returns>Null when the buffer is not laid out as two DMA-BUF planes of a known format.</returns>
+    /// <returns>Null when the buffer has no supported RGB or YUV DMA-BUF layout.</returns>
     public static GstDmaBufFrame? TryCreate(Sample sample, IntPtr buffer, VideoCapsInfo caps)
     {
-        if (caps.DrmFourcc is not (FourccNv12 or FourccP010))
+        var isRgb = IsRgbFormat(caps.DrmFourcc);
+        if (!isRgb && caps.DrmFourcc is not (FourccNv12 or FourccP010))
             return null;
 
         var layout = GstVideoNative.GetPlaneLayout(buffer);
 
-        if (layout is not { Length: 2 })
+        if (layout == null || layout.Length != (isRgb ? 1 : 2))
             return null;
 
         var planes = new DmaBufPlane[layout.Length];

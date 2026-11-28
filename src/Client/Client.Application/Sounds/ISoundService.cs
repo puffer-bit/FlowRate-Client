@@ -26,6 +26,9 @@ public interface ISoundService
     /// </summary>
     void Play(SoundEvent soundEvent);
 
+    /// <summary>Repeats a signal until disposed; disposal stops the current sound immediately.</summary>
+    IDisposable PlayLoop(SoundEvent soundEvent);
+
     /// <summary>
     /// Plays the sound for the user to hear what it is: also when the sounds, or this one, are
     /// switched off.

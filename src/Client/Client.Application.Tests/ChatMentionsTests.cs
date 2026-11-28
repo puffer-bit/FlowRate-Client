@@ -44,9 +44,12 @@ public class ChatMentionsTests
         Assert.Equal(3, body.Mentions.Count);
         Assert.Equal("@Ann", body.Text.Substring(body.Mentions[0].Start, body.Mentions[0].Length));
         Assert.True(body.Mentions[0].IsSelf);
+        Assert.Equal(5, body.Mentions[0].UserId);
         Assert.Equal("@Unknown", body.Text.Substring(body.Mentions[1].Start, body.Mentions[1].Length));
         Assert.False(body.Mentions[1].IsSelf);
+        Assert.Equal(7, body.Mentions[1].UserId);
         Assert.True(body.Mentions[2].IsSelf);
+        Assert.Null(body.Mentions[2].UserId);
     }
 
     [Fact]

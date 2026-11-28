@@ -10,6 +10,7 @@ using Client.Avalonia.Localization;
 using Client.Services;
 using ReactiveUI;
 using Shared.Validation;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Connections;
@@ -25,7 +26,6 @@ public sealed class LoginPromptVM : ReactiveObject
     {
         IsPasswordAsked = prompt.AsksPassword;
         IsCodeAsked = prompt.AsksTwoFactorCode;
-        RememberPassword = prompt.IsPasswordRemembered;
         Text = Strings.Format(IsPasswordAsked
             ? IsCodeAsked ? "loginPrompt.text.both" : "loginPrompt.text.password"
             : "loginPrompt.text.code", ("server", prompt.CoordinatorAddress));
@@ -61,11 +61,6 @@ public sealed class LoginPromptVM : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool RememberPassword
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
 
     public string Code
     {
@@ -102,7 +97,7 @@ public sealed class LoginPromptVM : ReactiveObject
 
     private static Task<LoginAnswer?> AskAsync(Interaction<LoginPromptVM, LoginAnswer?> ask, LoginPrompt prompt,
         CancellationToken cancellationToken) =>
-        Dispatcher.UIThread.InvokeAsync(async () =>
+        Dispatcher.UIThread.InvokeAsync<LoginAnswer?>(async () =>
         {
             var vm = new LoginPromptVM(prompt);
             await using var dismiss = cancellationToken.Register(() => Dispatcher.UIThread.Post(vm.Dismiss));
@@ -119,5 +114,5 @@ public sealed class LoginPromptVM : ReactiveObject
     }
 
     private LoginAnswer? Confirm() => new(IsPasswordAsked ? Password : null,
-        IsCodeAsked ? NormalizeCode(Code) : null, IsPasswordAsked && RememberPassword);
+        IsCodeAsked ? NormalizeCode(Code) : null);
 }

@@ -1,0 +1,70 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
+using Avalonia.Threading;
+using Client.ViewModels.Sessions.List;
+using Client.Views.Sessions.Hybrid;
+
+namespace Client.Views.Sessions.List;
+
+public partial class HybridSessionPeerFlyout : UserControl
+{
+    public HybridSessionPeerFlyout()
+    {
+        InitializeComponent();
+    }
+
+    // Clicking sends immediately; hovering opens the optional-message submenu.
+    private void OnPokeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PeerVM peer)
+            return;
+        peer.PokeMessage = string.Empty;
+        peer.Poke();
+    }
+
+    private void OnAfkClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PeerVM { SelfSession: { } session })
+            OpenSelfCard(new AfkReasonCard { DataContext = session });
+    }
+
+    private void OnSelfStatsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PeerVM { SelfSession: { } session })
+            return;
+
+        var card = new HybridSessionStatsFlyout { DataContext = session };
+        // This flyout lives in a popup of its own, the journal goes to the window behind it
+        var owner = this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget;
+        card.SessionLogsRequested += (_, _) => HybridSessionLogsView.Open(owner ?? (Visual)this, session);
+        OpenSelfCard(card);
+    }
+
+    private void OpenSelfCard(Control card)
+    {
+        if (this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget is not { } target)
+            return;
+
+        Dispatcher.UIThread.Post(() => new Flyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Content = card
+        }.ShowAt(target), DispatcherPriority.Background);
+    }
+
+    private void OnStatsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PeerVM { ConnectionStats: { } stats } ||
+            this.FindLogicalAncestorOfType<Popup>()?.PlacementTarget is not { } target)
+            return;
+
+        Dispatcher.UIThread.Post(() => new Flyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Content = new PeerStatsFlyout { DataContext = stats }
+        }.ShowAt(target), DispatcherPriority.Background);
+    }
+}

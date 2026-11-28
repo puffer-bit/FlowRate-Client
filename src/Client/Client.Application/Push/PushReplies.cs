@@ -14,13 +14,15 @@ public sealed class PushReplies
     private readonly IPushKeysRepository _keys;
     private readonly ITrustedCertificatesRepository _certificates;
     private readonly IPushReplyTransport _transport;
+    private readonly IChatReadStateRepository _reads;
 
     public PushReplies(IPushKeysRepository keys, ITrustedCertificatesRepository certificates,
-        IPushReplyTransport transport)
+        IPushReplyTransport transport, IChatReadStateRepository reads)
     {
         _keys = keys;
         _certificates = certificates;
         _transport = transport;
+        _reads = reads;
     }
 
     public async Task<PushReplyResult> SendAsync(string coordinatorInstanceId, int chatId, string text,
@@ -39,6 +41,23 @@ public sealed class PushReplies
     }
 
     /// <summary>
+    /// The "Decline" button of an incoming call: the call ends for the caller at once instead of ringing out.
+    /// </summary>
+    public async Task<PushReplyResult> DeclineCallAsync(string coordinatorInstanceId, Guid callId,
+        CancellationToken cancellationToken = default)
+    {
+        if (callId == Guid.Empty)
+            return PushReplyResult.Rejected;
+
+        if (await _keys.GetReplyTargetAsync(coordinatorInstanceId) is not { } target)
+            return PushReplyResult.NotRegistered;
+
+        var certificate = await _certificates.GetAsync(target.Address, target.Port);
+
+        return await _transport.DeclineCallAsync(target, certificate?.Fingerprint, callId, cancellationToken);
+    }
+
+    /// <summary>
     /// The "Mark as read" button of a notification: the chat is read up to its newest message shown.
     /// </summary>
     public async Task<PushReplyResult> MarkReadAsync(string coordinatorInstanceId, int chatId, int messageId,
@@ -47,11 +66,11 @@ public sealed class PushReplies
         if (messageId <= 0)
             return PushReplyResult.Rejected;
 
-        if (await _keys.GetReplyTargetAsync(coordinatorInstanceId) is not { } target)
+        if (await _keys.GetByCoordinatorAsync(coordinatorInstanceId) is not { UserId: { } userId })
             return PushReplyResult.NotRegistered;
 
-        var certificate = await _certificates.GetAsync(target.Address, target.Port);
-
-        return await _transport.MarkReadAsync(target, certificate?.Fingerprint, chatId, messageId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        await _reads.SetAsync(coordinatorInstanceId, userId, new ChatReadState(chatId, messageId, 0, 0));
+        return PushReplyResult.Sent;
     }
 }

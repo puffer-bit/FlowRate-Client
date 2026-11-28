@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Hybrid;assembly=Client.Avalonia.ViewModels"
+             xmlns:converters="clr-namespace:Client.Avalonia.Controls.Converters;assembly=Client.Avalonia.Controls"
+             x:Class="Client.Views.Sessions.Hybrid.HybridBroadcastButton"
+             x:DataType="vm:HybridSessionStatusBarVM">
+    <UserControl.Styles>
+        <!-- Both hosts supply the same action styles used by their neighboring buttons. -->
+        <Style Selector="Button.broadcast.arrow">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
+        <Style Selector="Image.broadcastIcon">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+        </Style>
+        <Style Selector=":is(UserControl).panel Image.broadcastIcon">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid ColumnDefinitions="*,16" ColumnSpacing="1" IsEnabled="{Binding !IsBroadcastBusy}">
+        <Button Grid.Column="0" Classes="broadcast hybridAction barAction" Classes.sharing="{Binding IsBroadcastOn}"
+                Command="{Binding ToggleBroadcastCommand}"
+                ToolTip.Tip="{l:Text broadcast.toggle}" AutomationProperties.Name="{l:Text broadcast.toggle}">
+            <Image Classes="broadcastIcon" Source="{Binding BroadcastIconKey, Converter={x:Static converters:IconKeyConverter.Instance}}"/>
+        </Button>
+        <Button Grid.Column="1" Classes="broadcast arrow hybridAction barAction" ToolTip.Tip="{l:Text broadcast.choose}"
+                AutomationProperties.Name="{l:Text broadcast.choose}">
+            <Button.Flyout>
+                <Flyout Placement="TopEdgeAlignedRight">
+                    <StackPanel Spacing="2">
+                        <menus:MenuItemButton Icon="{StaticResource VideoCameraIcon}" Content="{l:Text camera.start}"
+                            IsVisible="{Binding !IsCameraOn}" IsEnabled="{Binding CanUseCamera}"
+                            Command="{Binding ToggleCameraCommand}" menus:FlyoutMenu.CloseOnClick="True"/>
+                        <menus:MenuItemButton Icon="{StaticResource VideoCameraIcon}" Content="{l:Text camera.stop}"
+                            IsVisible="{Binding IsCameraOn}" Command="{Binding ToggleCameraCommand}"
+                            menus:FlyoutMenu.CloseOnClick="True"/>
+                        <menus:MenuItemButton Icon="{StaticResource ScreenShareIcon}" Content="{l:Text broadcast.screen.start}"
+                            IsVisible="{Binding !IsScreenShareOn}" Command="{Binding ToggleScreenShareCommand}"
+                            menus:FlyoutMenu.CloseOnClick="True"/>
+                        <menus:MenuItemButton Icon="{StaticResource GearIcon}" Content="{l:Text hybrid.screen.change}"
+                            IsVisible="{Binding IsScreenShareOn}" Command="{Binding ChangeScreenShareCommand}"
+                            menus:FlyoutMenu.CloseOnClick="True"/>
+                        <menus:MenuItemButton Icon="{StaticResource ScreenShareIcon}" Content="{l:Text hybrid.screen.stop}"
+                            IsVisible="{Binding IsScreenShareOn}" Command="{Binding ToggleScreenShareCommand}"
+                            menus:FlyoutMenu.CloseOnClick="True"/>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+            <Image Width="12" Height="12" Source="{StaticResource DropdownTriangleIcon}"/>
+        </Button>
+    </Grid>
+</UserControl>

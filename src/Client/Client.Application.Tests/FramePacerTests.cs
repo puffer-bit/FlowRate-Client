@@ -10,8 +10,11 @@ public class FramePacerTests
 
     private readonly List<string> _released = [];
 
+    // A manual clock: wall-clock spinning made the timing assertions fail on busy CI runners
+    private long _now = Stopwatch.GetTimestamp();
+
     private FramePacer<string> CreatePacer(bool isTimed = true, int bufferFrames = 2) =>
-        new(_released.Add) { IsTimed = isTimed, BufferFrames = bufferFrames };
+        new(_released.Add) { IsTimed = isTimed, BufferFrames = bufferFrames, Clock = () => _now };
 
     [Fact]
     public void UntimedShowsTheNewestAndReleasesTheRest()
@@ -141,11 +144,43 @@ public class FramePacerTests
         Assert.False(pacer.HasPending);
     }
 
-    private static void SpinFor(long nanoseconds)
+    [Fact]
+    public void FramesThatComeOnTimeAreNotLate()
     {
-        var until = Stopwatch.GetTimestamp() + (long)(nanoseconds * (Stopwatch.Frequency / 1e9));
+        using var pacer = CreatePacer();
 
-        while (Stopwatch.GetTimestamp() < until)
-            Thread.SpinWait(50);
+        pacer.Enqueue("a", 0);
+        SpinFor(20_000_000);
+        pacer.Enqueue("b", 20_000_000);
+
+        Assert.InRange(pacer.Stats.LateMs, 0, 15);
     }
+
+    [Fact]
+    public void AFrameHeldBackIsAsLateAsItWaited()
+    {
+        using var pacer = CreatePacer();
+
+        // The second frame was due 10 ms after the first and came 150 ms after it
+        pacer.Enqueue("a", 0);
+        SpinFor(150_000_000);
+        pacer.Enqueue("b", 10_000_000);
+
+        Assert.InRange(pacer.Stats.LateMs, 130, 1000);
+    }
+
+    [Fact]
+    public void FramesWithoutTimestampsAreNeverLate()
+    {
+        using var pacer = CreatePacer();
+
+        pacer.Enqueue("a", -1);
+        SpinFor(50_000_000);
+        pacer.Enqueue("b", -1);
+
+        Assert.Equal(0, pacer.Stats.LateMs);
+    }
+
+    private void SpinFor(long nanoseconds) =>
+        _now += (long)(nanoseconds * (Stopwatch.Frequency / 1e9));
 }

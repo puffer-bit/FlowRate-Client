@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Shared.Enums;
 using Shared.Enums.Auth;
 using Client.Core.Coordinator;
 using Client.Core.Settings;
@@ -24,8 +25,8 @@ public partial class CoordinatorSession
     /// <param name="Completion">Completed once the message is handled, for a caller that waits for it.</param>
     private abstract record ConnectionMessage(TaskCompletionSource? Completion = null);
 
-    private sealed record ConnectRequested(string Address, int Port, string? UserIdentity, string? Password,
-        string? AccountPassword, TaskCompletionSource Completion) : ConnectionMessage(Completion);
+    private sealed record ConnectRequested(string Address, int Port, string? Password, LoginPlan Login,
+        string? ExpectedCoordinatorId, TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
     private sealed record DisconnectRequested(TaskCompletionSource Completion) : ConnectionMessage(Completion);
 
@@ -38,6 +39,7 @@ public partial class CoordinatorSession
     private sealed record AttemptCompleted(int AttemptId, CoordinatorState State, Exception? Exception) : ConnectionMessage;
 
     private sealed record ConnectionLost(string Reason, int Epoch) : ConnectionMessage;
+    private sealed record BanReceived(string? Reason) : ConnectionMessage;
 
     private sealed record NetworkChanged(bool IsAvailable) : ConnectionMessage;
 
@@ -68,13 +70,19 @@ public partial class CoordinatorSession
 
     public string? ConnectedAddress => _address is { } address ? $"{address}:{_port}" : null;
 
+    public string? ConnectedHost => _address;
+
+    public int ConnectedPort => _port;
+
     public bool IsCertificateVerified { get; private set; }
+
+    public string? TrustedFingerprint { get; private set; }
 
     // Everything below belongs to the loop
     private ConnectionPhase _phase = ConnectionPhase.Idle;
     private bool _isInFront = true;
     private bool _isNetworkAvailable = true;
-    private DateTime _leftFrontAt;
+    private DateTimeOffset _leftFrontAt;
 
     // Counts the connections, so that the loss of one that is already replaced is told apart.
     // Read by the threads that report a loss.
@@ -102,12 +110,31 @@ public partial class CoordinatorSession
     // Canceled when the session is disposed; never disposed itself, the loop still reads it afterwards
     private readonly CancellationTokenSource _lifetime = new();
 
-    public Task Connect(string address, int port, string? userIdentity, string? password,
-        string? accountPassword = null) =>
-        PostAndWait(completion => new ConnectRequested(address, port, userIdentity, password, accountPassword,
+    private string? _expectedCoordinatorId;
+
+    public Task Connect(string address, int port, string? password, LoginPlan login,
+        string? expectedCoordinatorId = null) =>
+        PostAndWait(completion => new ConnectRequested(address, port, password, login, expectedCoordinatorId,
             completion));
 
-    public Task Disconnect() => PostAndWait(completion => new DisconnectRequested(completion));
+    public async Task Disconnect()
+    {
+        // A temporary device leaves no trace: it logs out before the connection goes
+        if (_loginPlan is DeviceLoginPlan { IsTemporary: true } && _phase == ConnectionPhase.Online)
+        {
+            try
+            {
+                await _gateway.LogoutAsync().WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception exception) when (exception is RequestFailedException or TimeoutException)
+            {
+                // The server ends it after a day without a login anyway
+            }
+            await ForgetDeviceKeyAsync();
+        }
+
+        await PostAndWait(completion => new DisconnectRequested(completion));
+    }
 
     public Task Suspend() => PostAndWait(completion => new VisibilityChanged(false, completion));
 
@@ -172,6 +199,7 @@ public partial class CoordinatorSession
 
     private Task HandleAsync(ConnectionMessage message) => message switch
     {
+        BanReceived banned => HandleBanAsync(banned),
         ConnectRequested connect => HandleConnectAsync(connect),
         DisconnectRequested disconnect => HandleDisconnectAsync(disconnect),
         VisibilityChanged { IsInFront: false } left => HandleLeftFront(left),
@@ -185,22 +213,33 @@ public partial class CoordinatorSession
         _ => Task.CompletedTask
     };
 
+    private async Task HandleBanAsync(BanReceived banned)
+    {
+        BanReason = banned.Reason;
+        await CloseConnectionAsync();
+        _phase = ConnectionPhase.Idle;
+        ConnectionStatus = CoordinatorState.Denied;
+        CompletePendingConnect();
+        CompleteRestore();
+    }
+
     private async Task HandleConnectAsync(ConnectRequested connect)
     {
         await CloseConnectionAsync();
         CompletePendingConnect();
 
+        BanReason = null;
         _isInFront = true;
         _pendingConnect = connect;
 
-        // A password kept with the saved identity stays remembered while it is still the one
-        _accountPassword = connect.AccountPassword;
-        _isAccountPasswordRemembered = connect.AccountPassword != null;
-        _accountPasswordToSave = connect.AccountPassword;
+        _loginPlan = connect.Login;
+        _accountPassword = null;
+        _password = connect.Password;
+        _expectedCoordinatorId = connect.ExpectedCoordinatorId;
         ConnectionStatus = CoordinatorState.Connecting;
         LogConnectStarted(LogName, connect.Address, connect.Port);
 
-        StartAttempt(connect.Address, connect.Port, connect.UserIdentity, connect.Password);
+        StartAttempt(connect.Address, connect.Port, connect.Password);
     }
 
     private async Task HandleDisconnectAsync(DisconnectRequested disconnect)
@@ -221,7 +260,7 @@ public partial class CoordinatorSession
         if (_isInFront)
         {
             _isInFront = false;
-            _leftFrontAt = DateTime.UtcNow;
+            _leftFrontAt = DateTimeOffset.UtcNow;
 
             if (_phase != ConnectionPhase.Idle)
                 StartTimer(ref _suspendTimer, SuspendDelay, new SuspendDelayElapsed(++_suspendTimerId));
@@ -263,7 +302,7 @@ public partial class CoordinatorSession
 
         // A process the system froze off the screen misses its timer, and its connection went
         // unanswered for as long: the server has given it up by now
-        if (_phase == ConnectionPhase.Online && DateTime.UtcNow - _leftFrontAt >= SuspendDelay)
+        if (_phase == ConnectionPhase.Online && DateTimeOffset.UtcNow - _leftFrontAt >= SuspendDelay)
             await SuspendAsync();
 
         switch (_phase)
@@ -370,10 +409,10 @@ public partial class CoordinatorSession
     private void StartRestoreAttempt()
     {
         LogReconnectAttemptStarted(LogName, _attempt);
-        StartAttempt(_address!, _port, GetCurrentUserCredentials().UserIdentity, _password);
+        StartAttempt(_address!, _port, _password);
     }
 
-    private void StartAttempt(string address, int port, string? userIdentity, string? password)
+    private void StartAttempt(string address, int port, string? password)
     {
         _phase = ConnectionPhase.Establishing;
         _isLostDuringAttempt = false;
@@ -389,7 +428,7 @@ public partial class CoordinatorSession
         {
             try
             {
-                var state = await EstablishAsync(address, port, userIdentity, password, cancellationToken);
+                var state = await EstablishAsync(address, port, password, cancellationToken);
                 Post(new AttemptCompleted(attemptId, state, null));
             }
             catch (Exception exception)
@@ -456,7 +495,10 @@ public partial class CoordinatorSession
         // Retrying cannot fix credentials the server rejected, a login the user gave up, a ban, a server only the user can trust
         // or a protocol only an update of one side can match
         if (state is CoordinatorState.AuthenticationFailed or CoordinatorState.AuthenticationNeeded
-            or CoordinatorState.PasskeyRequired or CoordinatorState.Denied
+            or CoordinatorState.PasskeyRequired or CoordinatorState.Denied or CoordinatorState.DeviceEnded
+            or CoordinatorState.LoginFactorsMissing or CoordinatorState.DeviceLinkDeclined
+            or CoordinatorState.LoginRefused
+            or CoordinatorState.OnlineLimitReached or CoordinatorState.UserLimitReached
             or CoordinatorState.CertificateNotTrusted or CoordinatorState.CoordinatorMismatch
             or CoordinatorState.ClientOutdated or CoordinatorState.ServerOutdated)
         {
@@ -625,8 +667,8 @@ public partial class CoordinatorSession
     /// Opens the transport, authenticates and loads the coordinator info. Leaves the transport
     /// closed unless it returns <see cref="CoordinatorState.Connected"/>.
     /// </summary>
-    private async Task<CoordinatorState> EstablishAsync(string address, int port, string? userIdentity,
-        string? password, CancellationToken cancellationToken)
+    private async Task<CoordinatorState> EstablishAsync(string address, int port, string? password,
+        CancellationToken cancellationToken)
     {
         var trusted = await _trustedCertificates.GetAsync(address, port);
         var connectResult = await _gateway.ConnectWebSocketAsync(address, port, trusted?.Fingerprint, cancellationToken);
@@ -643,6 +685,12 @@ public partial class CoordinatorSession
                 return CoordinatorState.CertificateNotTrusted;
             }
 
+            if (connectResult.BanReason is { } banReason)
+            {
+                BanReason = banReason;
+                return CoordinatorState.Denied;
+            }
+
             if (connectResult.ProtocolMismatch is { } mismatch)
                 return mismatch.IsClientOutdated ? CoordinatorState.ClientOutdated : CoordinatorState.ServerOutdated;
 
@@ -653,34 +701,19 @@ public partial class CoordinatorSession
         UntrustedCertificate = null;
         CoordinatorMismatch = null;
         IsCertificateVerified = connectResult.IsCertificateVerified;
+        TrustedFingerprint = connectResult.IsCertificateVerified ? null : trusted?.Fingerprint;
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             LogAuthStarted(LogName);
-            var response = await _gateway.AuthenticateAsync(password, userIdentity).WaitAsync(cancellationToken);
-
-            if (response is { Result: AuthResult.SecondStageRequeried, Challenge: { } challenge })
+            var isDeviceLogin = _loginPlan is DeviceLoginPlan;
+            var (response, failure) = await LogInAsync(address, port, password, cancellationToken);
+            if (failure is { } failed)
             {
-                if (await PassSecondStageAsync(address, port, challenge, cancellationToken) is not { } finished)
-                {
-                    await _gateway.DisconnectWebSocketAsync();
-                    return challenge.AcceptsCodes ? CoordinatorState.AuthenticationNeeded : CoordinatorState.PasskeyRequired;
-                }
-
-                // The identity stays the one the login started with
-                response = finished with { UserIdentity = userIdentity };
-            }
-            // Let in at once: the user has no password, whatever was kept for them
-            else if (response.Result == AuthResult.Success)
-                KeepAccountPassword(null, false);
-
-            if (response is { Result: AuthResult.Banned })
-            {
-                LogAuthFailed(LogName);
                 await _gateway.DisconnectWebSocketAsync();
-                return CoordinatorState.Denied;
+                return failed;
             }
 
             if (response is not { Result: AuthResult.Success, User: not null })
@@ -694,11 +727,19 @@ public partial class CoordinatorSession
             var coordinatorInfo = await _gateway.GetCoordinatorInfo().WaitAsync(cancellationToken)
                                   ?? throw new ApplicationException("Failed to update coordinator info");
 
-            if (trusted != null && !await CheckCoordinatorBindingAsync(trusted, coordinatorInfo))
+            var expectedId = _expectedCoordinatorId ?? (isDeviceLogin ? trusted?.CoordinatorId : null);
+            if (expectedId != null && expectedId != coordinatorInfo.Id)
             {
+                CoordinatorMismatch = new CoordinatorMismatch(address, port, expectedId, coordinatorInfo.Id,
+                    coordinatorInfo.Name);
+                LogCoordinatorMismatch(LogName, address, port, expectedId, coordinatorInfo.Id);
                 await _gateway.DisconnectWebSocketAsync();
                 return CoordinatorState.CoordinatorMismatch;
             }
+
+            if (trusted != null)
+                await _trustedCertificates.BindCoordinatorAsync(address, port, coordinatorInfo.Id);
+            _expectedCoordinatorId = coordinatorInfo.Id;
 
             await LoadRolesAsync(cancellationToken);
 
@@ -707,15 +748,51 @@ public partial class CoordinatorSession
             CoordinatorModel = coordinatorInfo;
             // Remembered like the users met later, so the account shows its avatar before the next login
             _usersDirectory.Upsert(response.User);
-            SetCurrentUser(response.User, response.UserIdentity ?? string.Empty);
+            SetCurrentUser(response.User);
             LogConnected(LogName, CoordinatorModel.Id);
 
             return CoordinatorState.Connected;
         }
-        catch (RequestRejectedException exception)
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.DeviceNotFound)
+        {
+            LogDeviceNotFound(LogName);
+            await _gateway.DisconnectWebSocketAsync();
+            OnDeviceEnded(null);
+            return CoordinatorState.DeviceEnded;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.LoginFactorsMissing)
         {
             await _gateway.DisconnectWebSocketAsync();
-            return OnRequestRejected(exception, CoordinatorState.Rejected);
+            return CoordinatorState.LoginFactorsMissing;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed
+                                                           && _loginPlan is RecoveryLoginPlan or LoginCodeLoginPlan
+                                                               or UsernameLoginPlan)
+        {
+            LogAuthFailed(LogName);
+            await _gateway.DisconnectWebSocketAsync();
+            return CoordinatorState.LoginRefused;
+        }
+        catch (RequestFailedException exception) when (exception.Code is ErrorCode.AuthFailed or ErrorCode.Banned
+                                                           or ErrorCode.OnlineLimitReached or ErrorCode.UserLimitReached)
+        {
+            if (exception.Code == ErrorCode.Banned) BanReason = exception.Details;
+            LogAuthFailed(LogName);
+            // The server keeps an unauthenticated socket open until it is closed from here
+            await _gateway.DisconnectWebSocketAsync();
+            return exception.Code switch
+            {
+                ErrorCode.Banned => CoordinatorState.Denied,
+                ErrorCode.OnlineLimitReached => CoordinatorState.OnlineLimitReached,
+                ErrorCode.UserLimitReached => CoordinatorState.UserLimitReached,
+                _ => CoordinatorState.AuthenticationFailed
+            };
+        }
+        catch (RequestFailedException exception)
+        {
+            await _gateway.DisconnectWebSocketAsync();
+            OnRequestFailed(exception);
+            return CoordinatorState.Rejected;
         }
         catch (TimeoutException)
         {
@@ -734,27 +811,5 @@ public partial class CoordinatorSession
             await _gateway.DisconnectWebSocketAsync();
             throw;
         }
-    }
-
-    /// <summary>
-    /// Binds the coordinator on the first login behind a trusted certificate, later makes sure the
-    /// address still leads to it.
-    /// </summary>
-    /// <returns>False when another coordinator answered.</returns>
-    private async Task<bool> CheckCoordinatorBindingAsync(ServerCertificateModel trusted, CoordinatorSessionModel coordinator)
-    {
-        if (trusted.CoordinatorId == null)
-        {
-            await _trustedCertificates.BindCoordinatorAsync(trusted.Host, trusted.Port, coordinator.Id);
-            return true;
-        }
-
-        if (trusted.CoordinatorId == coordinator.Id)
-            return true;
-
-        CoordinatorMismatch = new CoordinatorMismatch(trusted.Host, trusted.Port, trusted.CoordinatorId, coordinator.Id,
-            coordinator.Name);
-        LogCoordinatorMismatch(LogName, trusted.Host, trusted.Port, trusted.CoordinatorId, coordinator.Id);
-        return false;
     }
 }

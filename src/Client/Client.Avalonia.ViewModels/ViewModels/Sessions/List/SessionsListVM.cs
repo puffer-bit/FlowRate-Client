@@ -1,32 +1,30 @@
-using Client.Avalonia.Localization;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using Microsoft.Extensions.Logging;
-using ReactiveUI;
-using Shared.Enums;
-using Shared.Models.Media;
-using Client.Core.Chat;
-using Client.Core.Coordinator;
-using Client.Core.Events;
-using Client.Core.Sessions;
-using Client.Core.Sessions.Hybrid;
-using Client.Core.Users;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Sessions.Hybrid;
+using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
+using Client.Core.Coordinator;
+using Client.Core.Sessions;
+using Client.Core.Sessions.Hybrid;
 using Client.Services;
-using Client.ViewModels.Main;
 using Client.ViewModels.Dialogs;
+using Client.ViewModels.Main;
+using Client.ViewModels.Sessions.Hybrid;
+using Microsoft.Extensions.Logging;
+using ReactiveUI;
+using Shared.Enums;
+
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
-
 
 public partial class SessionsListVM : ReactiveObject
 {
@@ -69,6 +67,83 @@ public partial class SessionsListVM : ReactiveObject
     /// Sessions and categories can be created from the list: it is loaded and connected.
     /// </summary>
     public bool CanCreate => State == SessionsListState.Loaded;
+    public bool HasPrivateChats => (IsStale || State == SessionsListState.Loaded) && PrivateChats.Count != 0;
+    public bool IsPrivateChatsEmpty => State == SessionsListState.Loaded && PrivateChats.Count == 0;
+    public bool CanCreateSession => IsPrivateMode || Access.CanCreateSessions;
+    public bool CanCreateCategory => !IsPrivateMode && Access.CanManageSessions;
+    public bool CanShowChannels => IsPrivateMode && Access.CanViewServerChannels;
+    public bool IsPrivateMode
+    {
+        get;
+        set
+        {
+            value = value || !Access.CanViewServerChannels;
+            if (field == value) return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CanShowChannels));
+            this.RaisePropertyChanged(nameof(CanCreateSession));
+            this.RaisePropertyChanged(nameof(CanCreateCategory));
+            RebuildRows();
+            RaiseStateProperties();
+            RaiseSwitchProperties();
+            if (CoordinatorInstanceId is { } id) _ = _preferences.SavePrivateModeAsync(id, value);
+        }
+    }
+    public void ToggleListMode() => IsPrivateMode = !IsPrivateMode;
+
+    // What the personal chats and the chats of the server hold unread, by the rules of the chat counters
+    private bool _privateHasUnread, _privateHasMentions, _channelsHasUnread, _channelsHasMentions;
+
+    /// <summary>
+    /// The list the switcher leads to has unread messages: its button lights up.
+    /// </summary>
+    public bool SwitchTargetHasUnread => IsPrivateMode ? _channelsHasUnread : _privateHasUnread;
+
+    /// <summary>
+    /// The list the switcher leads to has unread mentions: its mark takes the mention color.
+    /// </summary>
+    public bool SwitchTargetHasMentions => IsPrivateMode ? _channelsHasMentions : _privateHasMentions;
+
+    /// <summary>
+    /// Some chat, personal or of the server, has unread messages by the rules of the chat counters: the tray
+    /// icon shows it.
+    /// </summary>
+    public bool HasUnread => _privateHasUnread || _channelsHasUnread;
+
+    private void RefreshSwitchUnread()
+    {
+        bool privateUnread = false, privateMentions = false, channelsUnread = false, channelsMentions = false;
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+        {
+            if (chat.IsPrivate)
+            {
+                privateUnread |= chat.HasUnread;
+                privateMentions |= chat.MentionCount > 0;
+            }
+            else
+            {
+                channelsUnread |= chat.HasUnread;
+                channelsMentions |= chat.MentionCount > 0;
+            }
+        }
+
+        if (privateUnread == _privateHasUnread && privateMentions == _privateHasMentions
+            && channelsUnread == _channelsHasUnread && channelsMentions == _channelsHasMentions)
+            return;
+
+        var hadUnread = HasUnread;
+        (_privateHasUnread, _privateHasMentions) = (privateUnread, privateMentions);
+        (_channelsHasUnread, _channelsHasMentions) = (channelsUnread, channelsMentions);
+        RaiseSwitchProperties();
+        if (HasUnread != hadUnread)
+            this.RaisePropertyChanged(nameof(HasUnread));
+    }
+
+    private void RaiseSwitchProperties()
+    {
+        this.RaisePropertyChanged(nameof(SwitchTargetHasUnread));
+        this.RaisePropertyChanged(nameof(SwitchTargetHasMentions));
+    }
 
     /// <summary>What the current user may do; the list offers only that.</summary>
     public AccessVM Access { get; }
@@ -107,7 +182,7 @@ public partial class SessionsListVM : ReactiveObject
                 Dispatcher.UIThread.Post(RestoreSelection);
         }
     }
-    
+
     /// <summary>
     /// The sessions of the coordinator, in no particular order. <see cref="Rows"/> is what the list shows.
     /// </summary>
@@ -118,24 +193,36 @@ public partial class SessionsListVM : ReactiveObject
     /// </summary>
     public ObservableCollection<ISessionListRow> Rows { get; } = new();
 
+    /// <summary>Personal conversations in recent-message order, independent of the sidebar mode.</summary>
+    public IReadOnlyList<ChatSessionVM> PrivateChats
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
+
     // The hybrid session we are in, marked in the list; kept so that items added later are marked too
     private int? _enteredHybridSessionId;
+    private HybridSessionStatusBarVM? _enteredHybridSessionControls;
 
     // The session the main window shows, kept for the same reason
     private (int Id, bool IsHybrid)? _shownSession;
 
     private readonly ReactiveCommand<SessionModel, RxVoid> _showSessionCommand;
+    private readonly ReactiveCommand<int, RxVoid> _leaveChatCommand;
     private readonly ReactiveCommand<int, RxVoid> _leaveHybridSessionCommand;
-    private readonly ReactiveCommand<SessionModel, RxVoid> _editHybridSessionCommand;
+    private readonly ReactiveCommand<SessionModel, RxVoid> _editSessionCommand;
     private readonly ReactiveCommand<SessionModel, RxVoid> _editPermissionsCommand;
     private readonly ReactiveCommand<int, RxVoid> _deleteSessionCommand;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
+
+    /// <summary>Opens the direct chat with a user; offered in the menus of the peers.</summary>
+    public ReactiveCommand<int, RxVoid>? OpenDirectChatCommand { get; init; }
     private readonly ReactiveCommand<(int SessionId, int UserId), RxVoid> _kickPeerCommand;
     private readonly ReactiveCommand<(int UserId, string Name), RxVoid> _banUserCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, bool IsApproved), RxVoid> _admitPeerCommand;
     private readonly ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> _pokePeerCommand;
     private readonly ReactiveCommand<int, RxVoid> _toggleChatMuteCommand;
-    
+
     private ICoordinatorSession? _coordinatorSession;
     private readonly EventSubscriptions _coordinatorSubscriptions = new();
 
@@ -147,14 +234,16 @@ public partial class SessionsListVM : ReactiveObject
     private readonly IPeerPlaybackService _playbackService;
     private readonly IVoiceActivityService _voiceActivity;
     private readonly IScreenWatchService _screenWatch;
+    private readonly PeerStatsService _peerStats;
     private readonly SessionListPreferences _preferences;
     private readonly ChatReadTracker _readTracker;
     private readonly ILogger<SessionsListVM> _logger;
 
     public SessionsListVM(ReactiveCommand<RxVoid, RxVoid> connectCommand,
         ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand,
         ReactiveCommand<int, RxVoid> leaveHybridSessionCommand,
-        ReactiveCommand<SessionModel, RxVoid> editHybridSessionCommand,
+        ReactiveCommand<SessionModel, RxVoid> editSessionCommand,
         ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
         ReactiveCommand<int, RxVoid> viewProfileCommand,
         ReactiveCommand<(int SessionId, int UserId), RxVoid> kickPeerCommand,
@@ -163,6 +252,7 @@ public partial class SessionsListVM : ReactiveObject
         ReactiveCommand<(int SessionId, int UserId, string? Message), RxVoid> pokePeerCommand,
         ReactiveCommand<int?, RxVoid> createSessionCommand,
         IPeerPlaybackService playbackService, IVoiceActivityService voiceActivity, IScreenWatchService screenWatch,
+        PeerStatsService peerStats,
         SessionListPreferences preferences,
         ChatReadTracker readTracker,
         AccessVM access,
@@ -172,8 +262,9 @@ public partial class SessionsListVM : ReactiveObject
         Access.PermissionsUpdated += _ => ApplyAccess();
         ConnectCommand = connectCommand;
         _showSessionCommand = showSessionCommand;
+        _leaveChatCommand = leaveChatCommand;
         _leaveHybridSessionCommand = leaveHybridSessionCommand;
-        _editHybridSessionCommand = editHybridSessionCommand;
+        _editSessionCommand = editSessionCommand;
         _editPermissionsCommand = editPermissionsCommand;
         _viewProfileCommand = viewProfileCommand;
         _kickPeerCommand = kickPeerCommand;
@@ -192,21 +283,22 @@ public partial class SessionsListVM : ReactiveObject
         _voiceActivity.Changed += OnSpeakingChanged;
         _screenWatch = screenWatch;
         _screenWatch.Changed += OnScreenWatchChanged;
-        _deleteSessionCommand = ReactiveCommand
-            .CreateFromTask<int>(DeleteSession);
-        _toggleChatMuteCommand = ReactiveCommand
-            .CreateFromTask<int>(ToggleChatMute);
-        
+        _peerStats = peerStats;
+        _deleteSessionCommand = ReactiveCommand.CreateFromTask<int>(DeleteSession);
+        _toggleChatMuteCommand = ReactiveCommand.CreateFromTask<int>(ToggleChatMute);
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
         CreateCategoryCommand = ReactiveCommand.CreateFromTask(CreateCategory);
         CreateSessionCommand = ReactiveCommand.Create(() => { _createSessionCommand.Execute(null).Subscribe(); });
         MoveTargets.Add(new MoveTargetVM(null, Strings.Get("sessions.category.none"), MoveToCategory));
-        
+
         Rows.CollectionChanged += (_, _) =>
         {
             this.RaisePropertyChanged(nameof(IsEmpty));
             this.RaisePropertyChanged(nameof(HasSessions));
         };
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
     }
 
     private void RaiseStateProperties()
@@ -219,6 +311,8 @@ public partial class SessionsListVM : ReactiveObject
         this.RaisePropertyChanged(nameof(IsEmpty));
         this.RaisePropertyChanged(nameof(HasSessions));
         this.RaisePropertyChanged(nameof(CanCreate));
+        this.RaisePropertyChanged(nameof(HasPrivateChats));
+        this.RaisePropertyChanged(nameof(IsPrivateChatsEmpty));
     }
 
     /// <summary>
@@ -240,13 +334,13 @@ public partial class SessionsListVM : ReactiveObject
         Unsubscribe();
         ErrorMessage = null;
 
-        _isListKept = State == SessionsListState.Loaded && Rows.Count != 0 || IsStale;
+        _isListKept = State == SessionsListState.Loaded && (Rows.Count != 0 || PrivateChats.Count != 0) || IsStale;
         if (!_isListKept)
             ClearList();
 
         State = SessionsListState.Reconnecting;
     }
-    
+
     public async Task AttachCoordinator(ICoordinatorSession coordinatorSession)
     {
         if (!IsStale)
@@ -256,18 +350,17 @@ public partial class SessionsListVM : ReactiveObject
         Unsubscribe();
         var attachId = _attachId;
         var session = _coordinatorSession = coordinatorSession;
-        _readTracker.Attach(session.GetCurrentUser().Id, (chatId, messageId) => session.MarkChatRead(chatId, messageId));
+        await _readTracker.AttachAsync(session.GetCurrentUser().CoordinatorInstanceId, session.GetCurrentUser().Id);
+        if (attachId != _attachId)
+            return;
         _coordinatorSubscriptions
             // Before the list, so that no message comes between the counts and the subscription
             .Add(() => session.TextMessageAdded += _readTracker.OnMessageAdded,
                 () => session.TextMessageAdded -= _readTracker.OnMessageAdded)
-            .Add(() => session.ChatReadStateChanged += _readTracker.OnServerState,
-                () => session.ChatReadStateChanged -= _readTracker.OnServerState)
             // Before the list as well: a layout newer than the one the list comes with replaces it
             .Add(() => session.SessionLayoutChanged += OnSessionLayoutChanged,
                 () => session.SessionLayoutChanged -= OnSessionLayoutChanged);
         await LoadSessionList(session, attachId);
-        await LoadReadStates(session, attachId);
 
         // Detached while loading: the connection is gone and the handlers were taken off already
         if (attachId != _attachId)
@@ -282,6 +375,7 @@ public partial class SessionsListVM : ReactiveObject
             .Add(() => session.ChatSessionDeleted += RemoveChatSession, () => session.ChatSessionDeleted -= RemoveChatSession)
             .Add(() => session.ChatSessionReconfigured += OnChatSessionReconfigured,
                 () => session.ChatSessionReconfigured -= OnChatSessionReconfigured)
+            .Add(() => session.ChatCallChanged += OnChatCallChanged, () => session.ChatCallChanged -= OnChatCallChanged)
             .Add(() => session.HybridSessionPeerJoined += AddPeerToSession, () => session.HybridSessionPeerJoined -= AddPeerToSession)
             .Add(() => session.HybridSessionPeerLeft += RemovePeerFromSession,
                 () => session.HybridSessionPeerLeft -= RemovePeerFromSession)
@@ -296,13 +390,19 @@ public partial class SessionsListVM : ReactiveObject
             .Add(() => session.HybridSessionUpdated += OnHybridSessionUpdated,
                 () => session.HybridSessionUpdated -= OnHybridSessionUpdated)
             .Add(() => session.UserUpdated += OnUserUpdated, () => session.UserUpdated -= OnUserUpdated);
+
+        // The server tells of the running calls right after the login, before the list and the
+        // subscription above: they are taken from what the coordinator heard, with their peers
+        FollowCalls();
+
+        await LoadReadStates(session, attachId);
     }
-    
+
     public void DetachCoordinator()
     {
         State = SessionsListState.Offline;
         ErrorMessage = null;
-        
+
         ClearList();
         Unsubscribe();
         _readTracker.Detach();
@@ -314,7 +414,7 @@ public partial class SessionsListVM : ReactiveObject
         _coordinatorSession = null;
         _attachId++;
     }
-    
+
     private async Task LoadSessionList(ICoordinatorSession coordinatorSession, int attachId)
     {
         // A list kept through a reconnect is replaced only once the new one has come
@@ -329,38 +429,41 @@ public partial class SessionsListVM : ReactiveObject
                 if (attachId != _attachId)
                     return;
 
-                if (result.Result != SessionRequestResult.NoError)
+                if (!result.Result.IsSuccess)
                 {
-                    ShowFailed(result.Result == SessionRequestResult.Rejected
+                    ShowFailed(result.Result.IsRejected
                         ? Strings.Get("sessions.fetch.rateLimited")
                         : Strings.Get("sessions.fetch.serverError"));
                     return;
                 }
-                
+
                 var coordinatorInstanceId = coordinatorSession.GetCurrentUser().CoordinatorInstanceId;
                 var mutedChatIds = await _preferences.LoadMutedChatsAsync(coordinatorInstanceId);
+                if (Drafts != null)
+                    await Drafts.LoadAsync(coordinatorInstanceId);
                 var collapsedCategoryIds = await _preferences.LoadCollapsedCategoriesAsync(coordinatorInstanceId);
-                if (attachId != _attachId)
-                    return;
+                var privateMode = await _preferences.LoadPrivateModeAsync(coordinatorInstanceId);
+                if (attachId != _attachId) return;
+                IsPrivateMode = privateMode;
 
                 ClearList();
-                SetLayout(result.Layout ?? SessionLayout.Empty, collapsedCategoryIds);
+                SetLayout(result.Value.Layout, collapsedCategoryIds);
 
-                foreach (var sessionModel in result.Sessions!.Values)
+                foreach (var sessionModel in result.Value.Sessions.Values)
                 {
                     if (attachId != _attachId)
                         return;
 
-                    if (sessionModel.SessionType == SessionType.Hybrid 
+                    if (sessionModel.SessionType == SessionType.Hybrid
                         && sessionModel is HybridSessionModel hybridSessionModel)
                         await AddNewHybridSession(hybridSessionModel);
-                    else if (sessionModel.SessionType == SessionType.Chat 
+                    else if (sessionModel.SessionType == SessionType.Chat
                              && sessionModel is ChatSessionModel chatSessionModel)
-                        AddChatSession(chatSessionModel, mutedChatIds.Contains(chatSessionModel.Id));
+                        AddChatSession(chatSessionModel, mutedChatIds.TryGetValue(chatSessionModel.Id, out var mutedUntil), mutedUntil);
                 }
 
                 // Chats deleted while we were away
-                foreach (var chatId in mutedChatIds)
+                foreach (var chatId in mutedChatIds.Keys)
                 {
                     if (!Sessions.Any(session => session is ChatSessionVM && session.Model.Id == chatId))
                         _ = _preferences.SaveChatMuteAsync(coordinatorInstanceId, chatId, false);
@@ -387,118 +490,68 @@ public partial class SessionsListVM : ReactiveObject
         }
     }
 
-    private async Task LoadReadStates(ICoordinatorSession coordinatorSession, int attachId)
-    {
-        if (attachId != _attachId || State != SessionsListState.Loaded)
-            return;
-
-        var (result, states) = await coordinatorSession.RequestChatReadStates();
-        if (attachId != _attachId)
-            return;
-
-        if (result == ChatReadResult.NoError && states != null)
-            _readTracker.Load(states);
-        else
-            LogReadStatesLoadFailed(result);
-    }
-
-    // Raised on the socket thread or the UI thread
-    private void OnReadStateChanged(ChatReadState state)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (FindSession<ChatSessionVM>(state.ChatId) is { } chat)
-            {
-                chat.ApplyReadState(state);
-                RefreshCategoryCounts();
-            }
-        });
-    }
-
     private void ShowFailed(string message)
     {
         ErrorMessage = message;
         State = SessionsListState.Failed;
     }
-    
+
     private async Task AddNewHybridSession(HybridSessionModel hybridSessionModel)
     {
-        var model = AddHybridSessionVM(hybridSessionModel);
-
-        var result = await _coordinatorSession!.GetAllHybridSessionPeers(hybridSessionModel.Id);
-        if (result.Result != PeerListRequestResult.NoError)
-        {
-            LogPeersRequestFailed(hybridSessionModel.Id, hybridSessionModel.Name, result.Result);
-            model.IsCorrupted = true;
+        if (_coordinatorSession is not { } coordinator)
             return;
+        var attachId = _attachId;
+        var session = AddHybridSessionVM(hybridSessionModel);
+        bool IsCurrent() => attachId == _attachId && Sessions.Contains(session) && !session.IsLeaving;
+        var result = await LoadPeersAsync(coordinator, session, IsCurrent);
+        if (!result.IsSuccess && IsCurrent())
+        {
+            LogPeersRequestFailed(hybridSessionModel.Id, hybridSessionModel.Name, result);
+            session.IsCorrupted = true;
         }
-
-        var peers = result.Peers!.Values;
-
-        foreach (var peer in peers)
-            model.AddPeerToSession(peer);
-
-        // The peers show the defaults until then and get the stored settings through Changed
-        _ = _playbackService.LoadAsync(CoordinatorInstanceId!, peers.Select(peer => peer.UserId).ToList());
-
-        var users = await _coordinatorSession.GetUsers(peers.Select(peer => peer.UserId).ToList());
-
-        foreach (var (userId, user) in users)
-            model.UpdateUserModel(userId, user);
     }
 
-    // A chat created just now is not muted
-    private void AddNewChatSession(ChatSessionModel chatSessionModel) => AddChatSession(chatSessionModel, false);
-
-    private void AddChatSession(ChatSessionModel chatSessionModel, bool isMuted)
+    // This also announces an existing channel made visible again, with peers already inside.
+    private void OnHybridSessionAdded(HybridSessionModel session)
     {
-        var model = new ChatSessionVM(
-            chatSessionModel, 
-            _showSessionCommand, 
-            _deleteSessionCommand,
-            _toggleChatMuteCommand,
-            _editPermissionsCommand)
+        var attachId = _attachId;
+        Dispatcher.UIThread.Post(async () =>
         {
-            IsMuted = isMuted
-        };
-        if (_readTracker.Get(chatSessionModel.Id) is { } readState)
-            model.ApplyReadState(readState);
-        model.ApplyAccess(Access.Permissions);
-        
-        MarkShown(model);
-        model.MoveTargets = MoveTargets;
-        Sessions.Add(model);
-        RebuildRows();
+            if (attachId != _attachId || _coordinatorSession == null)
+                return;
+            try
+            {
+                await AddNewHybridSession(session);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to load participants of hybrid session {SessionId}.", session.Id);
+            }
+        });
     }
-
-    private async Task ToggleChatMute(int chatId)
-    {
-        if (CoordinatorInstanceId is not { } coordinatorInstanceId || FindSession<ChatSessionVM>(chatId) is not { } chat)
-            return;
-
-        chat.IsMuted = !chat.IsMuted;
-        RefreshCategoryCounts();
-        await _preferences.SaveChatMuteAsync(coordinatorInstanceId, chatId, chat.IsMuted);
-    }
-
-    // A session created just now has no peers yet, so there is nothing to load for it
-    private void OnHybridSessionAdded(HybridSessionModel session) => AddHybridSessionVM(session);
 
     /// <summary>
     /// Marks the hybrid session we are in, or none. The list outlines it.
     /// </summary>
-    public void SetEnteredHybridSession(int? sessionId)
+    public void SetEnteredHybridSession(int? sessionId, HybridSessionStatusBarVM? controls = null)
     {
         _enteredHybridSessionId = sessionId;
+        _enteredHybridSessionControls = controls;
 
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
+        foreach (var session in HybridSessions)
             MarkEntered(session);
+        // A call runs in a session under the ID of its chat
+        foreach (var chat in Sessions.OfType<ChatSessionVM>())
+            chat.IsEntered = CallSession != null && CallSession == chat.CallPeers && chat.Model.Id == sessionId;
 
         UpdateFolding();
     }
 
-    private void MarkEntered(HybridSessionVM session) =>
+    private void MarkEntered(HybridSessionVM session)
+    {
         session.IsEntered = session.Model.Id == _enteredHybridSessionId;
+        session.SetSessionControls(session.IsEntered ? _enteredHybridSessionControls : null);
+    }
 
     /// <summary>
     /// Marks the session the main window shows, or none, and moves the selection of the list to it.
@@ -520,34 +573,31 @@ public partial class SessionsListVM : ReactiveObject
         session.IsShown = _shownSession is { } shown &&
                           shown.Id == session.Model.Id && shown.IsHybrid == session is HybridSessionVM;
 
-    private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
+    private HybridSessionVM CreateHybridSessionVM(HybridSessionModel sessionModel)
     {
         var model = new HybridSessionVM(sessionModel, _coordinatorSession!.GetCurrentUser().Id, _playbackService,
-            _screenWatch, _showSessionCommand, _leaveHybridSessionCommand, _editHybridSessionCommand,
+            _screenWatch, _peerStats, _showSessionCommand, _leaveHybridSessionCommand, _editSessionCommand,
             _editPermissionsCommand, _deleteSessionCommand, _viewProfileCommand, _kickPeerCommand,
-            _banUserCommand, _admitPeerCommand, _pokePeerCommand);
+            _banUserCommand, _admitPeerCommand, _pokePeerCommand)
+        {
+            OpenDirectChatCommand = OpenDirectChatCommand
+        };
         model.ApplyAccess(Access.Permissions);
         MarkEntered(model);
         MarkShown(model);
-
-        // Only one peer can be selected across all hybrid sessions
         model.WatchProperty(nameof(HybridSessionVM.SelectedPeer), x => x.SelectedPeer)
             .Where(peer => peer != null)
             .Subscribe(_ => ClearPeerSelectionExcept(model));
+        return model;
+    }
 
+    private HybridSessionVM AddHybridSessionVM(HybridSessionModel sessionModel)
+    {
+        var model = CreateHybridSessionVM(sessionModel);
         model.MoveTargets = MoveTargets;
         Sessions.Add(model);
         RebuildRows();
         return model;
-    }
-
-    private void ClearPeerSelectionExcept(HybridSessionVM selectedIn)
-    {
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
-        {
-            if (session != selectedIn)
-                session.SelectedPeer = null;
-        }
     }
 
     // Raised on the socket thread
@@ -555,6 +605,7 @@ public partial class SessionsListVM : ReactiveObject
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // A call session follows its call, not the server's model of it
             var session = Sessions.OfType<HybridSessionVM>().FirstOrDefault(s => s.Model.Id == model.Id && !s.IsLeaving);
 
             if (session == null)
@@ -564,29 +615,6 @@ public partial class SessionsListVM : ReactiveObject
             // The host may have changed
             session.ApplyAccess(Access.Permissions);
         });
-    }
-
-    // Raised on the socket thread
-    private void OnChatSessionReconfigured(ChatSessionModel model)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Sessions.OfType<ChatSessionVM>().FirstOrDefault(s => s.Model.Id == model.Id && !s.IsLeaving) is not
-                { } session)
-                return;
-
-            session.Model = model;
-            // Its overrides may have changed
-            session.ApplyAccess(Access.Permissions);
-        });
-    }
-
-    private void RemoveChatSession(int sessionId)
-    {
-        if (CoordinatorInstanceId is { } coordinatorInstanceId)
-            _ = _preferences.SaveChatMuteAsync(coordinatorInstanceId, sessionId, false);
-
-        RemoveSession(sessionId);
     }
 
     // Raised on the socket thread
@@ -604,46 +632,41 @@ public partial class SessionsListVM : ReactiveObject
             await Task.Delay(Presence.LeaveTime);
 
             Sessions.Remove(session);
+            if (session is ChatSessionVM chat) chat.Dispose();
             RebuildRows();
         });
     }
-    
+
+    /// <summary>The voice channels of the list and the calls running in its chats.</summary>
+    private IEnumerable<HybridSessionVM> HybridSessions => Sessions.OfType<HybridSessionVM>()
+        .Concat(Sessions.OfType<ChatSessionVM>().Select(chat => chat.CallPeers).OfType<HybridSessionVM>());
+
+    /// <summary>The direct chat with a user, when the list has one.</summary>
+    public ChatSessionVM? FindDirectChat(int userId) => Sessions.OfType<ChatSessionVM>().FirstOrDefault(chat =>
+        chat.Model is ChatSessionModel { Kind: ChatKind.Direct } model && model.MemberIds.Contains(userId));
+
+    /// <summary>A chat of the list by its id.</summary>
+    public ChatSessionModel? FindChat(int chatId) => FindSession<ChatSessionVM>(chatId)?.Model as ChatSessionModel;
+
+    /// <summary>A voice channel of the list, or the call of a chat: a call runs under the ID of its chat.</summary>
+    public HybridSessionVM? FindHybridSession(int sessionId) =>
+        FindSession<HybridSessionVM>(sessionId) ?? FindSession<ChatSessionVM>(sessionId)?.CallPeers;
+
     /// <summary>
     /// The sessions of the list by their id, of one kind.
     /// </summary>
     private T? FindSession<T>(int sessionId) where T : class, ISessionVM =>
         Sessions.OfType<T>().FirstOrDefault(session => session.Model.Id == sessionId);
 
-    /// <summary>
-    /// Applies a coordinator notification to a hybrid session of the list on the UI thread, behind
-    /// the notifications before it: the join of a peer comes before its leave and its state.
-    /// </summary>
-    private void PostToHybrid(int sessionId, Action<HybridSessionVM> apply) => Dispatcher.UIThread.Post(() =>
-    {
-        if (FindSession<HybridSessionVM>(sessionId) is { } session)
-            apply(session);
-    });
-
-    private void AddPeerToSession(PeerJoinedEvent notification)
-    {
-        var coordinatorSession = _coordinatorSession!;
-        var peer = notification.Peer;
-
-        Dispatcher.UIThread.Post(async () =>
-        {
-            if (FindSession<HybridSessionVM>(notification.SessionId) is not { } session)
-                return;
-
-            // Not awaited before adding: the leave and state changes of this peer are posted right behind
-            session.AddPeerToSession(peer);
-            _ = _playbackService.LoadAsync(coordinatorSession.GetCurrentUser().CoordinatorInstanceId, [peer.UserId]);
-            session.UpdateUserModel(peer.UserId, await coordinatorSession.GetUser(peer.UserId));
-        });
-    }
-
     /// <summary>Shows again what the current user may do, after their roles changed.</summary>
     private void ApplyAccess()
     {
+        if (!Access.CanViewServerChannels)
+            IsPrivateMode = true;
+        this.RaisePropertyChanged(nameof(CanShowChannels));
+        foreach (var chat in Sessions.OfType<ChatSessionVM>()) chat.CallPeers?.ApplyAccess(Access.Permissions);
+        this.RaisePropertyChanged(nameof(CanCreateSession));
+        this.RaisePropertyChanged(nameof(CanCreateCategory));
         foreach (var session in Sessions)
         {
             switch (session)
@@ -664,93 +687,18 @@ public partial class SessionsListVM : ReactiveObject
         }
     }
 
-    private void OnUserUpdated(UserModel user) => Dispatcher.UIThread.Post(() =>
-    {
-        foreach (var session in Sessions.OfType<HybridSessionVM>())
-            session.UpdateUserModel(user.Id, user);
-    });
-
-    private void RemovePeerFromSession(PeerLeftEvent notification) =>
-        PostToHybrid(notification.SessionId, session => _ = session.RemovePeerFromSession(notification.UserId));
-
-    // Raised on any thread, also by a slider of this very list
-    // The lists of peers show the voice; the sound of a screen is set on its tile
-    private void OnPlaybackChanged(int userId, PeerAudioChannel channel, PeerPlayback playback)
-    {
-        if (channel != PeerAudioChannel.Voice)
-            return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            foreach (var session in Sessions.OfType<HybridSessionVM>())
-                session.ApplyPlayback(userId, playback);
-        });
-    }
-
-    // Raised on a timer thread of the transport of the session we are in
-    private void OnSpeakingChanged(int sessionId, int userId, bool isSpeaking) =>
-        PostToHybrid(sessionId, session => session.UpdateSpeaking(userId, isSpeaking));
-
-    // Raised on any thread by the session we are in
-    private void OnScreenWatchChanged(int sessionId, int userId, bool isWatching) =>
-        PostToHybrid(sessionId, session => session.UpdateScreenWatch(userId, isWatching));
-
-    private void UpdatePeerStatus(PeerStateChangedEvent notification) =>
-        PostToHybrid(notification.SessionId, session => session.UpdatePeerStatus(notification.UserId, notification.State));
-
-    // Raised on socket threads
-    private void UpdatePeerMicrophone(PeerMicrophoneMuteChangedEvent notification) =>
-        PostToHybrid(notification.SessionId, session => session.UpdatePeerMicrophone(notification.UserId, notification.IsMuted));
-
-    // Raised on socket threads
-    private void UpdatePeerSound(PeerSoundMuteChangedEvent notification) =>
-        PostToHybrid(notification.SessionId, session => session.UpdatePeerSound(notification.UserId, notification.IsMuted));
-
-    // Raised on socket threads
-    private void UpdatePeerAfk(PeerAfkChangedEvent notification) =>
-        PostToHybrid(notification.SessionId,
-            session => session.UpdatePeerAfk(notification.UserId, notification.IsAfk, notification.Reason));
-
-    // Raised on socket threads
-    private void OnHybridSessionUpdated(HybridSessionPeerEvent notification)
-    {
-        switch (notification)
-        {
-            // The server unmutes a peer that stops its voice without saying so
-            case PeerTrackStoppedEvent { SourceType: MediaSourceType.Microphone } stopped:
-                UpdatePeerMicrophone(new PeerMicrophoneMuteChangedEvent(stopped.SessionId, stopped.UserId, false));
-                break;
-
-            case PeerScreenShareStartedEvent started:
-                UpdatePeerScreenShare(started.SessionId, started.UserId, true);
-                break;
-
-            // A receiver that connects later is only sent the track
-            case PeerTrackStartedEvent { Track.SourceType: MediaSourceType.Screen } started:
-                UpdatePeerScreenShare(started.SessionId, started.UserId, true);
-                break;
-
-            case PeerTrackStoppedEvent { SourceType: MediaSourceType.Screen } stopped:
-                UpdatePeerScreenShare(stopped.SessionId, stopped.UserId, false);
-                break;
-        }
-    }
-
-    private void UpdatePeerScreenShare(int sessionId, int userId, bool isActive) =>
-        PostToHybrid(sessionId, session => session.UpdatePeerScreenShare(userId, isActive));
-    
     private async Task DeleteSession(int sessionId)
     {
-        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo, 
+        if (await ShowMessageBox.Handle(new MessageBoxVM(Icon.Question, Buttons.YesNo,
                 Strings.Get("sessions.delete.question"),
                 Strings.Get("sessions.delete.title"))) == Result.Yes)
         {
             var result = await _coordinatorSession!.DeleteSession(sessionId);
             // A rejection is reported by the main window
-            if (result is not (DeleteSessionResult.NoError or DeleteSessionResult.Rejected))
+            if (!(result.IsSuccess || result.IsRejected))
             {
                 await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
-                    Strings.Format("sessions.delete.failed", ("session", sessionId), ("code", (int)result)),
+                    Strings.Format("sessions.delete.failed", ("session", sessionId), ("code", (int?)result.Error)),
                     Strings.Get("common.error")));
             }
         }

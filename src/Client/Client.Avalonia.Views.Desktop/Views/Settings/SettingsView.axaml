@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:common="clr-namespace:Client.Views.Common"
+        xmlns:dialogs="clr-namespace:Client.Views.Dialogs"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:settingsVm="clr-namespace:Client.ViewModels.Settings;assembly=Client.Avalonia.ViewModels"
+        xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
+        xmlns:settingsViews="clr-namespace:Client.Views.Settings"
+        xmlns:settingsPages="clr-namespace:Client.Views.Settings.Pages"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:ui="clr-namespace:Client.Avalonia.Controls.Settings;assembly=Client.Avalonia.Controls"
+        xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Client.Views.Settings.SettingsView"
+        x:DataType="settingsVm:SettingsWindowVM"
+        d:DataContext="{d:DesignInstance Type=settingsVm:SettingsWindowVM, IsDesignTimeCreatable=True}"
+        MaxWidth="1000"
+        MaxHeight="900"
+        Background="{DynamicResource GeneralBrush}">
+    
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="pagesVm:AccountingControlVM">
+            <settingsPages:AccountingControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:BehaviorControlVM">
+            <settingsPages:BehaviorControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:AudioControlVM">
+            <settingsPages:AudioControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:ExperimentalControlVM">
+            <settingsPages:ExperimentalControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:AppearanceControlVM">
+            <settingsPages:AppearanceControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:StorageControlVM">
+            <settingsPages:StorageControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:DebugAndLogsControlVM">
+            <settingsPages:DebugAndLogsControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:VideoControlVM">
+            <settingsPages:VideoControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:HotKeysControlVM">
+            <settingsPages:HotKeysControl/>
+        </DataTemplate>
+        <DataTemplate DataType="pagesVm:AboutControlVM">
+            <settingsPages:AboutControl/>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+    
+    <Grid Classes="settingsFrame" ColumnDefinitions="Auto, *" RowDefinitions="Auto, 1, *, 1, 44">
+        <!-- Title: the icon on a tile, the name of the dialog and under it the section that is open;
+             the dialog can be closed from here as well as from the footer -->
+        <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
+                             Icon="{StaticResource GearIcon}" Title="{l:Text settings.title}"
+                             Subtitle="{Binding SelectedSetting?.Name}" CloseCommand="{Binding CloseCommand}">
+            <!-- The loading indicator on the title row; the launch modes are in the status bar of the main window -->
+            <dialogs:DialogHeader.InlineContent>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !IsLoaded}">
+                        <loadingIndicators:ProgressRing Width="18" Height="18" MinWidth="18" MinHeight="18"
+                                                        IsIndeterminate="True" BorderThickness="2"
+                                                        Foreground="{DynamicResource ProgressRingBrush}"/>
+                        <TextBlock VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{l:Text settings.loading}"/>
+                    </StackPanel>
+                </StackPanel>
+            </dialogs:DialogHeader.InlineContent>
+        </dialogs:DialogHeader>
+
+        <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Height="1" Classes="dialogSeparator"/>
+        
+        <!-- The search and the list of sections -->
+        <settingsViews:SettingsNavigation Grid.Column="0" Grid.Row="2"/>
+        
+        <Grid Column="1" Row="2" Margin="12"
+              VerticalAlignment="Stretch"
+              HorizontalAlignment="Stretch"
+              IsVisible="{Binding IsLoaded}">
+            
+            <Grid.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Grid.Transitions>
+            
+            <!-- The pages take the collapsed sections from here -->
+            <ContentControl x:Name="SettingContent" Content="{Binding SelectedSetting}"
+                            ui:SettingsPage.CollapsedSections="{Binding CollapsedSections}"/>
+        </Grid>
+        
+        <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3" Height="1" Classes="dialogSeparator"/>
+        
+        <Grid Column="0" ColumnSpan="2" Row="4" Margin="10,0,10,0" ColumnDefinitions="160, *">
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Button Classes="danger" Command="{Binding ResetAllSettingsCommand}"
+                        IsEnabled="{Binding !IsReset}"
+                        Focusable="{Binding IsLoaded}"
+                        IsHitTestVisible="{Binding IsLoaded}" AutomationProperties.Name="{l:Text settings.reset}">
+                    <Button.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" 
+                                              Duration="{anim:Motion ExtraLong}" 
+                                              Easing="{anim:Ease Enter}"/>
+                        </Transitions>
+                    </Button.Transitions>
+                    
+                    <Button.Styles>
+                        <Style Selector="Button[IsHitTestVisible=False]">
+                            <Setter Property="Opacity" Value="0.0"/>
+                        </Style>
+                        <Style Selector="Button[IsHitTestVisible=True]">
+                            <Setter Property="Opacity" Value="1.0"/>
+                        </Style>
+                    </Button.Styles>
+                    
+                    <common:ActionLabel Icon="{StaticResource ResetIcon}" Text="{l:Text settings.reset}"/>
+                </Button>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Command="{Binding CloseCommand}" AutomationProperties.Name="{l:Text common.close}">
+                    <common:ActionLabel Icon="{StaticResource CrossIcon}" Text="{l:Text common.close}"/>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

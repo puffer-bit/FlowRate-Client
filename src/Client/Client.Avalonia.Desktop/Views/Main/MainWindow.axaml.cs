@@ -1,33 +1,23 @@
 using System;
+using System.Threading.Tasks;
 using Client.Services;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Client.Avalonia.Styles.Scaling;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
-using Client.Application.Coordinator;
 using Client.Application.Sounds;
-using Client.Core.Push;
-using Client.Views.Connections;
-using Client.Views.Dialogs;
-using Client.Views.Profile;
-using Client.Views.ServerSettings;
-using Client.Views.Sessions.Create;
-using Client.Views.Sessions.Hybrid;
-using Client.Views.Sessions.Hybrid.Video;
+using Client.Avalonia.Video;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Client.Views.Settings;
 using Client.Views.Common;
 using Client.Services.Platform;
 using Client.ViewModels.Main;
-using Client.ViewModels.Sessions.Hybrid;
 
 namespace Client.Views.Main;
 
-internal partial class MainWindow : ViewWindow<MainWindowVM>
+internal partial class MainWindow : ViewWindow<MainWindowVM>, IMainWindow
 {
     // Corners of the window while it draws its own frame, as those of the dialogs
     private static readonly CornerRadius FrameCornerRadius = new(8);
@@ -41,7 +31,11 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
     /// <summary>
     /// Plays the sound of a message that came to a chat. Without it the messages come silently.
     /// </summary>
-    public ISoundService? Sounds { get; init; }
+    public ISoundService? Sounds
+    {
+        get => MainViewControl.Sounds;
+        init => MainViewControl.Sounds = value;
+    }
 
     public MainWindow()
     {
@@ -60,79 +54,23 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
         {
             this.WhenActivated(disposables =>
             {
-                ViewModel!.ShowConnectWindow.RegisterHandler(async interaction =>
-                {
-                    interaction.SetOutput(await InWindowDialog.ShowAsync<ICoordinatorSession?>(
-                        new ConnectView { DataContext = interaction.Input }, this, null));
-                }).DisposeWith(disposables);
-            
-                ViewModel!.ShowSettings
-                    .RegisterDialogHandler(this, () => new SettingsView(), fillWindow: true)
-                    .DisposeWith(disposables);
-                ViewModel!.ShowServerSettings
-                    .RegisterDialogHandler(this, () => new ServerSettingsView(), fillWindow: true)
-                    .DisposeWith(disposables);
-                ViewModel!.ShowCreateSessionWindow
-                    .RegisterDialogHandler(this, () => new CreateSessionView())
-                    .DisposeWith(disposables);
-                ViewModel!.ShowEditProfileWindow
-                    .RegisterDialogHandler(this, () => new EditProfileView())
-                    .DisposeWith(disposables);
-                ViewModel!.ShowUserProfileWindow
-                    .RegisterDialogHandler(this, () => new UserProfileView())
-                    .DisposeWith(disposables);
-                ViewModel!.ShowAccountSecurityWindow
-                    .RegisterDialogHandler(this, () => new AccountSecurityView())
-                    .DisposeWith(disposables);
-                ViewModel!.AskLogin.RegisterLoginPromptHandler(this).DisposeWith(disposables);
-                ViewModel!.ShowHybridSessionSettingsWindow
-                    .RegisterDialogHandler(this, () => new HybridSessionSettingsView())
-                    .DisposeWith(disposables);
-                ViewModel!.ShowSessionPermissionsWindow
-                    .RegisterDialogHandler(this, () => new Client.Views.Sessions.Permissions.SessionPermissionsView())
-                    .DisposeWith(disposables);
-
-                ViewModel!.ShowMessageBox.RegisterMessageBoxHandler(this).DisposeWith(disposables);
-                ViewModel!.AskDatabasePassword.RegisterDatabasePasswordHandler(this).DisposeWith(disposables);
-
+                // Fullscreen content and a fullscreen window are the same thing on the desktop
                 ObservableExtensions.Subscribe(ViewModel!.WatchProperty(nameof(MainWindowVM.IsContentFullScreen), vm => vm.IsContentFullScreen),
                     ApplyFullScreen).DisposeWith(disposables);
-
-                // The hybrid session runs on while a chat is shown, with its controls in the side panel,
-                // so its dialogs belong to the window and not to the view of the session
-                var hybridDialogs = new System.Reactive.Disposables.SerialDisposable().DisposeWith(disposables);
-                ObservableExtensions.Subscribe(ViewModel!.WatchProperty(nameof(MainWindowVM.HybridSession), vm => vm.HybridSession),
-                    session => hybridDialogs.Disposable = session == null ? null : RegisterHybridDialogs(session))
-                    .DisposeWith(disposables);
 
                 var viewModel = ViewModel!;
                 // The shown chat is read only while the window has the focus
                 ObservableExtensions.Subscribe(this.GetObservable(IsActiveProperty),
                     isActive => viewModel.IsWindowActive = isActive).DisposeWith(disposables);
-
-                viewModel.ChatMessageReceived += OnChatMessageReceived;
-                System.Reactive.Disposables.Disposable.Create(() => viewModel.ChatMessageReceived -= OnChatMessageReceived)
-                    .DisposeWith(disposables);
-
-                ViewModel?.Initialize();
             });
         }
     }
 
-    // The message is of somebody else and its chat is not muted. The sound is made also for the
-    // chat the user is looking at
-    private void OnChatMessageReceived(PushPayload message) =>
-        Sounds?.Play(message.Mention ? SoundEvent.Mention : SoundEvent.Message);
-
-    private MultipleDisposable RegisterHybridDialogs(ActiveHybridSessionVM session) => new()
-    {
-        session.ShowMessageBox.RegisterMessageBoxHandler(this),
-        session.SelectSources.RegisterHandler(async interaction =>
-        {
-            interaction.SetOutput(await InWindowDialog.ShowAsync<ScreenShareRequest?>(
-                new HybridSourceSelectView(interaction.Input), this, null));
-        })
-    };
+    /// <summary>
+    /// Loads the application under its startup screen. <paramref name="showWindow"/> shows the window,
+    /// for prompts that come before the application is loaded.
+    /// </summary>
+    public Task InitializeBeforeShowAsync(Action showWindow) => MainViewControl.InitializeBeforeShowAsync(showWindow);
 
     // Either the window draws its title bar itself, in the top bar, or the system does
     private void ApplyChrome()
@@ -196,7 +134,7 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
             BorderThickness = new Thickness(hasFrame ? 1 : 0);
         }
 
-        if (change.Property != WindowStateProperty || MainContentControl == null)
+        if (change.Property != WindowStateProperty)
             return;
 
         var isFullScreen = WindowState == WindowState.FullScreen;
@@ -205,9 +143,6 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
             _stateBeforeFullScreen = change.GetOldValue<WindowState>();
         if (ViewModel != null)
             ViewModel.IsContentFullScreen = isFullScreen;
-
-        Grid.SetColumn(MainContentControl, isFullScreen ? 0 : 2);
-        Grid.SetColumnSpan(MainContentControl, isFullScreen ? 3 : 1);
     }
 
     private void ApplyFullScreen(bool isFullScreen)
@@ -226,17 +161,7 @@ internal partial class MainWindow : ViewWindow<MainWindowVM>
         X11FrameExtents.Set(this, WindowDecorationMargin);
 
         // Before a session is joined: how its screens are drawn
-        _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILogger<MainWindow>>());
-    }
-
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
-
-        if (e.Handled || e.Key != Key.Escape || WindowState != WindowState.FullScreen)
-            return;
-
-        ViewModel?.ExitFullScreen();
-        e.Handled = true;
+        if (Client.Core.Media.MediaRuntime.IsEnabled)
+            _ = VideoSurfaceProbe.RunAsync(this, App.Services?.GetService<ILoggerFactory>()?.CreateLogger(typeof(VideoSurfaceProbe)));
     }
 }

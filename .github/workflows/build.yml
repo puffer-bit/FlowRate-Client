@@ -1,13 +1,17 @@
-# Builds the desktop client for Linux and Windows, run by hand from the Actions tab.
+# Builds the desktop client for Linux, Windows and macOS (Apple silicon) and the Android client, run by
+# hand from the Actions tab.
+#
+# The Android .apk is signed with the release key from the secrets of the android-release environment
+# (see the android job); NativeAOT does not apply to it.
 #
 # Each platform is built on its own system with the publish script of that system: NativeAOT does not
 # compile for another one, and the Windows GStreamer runtime comes from the official installer, which
-# runs on Windows only. The results (dist/<version>/<platform>: installer, update packages, standalone
-# archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
+# runs on Windows only, as the macOS one comes from the official framework on macOS. The results
+# (dist/<version>/<platform>: installer, update packages, standalone archive) are uploaded as the artifacts of the run; nothing is published to a release here, release.yml
 # calls this workflow and publishes them.
 #
-# The GStreamer runtimes are cached: the Linux one takes 30-60 minutes in Docker. A change to the build
-# scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
+# The GStreamer runtimes come from .github/actions/gstreamer-runtime, cached: the Linux one takes 30-60
+# minutes in Docker. A change to the build scripts of a runtime (Client.GStreamer/Build/<os>) builds it again.
 name: Build
 
 on:
@@ -38,13 +42,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  GSTREAMER_DIR: src/Client/Client.GStreamer/Build
 
 jobs:
   version:
@@ -56,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # One stamp for both platforms: they are one release and share the version
+      # One stamp for every platform: they are one release and share the version
       - name: Version
         id: version
         run: |
@@ -93,13 +100,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends clang zlib1g-dev
 
-      - name: GStreamer runtime cache
-        uses: actions/cache@v6
+      # Built in Docker when the cache has none
+      - uses: ./.github/actions/gstreamer-runtime
         with:
-          path: ${{ env.GSTREAMER_DIR }}/artifacts/linux-x64
-          key: gstreamer-linux-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/linux/**') }}
+          rid: linux-x64
 
-      # Builds the runtime in Docker when the cache had none
       - name: Publish
         env:
           # vpk takes the previous release of the channel from GitHub for the delta package
@@ -109,6 +114,9 @@ jobs:
           [[ "${{ inputs.aot }}" == true ]] && arguments+=(--aot)
           [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
           src/Scripts/bash/publish.sh linux-x64 "${arguments[@]}"
+
+      - name: Check desktop compiler warnings
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
 
       - uses: actions/upload-artifact@v7
         with:
@@ -133,13 +141,11 @@ jobs:
           # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
           dotnet-version: 10.0.402
 
-      - name: GStreamer runtime cache
-        uses: actions/cache@v6
+      # Collected from the official installer when the cache has none
+      - uses: ./.github/actions/gstreamer-runtime
         with:
-          path: ${{ env.GSTREAMER_DIR }}/artifacts/win-x64
-          key: gstreamer-win-x64-${{ hashFiles('src/Client/Client.GStreamer/Build/windows/**') }}
+          rid: win-x64
 
-      # Collects the runtime from the official installer when the cache had none
       - name: Publish
         shell: powershell
         env:
@@ -150,9 +156,124 @@ jobs:
           if ("${{ inputs.dev }}" -eq "true") { $arguments.Dev = $true; $arguments.Stamp = "${{ needs.version.outputs.stamp }}" }
           & src\Scripts\powershell\publish.ps1 win-x64 @arguments
 
+      - name: Check desktop compiler warnings
+        shell: powershell
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
+
+      - name: Upload GStreamer installer log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gstreamer-win-x64-installer-log
+          path: ${{ runner.temp }}/flowrate-gstreamer-*/install.log
+          if-no-files-found: warn
+
+      - name: Check published libwebrtc runtime
+        shell: powershell
+        run: |
+          $suffix = if ("${{ inputs.aot }}" -eq "true") { "-aot" } else { "" }
+          & src\Client\Client.LibWebRTC\Build\windows\verify.ps1 `
+              -RuntimeDirectory "src\Client\Client.Avalonia.Desktop\bin\publish\win-x64$suffix"
+
       - uses: actions/upload-artifact@v7
         with:
           name: FlowRateClient-${{ needs.version.outputs.version }}-win-x64${{ inputs.aot && '-aot' || '' }}
           path: dist/${{ needs.version.outputs.version }}/win-x64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          compression-level: 0
+
+  macos:
+    name: osx-arm64
+    needs: version
+    # Apple silicon, with the clang of Xcode that NativeAOT links with
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
+          dotnet-version: 10.0.402
+
+      # Collected from the official framework when the cache has none; its version is in the action
+      - uses: ./.github/actions/gstreamer-runtime
+        with:
+          rid: osx-arm64
+
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          arguments=(--target osx-arm64)
+          [[ "${{ inputs.aot }}" == true ]] && arguments+=(--aot)
+          [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
+          src/Scripts/bash/publish.sh "${arguments[@]}"
+
+      - name: Check desktop compiler warnings
+        run: dotnet build src/Client/Client.Avalonia.Desktop --no-restore --no-incremental -c Release -p:TreatWarningsAsErrors=true --verbosity minimal
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-osx-arm64${{ inputs.aot && '-aot' || '' }}
+          path: dist/${{ needs.version.outputs.version }}/osx-arm64${{ inputs.aot && '-aot' || '' }}
+          if-no-files-found: error
+          compression-level: 0
+
+  android:
+    name: android
+    needs: version
+    # Has the Android SDK and a JDK
+    runs-on: ubuntu-24.04
+    # The release key is in the secrets of this environment, given to this job alone:
+    # ANDROID_KEYSTORE_BASE64 (the keystore file in base64), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD
+    environment: android-release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          # 10.0.403 was announced before its files could be downloaded (HTTP 409); back to 10.0.x once they can
+          dotnet-version: 10.0.402
+
+      - name: Android workload
+        run: |
+          dotnet workload install android
+          # The SDK platform and build tools the project needs, when the runner image has others
+          dotnet build src/Client/Client.Avalonia.Android/Client.Avalonia.Android.csproj -t:InstallAndroidDependencies \
+              -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=true -nologo
+
+      # Without the key the build stops: an .apk signed with a key of its own would not install over
+      # the one people have
+      - name: Release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          [[ -n "$KEYSTORE_BASE64" ]] ||
+              { echo "error: the android-release environment has no ANDROID_KEYSTORE_BASE64 secret" >&2; exit 1; }
+          umask 077
+          base64 -d <<< "$KEYSTORE_BASE64" > "$RUNNER_TEMP/release.keystore"
+
+      - name: Publish
+        env:
+          ANDROID_KEYSTORE: ${{ runner.temp }}/release.keystore
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          arguments=(--target android)
+          [[ "${{ inputs.dev }}" == true ]] && arguments+=(--dev --stamp "${{ needs.version.outputs.stamp }}")
+          src/Scripts/bash/publish.sh "${arguments[@]}"
+
+      - name: Remove the release key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FlowRateClient-${{ needs.version.outputs.version }}-android
+          path: dist/${{ needs.version.outputs.version }}/android
           if-no-files-found: error
           compression-level: 0

@@ -5,16 +5,19 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
-using ReactiveUI;
-using RxVoid = ReactiveUI.Primitives.RxVoid;
-using Shared.Enums;
-using Shared.Enums.User;
 using Client.Application.Coordinator;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Users;
+using Client.Services;
 using Client.ViewModels.Dialogs;
+using ReactiveUI;
+using Shared.Enums;
+using Shared.Enums.User;
+using Shared.Models.DataTransferObjects;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.ServerSettings;
 
@@ -25,10 +28,49 @@ namespace Client.ViewModels.ServerSettings;
 /// </summary>
 public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
 {
+    public const int PageSize = 20;
+    // The active bans by the user they were made for, shown in the rows; only users who may ban get them
+    private readonly Dictionary<int, List<BanDTO>> _bans = new();
+    private bool CanManageBans => _coordinatorSession.Permissions.Has(Permission.BanMembers);
+
+    private async Task LoadBansAsync()
+    {
+        _bans.Clear();
+        if (!CanManageBans) return;
+        var response = await _coordinatorSession.GetBans();
+        if (response.Value == null) return;
+        foreach (var ban in response.Value)
+            if (ban.UserId is { } userId)
+                (_bans.TryGetValue(userId, out var list) ? list : _bans[userId] = []).Add(ban);
+    }
+
+    /// <summary>One line per ban: by what, until when, by whom, and the reason when there is one.</summary>
+    private string? DescribeBans(int userId)
+    {
+        if (!_bans.TryGetValue(userId, out var bans) || bans.Count == 0) return null;
+        return string.Join(Environment.NewLine, bans.Select(ban =>
+        {
+            var kind = ban.Kind == BanKind.Ip
+                ? $"{Strings.Get("ban.kind.ip")} {ban.Address}"
+                : Strings.Get("ban.kind.account");
+            var until = ban.ExpiresAt is { } expires
+                ? $"{Strings.Get("ban.expires")} {expires.ToLocalTime():g}"
+                : Strings.Get("ban.duration.permanent");
+            var author = _users.TryGetValue(ban.CreatedBy, out var user) ? user.Username : $"#{ban.CreatedBy}";
+            var line = $"{kind} · {until} · {Strings.Format("ban.by", ("name", author))}";
+            return string.IsNullOrWhiteSpace(ban.Reason) ? line : $"{line}{Environment.NewLine}{ban.Reason}";
+        }));
+    }
+
+
+    private int _currentPage = 1;
+    private int _filteredCount;
+
     private readonly ICoordinatorSession _coordinatorSession;
     private readonly Interaction<MessageBoxVM, Result> _showMessageBox;
     private readonly ReactiveCommand<int, RxVoid> _viewProfileCommand;
     private readonly ObservableAsPropertyHelper<bool> _isLoading;
+    private readonly IDisposable _loadingChanged;
     private readonly ObservableAsPropertyHelper<bool> _isBusy;
 
     // By id, as the server sent them and as they changed since
@@ -36,7 +78,10 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
 
     public CoordinatorSettingsFormVM Form { get; }
 
-    /// <summary>The users matching <see cref="Filter"/>, by name.</summary>
+    /// <summary>The bots of the server, for users who may manage them.</summary>
+    public ServerBotsVM Bots { get; }
+
+    /// <summary>The current page of users matching <see cref="Filter"/>, by name.</summary>
     public ObservableCollection<ServerUserRowVM> Users { get; } = new();
 
     /// <summary>A part of the name of the users to show; all of them when empty.</summary>
@@ -46,11 +91,25 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         set
         {
             this.RaiseAndSetIfChanged(ref field, value);
+            _currentPage = 1;
             Rebuild();
         }
     }
 
     public int TotalCount => _users.Count;
+
+    public int CurrentPage => _currentPage;
+    public int PageCount => Math.Max(1, (_filteredCount + PageSize - 1) / PageSize);
+    public bool HasPreviousPage => CurrentPage > 1;
+    public bool HasNextPage => CurrentPage < PageCount;
+    public bool HasMultiplePages => PageCount > 1;
+    public bool IsEmpty => !IsLoading && Error == null && _filteredCount == 0;
+    public string CountText => Strings.Format("serverSettings.users.count", ("count", TotalCount));
+    public string PageText => Strings.Format("serverSettings.users.page",
+        ("page", CurrentPage), ("pages", PageCount));
+    public string RangeText => Strings.Format("serverSettings.users.range",
+        ("first", _filteredCount == 0 ? 0 : (CurrentPage - 1) * PageSize + 1),
+        ("last", Math.Min(CurrentPage * PageSize, _filteredCount)), ("count", _filteredCount));
 
     public bool IsLoading => _isLoading.Value;
 
@@ -68,9 +127,15 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     public string? Error
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsEmpty));
+        }
     }
 
+    public ReactiveCommand<RxVoid, RxVoid> PreviousPageCommand { get; }
+    public ReactiveCommand<RxVoid, RxVoid> NextPageCommand { get; }
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; }
     public ReactiveCommand<ServerUserRowVM, RxVoid> EditProfileCommand { get; }
     public ReactiveCommand<ServerUserRowVM, RxVoid> ToggleFreezeCommand { get; }
@@ -83,13 +148,20 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         Interaction<MessageBoxVM, Result> showMessageBox, ReactiveCommand<int, RxVoid> viewProfileCommand)
     {
         Form = form;
+        Bots = new ServerBotsVM(coordinatorSession, showMessageBox);
         _coordinatorSession = coordinatorSession;
         _showMessageBox = showMessageBox;
         _viewProfileCommand = viewProfileCommand;
         CanEditLimits = coordinatorSession.Permissions.Has(Permission.ManageCoordinatorSettings);
 
+        PreviousPageCommand = ReactiveCommand.Create(() => ChangePage(-1),
+            this.WatchProperty(nameof(HasPreviousPage), vm => vm.HasPreviousPage));
+        NextPageCommand = ReactiveCommand.Create(() => ChangePage(1),
+            this.WatchProperty(nameof(HasNextPage), vm => vm.HasNextPage));
         LoadCommand = ReactiveCommand.CreateFromTask(LoadAsync);
         _isLoading = LoadCommand.IsExecuting.ToProperty(this, nameof(IsLoading));
+        _loadingChanged = this.WatchProperty(nameof(IsLoading), vm => vm.IsLoading)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(IsEmpty)));
 
         EditProfileCommand = ReactiveCommand.CreateFromObservable<ServerUserRowVM, RxVoid>(
             row => _viewProfileCommand.Execute(row.User.Id));
@@ -101,6 +173,7 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
                 (freezing, banning, deleting) => freezing || banning || deleting)
             .ToProperty(this, nameof(IsBusy));
 
+        Strings.LanguageChanged += OnLanguageChanged;
         _coordinatorSession.UserUpdated += OnUserUpdated;
         _coordinatorSession.UserDeleted += OnUserDeleted;
         _coordinatorSession.PermissionsChanged += OnPermissionsChanged;
@@ -109,13 +182,15 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private async Task LoadAsync()
     {
         Error = null;
+        await LoadBansAsync();
+        await Bots.LoadAsync();
 
         var (result, users) = await _coordinatorSession.GetAllUsers();
         if (users == null)
         {
             // Rejected is told by the main window
-            if (result != UsersRequestResult.Rejected)
-                Error = result == UsersRequestResult.TimedOut
+            if (!result.IsRejected)
+                Error = result.Error == ErrorCode.TimedOut
                     ? Strings.Get("serverSettings.error.timedOut")
                     : Strings.Format("serverSettings.users.error.notLoaded", ("reason", result));
             return;
@@ -136,16 +211,22 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     {
         if (row.IsBanned)
         {
-            await SetStateAsync(row, UserState.Normal, "serverSettings.users.action.unban");
+            await TellFailureAsync(await _coordinatorSession.UnbanUser(row.User.Id), "serverSettings.users.action.unban");
+            await LoadBansAsync();
+            Rebuild();
             return;
         }
 
+        var form = new BanFormVM();
         if (await _showMessageBox.Handle(new MessageBoxVM(Icon.Warning, Buttons.YesNo,
                 Strings.Format("serverSettings.users.ban.question", ("name", row.Username)),
-                Strings.Get("serverSettings.users.ban.title"))) != Result.Yes)
+                Strings.Get("serverSettings.users.ban.title"), form)) != Result.Yes)
             return;
 
-        await SetStateAsync(row, UserState.Banned, "serverSettings.users.action.ban");
+        await TellFailureAsync(await _coordinatorSession.BanUser(row.User.Id,
+            form.Kind, form.Reason, form.ExpiresAt, form.Address), "serverSettings.users.action.ban");
+        await LoadBansAsync();
+        Rebuild();
     }
 
     // The new state comes back as an update of the user
@@ -163,15 +244,15 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         await TellFailureAsync(await _coordinatorSession.DeleteUser(row.User.Id), "serverSettings.users.action.delete");
     }
 
-    private async Task TellFailureAsync(ModerateUserResult result, string actionKey)
+    private async Task TellFailureAsync(RequestResult result, string actionKey)
     {
         // Rejected is told by the main window
         var message = result switch
         {
-            ModerateUserResult.NoError or ModerateUserResult.Rejected => null,
-            ModerateUserResult.TimedOut => Strings.Get("serverSettings.error.timedOut"),
-            ModerateUserResult.UserNotFound => Strings.Get("serverSettings.users.error.userNotFound"),
-            ModerateUserResult.CannotTargetSelf => Strings.Get("serverSettings.users.error.cannotTargetSelf"),
+            { IsSuccess: true } or { IsRejected: true } => null,
+            { Error: ErrorCode.TimedOut } => Strings.Get("serverSettings.error.timedOut"),
+            { Error: ErrorCode.UserNotFound } => Strings.Get("serverSettings.users.error.userNotFound"),
+            { Error: ErrorCode.CannotTargetSelf } => Strings.Get("serverSettings.users.error.cannotTargetSelf"),
             _ => Strings.Format("serverSettings.users.error.failed", ("reason", result))
         };
         if (message != null)
@@ -200,8 +281,22 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
     private void OnPermissionsChanged(CoordinatorPermissions permissions) => Dispatcher.UIThread.Post(() =>
     {
         CanEditLimits = permissions.Has(Permission.ManageCoordinatorSettings);
+        if (!CanManageBans) _bans.Clear();
         Rebuild();
     });
+
+    private void ChangePage(int offset)
+    {
+        _currentPage = Math.Clamp(CurrentPage + offset, 1, PageCount);
+        Rebuild();
+    }
+
+    private void OnLanguageChanged()
+    {
+        this.RaisePropertyChanged(nameof(CountText));
+        this.RaisePropertyChanged(nameof(PageText));
+        this.RaisePropertyChanged(nameof(RangeText));
+    }
 
     private void Rebuild()
     {
@@ -210,10 +305,16 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         var roles = _coordinatorSession.Roles.ToDictionary(role => role.Id);
         var currentUserId = _coordinatorSession.GetCurrentUser().Id;
 
+        var matchingUsers = _users.Values
+            .Where(user => filter.Length == 0 || Matches(user, filter))
+            .OrderBy(user => user.Username, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(user => user.Id)
+            .ToList();
+        _filteredCount = matchingUsers.Count;
+        _currentPage = Math.Clamp(CurrentPage, 1, PageCount);
+
         Users.Clear();
-        foreach (var user in _users.Values
-                     .Where(user => filter.Length == 0 || Matches(user, filter))
-                     .OrderBy(user => user.Username, StringComparer.OrdinalIgnoreCase))
+        foreach (var user in matchingUsers.Skip((CurrentPage - 1) * PageSize).Take(PageSize))
         {
             // Highest first, as in the roles tab
             var userRoles = user.RoleIds
@@ -225,13 +326,20 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
             // As the server decides: the current user acts only on users below its highest role, never on itself
             var isSelf = user.Id == currentUserId;
             var outranks = !isSelf && permissions.Outranks(user.RoleIds);
-            Users.Add(new ServerUserRowVM(user, userRoles, isSelf,
+            Users.Add(new ServerUserRowVM(user, userRoles, DescribeBans(user.Id), isSelf,
                 canEditProfile: outranks && permissions.Has(Permission.ManageUsers),
                 canModerate: outranks && permissions.Has(Permission.BanMembers),
                 this));
         }
 
         this.RaisePropertyChanged(nameof(TotalCount));
+        this.RaisePropertyChanged(nameof(CurrentPage));
+        this.RaisePropertyChanged(nameof(PageCount));
+        this.RaisePropertyChanged(nameof(HasPreviousPage));
+        this.RaisePropertyChanged(nameof(HasNextPage));
+        this.RaisePropertyChanged(nameof(HasMultiplePages));
+        this.RaisePropertyChanged(nameof(IsEmpty));
+        OnLanguageChanged();
     }
 
     private static bool Matches(UserModel user, string filter) =>
@@ -243,6 +351,10 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         _coordinatorSession.UserUpdated -= OnUserUpdated;
         _coordinatorSession.UserDeleted -= OnUserDeleted;
         _coordinatorSession.PermissionsChanged -= OnPermissionsChanged;
+        Strings.LanguageChanged -= OnLanguageChanged;
+        PreviousPageCommand.Dispose();
+        NextPageCommand.Dispose();
+        _loadingChanged.Dispose();
         _isLoading.Dispose();
         _isBusy.Dispose();
         LoadCommand.Dispose();
@@ -250,42 +362,6 @@ public sealed class ServerUsersTabVM : ReactiveObject, IDisposable
         ToggleFreezeCommand.Dispose();
         ToggleBanCommand.Dispose();
         DeleteCommand.Dispose();
+        Bots.Dispose();
     }
-}
-
-/// <summary>A user in the list of the users tab, with the commands of the tab for its menu.</summary>
-public sealed class ServerUserRowVM(UserModel user, IReadOnlyList<RoleModel> roles, bool isSelf,
-    bool canEditProfile, bool canModerate, ServerUsersTabVM tab)
-{
-    // The menu opens in a popup, out of reach of the tab; each command takes the row
-    public ReactiveCommand<ServerUserRowVM, RxVoid> EditProfileCommand => tab.EditProfileCommand;
-    public ReactiveCommand<ServerUserRowVM, RxVoid> ToggleFreezeCommand => tab.ToggleFreezeCommand;
-    public ReactiveCommand<ServerUserRowVM, RxVoid> ToggleBanCommand => tab.ToggleBanCommand;
-    public ReactiveCommand<ServerUserRowVM, RxVoid> DeleteCommand => tab.DeleteCommand;
-
-    public UserModel User { get; } = user;
-    public string Username => User.Username;
-    public string? AvatarUrl => User.AvatarUrl;
-    public UserStatus Status => User.Status;
-    public bool IsBanned => User.State == UserState.Banned;
-    public bool IsFrozen => User.State == UserState.Suspended;
-
-    /// <summary>Highest first, without the everyone role.</summary>
-    public IReadOnlyList<RoleModel> Roles { get; } = roles;
-
-    /// <summary>The current user; nothing can be done to them here.</summary>
-    public bool IsSelf { get; } = isSelf;
-
-    public bool CanEditProfile { get; } = canEditProfile;
-
-    /// <summary>The user can be frozen, banned and deleted, and brought back.</summary>
-    public bool CanModerate { get; } = canModerate;
-
-    public bool CanFreeze => CanModerate && !IsFrozen;
-    public bool CanUnfreeze => CanModerate && IsFrozen;
-    public bool CanBan => CanModerate && !IsBanned;
-    public bool CanUnban => CanModerate && IsBanned;
-
-    /// <summary>The menu has something in it.</summary>
-    public bool HasActions => CanEditProfile || CanModerate;
 }

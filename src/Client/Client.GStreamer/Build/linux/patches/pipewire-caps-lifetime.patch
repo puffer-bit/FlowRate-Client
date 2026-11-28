@@ -1,0 +1,65 @@
+--- a/src/gst/gstpipewiresrc.c
++++ b/src/gst/gstpipewiresrc.c
+@@ -257,6 +257,7 @@
+   GstPipeWireSrc *pwsrc = GST_PIPEWIRE_SRC (object);
+ 
+   gst_clear_object (&pwsrc->stream);
++  gst_caps_replace (&pwsrc->possible_caps, NULL);
+ 
+   G_OBJECT_CLASS (parent_class)->finalize (object);
+ }
+@@ -937,6 +938,10 @@
+ 
+   GST_DEBUG_OBJECT (basesrc, "connect capture with path %s, target-object %s",
+                     pwsrc->stream->path, pwsrc->stream->target_object);
++
++  /* Format callbacks can recur after the initial negotiation has returned. */
++  gst_caps_replace (&pwsrc->possible_caps, possible_caps);
++  pwsrc->negotiated = FALSE;
+ 
+   enum pw_stream_flags flags;
+   flags = PW_STREAM_FLAG_DONT_RECONNECT |
+@@ -953,9 +958,6 @@
+   pw_thread_loop_get_time (pwsrc->stream->core->loop, &abstime,
+                   GST_PIPEWIRE_DEFAULT_TIMEOUT * SPA_NSEC_PER_SEC);
+ 
+-  pwsrc->possible_caps = possible_caps;
+-  pwsrc->negotiated = FALSE;
+-
+   while (TRUE) {
+     enum pw_stream_state state = pw_stream_get_state (pwsrc->stream->pwstream, &error);
+ 
+@@ -975,7 +977,6 @@
+   }
+ 
+   negotiated_caps = g_steal_pointer (&pwsrc->caps);
+-  pwsrc->possible_caps = NULL;
+   pw_thread_loop_unlock (pwsrc->stream->core->loop);
+ 
+   if (negotiated_caps == NULL)
+@@ -1024,7 +1025,7 @@
+ connect_error:
+   {
+     g_clear_pointer (&pwsrc->caps, gst_caps_unref);
+-    pwsrc->possible_caps = NULL;
++    gst_caps_replace (&pwsrc->possible_caps, NULL);
+     GST_DEBUG_OBJECT (basesrc, "connect error");
+     pw_thread_loop_unlock (pwsrc->stream->core->loop);
+     return FALSE;
+@@ -1047,7 +1048,7 @@
+   }
+ 
+   pw_peer_caps = gst_caps_from_format (param);
+-  if (pw_peer_caps) {
++  if (pw_peer_caps && pwsrc->possible_caps) {
+     pwsrc->caps = gst_caps_intersect_full (pw_peer_caps,
+                                            pwsrc->possible_caps,
+                                            GST_CAPS_INTERSECT_FIRST);
+@@ -1395,6 +1396,7 @@
+   pwsrc->eos = false;
+   gst_buffer_replace (&pwsrc->last_buffer, NULL);
+   gst_caps_replace(&pwsrc->caps, NULL);
++  gst_caps_replace(&pwsrc->possible_caps, NULL);
+   pwsrc->transform_value = UINT32_MAX;
+   pw_thread_loop_unlock (pwsrc->stream->core->loop);
+ 

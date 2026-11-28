@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:mainVm="clr-namespace:Client.ViewModels.Main;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Mobile.Views.Dialogs.ServerLinkDialog"
+             x:DataType="mainVm:ServerTitleVM">
+
+    <!-- The QR code of the server, scanned by another phone; the link itself goes on through the share sheet -->
+    <Grid RowDefinitions="Auto, *, Auto">
+        <TextBlock Grid.Row="0" Text="{l:Text main.server.shareLink}" FontSize="17" FontWeight="SemiBold"
+                   TextWrapping="Wrap" Margin="20,16,20,0"/>
+
+        <ScrollViewer Grid.Row="1" Margin="0,12,0,0">
+            <StackPanel Margin="20,0" Spacing="12">
+                <TextBlock FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Text="{Binding DisplayName}"/>
+                <images:QrCode Width="240" Height="240" HorizontalAlignment="Center" Text="{Binding ServerLink}"/>
+                <TextBlock TextWrapping="Wrap" TextAlignment="Center"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           Text="{l:Text main.server.shareLink.hint}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Sharing is the filled button and stands last, under the right thumb -->
+        <UniformGrid Grid.Row="2" Rows="1" Margin="12,20,12,16">
+            <Button Click="OnCloseClick" Margin="4,0" MinHeight="46" CornerRadius="8"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                <TextBlock Text="{l:Text common.close}" FontSize="15" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="primary" Click="OnShareClick" Margin="4,0" MinHeight="46" CornerRadius="8"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <!-- The glyph of ShareIcon, in the text color of a filled button -->
+                    <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
+                          Data="M20,5.5 A2.5,2.5 0 1 1 15,5.5 A2.5,2.5 0 1 1 20,5.5 Z M9,12 A2.5,2.5 0 1 1 4,12 A2.5,2.5 0 1 1 9,12 Z M20,18.5 A2.5,2.5 0 1 1 15,18.5 A2.5,2.5 0 1 1 20,18.5 Z M8.7 10.7 L15.3 6.8 M8.7 13.3 L15.3 17.2"
+                          Stroke="{DynamicResource OnAccentTextBrush}" StrokeThickness="1.5"
+                          StrokeLineCap="Round" StrokeJoin="Round"/>
+                    <TextBlock Text="{l:Text common.share}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </UniformGrid>
+    </Grid>
+</UserControl>

@@ -15,15 +15,18 @@ public static class CurrentPlatform
         : OperatingSystem.IsWindows() ? "Windows"
         : OperatingSystem.IsLinux() ? "Linux"
         : OperatingSystem.IsMacOS() ? "macOS"
+        : OperatingSystem.IsIOS() ? "iOS"
         : Environment.OSVersion.Platform.ToString();
 
     /// <summary>
     /// Key of the DrawingImage resource of the system in Client.Avalonia.Assets/IconImages.axaml,
-    /// or null: there are no icons for macOS and other platforms yet.
+    /// or null for a platform without one.
     /// </summary>
     public static string? IconKey { get; } =
         OperatingSystem.IsAndroid() ? "AndroidIcon"
         : OperatingSystem.IsWindows() ? "WindowsIcon"
         : OperatingSystem.IsLinux() ? "LinuxIcon"
+        : OperatingSystem.IsMacOS() ? "MacOSIcon"
+        : OperatingSystem.IsIOS() ? "IPhoneIcon"
         : null;
 }

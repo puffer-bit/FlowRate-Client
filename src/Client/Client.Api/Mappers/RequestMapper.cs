@@ -11,31 +11,19 @@ internal static class RequestMapper
     // The server makes the sender the host, so NewSessionModel.HostId is not sent
     public static CreateSessionModel ToDto(this NewSessionModel model) => new(
         model.Name,
-        model.Capacity,
         model.Options.ToDto(),
         model.CategoryId);
 
     private static CreateSessionData ToDto(this NewSessionOptions options) => options switch
     {
-        NewHybridSessionOptions hybrid => new HybridSessionCreateData(
-            hybrid.EngineType,
-            hybrid.Resolution,
-            hybrid.VideoBitrate,
-            hybrid.IsAudioTransferEnabled,
-            hybrid.IsDataChannelEnabled,
-            hybrid.IsSimulcastEnabled,
-            hybrid.IsTunnelingEnabled,
-            hybrid.IsProxyActive,
-            hybrid.Media?.ToDto()),
+        NewHybridSessionOptions hybrid => new HybridSessionCreateData(hybrid.EngineType, hybrid.Capacity, hybrid.Media?.ToDto()),
 
         NewChatSessionOptions chat => new ChatSessionCreateData(
             chat.Description,
-            chat.IconPath,
-            chat.IsEncrypted,
             chat.IsAttachmentsAllowed,
             chat.IsVoiceMessageAllowed,
             chat.IsVideoMessagesAllowed,
-            chat.IsDelayedMessagesAllowed),
+            chat.IsDelayedMessagesAllowed, chat.Kind, chat.MemberIds),
 
         _ => throw new ArgumentOutOfRangeException(nameof(options), options.GetType().Name, "Unknown session type")
     };
@@ -44,13 +32,14 @@ internal static class RequestMapper
     public static NewChatMessageModel ToDto(this NewChatMessage model) => new()
     {
         ChatId = model.ChatId,
-        DelayedSentTime = model.DelayedSentTime,
-        DisposeTime = model.DisposeTime,
+        ClientMessageId = model.ClientMessageId,
+        ScheduledAt = model.DelayedSentTime,
+        ExpiresAt = model.DisposeTime,
 
         TextContent = model.TextContent == null ? null : ChatMessageMapper.MapTextContentDto(model.TextContent),
         ReplyToMessageId = model.ReplyContent?.MessageId,
 
-        Images = model.Images.Select(image => new NewChatImageModel
+        Files = model.Images.Select(image => (NewChatFileModel)new NewChatImageModel
         {
             UploadId = image.UploadId,
             PreviewUploadId = image.PreviewUploadId,
@@ -58,15 +47,13 @@ internal static class RequestMapper
             Description = image.Description,
             Width = image.Width,
             Height = image.Height
-        }).ToList(),
-        Video = model.Video.Select(ChatMessageMapper.MapVideoContentDto).ToList(),
-        Files = model.Files.Select(file => new NewChatFileModel
+        }).Concat(model.Files.Select(file => new NewChatFileModel
         {
             UploadId = file.UploadId,
-            FileName = file.FileName
-        }).ToList(),
+            FileName = file.FileName,
+            PreviewUploadId = file.PreviewUploadId
+        })).ToList(),
 
-        IsDelayed = model.IsDelayed,
-        IsDisposable = model.IsDisposable
+        IsLinkPreviewDisabled = model.IsLinkPreviewDisabled
     };
 }

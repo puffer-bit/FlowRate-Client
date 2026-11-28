@@ -4,46 +4,47 @@ using Gst.Interop;
 namespace Client.GStreamer.Interop;
 
 /// <summary>
-/// Object properties read and written with exact reference counting.
+/// Object properties read with exact reference counting.
 /// </summary>
 /// <remarks>
-/// A leaked reference to an object of webrtcbin keeps its ICE agent, its sockets and its threads
-/// after the session is left, so these reads go to GObject directly, where a getter hands over
-/// exactly one reference, and the caller decides whether a wrapper is made for it at all.
+/// A leaked reference keeps a native object, and whatever it holds, until the wrapper is collected,
+/// so these reads go to GObject directly, where a getter hands over exactly one reference, and the
+/// caller decides whether a wrapper is made for it at all.
 /// </remarks>
-internal static class GstNative
+public static class GstNative
 {
+    // Not g_object_get: a variadic function cannot be bound as a fixed signature. Apple arm64 passes
+    // variadic arguments on the stack rather than in registers, so GObject reads garbage there
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_get(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out IntPtr value, IntPtr terminator);
+    private static extern void g_object_get_property(IntPtr instance,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, IntPtr value);
 
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_get(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, out int value, IntPtr terminator);
+    private static extern IntPtr g_value_init(IntPtr value, nint type);
 
     [DllImport(NativeLibraries.GObject)]
-    private static extern void g_object_set(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string property, int value, IntPtr terminator);
+    private static extern void g_value_unset(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern int g_value_get_int(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern uint g_value_get_uint(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern ulong g_value_get_uint64(IntPtr value);
+
+    [DllImport(NativeLibraries.GObject)]
+    private static extern IntPtr g_value_dup_object(IntPtr value);
 
     [DllImport(NativeLibraries.GObject)]
     private static extern void g_object_unref(IntPtr instance);
-
-    [DllImport(NativeLibraries.GObject)]
-    private static extern void g_signal_emit_by_name(IntPtr instance,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string signal, int argument, out IntPtr result);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern IntPtr gst_object_get_path_string(IntPtr instance);
 
     [DllImport(NativeLibraries.GLib)]
     private static extern void g_free(IntPtr memory);
-
-    [DllImport(NativeLibraries.GStreamer)]
-    private static extern IntPtr gst_structure_get_value(IntPtr structure,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string fieldName);
-
-    [DllImport(NativeLibraries.GObject)]
-    private static extern IntPtr g_value_get_boxed(IntPtr value);
 
     [DllImport(NativeLibraries.GStreamer)]
     private static extern int gst_mini_object_is_writable(IntPtr miniObject);
@@ -54,8 +55,12 @@ internal static class GstNative
     [DllImport(NativeLibraries.GStreamer)]
     private static extern void gst_buffer_unmap(IntPtr buffer, ref Gst.MapInfo info);
 
-    // G_TYPE_DOUBLE, and the size of a GValue: { GType g_type; 16 bytes of data }
+    // Fundamental GTypes, and the size of a GValue: { GType g_type; 16 bytes of data }
+    private const nint IntType = 6 << 2;
+    private const nint UIntType = 7 << 2;
+    private const nint UInt64Type = 11 << 2;
     private const nint DoubleType = 15 << 2;
+    private const nint ObjectType = 20 << 2;
     private const int ValueSize = 24;
 
     // GstMessage on a 64-bit system: the mini object (64 bytes), the type with its padding (8) and
@@ -68,9 +73,7 @@ internal static class GstNative
     /// <returns>Zero when the property holds no object.</returns>
     public static IntPtr GetObject(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out IntPtr value, IntPtr.Zero);
-
-        return value;
+        return Read(instance, property, ObjectType, g_value_dup_object);
     }
 
     /// <summary>
@@ -82,17 +85,6 @@ internal static class GstNative
         var handle = GetObject(owner.Handle, property);
 
         return handle == IntPtr.Zero ? null : Wrap<T>(handle);
-    }
-
-    /// <summary>
-    /// Emits an action signal that takes an index and returns an object, such as get-transceiver of
-    /// webrtcbin. The wrapper owns the returned reference and gives it back when disposed.
-    /// </summary>
-    public static T? EmitGetObject<T>(Gst.GObject.Object target, string signal, int index) where T : Gst.GObject.Object
-    {
-        g_signal_emit_by_name(target.Handle, signal, index, out var result);
-
-        return result == IntPtr.Zero ? null : Wrap<T>(result);
     }
 
     // Takes over the reference in the handle, also when the object turns out to be of another type
@@ -112,27 +104,43 @@ internal static class GstNative
     /// </summary>
     public static int GetInt32(Gst.GObject.Object owner, string property)
     {
-        g_object_get(owner.Handle, property, out int value, IntPtr.Zero);
-
-        return value;
+        return GetInt32(owner.Handle, property);
     }
 
     public static int GetInt32(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out int value, IntPtr.Zero);
-
-        return value;
+        return Read(instance, property, IntType, g_value_get_int);
     }
 
     public static uint GetUInt32(IntPtr instance, string property)
     {
-        g_object_get(instance, property, out int value, IntPtr.Zero);
-
-        return (uint)value;
+        return Read(instance, property, UIntType, g_value_get_uint);
     }
 
-    public static void SetBoolean(IntPtr instance, string property, bool value) =>
-        g_object_set(instance, property, value ? 1 : 0, IntPtr.Zero);
+    public static ulong GetUInt64(IntPtr instance, string property)
+    {
+        return Read(instance, property, UInt64Type, g_value_get_uint64);
+    }
+
+    // GObject converts the property into the requested type, an enumeration into an integer as well
+    private static unsafe T Read<T>(IntPtr instance, string property, nint type, Func<IntPtr, T> get)
+    {
+        var storage = stackalloc byte[ValueSize];
+        new Span<byte>(storage, ValueSize).Clear();
+        var value = (IntPtr)storage;
+        g_value_init(value, type);
+
+        try
+        {
+            g_object_get_property(instance, property, value);
+
+            return get(value);
+        }
+        finally
+        {
+            g_value_unset(value);
+        }
+    }
 
     /// <summary>
     /// The object that posted a message, without a wrapper and without a reference.
@@ -180,33 +188,6 @@ internal static class GstNative
     {
         if (instance != IntPtr.Zero)
             g_object_unref(instance);
-    }
-
-    /// <summary>
-    /// Reads the message of the GError in a promise reply. GStreamer cannot serialize a GError, so
-    /// the message is read from the native struct
-    /// <c>{ GQuark domain; gint code; gchar *message; }</c>.
-    /// </summary>
-    public static string? ReadErrorMessage(Gst.Structure reply)
-    {
-        try
-        {
-            var value = gst_structure_get_value(reply.Handle, "error");
-
-            if (value == IntPtr.Zero)
-                return null;
-
-            var error = g_value_get_boxed(value);
-
-            if (error == IntPtr.Zero)
-                return null;
-
-            return Marshal.PtrToStringUTF8(Marshal.ReadIntPtr(error, 8));
-        }
-        catch (Exception)
-        {
-            return null;
-        }
     }
 
     /// <summary>

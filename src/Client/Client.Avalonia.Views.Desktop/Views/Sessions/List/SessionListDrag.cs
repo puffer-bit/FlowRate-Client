@@ -1,0 +1,536 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using Avalonia;
+using Avalonia.Collections;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Client.Avalonia.Styles.Animation;
+using Client.ViewModels.Sessions.List;
+
+namespace Client.Views.Sessions.List;
+
+/// <summary>
+/// Dragging sessions and categories of the session list to another place. A session goes between
+/// sessions, or onto a category header to go first into that category; a category goes between
+/// categories. The row stays in place as an empty slot while a copy of its name follows the pointer,
+/// and a line shows where it will land.
+/// A peer of a hybrid session is dragged the same way onto another hybrid session, which moves the user there;
+/// the session it would land in lights up instead of a line.
+/// </summary>
+internal sealed class SessionListDrag
+{
+    // How far the pointer moves before a press becomes a drag, so a click stays a click
+    private const double StartDistance = 6;
+
+    // Near the edges of the list it scrolls on its own, faster the closer the pointer is
+    private const double ScrollZone = 32;
+    private const double ScrollSpeed = 14;
+
+    private readonly ListBox _list;
+    private readonly Canvas _layer;
+    private readonly Border _ghost;
+    private readonly Rectangle _sourceOutline;
+    private readonly Stopwatch _dragClock = new();
+    private readonly TextBlock _ghostText;
+    private readonly Image _ghostIcon;
+    private readonly Border _indicator;
+    private readonly Func<SessionsListVM?> _viewModel;
+    private readonly DispatcherTimer _scrollTimer;
+
+    private ISessionListRow? _pressedRow;
+    private Control? _sourceHeader;
+    private (PeerVM Peer, HybridSessionVM Session)? _pressedPeer;
+    private (PeerVM Peer, HybridSessionVM Session)? _draggedPeer;
+    private HybridSessionVM? _peerTarget;
+    private Point _pressPoint;
+    private IPointer? _pointer;
+    private ISessionListRow? _draggedRow;
+    private Point _lastPoint;
+    private Target? _target;
+    private SessionCategoryVM? _highlighted;
+
+    private sealed record Target(int? CategoryId, ISessionListRow? Before, double? LineY);
+
+    public SessionListDrag(ListBox list, Canvas layer, Func<SessionsListVM?> viewModel)
+    {
+        _list = list;
+        _layer = layer;
+        _viewModel = viewModel;
+
+        _ghostText = new TextBlock
+        {
+            MaxWidth = 180, TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _ghostIcon = new Image { Width = 20, Height = 20 };
+        var iconBadge = new Border { Child = _ghostIcon };
+        iconBadge.Classes.Add("sessionDragIcon");
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, Spacing = 10,
+            Children = { iconBadge, _ghostText }
+        };
+        _ghost = new Border { Child = content, IsVisible = false };
+        _ghost.Classes.Add("sessionDragGhost");
+        _sourceOutline = new Rectangle
+        {
+            IsVisible = false,
+            IsHitTestVisible = false,
+            RadiusX = 6, RadiusY = 6,
+            StrokeThickness = 1.5,
+            StrokeDashArray = new AvaloniaList<double> { 4, 3 },
+            StrokeLineCap = PenLineCap.Round
+        };
+        _sourceOutline.Bind(Shape.StrokeProperty, new DynamicResourceExtension("SessionDropIndicatorBrush"));
+        _indicator = new Border { IsVisible = false };
+        _indicator.Classes.Add("sessionDropIndicator");
+        _layer.Children.Add(_indicator);
+        _layer.Children.Add(_sourceOutline);
+        _layer.Children.Add(_ghost);
+
+        _scrollTimer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
+        _scrollTimer.Tick += (_, _) =>
+        {
+            AnimateOutline();
+            AutoScroll();
+            UpdateSourceOutline();
+        };
+
+        _list.AddHandler(InputElement.PointerPressedEvent, OnPressed, RoutingStrategies.Tunnel, true);
+        _list.AddHandler(InputElement.PointerMovedEvent, OnMoved, RoutingStrategies.Tunnel, true);
+        _list.AddHandler(InputElement.PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel, true);
+        _list.AddHandler(InputElement.PointerCaptureLostEvent, (_, _) => Cancel(), RoutingStrategies.Bubble, true);
+        _list.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, true);
+        _list.DetachedFromVisualTree += (_, _) => Cancel();
+    }
+
+    public bool IsDragging => _draggedRow != null || _draggedPeer != null;
+
+    private void OnPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Cancel();
+
+        if (!e.GetCurrentPoint(_list).Properties.IsLeftButtonPressed
+            || _viewModel() is not { IsStale: false, IsPrivateMode: false } viewModel)
+            return;
+
+        if (e.Source is Visual peerSource && FindPeer(peerSource) is { } peerItem)
+        {
+            if (peerSource.FindAncestorOfType<Button>(true) == null
+                && peerSource.FindAncestorOfType<Slider>(true) == null
+                && peerItem.DataContext is PeerVM peer && viewModel.CanDragPeer(peer)
+                && RowOf(peerSource) is HybridSessionVM session)
+            {
+                _pressedPeer = (peer, session);
+                _sourceHeader = peerItem;
+                _pressPoint = e.GetPosition(_list);
+                _pointer = e.Pointer;
+            }
+
+            return;
+        }
+
+        // Private chats follow recent activity; only the server channel list can be arranged.
+        if (!viewModel.Access.CanManageSessions)
+            return;
+
+        // Only the header of a row is a handle: the peers below a session and the controls in a
+        // header (the name being typed, the add button) keep their own presses
+        if (e.Source is not Visual source
+            || source.FindAncestorOfType<TextBox>(true) != null
+            || source.FindAncestorOfType<Button>(true) != null
+            || FindHeader(source) is not { } header
+            || RowOf(source) is not { } row
+            || row is ChatSessionVM { IsPrivate: true }
+            || row is SessionCategoryVM { IsEditing: true })
+            return;
+
+        _pressedRow = row;
+        _sourceHeader = header;
+        _pressPoint = e.GetPosition(_list);
+        _pointer = e.Pointer;
+    }
+
+    private void OnMoved(object? sender, PointerEventArgs e)
+    {
+        if ((_pressedRow == null && _pressedPeer == null) || e.Pointer != _pointer)
+            return;
+
+        _lastPoint = e.GetPosition(_list);
+
+        if (!IsDragging)
+        {
+            var moved = _lastPoint - _pressPoint;
+            if (Math.Sqrt(moved.X * moved.X + moved.Y * moved.Y) < StartDistance)
+                return;
+
+            Begin(e.Pointer);
+        }
+
+        Update();
+        e.Handled = true;
+    }
+
+    private void OnReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_draggedPeer is { } dragged)
+        {
+            var targetSession = _peerTarget;
+            _pressedPeer = null;
+            End();
+            e.Handled = true;
+
+            if (targetSession != null)
+                _viewModel()?.MovePeer(dragged.Session, dragged.Peer, targetSession);
+            return;
+        }
+
+        if (_draggedRow == null)
+        {
+            _pressedRow = null;
+            _pressedPeer = null;
+            _sourceHeader = null;
+            return;
+        }
+
+        var row = _draggedRow;
+        var target = _target;
+        _pressedRow = null;
+        End();
+        e.Handled = true;
+
+        if (target == null || _viewModel() is not { } viewModel)
+            return;
+
+        switch (row)
+        {
+            case ISessionVM session:
+                _ = viewModel.MoveSession(session, target.CategoryId, target.Before as ISessionVM);
+                break;
+            case SessionCategoryVM category:
+                _ = viewModel.MoveCategory(category, target.Before as SessionCategoryVM);
+                break;
+        }
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && IsDragging)
+        {
+            Cancel();
+            e.Handled = true;
+        }
+    }
+
+    private void Begin(IPointer pointer)
+    {
+        pointer.Capture(_list);
+
+        if (_pressedPeer is { } pressedPeer)
+        {
+            _draggedPeer = pressedPeer;
+            _ghostText.Text = pressedPeer.Peer.DisplayedName;
+            _ghostIcon.Bind(Image.SourceProperty, new DynamicResourceExtension("BaseUserIcon"));
+        }
+        else
+        {
+            _draggedRow = _pressedRow;
+            _draggedRow!.IsDragged = true;
+
+            _ghostText.Text = _draggedRow switch
+            {
+                ISessionVM session => session.Model.Name,
+                SessionCategoryVM category => category.Name,
+                _ => ""
+            };
+            _ghostIcon.Bind(Image.SourceProperty, new DynamicResourceExtension(_draggedRow switch
+            {
+                ChatSessionVM => "HashIcon",
+                ISessionVM => "HybridSessionIcon",
+                _ => "ExpandIcon"
+            }));
+        }
+        _ghost.IsVisible = true;
+        _dragClock.Restart();
+        _sourceOutline.StrokeDashOffset = 0;
+        UpdateSourceOutline();
+        Presence.Play(_ghost, AppearEffect.Grow);
+        _scrollTimer.Start();
+    }
+
+    private void Cancel()
+    {
+        _pressedRow = null;
+        _pressedPeer = null;
+        if (IsDragging)
+            End();
+        _sourceHeader = null;
+    }
+
+    private void End()
+    {
+        _scrollTimer.Stop();
+        _dragClock.Reset();
+        if (_draggedRow != null)
+            _draggedRow.IsDragged = false;
+        _draggedRow = null;
+        _draggedPeer = null;
+        _target = null;
+        Highlight(null);
+        HighlightSession(null);
+        _ghost.IsVisible = false;
+        _sourceOutline.IsVisible = false;
+        _sourceHeader = null;
+        _indicator.IsVisible = false;
+
+        if (_pointer?.Captured == _list)
+            _pointer.Capture(null);
+        _pointer = null;
+    }
+
+    private void Update()
+    {
+        // Measure before positioning so the card stays inside the list, even on the first frame.
+        _ghost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var point = _list.TranslatePoint(_lastPoint, _layer) ?? _lastPoint;
+        Canvas.SetLeft(_ghost, Math.Clamp(point.X + 16, 0, Math.Max(0, _layer.Bounds.Width - _ghost.DesiredSize.Width - 8)));
+        Canvas.SetTop(_ghost, Math.Clamp(point.Y + 12, 0, Math.Max(0, _layer.Bounds.Height - _ghost.DesiredSize.Height - 8)));
+
+        if (_draggedPeer is { } dragged)
+        {
+            _target = null;
+            HighlightSession(FindPeerTarget(dragged.Peer, dragged.Session));
+            _indicator.IsVisible = false;
+            return;
+        }
+
+        _target = _draggedRow is SessionCategoryVM ? FindCategoryTarget() : FindSessionTarget();
+
+        if (_target?.LineY is { } y)
+        {
+            Canvas.SetLeft(_indicator, 8);
+            Canvas.SetTop(_indicator, y - 1);
+            _indicator.Width = Math.Max(0, _list.Bounds.Width - 16);
+            _indicator.IsVisible = true;
+        }
+        else
+        {
+            _indicator.IsVisible = false;
+        }
+    }
+
+    private Target? FindSessionTarget()
+    {
+        var viewModel = _viewModel();
+        var rows = VisibleRows();
+        if (viewModel == null || rows.Count == 0)
+            return null;
+
+        var y = _lastPoint.Y;
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var (row, top, height) = rows[i];
+            if (y >= top + height)
+                continue;
+
+            if (row is SessionCategoryVM category)
+            {
+                // The lower half of a header takes the session into the category, at its top
+                if (y >= top + height / 2)
+                {
+                    Highlight(category);
+                    var first = rows.Skip(i + 1).Select(r => r.Row)
+                        .TakeWhile(r => r is ISessionVM).FirstOrDefault();
+                    return new Target(category.Id, first, null);
+                }
+
+                // The upper half puts it at the end of what comes before the header
+                Highlight(null);
+                var previous = i > 0 ? rows[i - 1].Row : null;
+                return new Target(previous == null ? null : viewModel.CategoryOf(previous), null, top);
+            }
+
+            Highlight(null);
+            var categoryId = viewModel.CategoryOf(row);
+            if (y < top + height / 2)
+                return new Target(categoryId, row, top);
+
+            // Below the middle: in front of the next session of the same place, or at its end
+            var next = i + 1 < rows.Count && rows[i + 1].Row is ISessionVM nextSession
+                                          && viewModel.CategoryOf(nextSession) == categoryId
+                ? rows[i + 1].Row
+                : null;
+            // The bottom of this row and the top of the next represent the same insertion.
+            // Always draw at the next row's top, including across margins or the dragged slot.
+            var lineY = i + 1 < rows.Count ? rows[i + 1].Top : top + height;
+            return new Target(categoryId, next, lineY);
+        }
+
+        // Below every row: the end of the last place in the list
+        Highlight(null);
+        var (lastRow, lastTop, lastHeight) = rows[^1];
+        return new Target(viewModel.CategoryOf(lastRow), null, lastTop + lastHeight);
+    }
+
+    /// <summary>The hybrid session under the pointer, header or peers, when the peer may be moved into it.</summary>
+    private HybridSessionVM? FindPeerTarget(PeerVM peer, HybridSessionVM source)
+    {
+        if (_viewModel() is not { } viewModel)
+            return null;
+
+        foreach (var (row, top, height) in VisibleRows())
+        {
+            if (_lastPoint.Y < top || _lastPoint.Y >= top + height)
+                continue;
+
+            return row is HybridSessionVM session && viewModel.CanMovePeer(source, peer, session) ? session : null;
+        }
+
+        return null;
+    }
+
+    private void HighlightSession(HybridSessionVM? session)
+    {
+        if (_peerTarget == session)
+            return;
+
+        if (_peerTarget != null)
+            _peerTarget.IsDropTarget = false;
+        _peerTarget = session;
+        if (session != null)
+            session.IsDropTarget = true;
+    }
+
+    private Target? FindCategoryTarget()
+    {
+        Highlight(null);
+        var rows = VisibleRows();
+        if (rows.Count == 0)
+            return null;
+
+        var headers = rows.Where(r => r.Row is SessionCategoryVM).ToList();
+        foreach (var (row, top, height) in headers)
+        {
+            if (_lastPoint.Y < top + height / 2)
+                return new Target(null, row, top);
+        }
+
+        var (_, lastTop, lastHeight) = rows[^1];
+        return new Target(null, null, lastTop + lastHeight);
+    }
+
+    /// <summary>
+    /// The rows on screen in their order with their place in the list, without the dragged one.
+    /// </summary>
+    private List<(ISessionListRow Row, double Top, double Height)> VisibleRows()
+    {
+        var rows = new List<(ISessionListRow, double, double)>();
+        if (_viewModel() is not { } viewModel)
+            return rows;
+
+        for (var i = 0; i < viewModel.Rows.Count; i++)
+        {
+            var row = viewModel.Rows[i];
+            if (row == _draggedRow || _list.ContainerFromIndex(i) is not { IsVisible: true } container)
+                continue;
+
+            if (container.TranslatePoint(default, _list) is not { } origin)
+                continue;
+
+            rows.Add((row, origin.Y, container.Bounds.Height));
+        }
+
+        return rows;
+    }
+
+    private void Highlight(SessionCategoryVM? category)
+    {
+        if (_highlighted == category)
+            return;
+
+        if (_highlighted != null)
+            _highlighted.IsDropTarget = false;
+        _highlighted = category;
+        if (category != null)
+            category.IsDropTarget = true;
+    }
+
+    private void AutoScroll()
+    {
+        if (!IsDragging || _list.FindDescendantOfType<ScrollViewer>() is not { } scroll)
+            return;
+
+        var height = _list.Bounds.Height;
+        double step = 0;
+        if (_lastPoint.Y < ScrollZone)
+            step = -ScrollSpeed * (1 - Math.Max(0, _lastPoint.Y) / ScrollZone);
+        else if (_lastPoint.Y > height - ScrollZone)
+            step = ScrollSpeed * (1 - Math.Max(0, height - _lastPoint.Y) / ScrollZone);
+
+        if (step == 0)
+            return;
+
+        var max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+        var offset = Math.Clamp(scroll.Offset.Y + step, 0, max);
+        if (Math.Abs(offset - scroll.Offset.Y) < 0.5)
+            return;
+
+        scroll.Offset = scroll.Offset.WithY(offset);
+        Update();
+    }
+
+    private void AnimateOutline()
+    {
+        // One complete dash pattern per cycle makes the looping outline seamless.
+        var cycle = Motion.Get(MotionDuration.ExtraLong).TotalSeconds * 3;
+        _sourceOutline.StrokeDashOffset = cycle > 0
+            ? -7 * ((_dragClock.Elapsed.TotalSeconds % cycle) / cycle)
+            : 0;
+    }
+
+    private void UpdateSourceOutline()
+    {
+        // Follow the original header through scrolling and layout changes, excluding its peers;
+        // a dragged peer is outlined on its own row
+        var dragged = (object?)_draggedPeer?.Peer ?? _draggedRow;
+        if (_sourceHeader is not { } header || dragged == null || header.DataContext != dragged
+            || header.TranslatePoint(default, _layer) is not { } origin
+            || _list.TranslatePoint(default, _layer) is not { } listOrigin)
+        {
+            _sourceOutline.IsVisible = false;
+            return;
+        }
+
+        const double inset = 0.75;
+        var left = origin.X + inset;
+        var top = origin.Y + inset;
+        Canvas.SetLeft(_sourceOutline, left);
+        Canvas.SetTop(_sourceOutline, top);
+        _sourceOutline.Width = Math.Max(0, header.Bounds.Width - inset * 2);
+        _sourceOutline.Height = Math.Max(0, header.Bounds.Height - inset * 2);
+        _sourceOutline.Clip = new RectangleGeometry(new Rect(
+            listOrigin.X - left, listOrigin.Y - top, _list.Bounds.Width, _list.Bounds.Height));
+        _sourceOutline.IsVisible = true;
+    }
+
+    // The row of a peer in the list of peers under a hybrid session
+    private static ListBoxItem? FindPeer(Visual source) =>
+        source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault(item => item.DataContext is PeerVM);
+
+    private static Border? FindHeader(Visual source) =>
+        source.GetSelfAndVisualAncestors().OfType<Border>()
+            .FirstOrDefault(border => border.Classes.Contains("sessionHeader") || border.Classes.Contains("categoryHeader"));
+
+    private ISessionListRow? RowOf(Visual source) =>
+        source.GetSelfAndVisualAncestors().OfType<ListBoxItem>()
+            .FirstOrDefault(item => ItemsControl.ItemsControlFromItemContainer(item) == _list)?.DataContext as ISessionListRow;
+}

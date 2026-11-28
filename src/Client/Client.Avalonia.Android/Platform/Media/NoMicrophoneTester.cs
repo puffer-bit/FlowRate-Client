@@ -30,7 +30,8 @@ internal sealed class NoMicrophoneTester : IMicrophoneTester
     public bool IsRunning => false;
 
     public MicrophoneTestError? Start(string? deviceId, double volume, bool isLoopbackEnabled,
-        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled) =>
+        NoiseSuppressionLevel noiseSuppression, VoiceGateOptions? voiceGate, bool isEchoCancellationEnabled,
+        bool isAutoGainControlEnabled) =>
         MicrophoneTestError.Unexpected;
 
     public void Stop()

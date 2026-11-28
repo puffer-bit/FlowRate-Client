@@ -15,6 +15,8 @@ internal static class UserMapper
             Id = dto.Id,
             CoordinatorInstanceId = dto.CoordinatorInstanceId,
             Username = dto.Username,
+            Kind = dto.Kind,
+            OwnerUserId = dto.OwnerUserId,
             Ip = dto.Ip,
             RegionName = dto.RegionName,
             RegionCode = dto.RegionCode,
@@ -23,8 +25,11 @@ internal static class UserMapper
             AvatarUrl = dto.AvatarUrl,
             State = dto.State,
             Status = dto.Status,
-            FirstConnectionTime = dto.FirstConnectionTime,
-            LastConnectionTime = dto.LastConnectionTime,
+            Device = dto.Device is { } device
+                ? new UserDeviceModel(device.Platform, device.OsVersion, device.Architecture, device.AppVersion)
+                : null,
+            FirstConnectionTime = dto.FirstConnectedAt,
+            LastConnectionTime = dto.LastConnectedAt,
             RoleIds = dto.RoleIds
         };
     }

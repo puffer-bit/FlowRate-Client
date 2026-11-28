@@ -1,0 +1,196 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:settingsVm="clr-namespace:Client.ViewModels.Settings;assembly=Client.Avalonia.ViewModels"
+             xmlns:services="clr-namespace:Client.Services;assembly=Client.Avalonia.ViewModels"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             x:DataType="settingsVm:SettingsWindowVM"
+             x:Class="Client.Views.Settings.SettingsNavigation"
+             Width="220" ClipToBounds="True">
+
+    <UserControl.Transitions>
+        <Transitions>
+            <DoubleTransition Property="Width" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+        </Transitions>
+    </UserControl.Transitions>
+
+    <UserControl.Resources>
+        <services:SettingTypeToIconConverter x:Key="SettingIconConverter"/>
+    </UserControl.Resources>
+
+    <Grid IsVisible="{Binding IsLoaded}">
+
+        <Grid.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+            </Transitions>
+        </Grid.Transitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Typing here swaps the list of tabs below for the settings that match -->
+        <TextBox Grid.Row="0" x:Name="SearchBox" Classes="search" Margin="12,12,12,0"
+                 PlaceholderText="{l:Text settings.search.placeholder}"
+                 Text="{Binding SearchQuery}"
+                 GotFocus="SearchBox_OnGotFocus" KeyDown="SearchBox_OnKeyDown"/>
+
+        <Button Grid.Row="0" x:Name="CompactSearchButton" Margin="12,12,12,0" Padding="0" Height="32" HorizontalAlignment="Stretch"
+                Background="{DynamicResource DarkBackgroundBrush}" GotFocus="SearchBox_OnGotFocus"
+                ToolTip.Tip="{l:Text settings.search.placeholder}" AutomationProperties.Name="{l:Text settings.search.placeholder}">
+            <Path Width="16" Height="16" Stretch="None" Data="M 2,6.5 A 4.5,4.5 0 1 0 11,6.5 A 4.5,4.5 0 1 0 2,6.5 Z M 9.9,9.9 L 14,14"
+                  Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.4" StrokeLineCap="Round"/>
+        </Button>
+
+        <ListBox Grid.Row="1" x:Name="SearchResultsList" Classes="searchResults"
+                 ItemsSource="{Binding SearchResults}"
+                 SelectedItem="{Binding SelectedSearchResult}"
+                 IsVisible="{Binding IsSearching}"
+                 Margin="12,8,12,12"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBox.Styles>
+                <!-- The path under the title is secondary text, but not on the accent fill of the picked result -->
+                <Style Selector="ListBox.searchResults TextBlock.path">
+                    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                </Style>
+                <Style Selector="ListBox.searchResults ListBoxItem:selected TextBlock.path">
+                    <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+                </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="settingsVm:SettingSearchResultVM">
+                    <StackPanel Spacing="2" Margin="2,1">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium"
+                                   TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap"/>
+                        <TextBlock Classes="path" Text="{Binding Path}" FontSize="11"
+                                   TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="1" Margin="18,16,18,0" VerticalAlignment="Top"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   Text="{l:Text settings.search.nothingFound}"
+                   IsVisible="{Binding HasNoSearchResults}"/>
+
+        <ListBox Grid.Row="1"
+                 x:Name="TabList"
+                 ItemsSource="{Binding NavigationItems}"
+                 Tapped="TabList_OnTapped"
+                 DoubleTapped="TabList_OnDoubleTapped"
+                 SelectedItem="{Binding SelectedNavigationItem}"
+                 IsVisible="{Binding !IsSearching}"
+                 Margin="12,8,12,12"
+                 Background="Transparent"
+                 BorderThickness="0">
+            <ListBox.Styles>
+                <!-- The sub-items of a tab come out under it while it is open; the view shows and folds them -->
+                <Style Selector="ListBoxItem" x:DataType="settingsVm:SettingNavItemVM">
+                    <Setter Property="IsEnabled" Value="{Binding Setting.IsEnabled}" />
+                </Style>
+
+                <!-- A tab, and under it its sub-items: lower, without an icon, set in by
+                     a line -->
+                <Style Selector="Grid.tab.sub">
+                    <Setter Property="MinHeight" Value="30"/>
+                </Style>
+                <Style Selector="Grid.tab.sub > TextBlock">
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Grid.tab.sub > TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}"/>
+                </Style>
+                <!-- The lines of the sub-items stand close to each other, so that the line down them is whole:
+                     each draws its own piece of it over its whole height, the padding as well -->
+                <Style Selector="ListBoxItem.sub">
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="Padding" Value="6,4"/>
+                </Style>
+                <Style Selector="Border.guide">
+                    <Setter Property="Margin" Value="0,-4"/>
+                    <Setter Property="Width" Value="2"/>
+                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                    <Setter Property="Background" Value="{DynamicResource SecondaryTextBrush}"/>
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Border.guide">
+                    <Setter Property="Background" Value="{DynamicResource OnAccentTextBrush}"/>
+                    <Setter Property="Width" Value="4"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
+
+                <!-- Marks a tab that has sub-items: points down while they are out, to the right otherwise -->
+                <Style Selector="Path.subItemsMark">
+                    <Setter Property="Stroke" Value="{DynamicResource SecondaryTextBrush}"/>
+                    <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="Path.subItemsMark.expanded">
+                    <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Path.subItemsMark">
+                    <Setter Property="Stroke" Value="{DynamicResource OnAccentTextBrush}"/>
+                </Style>
+
+                <StyleInclude Source="/Views/Settings/Styles/ExperimentalIcon.axaml"/>
+            </ListBox.Styles>
+
+            <!-- A few lines, some of them hidden: not virtualized, so that they keep their places -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="settingsVm:SettingNavItemVM">
+                    <Grid Classes="tab navigationRow" Classes.sub="{Binding IsSubItem}"
+                          ToolTip.Tip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
+                          ColumnDefinitions="Auto, Auto, *, Auto" VerticalAlignment="Center">
+                        <!-- The line the sub-items are set in by -->
+                        <Panel Grid.Column="0" Width="24" IsVisible="{Binding IsSubItem}">
+                            <Border Classes="guide"/>
+                        </Panel>
+
+                        <Image Grid.Column="1"
+                               Classes.agitated="{Binding Setting.IsIconAgitated}"
+                               anim:ShownState.Track="True"
+                               Source="{Binding Setting.Type, Converter={StaticResource SettingIconConverter}}"
+                               IsVisible="{Binding !IsSubItem}"
+                               Stretch="Uniform"/>
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Name}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   MaxLines="2"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="Wrap"/>
+
+                        <Panel Grid.Column="3" IsVisible="{Binding HasSubItems}">
+                            <Path Classes="subItemsMark"
+                                  Classes.expanded="{Binding IsExpanded}"
+                                  Width="10" Height="6" Stretch="None"
+                                  Margin="4,0,4,0"
+                                  VerticalAlignment="Center"
+                                  Data="M 0.75,0.75 L 5,5 L 9.25,0.75"
+                                  StrokeThickness="1.5"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"/>
+                        </Panel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+    </Grid>
+</UserControl>

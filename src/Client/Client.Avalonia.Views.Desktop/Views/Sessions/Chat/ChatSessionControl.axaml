@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:panels="clr-namespace:Client.Avalonia.Controls.Panels;assembly=Client.Avalonia.Controls"
+             xmlns:images="clr-namespace:Client.Avalonia.Controls.Images;assembly=Client.Avalonia.Controls"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:emptyStates="clr-namespace:Client.Avalonia.Controls.EmptyStates;assembly=Client.Avalonia.Controls"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             xmlns:chatViews="clr-namespace:Client.Views.Sessions.Chat"
+             xmlns:common="clr-namespace:Client.Views.Common"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:DataType="chatVm:ActiveChatSessionVM"
+             x:Class="Client.Views.Sessions.Chat.ChatSessionControl">
+
+    <Control.DataTemplates>
+        <DataTemplate DataType="chatVm:ChatStatusBarVM">
+            <chatViews:ChatStatusBarControl/>
+        </DataTemplate>
+    </Control.DataTemplates>
+    
+    <Grid RowDefinitions="Auto, *, Auto" ColumnDefinitions="*, Auto">
+        <ContentControl
+            Grid.Row="0" Grid.ColumnSpan="2"
+            Content="{Binding StatusBar}"
+            Height="{StaticResource SessionHeaderHeight}"/>
+        
+        <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
+             only the text inside a message can be selected for copying -->
+        <!-- "bubbles": the messages are drawn as in Telegram, chosen in the settings -->
+        <ItemsControl Grid.Row="1"
+                      x:Name="MessagesList"
+                      Classes.bubbles="{Binding IsBubbleLayout}"
+                      IsVisible="{Binding HasMessages}"
+                      ItemsSource="{Binding Messages}"
+                      Margin="6">
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <panels:MessageListPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.DataTemplates>
+                <DataTemplate DataType="{x:Type chatVm:ChatMessageVM}">
+                    <chatViews:ChatMessageControl />
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type chatVm:ChatDateSeparatorVM}">
+                    <chatViews:ChatDateSeparatorControl />
+                </DataTemplate>
+            </ItemsControl.DataTemplates>
+
+            <ItemsControl.Styles>
+                <!-- The rings of uploads and downloads of files, once for every message -->
+                <StyleInclude Source="avares://Client.Avalonia.Views.Common/Views/Chat/ChatFileRingStyle.axaml"/>
+                <!-- The spacing the rows had as list items -->
+                <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
+                    <Setter Property="Margin" Value="0,2"/>
+                </Style>
+            </ItemsControl.Styles>
+        </ItemsControl>
+        
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Stretch"
+                                        IsBubbles="{Binding IsBubbleLayout}"
+                                        IsVisible="{Binding IsInitialLoading}"/>
+
+        <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
+        <loadingIndicators:ChatSkeleton Grid.Row="1"
+                                        Margin="6"
+                                        VerticalAlignment="Top"
+                                        Background="{DynamicResource GeneralBrush}"
+                                        IsCompact="True"
+                                        IsBubbles="{Binding IsBubbleLayout}"
+                                        IsVisible="{Binding IsLoadingOlder}"/>
+
+        <!-- Shown while the chat has no messages; laid out like the placeholder of the main window -->
+        <emptyStates:EmptyState Grid.Row="1"
+                                anim:Presence.Appear="Rise"
+                                IsVisible="{Binding !HasMessages}"
+                                Icon="{StaticResource EmptyChat}"
+                                Title="{l:Text chat.empty.title}"
+                                Text="{l:Text chat.empty.text}"/>
+                
+        <!-- Floating "scroll to latest" button over the bottom right corner of the list -->
+        <chatViews:ChatScrollDownButton Grid.Row="1"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,12,12"/>
+
+        <!-- Composer: one rounded box holds the reply bar, the attachments and the input row,
+             floating over the bottom of the chat; its outline lights up while the input has focus -->
+        <Panel Grid.Row="2" IsEnabled="{Binding !IsInitialLoading}">
+            <chatViews:ChatComposer x:Name="Composer" DataContext="{Binding Composer}"/>
+        </Panel>
+
+        <!-- Both lists use the same column beside the timeline and composer: the side panel of every
+             session, which slides open and is resized by its left edge -->
+        <common:SidePanelHost Grid.Column="1" Grid.Row="1" Grid.RowSpan="2" PanelKey="chat"
+                              IsOpen="{Binding StatusBar.IsSidePanelOpen}">
+            <Grid>
+                <Panel IsVisible="{Binding StatusBar.Viewers.IsOpen}">
+                    <chatViews:ChatViewersPanel DataContext="{Binding StatusBar.Viewers}"/>
+                </Panel>
+                <chatViews:ChatPinnedMessagesPanel IsVisible="{Binding StatusBar.IsPinsOpen}"/>
+            </Grid>
+        </common:SidePanelHost>
+
+        <!-- An image of a message opened over the chat; the wheel or a double click zooms it, a drag
+             moves the zoomed one, a click beside it or Esc closes it -->
+        <ContentControl Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="2"
+                        x:Name="ImageViewerHost"
+                        Focusable="True"
+                        KeyboardNavigation.IsTabStop="False"
+                        IsVisible="{Binding IsImageViewerOpen}"
+                        Content="{Binding ImageViewer}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate DataType="chatVm:ChatImageViewerVM">
+                    <chatViews:ChatImageViewer/>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+    </Grid>
+</UserControl>

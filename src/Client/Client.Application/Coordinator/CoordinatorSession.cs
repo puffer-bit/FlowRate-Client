@@ -1,7 +1,7 @@
+using Client.Application.Chat;
 using Client.Application.Coordinator.Users;
 using Client.Core.Chat;
 using Client.Core.Coordinator;
-using Client.Core.Events;
 using Client.Core.Sessions;
 using Client.Core.Sessions.Hybrid;
 using Client.Core.Users;
@@ -22,6 +22,11 @@ public partial class CoordinatorSession : ICoordinatorSession
                 return;
 
             field = value;
+            if (value != CoordinatorState.Connected)
+            {
+                _chatTyping.Clear();
+                lock (_callLock) _chatCalls.Clear();
+            }
             StateChanged?.Invoke(value);
 
             // A measurement taken on a connection that is gone says nothing about the next one
@@ -47,6 +52,8 @@ public partial class CoordinatorSession : ICoordinatorSession
     
     public event Action<CoordinatorState>? StateChanged;
     public event Action<CoordinatorSessionModel>? CoordinatorReconfigured;
+    public event Action<ServerRestartEvent>? ServerRestart;
+    public event Action? ServerRestartCancelled;
     public event Action<int>? OnlineUsersChanged;
     public event Action<ChatSessionModel>? ChatSessionAdded;
     public event Action<ChatSessionModel>? ChatSessionReconfigured;
@@ -58,7 +65,14 @@ public partial class CoordinatorSession : ICoordinatorSession
     public event Action<int, ChatMessageModel>? TextMessageAdded;
     public event Action<int, ChatMessageModel>? TextMessageEdited;
     public event Action<int, int, long>? TextMessageDeleted;
+    private readonly ChatTypingTracker _chatTyping = new();
+
+    public IReadOnlyDictionary<int, DateTimeOffset> GetChatTypingUsers(int chatId) => _chatTyping.Get(chatId);
+
+    public event Action<int, int, bool>? ChatUserTyping;
     public event Action<ChatReadState>? ChatReadStateChanged;
+    public event Action<ChatPeerRead>? ChatPeerRead;
+    public event Action<ChatViewersChangedEvent>? ChatViewersChanged;
     
     public event Action<PeerJoinedEvent>? HybridSessionPeerJoined;
     public event Action<PeerLeftEvent>? HybridSessionPeerLeft;
@@ -86,10 +100,12 @@ public partial class CoordinatorSession : ICoordinatorSession
     public CoordinatorSession(ICoordinatorGateway gateway,
         ITrustedCertificatesRepository trustedCertificates,
         ILoggerFactory loggerFactory,
-        IConnectivityMonitor? connectivity = null)
+        IConnectivityMonitor? connectivity = null,
+        IDeviceKeyStore? deviceKeys = null)
     {
         // DI
         _gateway = gateway;
+        _deviceKeys = deviceKeys ?? new Security.InMemoryDeviceKeyStore();
         _trustedCertificates = trustedCertificates;
         _connectivity = connectivity;
         _logger = loggerFactory.CreateLogger<CoordinatorSession>();
@@ -126,6 +142,7 @@ public partial class CoordinatorSession : ICoordinatorSession
     
     public void Dispose()
     {
+        _chatTyping.Clear();
         _lifetime.Cancel();
         _connectionMessages.Writer.TryComplete();
 

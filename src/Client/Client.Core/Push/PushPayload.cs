@@ -27,4 +27,8 @@ public sealed record PushPayload(
     PushAttachmentKind Attachment,
     long SentTime,
     string? SenderAvatarUrl = null,
-    bool Mention = false);
+    bool Mention = false,
+    Guid? CallId = null,
+    int? CallState = null,
+    long? ExpiresAt = null,
+    int? RecipientId = null);

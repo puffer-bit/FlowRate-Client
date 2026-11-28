@@ -1,10 +1,39 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Client.App">
+             xmlns:chrome="clr-namespace:Avalonia.Controls.Chrome;assembly=Avalonia.Controls"
+             x:Class="Client.App"
+             Name="FlowRate">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+             <ResourceDictionary.MergedDictionaries>
+                 <ResourceInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/UiResources.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollBarTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollViewerTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Sliders/SliderTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ToggleSwitches/ToggleSwitchTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/NumericUpDown/NumericUpDownTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ComboBoxes/ComboBoxTheme.axaml"/>
+                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/WindowTheme.axaml"/>
+             </ResourceDictionary.MergedDictionaries>
+         </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector=":is(Window)">
+            <Setter Property="Icon" Value="avares://Client.Avalonia.Assets/AppIcons/Headphones/flowrate.ico"/>
+        </Style>
+        <!-- In fullscreen Avalonia drops a title bar with caption buttons from the top edge on hover.
+             It is never shown, in any window: Escape leaves fullscreen -->
+        <Style Selector="WindowDrawnDecorations /template/ Panel[(chrome|WindowDecorationProperties.ElementRole)=TitleBar]:not(#PART_TitleBar)">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Button.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/SecondaryButtonStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Buttons/BorderlessButtonStyle.axaml"/>
@@ -21,7 +50,6 @@
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/TextBlocks/TextBlockStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/CustomViews/ChatMessageViewStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Notifications/NotificationStyle.axaml"/>
-        <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Svg/SvgStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/FlyoutStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/PopupStyle.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/SettingsHeader.axaml"/>
@@ -29,6 +57,7 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsPage.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsCard.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Settings/SettingsRow.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Banners/InfoBanner.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Banners/WarningBanner.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Hints/HintBlock.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/EmptyStates/EmptyState.axaml"/>
@@ -38,25 +67,12 @@
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/PingIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Indicators/SignalIndicator.axaml"/>
         <StyleInclude Source="avares://Client.Avalonia.Controls/Controls/Pickers/ColorPicker.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/UiControls.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Settings/Styles/ResponsiveSettings.axaml"/>
+        <StyleInclude Source="avares://Client.Avalonia.Views.Desktop/Views/Common/Styles/Dialogs.axaml"/>
     </Application.Styles>
              
-    <Application.Resources>
-        <ResourceDictionary>
-             <ResourceDictionary.MergedDictionaries>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/DarkTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Theme/LightTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Assets/IconImages.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollBarTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ScrollBars/ScrollViewerTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Sliders/SliderTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ToggleSwitches/ToggleSwitchTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/TextBoxes/TextBoxTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/NumericUpDown/NumericUpDownTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/ComboBoxes/ComboBoxTheme.axaml"/>
-                 <ResourceInclude Source="avares://Client.Avalonia.Styles/Styles/Windows/WindowTheme.axaml"/>
-             </ResourceDictionary.MergedDictionaries>
-         </ResourceDictionary>
-    </Application.Resources>
+
              
     <!-- The tray icon is created in code: Services/UI/Tray/TrayService.cs -->
 </Application>

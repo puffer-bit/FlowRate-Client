@@ -13,9 +13,7 @@ internal static class PeerMapper
         return new PeerModel
         {
             UserId = dto.UserId,
-            IsAudioRequested = dto.IsAudioRequested,
             State = dto.State,
-            IsNegotiated = dto.IsNegotiated,
             IsConnected = dto.IsConnected,
             IsApproved = dto.IsApproved,
             IsRejected = dto.IsRejected,
@@ -24,7 +22,8 @@ internal static class PeerMapper
             IsAfk = dto.IsAfk,
             AfkReason = dto.IsAfk ? dto.AfkMessage : null,
             IsScreenShareActive = dto.IsScreenShareActive,
-            IsScreenAudioActive = dto.IsScreenAudioActive
+            IsScreenAudioActive = dto.IsScreenAudioActive,
+            WatchedScreenShares = dto.WatchedScreenShares.ToArray()
         };
     }
 }

@@ -25,7 +25,7 @@ namespace Client.GStreamer.Audio;
 /// <para>The valve ramps open and closed, see <see cref="VoiceGateFade"/>: switched at once, the voice
 /// would start with a click and its tail would be cut off.</para>
 /// </remarks>
-internal sealed class VoiceGate
+public sealed class VoiceGate
 {
     /// <summary>
     /// How often the level element reports. Shorter clips less of the first word.
@@ -58,16 +58,19 @@ internal sealed class VoiceGate
     /// <summary>
     /// The voice probability of RNNoise below which it silences a frame. Measured with synthetic
     /// speech and typing: at 0.5 a twentieth of the 10 ms intervals of the typing passed, enough
-    /// for some keys to open the gate; at 0.8 hardly any did, while the share of the speech
-    /// that passed fell only from 75 to 70 %, the gaps lying between syllables, which the hold
-    /// covers. Higher values cut into the speech without keeping out more.
+    /// for some keys to open the gate; at 0.8 hardly any did. A real microphone next to a loud
+    /// keyboard, the keys peaking above the voice, still had one in five seconds of typing open
+    /// the gate at 0.8 and none at 0.9. Human speech in Russian and English lost no more at 0.9
+    /// than at 0.8, under half a percent of its frames where it lost any, the gaps lying between
+    /// syllables, which the hold covers.
     /// </summary>
-    public const float VoiceActivityThreshold = 0.8f;
+    public const float VoiceActivityThreshold = 0.9f;
 
     private const string LevelMessageName = "level";
     private const string PeakField = "peak";
 
     private readonly Element _level;
+    private readonly Element _delay;
     private readonly VoiceDetector? _detector;
     private readonly VoiceGateFade _valve;
     private readonly Lock _lock = new();
@@ -77,13 +80,15 @@ internal sealed class VoiceGate
 
     /// <param name="level">Posts the level messages; silenced while the gate is off.</param>
     /// <param name="valve">The gate valve, closed when the branch is built.</param>
+    /// <param name="delay">The pre-roll queue, delayed only while the gate needs it.</param>
     /// <param name="detector">The voice detection of the branch, null when the runtime has no RNNoise.</param>
     /// <param name="options">How the gate decides, null keeps it open.</param>
-    public VoiceGate(string outboundId, Element level, Element valve, VoiceDetector? detector,
+    public VoiceGate(string outboundId, Element level, Element valve, Element delay, VoiceDetector? detector,
         VoiceGateOptions? options)
     {
         OutboundId = outboundId;
         _level = level;
+        _delay = delay;
         _detector = detector;
         _valve = new VoiceGateFade(valve);
 
@@ -123,6 +128,10 @@ internal sealed class VoiceGate
     private void Apply(VoiceGateOptions? options)
     {
         _options = options;
+
+        var delay = options == null ? TimeSpan.Zero : PreRoll +
+            (options.IsVoiceDetectionEnabled && _detector != null ? VoiceDetectionDelay : TimeSpan.Zero);
+        _delay.SetProperty("min-threshold-buffers", (uint)(delay / MicrophoneChain.FrameDuration));
 
         // Levels are measured only while they are needed. RNNoise runs whenever the gate is on, even
         // without voice detection: it takes well under one percent of a core, and it tells a voice

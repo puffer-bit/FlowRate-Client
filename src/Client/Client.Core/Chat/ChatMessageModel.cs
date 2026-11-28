@@ -1,3 +1,5 @@
+using Shared.Models.DataTransferObjects.ChatSession.Messages;
+
 namespace Client.Core.Chat;
 
 public class ChatMessageModel
@@ -11,20 +13,30 @@ public class ChatMessageModel
     public long Revision { get; init; }
 
     public required int SenderUserId { get; init; }
-    public required DateTime SentTime { get; init; }
-    public DateTime? DelayedSentTime { get; init; }
-    public DateTime? DisposeTime { get; init; }
-    public DateTime? EditTime { get; init; }
+
+    /// <summary>What the author's client gave the message when sending it; null from older clients and servers.</summary>
+    public Guid? ClientMessageId { get; init; }
+    public required DateTimeOffset SentTime { get; init; }
+    public DateTimeOffset? DelayedSentTime { get; init; }
+    public DateTimeOffset? DisposeTime { get; init; }
+    public DateTimeOffset? EditTime { get; init; }
+    public DateTimeOffset? PinnedAt { get; init; }
+    public int? PinnedByUserId { get; init; }
+    public bool IsPinned => PinnedAt.HasValue;
 
     public ChatTextContent? TextContent { get; init; }
     public ChatReplyContent? ReplyContent { get; init; }
 
     public required List<ChatImageContent> Images { get; init; }
-    public required List<ChatVideoContent> Video { get; init; }
     public required List<ChatFileContent> Files { get; init; }
 
+    /// <summary>The preview of the first link of the text, once the server has fetched its page.</summary>
+    public ChatLinkPreview? LinkPreview { get; init; }
+
+    /// <summary>The author sent the message without a preview of its link.</summary>
+    public bool IsLinkPreviewDisabled { get; init; }
+
     public required List<ChatReaction> Reactions { get; init; }
-    public required List<string> UsersIds { get; init; }
 
     /// <summary>
     /// Who the text mentions, read by the server from its mention tokens.
@@ -35,11 +47,10 @@ public class ChatMessageModel
 
     public bool IsDelayed { get; init; }
     public bool IsEdited { get; init; }
-    public bool IsReposted { get; init; }
-    public bool IsDelivered { get; init; }
     public bool IsDeleted { get; init; }
     public bool IsReadOnly { get; init; }
     public bool IsSystem { get; init; }
+    public ChatSystemContent? SystemContent { get; init; }
     public bool IsDisposable { get; init; }
     public bool IsMine { get; set; }
 

@@ -1,0 +1,47 @@
+<Button xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+        xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+        x:Class="Client.Avalonia.Controls.Avatars.AvatarEditButton"
+        Cursor="Hand" Padding="0" BorderThickness="0" Background="Transparent"
+        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+        MinWidth="0" MinHeight="0" CornerRadius="9999"
+        ToolTip.Tip="{l:Text profile.avatar.choose}" AutomationProperties.Name="{l:Text profile.avatar.choose}">
+    <Button.Styles>
+        <Style Selector="Button /template/ Panel#EditHint">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ Panel#EditHint">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button:focus-visible /template/ Panel#EditHint">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button:pressed /template/ Panel#EditHint">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button:pressed /template/ Image#EditPencil">
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+        <Style Selector="Button:disabled /template/ Panel#EditHint">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+    </Button.Styles>
+    <Button.Template>
+        <ControlTemplate>
+            <Border Background="Transparent" CornerRadius="9999" ClipToBounds="True">
+                <Panel Name="EditHint" IsHitTestVisible="False">
+                    <Panel.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="{anim:Motion Short}" Easing="{anim:Ease Standard}"/>
+                        </Transitions>
+                    </Panel.Transitions>
+                    <Border Background="{DynamicResource DialogBackdropBrush}" CornerRadius="9999"/>
+                    <Image Name="EditPencil" Width="20" Height="20" Source="{StaticResource PencilOnImageIcon}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Panel>
+            </Border>
+        </ControlTemplate>
+    </Button.Template>
+</Button>

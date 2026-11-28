@@ -1,11 +1,11 @@
-using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
+using Client.Avalonia.Localization;
+using Client.Core.Coordinator;
 using ReactiveUI;
 using Shared.Enums;
 using Shared.Validation;
-using Client.Avalonia.Localization;
-using Client.Core.Coordinator;
 
 namespace Client.ViewModels.ServerSettings;
 
@@ -53,9 +53,27 @@ public sealed class RoleEditorVM : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public IReadOnlyList<RoleColorVM> Colors { get; }
+    public ObservableCollection<RoleColorVM> Colors { get; }
 
     public IReadOnlyList<PermissionOptionVM> Permissions { get; }
+
+    public string PermissionSearch
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(FilteredPermissions));
+            this.RaisePropertyChanged(nameof(HasNoMatchingPermissions));
+        }
+    } = string.Empty;
+
+    public IReadOnlyList<PermissionOptionVM> FilteredPermissions => Permissions.Where(option =>
+        string.IsNullOrWhiteSpace(PermissionSearch)
+        || option.Title.Contains(PermissionSearch.Trim(), System.StringComparison.CurrentCultureIgnoreCase)
+        || option.Description.Contains(PermissionSearch.Trim(), System.StringComparison.CurrentCultureIgnoreCase)).ToList();
+
+    public bool HasNoMatchingPermissions => FilteredPermissions.Count == 0;
 
     /// <summary>The role is below the highest role of the current user, who may manage roles.</summary>
     public bool CanEdit
@@ -63,8 +81,6 @@ public sealed class RoleEditorVM : ReactiveObject
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
-
-    public bool CanDelete => CanEdit && !IsEveryone;
 
     public bool IsDirty
     {
@@ -81,9 +97,9 @@ public sealed class RoleEditorVM : ReactiveObject
 
     public RoleEditorVM()
     {
-        Colors = new[] { (int?)null }.Concat(RolesTabVM.Palette.Select(color => (int?)color))
+        Colors = new(new[] { (int?)null }.Concat(RolesTabVM.Palette.Select(color => (int?)color))
             .Select(color => new RoleColorVM(color, Select))
-            .ToList();
+            .ToList());
         Permissions = PermissionOptions.Select(option =>
                 new PermissionOptionVM(option.Permission, Strings.Get(option.Title), Strings.Get(option.Description),
                     OnEdited))
@@ -100,6 +116,13 @@ public sealed class RoleEditorVM : ReactiveObject
         {
             Role = role;
             Name = role?.Name ?? string.Empty;
+            // A role may use a color chosen by another client. Keep it selectable and
+            // preserve it when the user edits only the name or permissions.
+            foreach (var custom in Colors.Where(color => color.Color is { } value
+                         && !RolesTabVM.Palette.Contains(value)).ToList())
+                Colors.Remove(custom);
+            if (role?.Color is { } saved && Colors.All(color => color.Color != saved))
+                Colors.Add(new RoleColorVM(saved, Select));
             foreach (var color in Colors)
                 color.IsSelected = color.Color == role?.Color;
             foreach (var option in Permissions)
@@ -140,7 +163,6 @@ public sealed class RoleEditorVM : ReactiveObject
     private void ApplyAccess(CoordinatorPermissions permissions)
     {
         CanEdit = Role != null && permissions.CanManage(Role);
-        this.RaisePropertyChanged(nameof(CanDelete));
 
         // A permission the role has may stay; only the ones of the current user may be added
         foreach (var option in Permissions)
@@ -160,6 +182,8 @@ public sealed class RoleEditorVM : ReactiveObject
 
     private void OnEdited()
     {
+        // Followed by the dot of the header
+        this.RaisePropertyChanged(nameof(SelectedColor));
         if (_isLoading || Permissions == null)
             return;
 
@@ -206,46 +230,4 @@ public sealed class RoleEditorVM : ReactiveObject
         (Permission.ShareVideo, "roles.permission.shareVideo", "roles.permission.shareVideo.description"),
         (Permission.PokeMembers, "roles.permission.poke", "roles.permission.poke.description")
     ];
-}
-
-/// <summary>One permission in the role editor.</summary>
-public sealed class PermissionOptionVM(Permission permission, string title, string description, Action onChanged)
-    : ReactiveObject
-{
-    public Permission Permission { get; } = permission;
-    public string Title { get; } = title;
-    public string Description { get; } = description;
-
-    public bool IsChecked
-    {
-        get;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            onChanged();
-        }
-    }
-
-    public bool IsEnabled
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-}
-
-/// <summary>One color offered in the role editor; null for none.</summary>
-public sealed class RoleColorVM(int? color, Action<RoleColorVM> select) : ReactiveObject
-{
-    /// <summary>0xRRGGBB, or null for no color.</summary>
-    public int? Color { get; } = color;
-
-    public bool IsNone => Color == null;
-
-    public bool IsSelected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    public void Select() => select(this);
 }

@@ -32,13 +32,15 @@ mkdir -p "$DEST/lib/gstreamer-1.0" "$DEST/libexec/gstreamer-1.0" "$OUT/licenses"
 declare -A ORIGIN
 
 echo "== Copying GStreamer"
-# The plugins of gst-plugins-rs are installed there too: libgstdav1d.so, libgstrsrtp.so, libgstrsaudiofx.so
+# The plugins of gst-plugins-rs are installed there too: libgstdav1d.so, libgstrsaudiofx.so
 for plugin in "$PREFIX"/lib/gstreamer-1.0/*.so; do
     install -m 644 "$plugin" "$DEST/lib/gstreamer-1.0/"
 done
+# The libraries the bindings of the client (GstSharp.Net, GstSharp.Net.App) call into; the rest of
+# libgst*-1.0 comes only as a dependency of a bundled plugin, below
+BOUND='^libgst(reamer|base|allocators|app|audio|net|pbutils|play|rtp|rtsp|sdp|tag|transcoder|video|webrtc)-1\.0\.so\.0$'
 for library in "$PREFIX"/lib/libgst*-1.0.so.0; do
-    # The unit test library, built only to satisfy the docs setup of the plugin modules
-    [[ "$(basename "$library")" == libgstcheck-1.0.so.0 ]] && continue
+    [[ "$(basename "$library")" =~ $BOUND ]] || continue
     cp -L "$library" "$DEST/lib/"
     ORIGIN[$(basename "$library")]=gstreamer
 done
@@ -122,17 +124,17 @@ echo "== Collecting licenses"
 copy_licenses() {
     local name=$1 dir=$2
     mkdir -p "$OUT/licenses/$name"
-    find "$dir" -maxdepth 1 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' -o -iname 'PATENTS*' \) \
+    find "$dir" -maxdepth 1 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' -o -iname 'PATENTS*' -o -iname 'NOTICE*' \) \
         -exec cp {} "$OUT/licenses/$name/" \;
 }
 
 copy_licenses gstreamer "$SRC/gstreamer"
-copy_licenses usrsctp "$SRC/gstreamer/subprojects/gst-plugins-bad/ext/sctp/usrsctp"
-for subproject in libnice openh264 orc webrtc-audio-processing abseil-cpp; do
+for subproject in openh264 orc webrtc-audio-processing abseil-cpp; do
     for dir in "$SRC"/gstreamer/subprojects/"$subproject"*/; do
         [[ -d "$dir" ]] && copy_licenses "$subproject" "$dir"
     done
 done
+copy_licenses fdk-aac "$SRC/fdk-aac"
 copy_licenses dav1d "$SRC/dav1d"
 copy_licenses svt-av1 "$SRC/svtav1"
 copy_licenses pipewire "$SRC/pipewire"
@@ -144,14 +146,14 @@ copy_licenses gst-plugins-rs "$SRC/gst-plugins-rs"
     echo
     echo "GStreamer ${GST_VERSION:-} and its plugins: LGPL-2.1-or-later"
     echo "  source: https://gitlab.freedesktop.org/gstreamer/gstreamer"
-    echo "gst-plugins-rs (dav1d, rtp, audiofx with RNNoise): MIT/Apache-2.0 and MPL-2.0"
+    echo "gst-plugins-rs (dav1d, audiofx with RNNoise): MIT/Apache-2.0 and MPL-2.0"
     echo "  source: https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"
     echo "PipeWire GStreamer plugin: MIT      source: https://gitlab.freedesktop.org/pipewire/pipewire"
-    echo "libnice: LGPL-2.1 / MPL-1.1         source: https://libnice.freedesktop.org"
+    echo "FDK AAC: Fraunhofer FDK AAC license   source: https://github.com/mstorsjo/fdk-aac"
     echo "OpenH264: BSD-2-Clause              source: https://github.com/cisco/openh264"
     echo "dav1d: BSD-2-Clause                 source: https://code.videolan.org/videolan/dav1d"
     echo "SVT-AV1: BSD-3-Clause-Clear, AOM patent license   source: https://gitlab.com/AOMediaCodec/SVT-AV1"
-    echo "orc: BSD-2-Clause, usrsctp: BSD-3-Clause"
+    echo "orc: BSD-2-Clause"
     echo "webrtc-audio-processing: BSD-3-Clause   source: https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing"
     echo "Abseil: Apache-2.0                  source: https://github.com/abseil/abseil-cpp"
     echo

@@ -1,29 +1,122 @@
-using Client.Core.Coordinator;
-using Shared.Enums;
+using System;
+using System.Linq;
+using Client.Avalonia.Localization;
 using System.Collections.Generic;
-using ReactiveUI;
-using ReactiveUI.Primitives;
 using Client.Core.Chat;
+using Client.Core.Coordinator;
 using Client.Core.Sessions;
 using Client.ViewModels.Dialogs;
+using ReactiveUI;
+using Shared.Enums;
+
 using Result = Client.ViewModels.Dialogs.Result;
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.List;
 
-public class ChatSessionVM : ReactiveObject, ISessionVM
+public class ChatSessionVM : ReactiveObject, ISessionVM, IDisposable
 {
     // Session data
     public SessionModel Model
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            DisplayName = value.Name;
+            // A group shows its own picture or the first letter of its name; a direct chat the other member's
+            if (value is ChatSessionModel { Kind: ChatKind.Group } group)
+                AvatarUrl = group.AvatarUrl;
+            this.RaisePropertyChanged(nameof(IsPrivate));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
+            this.RaisePropertyChanged(nameof(IsDirect));
+            this.RaisePropertyChanged(nameof(IsGroup));
+            this.RaisePropertyChanged(nameof(CanCall));
+            this.RaisePropertyChanged(nameof(LastMessagePreview));
+            this.RaisePropertyChanged(nameof(LastMessageTime));
+        }
     }
 
-    // UI
-    public bool IsEntered
+    public string? AvatarUrl { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public Shared.Enums.User.UserStatus? PeerStatus { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public bool PeerIsMobile { get; set { this.RaiseAndSetIfChanged(ref field, value); } }
+    public string DisplayName { get; set { this.RaiseAndSetIfChanged(ref field, value); } } = string.Empty;
+    public ReactiveCommand<RxVoid, RxVoid>? EditGroupCommand { get; set; }
+    public ReactiveCommand<RxVoid, RxVoid>? LeaveGroupCommand { get; set; }
+    public bool CanEditGroup => Model is ChatSessionModel { Kind: ChatKind.Group } && CanManage;
+    public bool CanLeaveGroup => Model is ChatSessionModel { Kind: ChatKind.Group } && !CanManage;
+    public bool IsDirect => Model is ChatSessionModel { Kind: ChatKind.Direct };
+    public bool IsGroup => Model is ChatSessionModel { Kind: ChatKind.Group };
+
+    /// <summary>A call runs in this chat; its name turns the green of the outline.</summary>
+    public bool HasActiveCall
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallText));
+        }
+    }
+
+    /// <summary>
+    /// The media session of the call running in this chat, whose peers the list shows under the chat with the
+    /// same rows and menus as under a voice channel; null while no call runs.
+    /// </summary>
+    public HybridSessionVM? CallPeers
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            if (value == null) IsCallExpanded = false;
+        }
+    }
+
+    /// <summary>The peers of the call are shown under the chat.</summary>
+    public bool IsCallExpanded
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public void ToggleCallExpanded() => IsCallExpanded = !IsCallExpanded;
+
+    /// <summary>Starts the chat's call, joins the running one, or shows it when we are in it.</summary>
+    public ReactiveCommand<RxVoid, RxVoid>? CallCommand { get; set; }
+    public bool CanCall => Model is ChatSessionModel { Kind: ChatKind.Direct or ChatKind.Group }
+        && Client.Core.Media.MediaRuntime.IsEnabled;
+    public string CallText => Strings.Get(IsEntered ? "calls.open" : HasActiveCall ? "calls.join" : "calls.start");
+    public bool IsPrivate => Model is ChatSessionModel { IsPrivate: true };
+    public string LastMessageTime => (Model as ChatSessionModel)?.LastMessage?.SentTime.ToLocalTime().ToString("HH:mm") ?? "";
+    public string LastMessagePreview
+    {
+        get
+        {
+            if ((Model as ChatSessionModel)?.LastMessage is not { } message) return Strings.Get("privateChats.empty");
+            if (message.IsSystem && message.SystemContent?.Kind == Shared.Models.DataTransferObjects.ChatSession.Messages.ChatSystemEventKind.CallEnded)
+                return Client.ViewModels.Sessions.Chat.ChatSystemMessageText.Format(message, _ => null);
+            if (!string.IsNullOrWhiteSpace(message.TextContent?.Text))
+                return message.TextContent.Text.Replace('\n', ' ').Replace('\r', ' ');
+            if (message.Images.Count > 0) return Strings.Get("privateChats.photo");
+            if (message.Files.Any(file => file.Video != null)) return Strings.Get("privateChats.video");
+            if (message.Files.Any(file => file.MimeType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)))
+                return Strings.Get("privateChats.audio");
+            if (message.Files.Count > 0) return Strings.Get("privateChats.file");
+            return Strings.Get("privateChats.message");
+        }
+    }
+
+    // UI
+    /// <summary>The user is in the call of this chat; outlined like the voice channel one is in.</summary>
+    public bool IsEntered
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(CallText));
+        }
     }
 
     public bool IsShown
@@ -33,8 +126,33 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             RaiseUnreadProperties();
+            this.RaisePropertyChanged(nameof(ShowsDraft));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
         }
     }
+
+    /// <summary>The text typed in the chat and not sent, with its mentions as tokens; null when there is none.</summary>
+    public string? Draft
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(DraftPreview));
+            this.RaisePropertyChanged(nameof(ShowsDraft));
+            this.RaisePropertyChanged(nameof(ShowsLastMessagePreview));
+        }
+    }
+
+    /// <summary>The draft on one line, in the place of the last message of a chat that is not shown.</summary>
+    public string DraftPreview => Draft?.Replace('\n', ' ').Replace('\r', ' ') ?? string.Empty;
+
+    public bool ShowsDraft => Draft != null && !IsShown;
+
+    // A run of the line cannot take a localized text from the markup
+    public string DraftLabel => Strings.Get("sessions.draft");
+
+    public bool ShowsLastMessagePreview => IsPrivate && !ShowsDraft;
 
     public bool IsLeaving
     {
@@ -64,10 +182,12 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
     }
 
     /// <summary>The roles of the current user let it move the chat to another category.</summary>
-    public bool CanArrange => CanManage;
+    public ReactiveCommand<SessionModel, RxVoid> EditSessionCommand { get; set; } = null!;
+    public bool CanEditSession => !IsPrivate && CanManage;
+
+    public bool CanArrange => !IsPrivate && CanManage;
 
     // Chats have no host
-    public bool IsHost => false;
 
     /// <summary>The roles of the current user let it see the chat. The server sends no chat it may not see.</summary>
     public bool CanView
@@ -85,10 +205,13 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
 
     public void ApplyAccess(CoordinatorPermissions permissions)
     {
-        CanManage = permissions.Has(Permission.ManageSessions);
+        CanManage = IsPrivate ? permissions.HasIn(Model, Permission.ManageSessions) : permissions.Has(Permission.ManageSessions);
         CanView = permissions.HasIn(Model, Permission.ViewSessions);
-        CanEditPermissions = permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
+        CanEditPermissions = !IsPrivate && permissions.Has(Permission.ManageSessions | Permission.ManageRoles);
+        this.RaisePropertyChanged(nameof(CanEditSession));
         this.RaisePropertyChanged(nameof(CanArrange));
+        this.RaisePropertyChanged(nameof(CanEditGroup));
+        this.RaisePropertyChanged(nameof(CanLeaveGroup));
     }
 
     /// <summary>
@@ -101,8 +224,41 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
         {
             this.RaiseAndSetIfChanged(ref field, value);
             RaiseUnreadProperties();
+            this.RaisePropertyChanged(nameof(MutedToolTip));
         }
     }
+
+    /// <summary>
+    /// When a mute for a while ends; null while not muted or muted until the user turns the notifications on.
+    /// </summary>
+    public DateTimeOffset? MutedUntil
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MutedToolTip));
+        }
+    }
+
+    /// <summary>The tip of the crossed bell: until when the chat stays muted.</summary>
+    public string MutedToolTip => MutedUntil is { } until
+        ? Strings.Format("sessions.notificationsMutedUntil", ("time", MuteEndText(until.ToLocalTime())))
+        : Strings.Get("sessions.notificationsMuted");
+
+    // The time alone today, with the date on another day
+    private static string MuteEndText(DateTimeOffset until) => until.Date == DateTimeOffset.Now.Date
+        ? until.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)
+        : Strings.FormatDateTime(until);
+
+    /// <summary>
+    /// Mutes the chat for the number of minutes given as the parameter, or until the user turns the
+    /// notifications on with an empty one.
+    /// </summary>
+    public ReactiveCommand<string?, RxVoid>? MuteForCommand { get; set; }
+
+    // Ends a mute for a while when its time comes
+    internal IDisposable? MuteEnd { get; set; }
 
     /// <summary>
     /// Messages of others after the read position of the user, up to <see cref="ChatReadState.MaxCount"/>.
@@ -153,30 +309,50 @@ public class ChatSessionVM : ReactiveObject, ISessionVM
 
     public string UnreadCountText => CountText(UnreadCount);
     public string MentionCountText => "@" + CountText(MentionCount);
-    
+
     public Interaction<MessageBoxVM, Result> ShowMessageBox { get; }
-    
+
     // Reactive commands
     public ReactiveCommand<int, RxVoid> DeleteSessionCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> ShowSessionCommand { get; set; }
     public ReactiveCommand<int, RxVoid> ToggleMuteCommand { get; set; }
     public ReactiveCommand<SessionModel, RxVoid> EditPermissionsCommand { get; }
-    
-    
-    public ChatSessionVM(SessionModel model, 
-        ReactiveCommand<SessionModel, RxVoid> showSessionCommand, 
+    public ReactiveCommand<int, RxVoid> LeaveChatCommand { get; }
+
+    public ChatSessionVM(SessionModel model,
+        ReactiveCommand<SessionModel, RxVoid> showSessionCommand,
         ReactiveCommand<int, RxVoid> deleteSessionCommand,
         ReactiveCommand<int, RxVoid> toggleMuteCommand,
-        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand)
+        ReactiveCommand<SessionModel, RxVoid> editPermissionsCommand,
+        ReactiveCommand<int, RxVoid> leaveChatCommand)
     {
         Model = model;
-        
+        Strings.LanguageChanged += OnLanguageChanged;
+
         ShowMessageBox = new Interaction<MessageBoxVM, Result>();
 
         ShowSessionCommand = showSessionCommand;
         DeleteSessionCommand = deleteSessionCommand;
         ToggleMuteCommand = toggleMuteCommand;
         EditPermissionsCommand = editPermissionsCommand;
+        LeaveChatCommand = leaveChatCommand;
+    }
+
+    private void OnLanguageChanged() => global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        this.RaisePropertyChanged(nameof(LastMessagePreview));
+        this.RaisePropertyChanged(nameof(MutedToolTip));
+        this.RaisePropertyChanged(nameof(DraftLabel));
+    });
+
+    public void Dispose()
+    {
+        Strings.LanguageChanged -= OnLanguageChanged;
+        MuteEnd?.Dispose();
+        MuteForCommand?.Dispose();
+        EditGroupCommand?.Dispose();
+        CallCommand?.Dispose();
+        LeaveGroupCommand?.Dispose();
     }
 
     public void ApplyReadState(ChatReadState state)

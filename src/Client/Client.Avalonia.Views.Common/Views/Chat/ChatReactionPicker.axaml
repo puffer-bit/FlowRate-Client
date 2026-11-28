@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat"
+             xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
+             xmlns:menus="clr-namespace:Client.Avalonia.Controls.Menus;assembly=Client.Avalonia.Controls"
+             xmlns:emoji="clr-namespace:Client.Avalonia.Controls.Emoji;assembly=Client.Avalonia.Controls"
+             xmlns:chat="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
+             x:Class="Client.Views.Shared.Chat.ChatReactionPicker" x:DataType="chat:ChatMessageVM">
+    <UserControl.Styles>
+        <Style Selector="Button.quick-reaction.selected">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    <StackPanel Width="208" Spacing="6" anim:Presence.Appear="Grow">
+        <ItemsControl ItemsSource="{Binding ReactionChoices}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="chat:ChatReactionVM">
+                    <Button Classes="ghost quick-reaction" Classes.selected="{Binding IsMine}" Width="48" Height="44" Padding="4" CornerRadius="8"
+                            Command="{Binding Choose}" AutomationProperties.Name="{Binding Emoji}">
+                        <TextBlock Text="{Binding Emoji}" FontFamily="{x:Static icons:EmojiFont.Family}"
+                                   FontSize="25" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Separator/>
+        <menus:MenuItemButton Icon="{StaticResource AddReactionIcon}" Content="{l:Text chat.reaction.more}">
+            <menus:MenuItemButton.Flyout>
+                <Flyout Placement="RightEdgeAlignedTop" Opened="OnPickerOpened">
+                    <emoji:EmojiPickerView x:Name="AllEmoji" Width="320" Height="360"/>
+                </Flyout>
+            </menus:MenuItemButton.Flyout>
+        </menus:MenuItemButton>
+    </StackPanel>
+</UserControl>

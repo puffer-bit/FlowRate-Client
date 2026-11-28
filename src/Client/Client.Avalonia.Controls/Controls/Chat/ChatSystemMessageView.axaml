@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chat="clr-namespace:Client.Avalonia.Controls.Chat"
+             x:Class="Client.Avalonia.Controls.Chat.ChatSystemMessageView"
+             x:DataType="chat:ChatSystemMessageView" x:Name="EventView">
+    <UserControl.Styles>
+        <Style Selector="Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource TipIcon}"/>
+        </Style>
+        <Style Selector="chat|ChatSystemMessageView[Kind=MemberAdded] Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource ChatMemberAddedIcon}"/>
+        </Style>
+        <Style Selector="chat|ChatSystemMessageView[Kind=MemberRemoved] Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource ChatMemberRemovedIcon}"/>
+        </Style>
+        <Style Selector="chat|ChatSystemMessageView[Kind=MemberLeft] Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource ChatMemberLeftIcon}"/>
+        </Style>
+        <Style Selector="chat|ChatSystemMessageView[Kind=CallStarted] Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource ChatCallStartedIcon}"/>
+        </Style>
+        <Style Selector="chat|ChatSystemMessageView[Kind=CallEnded] Image.action-icon">
+            <Setter Property="Source" Value="{DynamicResource ChatCallEndedIcon}"/>
+        </Style>
+        <Style Selector="Button.event-user">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource ColorPrimaryLight}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      HorizontalContentAlignment="Left" VerticalContentAlignment="Center"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.event-user /template/ ContentPresenter, Button.event-user:pointerover /template/ ContentPresenter, Button.event-user:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.event-user:pointerover TextBlock, Button.event-user:focus-visible TextBlock">
+            <Setter Property="TextDecorations" Value="Underline"/>
+        </Style>
+    </UserControl.Styles>
+    <Border Padding="0,3" HorizontalAlignment="Left">
+        <Grid ColumnDefinitions="20,*,Auto" ColumnSpacing="8">
+            <Image Classes="action-icon" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" x:Name="EventText" TextWrapping="Wrap"
+                       FontSize="12" VerticalAlignment="Center"
+                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+            <TextBlock Grid.Column="2" Text="{Binding #EventView.Time, StringFormat=\{0:HH:mm\}}"
+                       ToolTip.Tip="{Binding #EventView.Time, StringFormat=\{0:f\}}"
+                       FontSize="11" VerticalAlignment="Center" Margin="2,0,0,0" Opacity="0.65"
+                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+        </Grid>
+    </Border>
+</UserControl>

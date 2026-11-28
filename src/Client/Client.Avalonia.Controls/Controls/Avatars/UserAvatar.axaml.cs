@@ -14,12 +14,16 @@ namespace Client.Avalonia.Controls.Avatars;
 /// 32px profile slot. A <see cref="Status"/> puts its badge at the lower right corner. A deleted user
 /// gets a ghost in place of the initial.
 /// </summary>
-[PseudoClasses(SpeakingPseudoClass, WaitingPseudoClass, DeletedPseudoClass)]
+[PseudoClasses(SpeakingPseudoClass, WaitingPseudoClass, DeletedPseudoClass, MobilePseudoClass)]
 public class UserAvatar : TemplatedControl
 {
     private const string SpeakingPseudoClass = ":speaking";
+    private const string MobilePseudoClass = ":mobile";
     private const string WaitingPseudoClass = ":waiting";
     private const string DeletedPseudoClass = ":deleted";
+    private const string SnoringPseudoClass = ":snoring";
+    private const string IdlePseudoClass = ":idle";
+    private const string SleepingPseudoClass = ":sleeping";
 
     public static readonly StyledProperty<bool> IsDeletedProperty =
         AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsDeleted));
@@ -45,8 +49,18 @@ public class UserAvatar : TemplatedControl
     public static readonly StyledProperty<string?> CoordinatorProperty =
         AvaloniaProperty.Register<UserAvatar, string?>(nameof(Coordinator));
 
+    public static readonly StyledProperty<Control?> OverlayProperty =
+        AvaloniaProperty.Register<UserAvatar, Control?>(nameof(Overlay));
+
     public static readonly StyledProperty<Enum?> StatusProperty =
         AvaloniaProperty.Register<UserAvatar, Enum?>(nameof(Status));
+
+    public static readonly StyledProperty<bool> IsMobileProperty =
+        AvaloniaProperty.Register<UserAvatar, bool>(nameof(IsMobile));
+
+    /// <summary>The colour of the snore drawn over an idle or sleeping user; set by the styles.</summary>
+    public static readonly StyledProperty<IBrush?> SnoreBrushProperty =
+        AvaloniaProperty.Register<UserAvatar, IBrush?>(nameof(SnoreBrush));
 
     public static readonly StyledProperty<IBrush?> StatusBackgroundProperty =
         AvaloniaProperty.Register<UserAvatar, IBrush?>(nameof(StatusBackground));
@@ -152,6 +166,13 @@ public class UserAvatar : TemplatedControl
         set => SetValue(IsWaitingProperty, value);
     }
 
+    /// <summary>Optional avatar actions, drawn over the photo and below the status badge.</summary>
+    public Control? Overlay
+    {
+        get => GetValue(OverlayProperty);
+        set => SetValue(OverlayProperty, value);
+    }
+
     /// <summary>
     /// The status of the user, shown as the icon "Status{name}Icon" of the assets, so a value of any enum
     /// with the names of the icons will do. No badge when null.
@@ -163,12 +184,27 @@ public class UserAvatar : TemplatedControl
     }
 
     /// <summary>
+    /// The user is online from a phone: the badge of the online status is a phone instead of the dot.
+    /// </summary>
+    public bool IsMobile
+    {
+        get => GetValue(IsMobileProperty);
+        set => SetValue(IsMobileProperty, value);
+    }
+
+    /// <summary>
     /// The ring around the status badge; the color behind the avatar, so the badge looks cut out of it.
     /// </summary>
     public IBrush? StatusBackground
     {
         get => GetValue(StatusBackgroundProperty);
         set => SetValue(StatusBackgroundProperty, value);
+    }
+
+    public IBrush? SnoreBrush
+    {
+        get => GetValue(SnoreBrushProperty);
+        set => SetValue(SnoreBrushProperty, value);
     }
 
     /// <summary>
@@ -208,8 +244,10 @@ public class UserAvatar : TemplatedControl
             _ = LoadAsync();
         else if (change.Property == UserNameProperty)
             Initial = string.IsNullOrWhiteSpace(UserName) ? "?" : UserName.Trim()[..1].ToUpperInvariant();
-        else if (change.Property == StatusProperty)
-            StatusIcon = Status == null ? null : IconResources.Get($"Status{Status}Icon");
+        else if (change.Property == StatusProperty || change.Property == IsMobileProperty)
+            UpdateStatusIcon();
+        else if (change.Property == BoundsProperty)
+            UpdateSnore();
         else if (change.Property == IsSpeakingProperty)
             PseudoClasses.Set(SpeakingPseudoClass, IsSpeaking);
         else if (change.Property == IsWaitingProperty)
@@ -217,6 +255,24 @@ public class UserAvatar : TemplatedControl
         else if (change.Property == IsDeletedProperty)
             PseudoClasses.Set(DeletedPseudoClass, IsDeleted);
     }
+
+    private void UpdateStatusIcon()
+    {
+        // Away and do not disturb keep their badges: what the user picked tells more than the device
+        var status = Status?.ToString();
+        var mobile = IsMobile && status == "Online";
+        PseudoClasses.Set(MobilePseudoClass, mobile);
+        PseudoClasses.Set(IdlePseudoClass, status == "Idle");
+        PseudoClasses.Set(SleepingPseudoClass, status == "Sleeping");
+        UpdateSnore();
+        StatusIcon = Status == null ? null : IconResources.Get(mobile ? "StatusMobileIcon" : $"Status{Status}Icon");
+    }
+
+    // The snore runs together below this size
+    private const double SnoreMinSize = 28;
+
+    private void UpdateSnore() => PseudoClasses.Set(SnoringPseudoClass,
+        Status?.ToString() is "Idle" or "Sleeping" && Math.Min(Bounds.Width, Bounds.Height) >= SnoreMinSize);
 
     private async Task LoadAsync()
     {

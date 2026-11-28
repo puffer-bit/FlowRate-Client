@@ -9,8 +9,10 @@ namespace Client.Api;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApi(this IServiceCollection services)
+    /// <param name="client">What the client tells the server about itself when it logs in.</param>
+    public static IServiceCollection AddApi(this IServiceCollection services, ClientInfo client)
     {
+        services.AddSingleton(client);
         services.AddTransient<ICoordinatorGateway, CoordinatorGateway>();
         services.AddTransient<IMessageParser, MessageParser>();
         services.AddTransient<IHeartbeatHandler, HeartbeatHandler>();

@@ -1,0 +1,1 @@
+ALTER TABLE AppearanceSettings ADD COLUMN GroupOnlineChatUsers INTEGER NOT NULL DEFAULT 0;

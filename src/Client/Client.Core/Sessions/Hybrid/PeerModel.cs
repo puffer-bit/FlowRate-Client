@@ -5,15 +5,13 @@ namespace Client.Core.Sessions.Hybrid;
 public class PeerModel
 {
     public required int UserId { get; init; }
-    public bool IsAudioRequested { get; init; }
-    public bool IsNegotiated { get; init; }
     public bool IsConnected { get; init; }
     public bool IsApproved { get; init; }
     public bool IsRejected { get; init; }
     public HybridSessionPeerState State { get; set; }
 
     /// <summary>
-    /// Set when the user turned their microphone off; the server sends it to everyone.
+    /// Set while the microphone is muted or voice has not started; the server sends it to everyone.
     /// </summary>
     public bool IsMicrophoneMuted { get; set; }
 
@@ -39,4 +37,7 @@ public class PeerModel
     /// Set while the shown screen carries sound as well.
     /// </summary>
     public bool IsScreenAudioActive { get; set; }
+
+    /// <summary>The users whose screen shares this peer watches.</summary>
+    public IReadOnlyList<int> WatchedScreenShares { get; init; } = [];
 }

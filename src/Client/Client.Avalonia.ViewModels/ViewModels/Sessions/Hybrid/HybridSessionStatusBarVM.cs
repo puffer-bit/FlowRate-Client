@@ -4,12 +4,48 @@ using System.Collections.Generic;
 using Shared.Validation;
 using ReactiveUI;
 using Client.Core.Sessions.Hybrid;
+using Avalonia.Threading;
 using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 
 public class HybridSessionStatusBarVM : ReactiveObject
 {
+    public int SessionId { get; init; }
+    public bool CanUseCamera { get; init; }
+    public bool IsBroadcastBusy
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+    public ReactiveCommand<RxVoid, RxVoid> ToggleBroadcastCommand { get; init; } = null!;
+    public ReactiveCommand<RxVoid, RxVoid> ToggleCameraCommand { get; init; } = null!;
+
+    /// <summary>Sends the next camera instead of the one sent now, such as the other side of a phone.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SwitchCameraCommand { get; init; } = null!;
+    public bool LastWasCamera
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+            this.RaisePropertyChanged(nameof(BroadcastIconKey));
+        }
+    }
+    public bool IsCameraOn
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+        }
+    }
+    public bool IsBroadcastOn => LastWasCamera ? IsCameraOn : IsScreenShareOn;
+    public string BroadcastIconKey => LastWasCamera ? "VideoCameraIcon" : "ScreenShareIcon";
+
+
     public string StatusBarText
     {
         get;
@@ -77,8 +113,128 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public bool IsMicrophoneOn
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+            UpdateMutedSpeechWarning();
+        }
     }
+
+    public bool CanSpeak
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MicrophoneIconKey));
+            UpdateMutedSpeechWarning();
+        }
+    }
+
+    /// <summary>
+    /// The microphone hears us talking while nothing is sent: it is muted, or push to talk is not held.
+    /// </summary>
+    public bool IsMutedSpeechDetected
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            UpdateMutedSpeechWarning();
+        }
+    }
+
+    /// <summary>Push to talk is on: the microphone, on for the others, sends only while its key is held.</summary>
+    public bool IsPushToTalkEnabled
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            UpdateMutedSpeechWarning();
+        }
+    }
+
+    /// <summary>The user wants to know when they talk with the microphone off.</summary>
+    public bool IsMutedMicrophoneWarningEnabled
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            UpdateMutedSpeechWarning();
+        }
+    } = true;
+
+    /// <summary>The user wants to know when they talk without holding the key of push to talk.</summary>
+    public bool IsPushToTalkWarningEnabled
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            UpdateMutedSpeechWarning();
+        }
+    } = true;
+
+    // Away nobody is expected to hear us, and without the right to speak the button cannot help
+    private bool IsSpeakingWhileMuted => IsMutedSpeechDetected && !IsAfk && CanSpeak
+        && (IsMicrophoneOn ? IsPushToTalkEnabled && IsPushToTalkWarningEnabled : IsMutedMicrophoneWarningEnabled);
+
+    /// <summary>
+    /// The microphone button blinks while we talk and nobody hears it: lit and unlit in turns, switched at once
+    /// and not faded, so it catches the eye.
+    /// </summary>
+    public bool IsMicrophoneWarningLit
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    private static readonly TimeSpan MutedSpeechBlinkInterval = TimeSpan.FromMilliseconds(400);
+    private DispatcherTimer? _mutedSpeechBlink;
+
+    private void UpdateMutedSpeechWarning()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(UpdateMutedSpeechWarning);
+            return;
+        }
+
+        if (IsSpeakingWhileMuted)
+        {
+            if (_mutedSpeechBlink != null)
+                return;
+            // Lit at once, the first blink does not wait
+            IsMicrophoneWarningLit = true;
+            _mutedSpeechBlink = new DispatcherTimer { Interval = MutedSpeechBlinkInterval };
+            _mutedSpeechBlink.Tick += (_, _) => IsMicrophoneWarningLit = !IsMicrophoneWarningLit;
+            _mutedSpeechBlink.Start();
+            return;
+        }
+
+        _mutedSpeechBlink?.Stop();
+        _mutedSpeechBlink = null;
+        IsMicrophoneWarningLit = false;
+    }
+
+    public string MicrophoneIconKey => !CanSpeak
+        ? "ForbiddenMicrophoneIcon"
+        : IsMicrophoneOn ? "MicrophoneIcon" : "CrossedMicrophoneIcon";
     
     /// <summary>
     /// Our own voice is heard by the session right now.
@@ -108,6 +264,7 @@ public class HybridSessionStatusBarVM : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(AfkHint));
+            UpdateMutedSpeechWarning();
         }
     }
 
@@ -165,7 +322,11 @@ public class HybridSessionStatusBarVM : ReactiveObject
     public bool IsScreenShareOn
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(IsBroadcastOn));
+        }
     }
 
     public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }

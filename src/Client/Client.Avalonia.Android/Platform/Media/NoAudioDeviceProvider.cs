@@ -18,4 +18,8 @@ internal sealed class NoAudioDeviceProvider : IAudioDeviceProvider
     }
 
     public IReadOnlyList<AudioDeviceInfo> GetInputDevices() => [];
+    public IReadOnlyList<AudioDeviceInfo> GetOutputDevices() => [];
+    public event Action? OutputDevicesChanged { add { } remove { } }
+    public void SetOutputDevice(string? id, string? name) { }
+    public void SetOutputVolume(double volume) { }
 }

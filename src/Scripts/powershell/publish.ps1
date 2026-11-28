@@ -5,8 +5,9 @@ Builds the self-contained FlowRate client on Windows, for Windows, Linux and/or 
 .DESCRIPTION
 Builds the GStreamer runtime, then the client with its own .NET runtime, then everything to publish in
 dist\<version>\<platform>\ (platform win-x64, win-x64-aot, linux-x64 or android). The result needs
-neither .NET nor GStreamer on the target machine. Needs the .NET 10 SDK; no administrator rights. See
-src\Client\Client.GStreamer\Build\README.md for how the runtime is built.
+neither .NET nor GStreamer on the target machine. Needs the .NET 10 SDK and Visual Studio x64 C++ build
+tools with a Windows SDK (also for JIT, to build the libwebrtc shim); no administrator rights to build.
+See src\Client\Client.GStreamer\Build\README.md for how the GStreamer runtime is built.
 
 A desktop platform folder holds two forms of the client:
  - the installed one, made by vpk (Velopack, a local dotnet tool of the repository), which updates
@@ -30,7 +31,8 @@ The Android client is one .apk (arm64-v8a and x86_64) with no GStreamer runtime.
 workload of dotnet (dotnet workload install android), the Android SDK and a JDK. With no keystore given
 the .apk is signed with the debug key: it installs, but a store does not take it. A release key goes in
 the variables ANDROID_KEYSTORE (the file), ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD and
-ANDROID_KEY_PASSWORD.
+ANDROID_KEY_PASSWORD, or in the file Signing/signing.env of the Android project, which builds from the IDE
+read as well.
 
 .PARAMETER Target
 win-x64 (the default), linux-x64, android or all. Also accepted as the first argument without the name.
@@ -80,10 +82,11 @@ Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\..\.."))
 
 $project = "src\Client\Client.Avalonia.Desktop\Client.Avalonia.Desktop.csproj"
 $gstreamerDir = "src\Client\Client.GStreamer\Build"
+$libWebRTCDir = "src\Client\Client.LibWebRTC"
 $publishRoot = "src\Client\Client.Avalonia.Desktop\bin\publish"
 $androidProject = "src\Client\Client.Avalonia.Android\Client.Avalonia.Android.csproj"
 $androidPublishDir = "src\Client\Client.Avalonia.Android\bin\publish\android"
-$icon = "src\Client\Client.Avalonia.Desktop\Assets\avalonia-logo.ico"
+$icon = "src\Client\Client.Avalonia.Assets\AppIcons\Headphones\flowrate.ico"
 $feedDir = "dist\.feed"
 $repoUrl = "https://github.com/puffer-bit/FlowRate-Client"
 # The installed application goes to %LocalAppData%\FlowRateClient on Windows; the data of the user
@@ -102,6 +105,8 @@ if ($Dev) {
     if (-not $Stamp) { $Stamp = [DateTime]::UtcNow.ToString('yyMMddHHmm') }
     $version = "$version-dev.$Stamp"
 }
+# Only a release goes without the mark of a dev build in the status bar; a local build has it too
+$devArguments = if ($Dev) { @() } else { @("-p:ReleaseBuild=true") }
 $versionDir = Join-Path "dist" $version
 $targets = if ($Target -eq "all") { @("win-x64", "linux-x64", "android") } else { @($Target) }
 
@@ -139,6 +144,14 @@ function Initialize-GStreamer([string]$rid) {
         & (Join-Path $gstreamerDir "windows\collect.ps1")
     } else {
         Write-Host "######## Using the existing Windows GStreamer runtime ($runtime), -GStreamer rebuilds it"
+    }
+}
+
+# Checks the libwebrtc runtime of a RID: the only transport of the sessions, so a build without it
+# cannot join one. It is committed (Client.LibWebRTC\Build builds it by hand), so nothing is built here
+function Initialize-LibWebRTC([string]$rid) {
+    if (-not (Test-Path (Join-Path $libWebRTCDir "Build\prebuilt\$rid"))) {
+        throw "No libwebrtc runtime for $rid in $libWebRTCDir\Build\prebuilt\$rid"
     }
 }
 
@@ -184,7 +197,7 @@ function ConvertTo-MtreeName([string]$value) {
 }
 
 # Linux binaries (the executable, createdump, gst-plugin-scanner, shared objects) start with the ELF
-# magic; the file extension says nothing, "Client.Avalonia.Desktop" has ".Desktop" as one
+# magic; the file extension says nothing: the executable has none
 function Test-ElfFile([string]$path) {
     $stream = [System.IO.File]::OpenRead($path)
     try {
@@ -289,7 +302,7 @@ function New-Release([string]$rid, [string]$publishDir) {
     New-Item -ItemType Directory -Force -Path $output, $last | Out-Null
     # Packed here for Linux: vpk builds the AppImage on Windows as well
     $directive = if ($os -eq "linux") { @("[linux]") } else { @() }
-    $exe = if ($os -eq "linux") { "Client.Avalonia.Desktop" } else { "Client.Avalonia.Desktop.exe" }
+    $exe = if ($os -eq "linux") { "FlowRate" } else { "FlowRate.exe" }
     $packIcon = $icon
     if ($os -eq "linux") {
         $packIcon = Join-Path $publishRoot "icon.png"
@@ -367,8 +380,10 @@ function Publish-Android {
             "-p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS",
             "-p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD",
             "-p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD")
+    } elseif (Test-Path (Join-Path (Split-Path $androidProject) "Signing\signing.env")) {
+        Write-Host "Note: the .apk is signed with the key of $(Join-Path (Split-Path $androidProject) "Signing\signing.env")"
     } else {
-        Write-Host "Note: ANDROID_KEYSTORE is not set, the .apk is signed with the debug key"
+        Write-Host "Note: neither ANDROID_KEYSTORE nor signing.env is there, the .apk is signed with the debug key"
     }
 
     Write-Host "######## Publishing the client for android"
@@ -378,7 +393,7 @@ function Publish-Android {
 
     $ErrorActionPreference = "Continue"
     dotnet publish $androidProject -c Release -o $androidPublishDir -nologo -nodeReuse:false `
-        -p:UseSharedCompilation=false @signing 2>&1 | ForEach-Object { "$_" }
+        -p:UseSharedCompilation=false @signing @devArguments 2>&1 | ForEach-Object { "$_" }
     $publishExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($publishExitCode -ne 0) { throw "dotnet publish for android failed with exit code $publishExitCode" }
@@ -400,6 +415,7 @@ foreach ($rid in $targets) {
 
     Write-Host "######## FlowRate client $version for $rid ($mode)"
     Initialize-GStreamer $rid
+    Initialize-LibWebRTC $rid
 
     $publishDir = Join-Path $publishRoot "$rid$suffix"
     # dotnet publish ignores a missing profile and publishes elsewhere
@@ -413,7 +429,7 @@ foreach ($rid in $targets) {
     # once the output is redirected; the exit code is what tells whether the publish failed.
     # -r as well: the RID of the profile alone does not reach the restore.
     $ErrorActionPreference = "Continue"
-    dotnet publish $project -p:PublishProfile="$rid-$mode" -r $rid -nologo 2>&1 | ForEach-Object { "$_" }
+    dotnet publish $project -p:PublishProfile="$rid-$mode" -r $rid -nologo @devArguments 2>&1 | ForEach-Object { "$_" }
     $publishExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($publishExitCode -ne 0) { throw "dotnet publish for $rid failed with exit code $publishExitCode" }

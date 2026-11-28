@@ -71,7 +71,17 @@ internal sealed class VelopackUpdater : IAppUpdater
 
         // The updater waits for this process to end, so the application closes the usual way: the
         // voice session is left and the logs are written out before the files are replaced
-        manager.WaitExitThenApplyUpdates(found.TargetFullRelease, silent: false, restart: true);
+        // Use an absolute data path: the updater may restart us with a different working directory.
+        var arguments = Environment.GetCommandLineArgs().Skip(1).ToList();
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            if (arguments[i] == "--data-dir" && i + 1 < arguments.Count)
+                arguments[++i] = AppDirectories.Data;
+            else if (arguments[i].StartsWith("--data-dir=", StringComparison.Ordinal))
+                arguments[i] = "--data-dir=" + AppDirectories.Data;
+        }
+        manager.WaitExitThenApplyUpdates(found.TargetFullRelease, silent: false, restart: true,
+            restartArgs: arguments.ToArray());
         Dispatcher.UIThread.Post(() =>
             (global::Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown());
     }

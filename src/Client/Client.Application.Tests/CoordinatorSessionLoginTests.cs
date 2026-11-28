@@ -44,6 +44,37 @@ public class CoordinatorSessionLoginTests
         return (session, fake);
     }
 
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_ReportsItsReasonAndClosesSocket(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            gateway.LoginError = error;
+            await session.Connect("server", 1, null, new RegisterLoginPlan());
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
+    [Theory]
+    [InlineData(Shared.Enums.ErrorCode.OnlineLimitReached, CoordinatorState.OnlineLimitReached)]
+    [InlineData(Shared.Enums.ErrorCode.UserLimitReached, CoordinatorState.UserLimitReached)]
+    public async Task CapacityRejection_OnResume_StopsAndReportsItsReason(Shared.Enums.ErrorCode error, CoordinatorState expected)
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, new RegisterLoginPlan());
+            gateway.LoginError = error;
+            await ReconnectAsync(session);
+            Assert.Equal(expected, session.ConnectionStatus);
+            Assert.False(gateway.IsOpen);
+        }
+    }
+
     // Suspended and back at once: the reconnect logs in again, the way a lost connection does
     private static async Task ReconnectAsync(CoordinatorSession session)
     {
@@ -51,70 +82,135 @@ public class CoordinatorSessionLoginTests
         await session.Resume();
     }
 
+    private static readonly LoginPlan ByUsername = new UsernameLoginPlan("alice");
+
     [Fact]
-    public async Task KnownPassword_LogsInWithoutAsking()
+    public async Task Username_AsksThePassword_AndTheReconnectGoesAsTheNewDevice()
     {
-        var user = new User();
+        var user = new User(new LoginAnswer("secret-password", null));
         var (session, gateway) = Create(Password, user);
 
-        await session.Connect("server", 1, "#identity", null, "secret-password");
-
-        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
-        Assert.Empty(user.Prompts);
-        Assert.Equal(("secret-password", (string?)null), Assert.Single(gateway.SecondStageAnswers));
-        Assert.Equal("secret-password", session.AccountPasswordToSave);
-    }
-
-    [Fact]
-    public async Task TypedPassword_IsKeptForTheReconnect()
-    {
-        var user = new User(new LoginAnswer("secret-password", null, false));
-        var (session, _) = Create(Password, user);
-
-        await session.Connect("server", 1, "#identity", null);
+        await session.Connect("server", 1, null, ByUsername);
         await ReconnectAsync(session);
 
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
         var prompt = Assert.Single(user.Prompts);
         Assert.True(prompt.AsksPassword);
         Assert.False(prompt.AsksTwoFactorCode);
-        // Not asked to be remembered: nothing goes to the saved identity
-        Assert.Null(session.AccountPasswordToSave);
+        // The reconnect signs the challenge with the key of the device the login added
+        Assert.IsType<Shared.Models.DataTransferObjects.DeviceLoginDTO>(gateway.SentLogins[^1]);
+        var credentials = session.GetCurrentUserCredentials();
+        Assert.Equal(Assert.Single(gateway.Devices).Key, credentials.DeviceId);
+        Assert.NotNull(credentials.DeviceKey);
     }
 
     [Fact]
-    public async Task Code_IsAskedAtEveryLogin_ThePasswordOnce()
+    public async Task Register_KeepsTheNewRecoveryPhraseUntilTaken()
     {
-        var user = new User(new LoginAnswer("secret-password", "123456", true), new LoginAnswer(null, "123456", false));
-        var (session, gateway) = Create(PasswordAndCode, user);
+        var (session, gateway) = Create(null);
 
-        await session.Connect("server", 1, "#identity", null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
+
+        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+        var register = Assert.IsType<Shared.Models.DataTransferObjects.RegisterLoginDTO>(Assert.Single(gateway.SentLogins));
+        var phrase = session.TakeNewRecoveryPhrase();
+        Assert.NotNull(phrase);
+        Assert.Null(session.TakeNewRecoveryPhrase());
+        using var keys = Client.Application.Security.RecoveryKeySet.FromPhrase(phrase!)!;
+        Assert.Equal(Shared.Auth.LoginSignature.Encode(keys.RecoveryPublicKey), register.Keys.RecoveryPublicKey);
+    }
+
+    [Fact]
+    public async Task UnknownDevice_EndsTheDevice()
+    {
+        var (session, gateway) = Create(null);
+        Shared.Enums.Auth.DeviceEndReason? ended = Shared.Enums.Auth.DeviceEndReason.Revoked;
+        var endedRaised = false;
+        session.DeviceEnded += reason => { ended = reason; endedRaised = true; };
+
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
+        gateway.Devices.Clear();
         await ReconnectAsync(session);
 
-        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
-        Assert.Equal(2, user.Prompts.Count);
-        Assert.True(user.Prompts[0].AsksPassword);
-        Assert.False(user.Prompts[1].AsksPassword);
-        Assert.True(user.Prompts[1].AsksTwoFactorCode);
-        Assert.Equal([("secret-password", "123456"), ("secret-password", "123456")], gateway.SecondStageAnswers);
-        Assert.Equal("secret-password", session.AccountPasswordToSave);
+        Assert.Equal(CoordinatorState.DeviceEnded, session.ConnectionStatus);
+        Assert.True(endedRaised);
+        Assert.Null(ended);
+        Assert.False(gateway.IsOpen);
     }
 
     [Fact]
-    public async Task RefusedSavedPassword_IsAskedAgainAndReplaced()
+    public async Task DeviceRemoval_IsReportedBeforeTheConnectionCloses()
     {
-        var user = new User(new LoginAnswer("secret-password", null, true));
-        var (session, _) = Create(Password, user);
-        List<string?> saved = [];
-        session.AccountPasswordToSaveChanged += saved.Add;
+        var (session, gateway) = Create(null);
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
+        var notifications = new List<string>();
+        session.DeviceEnded += _ => notifications.Add("device-ended");
+        session.StateChanged += state =>
+        {
+            if (state == CoordinatorState.Disconnected)
+                notifications.Add("disconnected");
+        };
 
-        await session.Connect("server", 1, "#identity", null, "old-password");
+        gateway.Raise(new DeviceEndedEvent(Shared.Enums.Auth.DeviceEndReason.Revoked));
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["device-ended", "disconnected"], notifications);
+    }
+
+    [Fact]
+    public async Task DeviceRemovedWhileConnected_StaysOffline()
+    {
+        var (session, gateway) = Create(null);
+        Shared.Enums.Auth.DeviceEndReason? ended = null;
+        session.DeviceEnded += reason => ended = reason;
+        await session.Connect("server", 1, null, new RegisterLoginPlan());
+
+        gateway.Raise(new DeviceEndedEvent(Shared.Enums.Auth.DeviceEndReason.Revoked));
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        Assert.Equal(Shared.Enums.Auth.DeviceEndReason.Revoked, ended);
+        Assert.Equal(CoordinatorState.Disconnected, session.ConnectionStatus);
+    }
+
+    [Fact]
+    public async Task LegacyIdentity_WithItsPassword_MovesOverWithoutAsking()
+    {
+        var user = new User();
+        var (session, gateway) = Create(Password, user);
+
+        await session.Connect("server", 1, null, new LegacyLoginPlan("#identity", null, "secret-password"));
 
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
-        var prompt = Assert.Single(user.Prompts);
-        Assert.True(prompt.IsRetry);
-        Assert.True(prompt.IsPasswordRemembered);
-        Assert.Equal(["secret-password"], saved);
+        Assert.Empty(user.Prompts);
+        Assert.Equal(("secret-password", (string?)null), Assert.Single(gateway.SecondStageAnswers));
+        Assert.NotNull(session.TakeNewRecoveryPhrase());
+        Assert.NotNull(session.GetCurrentUserCredentials().DeviceId);
+    }
+
+    [Fact]
+    public async Task LegacyIdentity_WithItsLiveToken_SkipsTheSecondStage()
+    {
+        var user = new User();
+        var (session, gateway) = Create(Password, user);
+        gateway.SessionToken = "saved";
+
+        await session.Connect("server", 1, null, new LegacyLoginPlan("#identity", "saved", null));
+
+        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+        Assert.Empty(user.Prompts);
+        Assert.Empty(gateway.SecondStageAnswers);
+    }
+
+    [Fact]
+    public async Task RefusedPassword_IsAskedAgain()
+    {
+        var user = new User(new LoginAnswer("wrong", null), new LoginAnswer("secret-password", null));
+        var (session, _) = Create(Password, user);
+
+        await session.Connect("server", 1, null, ByUsername);
+
+        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+        Assert.Equal([false, true], user.Prompts.Select(prompt => prompt.IsRetry));
     }
 
     [Fact]
@@ -123,7 +219,7 @@ public class CoordinatorSessionLoginTests
         var user = new User((LoginAnswer?)null);
         var (session, gateway) = Create(Code, user);
 
-        await session.Connect("server", 1, "#identity", null);
+        await session.Connect("server", 1, null, ByUsername);
 
         Assert.Equal(CoordinatorState.AuthenticationNeeded, session.ConnectionStatus);
         Assert.False(gateway.IsOpen);
@@ -133,13 +229,13 @@ public class CoordinatorSessionLoginTests
     [Fact]
     public async Task WrongCodes_EndTheLoginAfterTheTriesOfTheServer()
     {
-        var wrong = new LoginAnswer(null, "000000", false);
+        var wrong = new LoginAnswer(null, "000000");
         var user = new User(wrong, wrong, wrong, wrong);
         var (session, gateway) = Create(Code, user);
 
-        await session.Connect("server", 1, "#identity", null);
+        await session.Connect("server", 1, null, ByUsername);
 
-        Assert.Equal(CoordinatorState.AuthenticationFailed, session.ConnectionStatus);
+        Assert.Equal(CoordinatorState.LoginRefused, session.ConnectionStatus);
         Assert.Equal(3, gateway.SecondStageAnswers.Count);
         Assert.Equal([false, true, true], user.Prompts.Select(prompt => prompt.IsRetry));
     }
@@ -150,7 +246,7 @@ public class CoordinatorSessionLoginTests
         var user = new User();
         var (session, gateway) = Create(new LoginChallenge(false, false, true), user);
 
-        await session.Connect("server", 1, "#identity", null);
+        await session.Connect("server", 1, null, ByUsername);
 
         Assert.Equal(CoordinatorState.PasskeyRequired, session.ConnectionStatus);
         Assert.Empty(user.Prompts);
@@ -158,33 +254,52 @@ public class CoordinatorSessionLoginTests
     }
 
     [Fact]
-    public async Task UserWithoutPassword_ForgetsTheSavedOne()
+    public async Task InvalidRecoveryPhrase_IsRefusedHere()
     {
-        var (session, _) = Create(null);
-        List<string?> saved = [];
-        session.AccountPasswordToSaveChanged += saved.Add;
+        var (session, gateway) = Create(null);
 
-        await session.Connect("server", 1, "#identity", null, "old-password");
+        await session.Connect("server", 1, null, new RecoveryLoginPlan("not a phrase"));
 
-        Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
-        Assert.Null(session.AccountPasswordToSave);
-        Assert.Equal([(string?)null], saved);
+        Assert.Equal(CoordinatorState.LoginRefused, session.ConnectionStatus);
+        Assert.Empty(gateway.SentLogins);
     }
 
     [Fact]
-    public async Task ChangedPassword_IsUsedByTheReconnect()
+    public async Task TemporaryDevice_IsNotRemembered()
     {
-        var user = new User();
-        var (session, gateway) = Create(Password, user);
-        await session.Connect("server", 1, "#identity", null, "secret-password");
+        var (session, _) = Create(null);
 
-        var (result, _) = await session.SetAccountPassword(new AccountProof("secret-password", null), "new-password");
-        await ReconnectAsync(session);
+        await session.Connect("server", 1, null, new LoginCodeLoginPlan("ABCD-EFGH-JKMN", Temporary: true));
 
-        Assert.Equal(Shared.Enums.User.UserSecurityResult.NoError, result);
         Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
-        Assert.Empty(user.Prompts);
-        Assert.Equal("new-password", gateway.SecondStageAnswers[^1].Password);
-        Assert.Equal("new-password", session.AccountPasswordToSave);
+        Assert.True(session.IsTemporaryDevice);
+    }
+
+    [Fact]
+    public async Task SavedIdentity_CannotAttachToAnotherCoordinatorAtTheSameAddress()
+    {
+        var (session, _) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, new RegisterLoginPlan(), expectedCoordinatorId: "old-coordinator");
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Null(session.CoordinatorModel);
+            Assert.Equal("old-coordinator", session.CoordinatorMismatch!.ExpectedCoordinatorId);
+        }
+    }
+
+    [Fact]
+    public async Task Reconnect_RejectsAReplacementCoordinatorEvenWithoutAPinnedCertificate()
+    {
+        var (session, gateway) = Create(null);
+        using (session)
+        {
+            await session.Connect("server", 1, null, new RegisterLoginPlan());
+            Assert.Equal(CoordinatorState.Connected, session.ConnectionStatus);
+            gateway.ActiveCoordinatorId = "replacement";
+            await ReconnectAsync(session);
+            Assert.Equal(CoordinatorState.CoordinatorMismatch, session.ConnectionStatus);
+            Assert.Equal(FakeGateway.CoordinatorId, session.CoordinatorModel!.Id);
+        }
     }
 }

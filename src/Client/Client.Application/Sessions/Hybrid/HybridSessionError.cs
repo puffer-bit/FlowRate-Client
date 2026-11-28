@@ -2,6 +2,7 @@ namespace Client.Application.Sessions.Hybrid;
 
 public enum HybridSessionErrorKind
 {
+    CameraCaptureFailed,
     TransportStartFailed,
     DtlsParametersRejected,
     DtlsParametersSendFailed,

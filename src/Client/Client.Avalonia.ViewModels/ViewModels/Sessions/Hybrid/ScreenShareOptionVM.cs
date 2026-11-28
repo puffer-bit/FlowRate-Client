@@ -1,6 +1,7 @@
 using System;
 using ReactiveUI;
-using ReactiveUI.Primitives;
+
+using RxVoid = ReactiveUI.Primitives.RxVoid;
 
 namespace Client.ViewModels.Sessions.Hybrid;
 

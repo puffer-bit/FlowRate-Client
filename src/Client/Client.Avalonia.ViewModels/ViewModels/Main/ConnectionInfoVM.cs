@@ -13,7 +13,7 @@ public sealed class ConnectionInfoVM : ReactiveObject
 {
     private readonly DispatcherTimer _clock;
 
-    private DateTime? _connectedAt;
+    private DateTimeOffset? _connectedAt;
 
     public ConnectionInfoVM()
     {
@@ -55,7 +55,7 @@ public sealed class ConnectionInfoVM : ReactiveObject
     /// The time of the day the connection was made, with the date when it was not today.
     /// </summary>
     public string ConnectedAtText => _connectedAt is { } connectedAt
-        ? connectedAt.Date == DateTime.Today ? connectedAt.ToString("HH:mm") : Strings.FormatDateTime(connectedAt)
+        ? connectedAt.ToLocalTime().Date == DateTime.Today ? connectedAt.ToString("HH:mm") : Strings.FormatDateTime(connectedAt)
         : "—";
 
     public string DurationText
@@ -65,7 +65,7 @@ public sealed class ConnectionInfoVM : ReactiveObject
             if (_connectedAt is not { } connectedAt)
                 return "—";
 
-            var duration = DateTime.Now - connectedAt;
+            var duration = DateTimeOffset.Now - connectedAt;
             return duration.TotalHours >= 1
                 ? $"{(int)duration.TotalHours}:{duration:mm\\:ss}"
                 : duration.ToString("m\\:ss");
@@ -79,7 +79,7 @@ public sealed class ConnectionInfoVM : ReactiveObject
     {
         Address = address ?? "—";
         IsCertificateVerified = isCertificateVerified;
-        _connectedAt = DateTime.Now;
+        _connectedAt = DateTimeOffset.Now;
         RaiseTimes();
         _clock.Start();
     }

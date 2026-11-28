@@ -1,11 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
+        <OutputType>WinExe</OutputType>
+        <!-- The executable, and so the process name in the task manager and the Dock -->
+        <AssemblyName>FlowRate</AssemblyName>
         <TargetFramework>net10.0</TargetFramework>
         <IsAotCompatible>true</IsAotCompatible>
         <Nullable>enable</Nullable>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>..\Client.Avalonia.Assets\AppIcons\Headphones\flowrate.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!-- A Dapper call Dapper.AOT did not intercept falls back to Reflection.Emit and crashes under
@@ -13,10 +16,11 @@
              Only then: the trimmed single-file publish raises IL2104 for every library with trim warnings -->
         <WarningsAsErrors Condition="'$(PublishAot)' == 'true'">$(WarningsAsErrors);IL2104;IL3053</WarningsAsErrors>
         <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT'">win-x64</RuntimeIdentifier>
-        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT'">linux-x64</RuntimeIdentifier>
-        <Version>0.6.1</Version>
-        <AssemblyVersion>0.6.1.0</AssemblyVersion>
-        <FileVersion>0.6.1.0</FileVersion>
+        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT' And $([MSBuild]::IsOSPlatform('OSX'))">osx-arm64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(OS)' != 'Windows_NT' And !$([MSBuild]::IsOSPlatform('OSX'))">linux-x64</RuntimeIdentifier>
+        <Version>0.7.1</Version>
+        <AssemblyVersion>0.7.1.0</AssemblyVersion>
+        <FileVersion>0.7.1.0</FileVersion>
         <LangVersion>preview</LangVersion>
         <RootNamespace>Client</RootNamespace>
         <!-- A release carries its own .NET runtime, so the target machine needs none installed. The
@@ -34,31 +38,19 @@
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.1.2" />
         <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
         <!-- Bridge to AvaloniaUI Developer Tools (F12), only in Debug builds -->
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" Condition="'$(Configuration)' == 'Debug'" />
         <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-        <PackageReference Include="DynamicData" Version="9.4.33" />
-        <!-- XAML hot reload, only in Debug builds -->
-        <PackageReference Include="HotAvalonia" Version="3.1.5" Condition="'$(Configuration)' == 'Debug'" />
         <PackageReference Include="System.Reactive" Version="6.1.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
         <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.2" />
-        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
         <!-- For the screen cast portal. The same version Avalonia.FreeDesktop brings; free of run-time
              code generation, unlike Tmds.DBus -->
         <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
         <PackageReference Include="Velopack" Version="1.2.161" />
-        <PackageReference Include="Xaml.Behaviors.Avalonia" Version="12.0.7" />
     </ItemGroup>
     
-    <ItemGroup>
-      <None Remove="Assets\avalonia-logo.ico" />
-      <AvaloniaResource Include="Assets\avalonia-logo.ico" />
-    </ItemGroup>
-
     <ItemGroup>
       <ProjectReference Include="..\..\Shared\Shared.Core\Shared.Core.csproj" />
       <ProjectReference Include="..\Client.Api\Client.Api.csproj" />
@@ -66,10 +58,14 @@
       <ProjectReference Include="..\Client.Avalonia.Assets\Client.Avalonia.Assets.csproj" />
       <ProjectReference Include="..\Client.Avalonia.Controls\Client.Avalonia.Controls.csproj" />
       <ProjectReference Include="..\Client.Avalonia.Localization\Client.Avalonia.Localization.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Video\Client.Avalonia.Video.csproj" />
       <ProjectReference Include="..\Client.Avalonia.ViewModels\Client.Avalonia.ViewModels.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Views.Common\Client.Avalonia.Views.Common.csproj" />
+      <ProjectReference Include="..\Client.Avalonia.Views.Desktop\Client.Avalonia.Views.Desktop.csproj" />
       <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
       <ProjectReference Include="..\Client.GStreamer\Client.GStreamer.csproj" />
       <ProjectReference Include="..\Client.Infrastructure\Client.Infrastructure.csproj" />
+      <ProjectReference Include="..\Client.LibWebRTC\Client.LibWebRTC.csproj" />
       <ProjectReference Include="..\Client.OpenAL\Client.OpenAL.csproj" />
       <ProjectReference Include="..\Client.Tools\Client.Tools.csproj" />
     </ItemGroup>
@@ -80,10 +76,13 @@
     <!-- The GStreamer runtime for the RID of this build, next to the executable -->
     <Import Project="..\Client.GStreamer\Build\GStreamerRuntime.targets" />
 
+    <!-- libwebrtc for the voice, when Client.LibWebRTC has it for this RID -->
+    <Import Project="..\Client.LibWebRTC\Build\LibWebRTCRuntime.targets" />
+
     <!-- The LGPL libraries stay separate files next to the executable, so the user can replace them:
          the GStreamer binding (GstSharp.Net) and OpenAL Soft. The GStreamer runtime is content, never bundled. -->
     <PropertyGroup>
-        <LgplLibraries>;GstSharp.Net.dll;GstSharp.Net.Base.dll;GstSharp.Net.App.dll;GstSharp.Net.Sdp.dll;GstSharp.Net.WebRTC.dll;soft_oal.dll;libopenal.so;</LgplLibraries>
+        <LgplLibraries>;GstSharp.Net.dll;GstSharp.Net.Base.dll;GstSharp.Net.App.dll;soft_oal.dll;libopenal.so;</LgplLibraries>
     </PropertyGroup>
     <Target Name="ExcludeLgplFromSingleFile" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(PublishSingleFile)' == 'true'">
         <ItemGroup>

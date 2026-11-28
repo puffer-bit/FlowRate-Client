@@ -30,15 +30,6 @@ namespace Client.Avalonia.Controls.LoadingIndicators
         public static readonly StyledProperty<double> EndAngleProperty =
             AvaloniaProperty.Register<ProgressRing, double>(nameof(EndAngle), 360);
 
-        static ProgressRing()
-        {
-            MinimumProperty.Changed.AddClassHandler<ProgressRing>(OnMinimumPropertyChanged);
-            MaximumProperty.Changed.AddClassHandler<ProgressRing>(OnMaximumPropertyChanged);
-            ValueProperty.Changed.AddClassHandler<ProgressRing>(OnValuePropertyChanged);
-            MaximumProperty.Changed.AddClassHandler<ProgressRing>(OnStartAnglePropertyChanged);
-            MaximumProperty.Changed.AddClassHandler<ProgressRing>(OnEndAnglePropertyChanged);
-        }
-
         public ProgressRing()
         {
             UpdatePseudoClasses(IsIndeterminate, PreserveAspect);
@@ -79,16 +70,15 @@ namespace Client.Avalonia.Controls.LoadingIndicators
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            var e = change as AvaloniaPropertyChangedEventArgs<bool>;
-            if (e is null) return;
-
-            if (e.Property == IsIndeterminateProperty)
+            if (change.Property == IsIndeterminateProperty || change.Property == PreserveAspectProperty)
             {
-                UpdatePseudoClasses(e.NewValue.GetValueOrDefault(), null);
+                UpdatePseudoClasses(IsIndeterminate, PreserveAspect);
             }
-            else if (e.Property == PreserveAspectProperty)
+            else if (change.Property == MinimumProperty || change.Property == MaximumProperty
+                     || change.Property == ValueProperty || change.Property == StartAngleProperty
+                     || change.Property == EndAngleProperty)
             {
-                UpdatePseudoClasses(null, e.NewValue.GetValueOrDefault());
+                UpdateValueAngle();
             }
         }
 
@@ -107,29 +97,10 @@ namespace Client.Avalonia.Controls.LoadingIndicators
             }
         }
 
-        static void OnMinimumPropertyChanged(ProgressRing sender, AvaloniaPropertyChangedEventArgs e)
+        private void UpdateValueAngle()
         {
-            sender.Minimum = (double)e.NewValue;
-        }
-
-        static void OnMaximumPropertyChanged(ProgressRing sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            sender.Maximum = (double)e.NewValue;
-        }
-
-        static void OnValuePropertyChanged(ProgressRing sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            sender.ValueAngle = ((double)e.NewValue - sender.Minimum) * (sender.EndAngle - sender.StartAngle) / (sender.Maximum - sender.Minimum);
-        }
-
-        static void OnStartAnglePropertyChanged(ProgressRing sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            sender.StartAngle = (double)e.NewValue;
-        }
-
-        static void OnEndAnglePropertyChanged(ProgressRing sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            sender.EndAngle = (double)e.NewValue;
+            var range = Maximum - Minimum;
+            ValueAngle = range > 0 ? (Value - Minimum) * (EndAngle - StartAngle) / range : 0;
         }
     }
 }
