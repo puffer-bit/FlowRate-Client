@@ -294,7 +294,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         {
             images[i].TileWidth = tiles[i].Width;
             images[i].TileHeight = tiles[i].Height;
-            images[i].TileMargin = new Avalonia.Thickness(tiles[i].X, tiles[i].Y, 0, 0);
+            images[i].TileMargin = new global::Avalonia.Thickness(tiles[i].X, tiles[i].Y, 0, 0);
         }
         var extent = ChatAlbumLayout.Extent(tiles);
         OutgoingAlbumWidth = extent.Width;
@@ -830,7 +830,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         Images = images ?? [];
         Files = files ?? [];
         var album = ChatAlbumLayout.Extent(Images.Select(image =>
-            new Avalonia.Rect(image.TileMargin.Left, image.TileMargin.Top, image.TileWidth, image.TileHeight)));
+            new global::Avalonia.Rect(image.TileMargin.Left, image.TileMargin.Top, image.TileWidth, image.TileHeight)));
         AlbumWidth = album.Width;
         AlbumHeight = album.Height;
         Reply = messageModel.ReplyContent != null ? new ChatReplyPreviewVM(messageModel.ReplyContent) : null;

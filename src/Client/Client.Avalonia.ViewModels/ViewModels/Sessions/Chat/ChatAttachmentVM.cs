@@ -214,7 +214,7 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     } = 140;
 
     /// <inheritdoc cref="TileWidth"/>
-    public Avalonia.Thickness TileMargin
+    public global::Avalonia.Thickness TileMargin
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
