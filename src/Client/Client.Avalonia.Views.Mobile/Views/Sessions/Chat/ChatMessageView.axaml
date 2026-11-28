@@ -106,7 +106,15 @@
                                 <Border Classes="msg-reply-body">
                                     <StackPanel>
                                         <TextBlock Classes="msg-reply-username" Text="{Binding Reply.SenderName}"
-                                                   Classes.deleted-user="{Binding Reply.IsSenderDeleted, FallbackValue=False}"/>
+                                                   Classes.deleted-user="{Binding Reply.IsSenderDeleted, FallbackValue=False}"
+                                                   Classes.role-colored="{Binding Reply.SenderColor, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                                            <TextBlock.Styles>
+                                                <Style Selector="TextBlock.role-colored">
+                                                    <Setter Property="Foreground"
+                                                            Value="{Binding Reply.SenderColor, Converter={x:Static converters:RoleColorConverter.Instance}}"/>
+                                                </Style>
+                                            </TextBlock.Styles>
+                                        </TextBlock>
                                         <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding !Reply.IsDeleted, FallbackValue=False}">
                                             <Image Width="14" Height="14" Margin="0,0,5,0"
                                                    Source="{StaticResource ClipIcon}"

@@ -190,6 +190,7 @@ public sealed class ChatSenderDirectory : IDisposable
     {
         replyVm.SenderName = replyVm.SenderUserId is { } senderUserId ? GetName(senderUserId) : UnknownName;
         replyVm.IsSenderDeleted = replyVm.SenderUserId is { } userId && _deleted.Contains(userId);
+        replyVm.SenderColor = replyVm.SenderUserId is { } colorUserId ? GetColor(colorUserId) : null;
         replyVm.RenderText(RenderText);
     }
 

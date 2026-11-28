@@ -198,6 +198,10 @@
     <Style Selector="TextBlock.msg-reply-username.deleted-user">
         <Setter Property="FontStyle" Value="Italic"/>
     </Style>
+    <!-- In a quote the name is drawn as above the author's own messages: the color of their role, or the usual one -->
+    <Style Selector="Button.msg-reply TextBlock.msg-reply-username">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
     <Style Selector="Button.msg-reply.deleted TextBlock.msg-reply-username">
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
     </Style>
@@ -206,6 +210,10 @@
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         <Setter Property="MaxLines" Value="1"/>
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <!-- The text of a quote in a message reads as the message itself; the reply bar keeps it dim -->
+    <Style Selector="Button.msg-reply TextBlock.msg-reply-text">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
     </Style>
     <Style Selector="TextBlock.msg-deleted-text">
         <Setter Property="FontStyle" Value="Italic"/>
@@ -658,6 +666,23 @@
         <Setter Property="Opacity" Value="0.8"/>
     </Style>
     <Style Selector=".bubbles Border.msg-root.mine :is(TextBlock).msg-body">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- A quote in the own bubble: a light plate with a white bar, as the accent bar would vanish in the accent bubble -->
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#26FFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#38FFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Border.msg-reply-body">
+        <Setter Property="BorderBrush" Value="White"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply TextBlock.msg-reply-username, .bubbles Border.msg-root.mine Button.msg-reply TextBlock.msg-reply-text">
         <Setter Property="Foreground" Value="White"/>
     </Style>
 

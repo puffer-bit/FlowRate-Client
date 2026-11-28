@@ -37,6 +37,16 @@ public class ChatReplyPreviewVM : ReactiveObject
     }
 
     /// <summary>
+    /// The color of the highest colored role of the author, 0xRRGGBB, as their name has above their
+    /// messages; null keeps the usual one.
+    /// </summary>
+    public int? SenderColor
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>
     /// The author of the quoted message was deleted; the name is a placeholder.
     /// </summary>
     public bool IsSenderDeleted
