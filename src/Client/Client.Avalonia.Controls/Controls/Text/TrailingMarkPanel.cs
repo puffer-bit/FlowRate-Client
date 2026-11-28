@@ -73,7 +73,12 @@ public class TrailingMarkPanel : Panel
         // take a rounding, keeps the mark on the last line
         bool hasRoomBelow = finalSize.Height >= textHeight + markSize.Height - 0.5;
         if (x + markSize.Width <= finalSize.Width + 1 || !hasRoomBelow)
+        {
+            // A panel given less than it measured for (a recycled row while the list scrolls fast) keeps the mark
+            // inside its edge until the next pass lays it out for the new width
+            x = Math.Max(0, Math.Min(x, finalSize.Width - markSize.Width));
             mark.Arrange(new Rect(new Point(x, textHeight - lineHeight + (lineHeight - markSize.Height) / 2), markSize));
+        }
         else
             mark.Arrange(new Rect(new Point(0, textHeight), markSize));
 
