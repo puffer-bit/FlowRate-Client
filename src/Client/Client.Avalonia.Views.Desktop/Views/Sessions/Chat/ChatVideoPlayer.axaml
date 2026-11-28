@@ -7,8 +7,8 @@
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Views.Sessions.Chat.ChatVideoPlayer"
              x:DataType="vm:ChatFileVM">
-    <Border x:Name="PlayerBorder" MaxWidth="400" HorizontalAlignment="Left" Padding="6" Margin="0,0,0,4" CornerRadius="6"
-            Background="{DynamicResource ColorOverlayMedium}"
+    <!-- A plate in the list; in a bubble the bubble is its plate and the name is left out (ChatMessageViewStyle) -->
+    <Border x:Name="PlayerBorder" Classes="msg-video-card" MaxWidth="400" HorizontalAlignment="Left" Margin="0,0,0,4" CornerRadius="6"
             vm:ChatImagePresence.Image="{Binding}">
         <Grid x:Name="PlayerLayout" RowDefinitions="Auto,Auto" RowSpacing="4">
             <images:MediaFrame x:Name="VideoFrame" MediaWidth="{Binding PlayerWidth}" MediaHeight="{Binding PlayerHeight}">
@@ -21,7 +21,7 @@
                 </Border>
             </images:MediaFrame>
             <StackPanel Grid.Row="1" Spacing="2">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                <Grid Classes="msg-video-title" ColumnDefinitions="*,Auto" ColumnSpacing="6">
                     <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
                                ToolTip.Tip="{Binding FileName}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontSize="10" VerticalAlignment="Center"

@@ -7,8 +7,8 @@
              xmlns:views="clr-namespace:Client.Mobile.Views.Common.Media"
              x:Class="Client.Mobile.Views.Sessions.Chat.ChatVideoPlayer"
              x:DataType="vm:ChatFileVM">
-    <Border MaxWidth="320" HorizontalAlignment="Stretch" Padding="6" Margin="0,0,0,4" CornerRadius="6"
-            Background="{DynamicResource ColorOverlayMedium}"
+    <!-- A plate in the list; in a bubble the bubble is its plate and the name is left out (ChatMessageViewStyle) -->
+    <Border Classes="msg-video-card" MaxWidth="320" HorizontalAlignment="Stretch" Margin="0,0,0,4" CornerRadius="6"
             vm:ChatImagePresence.Image="{Binding}">
         <StackPanel Spacing="2">
             <images:MediaFrame MediaWidth="{Binding PlayerWidth}" MediaHeight="{Binding PlayerHeight}">
@@ -20,7 +20,7 @@
                     </Panel>
                 </Border>
             </images:MediaFrame>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+            <Grid Classes="msg-video-title" ColumnDefinitions="*,Auto" ColumnSpacing="6">
                 <TextBlock Text="{Binding FileName}" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="1"
                            ToolTip.Tip="{Binding FileName}" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontSize="10" VerticalAlignment="Center"

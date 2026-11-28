@@ -198,6 +198,10 @@
     <Style Selector="TextBlock.msg-reply-username.deleted-user">
         <Setter Property="FontStyle" Value="Italic"/>
     </Style>
+    <!-- In a quote the name is drawn as above the author's own messages: the color of their role, or the usual one -->
+    <Style Selector="Button.msg-reply TextBlock.msg-reply-username">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+    </Style>
     <Style Selector="Button.msg-reply.deleted TextBlock.msg-reply-username">
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
     </Style>
@@ -206,6 +210,10 @@
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
         <Setter Property="MaxLines" Value="1"/>
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <!-- The text of a quote in a message reads as the message itself; the reply bar keeps it dim -->
+    <Style Selector="Button.msg-reply TextBlock.msg-reply-text">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
     </Style>
     <Style Selector="TextBlock.msg-deleted-text">
         <Setter Property="FontStyle" Value="Italic"/>
@@ -250,6 +258,32 @@
     <Style Selector="Button.msg-image Image.msg-image-failed">
         <Setter Property="Width" Value="20"/>
         <Setter Property="Height" Value="20"/>
+    </Style>
+
+    <!-- The album of a message (ChatAlbumLayout): its tiles meet with a thin gap, and only its outer corners
+         are rounded -->
+    <Style Selector="Border.msg-media-frame">
+        <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+    <Style Selector="Border.msg-album">
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style Selector="Border.msg-album ItemsControl.msg-images">
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+    <Style Selector="Border.msg-album Button.msg-image">
+        <Setter Property="CornerRadius" Value="0"/>
+    </Style>
+    <!-- The time and mark lying on the pictures, in a bubble only -->
+    <Style Selector="Border.msg-media-meta">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <!-- The plates of the inline players; in a bubble the bubble is their plate -->
+    <Style Selector="Border.msg-audio-card, Border.msg-video-card">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
     </Style>
 
     <!-- ====== The preview of a link: a tinted card with an accent bar, as a reply quote ====== -->
@@ -661,6 +695,23 @@
         <Setter Property="Foreground" Value="White"/>
     </Style>
 
+    <!-- A quote in the own bubble: a light plate with a white bar, as the accent bar would vanish in the accent bubble -->
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#26FFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#38FFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1AFFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Border.msg-reply-body">
+        <Setter Property="BorderBrush" Value="White"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-reply TextBlock.msg-reply-username, .bubbles Border.msg-root.mine Button.msg-reply TextBlock.msg-reply-text">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
     <!-- The tail of the last bubble of a run, on the side of its author -->
     <Style Selector=".bubbles Border.msg-root.seq-end Path.msg-tail">
         <Setter Property="IsVisible" Value="True"/>
@@ -755,5 +806,110 @@
     </Style>
     <Style Selector=".bubbles Grid.date-lines">
         <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <!-- ===== Pictures, files and players in a bubble ===== -->
+    <!-- The album meets the side edges of the bubble, and its top edge when nothing stands above it: no quote,
+         and no name, which only the first bubble of a run of the others in a group has -->
+    <Style Selector=".bubbles Border.msg-media-frame">
+        <Setter Property="Margin" Value="-10,0,-10,0"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-lead.mine Border.msg-media-frame, .bubbles Border.msg-root.media-lead.direct Border.msg-media-frame, .bubbles Border.msg-root.media-lead:not(.seq-start) Border.msg-media-frame">
+        <Setter Property="Margin" Value="-10,-6,-10,0"/>
+    </Style>
+    <!-- ... and its bottom edge when nothing follows it -->
+    <Style Selector=".bubbles Border.msg-root.media-end:not(.has-reactions):not(.pinned) Panel.msg-media">
+        <Setter Property="Margin" Value="0,0,0,-5"/>
+    </Style>
+    <!-- The bubble rounds the album with its own corners -->
+    <Style Selector=".bubbles Border.msg-root.has-album Border.msg-bubble">
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-album">
+        <Setter Property="CornerRadius" Value="0"/>
+    </Style>
+
+    <!-- Only pictures or videos: no tail, and the corner it grew from is rounded as the others -->
+    <Style Selector=".bubbles Border.msg-root.media-only Path.msg-tail">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="6,16,16,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.mine.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,6,16,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.mine.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16"/>
+    </Style>
+
+    <!-- Nothing after the pictures: the time and mark lie on them, white on a dark plate, instead of a line
+         of their own -->
+    <Style Selector=".bubbles Border.msg-root.media-end :is(Control).msg-meta-row">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-end Border.msg-media-meta">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Padding" Value="6,1,6,2"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="Background" Value="#80000000"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-media-meta StackPanel.msg-bubble-meta">
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-media-meta TextBlock.msg-bubble-time">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-media-meta Path.msg-bubble-check">
+        <Setter Property="Stroke" Value="White"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-media-meta :is(UserControl).msg-bubble-status">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- Files: no plate of their own on the bubble, a round icon in the accent; on the own bubble in white -->
+    <Style Selector=".bubbles Button.msg-file">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0,2"/>
+        <Setter Property="Width" Value="NaN"/>
+        <Setter Property="MinWidth" Value="220"/>
+        <Setter Property="MaxWidth" Value="320"/>
+    </Style>
+    <Style Selector=".bubbles Button.msg-file:pointerover">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector=".bubbles Button.msg-file:pointerover TextBlock.msg-file-name">
+        <Setter Property="TextDecorations" Value="Underline"/>
+    </Style>
+    <Style Selector=".bubbles Button.msg-file Border.msg-file-icon">
+        <Setter Property="Background" Value="{DynamicResource ColorPrimary}"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-file Border.msg-file-icon">
+        <Setter Property="Background" Value="#33FFFFFF"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-file TextBlock.msg-file-name">
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Button.msg-file TextBlock.msg-file-size">
+        <Setter Property="Foreground" Value="{DynamicResource MsgBubbleMineMetaBrush}"/>
+    </Style>
+
+    <!-- Players: the bubble is their plate, and a video goes without its name, as a picture does -->
+    <Style Selector=".bubbles Border.msg-audio-card, .bubbles Border.msg-video-card">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector=".bubbles Grid.msg-video-title">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.mine Border.msg-audio-card TextBlock, .bubbles Border.msg-root.mine Border.msg-video-card TextBlock">
+        <Setter Property="Foreground" Value="White"/>
     </Style>
 </Styles>

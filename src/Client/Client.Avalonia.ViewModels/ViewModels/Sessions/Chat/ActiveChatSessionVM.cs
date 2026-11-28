@@ -323,11 +323,14 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public void CloseImageViewer() => ImageViewer = null;
 
-    private IReadOnlyList<ChatImageVM> CreateImages(ChatMessageModel model) =>
-        model.Images.Count == 0
-            ? []
-            : model.Images.Select(image => new ChatImageVM(image, model.Images.Count == 1, _coordinatorSession, _images, OpenImage))
+    private IReadOnlyList<ChatImageVM> CreateImages(ChatMessageModel model)
+    {
+        if (model.Images.Count == 0)
+            return [];
+        var tiles = ChatAlbumLayout.Arrange(model.Images.Select(image => ((double)image.Width, (double)image.Height)).ToList());
+        return model.Images.Select((image, index) => new ChatImageVM(image, tiles[index], _coordinatorSession, _images, OpenImage))
             .ToList();
+    }
 
     private IReadOnlyList<ChatFileVM> CreateFiles(ChatMessageModel model) =>
         model.Files.Count == 0
