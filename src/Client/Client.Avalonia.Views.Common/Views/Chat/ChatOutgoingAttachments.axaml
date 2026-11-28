@@ -1,6 +1,6 @@
 <!-- The files of an own message on its way, shown from the device until the server has them: pictures and videos
-     as tiles, other files as rows. Each shows its compression and upload on a ring, which gives the message up
-     when pressed -->
+     as tiles, other files as the cards of a stored message. Each shows its compression and upload on a ring, which
+     gives the message up when pressed -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -25,12 +25,6 @@
         <Style Selector="Button.outgoing-ring.on-picture:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#B3000000"/>
         </Style>
-        <Style Selector="Button.outgoing-ring.on-file">
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
-        </Style>
-        <Style Selector="Button.outgoing-ring.on-file:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}"/>
-        </Style>
         <Style Selector="Path.outgoing-cross">
             <Setter Property="Data" Value="M7,7 L17,17 M17,7 L7,17"/>
             <Setter Property="Stretch" Value="Uniform"/>
@@ -41,8 +35,8 @@
         </Style>
     </UserControl.Styles>
 
-    <StackPanel Spacing="4">
-        <ItemsControl ItemsSource="{Binding OutgoingImages}" IsVisible="{Binding HasOutgoingImages}">
+    <StackPanel>
+        <ItemsControl Classes="msg-images" ItemsSource="{Binding OutgoingImages}" IsVisible="{Binding HasOutgoingImages}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <WrapPanel Orientation="Horizontal"/>
@@ -50,8 +44,8 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ChatAttachmentVM">
-                    <Border Width="200" Height="140" Margin="0,4,6,0" CornerRadius="8" ClipToBounds="True"
-                            Background="{DynamicResource MsgReplyBrush}"
+                    <Border Width="200" Height="140" Margin="0,0,4,4" CornerRadius="8" ClipToBounds="True"
+                            Background="{DynamicResource ColorOverlayMedium}"
                             ToolTip.Tip="{Binding FileName}">
                         <Panel>
                             <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
@@ -88,38 +82,39 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <ItemsControl ItemsSource="{Binding OutgoingFiles}" IsVisible="{Binding HasOutgoingFiles}">
+        <!-- The same card as a file the server has (Button.msg-file), with the upload on a ring around its icon;
+             pressed, it gives the message up as the cross of a download stops that -->
+        <ItemsControl Classes="msg-files" ItemsSource="{Binding OutgoingFiles}" IsVisible="{Binding HasOutgoingFiles}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ChatAttachmentVM">
-                    <Border Margin="0,4,0,0" Padding="8" CornerRadius="8" MinWidth="240" MaxWidth="360"
-                            HorizontalAlignment="Left" Background="{DynamicResource MsgReplyBrush}">
+                    <Button Classes="msg-file" Classes.error="{Binding HasError}"
+                            MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
+                            Command="{Binding $parent[ItemsControl].((vm:ChatMessageVM)DataContext).Delete}"
+                            ToolTip.Tip="{l:Text chat.outgoing.cancel}"
+                            AutomationProperties.Name="{l:Text chat.outgoing.cancel}">
                         <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
-                            <Button Classes="outgoing-ring on-file" Width="40" Height="40" CornerRadius="20"
-                                    Command="{Binding $parent[ItemsControl].((vm:ChatMessageVM)DataContext).Delete}"
-                                    ToolTip.Tip="{l:Text chat.outgoing.cancel}"
-                                    AutomationProperties.Name="{l:Text chat.outgoing.cancel}">
+                            <Border Grid.Column="0" Classes="msg-file-icon">
                                 <Panel>
                                     <loadingIndicators:ProgressRing Classes="smooth" Width="36" Height="36"
                                                                     MinWidth="0" MinHeight="0"
                                                                     Maximum="1" Value="{Binding Progress}"
                                                                     IsIndeterminate="{Binding IsPreparing}"
-                                                                    BorderThickness="2.5" Foreground="White"
-                                                                    Background="#40FFFFFF"/>
-                                    <Path Classes="outgoing-cross" Width="12" Height="12"/>
+                                                                    IsVisible="{Binding !HasError}"
+                                                                    BorderThickness="2.5"
+                                                                    Foreground="{DynamicResource ColorPrimary}"
+                                                                    Background="Transparent"/>
+                                    <Image Source="{StaticResource CloseIcon}"/>
                                 </Panel>
-                            </Button>
+                            </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="Medium"
-                                           TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding OutgoingStatusText}" FontSize="12"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                <TextBlock Classes="msg-file-name" Text="{Binding FileName}"/>
+                                <TextBlock Classes="msg-file-size" Text="{Binding OutgoingStatusText}"
                                            IsVisible="{Binding !HasError}"/>
-                                <TextBlock Text="{Binding Error}" FontSize="12" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource ErrorBrush}"
+                                <TextBlock Classes="msg-file-error" Text="{Binding Error}"
                                            IsVisible="{Binding HasError}"/>
                             </StackPanel>
                         </Grid>
-                    </Border>
+                    </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
