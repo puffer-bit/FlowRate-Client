@@ -33,8 +33,9 @@ public sealed class TasksVM : ReactiveObject
     private readonly TimeSpan _leave;
     private readonly DispatcherTimer? _timer;
 
-    // Begun but not running long enough to be shown yet
-    private readonly List<ITrackedTask> _pending = [];
+    // Begun but not running long enough to be shown yet, with when this list first saw them: its own clock, not
+    // the one of the tracker
+    private readonly List<(ITrackedTask Task, DateTimeOffset SeenAt)> _pending = [];
 
     public ObservableCollection<TrackedTaskVM> Items { get; } = [];
 
@@ -146,9 +147,9 @@ public sealed class TasksVM : ReactiveObject
 
     private void Add(ITrackedTask task)
     {
-        if (_pending.Contains(task) || Items.Any(item => item.Task == task))
+        if (_pending.Any(pending => pending.Task == task) || Items.Any(item => item.Task == task))
             return;
-        _pending.Add(task);
+        _pending.Add((task, _now()));
         _timer?.Start();
     }
 
@@ -159,9 +160,9 @@ public sealed class TasksVM : ReactiveObject
 
         for (var i = _pending.Count - 1; i >= 0; i--)
         {
-            var task = _pending[i];
+            var (task, seenAt) = _pending[i];
             var isRunning = task.State == TrackedTaskState.Running;
-            if (isRunning && now - task.StartedAt < ShowAfter)
+            if (isRunning && now - seenAt < ShowAfter)
                 continue;
 
             _pending.RemoveAt(i);
