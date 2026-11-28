@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Client.Application.Tasks;
 using Client.Avalonia.Localization;
 using Client.Core.Coordinator;
 using Client.Core.Settings;
@@ -36,6 +37,37 @@ public partial class MainWindowVM
     private DateTimeOffset _nextRejectionMessageTime;
 
     private Task SetStatus(string key, bool isActive) => StatusLine.SetAsync(() => Strings.Get(key), isActive);
+
+    // The connection being made or restored, in the task list, while the status line tells of it
+    private ITrackedTask? _connectionTask;
+
+    /// <summary>
+    /// Every step of a connection goes through the status line: while it says an action goes on, one task
+    /// follows it with the same text, from the first attempt to the connection or its end. Called on the UI thread.
+    /// </summary>
+    private void OnStatusChanged(string text, bool isActive)
+    {
+        if (isActive)
+        {
+            if (_connectionTask is { State: TrackedTaskState.Running } running)
+                running.SetTitle(text);
+            else
+                _connectionTask = _taskTracker.Begin(TrackedTaskKind.Connection, TrackedTaskStage.Connecting, text);
+            return;
+        }
+
+        if (_connectionTask is not { } task)
+            return;
+        _connectionTask = null;
+
+        if (IsConnected)
+            task.Complete();
+        else if (text == Strings.Get("main.status.connectionFailed"))
+            task.Fail(text);
+        // Skipped, left or given up: the message box or the user tells about it already
+        else
+            task.Dispose();
+    }
 
     /// <param name="skipped">
     /// Cancelled when the user skips the connection at start: whatever is left of it is given up without a word.
@@ -381,13 +413,19 @@ public partial class MainWindowVM
         _avatars.Attach(session);
         UserCard.AttachUser(User);
 
-        await SetStatus("main.status.retrievingSessions", true);
+        // Connected already: the loading of the sessions is a task with no share to tell, not a state of the connection
+        await SetStatus("main.status.connected", false);
         if (!IsRestoreCurrent(session, restoreId))
             return;
 
         SessionsList.ShowLoading();
-        if (IsRestoreCurrent(session, restoreId))
-            await AttachSessionManager(session, restoreId);
+        if (!IsRestoreCurrent(session, restoreId))
+            return;
+
+        // Ends as canceled when the connection goes away during the load
+        using var task = _taskTracker.Begin(TrackedTaskKind.Loading, TrackedTaskStage.Loading,
+            Strings.Get("tasks.sessions"), session.GetCoordinatorName());
+        await AttachSessionManager(session, restoreId, task);
     }
 
     // The connection may be lost or closed at any await of a load: what comes after is somebody else's
@@ -647,7 +685,7 @@ public partial class MainWindowVM
             });
     }
 
-    private async Task AttachSessionManager(ICoordinatorSession session, int restoreId)
+    private async Task AttachSessionManager(ICoordinatorSession session, int restoreId, ITrackedTask task)
     {
         try
         {
@@ -667,7 +705,7 @@ public partial class MainWindowVM
             foreach (var call in session.ChatCalls.Values)
                 OnChatCallChanged(call);
             if (IsRestoreCurrent(session, restoreId))
-                await SetStatus("main.status.connected", false);
+                task.Complete();
         }
         catch (Exception e)
         {
@@ -679,6 +717,7 @@ public partial class MainWindowVM
             }
 
             LogSessionsInfoFailed(e, session.GetCoordinatorName());
+            task.Fail(Strings.Get("main.sessionsInfoFailed"));
             await ShowMessageBox.Handle(new MessageBoxVM(Icon.Fatal, Buttons.Ok,
                 Strings.Get("main.sessionsInfoFailed"), Strings.Get("common.error")));
 

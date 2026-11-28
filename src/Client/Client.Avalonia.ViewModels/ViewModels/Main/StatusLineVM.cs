@@ -65,8 +65,15 @@ public sealed class StatusLineVM : ReactiveObject
     /// </summary>
     public void Set(Func<string> text, bool isActive) => _ = SetAsync(text, isActive);
 
+    /// <summary>
+    /// A new text is set, before it fades in: the text and whether the action goes on. Raised on the UI thread.
+    /// </summary>
+    public event Action<string, bool>? Changed;
+
     private async Task SetOnUiThreadAsync(Func<string> text, bool isActive)
     {
+        Changed?.Invoke(text(), isActive);
+
         if (_pending != null)
         {
             _pending = (text, isActive);

@@ -130,4 +130,12 @@ public sealed class FlowRateLinkTests
         Assert.False(FlowRateLinks.LooksLikeLink("ABCD-EFGH"));
         Assert.False(FlowRateLinks.LooksLikeLink(null));
     }
+
+    [Fact]
+    public void SettingsLinkNamesItsTab()
+    {
+        Assert.Equal(new SettingsLink("about"), FlowRateLinks.Parse(FlowRateLinks.Settings("about")));
+        Assert.Equal(new SettingsLink(null), FlowRateLinks.Parse("flowrate://settings"));
+        Assert.Equal(new SettingsLink(null), FlowRateLinks.Parse("flowrate:settings?tab="));
+    }
 }

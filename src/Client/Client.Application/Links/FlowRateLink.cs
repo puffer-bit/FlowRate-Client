@@ -24,6 +24,12 @@ public sealed record LoginLink(string Host, int? Port, string? Fingerprint, stri
 /// </summary>
 public sealed record DeviceLinkApproval(string Code, string? Host, int? Port) : FlowRateLink;
 
+/// <summary>
+/// Opens the settings of the application: flowrate://settings?tab=about. <see cref="Tab"/> names a tab as the settings
+/// do, whatever the case; null or unknown opens the first one.
+/// </summary>
+public sealed record SettingsLink(string? Tab) : FlowRateLink;
+
 /// <summary>Reads and writes the links of <see cref="FlowRateLink"/>.</summary>
 public static class FlowRateLinks
 {
@@ -40,6 +46,8 @@ public static class FlowRateLinks
 
     public static string DeviceLink(string code, string? host, int? port) =>
         Build("link", ("code", code), ("host", host), ("port", port?.ToString()));
+
+    public static string Settings(string? tab = null) => Build("settings", ("tab", tab));
 
     /// <summary>Whether the text is meant as a link of the application, well formed or not.</summary>
     public static bool LooksLikeLink(string? text) =>
@@ -81,6 +89,7 @@ public static class FlowRateLinks
             "connect" when host != null => new ConnectLink(host, port, fingerprint),
             "login" when host != null && IsCode(linkCode) => new LoginLink(host, port, fingerprint, linkCode!),
             "link" when IsCode(linkCode) => new DeviceLinkApproval(linkCode!, host, host == null ? null : port),
+            "settings" => new SettingsLink(query.GetValueOrDefault("tab")?.Trim() is { Length: > 0 } tab ? tab : null),
             _ => null
         };
     }

@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
+             xmlns:anim="clr-namespace:Client.Avalonia.Styles.Animation;assembly=Client.Avalonia.Styles"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
+             xmlns:mainViews="clr-namespace:Client.Views.Main"
+             xmlns:tasksVm="clr-namespace:Client.ViewModels.Tasks;assembly=Client.Avalonia.ViewModels"
+             x:DataType="tasksVm:TasksVM"
+             x:Class="Client.Views.Main.TasksFlyout"
+             Width="340">
+
+    <UserControl.Styles>
+        <Style Selector="Border.entry">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <anim:SmoothBrushTransition Property="Background" Duration="{anim:Motion Brief}"/>
+                    <DoubleTransition Property="Opacity" Duration="{anim:Motion Medium}" Easing="{anim:Ease Standard}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.entry:pointerover">
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+        <!-- What is done fades back, a failure keeps its weight until dismissed -->
+        <Style Selector="Border.entry.ended">
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
+        <Style Selector="Border.entry.failed">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <!-- Fades out before the list takes it off -->
+        <Style Selector="Border.entry.leaving">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+
+        <!-- A new row slides up into its place while it fades in; a wrapper of its own, so the held end of
+             the animation does not fight the fading of the row -->
+        <Style Selector="Panel.appear">
+            <Setter Property="RenderTransform">
+                <TranslateTransform/>
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:0.25" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="8"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <Style Selector="TextBlock.status">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style Selector="TextBlock.status.failed">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextTrimming" Value="None"/>
+        </Style>
+
+        <Style Selector="ProgressBar.task">
+            <Setter Property="Height" Value="3"/>
+            <Setter Property="MinHeight" Value="3"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource ButtonMainBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, Auto">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="4" Margin="8,6,6,6">
+            <TextBlock Grid.Column="0"
+                       Text="{l:Text tasks.title}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Classes="borderless" Width="26" Height="26"
+                    IsVisible="{Binding HasEnded}"
+                    ToolTip.Tip="{l:Text tasks.clear}"
+                    Command="{Binding ClearEndedCommand}"
+                    AutomationProperties.Name="{l:Text tasks.clear}">
+                <Image Width="16" Height="16" Source="{StaticResource TrashIcon}"/>
+            </Button>
+        </Grid>
+
+        <TextBlock Grid.Row="1"
+                   Margin="8,18,8,24"
+                   HorizontalAlignment="Center"
+                   Text="{l:Text tasks.empty}"
+                   FontSize="12"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   IsVisible="{Binding !HasItems}"/>
+
+        <ScrollViewer Grid.Row="1"
+                      MaxHeight="360"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding HasItems}">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="2"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="tasksVm:TrackedTaskVM">
+                        <!-- Folds its height away while the row fades out, so the rows under it move up smoothly -->
+                        <mainViews:CollapsingRow IsCollapsed="{Binding IsLeaving}">
+                        <Panel Classes="appear">
+                        <Border Classes="entry" Classes.ended="{Binding IsEnded}" Classes.failed="{Binding IsFailed}"
+                                Classes.leaving="{Binding IsLeaving}"
+                                CornerRadius="4" ClipToBounds="True">
+                            <Grid ColumnDefinitions="Auto, *, Auto">
+
+                                <!-- What kind of work; a failure shows the warning instead -->
+                                <Panel Grid.Column="0" Width="18" Height="18" Margin="9" VerticalAlignment="Top">
+                                    <Panel IsVisible="{Binding ShowsKindIcon}">
+                                        <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding IsDownload}"/>
+                                        <!-- An upload is the download turned upwards -->
+                                        <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding IsUpload}"
+                                               RenderTransform="rotate(180deg)"/>
+                                        <Image Source="{StaticResource VideoIcon}" IsVisible="{Binding IsCompression}"/>
+                                        <!-- Loading has no icon of its own: it spins while it runs -->
+                                        <loadingIndicators:ProgressRing Width="16" Height="16" MinWidth="16" MinHeight="16"
+                                                                        BorderThickness="2"
+                                                                        IsIndeterminate="True"
+                                                                        IsVisible="{Binding IsLoading}"
+                                                                        IsEnabled="{Binding IsRunning}"
+                                                                        Foreground="{DynamicResource ProgressRingBrush}"/>
+                                    </Panel>
+                                    <Image Source="{StaticResource WarningIcon}" IsVisible="{Binding IsFailed}"/>
+                                    <Image Source="{StaticResource DoneCheckIcon}" IsVisible="{Binding IsCompleted}"/>
+                                </Panel>
+
+                                <StackPanel Grid.Column="1" Spacing="3" Margin="0,8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}"
+                                               FontSize="13"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding Title}"
+                                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                    <TextBlock Classes="status"
+                                               Text="{Binding Context}"
+                                               IsVisible="{Binding HasContext}"/>
+                                    <ProgressBar Classes="task"
+                                                 Value="{Binding Progress}"
+                                                 IsIndeterminate="{Binding IsIndeterminate}"
+                                                 IsVisible="{Binding IsRunning}"/>
+                                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Classes="status" Classes.failed="{Binding IsFailed}"
+                                                   Text="{Binding StatusText}"/>
+                                        <TextBlock Grid.Column="1" Classes="status"
+                                                   Text="{Binding DetailText}"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <Panel Grid.Column="2" Margin="8,9,8,0" VerticalAlignment="Top">
+                                    <Button Classes="borderless"
+                                            Width="16" Height="16"
+                                            IsVisible="{Binding CanCancel}"
+                                            ToolTip.Tip="{l:Text tasks.cancel}"
+                                            AutomationProperties.Name="{l:Text tasks.cancel}"
+                                            Command="{Binding CancelCommand}">
+                                        <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                                    </Button>
+                                    <Button Classes="borderless"
+                                            Width="16" Height="16"
+                                            IsVisible="{Binding IsEnded}"
+                                            ToolTip.Tip="{l:Text tasks.dismiss}"
+                                            AutomationProperties.Name="{l:Text tasks.dismiss}"
+                                            Command="{Binding DismissCommand}">
+                                        <Image Width="16" Height="16" Source="{StaticResource CloseIcon}"/>
+                                    </Button>
+                                </Panel>
+                            </Grid>
+                        </Border>
+                        </Panel>
+                        </mainViews:CollapsingRow>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

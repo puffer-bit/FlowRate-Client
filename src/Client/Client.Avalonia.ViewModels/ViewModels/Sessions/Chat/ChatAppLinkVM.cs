@@ -100,7 +100,8 @@ public sealed class ChatAppLinkVM
         foreach (var link in ChatAppLinks.FindAll(text))
         {
             var address = link.Uri.OriginalString;
-            if (FlowRateLinks.Parse(address) is { } parsed)
+            // A link into the settings opens from a message, but has no card
+            if (FlowRateLinks.Parse(address) is { } parsed and not SettingsLink)
                 return new ChatAppLinkVM(parsed, address, canOpen);
         }
 

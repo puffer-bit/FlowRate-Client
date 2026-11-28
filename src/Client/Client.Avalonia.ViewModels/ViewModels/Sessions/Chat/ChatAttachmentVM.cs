@@ -9,6 +9,8 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Client.Application.Chat;
 using Client.Application.Ports;
+using Client.Application.Tasks;
+using Client.Avalonia.Localization;
 using Client.Core.Chat;
 using Client.Services;
 using ReactiveUI;
@@ -42,6 +44,11 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     // The preparation for the current choices; a newer one replaces it
     private CancellationTokenSource? _preparing;
     private Task<PreparedImage?>? _prepared;
+
+    // The compression of the video in the task list, while it runs
+    private readonly ITaskTracker? _tasks;
+    private readonly string? _taskContext;
+    private ITrackedTask? _compression;
 
     // The choices are set by the constructor before the first preparation
     private bool _isConstructed;
@@ -218,10 +225,15 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
 
     /// <param name="preparer">Null to send images as they are.</param>
     /// <param name="videoPreparer">Null to send videos as they are.</param>
+    /// <param name="tasks">Shows the compression of a video in the task list.</param>
+    /// <param name="taskContext">The chat the task list names.</param>
     public ChatAttachmentVM(PickedFile file, bool isImage, IChatImageService images, IImagePreparer? preparer = null,
         ChatAttachmentPreferences? preferences = null, ImageCompressionPolicy? policy = null,
-        IVideoPreparer? videoPreparer = null, VideoCompressionPolicy? videoPolicy = null)
+        IVideoPreparer? videoPreparer = null, VideoCompressionPolicy? videoPolicy = null,
+        ITaskTracker? tasks = null, string? taskContext = null)
     {
+        _tasks = tasks;
+        _taskContext = taskContext;
         FileName = file.Name;
         Key = file.Key;
         Size = file.Size;
@@ -450,28 +462,53 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
         var preparation = new VideoPreparation(IsCompressed, IsMetadataStripped, VideoCompressionPreset.For(VideoSide));
         IsPreparing = true;
         SizeText = $"{Services.SizeText.Format(Size)} → …";
+        // The compression of the earlier choices is over
+        _compression?.Dispose();
+        var task = _compression = _tasks?.Begin(TrackedTaskKind.Compression, TrackedTaskStage.Compressing, FileName,
+            _taskContext, totalBytes: Size);
         var progress = new Progress<double>(share =>
         {
-            if (ReferenceEquals(_preparing, cancellation) && IsPreparing && share < 1)
+            if (!ReferenceEquals(_preparing, cancellation) || !IsPreparing)
+                return;
+            task?.Report(share);
+            if (share < 1)
                 SizeText = $"{Services.SizeText.Format(Size)} → {share:P0}";
         });
         var prepared = _preparedVideo = Task.Run(() => _videoPreparer.PrepareAsync(Source, preparation, progress,
             cancellation.Token));
-        _ = ShowPreparedVideoAsync(prepared, cancellation);
+        _ = ShowPreparedVideoAsync(prepared, cancellation, task);
     }
 
-    private async Task ShowPreparedVideoAsync(Task<PreparedVideo?> prepared, CancellationTokenSource cancellation)
+    private async Task ShowPreparedVideoAsync(Task<PreparedVideo?> prepared, CancellationTokenSource cancellation,
+        ITrackedTask? task)
     {
         PreparedVideo? video;
+        var isFailed = false;
         try { video = await prepared; }
-        catch (OperationCanceledException) { return; }
-        catch (Exception) { video = null; }
+        catch (OperationCanceledException)
+        {
+            task?.Dispose();
+            return;
+        }
+        catch (Exception)
+        {
+            video = null;
+            isFailed = true;
+        }
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (cancellation.IsCancellationRequested || !ReferenceEquals(_preparing, cancellation))
+            {
+                task?.Dispose();
                 return;
+            }
 
+            // It still goes, as it was picked
+            if (isFailed)
+                task?.Fail(Strings.Get("tasks.compressFailed"));
+            else
+                task?.Complete();
             IsPreparing = false;
             SizeText = video?.Path != null && video.Size != Size
                 ? $"{Services.SizeText.Format(Size)} → {Services.SizeText.Format(video.Size)}"
@@ -500,6 +537,7 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
             return;
         _isDisposed = true;
         _preparing?.Cancel();
+        _compression?.Dispose();
         ReleasePreparedVideo();
     }
 

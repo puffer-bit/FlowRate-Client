@@ -45,6 +45,13 @@ public static class AppInformation
         return GetMetadataValue(assembly, "BuildCommit") is { } commit ? $"{version}({commit})" : version;
     }
 
+    /// <summary>
+    /// A build not meant as a release: anything but a release of the publish scripts, which marks it so. A dev
+    /// build of the scripts (-dev.&lt;stamp&gt;) and a build made locally, Release or Debug, are both.
+    /// </summary>
+    public static bool IsDevBuild(Assembly? assembly = null) =>
+        GetMetadataValue(assembly ?? Assembly.GetEntryAssembly(), "ReleaseBuild") != "true";
+
     public static string GetMetadataValue(string key) => GetMetadataValue(Assembly.GetEntryAssembly(), key) ?? "unknown";
 
     private static string? GetMetadataValue(Assembly? assembly, string key)

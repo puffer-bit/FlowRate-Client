@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Client.Application.Chat;
+using Client.Application.Links;
 using Client.Application.Coordinator;
 using Client.Application.Coordinator.Users;
 using Client.Application.Push;
@@ -122,6 +123,19 @@ public partial class MainWindowVM : ReactiveObject
     /// What the corner of the window lists.
     /// </summary>
     public NotificationCenterVM Notifications { get; }
+
+    /// <summary>Not a release: the status bar starts with a mark of it.</summary>
+    public bool IsDevBuild { get; } = AppInformation.IsDevBuild();
+
+    /// <summary>The mark of a dev build opens the About tab of the settings, by its link.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> OpenAboutCommand { get; }
+
+    /// <summary>The version with its build and commit, for the mark of a dev build.</summary>
+    public string BuildVersion { get; } = AppInformation.GetClientBuildVersion();
+
+    /// <summary>The uploads, downloads and compressions in progress, for the status bar.</summary>
+    public Client.ViewModels.Tasks.TasksVM Tasks { get; }
+    private readonly Client.Application.Tasks.ITaskTracker _taskTracker;
 
     /// <summary>What the current user may do on the server, after their roles.</summary>
     public AccessVM Access { get; } = new();
@@ -304,7 +318,8 @@ public partial class MainWindowVM : ReactiveObject
         Func<ConnectWindowVM> createConnectWindow,
         Func<SettingsWindowVM> createSettings,
         Client.Application.Sounds.ISoundService? callSounds = null,
-        AutoIdleService? autoIdle = null)
+        AutoIdleService? autoIdle = null,
+        Client.Application.Tasks.ITaskTracker? taskTracker = null)
     {
         _autoIdle = autoIdle;
         ChatReads = new ChatReadTracker(chatReads, loggerFactory.CreateLogger<ChatReadTracker>());
@@ -325,6 +340,9 @@ public partial class MainWindowVM : ReactiveObject
         _logger = loggerFactory.CreateLogger<MainWindowVM>();
         Client.Avalonia.Controls.Chat.ChatOpenTrace.Sink = LogChatOpen;
         Notifications = new NotificationCenterVM(notifications);
+        _taskTracker = taskTracker ?? new Client.Application.Tasks.TaskTracker();
+        Tasks = new Client.ViewModels.Tasks.TasksVM(_taskTracker);
+        StatusLine.Changed += OnStatusChanged;
         _hotKeys = hotKeys;
         hotKeys.Triggered += OnHotKey;
         hotKeys.Released += OnHotKeyReleased;
@@ -340,6 +358,9 @@ public partial class MainWindowVM : ReactiveObject
         };
 
         OpenSettingsCommand = ReactiveCommand.CreateFromTask(async () => await ShowSettings.Handle(_createSettings()));
+        CreateLaunchModeCommands();
+        OpenAboutCommand = ReactiveCommand.CreateFromTask(() =>
+            OpenLinkAsync(FlowRateLinks.Parse(FlowRateLinks.Settings("about"))!));
         OpenServerSettingsCommand = ReactiveCommand.CreateFromTask(OpenServerSettings);
         ConnectCommand = ReactiveCommand.CreateFromTask(ConnectToCoordinator);
         DisconnectCommand = ReactiveCommand.CreateFromTask(Disconnect);

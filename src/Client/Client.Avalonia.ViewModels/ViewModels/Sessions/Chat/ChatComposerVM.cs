@@ -9,6 +9,7 @@ using Avalonia.Collections;
 using Avalonia.Threading;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
+using Client.Application.Tasks;
 using Client.Avalonia.Localization;
 using Client.Avalonia.Styles.Animation;
 using Client.Core.Chat;
@@ -339,6 +340,8 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
     private readonly IChatImageService _images;
     private readonly ChatSenderDirectory _senders;
     private readonly ChatAttachmentOptions? _attachmentOptions;
+    // Shows the uploads and compressions in the task list
+    private readonly ITaskTracker? _tasks;
     // Ends the uploads of the message being sent
     private CancellationTokenSource? _sendCancellation;
 
@@ -347,9 +350,10 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         int currentUserId, IChatMediaUploader mediaUploader, IChatImageService images, ChatSenderDirectory senders,
         Func<int, Task> jumpToMessage, ChatAttachmentOptions? attachmentOptions = null,
         Func<IReadOnlyCollection<int>?>? mentionableMembers = null, ChatDrafts? drafts = null,
-        string? coordinatorInstanceId = null)
+        string? coordinatorInstanceId = null, ITaskTracker? tasks = null)
     {
         ArgumentNullException.ThrowIfNull(session);
+        _tasks = tasks;
         _drafts = coordinatorInstanceId != null ? drafts : null;
         _coordinatorInstanceId = coordinatorInstanceId ?? string.Empty;
         _attachmentOptions = attachmentOptions;
@@ -444,7 +448,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             var isImage = ImageFilePatterns.Any(pattern =>
                 file.Name.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase));
             Attachments.Add(new ChatAttachmentVM(file, isImage, _images, _attachmentOptions?.Preparer,
-                _attachmentOptions?.Defaults, ImagePolicy, _attachmentOptions?.VideoPreparer, VideoPolicy));
+                _attachmentOptions?.Defaults, ImagePolicy, _attachmentOptions?.VideoPreparer, VideoPolicy, _tasks, _chatName));
         }
 
         // After the collection has changed, which clears the notice of the draft before it
@@ -742,14 +746,25 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
         {
             attachment.Error = null;
             attachment.IsUploading = true;
+            // Cancelled from the task list the same way as by taking a file off: the whole message stops
+            var cancellation = _sendCancellation;
+            using var task = _tasks?.Begin(TrackedTaskKind.Upload,
+                attachment.IsPreparing ? TrackedTaskStage.Waiting : TrackedTaskStage.Uploading, attachment.FileName,
+                _chatName, cancellation == null ? null : () => cancellation.Cancel());
             ChatMediaUploadResult result;
             try
             {
-                var progress = new Progress<double>(share => attachment.Progress = share);
+                var progress = new Progress<double>(share =>
+                {
+                    attachment.Progress = share;
+                    task?.Report(share);
+                });
                 // A compressed copy may still be in the making
                 ChatMediaSource? source;
                 try { source = attachment.IsImage || attachment.IsVideo ? await attachment.GetUploadSourceAsync(cancellationToken) : null; }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
+                task?.SetStage(TrackedTaskStage.Uploading);
+                task?.SetTotalBytes((source ?? attachment.Source).Size);
 
                 result = source != null && attachment.IsImage
                     ? await _mediaUploader.UploadImageAsync(_session, _chatId, source, attachment.Upload,
@@ -775,6 +790,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
             if (result == ChatMediaUploadResult.NoError)
             {
                 attachment.Progress = 1;
+                task?.Complete();
                 continue;
             }
 
@@ -795,6 +811,7 @@ public sealed partial class ChatComposerVM : ReactiveObject, IDisposable
                 _ => "chat.attach.error.failed"
             });
             SendError = Strings.Format("chat.send.imageFailed", ("file", attachment.FileName), ("reason", attachment.Error));
+            task?.Fail(attachment.Error);
             return false;
         }
 

@@ -28,6 +28,9 @@
         <ItemGroup>
             <AssemblyMetadata Include="BuildNumber" Value="$(BuildNumber)" Condition="'$(BuildNumber)' != ''" />
             <AssemblyMetadata Include="BuildCommit" Value="$(BuildCommit)" Condition="'$(BuildCommit)' != ''" />
+            <!-- Set by the publish scripts for a release only: any other build, a dev one (-dev.<stamp>) or one
+                 made locally, Release or Debug, is marked as a dev build in the status bar -->
+            <AssemblyMetadata Include="ReleaseBuild" Value="true" Condition="'$(ReleaseBuild)' == 'true'" />
         </ItemGroup>
     </Target>
 </Project>

@@ -8,6 +8,7 @@ using Client.Application.Push;
 using Client.Application.Sessions.Hybrid;
 using Client.Application.Settings;
 using Client.Application.Sounds;
+using Client.Application.Tasks;
 using Client.Application.Updates;
 
 namespace Client.Application;
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.AddSingleton<PushRegistration>();
         services.AddTransient<PushReplies>();
         services.AddSingleton<IPeerPlaybackService, PeerPlaybackService>();
+        services.AddSingleton<ITaskTracker, TaskTracker>();
         services.AddSingleton<IVoiceActivityService, VoiceActivityService>();
         services.AddSingleton<IScreenWatchService, ScreenWatchService>();
         services.AddSingleton<ICoordinatorFactory, CoordinatorFactory>();

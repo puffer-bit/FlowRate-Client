@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Client.Application.Chat;
 using Client.Application.Coordinator;
 using Client.Application.Ports;
+using Client.Application.Tasks;
 using Avalonia.Media;
 using Client.Avalonia.Localization;
 using Client.Core.Chat;
@@ -88,7 +89,11 @@ public class ChatFileVM : ReactiveObject, IShownImage
     public double Progress
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            _downloadTask?.Report(value);
+        }
     }
 
     /// <summary>Saved by the last download, until another one starts.</summary>
@@ -125,6 +130,10 @@ public class ChatFileVM : ReactiveObject, IShownImage
     private readonly Func<string, Task<bool>> _openFile;
     private readonly string _coordinator;
     private CancellationTokenSource? _download;
+    // The download the user started, in the task list
+    private readonly ITaskTracker? _tasks;
+    private readonly string? _taskContext;
+    private ITrackedTask? _downloadTask;
     private bool _isFindingFile;
     private readonly IChatImageService? _images;
     private int _viewers;
@@ -135,10 +144,15 @@ public class ChatFileVM : ReactiveObject, IShownImage
     /// or null when the user changed their mind.
     /// </param>
     /// <param name="images">Loads the frame of a video; without it a video shows none.</param>
+    /// <param name="tasks">Shows the downloads the user starts in the task list.</param>
+    /// <param name="taskContext">The chat the task list names.</param>
     public ChatFileVM(ChatFileContent file, ICoordinatorSession session, Func<string, Task<Stream?>> pickSaveTarget,
-        IMediaCache cache, Func<string, Task<bool>> openFile, IChatImageService? images = null)
+        IMediaCache cache, Func<string, Task<bool>> openFile, IChatImageService? images = null,
+        ITaskTracker? tasks = null, string? taskContext = null)
     {
         File = file;
+        _tasks = tasks;
+        _taskContext = taskContext;
         _images = images;
         var width = file.Video is { Width: > 0 } ? file.Video.Width : 400;
         var height = file.Video is { Height: > 0 } ? file.Video.Height : 225;
@@ -336,6 +350,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
         }
 
         using var cancellation = _download = new CancellationTokenSource();
+        using var task = BeginDownloadTask(cancellation);
         Error = null;
         Progress = 0;
         IsDownloading = true;
@@ -347,6 +362,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
             {
                 Progress = 1;
                 IsDownloaded = true;
+                task?.Complete();
             }
             else if (result != MediaTransferResult.Canceled)
                 Error = Strings.Get(result == MediaTransferResult.NotFound ? "chat.file.gone" : "chat.file.downloadFailed");
@@ -360,9 +376,26 @@ public class ChatFileVM : ReactiveObject, IShownImage
         }
         finally
         {
+            EndDownloadTask(task);
             _download = null;
             IsDownloading = false;
         }
+    }
+
+    private ITrackedTask? BeginDownloadTask(CancellationTokenSource cancellation) =>
+        _downloadTask = _tasks?.Begin(TrackedTaskKind.Download, TrackedTaskStage.Downloading, FileName, _taskContext,
+            cancellation.Cancel, File.Size);
+
+    // What did not complete failed with the error on the card, or was stopped
+    private void EndDownloadTask(ITrackedTask? task)
+    {
+        if (task == null)
+            return;
+        if (Error != null)
+            task.Fail(Error);
+        task.Dispose();
+        if (ReferenceEquals(_downloadTask, task))
+            _downloadTask = null;
     }
 
     private async Task<(MediaTransferResult Result, string? Path)> FetchAsync(CancellationToken cancellationToken)
@@ -415,6 +448,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
             return;
 
         using var cancellation = _download = new CancellationTokenSource();
+        using var task = BeginDownloadTask(cancellation);
         Error = null;
         IsSaved = false;
         Progress = 0;
@@ -428,6 +462,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
                 result = fetched.Result;
                 if (fetched.Path is { } path)
                 {
+                    task?.SetStage(TrackedTaskStage.Saving);
                     await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
                         81920, FileOptions.Asynchronous);
                     await source.CopyToAsync(target, cancellation.Token);
@@ -439,6 +474,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
                 case MediaTransferResult.NoError:
                     Progress = 1;
                     IsSaved = true;
+                    task?.Complete();
                     break;
                 // The user stopped it; nothing went wrong
                 case MediaTransferResult.Canceled:
@@ -458,6 +494,7 @@ public class ChatFileVM : ReactiveObject, IShownImage
         }
         finally
         {
+            EndDownloadTask(task);
             _download = null;
             IsDownloading = false;
         }
