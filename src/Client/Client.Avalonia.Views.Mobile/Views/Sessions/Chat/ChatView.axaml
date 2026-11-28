@@ -338,6 +338,7 @@
         <loadingIndicators:ChatSkeleton Grid.Row="2"
                                         Margin="4,0"
                                         VerticalAlignment="Stretch"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsInitialLoading}"/>
 
         <!-- An overlay keeps the scroll extent and the current message anchor unchanged. -->
@@ -346,6 +347,7 @@
                                         VerticalAlignment="Top"
                                         Background="{DynamicResource GeneralBrush}"
                                         IsCompact="True"
+                                        IsBubbles="{Binding IsBubbleLayout}"
                                         IsVisible="{Binding IsLoadingOlder}"/>
 
         <!-- Shown while the chat has no messages -->

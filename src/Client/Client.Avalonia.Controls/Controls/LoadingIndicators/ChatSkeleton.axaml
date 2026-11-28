@@ -13,6 +13,16 @@
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Height" Value="18"/>
         </Style>
+        <!-- A row of the list, or a bubble once the chat draws them -->
+        <Style Selector="local|ChatSkeleton Panel.bubble-row">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="local|ChatSkeleton.bubbles Panel.bubble-row">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="local|ChatSkeleton.bubbles Grid.list-row">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
         <Style Selector="StackPanel.pulse.animated:shown">
             <Style.Animations>
                 <Animation Duration="0:0:1.6" IterationCount="Infinite" Easing="SineEaseInOut">
@@ -39,7 +49,8 @@
         <ItemsControl x:Name="Rows">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="local:ChatSkeletonRow">
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="6,8,12,8">
+                    <Panel>
+                    <Grid Classes="list-row" ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="6,8,12,8">
                         <Border Classes="placeholder" Width="36" Height="36" CornerRadius="18"
                                 HorizontalAlignment="Left" VerticalAlignment="Top"/>
                         <StackPanel Grid.Column="1" Spacing="4">
@@ -53,6 +64,20 @@
                             </Grid>
                         </StackPanel>
                     </Grid>
+                    <!-- Others on the left with their avatar, the user's own on the right -->
+                    <Panel Classes="bubble-row" Margin="6,3,12,3">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left"
+                                    IsVisible="{Binding !IsMine}">
+                            <Border Classes="placeholder" Width="32" Height="32" CornerRadius="16"
+                                    VerticalAlignment="Bottom"/>
+                            <Border Classes="placeholder" Width="{Binding BubbleWidth}" Height="{Binding BubbleHeight}"
+                                    CornerRadius="16,16,16,6"/>
+                        </StackPanel>
+                        <Border Classes="placeholder" Width="{Binding BubbleWidth}" Height="{Binding BubbleHeight}"
+                                CornerRadius="16,16,6,16" HorizontalAlignment="Right"
+                                IsVisible="{Binding IsMine}"/>
+                    </Panel>
+                    </Panel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
