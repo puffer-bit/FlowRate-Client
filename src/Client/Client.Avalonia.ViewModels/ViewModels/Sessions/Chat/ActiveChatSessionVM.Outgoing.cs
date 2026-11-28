@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Threading;
 using Client.Core.Chat;
 using ReactiveUI;
 
@@ -173,7 +174,7 @@ public partial class ActiveChatSessionVM
 
         // Raised by the settings page, maybe off the UI thread
         void OnLayoutChanged(ChatMessageLayout layout) =>
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => IsBubbleLayout = layout == ChatMessageLayout.Bubbles);
+            Dispatcher.UIThread.Post(() => IsBubbleLayout = layout == ChatMessageLayout.Bubbles);
         _subscriptions.Add(() => appearance.ChatMessageLayoutChanged += OnLayoutChanged,
             () => appearance.ChatMessageLayoutChanged -= OnLayoutChanged);
         _ = LoadMessageLayoutAsync(appearance);
