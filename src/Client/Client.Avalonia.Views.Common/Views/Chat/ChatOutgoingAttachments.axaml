@@ -49,11 +49,6 @@
                             ToolTip.Tip="{Binding FileName}">
                         <Panel>
                             <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
-                            <!-- A video has no picture of its own until the server has a frame of it -->
-                            <Path IsVisible="{Binding IsVideo}" Width="28" Height="28" Margin="0,0,0,64"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform"
-                                  Data="M4,5 H15 V19 H4 Z M15,10 L20,7 V17 L15,14"
-                                  Stroke="#B3FFFFFF" StrokeThickness="1.6" StrokeJoin="Round"/>
                             <Border Background="#40000000"/>
                             <Button Classes="outgoing-ring on-picture" Width="48" Height="48"
                                     Command="{Binding $parent[ItemsControl].((vm:ChatMessageVM)DataContext).Delete}"
