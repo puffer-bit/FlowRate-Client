@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:avatars="clr-namespace:Client.Avalonia.Controls.Avatars;assembly=Client.Avalonia.Controls"
+             xmlns:text="clr-namespace:Client.Avalonia.Controls.Text;assembly=Client.Avalonia.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pagesVm="clr-namespace:Client.ViewModels.Settings.Pages;assembly=Client.Avalonia.ViewModels"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
@@ -35,57 +36,141 @@
 
     <Border Classes="chatPreview">
         <StackPanel>
-            <StackPanel Margin="6" Spacing="4">
-                <TextBlock Text="{l:Text date.today}" FontSize="12" FontWeight="Medium"
-                           HorizontalAlignment="Center" Margin="0,10"/>
+            <!-- The rows of a real message, with the classes its view model would give them; the class "bubbles"
+                 follows the layout of the chats -->
+            <StackPanel Margin="0,0,0,6" Classes.bubbles="{Binding IsBubblePreview}">
+                <Panel>
+                    <Grid Classes="date-lines" ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="16,10">
+                        <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
+                                Background="{DynamicResource DarkBackgroundBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{l:Text date.today}" FontSize="12" FontWeight="Medium"
+                                   Foreground="{DynamicResource ColorOverlayGray}"/>
+                        <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
+                                Background="{DynamicResource DarkBackgroundBrush}"/>
+                    </Grid>
+                    <Border Classes="date-pill">
+                        <TextBlock Text="{l:Text date.today}" FontSize="12" FontWeight="Medium"/>
+                    </Border>
+                </Panel>
 
-                <Border Classes="msg-root">
-                    <Grid ColumnDefinitions="46, *">
-                        <avatars:UserAvatar Classes="msg-avatar"
-                                            UserName="{l:Text settings.appearance.preview.chat.user}"/>
-                        <StackPanel Grid.Column="1" Classes="msg-content">
-                            <StackPanel Classes="msg-header">
-                                <TextBlock Classes="msg-username"
-                                           Text="{l:Text settings.appearance.preview.chat.user}"/>
-                                <TextBlock Classes="msg-time" Text="12:40"/>
-                            </StackPanel>
-                            <TextBlock Classes="msg-body"
-                                       Text="{l:Text settings.appearance.preview.chat.question}"/>
-                        </StackPanel>
+                <Border Classes="msg-root seq-start seq-end">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                        <avatars:UserAvatar Classes="msg-avatar" UserName="{l:Text settings.appearance.preview.chat.user}"/>
+                        <Panel Grid.Column="1" Classes="msg-bubble-host">
+                            <Border Classes="msg-bubble">
+                                <StackPanel Classes="msg-content">
+                                    <StackPanel Classes="msg-header">
+                                        <TextBlock Classes="msg-username"
+                                                   Text="{l:Text settings.appearance.preview.chat.user}"/>
+                                        <TextBlock Classes="msg-time" Text="12:40"/>
+                                    </StackPanel>
+                                    <text:TrailingMarkPanel>
+                                        <TextBlock Classes="msg-body" Text="{l:Text settings.appearance.preview.chat.question}"/>
+                                        <StackPanel Classes="msg-trailing">
+                                            <StackPanel Classes="msg-bubble-meta">
+                                                <TextBlock Classes="msg-bubble-time" Text="12:40"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </text:TrailingMarkPanel>
+                                </StackPanel>
+                            </Border>
+                            <Path Classes="msg-tail" Data="M0,0 C0,8 3,12 9,14 L0,14 Z"/>
+                        </Panel>
+                        <Panel Grid.Column="0" Classes="msg-continuation-time"
+                               HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
+                            <TextBlock Classes="msg-time continuation" VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" Text="12:40"/>
+                        </Panel>
                     </Grid>
                 </Border>
 
-                <Border Classes="msg-root">
-                    <Grid ColumnDefinitions="46, *">
-                        <avatars:UserAvatar Classes="msg-avatar"
-                                            UserName="{l:Text settings.appearance.preview.chat.me}"/>
-                        <StackPanel Grid.Column="1" Classes="msg-content">
-                            <StackPanel Classes="msg-header">
-                                <TextBlock Classes="msg-username"
-                                           Text="{l:Text settings.appearance.preview.chat.me}"/>
-                                <TextBlock Classes="msg-time" Text="12:41"/>
-                            </StackPanel>
-                            <Button Classes="msg-reply">
-                                <Border Classes="msg-reply-body">
-                                    <StackPanel>
-                                        <TextBlock Classes="msg-reply-username"
-                                                   Text="{l:Text settings.appearance.preview.chat.user}"/>
-                                        <TextBlock Classes="msg-reply-text"
-                                                   Text="{l:Text settings.appearance.preview.chat.question}"/>
+                <Border Classes="msg-root mine seq-start">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                        <avatars:UserAvatar Classes="msg-avatar" UserName="{l:Text settings.appearance.preview.chat.me}"/>
+                        <Panel Grid.Column="1" Classes="msg-bubble-host">
+                            <Border Classes="msg-bubble">
+                                <StackPanel Classes="msg-content">
+                                    <StackPanel Classes="msg-header">
+                                        <TextBlock Classes="msg-username is-me"
+                                                   Text="{l:Text settings.appearance.preview.chat.me}"/>
+                                        <TextBlock Classes="msg-time" Text="12:41"/>
                                     </StackPanel>
-                                </Border>
-                            </Button>
-                            <TextBlock Classes="msg-body"
-                                       Text="{l:Text settings.appearance.preview.chat.answer}"/>
-                        </StackPanel>
+                                    <Button Classes="msg-reply">
+                                        <Border Classes="msg-reply-body">
+                                            <StackPanel>
+                                                <TextBlock Classes="msg-reply-username"
+                                                           Text="{l:Text settings.appearance.preview.chat.user}"/>
+                                                <TextBlock Classes="msg-reply-text"
+                                                           Text="{l:Text settings.appearance.preview.chat.question}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
+                                    <text:TrailingMarkPanel>
+                                        <TextBlock Classes="msg-body" Text="{l:Text settings.appearance.preview.chat.answer}"/>
+                                        <StackPanel Classes="msg-trailing">
+                                            <StackPanel Classes="msg-bubble-meta">
+                                                <TextBlock Classes="msg-bubble-time" Text="12:41"/>
+                                                <Viewbox Classes="msg-bubble-receipt">
+                                                    <Path Classes="msg-bubble-check" Data="M5 12.5 L9.5 17 L19 7.5"/>
+                                                </Viewbox>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </text:TrailingMarkPanel>
+                                </StackPanel>
+                            </Border>
+                            <Path Classes="msg-tail" Data="M0,0 C0,8 3,12 9,14 L0,14 Z"/>
+                        </Panel>
+                        <Panel Grid.Column="2" Classes="msg-status-column">
+                            <Image Source="{StaticResource ReceiptSentIcon}" Width="18" Height="18" Margin="8,2,0,0"
+                                   VerticalAlignment="Top"/>
+                        </Panel>
+                        <Panel Grid.Column="0" Classes="msg-continuation-time"
+                               HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
+                            <TextBlock Classes="msg-time continuation" VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" Text="12:41"/>
+                        </Panel>
                     </Grid>
                 </Border>
 
                 <!-- A continuation: no avatar and no name, the text lines up with the message above -->
-                <Border Classes="msg-root">
-                    <Grid ColumnDefinitions="46, *">
-                        <TextBlock Grid.Column="1" Classes="msg-body"
-                                   Text="{l:Text settings.appearance.preview.chat.continuation}"/>
+                <Border Classes="msg-root mine seq-end">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                        <avatars:UserAvatar Classes="msg-avatar" UserName="{l:Text settings.appearance.preview.chat.me}"/>
+                        <Panel Grid.Column="1" Classes="msg-bubble-host">
+                            <Border Classes="msg-bubble">
+                                <StackPanel Classes="msg-content">
+                                    <StackPanel Classes="msg-header">
+                                        <TextBlock Classes="msg-username is-me"
+                                                   Text="{l:Text settings.appearance.preview.chat.me}"/>
+                                        <TextBlock Classes="msg-time" Text="12:41"/>
+                                    </StackPanel>
+                                    <text:TrailingMarkPanel>
+                                        <TextBlock Classes="msg-body" Text="{l:Text settings.appearance.preview.chat.continuation}"/>
+                                        <StackPanel Classes="msg-trailing">
+                                            <StackPanel Classes="msg-bubble-meta">
+                                                <TextBlock Classes="msg-bubble-time" Text="12:41"/>
+                                                <Viewbox Classes="msg-bubble-receipt">
+                                                    <Path Classes="msg-bubble-check" Data="M1.5 12.5 L6 17 L15.5 7.5 M10.5 15.5 L12 17 L21.5 7.5"/>
+                                                </Viewbox>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </text:TrailingMarkPanel>
+                                </StackPanel>
+                            </Border>
+                            <Path Classes="msg-tail" Data="M0,0 C0,8 3,12 9,14 L0,14 Z"/>
+                        </Panel>
+                        <Panel Grid.Column="2" Classes="msg-status-column">
+                            <Image Source="{StaticResource ReceiptReadIcon}" Width="18" Height="18" Margin="8,2,0,0"
+                                   VerticalAlignment="Top"/>
+                        </Panel>
+                        <Panel Grid.Column="0" Classes="msg-continuation-time"
+                               HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <TextBlock Classes="msg-body" Text=" " Opacity="0" IsHitTestVisible="False"/>
+                            <TextBlock Classes="msg-time continuation" VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" Text="12:41"/>
+                        </Panel>
                     </Grid>
                 </Border>
             </StackPanel>

@@ -141,6 +141,16 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = InterfaceScale.Default;
 
+    /// <summary>
+    /// Whether the chat preview is drawn in bubbles, as the chats are: the layout is chosen on the experimental page
+    /// and counts only while experimental features are on.
+    /// </summary>
+    public bool IsBubblePreview
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public ReactiveCommand<RxVoid, RxVoid> LoadCommand { get; init; }
     public ReactiveCommand<RxVoid, RxVoid> ResetColorsCommand { get; init; }
 
@@ -149,6 +159,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
     private readonly ILanguageService _languageService;
 
     private bool _isLoaded;
+    private Client.Core.Chat.ChatMessageLayout _messageLayout = Client.Core.Chat.ChatMessageLayout.List;
 
     private readonly Subject<CustomColors> _customColorsToSave = new();
     private CustomColors _customColors = new();
@@ -170,6 +181,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         SelectedLanguage = Languages[0];
         ObserveThemeChanges();
         ObserveSystemThemeChanges();
+        ObserveMessageLayout();
         ObserveColorChanges();
         ObserveInterfaceChanges();
         this.WatchProperty(nameof(UseCustomTitleBar), vm => vm.UseCustomTitleBar)
@@ -209,6 +221,39 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         };
         app.ActualThemeVariantChanged += handler;
     }
+
+    private void ObserveMessageLayout()
+    {
+        // Closing settings must not leave the view model retained by the service or the static features.
+        var reference = new WeakReference<AppearanceControlVM>(this);
+        var appearance = _appearanceService;
+        Action<Client.Core.Chat.ChatMessageLayout>? onLayout = null;
+        Action? onExperimental = null;
+        onLayout = layout => global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!reference.TryGetTarget(out var viewModel))
+            {
+                appearance.ChatMessageLayoutChanged -= onLayout;
+                return;
+            }
+            viewModel._messageLayout = layout;
+            viewModel.ShowMessageLayout();
+        });
+        onExperimental = () => global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!reference.TryGetTarget(out var viewModel))
+            {
+                ExperimentalFeatures.Changed -= onExperimental;
+                return;
+            }
+            viewModel.ShowMessageLayout();
+        });
+        appearance.ChatMessageLayoutChanged += onLayout;
+        ExperimentalFeatures.Changed += onExperimental;
+    }
+
+    private void ShowMessageLayout() =>
+        IsBubblePreview = _messageLayout == Client.Core.Chat.ChatMessageLayout.Bubbles && ExperimentalFeatures.IsEnabled;
 
     private void ObserveColorChanges()
     {
@@ -273,6 +318,8 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         IsAnimationEnabled = animations.IsEnabled;
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = await _appearanceService.GetInterfaceScaleAsync();
+        _messageLayout = await _appearanceService.GetChatMessageLayoutAsync();
+        ShowMessageLayout();
         _isLoaded = true;
     }
 
