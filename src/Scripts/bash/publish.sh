@@ -143,6 +143,9 @@ fi
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$PROJECT" | head -n1)
 # The moment in UTC, as in the build number: a later dev build has the greater version
 (( dev )) && version="$version-dev.${stamp:-$(date -u +%y%m%d%H%M)}"
+# Only a release goes without the mark of a dev build in the status bar; a local build has it too
+dev_arguments=(-p:ReleaseBuild=true)
+(( dev )) && dev_arguments=()
 version_dir="dist/$version"
 
 # Makes sure artifacts/<rid> holds a GStreamer runtime, building the Linux one when needed
@@ -422,7 +425,7 @@ publish_android() {
     # The signing step is skipped while its output is there, a change of the key alone does not rerun it
     rm -f "$(dirname "$ANDROID_PROJECT")"/bin/Release/*/*-Signed.apk
     dotnet publish "$ANDROID_PROJECT" -c Release -o "$ANDROID_PUBLISH_DIR" -nologo -nodeReuse:false \
-        -p:UseSharedCompilation=false ${signing[@]+"${signing[@]}"}
+        -p:UseSharedCompilation=false ${signing[@]+"${signing[@]}"} ${dev_arguments[@]+"${dev_arguments[@]}"}
 
     echo "######## Packing android"
     mkdir -p "$version_dir/android"
@@ -450,7 +453,8 @@ for rid in "${targets[@]}"; do
     echo "######## Publishing the client for $rid"
     rm -rf "$publish_dir"
     # -r as well: the RID of the profile alone does not reach the restore
-    dotnet publish "$PROJECT" -p:PublishProfile="$rid-$mode" -r "$rid" -nologo ${publish_arguments[@]+"${publish_arguments[@]}"}
+    dotnet publish "$PROJECT" -p:PublishProfile="$rid-$mode" -r "$rid" -nologo ${publish_arguments[@]+"${publish_arguments[@]}"} \
+        ${dev_arguments[@]+"${dev_arguments[@]}"}
 
     release "$rid" "$publish_dir"
     echo "Published: $publish_dir"

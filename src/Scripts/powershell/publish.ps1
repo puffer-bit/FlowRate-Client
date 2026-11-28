@@ -105,6 +105,8 @@ if ($Dev) {
     if (-not $Stamp) { $Stamp = [DateTime]::UtcNow.ToString('yyMMddHHmm') }
     $version = "$version-dev.$Stamp"
 }
+# Only a release goes without the mark of a dev build in the status bar; a local build has it too
+$devArguments = if ($Dev) { @() } else { @("-p:ReleaseBuild=true") }
 $versionDir = Join-Path "dist" $version
 $targets = if ($Target -eq "all") { @("win-x64", "linux-x64", "android") } else { @($Target) }
 
@@ -391,7 +393,7 @@ function Publish-Android {
 
     $ErrorActionPreference = "Continue"
     dotnet publish $androidProject -c Release -o $androidPublishDir -nologo -nodeReuse:false `
-        -p:UseSharedCompilation=false @signing 2>&1 | ForEach-Object { "$_" }
+        -p:UseSharedCompilation=false @signing @devArguments 2>&1 | ForEach-Object { "$_" }
     $publishExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($publishExitCode -ne 0) { throw "dotnet publish for android failed with exit code $publishExitCode" }
@@ -427,7 +429,7 @@ foreach ($rid in $targets) {
     # once the output is redirected; the exit code is what tells whether the publish failed.
     # -r as well: the RID of the profile alone does not reach the restore.
     $ErrorActionPreference = "Continue"
-    dotnet publish $project -p:PublishProfile="$rid-$mode" -r $rid -nologo 2>&1 | ForEach-Object { "$_" }
+    dotnet publish $project -p:PublishProfile="$rid-$mode" -r $rid -nologo @devArguments 2>&1 | ForEach-Object { "$_" }
     $publishExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($publishExitCode -ne 0) { throw "dotnet publish for $rid failed with exit code $publishExitCode" }

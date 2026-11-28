@@ -55,7 +55,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IAppearanceService>(),
             provider.GetRequiredService<ChatReceipts>(),
             provider.GetRequiredService<ChatAttachmentOptions>(),
-            provider.GetRequiredService<ChatDrafts>()));
+            provider.GetRequiredService<ChatDrafts>(),
+            provider.GetService<Client.Application.Tasks.ITaskTracker>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),

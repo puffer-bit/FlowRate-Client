@@ -76,6 +76,9 @@ public partial class MainWindowVM
                 case DeviceLinkApproval approval:
                     await ApproveDeviceLinkAsync(approval);
                     break;
+                case SettingsLink settings:
+                    await OpenSettingsAsync(settings.Tab);
+                    break;
             }
         }
         catch (Exception exception)
@@ -93,6 +96,16 @@ public partial class MainWindowVM
 
         _ = OpenLinkAsync(link);
         return true;
+    }
+
+    /// <summary>Opens the settings on the tab the link names, as the settings know it: "about", "audio"…</summary>
+    private async Task OpenSettingsAsync(string? tab)
+    {
+        var settings = _createSettings();
+        if (Enum.TryParse<Client.ViewModels.Settings.SettingTabType>(tab, ignoreCase: true, out var type)
+            && type != Client.ViewModels.Settings.SettingTabType.Undefined)
+            settings.ShowTab(type);
+        await ShowSettings.Handle(settings);
     }
 
     private async Task ApproveDeviceLinkAsync(DeviceLinkApproval approval)

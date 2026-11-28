@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Client.Application.Ports;
 using Client.Application.Settings;
+using Client.Application.Tasks;
 using Client.Avalonia.Localization;
 using Client.Services;
 using Microsoft.Extensions.Logging;
@@ -110,9 +111,13 @@ public sealed partial class UpdaterVM : ReactiveObject
     private readonly INotificationService _notifications;
     private readonly ILogger<UpdaterVM> _logger;
 
+    // The check and the download are shown in the task list of the status bar
+    private readonly ITaskTracker? _tasks;
+
     public UpdaterVM(IAppUpdater updater, IBehaviorService behaviorService, INotificationService notifications,
-        ILogger<UpdaterVM> logger)
+        ILogger<UpdaterVM> logger, ITaskTracker? tasks = null)
     {
+        _tasks = tasks;
         _updater = updater;
         _behaviorService = behaviorService;
         _notifications = notifications;
@@ -152,16 +157,22 @@ public sealed partial class UpdaterVM : ReactiveObject
     private async Task CheckAsync(bool isQuiet)
     {
         State = UpdaterState.Checking;
+        using var task = _tasks?.Begin(TrackedTaskKind.Loading, TrackedTaskStage.Checking,
+            Strings.Get("tasks.update.check"));
 
         try
         {
             // Read every time: the channel may have been changed in the settings since the last check
             var channel = (await _behaviorService.GetSettingsAsync()).UpdateChannel;
             Update = await _updater.CheckAsync(channel);
+            task?.Complete();
         }
         catch (Exception exception)
         {
             LogCheckFailed(exception);
+            // The check at the start fails quietly: no red row stays for it
+            if (!isQuiet)
+                task?.Fail(Strings.Get("main.updater.checkFailed"));
             State = UpdaterState.Failed;
             if (!isQuiet)
                 _notifications.Show(NotificationType.Error, Strings.Get("main.updater.checkFailed"));
@@ -188,19 +199,27 @@ public sealed partial class UpdaterVM : ReactiveObject
 
         Progress = 0;
         State = UpdaterState.Downloading;
+        using var task = _tasks?.Begin(TrackedTaskKind.Download, TrackedTaskStage.Downloading,
+            Strings.Format("tasks.update.download", ("version", update.Version)), totalBytes: update.Size);
 
         try
         {
-            await _updater.DownloadAsync(update, percent => _ = UiThread.RunAsync(() =>
+            await _updater.DownloadAsync(update, percent =>
             {
-                // A report may come after the download has ended
-                if (State == UpdaterState.Downloading)
-                    Progress = percent;
-            }));
+                task?.Report(percent / 100.0);
+                _ = UiThread.RunAsync(() =>
+                {
+                    // A report may come after the download has ended
+                    if (State == UpdaterState.Downloading)
+                        Progress = percent;
+                });
+            });
+            task?.Complete();
         }
         catch (Exception exception)
         {
             LogDownloadFailed(exception, update.Version);
+            task?.Fail(Strings.Get("main.updater.downloadFailed"));
             State = UpdaterState.Available;
             _notifications.Show(NotificationType.Error, Strings.Get("main.updater.downloadFailed"));
             return;

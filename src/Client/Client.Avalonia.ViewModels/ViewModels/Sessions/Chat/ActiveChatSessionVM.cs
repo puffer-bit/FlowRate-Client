@@ -191,6 +191,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
     private ChatSessionModel _model;
     private readonly IChatImageService _images;
     private readonly IMediaCache _mediaCache;
+    private readonly Client.Application.Tasks.ITaskTracker? _tasks;
     private readonly IDismissedPromptsRepository _dismissedPrompts;
     private readonly EventSubscriptions _subscriptions = new();
     private readonly int _currentUserId;
@@ -224,12 +225,13 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _currentUserId = currentUser.Id;
         _senders = new ChatSenderDirectory(coordinatorSession, currentUser.Id);
         _senders.Changed += OnSendersChanged;
+        _tasks = services.Tasks;
         _cache = services.Caches.Open(currentUser.CoordinatorInstanceId, Id, currentUser.Id);
         _pager = new ChatHistoryPager(coordinatorSession, _cache, Id);
         Composer = new ChatComposerVM(Id, Name, sessionModel.IsAttachmentsAllowed, coordinatorSession, currentUser.Id,
             services.MediaUploader, services.Images, _senders, JumpToMessage, services.AttachmentOptions,
             // In a direct chat or a group only its members can be mentioned
-            () => _model.IsPrivate ? _model.MemberIds : null, services.Drafts, currentUser.CoordinatorInstanceId);
+            () => _model.IsPrivate ? _model.MemberIds : null, services.Drafts, currentUser.CoordinatorInstanceId, services.Tasks);
 
         // A newer message of the user may not be loaded while an older part of the history is shown
         Composer.FindLastEditableMessage = () => HasNewerMessages ? null : _messageVms.Values
@@ -314,7 +316,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             ? []
             : model.Files.Select(file => new ChatFileVM(file, _coordinatorSession,
                 async fileName => await PickFileSaveTarget.Handle(fileName), _mediaCache,
-                async path => await OpenFileInteraction.Handle(path), _images)).ToList();
+                async path => await OpenFileInteraction.Handle(path), _images, _tasks, Name)).ToList();
 
     /// <summary>
     /// Loads the page before the oldest loaded message and returns the number of messages added.

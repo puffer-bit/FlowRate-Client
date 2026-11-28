@@ -125,6 +125,53 @@
         </DrawingGroup>
     </DrawingImage>
 
+    <!-- Green check mark without a background (done). Source: Icons/DoneCheckIcon.svg -->
+    <DrawingImage x:Key="DoneCheckIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M4.5 12.5 L9.5 17.5 L19.5 6.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#4CAF50" Thickness="2.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- A list with blue bullets (the task list). Source: Icons/TasksIcon.svg -->
+    <DrawingImage x:Key="TasksIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M9 6.5 H20 M9 12 H20 M9 17.5 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M4.5 6.5 H4.51 M4.5 12 H4.51 M4.5 17.5 H4.51">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#2196F3" Thickness="2.6" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- White hammer and wrench crossed (a dev build), for a coloured background. Source: Icons/DevBuildIcon.svg -->
+    <DrawingImage x:Key="DevBuildIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M8.4 8.4 L19.5 19.5">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#FFFFFF" Thickness="2" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Brush="#FFFFFF" Geometry="M11.6 5.2 L8.8 2.4 L2.4 8.8 L5.2 11.6 Z"/>
+            <GeometryDrawing Geometry="M4.5 19.5 L14 10 M19.49 7.76 A3 3 0 1 1 16.24 4.51">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#FFFFFF" Thickness="2.2" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
     <!-- ===== Common ===== -->
     <DrawingImage x:Key="PinIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
@@ -703,19 +750,18 @@
         </DrawingGroup>
     </DrawingImage>
 
-    <!-- Door with green arrow (enter). Source: Icons/DoorWithGreenArrowIcon.svg -->
-    <DrawingImage x:Key="DoorWithGreenArrowIcon">
+    <!-- Door with green arrow coming in (enter). Source: Icons/DoorEnterIcon.svg -->
+    <DrawingImage x:Key="DoorEnterIcon">
         <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
             <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
-            <GeometryDrawing Geometry="M12.5 3 H19 A1.5 1.5 0 0 1 20.5 4.5 V19.5 A1.5 1.5 0 0 1 19 21 H12.5 A1.5 1.5 0 0 1 11 19.5 V4.5 A1.5 1.5 0 0 1 12.5 3 Z">
+            <GeometryDrawing Geometry="M14 4 H19 A2 2 0 0 1 21 6 V18 A2 2 0 0 1 19 20 H14">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
-            <GeometryDrawing Brush="{DynamicResource PrimaryTextBrush}" Geometry="M12.7 12 A0.9 0.9 0 1 0 14.5 12 A0.9 0.9 0 1 0 12.7 12 Z"/>
-            <GeometryDrawing Geometry="M2.5 12 H9 M6 8.8 L9.2 12 L6 15.2">
+            <GeometryDrawing Geometry="M3 12 H15 M11 8 L15 12 L11 16">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#24E265" Thickness="2" LineCap="Round" LineJoin="Round"/>
+                    <Pen Brush="#4CAF50" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>
@@ -1870,6 +1916,28 @@
             <GeometryDrawing Geometry="M3.6 17.5 L7.2 14 M20.4 17.5 L16.8 14">
                 <GeometryDrawing.Pen>
                     <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingImage>
+
+    <!-- Keyboard with an orange space bar (hotkeys settings). Source: Icons/Settings/KeyboardIcon.svg -->
+    <DrawingImage x:Key="KeyboardIcon">
+        <DrawingGroup ClipGeometry="M0,0 H24 V24 H0 Z">
+            <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+            <GeometryDrawing Geometry="M5 5 H19 A2.5 2.5 0 0 1 21.5 7.5 V16.5 A2.5 2.5 0 0 1 19 19 H5 A2.5 2.5 0 0 1 2.5 16.5 V7.5 A2.5 2.5 0 0 1 5 5 Z">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.5" LineCap="Round" LineJoin="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M6 9 H6.01 M9 9 H9.01 M12 9 H12.01 M15 9 H15.01 M18 9 H18.01 M7.5 12 H7.51 M10.5 12 H10.51 M13.5 12 H13.51 M16.5 12 H16.51">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{DynamicResource PrimaryTextBrush}" Thickness="1.9" LineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Geometry="M8 15.5 H16">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#FF9800" Thickness="1.9" LineCap="Round"/>
                 </GeometryDrawing.Pen>
             </GeometryDrawing>
         </DrawingGroup>

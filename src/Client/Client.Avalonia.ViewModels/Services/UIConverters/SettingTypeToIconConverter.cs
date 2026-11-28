@@ -19,7 +19,7 @@ public class SettingTypeToIconConverter : IValueConverter
             SettingTabType.Accounting    => "ShieldedUser",
             SettingTabType.AppBehavior  => "LightningIcon",
             SettingTabType.Audio  => "VoiceIcon",
-            SettingTabType.HotKeys  => "KeycapIcon",
+            SettingTabType.HotKeys  => "KeyboardIcon",
             SettingTabType.DebugAndLogs  => "DebugIcon",
             SettingTabType.Experimental  => "RadiationIcon",
             SettingTabType.PlatformSpecific  => CurrentPlatform.IconKey,

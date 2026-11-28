@@ -26,11 +26,6 @@ namespace Client.ViewModels.Settings;
 
 public class SettingsWindowVM : ReactiveObject, IDisposable
 {
-    public bool IsSafeMode => LaunchOptions.Current.SafeMode;
-    public bool IsMediaDisabled => !IsSafeMode && !Client.Core.Media.MediaRuntime.IsEnabled;
-    public bool IsSoftwareRendering => !HardwareAcceleration.IsEnabled;
-    public bool IsSoftwareRenderingForced => HardwareAcceleration.IsForcedOff;
-
     public bool IsLoaded
     {
         get;
@@ -237,6 +232,22 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
             UpdateSearchResults();
     }
 
+    // The tab to open once the settings are loaded, as a link asks for
+    private SettingTabType? _tabToShow;
+
+    /// <summary>Opens a tab, as a link into the settings asks; once loaded if they are not yet.</summary>
+    public void ShowTab(SettingTabType type)
+    {
+        if (!IsLoaded)
+        {
+            _tabToShow = type;
+            return;
+        }
+
+        if (SettingList.FirstOrDefault(tab => tab.Type == type && tab.IsEnabled) is { } setting)
+            SelectedSetting = setting;
+    }
+
     private async Task LoadAllSettings()
     {
         var loadTasks = SettingList
@@ -249,7 +260,8 @@ public class SettingsWindowVM : ReactiveObject, IDisposable
             CollapsedSections.Add(key);
         CollapsedSections.CollectionChanged += OnCollapsedSectionsChanged;
 
-        SelectedSetting = SettingList.FirstOrDefault(c => c.IsEnabled);
+        SelectedSetting = SettingList.FirstOrDefault(c => c.IsEnabled && (_tabToShow == null || c.Type == _tabToShow))
+                          ?? SettingList.FirstOrDefault(c => c.IsEnabled);
 
         IsLoaded = true;
     }

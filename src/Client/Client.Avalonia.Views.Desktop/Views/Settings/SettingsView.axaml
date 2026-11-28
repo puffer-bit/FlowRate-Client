@@ -59,7 +59,7 @@
         <dialogs:DialogHeader Grid.Row="0" Grid.ColumnSpan="2" Classes="compact"
                              Icon="{StaticResource GearIcon}" Title="{l:Text settings.title}"
                              Subtitle="{Binding SelectedSetting?.Name}" CloseCommand="{Binding CloseCommand}">
-            <!-- The launch modes stand on the title row, next to the loading indicator -->
+            <!-- The loading indicator on the title row; the launch modes are in the status bar of the main window -->
             <dialogs:DialogHeader.InlineContent>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !IsLoaded}">
@@ -70,7 +70,6 @@
                                    Foreground="{DynamicResource SecondaryTextBrush}"
                                    Text="{l:Text settings.loading}"/>
                     </StackPanel>
-                    <settingsViews:SettingsStatus VerticalAlignment="Center"/>
                 </StackPanel>
             </dialogs:DialogHeader.InlineContent>
         </dialogs:DialogHeader>

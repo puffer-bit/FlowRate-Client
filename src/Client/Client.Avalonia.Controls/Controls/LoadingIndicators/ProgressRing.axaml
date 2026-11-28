@@ -47,6 +47,15 @@
     <Setter Property="SweepAngle" Value="{Binding ValueAngle, RelativeSource={RelativeSource Mode=TemplatedParent}}"/>
   </Style>
 
+  <!-- class "smooth": the arc moves to a new value instead of jumping there -->
+  <Style Selector="loadingIndicators|ProgressRing.smooth">
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="ValueAngle" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+      </Transitions>
+    </Setter>
+  </Style>
+
   <Style Selector="loadingIndicators|ProgressRing:preserveaspect">
     <Setter Property="MinWidth" Value="32" />
     <Setter Property="MinHeight" Value="32" />

@@ -52,7 +52,7 @@
                 <Flyout Placement="BottomEdgeAlignedRight">
                     <StackPanel Spacing="2">
                         <!-- One item, shown by the state it would change -->
-                        <menus:MenuItemButton Icon="{StaticResource DoorWithGreenArrowIcon}" Content="{l:Text sessions.join}"
+                        <menus:MenuItemButton Icon="{StaticResource DoorEnterIcon}" Content="{l:Text sessions.join}"
                                               menus:FlyoutMenu.CloseOnClick="True"
                                               IsVisible="{Binding !DataContext.IsEntered, ElementName=Root}"
                                               IsEnabled="{Binding DataContext.CanJoin, ElementName=Root}"
