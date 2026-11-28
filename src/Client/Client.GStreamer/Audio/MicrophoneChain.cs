@@ -90,15 +90,27 @@ public static class MicrophoneChain
     private const string MonitorSplitName = "monitor_split";
 
     // Starts closed, that is silent. The queue lets nothing out until it holds the pre-roll, so the
-    // valve gets the audio that much later than level measures it. It adds the pre-roll to the
-    // latency it reports, lets out all it holds at the end of the stream and empties on a flush.
-    // VoiceGate selects the threshold from its options: zero while disabled, the pre-roll for
-    // a level gate, and the additional detector delay only while voice detection is enabled.
+    // valve gets the audio that much later than level measures it. It lets out all it holds at the
+    // end of the stream and empties on a flush. VoiceGate selects the threshold from its options:
+    // zero while disabled, the pre-roll for a level gate, and the additional detector delay only
+    // while voice detection is enabled.
+    // Its limits count buffers, which are FrameDuration each, not time. The time level of a queue
+    // comes from the timestamps: a jump in those of the capture, as a source resyncing to the
+    // pipeline clock makes on macOS, leaves it reading as nearly empty, and a time threshold then
+    // held every buffer back for good, while a time limit never leaked any of them.
     private const string GateDescription =
         "level name=" + GateLevelName + " interval={0} ! {2}" +
-        "queue name=" + GateDelayName + " leaky=downstream max-size-buffers=0 max-size-bytes=0 max-size-time=80000000 " +
-        "min-threshold-time={1} ! " +
+        "queue name=" + GateDelayName + " leaky=downstream max-size-buffers={3} max-size-bytes=0 max-size-time=0 " +
+        "min-threshold-buffers={1} ! " +
         "volume name=" + GateValveName + " mute=true ! ";
+
+    /// <summary>
+    /// The length of every buffer from the capture on: its audiobuffersplit cuts the sound into 10 ms.
+    /// </summary>
+    public static readonly TimeSpan FrameDuration = TimeSpan.FromMilliseconds(10);
+
+    // 80 ms, above the longest pre-roll the gate asks for
+    private const int GateDelayMaxBuffers = 8;
 
     /// <summary>
     /// The gate and the voice detection beside it, as fragments of a launch description, empty when the
@@ -119,8 +131,9 @@ public static class MicrophoneChain
 
         // Start without a delay; the gate applies its options before audio starts flowing.
         var gate = string.Format(CultureInfo.InvariantCulture, GateDescription, interval,
-            0UL,
-            hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "");
+            0,
+            hasVoiceDetection ? "tee name=" + GateSplitName + " ! " : "",
+            GateDelayMaxBuffers);
 
         var voiceDetection = hasVoiceDetection
             ? string.Format(CultureInfo.InvariantCulture, VoiceDetectionDescription, interval,

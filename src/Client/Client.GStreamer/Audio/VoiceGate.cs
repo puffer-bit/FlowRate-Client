@@ -131,7 +131,7 @@ public sealed class VoiceGate
 
         var delay = options == null ? TimeSpan.Zero : PreRoll +
             (options.IsVoiceDetectionEnabled && _detector != null ? VoiceDetectionDelay : TimeSpan.Zero);
-        _delay.SetProperty("min-threshold-time", (ulong)delay.TotalNanoseconds);
+        _delay.SetProperty("min-threshold-buffers", (uint)(delay / MicrophoneChain.FrameDuration));
 
         // Levels are measured only while they are needed. RNNoise runs whenever the gate is on, even
         // without voice detection: it takes well under one percent of a core, and it tells a voice
