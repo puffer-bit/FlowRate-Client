@@ -1,4 +1,4 @@
-# Runs the test projects on every push and pull request, including before a release.
+# Runs the test projects on pull requests and the main branches, including before a release.
 #
 # Only the test projects are built, not FlowRateClient.sln: the desktop app needs the GStreamer runtime,
 # which is not in git (see src/Client/Client.GStreamer/Build/README.md), and the Android app needs the
@@ -6,7 +6,10 @@
 name: Tests
 
 on:
+  # A branch is tested by its pull request, against what it merges into; a push alone runs only on the main
+  # branches, after a merge. A branch without a pull request is tested from the Actions tab
   push:
+    branches: [main, '*/main']
   pull_request:
   workflow_dispatch:
   workflow_call:
