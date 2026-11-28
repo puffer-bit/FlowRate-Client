@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Client.Application.Coordinator;
@@ -16,16 +17,15 @@ namespace Client.ViewModels.Sessions.Chat;
 /// </summary>
 public class ChatImageVM : ReactiveObject, IShownImage
 {
-    // The box an only image of a message is fitted into, and the side of a tile among several
-    private const double SingleMaxSide = 320;
-    private const double TileSide = 152;
-
     // A GIF moves only in the file itself, which is downloaded for the tile up to this size
     private const long MaxAnimatedSize = 16 * 1024 * 1024;
 
     public ChatImageContent Image { get; }
     public double TileWidth { get; }
     public double TileHeight { get; }
+
+    /// <summary>Where the tile stands in the album of the message (<see cref="ChatAlbumLayout"/>).</summary>
+    public Thickness TileMargin { get; }
 
     /// <summary>
     /// Null until the reduced copy is loaded, and again once no view shows the image. An animated
@@ -57,13 +57,16 @@ public class ChatImageVM : ReactiveObject, IShownImage
     private int _viewers;
     private bool _isLoading;
 
-    public ChatImageVM(ChatImageContent image, bool isOnlyImage, ICoordinatorSession session,
+    /// <param name="tile">The place of the image in the album of its message.</param>
+    public ChatImageVM(ChatImageContent image, Rect tile, ICoordinatorSession session,
         IChatImageService images, Action<ChatImageVM> open)
     {
         Image = image;
         _session = session;
         _images = images;
-        (TileWidth, TileHeight) = isOnlyImage ? FitSingle(image.Width, image.Height) : (TileSide, TileSide);
+        TileWidth = tile.Width;
+        TileHeight = tile.Height;
+        TileMargin = new Thickness(tile.X, tile.Y, 0, 0);
         OpenCommand = ReactiveCommand.Create(() => open(this));
     }
 
@@ -161,13 +164,4 @@ public class ChatImageVM : ReactiveObject, IShownImage
 
     private bool IsAnimatable =>
         Image.MimeType == "image/gif" && Image.Size <= MaxAnimatedSize;
-
-    private static (double Width, double Height) FitSingle(int width, int height)
-    {
-        if (width <= 0 || height <= 0)
-            return (SingleMaxSide, SingleMaxSide);
-
-        var scale = Math.Min(1, Math.Min(SingleMaxSide / width, SingleMaxSide / height));
-        return (Math.Max(1, Math.Round(width * scale)), Math.Max(1, Math.Round(height * scale)));
-    }
 }

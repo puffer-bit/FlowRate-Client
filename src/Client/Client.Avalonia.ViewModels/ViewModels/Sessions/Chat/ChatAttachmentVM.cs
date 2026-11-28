@@ -199,6 +199,27 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     /// <inheritdoc cref="Upload"/>
     public ChatFileUploadState FileUpload { get; private set; } = new();
 
+    /// <summary>The place of the tile in the album of the message on its way (<see cref="ChatAlbumLayout"/>).</summary>
+    public double TileWidth
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = 200;
+
+    /// <inheritdoc cref="TileWidth"/>
+    public double TileHeight
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = 140;
+
+    /// <inheritdoc cref="TileWidth"/>
+    public Avalonia.Thickness TileMargin
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     public IImage? Thumbnail
     {
         get;

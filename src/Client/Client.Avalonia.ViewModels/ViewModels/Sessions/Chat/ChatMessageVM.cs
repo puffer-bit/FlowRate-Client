@@ -91,6 +91,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
             this.RaisePropertyChanged(nameof(CanPin));
             this.RaisePropertyChanged(nameof(HasText));
             this.RaisePropertyChanged(nameof(HasPlainText));
+            this.RaisePropertyChanged(nameof(IsMediaEnd));
+            this.RaisePropertyChanged(nameof(IsMediaLead));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
             // The card is made anew only for another preview: the same one keeps its loaded picture
             if (_linkPreview != null && _linkPreview.Preview.Id != value.LinkPreview?.Id)
@@ -275,7 +277,52 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     public IReadOnlyList<ChatAttachmentVM> OutgoingAttachments => Outgoing?.Attachments ?? [];
     public bool HasOutgoingAttachments => OutgoingAttachments.Count > 0;
     public ChatMessageVM? WithOutgoingAttachments => HasOutgoingAttachments ? this : null;
-    public IReadOnlyList<ChatAttachmentVM> OutgoingImages => OutgoingAttachments.Where(a => a.IsImage || a.IsVideo).ToList();
+    public IReadOnlyList<ChatAttachmentVM> OutgoingImages => _outgoingImages ??= LayOutOutgoingImages();
+    private IReadOnlyList<ChatAttachmentVM>? _outgoingImages;
+
+    // The pictures and videos on their way stand where the stored ones will, by the shape of their thumbnails,
+    // so the bubble keeps its size when the server's copy replaces it
+    private IReadOnlyList<ChatAttachmentVM> LayOutOutgoingImages()
+    {
+        var images = OutgoingAttachments.Where(a => a.IsImage || a.IsVideo).ToList();
+        var tiles = ChatAlbumLayout.Arrange(images
+            .Select(image => image.Thumbnail?.Size is { Width: > 0, Height: > 0 } size
+                ? (size.Width * 1000 / size.Height, 1000.0)
+                : (0.0, 0.0))
+            .ToList());
+        for (int i = 0; i < images.Count; i++)
+        {
+            images[i].TileWidth = tiles[i].Width;
+            images[i].TileHeight = tiles[i].Height;
+            images[i].TileMargin = new Avalonia.Thickness(tiles[i].X, tiles[i].Y, 0, 0);
+        }
+        var extent = ChatAlbumLayout.Extent(tiles);
+        OutgoingAlbumWidth = extent.Width;
+        OutgoingAlbumHeight = extent.Height;
+        return images;
+    }
+
+    /// <summary>The size of the album of pictures on their way.</summary>
+    public double OutgoingAlbumWidth
+    {
+        get
+        {
+            _ = OutgoingImages;
+            return field;
+        }
+        private set;
+    }
+
+    /// <inheritdoc cref="OutgoingAlbumWidth"/>
+    public double OutgoingAlbumHeight
+    {
+        get
+        {
+            _ = OutgoingImages;
+            return field;
+        }
+        private set;
+    }
     public IReadOnlyList<ChatAttachmentVM> OutgoingFiles => OutgoingAttachments.Where(a => !a.IsImage && !a.IsVideo).ToList();
     public bool HasOutgoingImages => OutgoingAttachments.Any(a => a.IsImage || a.IsVideo);
     public bool HasOutgoingFiles => OutgoingAttachments.Any(a => !a.IsImage && !a.IsVideo);
@@ -380,6 +427,31 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
 
     public IReadOnlyList<ChatImageVM> Images { get; }
     public bool HasImages => Images.Count > 0;
+
+    /// <summary>The size of the album the images make (<see cref="ChatAlbumLayout"/>).</summary>
+    public double AlbumWidth { get; }
+    /// <inheritdoc cref="AlbumWidth"/>
+    public double AlbumHeight { get; }
+
+    /// <summary>The message shows pictures in an album, its own or the ones on their way.</summary>
+    public bool HasAlbum => HasImages || HasOutgoingImages;
+
+    /// <summary>
+    /// A bubble with an album is as wide as the album: its text wraps under it rather than widening it.
+    /// The padding of the bubble is added in the view.
+    /// </summary>
+    public double AlbumBubbleWidth => Math.Max(AlbumWidth, HasOutgoingImages ? OutgoingAlbumWidth : 0);
+
+    /// <summary>
+    /// Pictures open the bubble: nothing quoted above them, so they meet its top edge where no name stands
+    /// over them either.
+    /// </summary>
+    public bool IsMediaLead => HasAlbum && !HasReply && !HasCommandResult;
+
+    /// <summary>
+    /// Pictures close the bubble: no text and no file follow them, so the time and the mark lie on them.
+    /// </summary>
+    public bool IsMediaEnd => HasAlbum && !HasPlainText && !HasFiles && !HasOutgoingFiles;
 
     /// <summary>The files of the message that are downloaded rather than shown.</summary>
     public IReadOnlyList<ChatFileVM> Files { get; }
@@ -687,6 +759,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     public ChatMessageVM? WithReply => HasReply ? this : null;
     public ChatMessageVM? WithCommandResult => HasCommandResult ? this : null;
     public ChatMessageVM? WithImages => HasImages ? this : null;
+    public ChatMessageVM? WithAlbum => HasAlbum ? this : null;
     public ChatMessageVM? WithFiles => HasFiles ? this : null;
     public ChatMessageVM? WithReactions => HasReactions ? this : null;
 
@@ -756,6 +829,10 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         Message = messageModel;
         Images = images ?? [];
         Files = files ?? [];
+        var album = ChatAlbumLayout.Extent(Images.Select(image =>
+            new Avalonia.Rect(image.TileMargin.Left, image.TileMargin.Top, image.TileWidth, image.TileHeight)));
+        AlbumWidth = album.Width;
+        AlbumHeight = album.Height;
         Reply = messageModel.ReplyContent != null ? new ChatReplyPreviewVM(messageModel.ReplyContent) : null;
         _replyCommand = replyCommand;
         _editCommand = editCommand;
