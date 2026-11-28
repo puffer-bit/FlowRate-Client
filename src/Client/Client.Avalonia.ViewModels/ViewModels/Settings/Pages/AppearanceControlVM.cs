@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Client.Application.Settings;
 using Client.Application.Settings.Search;
 using Client.Avalonia.Localization;
+using Client.Core.Chat;
 using Client.Core.Settings.Themes;
 using Client.Services;
 using ReactiveUI;
@@ -26,6 +27,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         new("appearance.theme", "settings.appearance.section.theme"),
         new("appearance.buttonColors", "settings.appearance.section.buttonColors"),
         new("appearance.preview", "settings.appearance.section.preview"),
+        new("appearance.chat", "settings.appearance.section.chat"),
         new("appearance.scale", "settings.appearance.section.scale"),
         new("appearance.animations", "settings.appearance.section.animations"),
         new("appearance.window", "settings.appearance.section.window")
@@ -36,6 +38,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
     public IReadOnlyList<SettingSearchEntry> SearchEntries => SettingText.Entries("appearance",
         ("language", ["language"]),
         ("theme", ["theme"]),
+        ("chat", ["messageLayout"]),
         ("scale", ["scale"]),
         ("window", ["customTitleBar"]),
         ("buttonColors", ["primaryColor", "secondaryColor", "dangerColor", "saveColor", "successColor", "warningColor",
@@ -120,6 +123,24 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>Messages are drawn in bubbles, as in Telegram, instead of a list, as in Discord.</summary>
+    public bool IsBubbleLayout
+    {
+        get;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(MessageLayoutIndex));
+        }
+    }
+
+    // Index into the layout choices of the view, in the order of ChatMessageLayout
+    public int MessageLayoutIndex
+    {
+        get => (int)(IsBubbleLayout ? ChatMessageLayout.Bubbles : ChatMessageLayout.List);
+        set => IsBubbleLayout = value == (int)ChatMessageLayout.Bubbles;
+    }
+
     public bool IsAnimationEnabled
     {
         get;
@@ -175,6 +196,12 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         this.WatchProperty(nameof(UseCustomTitleBar), vm => vm.UseCustomTitleBar)
             .Where(_ => _isLoaded)
             .Select(value => Observable.FromAsync(() => ChangeTitleBarAsync(value)))
+            .Concat().Subscribe();
+        // Open chats follow at once
+        this.WatchProperty(nameof(IsBubbleLayout), vm => vm.IsBubbleLayout)
+            .Where(_ => _isLoaded)
+            .Select(value => Observable.FromAsync(() => _appearanceService.UpdateChatMessageLayoutAsync(
+                value ? ChatMessageLayout.Bubbles : ChatMessageLayout.List)))
             .Concat().Subscribe();
     }
 
@@ -273,6 +300,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         IsAnimationEnabled = animations.IsEnabled;
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = await _appearanceService.GetInterfaceScaleAsync();
+        IsBubbleLayout = await _appearanceService.GetChatMessageLayoutAsync() == ChatMessageLayout.Bubbles;
         _isLoaded = true;
     }
 
@@ -367,6 +395,7 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         IsAnimationEnabled = animations.IsEnabled;
         AnimationSpeedIndex = (int)animations.Speed;
         SelectedInterfaceScale = InterfaceScale.Default;
+        IsBubbleLayout = false;
         _isLoaded = true;
 
         await ChangeTitleBarAsync(false);
@@ -375,5 +404,6 @@ public class AppearanceControlVM : ReactiveObject, ISettingVM
         await ResetColorsAsync();
         await ChangeAnimationsAsync(animations);
         await ChangeInterfaceScaleAsync(InterfaceScale.Default);
+        await _appearanceService.UpdateChatMessageLayoutAsync(ChatMessageLayout.List);
     }
 }

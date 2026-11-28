@@ -260,6 +260,9 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
 
     public bool IsOutgoing => Outgoing != null;
 
+    /// <summary>In a direct chat the bubbles show no names or avatars: there are only two people.</summary>
+    public bool IsDirectChat { get; init; }
+
     /// <summary>On its way: the clock instead of the receipt.</summary>
     public bool IsSending => Outgoing is { IsFailed: false };
 

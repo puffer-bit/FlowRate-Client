@@ -145,7 +145,7 @@ With `--no-media`, audio and video attachments appear as files to download or op
 
 Settings cover appearance, audio, video, screen sharing, hotkeys, behavior, storage, saved accounts, experimental features, and debug logs.
 
-Use appearance settings to adjust the theme and chat presentation. Audio settings separate voice devices and processing from interface sounds. Storage settings manage locally cached media; saved identities and database protection are managed separately from disposable media cache.
+Use appearance settings to adjust the theme and chat presentation, including the message view: a list with avatars and names, or bubbles with your own messages on the right and the time inside each bubble. Audio settings separate voice devices and processing from interface sounds. Storage settings manage locally cached media; saved identities and database protection are managed separately from disposable media cache.
 
 Behavior → Playback includes **Keep the screen on while watching streams**, enabled by default. It applies immediately to shared-screen and camera viewing on Windows, macOS, Linux, and Android. Closing the last watched stream or disconnecting restores normal display sleep. Android also restores normal display sleep while the app is in the background. Linux requires a desktop portal with idle inhibition support.
 

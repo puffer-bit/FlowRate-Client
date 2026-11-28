@@ -12,6 +12,17 @@ public class AppearanceService : IAppearanceService
 
     public Task UpdateGroupOnlineChatUsersAsync(bool groupOnlineUsers) =>
         _appearanceSettingsRepository.UpdateGroupOnlineChatUsersAsync(groupOnlineUsers);
+
+    public event Action<Client.Core.Chat.ChatMessageLayout>? ChatMessageLayoutChanged;
+
+    public Task<Client.Core.Chat.ChatMessageLayout> GetChatMessageLayoutAsync() =>
+        _appearanceSettingsRepository.GetChatMessageLayoutAsync();
+
+    public async Task UpdateChatMessageLayoutAsync(Client.Core.Chat.ChatMessageLayout layout)
+    {
+        await _appearanceSettingsRepository.UpdateChatMessageLayoutAsync(layout);
+        ChatMessageLayoutChanged?.Invoke(layout);
+    }
     
     public AppearanceService(IAppearanceSettingsRepository appearanceSettingsRepository)
     {

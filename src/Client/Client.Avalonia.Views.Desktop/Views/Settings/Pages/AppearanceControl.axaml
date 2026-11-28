@@ -80,6 +80,17 @@
         
         <hints:HintBlock Text="{l:Text settings.appearance.preview.hint}"/>
 
+        <controls:SettingsHeader services:SettingText.Section="appearance.chat"/>
+        <ui:SettingsCard>
+            <ui:SettingsRow services:SettingText.Key="appearance.messageLayout">
+                <!-- Items are in the order of ChatMessageLayout -->
+                <ComboBox MinWidth="180" SelectedIndex="{Binding MessageLayoutIndex}">
+                    <ComboBoxItem Content="{l:Text settings.appearance.messageLayout.list}"/>
+                    <ComboBoxItem Content="{l:Text settings.appearance.messageLayout.bubbles}"/>
+                </ComboBox>
+            </ui:SettingsRow>
+        </ui:SettingsCard>
+
         <controls:SettingsHeader services:SettingText.Section="appearance.scale"/>
         <ui:SettingsCard>
             <ui:SettingsRow services:SettingText.Key="appearance.scale">

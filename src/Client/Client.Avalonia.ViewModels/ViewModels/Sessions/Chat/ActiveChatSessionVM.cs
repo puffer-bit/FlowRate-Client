@@ -122,6 +122,13 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
 
     public bool IsImageViewerOpen => ImageViewer != null;
 
+    /// <summary>The messages are drawn in bubbles, as in Telegram, instead of a list; chosen in the settings.</summary>
+    public bool IsBubbleLayout
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>
     /// False while the coordinator connection is down: the chat stays open but nothing can be sent.
     /// </summary>
@@ -299,6 +306,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
         _ = UpdateChatNameAsync(sessionModel);
         RestoreTyping();
         AttachOutbox();
+        AttachMessageLayout(services.Appearance);
 
     }
 
@@ -458,6 +466,7 @@ public partial class ActiveChatSessionVM : ReactiveObject, IMainWindowContentVM
             _jumpToMessageCommand, _editMessageCommand, _deleteMessageCommand, _viewProfileCommand,
             ConfirmOpenLinkAsync, CreateImages(model), CreateFiles(model), Composer, _openDirectChatCommand)
         {
+            IsDirectChat = _model.Kind == ChatKind.Direct,
             IsReactionAllowed = !_model.IsReadOnly && !_model.IsArchived,
             IsPinAllowed = !_model.IsArchived,
             CanPinInDirectChat = _model.Kind == ChatKind.Direct,

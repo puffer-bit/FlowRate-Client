@@ -30,8 +30,10 @@
         
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items,
              only the text inside a message can be selected for copying -->
+        <!-- "bubbles": the messages are drawn as in Telegram, chosen in the settings -->
         <ItemsControl Grid.Row="1"
                       x:Name="MessagesList"
+                      Classes.bubbles="{Binding IsBubbleLayout}"
                       IsVisible="{Binding HasMessages}"
                       ItemsSource="{Binding Messages}"
                       Margin="6">

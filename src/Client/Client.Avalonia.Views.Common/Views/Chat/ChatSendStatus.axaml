@@ -1,5 +1,6 @@
 <!-- The mark of an own message on its way, in place of its receipt: a clock while it goes, a red mark once it
-     did not. The clock takes the Foreground of the control, so a bubble can draw it in its own colors -->
+     did not. The clock takes the Foreground of the control, set by the styles of the message (class
+     msg-status-mark), so a bubble can draw it in its own colors -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
@@ -7,7 +8,6 @@
              x:CompileBindings="True" x:DataType="vm:ChatMessageVM"
              x:Name="Root"
              Width="16" Height="16"
-             Foreground="{DynamicResource SecondaryTextBrush}"
              ToolTip.Tip="{Binding OutgoingStatusText}">
     <Panel>
         <Viewbox IsVisible="{Binding IsSending}">

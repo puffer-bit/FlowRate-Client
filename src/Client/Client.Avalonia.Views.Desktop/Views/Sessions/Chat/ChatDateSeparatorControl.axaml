@@ -7,15 +7,21 @@
              x:DataType="chatVm:ChatDateSeparatorVM"
              x:Class="Client.Views.Sessions.Chat.ChatDateSeparatorControl">
     
-    <!-- The date between two thin lines across the chat -->
-    <Grid ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="16,10">
-        <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
-                Background="{DynamicResource DarkBackgroundBrush}"/>
-        <TextBlock Grid.Column="1" Text="{Binding DateText}"
-                   FontSize="12" FontWeight="Medium"
-                   Foreground="{DynamicResource ColorOverlayGray}"/>
-        <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
-                Background="{DynamicResource DarkBackgroundBrush}"/>
-    </Grid>
+    <Panel>
+        <!-- The date between two thin lines across the chat -->
+        <Grid Classes="date-lines" ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="16,10">
+            <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
+                    Background="{DynamicResource DarkBackgroundBrush}"/>
+            <TextBlock Grid.Column="1" Text="{Binding DateText}"
+                       FontSize="12" FontWeight="Medium"
+                       Foreground="{DynamicResource ColorOverlayGray}"/>
+            <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
+                    Background="{DynamicResource DarkBackgroundBrush}"/>
+        </Grid>
+        <!-- Among bubbles: the date on a pill in the middle -->
+        <Border Classes="date-pill">
+            <TextBlock Text="{Binding DateText}" FontSize="12" FontWeight="Medium"/>
+        </Border>
+    </Panel>
     
 </UserControl>

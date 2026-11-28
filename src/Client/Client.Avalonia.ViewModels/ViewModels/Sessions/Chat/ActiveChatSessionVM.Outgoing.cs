@@ -147,6 +147,7 @@ public partial class ActiveChatSessionVM
             _openDirectChatCommand)
         {
             Outgoing = message,
+            IsDirectChat = _model.Kind == Shared.Enums.ChatKind.Direct,
             IsReactionAllowed = false,
             IsNew = isNew,
             CreateLinkPreview = preview => new ChatLinkPreviewVM(preview, _coordinatorSession, _images)
@@ -161,5 +162,34 @@ public partial class ActiveChatSessionVM
                     Composer.TakeBack(message);
             }
         };
+    }
+
+    // --- How the messages are drawn ---
+
+    private void AttachMessageLayout(Client.Application.Settings.IAppearanceService? appearance)
+    {
+        if (appearance == null)
+            return;
+
+        // Raised by the settings page, maybe off the UI thread
+        void OnLayoutChanged(ChatMessageLayout layout) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => IsBubbleLayout = layout == ChatMessageLayout.Bubbles);
+        _subscriptions.Add(() => appearance.ChatMessageLayoutChanged += OnLayoutChanged,
+            () => appearance.ChatMessageLayoutChanged -= OnLayoutChanged);
+        _ = LoadMessageLayoutAsync(appearance);
+    }
+
+    private async System.Threading.Tasks.Task LoadMessageLayoutAsync(Client.Application.Settings.IAppearanceService appearance)
+    {
+        try
+        {
+            var layout = await appearance.GetChatMessageLayoutAsync();
+            if (!_isDisposed)
+                IsBubbleLayout = layout == ChatMessageLayout.Bubbles;
+        }
+        catch (Exception)
+        {
+            // The list stays
+        }
     }
 }

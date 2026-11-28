@@ -486,6 +486,17 @@
             <!-- Cards with a miniature of the application in each theme, as on the desktop -->
             <views:ThemePresetPicker ui:SettingsPage.SearchKey="appearance.theme"/>
 
+            <controls:SettingsHeader services:SettingText.Section="appearance.chat"/>
+            <ui:SettingsCard>
+                <ui:SettingsRow services:SettingText.Key="appearance.messageLayout" ContentPlacement="Below">
+                    <!-- Items are in the order of ChatMessageLayout -->
+                    <ComboBox SelectedIndex="{Binding MessageLayoutIndex}">
+                        <ComboBoxItem Content="{l:Text settings.appearance.messageLayout.list}"/>
+                        <ComboBoxItem Content="{l:Text settings.appearance.messageLayout.bubbles}"/>
+                    </ComboBox>
+                </ui:SettingsRow>
+            </ui:SettingsCard>
+
             <controls:SettingsHeader services:SettingText.Section="appearance.animations"/>
             <ui:SettingsCard>
                 <ui:SettingsRow services:SettingText.Key="appearance.animations">

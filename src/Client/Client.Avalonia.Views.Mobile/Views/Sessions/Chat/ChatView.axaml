@@ -271,8 +271,10 @@
         <Border Grid.Row="1" Background="{DynamicResource DarkBackgroundBrush}"/>
 
         <!-- An ItemsControl rather than a ListBox: messages are not selectable items -->
+        <!-- "bubbles": the messages are drawn as in Telegram, chosen in the settings -->
         <ItemsControl Grid.Row="2"
                       x:Name="MessagesList"
+                      Classes.bubbles="{Binding IsBubbleLayout}"
                       IsVisible="{Binding HasMessages}"
                       ItemsSource="{Binding Messages}"
                       Margin="4,0">
@@ -297,16 +299,22 @@
                 </DataTemplate>
 
                 <DataTemplate DataType="{x:Type chatVm:ChatDateSeparatorVM}">
-                    <!-- The date between two thin lines across the chat, as on desktop -->
-                    <Grid ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="12,10">
-                        <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
-                                Background="{DynamicResource DarkBackgroundBrush}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding DateText}"
-                                   FontSize="12" FontWeight="Medium"
-                                   Foreground="{DynamicResource ColorOverlayGray}"/>
-                        <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
-                                Background="{DynamicResource DarkBackgroundBrush}"/>
-                    </Grid>
+                    <Panel>
+                        <!-- The date between two thin lines across the chat, as on desktop -->
+                        <Grid Classes="date-lines" ColumnDefinitions="*, Auto, *" ColumnSpacing="10" Margin="12,10">
+                            <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
+                                    Background="{DynamicResource DarkBackgroundBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding DateText}"
+                                       FontSize="12" FontWeight="Medium"
+                                       Foreground="{DynamicResource ColorOverlayGray}"/>
+                            <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
+                                    Background="{DynamicResource DarkBackgroundBrush}"/>
+                        </Grid>
+                        <!-- Among bubbles: the date on a pill in the middle -->
+                        <Border Classes="date-pill">
+                            <TextBlock Text="{Binding DateText}" FontSize="12" FontWeight="Medium"/>
+                        </Border>
+                    </Panel>
                 </DataTemplate>
             </ItemsControl.DataTemplates>
 
