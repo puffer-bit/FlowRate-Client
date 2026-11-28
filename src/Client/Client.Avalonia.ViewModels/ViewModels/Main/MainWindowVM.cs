@@ -342,7 +342,7 @@ public partial class MainWindowVM : ReactiveObject
         Notifications = new NotificationCenterVM(notifications);
         _taskTracker = taskTracker ?? new Client.Application.Tasks.TaskTracker();
         Tasks = new Client.ViewModels.Tasks.TasksVM(_taskTracker);
-        StatusLine.Changed += OnStatusChanged;
+        StatusLine.StatusChanged += OnStatusChanged;
         _hotKeys = hotKeys;
         hotKeys.Triggered += OnHotKey;
         hotKeys.Released += OnHotKeyReleased;
