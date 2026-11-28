@@ -515,9 +515,17 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    <Style Selector="Button.msg-send-status:pointerover /template/ ContentPresenter, Button.msg-send-status:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <!-- Only the mark itself: the plate, border and states of the global button styles would draw a square
+             around the round mark, and a frame under the pointer -->
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                  Background="Transparent"
+                                  HorizontalContentAlignment="Center"
+                                  VerticalContentAlignment="Center"/>
+            </ControlTemplate>
+        </Setter>
     </Style>
 
 
