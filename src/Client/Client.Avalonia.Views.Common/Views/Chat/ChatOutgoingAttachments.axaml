@@ -25,15 +25,6 @@
         <Style Selector="Button.outgoing-ring.on-picture:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#B3000000"/>
         </Style>
-        <!-- The upload of a file: light on the card, so it is seen on a phone and on the accent of an own bubble -->
-        <Style Selector="loadingIndicators|ProgressRing.file-ring">
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource ColorOverlayMedium}"/>
-        </Style>
-        <Style Selector=".bubbles Border.msg-root.mine loadingIndicators|ProgressRing.file-ring">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#40FFFFFF"/>
-        </Style>
         <Style Selector="Path.outgoing-cross">
             <Setter Property="Data" Value="M7,7 L17,17 M17,7 L7,17"/>
             <Setter Property="Stretch" Value="Uniform"/>

@@ -319,6 +319,8 @@
             </ItemsControl.DataTemplates>
 
             <ItemsControl.Styles>
+                <!-- The rings of uploads and downloads of files, once for every message -->
+                <StyleInclude Source="avares://Client.Avalonia.Views.Common/Views/Chat/ChatFileRingStyle.axaml"/>
                 <Style Selector="ItemsControl#MessagesList panels|MessageListPanel > ContentPresenter">
                     <Setter Property="Margin" Value="0,2"/>
                 </Style>

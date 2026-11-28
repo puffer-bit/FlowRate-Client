@@ -2,6 +2,7 @@
              xmlns:indicators="clr-namespace:Client.Avalonia.Controls.Indicators;assembly=Client.Avalonia.Controls"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loadingIndicators="clr-namespace:Client.Avalonia.Controls.LoadingIndicators;assembly=Client.Avalonia.Controls"
              xmlns:events="clr-namespace:Client.Avalonia.Controls.Chat;assembly=Client.Avalonia.Controls"
              xmlns:icons="clr-namespace:Client.Avalonia.Icons;assembly=Client.Avalonia.Assets"
              xmlns:l="clr-namespace:Client.Avalonia.Localization;assembly=Client.Avalonia.Localization"
@@ -13,6 +14,7 @@
              xmlns:chatVm="clr-namespace:Client.ViewModels.Sessions.Chat;assembly=Client.Avalonia.ViewModels"
              x:Class="Client.Mobile.Views.Sessions.Chat.ChatMessageView"
              x:DataType="chatVm:ChatMessageVM">
+
 
     <!-- The message as the desktop shows it, with the time of a continuation always shown. The menu
          of a message is a sheet of the chat view, opened by a tap or a long press -->
@@ -254,6 +256,10 @@
                                             <Grid ColumnDefinitions="Auto, *" ColumnSpacing="10">
                                                 <Border Grid.Column="0" Classes="msg-file-icon">
                                                     <Panel>
+                                                        <loadingIndicators:ProgressRing Classes="smooth file-ring" Width="36" Height="36"
+                                                                                        MinWidth="0" MinHeight="0" BorderThickness="2.5"
+                                                                                        Maximum="1" Value="{Binding Progress}"
+                                                                                        IsVisible="{Binding IsDownloading}"/>
                                                         <Image Source="{StaticResource DownloadIcon}" IsVisible="{Binding ShowDownloadIcon}"/>
                                                         <Image Source="{StaticResource MarkIcon}" IsVisible="{Binding ShowDownloadedIcon}"/>
                                                         <Image Source="{StaticResource CloseIcon}" IsVisible="{Binding IsDownloading}"/>
@@ -268,7 +274,6 @@
                                                     </StackPanel>
                                                     <TextBlock Classes="msg-file-error" Text="{Binding Error}"
                                                                IsVisible="{Binding HasError}"/>
-                                                    <ProgressBar Value="{Binding Progress}" IsVisible="{Binding IsDownloading}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Button>
