@@ -92,6 +92,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
             this.RaisePropertyChanged(nameof(HasText));
             this.RaisePropertyChanged(nameof(HasPlainText));
             this.RaisePropertyChanged(nameof(IsMediaEnd));
+            this.RaisePropertyChanged(nameof(IsMediaOnly));
             this.RaisePropertyChanged(nameof(IsMediaLead));
             this.RaisePropertyChanged(nameof(IsMentioningMe));
             // The card is made anew only for another preview: the same one keeps its loaded picture
@@ -452,6 +453,13 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     /// Pictures close the bubble: no text and no file follow them, so the time and the mark lie on them.
     /// </summary>
     public bool IsMediaEnd => HasAlbum && !HasPlainText && !HasFiles && !HasOutgoingFiles;
+
+    /// <summary>
+    /// Only pictures and videos, without text or other files: the bubble goes without its tail, as the picture
+    /// itself is the message.
+    /// </summary>
+    public bool IsMediaOnly => !HasPlainText && !HasCommandResult && !HasOutgoingFiles
+        && (HasAlbum || HasFiles) && Files.All(file => file.IsVideo);
 
     /// <summary>The files of the message that are downloaded rather than shown.</summary>
     public IReadOnlyList<ChatFileVM> Files { get; }

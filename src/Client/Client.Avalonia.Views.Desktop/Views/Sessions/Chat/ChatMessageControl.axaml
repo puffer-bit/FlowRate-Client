@@ -60,6 +60,7 @@
             Classes.has-album="{Binding HasAlbum}"
             Classes.media-lead="{Binding IsMediaLead}"
             Classes.media-end="{Binding IsMediaEnd}"
+            Classes.media-only="{Binding IsMediaOnly}"
             Classes.has-reactions="{Binding HasReactions}"
             Classes.pinned="{Binding IsPinned}">
         <!-- The avatar column also holds the time of continuations, so their text lines up with the first message -->

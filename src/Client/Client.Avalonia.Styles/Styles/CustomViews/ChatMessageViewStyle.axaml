@@ -829,6 +829,23 @@
         <Setter Property="CornerRadius" Value="0"/>
     </Style>
 
+    <!-- Only pictures or videos: no tail, and the corner it grew from is rounded as the others -->
+    <Style Selector=".bubbles Border.msg-root.media-only Path.msg-tail">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="6,16,16,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.mine.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16,6,16,16"/>
+    </Style>
+    <Style Selector=".bubbles Border.msg-root.media-only.mine.seq-start.seq-end Border.msg-bubble">
+        <Setter Property="CornerRadius" Value="16"/>
+    </Style>
+
     <!-- Nothing after the pictures: the time and mark lie on them, white on a dark plate, instead of a line
          of their own -->
     <Style Selector=".bubbles Border.msg-root.media-end :is(Control).msg-meta-row">
