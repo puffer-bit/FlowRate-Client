@@ -44,7 +44,8 @@ public class TrailingMarkPanel : Panel
         mark.Measure(Size.Infinity);
         var markSize = mark.DesiredSize;
 
-        double markEnd = GetLastLine(text).End + Spacing + markSize.Width;
+        // Rounded up: a width rounded to pixels below the end would put the mark on a line that has no room
+        double markEnd = Math.Ceiling(GetLastLine(text).End + Spacing + markSize.Width);
         return markEnd <= availableSize.Width
             ? new Size(Math.Max(textSize.Width, markEnd), textSize.Height)
             : new Size(Math.Max(textSize.Width, markSize.Width), textSize.Height + markSize.Height);
@@ -68,7 +69,10 @@ public class TrailingMarkPanel : Panel
         var (end, lineHeight) = GetLastLine(text);
 
         double x = end + Spacing;
-        if (x + markSize.Width <= finalSize.Width)
+        // The line of its own exists only when the measure made room for it; a panel as wide as it asked, give or
+        // take a rounding, keeps the mark on the last line
+        bool hasRoomBelow = finalSize.Height >= textHeight + markSize.Height - 0.5;
+        if (x + markSize.Width <= finalSize.Width + 1 || !hasRoomBelow)
             mark.Arrange(new Rect(new Point(x, textHeight - lineHeight + (lineHeight - markSize.Height) / 2), markSize));
         else
             mark.Arrange(new Rect(new Point(0, textHeight), markSize));
