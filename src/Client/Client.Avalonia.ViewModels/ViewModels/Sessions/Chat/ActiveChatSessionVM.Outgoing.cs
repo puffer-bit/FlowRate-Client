@@ -167,26 +167,41 @@ public partial class ActiveChatSessionVM
 
     // --- How the messages are drawn ---
 
+    // The layout chosen in the settings; bubbles are drawn only while the experimental features are on
+    private ChatMessageLayout _messageLayout = ChatMessageLayout.List;
+
     private void AttachMessageLayout(Client.Application.Settings.IAppearanceService? appearance)
     {
         if (appearance == null)
             return;
 
         // Raised by the settings page, maybe off the UI thread
-        void OnLayoutChanged(ChatMessageLayout layout) =>
-            Dispatcher.UIThread.Post(() => IsBubbleLayout = layout == ChatMessageLayout.Bubbles);
-        _subscriptions.Add(() => appearance.ChatMessageLayoutChanged += OnLayoutChanged,
-            () => appearance.ChatMessageLayoutChanged -= OnLayoutChanged);
+        void OnLayoutChanged(ChatMessageLayout layout) => Dispatcher.UIThread.Post(() =>
+        {
+            _messageLayout = layout;
+            ApplyMessageLayout();
+        });
+        void OnExperimentalChanged() => Dispatcher.UIThread.Post(ApplyMessageLayout);
+        _subscriptions
+            .Add(() => appearance.ChatMessageLayoutChanged += OnLayoutChanged,
+                () => appearance.ChatMessageLayoutChanged -= OnLayoutChanged)
+            .Add(() => Client.Services.ExperimentalFeatures.Changed += OnExperimentalChanged,
+                () => Client.Services.ExperimentalFeatures.Changed -= OnExperimentalChanged);
         _ = LoadMessageLayoutAsync(appearance);
+    }
+
+    private void ApplyMessageLayout()
+    {
+        if (!_isDisposed)
+            IsBubbleLayout = _messageLayout == ChatMessageLayout.Bubbles && Client.Services.ExperimentalFeatures.IsEnabled;
     }
 
     private async System.Threading.Tasks.Task LoadMessageLayoutAsync(Client.Application.Settings.IAppearanceService appearance)
     {
         try
         {
-            var layout = await appearance.GetChatMessageLayoutAsync();
-            if (!_isDisposed)
-                IsBubbleLayout = layout == ChatMessageLayout.Bubbles;
+            _messageLayout = await appearance.GetChatMessageLayoutAsync();
+            ApplyMessageLayout();
         }
         catch (Exception)
         {
