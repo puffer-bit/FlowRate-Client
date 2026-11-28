@@ -88,7 +88,6 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ChatAttachmentVM">
                     <Button Classes="msg-file" Classes.error="{Binding HasError}"
-                            MaxWidth="{Binding $parent[ItemsControl].Bounds.Width}"
                             Command="{Binding $parent[ItemsControl].((vm:ChatMessageVM)DataContext).Delete}"
                             ToolTip.Tip="{l:Text chat.outgoing.cancel}"
                             AutomationProperties.Name="{l:Text chat.outgoing.cancel}">
