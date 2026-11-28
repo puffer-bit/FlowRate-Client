@@ -45,6 +45,10 @@ public static class DependencyInjection
             provider.GetService<IVideoPreparer>()));
 
         services.AddSingleton<ChatDrafts>();
+        services.AddSingleton(provider => new ChatOutbox(provider.GetService<IChatOutboxRepository>(),
+            provider.GetRequiredService<IChatMediaUploader>(), provider.GetRequiredService<IChatImageService>(),
+            provider.GetRequiredService<ChatAttachmentOptions>(), provider.GetService<Client.Application.Tasks.ITaskTracker>(),
+            provider.GetService<ILogger<ChatOutbox>>()));
         services.AddSingleton(provider => new ChatReceipts(provider.GetService<ILogger<ChatReceipts>>()));
         services.AddSingleton(provider => new ChatSessionServices(
             provider.GetRequiredService<IChatCacheStore>(),
@@ -56,7 +60,8 @@ public static class DependencyInjection
             provider.GetRequiredService<ChatReceipts>(),
             provider.GetRequiredService<ChatAttachmentOptions>(),
             provider.GetRequiredService<ChatDrafts>(),
-            provider.GetService<Client.Application.Tasks.ITaskTracker>()));
+            provider.GetService<Client.Application.Tasks.ITaskTracker>(),
+            provider.GetRequiredService<ChatOutbox>()));
         services.AddSingleton(provider => new HybridSessionServices(
             provider.GetService<Func<IScreenCastClient>>(),
             provider.GetRequiredService<IAudioPlayerService>(),

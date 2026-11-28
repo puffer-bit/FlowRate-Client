@@ -47,6 +47,19 @@
             </StackPanel>
         </Border>
 
+        <!-- A message that did not go: why, and what can be done about it -->
+        <Border Classes="menu-island" IsVisible="{Binding IsSendFailed}">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="menuError" Text="{Binding OutgoingStatusText}"/>
+                <menus:MenuItemButton Icon="{StaticResource ResetIcon}" Content="{l:Text chat.outgoing.retry}"
+                                      IsVisible="{Binding CanRetrySend}"
+                                      Command="{Binding RetrySend}"/>
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                      IsVisible="{Binding CanTakeBack}"
+                                      Command="{Binding TakeBack}"/>
+            </StackPanel>
+        </Border>
+
         <!-- The gestures are only shown for now; the hot keys themselves are not implemented yet -->
         <Border Classes="menu-island">
             <StackPanel Spacing="2">
@@ -62,13 +75,18 @@
                 </menus:MenuItemButton>
 
                 <menus:MenuItemButton Icon="{StaticResource ReplyIcon}" Content="{l:Text chat.menu.reply}" Gesture="R"
+                                      IsVisible="{Binding CanReply}"
                                       Command="{Binding StartReply}"/>
                 <menus:MenuItemButton Icon="{StaticResource PinIcon}" Content="{l:Text chat.menu.pin}"
-                                      IsVisible="{Binding !IsPinned}" IsEnabled="{Binding CanPin}"
+                                      IsVisible="{Binding ShowsPinItem}" IsEnabled="{Binding CanPin}"
                                       Command="{Binding TogglePinned}"/>
                 <menus:MenuItemButton Icon="{StaticResource UnpinIcon}" Content="{l:Text chat.menu.unpin}"
-                                      IsVisible="{Binding IsPinned}" IsEnabled="{Binding CanPin}"
+                                      IsVisible="{Binding ShowsUnpinItem}" IsEnabled="{Binding CanPin}"
                                       Command="{Binding TogglePinned}"/>
+                <!-- A message on its way that has not failed can still be taken back -->
+                <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.outgoing.takeBack}"
+                                      IsVisible="{Binding IsSending}" IsEnabled="{Binding CanTakeBack}"
+                                      Command="{Binding TakeBack}"/>
                 <menus:MenuItemButton Icon="{StaticResource PencilIcon}" Content="{l:Text chat.menu.edit}" Gesture="E"
                                       IsVisible="{Binding CanEdit}"
                                       Command="{Binding StartEdit}"/>
@@ -112,7 +130,10 @@
                 <Separator IsVisible="{Binding CanDelete}"/>
 
                 <menus:MenuItemButton Classes="danger" Icon="{StaticResource TrashIcon}" Content="{l:Text common.delete}" Gesture="Delete"
-                                      IsVisible="{Binding CanDelete}"
+                                      IsVisible="{Binding CanDeleteStored}"
+                                      Command="{Binding Delete}"/>
+                <menus:MenuItemButton Classes="danger" Icon="{StaticResource CrossIcon}" Content="{l:Text chat.outgoing.cancel}" Gesture="Delete"
+                                      IsVisible="{Binding CanCancelSend}"
                                       Command="{Binding Delete}"/>
             </StackPanel>
         </Border>

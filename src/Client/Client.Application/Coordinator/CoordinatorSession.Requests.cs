@@ -232,8 +232,15 @@ public partial class CoordinatorSession
         }
     }
 
-    public Task<RequestResult> SendChatMessage(NewChatMessage message) =>
-        SendAsync(() => _gateway.SendChatMessage(message.ChatId, message));
+    public async Task<RequestResult<ChatMessageModel?>> SendChatMessage(NewChatMessage message)
+    {
+        var result = await SendAsync(() => _gateway.SendChatMessage(message.ChatId, message));
+
+        if (result is { IsSuccess: true, Value: { } stored })
+            stored.IsMine = stored.SenderUserId == GetCurrentUser().Id;
+
+        return result;
+    }
 
     public Task<RequestResult> DeleteChatMessage(int sessionId, int messageId) =>
         SendAsync(() => _gateway.DeleteChatMessage(sessionId, messageId));

@@ -152,6 +152,14 @@ public partial class ChatMessageControl : ViewControl<ChatMessageVM>
     private void OnReceiptPointerEntered(object? sender, PointerEventArgs e) =>
         (DataContext as ChatMessageVM)?.LoadReadTime();
 
+    // The red mark of a message that did not go opens its menu, with what can be done about it
+    private void OnSendStatusClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ChatMessageVM { IsSendFailed: true })
+            ContextFlyout?.ShowAt(this);
+        e.Handled = true;
+    }
+
     private void FlyoutBase_OnOpening(object? sender, EventArgs e)
     {
         // Most realized messages never open a menu. Build its controls and bindings only

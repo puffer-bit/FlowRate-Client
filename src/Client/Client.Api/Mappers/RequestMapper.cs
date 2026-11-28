@@ -32,6 +32,7 @@ internal static class RequestMapper
     public static NewChatMessageModel ToDto(this NewChatMessage model) => new()
     {
         ChatId = model.ChatId,
+        ClientMessageId = model.ClientMessageId,
         ScheduledAt = model.DelayedSentTime,
         ExpiresAt = model.DisposeTime,
 

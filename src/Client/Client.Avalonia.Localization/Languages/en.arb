@@ -949,6 +949,21 @@
     }
   },
   "chat.send.imagesLost": "The server no longer holds the uploaded files. Send the message again.",
+  "chat.outgoing.sending": "Sending…",
+  "chat.outgoing.queued": "Waits for the messages sent before it",
+  "chat.outgoing.compressing": "Compressing…",
+  "chat.outgoing.waitingForNetwork": "Waiting for network…",
+  "chat.outgoing.failed": "Not sent",
+  "chat.outgoing.retry": "Retry",
+  "chat.outgoing.takeBack": "Back to the input",
+  "chat.outgoing.cancel": "Cancel sending",
+  "chat.outgoing.inQueue": "queued",
+  "chat.send.fileUnavailable": "{file} can no longer be read.",
+  "@chat.send.fileUnavailable": {
+    "placeholders": {
+      "file": {}
+    }
+  },
   "chat.image.gone": "The image was deleted.",
   "chat.image.loadFailed": "The image could not be loaded.",
   "chat.image.saveFailed": "The image could not be saved.",

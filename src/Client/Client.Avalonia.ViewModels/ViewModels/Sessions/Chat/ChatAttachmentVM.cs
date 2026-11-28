@@ -61,7 +61,11 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     public string SizeText
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(OutgoingStatusText));
+        }
     }
 
     public ChatMediaSource Source { get; }
@@ -180,7 +184,11 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     public bool IsPreparing
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(OutgoingStatusText));
+        }
     }
 
     /// <summary>
@@ -200,15 +208,35 @@ public class ChatAttachmentVM : ReactiveObject, IDisposable
     public bool IsUploading
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(OutgoingStatusText));
+        }
     }
 
     /// <summary>The share of the file the server holds, from 0 to 1.</summary>
     public double Progress
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(OutgoingStatusText));
+        }
     }
+
+    /// <summary>
+    /// What the file shows in a message on its way: compressing, the share uploaded, its size once uploaded, or that
+    /// it waits for its turn.
+    /// </summary>
+    public string OutgoingStatusText => IsPreparing
+        ? Strings.Get("chat.outgoing.compressing")
+        : IsUploading
+            ? $"{Math.Round(Progress * 100):0}%"
+            : Progress >= 1
+                ? SizeText
+                : Strings.Get("chat.outgoing.inQueue");
 
     /// <summary>Why the file did not go, shown on its card.</summary>
     public string? Error

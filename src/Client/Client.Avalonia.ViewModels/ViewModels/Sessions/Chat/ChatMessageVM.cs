@@ -77,6 +77,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
             SystemParts = ChatSystemMessageText.Parts(value, _ => null);
             this.RaisePropertyChanged(nameof(LocalSentTime));
             this.RaisePropertyChanged(nameof(IsPinned));
+            this.RaisePropertyChanged(nameof(ShowsPinItem));
+            this.RaisePropertyChanged(nameof(ShowsUnpinItem));
             this.RaisePropertyChanged(nameof(CanEdit));
             this.RaisePropertyChanged(nameof(CanReact));
             this.RaisePropertyChanged(nameof(Reactions));
@@ -177,7 +179,10 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     /// <summary>
     /// Only the author may change a message, and only its text.
     /// </summary>
-    public bool CanEdit => Message.TextContent?.CommandResult == null && Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
+    public bool CanEdit => !IsOutgoing && Message.TextContent?.CommandResult == null && Message is { IsMine: true, IsReadOnly: false, IsSystem: false, TextContent: not null };
+
+    /// <summary>A message on its way can be answered once the server has it.</summary>
+    public bool CanReply => !IsOutgoing && !IsSystem;
 
     /// <summary>The roles of the current user let it delete messages of others.</summary>
     public bool CanManageMessages
@@ -187,6 +192,7 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         {
             this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(CanDelete));
+            this.RaisePropertyChanged(nameof(CanDeleteStored));
             this.RaisePropertyChanged(nameof(CanPin));
         }
     }
@@ -230,8 +236,91 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         finally { _settingPin = false; }
     }
 
-    /// <summary>The author deletes their messages; roles that manage messages delete any.</summary>
-    public bool CanDelete => Message is { IsSystem: false } && (Message.IsMine || CanManageMessages);
+    /// <summary>The author deletes their messages; roles that manage messages delete any. One on its way is given up.</summary>
+    public bool CanDelete => IsOutgoing
+        ? Outgoing!.State != ChatOutgoingState.Sending
+        : Message is { IsSystem: false } && (Message.IsMine || CanManageMessages);
+
+    // --- A message of this client on its way to the server ---
+
+    /// <summary>
+    /// Sent from this client and not yet taken by the server; the stored message replaces this one. Null for every
+    /// message the server has.
+    /// </summary>
+    public ChatOutgoingMessage? Outgoing
+    {
+        get;
+        init
+        {
+            field = value;
+            if (value != null)
+                value.PropertyChanged += OnOutgoingChanged;
+        }
+    }
+
+    public bool IsOutgoing => Outgoing != null;
+
+    /// <summary>On its way: the clock instead of the receipt.</summary>
+    public bool IsSending => Outgoing is { IsFailed: false };
+
+    /// <summary>Did not go: the red mark instead of the receipt, which opens what can be done about it.</summary>
+    public bool IsSendFailed => Outgoing is { IsFailed: true };
+
+    public string? OutgoingStatusText => Outgoing?.StatusText;
+
+    /// <summary>The files of the message on its way, with their compression and upload.</summary>
+    public IReadOnlyList<ChatAttachmentVM> OutgoingAttachments => Outgoing?.Attachments ?? [];
+    public bool HasOutgoingAttachments => OutgoingAttachments.Count > 0;
+    public ChatMessageVM? WithOutgoingAttachments => HasOutgoingAttachments ? this : null;
+    public IReadOnlyList<ChatAttachmentVM> OutgoingImages => OutgoingAttachments.Where(a => a.IsImage || a.IsVideo).ToList();
+    public IReadOnlyList<ChatAttachmentVM> OutgoingFiles => OutgoingAttachments.Where(a => !a.IsImage && !a.IsVideo).ToList();
+    public bool HasOutgoingImages => OutgoingAttachments.Any(a => a.IsImage || a.IsVideo);
+    public bool HasOutgoingFiles => OutgoingAttachments.Any(a => !a.IsImage && !a.IsVideo);
+
+    public bool CanRetrySend => Outgoing is { IsFailed: true, CanRetry: true };
+
+    // The menu: pins and deletion are for messages the server has; one on its way is given up instead
+    public bool ShowsPinItem => !IsOutgoing && !IsPinned;
+    public bool ShowsUnpinItem => !IsOutgoing && IsPinned;
+    public bool CanDeleteStored => !IsOutgoing && CanDelete;
+    public bool CanCancelSend => IsOutgoing && CanDelete;
+    public bool CanTakeBack => Outgoing != null && Outgoing.State != ChatOutgoingState.Sending;
+
+    public Action? RetryOutgoing { get; init; }
+    public Action? CancelOutgoing { get; init; }
+    public Action? TakeBackOutgoing { get; init; }
+
+    public void RetrySend() => _ = RunOutgoingAsync(RetryOutgoing);
+    public void TakeBack() => _ = RunOutgoingAsync(TakeBackOutgoing);
+
+    private async Task RunOutgoingAsync(Action? action)
+    {
+        await CloseFlyoutAsync();
+        action?.Invoke();
+    }
+
+    /// <summary>The row of this message was replaced or left the chat: it follows its message no longer.</summary>
+    public void DetachOutgoing()
+    {
+        if (Outgoing != null)
+            Outgoing.PropertyChanged -= OnOutgoingChanged;
+    }
+
+    private void OnOutgoingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(ChatOutgoingMessage.State) or nameof(ChatOutgoingMessage.Error)))
+            return;
+        this.RaisePropertyChanged(nameof(IsSending));
+        this.RaisePropertyChanged(nameof(IsSendFailed));
+        this.RaisePropertyChanged(nameof(OutgoingStatusText));
+        this.RaisePropertyChanged(nameof(CanRetrySend));
+        this.RaisePropertyChanged(nameof(CanTakeBack));
+        this.RaisePropertyChanged(nameof(CanDelete));
+        this.RaisePropertyChanged(nameof(CanCancelSend));
+    }
+
+    /// <summary>The stored copy of a message shown before while on its way: it is on screen already.</summary>
+    public bool ReplacesOutgoing { get; set; }
 
     /// <summary>
     /// Null until the author is resolved by the chat.
@@ -297,12 +386,13 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     public bool HasCommandResult => CommandResult != null;
     public bool HasPlainText => HasText && !HasCommandResult;
 
+    /// <returns>Whether the row rises into its place: not for the stored copy of a message shown already.</returns>
     public bool TakeLiveArrival()
     {
         if (!IsNew) return false;
         IsNew = false;
         CommandResult?.Play();
-        return true;
+        return !ReplacesOutgoing;
     }
 
     public bool IsSequenceStart
@@ -747,6 +837,12 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
         if (!CanDelete)
             return;
 
+        if (IsOutgoing)
+        {
+            CancelOutgoing?.Invoke();
+            return;
+        }
+
         _deleteCommand.Execute(Message).Subscribe();
     }
 
@@ -804,7 +900,8 @@ public class ChatMessageVM : ReactiveObject, IMessageListItemVM, Client.Avalonia
     {
         await CloseFlyoutAsync();
 
-        _replyCommand.Execute(Message).Subscribe();
+        if (CanReply)
+            _replyCommand.Execute(Message).Subscribe();
     }
 
     private async Task StartEditAsync()

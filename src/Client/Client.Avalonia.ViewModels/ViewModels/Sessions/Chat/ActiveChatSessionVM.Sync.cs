@@ -241,6 +241,8 @@ public partial class ActiveChatSessionVM
                 _pager.Reset();
                 _seenRevision = 0;
                 _timeline.Clear();
+                _shownOutgoing.Clear();
+                SyncOutgoingRows();
                 this.RaisePropertyChanged(nameof(HasMessages));
                 IsInitialLoading = true;
             });

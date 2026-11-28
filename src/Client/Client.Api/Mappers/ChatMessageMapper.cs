@@ -18,6 +18,7 @@ internal static class ChatMessageMapper
             ChatId = dto.ChatId,
             Revision = dto.Revision,
             SenderUserId = dto.SenderUserId,
+            ClientMessageId = dto.ClientMessageId,
             SentTime = dto.SentAt,
             DelayedSentTime = dto.ScheduledAt,
             DisposeTime = dto.ExpiresAt,

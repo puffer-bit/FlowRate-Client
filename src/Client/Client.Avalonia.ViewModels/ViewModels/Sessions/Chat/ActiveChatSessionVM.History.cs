@@ -25,6 +25,7 @@ public partial class ActiveChatSessionVM
         _messageVms.Clear();
         _newestMessageId = 0;
         _timeline.Clear();
+        _shownOutgoing.Clear();
         this.RaisePropertyChanged(nameof(HasMessages));
     }
 

@@ -17,6 +17,7 @@
     <!-- The message as the desktop shows it, with the time of a continuation always shown. The menu
          of a message is a sheet of the chat view, opened by a tap or a long press -->
     <Border Classes="msg-root"
+            Classes.pending="{Binding IsOutgoing}"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
             Classes.system="{Binding IsSystem}"
@@ -41,6 +42,11 @@
                 <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
                 <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
             </Panel>
+
+            <!-- A message on its way: a clock, or a red mark once it did not go; a tap on the message opens
+                 what can be done about it -->
+            <sharedChat:ChatSendStatus Grid.Column="2" IsVisible="{Binding IsOutgoing}"
+                                       Margin="6,2,0,0" VerticalAlignment="Top"/>
 
             <!-- A continuation shows its time in place of the avatar, always: a phone has no hover to reveal it.
                  The hidden text is one line of the message body, so the time is centered on that first line -->
@@ -247,6 +253,14 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </DataTemplate>
+                    </events:MessagePart.ContentTemplate>
+                </events:MessagePart>
+                <!-- The files of a message on its way, from the device, with their uploads -->
+                <events:MessagePart Content="{Binding WithOutgoingAttachments}" IsVisible="{Binding HasOutgoingAttachments}">
+                    <events:MessagePart.ContentTemplate>
+                        <DataTemplate DataType="chatVm:ChatMessageVM">
+                            <sharedChat:ChatOutgoingAttachments/>
                         </DataTemplate>
                     </events:MessagePart.ContentTemplate>
                 </events:MessagePart>

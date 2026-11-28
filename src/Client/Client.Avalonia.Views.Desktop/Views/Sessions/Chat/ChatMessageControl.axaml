@@ -26,6 +26,7 @@
     </UserControl.ContextFlyout>
     
     <Border Classes="msg-root"
+            Classes.pending="{Binding IsOutgoing}"
             Classes.has-opened-flyout="{Binding IsFlyoutOpen}"
             Classes.highlighted="{Binding IsHighlighted}"
             Classes.system="{Binding IsSystem}"
@@ -212,6 +213,9 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- The files of a message on its way, from the device, with their uploads -->
+                <sharedChat:ChatOutgoingAttachments IsVisible="{Binding HasOutgoingAttachments}"/>
+
                 <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}"
                               IsEnabled="{Binding CanReact}" Margin="0,4,0,0">
                     <ItemsControl.ItemsPanel>
@@ -247,6 +251,14 @@
                 <Image Source="{StaticResource ReceiptSentIcon}" IsVisible="{Binding IsDelivered}"/>
                 <Image Source="{StaticResource ReceiptReadIcon}" IsVisible="{Binding IsRead}"/>
             </Panel>
+
+            <!-- A message on its way: a clock instead of the receipt; once it did not go, a red mark that opens
+                 what can be done about it -->
+            <Button Grid.Column="2" Classes="msg-send-status" IsVisible="{Binding IsOutgoing}"
+                    IsHitTestVisible="{Binding IsSendFailed}" Click="OnSendStatusClick"
+                    AutomationProperties.Name="{Binding OutgoingStatusText}">
+                <sharedChat:ChatSendStatus/>
+            </Button>
 
             <Panel Grid.Column="0" IsVisible="{Binding !IsSequenceStart}"
                    Width="36" HorizontalAlignment="Left" VerticalAlignment="Top">

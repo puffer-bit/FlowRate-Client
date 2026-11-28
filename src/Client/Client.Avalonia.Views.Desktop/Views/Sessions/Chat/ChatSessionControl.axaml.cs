@@ -108,12 +108,15 @@ public partial class ChatSessionControl : ViewControl<ActiveChatSessionVM>
                     interaction.SetOutput(RxVoid.Default);
                 }).DisposeWith(subscriptions);
 
-                // The next message can be typed right away, also after sending with the button
+                // The next message can be typed right away, also after sending with the button or an edit
                 ObservableExtensions.Subscribe(vm.Composer.WatchProperty(nameof(ChatComposerVM.IsMessageSending), x => x.IsMessageSending)
                         .Skip(1)
                         .Where(sending => !sending),
                     _ => Dispatcher.UIThread.Post(Composer.FocusInput, DispatcherPriority.Background))
                     .DisposeWith(subscriptions);
+                void OnInputFocusRequested() => Dispatcher.UIThread.Post(Composer.FocusInput, DispatcherPriority.Background);
+                vm.Composer.InputFocusRequested += OnInputFocusRequested;
+                Disposable.Create(() => vm.Composer.InputFocusRequested -= OnInputFocusRequested).DisposeWith(subscriptions);
 
                 // Choosing Reply moves the caret to the input so the answer can be typed right away
                 ObservableExtensions.Subscribe(vm.Composer.WatchProperty(nameof(ChatComposerVM.ReplyPreview), x => x.ReplyPreview)

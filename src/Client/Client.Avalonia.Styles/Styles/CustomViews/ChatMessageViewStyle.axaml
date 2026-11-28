@@ -487,4 +487,29 @@
         <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
     </Style>
 
+    <!-- An own message on its way is dimmed until the server has it; the rings of its files stay clear -->
+    <Style Selector="Border.msg-root.pending :is(TextBlock).msg-body">
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    <Style Selector="Border.msg-root.pending Button.msg-reply, Border.msg-root.pending Border.msg-link">
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+
+    <!-- Its mark in place of the receipt: a clock, or a red mark that opens the menu once it did not go -->
+    <Style Selector="Button.msg-send-status">
+        <Setter Property="Width" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Margin" Value="8,2,0,0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.msg-send-status:pointerover /template/ ContentPresenter, Button.msg-send-status:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
 </Styles>

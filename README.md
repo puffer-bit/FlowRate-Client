@@ -61,6 +61,7 @@ for runtime requirements and validation commands. Android viewing depends on the
 - Exchange messages with Markdown formatting, mentions, images, and file attachments.
 - Play supported audio and video attachments inside the client when media is enabled.
 - Edit messages while preserving their original Markdown.
+- Send without waiting: a message appears in the chat at once, dimmed with a clock while its files are compressed and uploaded, and is replaced by the stored message once the server has it. Messages sent while the connection is down wait in the chat and go once it is back, also after a restart of the client. A message the server refuses shows a red mark with the reason and can be retried, put back into the input, or cancelled.
 - See a preview of the first link of a message: the site, title, description and picture, fetched by the server. The composer shows the preview while the link is typed; closing it sends the message without one.
 - Track unread messages and mute individual chats.
 - Create personal conversations and groups within a server. Switch between server channels and personal chats from the server name menu; the existing create-session action follows the selected list.
