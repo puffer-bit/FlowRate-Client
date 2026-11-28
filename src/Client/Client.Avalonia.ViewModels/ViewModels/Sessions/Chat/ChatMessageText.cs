@@ -53,7 +53,8 @@ public static class ChatMessageText
 
     internal static IEnumerable<(string Text, Rect Bounds)> GetCodeBlocks(TextBlock textBlock)
     {
-        if (textBlock.GetValue(StateProperty) is not { } state)
+        // Asked before the text is measured anew, the layout would be built from the empty Text and kept
+        if (textBlock.GetValue(StateProperty) is not { } state || !textBlock.IsMeasureValid)
             yield break;
 
         foreach (var span in state.Document.Styles.Where(span => span.Style.HasFlag(ChatTextStyle.CodeBlock)))
@@ -408,6 +409,7 @@ public static class ChatMessageText
         if (reach <= 0)
             return -1;
 
+        EnsureLayout(textBlock);
         var point = position - new Point(textBlock.Padding.Left, textBlock.Padding.Top);
         int nearest = -1;
         double nearestDistance = reach;
@@ -433,12 +435,21 @@ public static class ChatMessageText
     private static int FindCharacter(TextBlock textBlock, Point position)
     {
         // A selection change invalidates the layout before the pointer handler runs.
-        if (!textBlock.IsMeasureValid)
-            textBlock.UpdateLayout();
+        EnsureLayout(textBlock);
 
         var padding = textBlock.Padding;
         var hit = textBlock.TextLayout.HitTestPoint(position - new Point(padding.Left, padding.Top));
         return hit.IsInside ? hit.CharacterHit.FirstCharacterIndex : -1;
+    }
+
+    /// <summary>
+    /// Measures the text first when it waits for a measure: the layout of a text block asked for in between is
+    /// built from its empty Text instead of its inlines and stays, so the message would show nothing.
+    /// </summary>
+    public static void EnsureLayout(TextBlock textBlock)
+    {
+        if (!textBlock.IsMeasureValid)
+            textBlock.UpdateLayout();
     }
 
     private static bool IsNear(Point a, Point b, double tolerance) =>

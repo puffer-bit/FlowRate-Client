@@ -91,7 +91,8 @@ public class TrailingMarkPanel : Panel
         // Message backgrounds share a grid with the text without changing its selection.
         if (text is Grid grid && grid.Children.OfType<TextBlock>().FirstOrDefault() is { } child)
             text = child;
-        if (text is not TextBlock textBlock || textBlock.TextLayout.TextLines.Count == 0)
+        // A text block waiting for its measure would build its layout from the empty Text and keep it
+        if (text is not TextBlock { IsMeasureValid: true } textBlock || textBlock.TextLayout.TextLines.Count == 0)
             return (text.DesiredSize.Width, text.DesiredSize.Height);
 
         var line = textBlock.TextLayout.TextLines[^1];

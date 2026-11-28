@@ -380,6 +380,7 @@ internal sealed class ChatSelectionController
             if (local.Y < 0)
                 return hit;
 
+            Client.ViewModels.Sessions.Chat.ChatMessageText.EnsureLayout(block);
             var padding = block.Padding;
             var inText = new Point(local.X - padding.Left, Math.Min(local.Y, block.Bounds.Height) - padding.Top);
             var textHit = block.TextLayout.HitTestPoint(inText);
