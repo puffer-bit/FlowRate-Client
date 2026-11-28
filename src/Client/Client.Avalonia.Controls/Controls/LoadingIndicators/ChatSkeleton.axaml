@@ -13,10 +13,6 @@
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Height" Value="18"/>
         </Style>
-        <!-- Stronger, for screens where the usual one is barely seen, as on a phone in daylight -->
-        <Style Selector="local|ChatSkeleton.strong Border.placeholder">
-            <Setter Property="Background" Value="{DynamicResource PrimaryTextBrush}"/>
-        </Style>
         <!-- A row of the list, or a bubble once the chat draws them -->
         <Style Selector="local|ChatSkeleton Panel.bubble-row">
             <Setter Property="IsVisible" Value="False"/>
